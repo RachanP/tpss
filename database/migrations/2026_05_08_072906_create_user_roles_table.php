@@ -14,11 +14,12 @@ return new class extends Migration
         Schema::disableForeignKeyConstraints();
 
         Schema::create('user_roles', function (Blueprint $table) {
-            $table->id();
-            $table->foreign('user_id')->references('id')->on('users');
-            $table->enum('role', ["admin","staff","course_head","executive","instructor"])->primary();
-            $table->boolean('is_primary')->comment('role \\u0e17\\u0e35\\u0e48 login \\u0e04\\u0e23\\u0e31\\u0e49\\u0e07\\u0e41\\u0e23\\u0e01\\u0e40\\u0e02\\u0e49\\u0e32\\u0e2b\\u0e19\\u0e49\\u0e32\\u0e08\\u0e2d\\u0e19\\u0e35\\u0e49\\u0e01\\u0e48\\u0e2d\\u0e19');
+            $table->unsignedBigInteger('user_id');
+            $table->enum('role', ["admin","staff","course_head","executive","instructor"]);
+            $table->boolean('is_primary')->default(false)->comment('role ที่ login ครั้งแรกเข้าหน้าจอนี้ก่อน');
             $table->timestamp('created_at')->nullable();
+            $table->primary(['user_id', 'role']);
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
         });
 
         Schema::enableForeignKeyConstraints();

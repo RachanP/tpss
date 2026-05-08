@@ -14,11 +14,12 @@ return new class extends Migration
         Schema::disableForeignKeyConstraints();
 
         Schema::create('course_offering_instructors', function (Blueprint $table) {
-            $table->id();
-            $table->foreign('course_offering_id')->references('id')->on('course_offerings');
-            $table->id();
-            $table->foreign('user_id')->references('id')->on('users');
+            $table->unsignedBigInteger('course_offering_id');
+            $table->unsignedBigInteger('user_id');
             $table->enum('role_in_course', ["coordinator","secretary","instructor","group_advisor","preceptor"])->nullable();
+            $table->primary(['course_offering_id', 'user_id']);
+            $table->foreign('course_offering_id')->references('id')->on('course_offerings')->onDelete('cascade');
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
         });
 
         Schema::enableForeignKeyConstraints();

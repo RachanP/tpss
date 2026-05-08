@@ -14,10 +14,11 @@ return new class extends Migration
         Schema::disableForeignKeyConstraints();
 
         Schema::create('course_prerequisites', function (Blueprint $table) {
-            $table->id();
-            $table->foreign('course_id')->references('id')->on('courses');
-            $table->id();
-            $table->foreign('prerequisite_course_id')->references('id')->on('courses');
+            $table->unsignedBigInteger('course_id');
+            $table->unsignedBigInteger('prerequisite_course_id');
+            $table->primary(['course_id', 'prerequisite_course_id']);
+            $table->foreign('course_id')->references('id')->on('courses')->onDelete('cascade');
+            $table->foreign('prerequisite_course_id')->references('id')->on('courses')->onDelete('cascade');
         });
 
         Schema::enableForeignKeyConstraints();
