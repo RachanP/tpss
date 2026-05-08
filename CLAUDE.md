@@ -43,7 +43,7 @@
 |-------|------|-----------|-------|
 | Phase 1 | Initiation | 25–29 เม.ย. 2569 | ✅ เสร็จแล้ว |
 | Phase 2 | Requirements | 29 เม.ย. – 6 พ.ค. 2569 | ✅ เสร็จแล้ว |
-| Phase 3 | Design | 4–8 พ.ค. 2569 | ✅ เสร็จแล้ว (DS-02 UI Mockup + Design System) |
+| Phase 3 | Design | 4–8 พ.ค. 2569 | ✅ เสร็จสมบูรณ์ (UI Mockup + Database Migrations) |
 | Phase 4-5 | Development | 11–28 พ.ค. 2569 | ยังไม่เริ่ม |
 | Phase 5 | Testing | 11 พ.ค. – 2 มิ.ย. 2569 | ยังไม่เริ่ม |
 | Phase 6 | Deployment | 4–5 มิ.ย. 2569 | ยังไม่เริ่ม |
@@ -151,10 +151,10 @@
 
 | Layer | Technology | Version |
 |-------|-----------|---------|
-| Backend | **Laravel** (PHP) | Laravel 12, PHP 8.3.1 |
+| Backend | **Laravel** (PHP) | Laravel 13, PHP 8.3 |
 | Frontend | **Blade** templates + **Alpine.js** | Alpine.js v3.x (CDN) |
 | Database | **MySQL** | 8.0+ |
-| CSS | Design System จาก `ui/design_template/colors_and_type.css` (CSS variables) | — |
+| CSS | Impeccable Design Framework + `ui/ui_kits/tpss/styles.css` | — |
 | UI Reference | `mock/*.html` และ `ui/design_template/ui_kits/tpss/*.jsx` — ดูเป็น spec เท่านั้น ไม่ใช้ React ใน production | — |
 
 ### แนวทางการพัฒนา UI ด้วย Blade + Alpine.js
@@ -163,7 +163,7 @@
 - **Component**: ใช้ `x-` Blade components แทน React components
 - **Interactivity**: ใช้ `x-data`, `x-show`, `x-on:click` ของ Alpine.js แทน React state/hooks
 - **ตัวอย่าง**: sidebar toggle, modal เพิ่มกิจกรรม, dropdown ค้นหาอาจารย์ → ทำด้วย Alpine.js ได้หมด
-- **DB Schema**: ใช้ `migration/database_v1.sql` เป็น reference แล้วสร้าง Laravel Migrations แยก
+- **DB Schema**: อ้างอิงจาก Laravel Migrations ใน `database/migrations/` (ครอบคลุม Phase 1 & 2 แล้ว)
 
 ---
 
@@ -329,6 +329,17 @@ main          ← production-ready เท่านั้น
 - อ้างอิง Module ID (M1, M2, M3...) และ User Story ID (M3-01, M4-02...) เมื่อพูดถึงฟีเจอร์
 - ตรวจสอบ Product Backlog **v2.1** (`TPSS_Product_Backlog.pdf`) ก่อนเสนอการออกแบบหรือ implementation ใดๆ
 - โปรเจกต์ใช้มาตรฐาน ISO/IEC 29110 — ต้องมี traceability และ audit trail
+
+### Impeccable Design Context
+โปรเจกต์นี้ใช้ระบบ **Impeccable Design** ในการควบคุมคุณภาพ Frontend:
+- **Source of Truth**: `mock/production/ui/ui_kits/tpss/` (Styles + Primitives)
+- **Design Docs**: `PRODUCT.md` (Brand/Users) และ `DESIGN.md` (Tokens/Rules) ใน Root
+- **Metaphor**: "The Mahidol Navy Data Shell"
+- **Style**: Professional Institutional — ขอบคม (2px), เส้นบาง (Hairline), ไม่มี Shadow (Flat), เน้น Data Density
+- **UI Architecture**: Blade + Alpine.js (Production Mode)
+
+> **คำสั่งสำหรับ Claude**: เมื่อเริ่มงาน UI ให้รัน `node .agents/skills/impeccable/scripts/load-context.mjs` และอ้างอิงคลาสจาก `ui/ui_kits/tpss/styles.css` เสมอ
+
 - ระบบเป็น web-based (ไม่ต้องติดตั้งโปรแกรม) รองรับ PC, tablet, mobile เบื้องต้น
 - Export รายงานเป็น PDF และ Excel
 - **ผู้บริหาร = Read-only + Approve/Reject เท่านั้น** — ห้าม implement UI ให้แก้ไขตารางหรือ Master Data ได้
@@ -400,15 +411,15 @@ mock/
 
 | ไฟล์ | รายละเอียด |
 |------|-----------|
-| `migration/ER_v1.jpg` | ER Diagram — อัปเดตล่าสุดให้ตรงกับ schema ปัจจุบัน (8 พ.ค. 2569) |
-| `migration/database_v1.sql` | SQL schema — DDL ครอบคลุม Phase 1 และ Phase 2 ทั้งหมด |
+| mock/er_v1.jpg | ER Diagram — อัปเดตล่าสุดให้ตรงกับ schema ปัจจุบัน (8 พ.ค. 2569) |
+| database/migrations/ | Laravel Migrations — ครอบคลุม Phase 1 และ Phase 2 ทั้งหมด (25 ไฟล์) |
 
 **Phase 2 tables (เตรียมไว้ล่วงหน้า ท้ายไฟล์):**
 - `course_offering_approvals` — approval history ทุก action (M11)
 - `schedule_conflicts` — cache conflict/warning ที่ตรวจพบ (M4/M5)
 - Additional indexes on `schedules`, `course_offerings`, `schedule_instructors` (M6/M9)
 
-> **หมายเหตุ**: `database_v1.sql` ครอบคลุม Phase 1 และ Phase 2 ครบแล้ว — ใช้เป็น reference ได้ตลอดทุก Sprint, `ER_v1.jpg` ยังไม่ได้อัปเดตให้ตรงกับ schema ปัจจุบัน
+> **หมายเหตุ**: Laravel Migrations ครอบคลุม Phase 1 และ Phase 2 ครบแล้ว (25 ไฟล์) — ใช้เป็น reference หลักในการพัฒนา, `mock/er_v1.jpg` อัปเดตตรงกับ schema ปัจจุบันแล้ว
 
 ### สิ่งที่ต้องคำนึงในการออกแบบ Approver UI
 จากการอ่าน Backlog v2.1 (M11, M8-03b) และ CLAUDE.md:
@@ -450,18 +461,24 @@ mock/
 | Prototype feature additions (warning section, capacity_required, role_in_course pool, notification strip, teaching_quota bar, activity_types/course_offerings/practicum_series tabs, multi-role picker) | mock/prototype/ ทุกไฟล์ | ✅ อัปเดตแล้ว (8 พ.ค. 2569) |
 | Role switcher UX (sidebar dropdown, maker ↔ lecturer) | mock/prototype/maker.html, lecturer.html | ✅ อัปเดตแล้ว (8 พ.ค. 2569) |
 | Multi-role design decision (users.role enum → pending pivot table / JSON — ตัดสินใจ Sprint 1) | CLAUDE.md Database Enum section | ✅ อัปเดตแล้ว (8 พ.ค. 2569) |
-| Schema: user_roles pivot table, username column, capacity_required, departments head/secretary FK | migration/database_v1.sql | ✅ อัปเดตแล้ว (8 พ.ค. 2569) |
+| Schema: user_roles pivot table, username column, capacity_required, departments head/secretary FK | database/migrations/ | ✅ อัปเดตแล้ว (8 พ.ค. 2569) |
 | staff.html เพิ่ม location_types tab + instructor_availability tab (สำคัญ: M4 conflict checking ต้องการข้อมูลนี้) | mock/prototype/staff.html | ✅ อัปเดตแล้ว (8 พ.ค. 2569) |
-| Phase 2 schema เตรียมล่วงหน้า (course_offering_approvals, schedule_conflicts, indexes) | migration/database_v1.sql | ✅ อัปเดตแล้ว (8 พ.ค. 2569) |
-| ER_v1.jpg อัปเดตให้ตรงกับ schema ปัจจุบัน (รวม user_roles, Phase 2 tables) | migration/ER_v1.jpg | ✅ อัปเดตแล้ว (8 พ.ค. 2569) |
+| Phase 2 schema เตรียมล่วงหน้า (course_offering_approvals, schedule_conflicts, indexes) | database/migrations/ | ✅ อัปเดตแล้ว (8 พ.ค. 2569) |
+| ER_v1.jpg อัปเดตให้ตรงกับ schema ปัจจุบัน (รวม user_roles, Phase 2 tables) | mock/er_v1.jpg | ✅ อัปเดตแล้ว (8 พ.ค. 2569) |
 | Enum values Phase 2 (approval action, conflict severity/type, warning type) | CLAUDE.md Database Enum section | ✅ อัปเดตแล้ว (8 พ.ค. 2569) |
 | Glossary เพิ่ม instructor_availability, location_type, course_offering_approval, schedule_conflict, active_role | CLAUDE.md Glossary | ✅ อัปเดตแล้ว (8 พ.ค. 2569) |
 
 ---
 
-## Design Context (สำหรับ Production UI — อัปเดต 7 พ.ค. 2569)
+## Design Context: Impeccable Design Frontend (อัปเดต 8 พ.ค. 2569)
 
-> บันทึกโดย `/teach-impeccable` — อ้างอิง `.impeccable.md` ในโปรเจกต์สำหรับรายละเอียดเต็ม
+> **IMPORTANT**: โปรเจกต์นี้ใช้ระบบ **Impeccable Design** ในการควบคุมคุณภาพ Frontend
+> อ้างอิงบริบทเต็มจาก `PRODUCT.md` และ `DESIGN.md` ใน Root ทุกครั้งที่เริ่ม Session ใหม่
+
+### Source of Truth
+- **UI Kit**: `mock/production/ui/ui_kits/tpss/` (Styles + Primitives)
+- **Design Tokens**: `mock/production/ui/colors_and_type.css`
+- **Metaphor**: "The Mahidol Navy Data Shell"
 
 ### Users & Purpose
 บุคลากรคณะพยาบาลศาสตร์ 5 role ใช้งานบน PC/tablet ระหว่างทำงานจริง
@@ -491,11 +508,10 @@ mock/
 5. **Thai-first** — label/button/error เป็นภาษาไทย; English เฉพาะ technical term
 
 ### Key Assets
-- Logo มหิดล: `mock/production/picture/Mahidol_U_logo.png`
-- Logo TPSS mark: `mock/production/ui/assets/logo-mark.svg`
-- Design tokens: `mock/production/ui/colors_and_type.css`
-- Component classes: `mock/production/ui/ui_kits/tpss/styles.css`
-- Component previews: `mock/production/ui/preview/comp-*.html`
-- Production mockups: `mock/production/`
-- Prototype reference: `mock/prototype/`
+- **Design Framework**: Impeccable Design skill (PRODUCT.md / DESIGN.md)
+- **Primary CSS**: `mock/production/ui/ui_kits/tpss/styles.css`
+- **CSS Tokens**: `mock/production/ui/colors_and_type.css`
+- **Component Previews**: `mock/production/ui/preview/`
+- **Production Mockups**: `mock/production/`
+- **Mahidol Logo**: `mock/production/picture/Mahidol_U_logo.png`
 - Full spec: `.impeccable.md`
