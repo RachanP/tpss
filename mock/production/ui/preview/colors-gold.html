@@ -1,0 +1,46 @@
+<!doctype html><html><head><meta charset="utf-8">
+<title>Brand · Gold accent</title>
+<link rel="stylesheet" href="_card.css">
+<style>
+.swatches { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; }
+.sw { border-radius: var(--r-lg); padding: 14px; min-height: 96px;
+      display: flex; flex-direction: column; justify-content: space-between; }
+.sw .name { font-size: 13px; font-weight: 700; }
+.sw .meta { font-size: 11px; opacity: .85; font-family: var(--font-mono); }
+.sw .hex  { font-size: 11px; font-family: var(--font-mono); margin-top: auto; opacity: .85; }
+.sw.dark  { color: #fff; }
+.sw.light { color: var(--fg-1); border: 1px solid var(--border); }
+.lede { display:flex; align-items:baseline; gap:12px; margin-bottom: 14px; }
+.lede .ttl { font-size: 13px; font-weight: 700; }
+.lede .sub { font-size: 11px; color: var(--fg-3); }
+.demo { display: flex; align-items: center; gap: 10px; margin-top: 14px;
+        padding: 10px 12px; background: var(--brand-navy); border-radius: var(--r-md); }
+.demo .pip { width: 6px; height: 24px; background: var(--brand-gold); border-radius: 2px; }
+.demo .ttl2 { color: #fff; font-size: 13px; font-weight: 700; }
+.demo .sub2 { color: rgba(255,255,255,.7); font-size: 11px; }
+</style></head>
+<body><div class="card">
+  <div class="lede">
+    <div class="ttl">Mahidol Gold</div>
+    <div class="sub">Accent for quiet emphasis — never primary action</div>
+  </div>
+  <div class="swatches">
+    <div class="sw dark" style="background:#8e7321;">
+      <div><div class="name">Gold 700</div></div><div class="hex">#8e7321</div>
+    </div>
+    <div class="sw dark" style="background:#c9a449;">
+      <div><div class="name">Gold 500</div><div class="meta" style="color:rgba(255,255,255,.85)">accent</div></div>
+      <div class="hex">#c9a449</div>
+    </div>
+    <div class="sw light" style="background:#e0c887;">
+      <div><div class="name">Gold 300</div></div><div class="hex">#e0c887</div>
+    </div>
+    <div class="sw light" style="background:#f7eed1;">
+      <div><div class="name">Gold 100</div><div class="meta">tint</div></div><div class="hex">#f7eed1</div>
+    </div>
+  </div>
+  <div class="demo">
+    <div class="pip"></div>
+    <div><div class="ttl2">วิชาผู้สูงอายุ · พยอย 384</div><div class="sub2">Gold pip = passive emphasis on navy chrome</div></div>
+  </div>
+</div></body></html>

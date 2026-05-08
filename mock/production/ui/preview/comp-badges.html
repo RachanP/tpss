@@ -1,0 +1,174 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8">
+<title>Components · Badges & tags</title>
+<link rel="stylesheet" href="_card.css">
+<style>
+  body { padding: 0; background: #fff; font-family: var(--font-sans); }
+
+  .eyebrow {
+    font-size: 10px; font-weight: 600; color: var(--fg-3);
+    letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 14px 18px 8px;
+    border-bottom: 1px solid var(--border);
+    background: #fff;
+    display: flex; align-items: baseline; justify-content: space-between;
+  }
+  .eyebrow .meta {
+    font-family: var(--font-mono); font-size: 10px;
+    font-weight: 400; color: var(--fg-3);
+    letter-spacing: 0; text-transform: none;
+  }
+
+  table { width: 100%; border-collapse: collapse; background: #fff; }
+  thead th {
+    background: oklch(98% 0.006 230);
+    color: var(--fg-2); font-weight: 600; text-align: left;
+    padding: 7px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+    height: 26px; white-space: nowrap;
+  }
+  tbody td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-subtle);
+    vertical-align: middle;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+
+  .tk { font-family: var(--font-mono); font-size: 10.5px; color: var(--fg-2); width: 130px; white-space: nowrap; }
+  .use { font-size: 11px; color: var(--fg-3); width: 190px; }
+  .demo { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+  /* Status badge — sharp 2px, outline + soft fill, no rounded pill */
+  .b {
+    display: inline-flex; align-items: center; gap: 5px;
+    height: 20px; padding: 0 8px;
+    border-radius: 2px;
+    border: 1px solid;
+    font-size: 11px; font-weight: 600;
+    line-height: 1; white-space: nowrap;
+    letter-spacing: 0.01em;
+  }
+  .b svg { width: 10px; height: 10px; flex-shrink: 0; }
+  .b-pending  { background: color-mix(in oklch, var(--status-warning) 8%, white); color: var(--status-warning-fg); border-color: color-mix(in oklch, var(--status-warning) 28%, white); }
+  .b-approved { background: color-mix(in oklch, var(--status-success) 8%, white); color: var(--status-success-fg); border-color: color-mix(in oklch, var(--status-success) 28%, white); }
+  .b-rejected { background: color-mix(in oklch, var(--status-conflict) 8%, white); color: var(--status-conflict-fg); border-color: color-mix(in oklch, var(--status-conflict) 28%, white); }
+  .b-draft    { background: #fff; color: var(--fg-2); border-color: var(--border-strong); }
+  .b-info     { background: var(--brand-navy-50); color: var(--brand-navy); border-color: color-mix(in oklch, var(--brand-navy) 22%, white); }
+
+  /* Activity tag — uppercase mono, subtle */
+  .tag {
+    display: inline-flex; align-items: center;
+    height: 18px; padding: 0 7px;
+    border-radius: 2px;
+    border: 1px solid;
+    font-family: var(--font-mono);
+    font-size: 9.5px; font-weight: 600;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    line-height: 1;
+  }
+  .t-lecture { color: var(--act-lecture); border-color: color-mix(in oklch, var(--act-lecture) 30%, white); background: color-mix(in oklch, var(--act-lecture) 6%, white); }
+  .t-lab     { color: var(--act-lab); border-color: color-mix(in oklch, var(--act-lab) 30%, white); background: color-mix(in oklch, var(--act-lab) 6%, white); }
+  .t-ward    { color: var(--act-ward); border-color: color-mix(in oklch, var(--act-ward) 30%, white); background: color-mix(in oklch, var(--act-ward) 6%, white); }
+  .t-confer  { color: var(--act-conference); border-color: color-mix(in oklch, var(--act-conference) 30%, white); background: color-mix(in oklch, var(--act-conference) 6%, white); }
+  .t-exam    { color: var(--act-exam); border-color: color-mix(in oklch, var(--act-exam) 30%, white); background: color-mix(in oklch, var(--act-exam) 6%, white); }
+
+  /* Chip — neutral data filter */
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 22px; padding: 0 9px;
+    border-radius: 2px;
+    background: #fff; border: 1px solid var(--border);
+    color: var(--fg-1);
+    font-size: 11.5px; font-weight: 500;
+    line-height: 1;
+  }
+  .chip .ddot { width: 5px; height: 5px; border-radius: 50%; background: var(--brand-navy); }
+  .chip-active { background: var(--brand-navy-50); border-color: color-mix(in oklch, var(--brand-navy) 25%, white); color: var(--brand-navy); font-weight: 600; }
+
+  .foot {
+    padding: 10px 18px;
+    background: oklch(98% 0.006 230);
+    border-top: 1px solid var(--border);
+    font-size: 10.5px; color: var(--fg-3); line-height: 1.55;
+  }
+  .foot code {
+    font-family: var(--font-mono); background: #fff;
+    border: 1px solid var(--border);
+    padding: 0 4px; border-radius: 2px;
+    color: var(--fg-2);
+  }
+</style></head>
+<body>
+
+<div class="eyebrow">
+  <span>Status, Activity &amp; Filter Marks</span>
+  <span class="meta">radius 2px · 1px border · soft fill</span>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Token</th>
+      <th>Usage</th>
+      <th>Specimen</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="tk">.b-pending</td>
+      <td class="use">รออนุมัติ — workflow ค้าง</td>
+      <td><span class="b b-pending">รออนุมัติ</span></td>
+    </tr>
+    <tr>
+      <td class="tk">.b-approved</td>
+      <td class="use">อนุมัติแล้ว — สถานะปกติ</td>
+      <td><span class="b b-approved"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 12l5 5L20 7"/></svg>อนุมัติแล้ว</span></td>
+    </tr>
+    <tr>
+      <td class="tk">.b-rejected</td>
+      <td class="use">ตีกลับ — ต้องแก้ไข</td>
+      <td><span class="b b-rejected">ตีกลับ</span></td>
+    </tr>
+    <tr>
+      <td class="tk">.b-draft</td>
+      <td class="use">ฉบับร่าง — ยังไม่ส่ง</td>
+      <td><span class="b b-draft">ฉบับร่าง</span></td>
+    </tr>
+    <tr>
+      <td class="tk">.b-info</td>
+      <td class="use">ข้อมูลเชิงระบบ / ใช้งานอยู่</td>
+      <td><span class="b b-info">ใช้งานอยู่</span></td>
+    </tr>
+    <tr>
+      <td class="tk">.tag-*</td>
+      <td class="use">ประเภทกิจกรรมการเรียนการสอน</td>
+      <td>
+        <div class="demo">
+          <span class="tag t-lecture">Lecture</span>
+          <span class="tag t-lab">Lab</span>
+          <span class="tag t-ward">Ward</span>
+          <span class="tag t-confer">Conference</span>
+          <span class="tag t-exam">Exam</span>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td class="tk">.chip</td>
+      <td class="use">ตัวกรองข้อมูล / metadata</td>
+      <td>
+        <div class="demo">
+          <span class="chip"><span class="ddot"></span>กลุ่ม A1</span>
+          <span class="chip">9 กลุ่มย่อย</span>
+          <span class="chip">หอผู้ป่วยศัลย 1</span>
+          <span class="chip chip-active"><span class="ddot" style="background:currentColor"></span>สัปดาห์นี้</span>
+        </div>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="foot">
+  หลักการ: badge เป็น <b>outline + soft fill</b> ไม่ใช่ solid pill เพื่อให้กลมกลืนในตารางข้อมูลหนาแน่น. กิจกรรม (Lecture/Lab/Ward/Conference/Exam) ใช้สีเฉพาะที่กำหนดใน <code>--act-*</code> tokens.
+</div>
+
+</body></html>

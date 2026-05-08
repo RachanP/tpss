@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TPSS — เข้าสู่ระบบ</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-dark:    oklch(21% 0.055 215);
+      --bg-dark-2:  oklch(17% 0.045 215);
+      --accent:     oklch(68% 0.13 192);
+      --text-light: oklch(95% 0.008 215);
+      --text-dim:   oklch(62% 0.03  215);
+      --bg-light:   oklch(98% 0.004 80);
+      --text-dark:  oklch(18% 0.018 240);
+      --text-mid:   oklch(48% 0.02  240);
+      --border:     oklch(90% 0.008 240);
+    }
+
+    html, body { height: 100%; font-family: 'Sarabun', sans-serif; }
+
+    body {
+      display: grid;
+      grid-template-columns: 55% 45%;
+      min-height: 100vh;
+      background: var(--bg-dark);
+    }
+
+    /* ─── LEFT PANEL ─── */
+    .left-panel {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: clamp(2rem, 4vw, 3.5rem);
+      overflow: hidden;
+      background: linear-gradient(140deg, var(--bg-dark-2) 0%, var(--bg-dark) 60%);
+    }
+
+    /* Large ghost text */
+    .left-panel::before {
+      content: 'TPSS';
+      position: absolute;
+      bottom: -1.5rem;
+      right: -2rem;
+      font-size: clamp(9rem, 16vw, 15rem);
+      font-weight: 800;
+      color: oklch(28% 0.04 215);
+      line-height: 1;
+      letter-spacing: -0.04em;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    /* Subtle dot grid */
+    .left-panel::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(circle, oklch(40% 0.04 215 / 0.5) 1px, transparent 1px);
+      background-size: 36px 36px;
+      mask-image: radial-gradient(ellipse at 20% 30%, transparent 25%, black 80%);
+      pointer-events: none;
+    }
+
+    .left-top {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Logo */
+    .logo-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.8rem;
+      margin-bottom: 3.5rem;
+    }
+
+    .logo-icon {
+      width: 46px;
+      height: 46px;
+      background: var(--accent);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 8px 24px oklch(68% 0.13 192 / 0.35);
+    }
+
+    .logo-text { display: flex; flex-direction: column; gap: 1px; }
+    .logo-name { font-size: 1.05rem; font-weight: 700; color: var(--text-light); letter-spacing: 0.03em; }
+    .logo-sub  { font-size: 0.7rem;  font-weight: 400; color: var(--text-dim); }
+
+    /* Hero */
+    .eyebrow {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+
+    .hero-title {
+      font-size: clamp(1.9rem, 3.2vw, 2.8rem);
+      font-weight: 700;
+      color: var(--text-light);
+      line-height: 1.25;
+      margin-bottom: 1.1rem;
+      letter-spacing: -0.01em;
+    }
+
+    .hero-desc {
+      font-size: 0.9rem;
+      color: var(--text-dim);
+      line-height: 1.75;
+      font-weight: 300;
+      max-width: 380px;
+    }
+
+    /* Pills */
+    .left-bottom { position: relative; z-index: 1; }
+
+    .pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem;
+      margin-bottom: 2rem;
+    }
+
+    .pill {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.38rem 0.85rem;
+      border: 1px solid oklch(38% 0.04 215);
+      border-radius: 100px;
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      background: oklch(26% 0.04 215 / 0.6);
+    }
+
+    .pill svg { width: 13px; height: 13px; color: var(--accent); flex-shrink: 0; }
+
+    .left-footer { font-size: 0.72rem; color: oklch(42% 0.025 215); }
+
+    /* ─── RIGHT PANEL ─── */
+    .right-panel {
+      background: var(--bg-light);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: clamp(2rem, 4vw, 3rem);
+      position: relative;
+      border-left: 1px solid oklch(88% 0.01 240);
+    }
+
+    .right-inner {
+      max-width: 400px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* ─── VIEWS ─── */
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* Heading styles */
+    .section-heading {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      letter-spacing: -0.025em;
+      margin-bottom: 0.35rem;
+    }
+
+    .section-sub {
+      font-size: 0.88rem;
+      color: var(--text-mid);
+      margin-bottom: 1.75rem;
+      font-weight: 400;
+    }
+
+    /* ─── ROLE LIST ─── */
+    .role-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+
+    .role-item {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+      padding: 0.85rem 0.95rem;
+      border-radius: 12px;
+      border: 1.5px solid var(--border);
+      cursor: pointer;
+      background: white;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+      animation: riseIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .role-item:nth-child(1) { animation-delay: 0.04s; }
+    .role-item:nth-child(2) { animation-delay: 0.09s; }
+    .role-item:nth-child(3) { animation-delay: 0.14s; }
+    .role-item:nth-child(4) { animation-delay: 0.19s; }
+    .role-item:nth-child(5) { animation-delay: 0.24s; }
+
+    /* Left accent bar */
+    .role-item::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      background: var(--rc);
+      transform: scaleY(0);
+      transform-origin: center;
+      transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+      border-radius: 0 2px 2px 0;
+    }
+
+    .role-item:hover {
+      border-color: var(--rc);
+      background: color-mix(in oklch, var(--rc) 5%, white);
+      transform: translateX(3px);
+    }
+
+    .role-item:hover::before { transform: scaleY(1); }
+
+    .role-icon-box {
+      width: 38px;
+      height: 38px;
+      border-radius: 9px;
+      background: color-mix(in oklch, var(--rc) 12%, white);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.18s;
+    }
+
+    .role-item:hover .role-icon-box {
+      background: color-mix(in oklch, var(--rc) 18%, white);
+    }
+
+    .role-icon-box svg { width: 17px; height: 17px; color: var(--rc); }
+
+    .role-info { flex: 1; min-width: 0; }
+
+    .role-name {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text-dark);
+      line-height: 1.3;
+    }
+
+    .role-desc {
+      font-size: 0.73rem;
+      color: var(--text-mid);
+      font-weight: 400;
+      margin-top: 1px;
+    }
+
+    .role-arrow {
+      color: oklch(78% 0.015 240);
+      flex-shrink: 0;
+      transition: color 0.18s, transform 0.18s;
+    }
+
+    .role-item:hover .role-arrow {
+      color: var(--rc);
+      transform: translateX(2px);
+    }
+
+    /* ─── LOGIN FORM ─── */
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.82rem;
+      color: var(--text-mid);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      margin-bottom: 1.75rem;
+      font-family: 'Sarabun', sans-serif;
+      font-weight: 500;
+      transition: color 0.15s;
+    }
+
+    .back-btn:hover { color: var(--text-dark); }
+
+    .role-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.85rem;
+      border-radius: 100px;
+      background: color-mix(in oklch, var(--badge-color, oklch(50% 0.15 230)) 10%, white);
+      border: 1px solid color-mix(in oklch, var(--badge-color, oklch(50% 0.15 230)) 28%, white);
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--badge-color, oklch(50% 0.15 230));
+      margin-bottom: 1.4rem;
+    }
+
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--badge-color, oklch(50% 0.15 230));
+      flex-shrink: 0;
+    }
+
+    .form-group { margin-bottom: 0.9rem; }
+
+    .form-label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-dark);
+      margin-bottom: 0.38rem;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 0.72rem 0.95rem;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 0.9rem;
+      color: var(--text-dark);
+      background: white;
+      outline: none;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .form-input::placeholder { color: oklch(74% 0.015 240); }
+
+    .submit-btn {
+      width: 100%;
+      padding: 0.82rem;
+      border: none;
+      border-radius: 10px;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: white;
+      cursor: pointer;
+      margin-top: 0.4rem;
+      transition: filter 0.18s ease, transform 0.15s ease;
+      letter-spacing: 0.01em;
+    }
+
+    .submit-btn:hover  { filter: brightness(1.08); transform: translateY(-1px); }
+    .submit-btn:active { transform: translateY(0);  filter: brightness(0.96); }
+
+    /* Divider */
+    .form-divider {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin: 1rem 0 0;
+    }
+
+    .divider-line { flex: 1; height: 1px; background: var(--border); }
+    .divider-text { font-size: 0.72rem; color: var(--text-mid); white-space: nowrap; }
+
+    /* Right footer */
+    .right-footer {
+      position: absolute;
+      bottom: 1.25rem;
+      left: 0; right: 0;
+      text-align: center;
+      font-size: 0.7rem;
+      color: oklch(70% 0.015 240);
+    }
+
+    /* ─── ANIMATIONS ─── */
+    @keyframes riseIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .anim-in {
+      animation: fadeIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 800px) {
+      body { grid-template-columns: 1fr; }
+
+      .left-panel {
+        min-height: auto;
+        padding: 2rem;
+        justify-content: flex-start;
+        gap: 2rem;
+      }
+
+      .left-panel::before { font-size: 7rem; bottom: -0.5rem; right: -1rem; }
+
+      .hero-title { font-size: 1.7rem; }
+      .pills { display: none; }
+      .left-footer { display: none; }
+
+      .right-panel { padding: 2rem 1.5rem 3.5rem; min-height: 70vh; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════ LEFT PANEL ══════════ -->
+<div class="left-panel">
+  <div class="left-top">
+
+    <div class="logo-wrap">
+      <div class="logo-icon">
+        <!-- Calendar/schedule icon -->
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8"  y1="2" x2="8"  y2="6"/>
+          <line x1="3"  y1="10" x2="21" y2="10"/>
+          <line x1="8"  y1="14" x2="8"  y2="14" stroke-width="3"/>
+          <line x1="12" y1="14" x2="12" y2="14" stroke-width="3"/>
+          <line x1="16" y1="14" x2="16" y2="14" stroke-width="3"/>
+        </svg>
+      </div>
+      <div class="logo-text">
+        <span class="logo-name">TPSS</span>
+        <span class="logo-sub">Teaching & Practicum Scheduling System</span>
+      </div>
+    </div>
+
+    <p class="eyebrow">คณะพยาบาลศาสตร์ &nbsp;•&nbsp; มหาวิทยาลัยมหิดล</p>
+    <h1 class="hero-title">ระบบจัดตารางสอน<br>และฝึกปฏิบัติ</h1>
+    <p class="hero-desc">
+      บริหารตารางสอนและฝึกปฏิบัติพยาบาลศาสตร์
+      รองรับหลายกลุ่ม หลายกิจกรรม หลายสถานที่ฝึก
+      พร้อมระบบตรวจสอบตารางชนอัตโนมัติ
+    </p>
+
+  </div>
+
+  <div class="left-bottom">
+    <div class="pills">
+      <div class="pill">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        ตรวจ Conflict อัตโนมัติ
+      </div>
+      <div class="pill">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        Block Schedule
+      </div>
+      <div class="pill">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="20" x2="18" y2="10"/>
+          <line x1="12" y1="20" x2="12" y2="4"/>
+          <line x1="6"  y1="20" x2="6"  y2="14"/>
+        </svg>
+        สรุปภาระงานสอน
+      </div>
+    </div>
+    <p class="left-footer">ปีการศึกษา 2569</p>
+  </div>
+</div>
+
+<!-- ══════════ RIGHT PANEL ══════════ -->
+<div class="right-panel">
+  <div class="right-inner">
+
+    <!-- VIEW: ROLE SELECTION -->
+    <div class="view active" id="view-roles">
+      <h2 class="section-heading">ยินดีต้อนรับ</h2>
+      <p class="section-sub">เลือกบทบาทของคุณเพื่อเข้าสู่ระบบ</p>
+
+      <div class="role-list">
+
+        <!-- 1. System Admin -->
+        <div class="role-item" style="--rc: oklch(44% 0.18 278)"
+             onclick="selectRole('ผู้ดูแลระบบ','System Admin','oklch(44% 0.18 278)')">
+          <div class="role-icon-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          </div>
+          <div class="role-info">
+            <div class="role-name">ผู้ดูแลระบบ</div>
+            <div class="role-desc">บริหารระบบและผู้ใช้งาน</div>
+          </div>
+          <svg class="role-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
+        </div>
+
+        <!-- 2. หัวหน้าวิชา -->
+        <div class="role-item" style="--rc: oklch(52% 0.20 270)"
+             onclick="selectRole('หัวหน้าวิชา','Maker','oklch(52% 0.20 270)')">
+          <div class="role-icon-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </div>
+          <div class="role-info">
+            <div class="role-name">หัวหน้าวิชา</div>
+            <div class="role-desc">จัดทำและส่งตารางสอน</div>
+          </div>
+          <svg class="role-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
+        </div>
+
+        <!-- 3. ผู้บริหาร -->
+        <div class="role-item" style="--rc: oklch(52% 0.15 148)"
+             onclick="selectRole('ผู้บริหาร','Approver','oklch(52% 0.15 148)')">
+          <div class="role-icon-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+          </div>
+          <div class="role-info">
+            <div class="role-name">ผู้บริหาร</div>
+            <div class="role-desc">ตรวจสอบและอนุมัติตาราง</div>
+          </div>
+          <svg class="role-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
+        </div>
+
+        <!-- 4. เจ้าหน้าที่ -->
+        <div class="role-item" style="--rc: oklch(50% 0.14 195)"
+             onclick="selectRole('เจ้าหน้าที่','Staff','oklch(50% 0.14 195)')">
+          <div class="role-icon-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+              <path d="M16 3.13a4 4 0 010 7.75"/>
+            </svg>
+          </div>
+          <div class="role-info">
+            <div class="role-name">เจ้าหน้าที่</div>
+            <div class="role-desc">จัดการข้อมูลและตาราง</div>
+          </div>
+          <svg class="role-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
+        </div>
+
+        <!-- 5. อาจารย์ผู้สอน -->
+        <div class="role-item" style="--rc: oklch(51% 0.17 24)"
+             onclick="selectRole('อาจารย์ผู้สอน','Lecturer','oklch(51% 0.17 24)')">
+          <div class="role-icon-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/>
+              <path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/>
+            </svg>
+          </div>
+          <div class="role-info">
+            <div class="role-name">อาจารย์ผู้สอน</div>
+            <div class="role-desc">ดูตารางสอนของตนเอง</div>
+          </div>
+          <svg class="role-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- VIEW: LOGIN FORM -->
+    <div class="view" id="view-login">
+
+      <button class="back-btn" onclick="goBack()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        เลือกบทบาทอื่น
+      </button>
+
+      <div class="role-badge" id="role-badge">
+        <span class="badge-dot" id="badge-dot"></span>
+        <span id="badge-label"></span>
+      </div>
+
+      <h2 class="section-heading">เข้าสู่ระบบ</h2>
+      <p class="section-sub" id="login-sub">กรุณากรอกชื่อผู้ใช้และรหัสผ่าน</p>
+
+      <form onsubmit="return handleLogin();" autocomplete="on">
+        <div class="form-group">
+          <label class="form-label" for="username">ชื่อผู้ใช้งาน</label>
+          <input class="form-input" id="username" type="text"
+                 placeholder="กรอกชื่อผู้ใช้งาน" autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="password">รหัสผ่าน</label>
+          <input class="form-input" id="password" type="password"
+                 placeholder="กรอกรหัสผ่าน" autocomplete="current-password">
+        </div>
+        <button class="submit-btn" id="submit-btn" type="submit">
+          เข้าสู่ระบบ
+        </button>
+      </form>
+
+    </div>
+
+  </div>
+  <div class="right-footer">คณะพยาบาลศาสตร์ มหาวิทยาลัยมหิดล &nbsp;•&nbsp; ปีการศึกษา 2569</div>
+</div>
+
+<!-- ══════════ DYNAMIC STYLES ══════════ -->
+<style id="dynamic-styles"></style>
+
+<script>
+  const ROLE_ROUTES = {
+    'System Admin': 'admin.html',
+    'Admin':    'admin.html',
+    'Maker':    'maker.html',
+    'Approver': 'approver.html',
+    'Staff':    'staff.html',
+    'Lecturer': 'lecturer.html',
+  };
+
+  let currentRoleEN = '';
+  let currentDestination = '';
+
+  function selectRole(nameTH, nameEN, color) {
+    currentRoleEN = nameEN;
+    currentDestination = ROLE_ROUTES[nameEN] || '';
+
+    // Update badge
+    const badge = document.getElementById('role-badge');
+    badge.style.setProperty('--badge-color', color);
+    document.getElementById('badge-dot').style.background = color;
+    document.getElementById('badge-label').textContent = `${nameTH} — ${nameEN}`;
+
+    // Update sub text
+    document.getElementById('login-sub').textContent =
+      `กำลังเข้าสู่ระบบในฐานะ ${nameTH}`;
+
+    // Inject dynamic color rules
+    document.getElementById('dynamic-styles').textContent = `
+      .form-input:focus {
+        border-color: ${color};
+        box-shadow: 0 0 0 3px color-mix(in oklch, ${color} 14%, transparent);
+      }
+      #submit-btn { background: ${color}; }
+    `;
+
+    switchView('view-login');
+  }
+
+  function goBack() {
+    switchView('view-roles');
+  }
+
+  function switchView(id) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    const el = document.getElementById(id);
+    el.classList.add('active');
+    el.classList.remove('anim-in');
+    void el.offsetWidth;
+    el.classList.add('anim-in');
+  }
+
+  function handleLogin() {
+    const btn = document.getElementById('submit-btn');
+
+    if (currentDestination) {
+      btn.textContent = 'กำลังเข้าสู่ระบบ…';
+      setTimeout(() => { window.location.href = currentDestination; }, 600);
+    } else {
+      btn.textContent = 'หน้านี้ยังไม่พร้อมใช้งาน (Mock-up)';
+      btn.style.filter = 'brightness(0.85)';
+      setTimeout(() => {
+        btn.textContent = 'เข้าสู่ระบบ';
+        btn.style.filter = '';
+      }, 2000);
+    }
+    return false;
+  }
+</script>
+
+</body>
+</html>

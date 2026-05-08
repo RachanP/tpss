@@ -1,0 +1,152 @@
+
+
+Faculty Integrated Management System (FIMS) 
+1. Module Decomposition (Subsystems/Services) 
+ระบบ Faculty Integrated Management System (FIMS) ได้รับการออกแบบให้มีโครงสร้างแบบ
+แบ่งเป็นโมดูล (Module-based Architecture) โดยแยกระบบออกเป็น Subsystems และ Services 
+ตามขอบเขตหน้าที่ทางธุรกิจ (Business Functions) และความรับผิดชอบของแต่ละส่วนอย่างชัดเจน 
+เพื่อให้ระบบมีความยืดหยุ่น ง่ายต่อการพัฒนา การบํารุงรักษา และการขยายในอนาคต 
+การแบ่งโมดูลในระดับนี้ช่วยให้ 
+• สามารถพัฒนาระบบแบบเป็นเฟส (Phase-based Development) ได้อย่างเหมาะสม 
+• ลดความซับซ้อนของระบบโดยแยกความรับผิดชอบ (Separation of Concerns) 
+• รองรับการเปลี่ยนแปลงนโยบาย กฎระเบียบ และกระบวนการทางวิชาการในอนาคต 
+• สอดคล้องกับแนวทางของ ISO/IEC 29110 (Basic Profile) ซึ่งเน้นการพัฒนาซอฟต์แวร์อย่าง
+เป็นระบบ มีการควบคุม และสามารถตรวจสอบย้อนกลับได้ 
+แต่ละ Subsystem จะทําหน้าที่รองรับกระบวนการหลักของคณะพยาบาลศาสตร์ ได้แก่ การบริหาร
+บุคลากร การจัดการหลักสูตรและประกันคุณภาพ การบริหารงานวิจัย การบริการวิชาการ การบริหาร
+ความสัมพันธ์กับลูกค้า (CRM) รวมถึงการวิเคราะห์ข้อมูลเชิงกลยุทธ์ โดยมีการกําหนดขอบเขต ความ
+รับผิดชอบ และการเชื่อมโยงระหว่างโมดูลอย่างชัดเจน เพื่อรองรับการบูรณาการข้อมูลทั้งภายในระบบ
+และกับระบบภายนอก เช่น ERP ของมหาวิทยาลัย 
+1) Identity & Access (พื้นฐานระบบ) 
+• ผู้ใช้ภายใน: ผู้บริหาร คณาจารย์ เจ้าหน้าที่ 
+• ผู้ใช้นอก: ลูกค้า/ผู้เข้าอบรมผ่าน self-service portal  
+บริการหลัก: Authentication, Role-based Access Control (RBAC), Audit log 
+2) B. Master Data & ERP Integration 
+• ดึง “ข้อมูลทั่วไป” บุคลากรจาก ERP มาใช้เป็นฐาน (ชื่อ เพศ อายุ ตําแหน่ง วุฒิ ฯลฯ)  
+บริการหลัก: ERP Sync (batch/API), Data mapping, Data quality checks 
+
+3) Unified Faculty Profile (ศักยภาพบุคลากรแบบองค์รวม) 
+ครอบคลุม 
+• ข้อมูลหน้าที่/บทบาทตามพันธกิจ + ภาควิชา/หน่วยงาน + สายบังคับบัญชาแบบรายบุคคล  
+• ความก้าวหน้าทางวิชาชีพ + การพัฒนาตามพันธกิจ/NSMAHIDOL/IT/วิชาชีพ  
+• ระบบ “ประมวลผลความก้าวหน้ารายบุคคล” เพื่อวิเคราะห์ความพร้อมเลื่อนตําแหน่งตาม
+อายุงาน  
+• สุขภาพบุคลากร: ประวัติลาป่วย + ผลตรวจสุขภาพ  
+4) Curriculum & QA Management (หลักสูตรและประกันคุณภาพ) 
+• โครงสร้างหลักสูตร: รหัส/ชื่อ/รอบปีปรับปรุง/สถานะตามเกณฑ์มาตรฐาน  
+• บริหารหลักสูตร: ผู้รับผิดชอบ/กรรมการ/หัวหน้ารายวิชา + ตรวจคุณสมบัติ (วุฒิตรงสาขา + 
+ผลงานในรอบ 5 ปี)  
+• Timeline + Deadline Alert การรับรองหลักสูตรจาก สป.อว. และสภาการพยาบาล  
+5) OBE / Learning Outcomes Analytics 
+• PLO Attainment รายชั้นปี + ใช้ประกอบวิจัยการเรียนการสอน  
+บริการหลัก: Outcome model, computation pipeline, dashboards/report export 
+6) Admissions & Student Strategic Analytics 
+• แผนรับ vs รับจริง แยกช่องทาง (เช่น โควตา/กสพท.)  
+• ข้อมูลเชิงลึก: ภูมิลําเนา โรงเรียนเดิม GPAX  
+• สถิติลงทะเบียน: Retention rate + ลาออก/ตกออกแยกสาเหตุ  
+7) Research & IP Management 
+• Publications: ชื่อ TH/EN, สาขา, First/Corresponding, วารสาร/ระดับ (TCI/Q1–Q4), ลิงก์ 
+full paper  
+• ทุนวิจัย: ประเภททุน แหล่งทุน งบ ระยะเวลา  
+
+• ทรัพย์สินทางปัญญา: ชื่อ ประเภท สถานะ (ได้รับแล้ว/ระหว่างขอ)  
+8) Academic Service + CRM + Certificates + Networks 
+• โครงการบริการวิชาการ: รหัส/ชื่อ ประเภท หน่วยงานเจ้าภาพ ผู้รับผิดชอบ กลุ่มเป้าหมาย พื้นที่ 
+ยุทธศาสตร์/SDGs  
+• งบประมาณ: Budget Rule ตามประกาศคณะฯ + แผนงบรายหมวด/แหล่งเงิน + Break-even  
+• Activity Log + แนบหลักฐาน (ไฟล์/รูป/รายงาน) + รายชื่อผู้เข้าร่วมด้วย QR Check-in  
+• Customer profile: ประวัติอบรม เลขใบอนุญาต หน่วยงาน + self-service portal แก้ไขข้อมูล
+เองได้  
+• Certificates อัตโนมัติ + QR Verify ตรวจสอบความถูกต้อง  
+• เครือข่าย: ฐานข้อมูลหน่วยงาน + ประวัติความร่วมมือ MoU  
+9) Faculty Practice Hours Tracking 
+• บันทึกชั่วโมงปฏิบัติงานจริงของอาจารย์ ผูกกับโครงการ/หน่วยงาน + แจ้งเตือนเมื่อชั่วโมงสะสม
+ไม่ครบเป้าหมาย  
+2. Initial Domain Model (Core Entities + Relationships) 
+การออกแบบ Domain Model ของระบบ Faculty Integrated Management System (FIMS) มี
+วัตถุประสงค์เพื่อกําหนดภาพรวมของ เอนทิตีหลัก (Core Entities) ความสัมพันธ์ (Relationships) และ
+ขอบเขตของข้อมูลในระบบอย่างเป็นระบบ โดยอ้างอิงจากกระบวนการทํางานจริงของคณะพยาบาล
+ศาสตร์ และข้อกําหนดเชิงหน้าที่ที่ได้รับจากผู้สนับสนุนโครงการ (Project Sponsor) 
+Domain Model ทําหน้าที่เป็นโครงสร้างข้อมูลเชิงแนวคิด (Conceptual Data Structure) ซึ่งช่วยให้ผู้มี
+ส่วนเกี่ยวข้องทุกฝ่าย ทั้งด้านธุรกิจและด้านเทคนิค มีความเข้าใจตรงกันเกี่ยวกับชนิดของข้อมูลที่ระบบ
+ต้องจัดเก็บ การเชื่อมโยงข้อมูลระหว่างกระบวนการต่าง ๆ และบทบาทของข้อมูลแต่ละส่วนในการ
+สนับสนุนการตัดสินใจ การกํากับดูแล และการดําเนินงานของคณะ 
+เอนทิตีใน Domain Model ถูกออกแบบให้ครอบคลุมโดเมนหลักของระบบ ได้แก่ ข้อมูลบุคลากรและ
+โครงสร้างองค์กร ข้อมูลหลักสูตรและประกันคุณภาพ ข้อมูลนักศึกษาและการรับเข้าศึกษา ข้อมูล
+ผลงานวิจัยและทรัพย์สินทางปัญญา ข้อมูลโครงการบริการวิชาการและความสัมพันธ์กับลูกค้า รวมถึง
+
+ข้อมูลเครือข่ายความร่วมมือและพันธมิตร ทั้งนี้มีการกําหนดความสัมพันธ์ระหว่างเอนทิตีอย่างชัดเจนเพื่อ
+รองรับการบูรณาการข้อมูล การติดตามผล และการวิเคราะห์ข้อมูลเชิงกลยุทธ์ในระดับคณะ 
+Domain Model นี้ยังถูกออกแบบให้สามารถขยายเพิ่มเติมได้ในอนาคต เพื่อรองรับการเพิ่มโมดูลใหม่ 
+การเปลี่ยนแปลงนโยบาย หรือการเชื่อมต่อกับระบบภายนอก เช่น ระบบ ERP ของมหาวิทยาลัย โดยยังคง
+รักษาหลักการแยกความรับผิดชอบของข้อมูล (Data Ownership) และความสอดคล้องกับแนวทางการ
+พัฒนาซอฟต์แวร์ตามมาตรฐาน ISO/IEC 29110 (Basic Profile) 
+1) People & Org 
+• Person (อาจารย์/สายสนับสนุน) ← sync จาก ERP  
+• OrgUnit (ภาควิชา/หน่วยงาน)  
+• ReportingLine (Person → Manager Person) เพื่อเห็นสายบังคับบัญชา  
+• DevelopmentRecord (ประเภท: ลาศึกษา/NSMAHIDOL/IT/วิชาชีพ/ตามพันธกิจ)  
+• CareerProgressIndicator (computed) สําหรับติดตามความก้าวหน้าตามอายุงาน/เงื่อนไข  
+• HealthRecord (sick leave, health check)  
+2) Education / Curriculum / OBE 
+• Program/Curriculum (code, name, revision cycle, compliance status)  
+• CurriculumRole (program owner/committee/course head) + QualificationCheck 
+(degree match, publications last 5 years)  
+• AccreditationTimeline + DeadlineAlert (สป.อว., สภาการพยาบาล)  
+• PLO + PLOAttainment (by year level/cohort)  
+3) Admissions / Student Analytics 
+• AdmissionPlan + AdmissionActual (by channel)  
+• StudentProfileAnalytics (hometown/school/GPAX)  
+• EnrollmentStats (retention, dropout with reason taxonomy)  
+4) Research / IP 
+
+• Publication (TH/EN title, field, authorship role, journal tier, full paper link)  
+• Grant (type, funder, budget, duration)  
+• IPAsset (type, status tracking)  
+5) Academic Service / CRM / Certificates / Networks 
+• ServiceProject (code/name/type/host/owner/target/area/strategy-SDGs)  
+• BudgetRule (rate & conditions) + BudgetPlan + BreakEven  
+• ActivityLog + EvidenceAttachment  
+• Participant + CheckIn (QR) + classification by province/org  
+• Customer (training history, license no., org) + SelfServiceProfileUpdate  
+• Certificate + QRVerifyToken/Endpoint  
+• PartnerOrg + MoURecord  
+• FacultyPracticeHour (person ↔ project/org, accumulation, target, alert)  
+ 
+3. จัดระดับความซับซ้อนโดยภาพรวม 
+ระดับความซับซ้อน: สูง 
+เพราะระบบครอบคลุมอย่างน้อย 6–7 โดเมนหลักในระบบเดียว ได้แก่ 
+• บุคลากรแบบองค์รวม (Faculty Profile + org chart + progress + health)  
+• หลักสูตร + ประกันคุณภาพ + ตรวจคุณสมบัติ + deadline alert  
+• OBE / PLO Attainment analytics  
+• รับนักศึกษา + retention/dropout analytics  
+• วิจัย + ทุน + ทรัพย์สินทางปัญญา  
+• บริการวิชาการ + CRM + portal ลูกค้า + certificate QR verify  
+
+• เครือข่ายความร่วมมือ (MoU)  
+  
+4. แผนการดําเนินงานตามมาตรฐาน ISO/IEC 29110 (โดยสังเขป) 
+โครงการพัฒนาระบบ Faculty Integrated Management System (FIMS) จะดําเนินการตามแนวทาง
+ของมาตรฐาน ISO/IEC 29110 (Basic Profile) ซึ่งเหมาะสมกับการพัฒนาซอฟต์แวร์โดยทีมขนาดเล็ก และ
+มุ่งเน้นการควบคุมคุณภาพ การบริหารโครงการ และการตรวจสอบย้อนกลับได้อย่างเป็นระบบ โดยแบ่งการ
+ดําเนินงานออกเป็นขั้นตอนหลักดังนี้ 
+ขั้นตอนที่ 1 การเริ่มต้นและวางแผนโครงการ (Project Management) 
+ดําเนินการกําหนดขอบเขตโครงการ วัตถุประสงค์ ผู้มีส่วนเกี่ยวข้อง แผนการดําเนินงาน และการ
+บริหารความเสี่ยง เพื่อให้โครงการมีทิศทางที่ชัดเจนและสามารถควบคุมได้ตลอดระยะเวลาดําเนินงาน 
+ขั้นตอนที่ 2 การวิเคราะห์ความต้องการของระบบ (Requirements Analysis) 
+รวบรวมและวิเคราะห์ความต้องการของผู้ใช้งานและผู้สนับสนุนโครงการ พร้อมจัดทําเอกสารความ
+ต้องการของซอฟต์แวร์อย่างเป็นระบบ เพื่อใช้เป็นฐานสําหรับการออกแบบ พัฒนา และทดสอบระบบ 
+ขั้นตอนที่ 3 การออกแบบระบบ (Software Design) 
+ออกแบบสถาปัตยกรรมระบบ โครงสร้างโมดูล และแบบจําลองข้อมูล เพื่อกําหนดแนวทางการพัฒนา
+ให้สอดคล้องกับความต้องการและรองรับการขยายระบบในอนาคต 
+ขั้นตอนที่ 4 การพัฒนาและทดสอบระบบ (Implementation and Testing) 
+ดําเนินการพัฒนาระบบตามแบบที่ออกแบบไว้ พร้อมจัดทําการทดสอบเพื่อยืนยันว่าระบบทํางาน
+ถูกต้องตามความต้องการที่กําหนด และมีคุณภาพตามมาตรฐานที่กําหนด 
+ขั้นตอนที่ 5 การส่งมอบและการยอมรับระบบ (Delivery and Acceptance) 
+ส่งมอบระบบให้กับผู้ใช้งาน ทําการทดสอบการยอมรับ (User Acceptance) และบันทึกผลการ
+ยอมรับอย่างเป็นทางการ เพื่อยืนยันความพร้อมของระบบในการนําไปใช้งานจริง 
+ขั้นตอนที่ 6 การควบคุมการเปลี่ยนแปลงและการเตรียมพัฒนาระยะถัดไป 
+จัดการคําขอเปลี่ยนแปลงและวางแผนการพัฒนาระบบในระยะถัดไปอย่างเป็นระบบ เพื่อให้ระบบ
+สามารถพัฒนาอย่างต่อเนื่องและสอดคล้องกับนโยบายและความต้องการในอนาคต 
+
+ 

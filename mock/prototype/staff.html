@@ -1,0 +1,2853 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>TPSS — เจ้าหน้าที่</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    :root {
+      /* Admin Theme: Steel Blue */
+      --role: oklch(44% 0.18 278);
+      --role-l: oklch(95% 0.04 278);
+      --role-d: oklch(34% 0.15 278);
+
+      --sb-bg: oklch(17% 0.04 215);
+      --sb-bd: oklch(25% 0.04 215);
+      --sb-txt: oklch(72% 0.02 215);
+      --sb-dim: oklch(45% 0.03 215);
+
+      --bg: oklch(96.5% 0.007 240);
+      --white: oklch(99.5% 0.003 240);
+      --txt: oklch(16% 0.02 240);
+      --txt2: oklch(44% 0.03 240);
+      --txt3: oklch(64% 0.02 240);
+      --bd: oklch(89% 0.01 240);
+
+      --err: oklch(52% 0.20 25);
+      --err-l: oklch(96% 0.05 25);
+      --warn: oklch(65% 0.17 60);
+      --warn-l: oklch(96% 0.05 60);
+      --ok: oklch(52% 0.15 148);
+      --ok-l: oklch(94% 0.05 148);
+
+      --sb-w: 230px;
+
+      /* Aliases used by sheet/modal/form components */
+      --card:    var(--white);
+      --border:  var(--bd);
+      --text:    var(--txt);
+      --muted:   var(--txt3);
+      --red:     var(--err);
+      --red-l:   var(--err-l);
+      --green:   var(--ok);
+      --green-l: var(--ok-l);
+      --amber:   var(--warn);
+      --amber-l: var(--warn-l);
+    }
+
+    html,
+    body {
+      height: 100%;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 14.5px;
+      color: var(--txt);
+    }
+
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      display: flex;
+      overflow-x: hidden;
+    }
+
+    /* ══ SIDEBAR ══════════════════════════════════ */
+    .sidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: var(--sb-w);
+      background: var(--sb-bg);
+      border-right: 1px solid var(--sb-bd);
+      display: flex;
+      flex-direction: column;
+      z-index: 100;
+    }
+
+    .sb-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 26px 16px;
+      border-bottom: 1px solid var(--sb-bd);
+      min-height: 84px;
+    }
+
+    .sb-mark {
+      width: 32px;
+      height: 32px;
+      background: var(--role);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 800;
+      font-size: 11px;
+      letter-spacing: .04em;
+      flex-shrink: 0;
+      box-shadow: 0 4px 10px color-mix(in oklch, var(--role) 40%, transparent);
+    }
+
+    .sb-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: white;
+      letter-spacing: 0.5px;
+    }
+
+    .sb-sub {
+      font-size: 10px;
+      color: var(--sb-dim);
+      margin-top: 1px;
+    }
+
+    .sb-user {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      border-bottom: 1px solid var(--sb-bd);
+    }
+
+    .sb-av {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: color-mix(in oklch, var(--role) 22%, var(--sb-bg));
+      border: 2px solid color-mix(in oklch, var(--role) 40%, transparent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--role);
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .sb-uname {
+      font-size: 13px;
+      font-weight: 600;
+      color: white;
+      line-height: 1.3;
+    }
+
+    .sb-urole {
+      font-size: 11px;
+      color: var(--role);
+      margin-top: 2px;
+    }
+
+    .sb-nav {
+      flex: 1;
+      padding: 12px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      overflow-y: auto;
+    }
+
+    .sb-sec {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--sb-dim);
+      padding: 10px 10px 4px;
+    }
+
+    .nv {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--sb-txt);
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      font-family: inherit;
+      transition: all .15s;
+      text-decoration: none;
+    }
+
+    .nv:hover {
+      background: color-mix(in oklch, var(--role) 10%, transparent);
+      color: white;
+    }
+
+    .nv.on {
+      background: color-mix(in oklch, var(--role) 20%, transparent);
+      color: white;
+      font-weight: 600;
+    }
+
+    .nv-ic {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      color: var(--sb-dim);
+      transition: color .15s;
+    }
+
+    .nv.on .nv-ic,
+    .nv:hover .nv-ic {
+      color: var(--role);
+    }
+
+    .sb-foot {
+      padding: 12px;
+      border-top: 1px solid var(--sb-bd);
+    }
+
+    .sb-foot .nv {
+      color: var(--sb-dim);
+    }
+
+    .sb-foot .nv:hover {
+      color: oklch(75% .05 15);
+      background: oklch(20% .03 15 / .5);
+    }
+
+    .sb-foot .nv:hover .nv-ic {
+      color: oklch(75% .05 15);
+    }
+
+    /* ══ MAIN CONTENT ════════════════════════════════ */
+    .main {
+      margin-left: var(--sb-w);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    .topbar {
+      background: var(--white);
+      border-bottom: 1px solid var(--bd);
+      padding: 0 32px;
+      height: 84px;
+      min-height: 84px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      flex-shrink: 0;
+    }
+
+    .tb-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--txt);
+    }
+
+    .tb-sub {
+      font-size: 15px;
+      color: var(--txt3);
+    }
+
+    .tb-sep {
+      width: 1px;
+      height: 24px;
+      background: var(--bd);
+      margin: 0 24px;
+    }
+
+    .tb-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all .15s;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: var(--role);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--role-d);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--txt2);
+      border: 1px solid var(--bd);
+    }
+
+    .btn-ghost:hover {
+      background: var(--bg);
+      color: var(--txt);
+      border-color: var(--txt3);
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 12.5px;
+      border-radius: 6px;
+    }
+
+    .btn-red {
+      background: var(--err);
+      color: white;
+    }
+
+    .btn-red:hover {
+      background: oklch(42% 0.18 25);
+    }
+
+    .content {
+      padding: 24px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* SECTION SHOW / HIDE */
+    section {
+      display: none;
+    }
+
+    section.active {
+      display: block;
+    }
+
+    /* STATS STRIP */
+
+    .stats-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 24px
+    }
+
+    .stat-card {
+      background: var(--white);
+      border: 1px solid var(--bd);
+      border-radius: 12px;
+      padding: 16px 20px;
+      box-shadow: 0 2px 8px oklch(0% 0 0 / .03)
+    }
+
+    .stat-val {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--role-d);
+      line-height: 1
+    }
+
+    .stat-val.amber {
+      color: var(--amber)
+    }
+
+    .stat-val.green {
+      color: var(--green)
+    }
+
+    .stat-val.red {
+      color: var(--red)
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px
+    }
+
+    /* SECTION */
+    section {
+      display: none
+    }
+
+    section.active {
+      display: block
+    }
+
+    /* TABLE */
+    .tbl-wrap {
+      background: var(--white);
+      border: 1px solid var(--bd);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px oklch(0% 0 0 / .03)
+    }
+
+    .tbl-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border)
+    }
+
+    .tbl-title {
+      font-size: 15px;
+      font-weight: 600
+    }
+
+    .tbl-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 5px 11px;
+      font-size: 13px;
+      color: var(--muted)
+    }
+
+    .search-box input {
+      border: none;
+      background: transparent;
+      font-family: inherit;
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      width: 160px
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse
+    }
+
+    th {
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--txt2);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      background: color-mix(in oklch, var(--role) 5%, var(--white));
+      border-bottom: 1px solid var(--bd)
+    }
+
+    td {
+      padding: 12px 16px;
+      font-size: 13.5px;
+      border-bottom: 1px solid oklch(93% 0.005 240);
+      color: var(--txt)
+    }
+
+    tr:last-child td {
+      border-bottom: none
+    }
+
+    tr:hover td {
+      background: oklch(98% 0.004 195)
+    }
+
+    .td-actions {
+      display: flex;
+      gap: 6px
+    }
+
+    .icon-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      transition: all .15s
+    }
+
+    .icon-btn:hover {
+      background: var(--bg);
+      color: var(--text)
+    }
+
+    .icon-btn.del:hover {
+      background: var(--red-l);
+      color: var(--red);
+      border-color: var(--red)
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 9px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500
+    }
+
+    .badge-green {
+      background: var(--green-l);
+      color: var(--green)
+    }
+
+    .badge-amber {
+      background: var(--amber-l);
+      color: oklch(50% 0.15 60)
+    }
+
+    .badge-red {
+      background: var(--red-l);
+      color: var(--red)
+    }
+
+    .badge-blue {
+      background: var(--role-l);
+      color: var(--role-d)
+    }
+
+    .badge-gray {
+      background: oklch(92% 0.005 195);
+      color: var(--muted)
+    }
+
+    /* TAB BAR */
+    .tab-bar {
+      display: flex;
+      gap: 4px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 5px;
+      margin-bottom: 18px;
+      width: fit-content
+    }
+
+    .tab {
+      padding: 7px 18px;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--muted);
+      transition: all .15s;
+      white-space: nowrap
+    }
+
+    .tab.active {
+      background: var(--role);
+      color: #fff
+    }
+
+    .tab:hover:not(.active) {
+      background: var(--bg);
+      color: var(--text)
+    }
+
+    /* MASTER DATA SECTIONS */
+    .md-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-bottom: 18px
+    }
+
+    @media(max-width:960px) {
+      .md-grid {
+        grid-template-columns: 1fr
+      }
+    }
+
+    /* SCHEDULE */
+    /* SCHEDULE */
+    .sched-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap
+    }
+
+    .week-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 5px 12px
+    }
+
+    .week-label {
+      font-size: 14px;
+      font-weight: 600;
+      min-width: 180px;
+      text-align: center
+    }
+
+    .week-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 5px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 16px;
+      transition: all .15s
+    }
+
+    .week-btn:hover {
+      background: var(--bg);
+      color: var(--text)
+    }
+
+    .course-filter {
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      font-family: inherit;
+      font-size: 13px;
+      background: var(--card);
+      color: var(--text);
+      outline: none;
+      cursor: pointer
+    }
+
+    /* DAY COLUMNS */
+    .day-cols {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr) repeat(2, .85fr);
+      gap: 12px
+    }
+    .day-col.weekend { background: oklch(98% 0.005 270); border-color: oklch(90% 0.01 270); }
+    .day-col.weekend .day-head { background: oklch(95% 0.01 270); }
+    .day-col.weekend .day-name, .day-col.weekend .day-date { color: var(--muted); }
+
+    .day-col {
+      background: var(--white);
+      border: 1px solid var(--bd);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px oklch(0% 0 0 / .03)
+    }
+
+    .day-head {
+      padding: 10px 14px;
+      background: var(--role-l);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between
+    }
+
+    .day-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--role-d)
+    }
+
+    .day-date {
+      font-size: 11px;
+      color: var(--muted)
+    }
+
+    .day-add {
+      width: 24px;
+      height: 24px;
+      border-radius: 5px;
+      border: 1px dashed var(--role);
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--role);
+      font-size: 16px;
+      transition: all .15s
+    }
+
+    .day-add:hover {
+      background: var(--role-l)
+    }
+
+    .act-list {
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      min-height: 60px
+    }
+
+    .act-card {
+      border-radius: 7px;
+      padding: 9px 10px;
+      border-left: 3px solid;
+      cursor: pointer;
+      transition: all .15s
+    }
+
+    .act-card:hover {
+      filter: brightness(.97);
+      box-shadow: 0 2px 6px oklch(0% 0 0 / .05);
+      transform: translateY(-1px)
+    }
+
+    .act-card.type-lec {
+      background: oklch(96% 0.03 225);
+      border-color: oklch(52% 0.15 225)
+    }
+
+    .act-card.type-lab {
+      background: oklch(96% 0.04 148);
+      border-color: oklch(52% 0.15 148)
+    }
+
+    .act-card.type-prac {
+      background: oklch(96% 0.04 30);
+      border-color: oklch(52% 0.17 30)
+    }
+
+    .act-card.type-sdl {
+      background: oklch(96% 0.03 60);
+      border-color: oklch(60% 0.15 60)
+    }
+
+    .act-card.type-exam {
+      background: oklch(95% 0.04 0);
+      border-color: var(--red)
+    }
+
+    .act-time {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 2px
+    }
+
+    .act-name {
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.3
+    }
+
+    .act-loc {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px
+    }
+
+    .act-group {
+      font-size: 11px;
+      font-weight: 600;
+      margin-top: 3px;
+      color: var(--role-d)
+    }
+
+    /* REPORTS */
+    .report-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px
+    }
+
+    @media(max-width:960px) {
+      .report-grid {
+        grid-template-columns: 1fr
+      }
+    }
+
+    .report-card {
+      background: var(--white);
+      border: 1px solid var(--bd);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px oklch(0% 0 0 / .03)
+    }
+
+    .rc-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between
+    }
+
+    .rc-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px
+    }
+
+    .rc-row:last-child {
+      border-bottom: none
+    }
+
+    .rc-bar-wrap {
+      flex: 1;
+      max-width: 120px;
+      height: 7px;
+      background: var(--bg);
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 0 12px
+    }
+
+    .rc-bar {
+      height: 100%;
+      border-radius: 4px;
+      background: var(--role)
+    }
+
+    .rc-bar.over {
+      background: var(--red)
+    }
+
+    .rc-num {
+      font-size: 13px;
+      font-weight: 600;
+      min-width: 36px;
+      text-align: right
+    }
+
+    .room-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 4px
+    }
+
+    .room-cell {
+      border-radius: 7px;
+      padding: 10px;
+      font-size: 12px;
+      text-align: center
+    }
+
+    .room-cell .rn {
+      font-weight: 700;
+      font-size: 13px
+    }
+
+    .room-cell .ru {
+      font-size: 11px;
+      margin-top: 2px;
+      color: var(--muted)
+    }
+
+    .room-cell.high {
+      background: var(--green-l)
+    }
+
+    .room-cell.mid {
+      background: var(--amber-l)
+    }
+
+    .room-cell.low {
+      background: oklch(93% 0.005 195)
+    }
+
+    /* BOTTOM SHEET */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: oklch(10% 0.02 195 / 0.5);
+      z-index: 200;
+      display: none;
+      align-items: flex-end
+    }
+
+    .overlay.open {
+      display: flex
+    }
+
+    /* REPLY DIALOG — centered popup */
+    .reply-dialog {
+      background: var(--card);
+      border-radius: 16px;
+      width: 560px;
+      max-width: calc(100vw - 32px);
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 24px 60px oklch(0% 0 0 / .22);
+      animation: dlg-in .2s ease both
+    }
+
+    @keyframes dlg-in {
+      from { opacity: 0; transform: scale(.96) translateY(8px) }
+      to   { opacity: 1; transform: scale(1)  translateY(0) }
+    }
+
+    .reply-dialog-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 22px 14px;
+      border-bottom: 1px solid var(--border)
+    }
+
+    .reply-dialog-body {
+      padding: 18px 22px
+    }
+
+    .reply-dialog-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 14px 22px 18px;
+      border-top: 1px solid var(--border)
+    }
+
+    .reply-meta-bar {
+      background: var(--bg);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12.5px;
+      color: var(--txt2);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 18px;
+      border: 1px solid var(--border)
+    }
+
+    .reply-meta-bar strong { color: var(--txt) }
+
+    .sheet {
+      background: var(--card);
+      border-radius: 16px 16px 0 0;
+      width: 100%;
+      max-height: 80vh;
+      overflow-y: auto;
+      padding: 24px 28px 32px;
+      transform: translateY(100%);
+      transition: transform .25s ease
+    }
+
+    .overlay.open .sheet {
+      transform: translateY(0)
+    }
+
+    .sheet-title {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between
+    }
+
+    .close-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: var(--muted)
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 14px
+    }
+
+    .form-group {
+      margin-bottom: 14px
+    }
+
+    .form-group.full {
+      grid-column: 1/-1
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: .04em
+    }
+
+    input[type=text],
+    input[type=time],
+    select,
+    textarea {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      font-family: inherit;
+      font-size: 14px;
+      color: var(--text);
+      background: var(--card);
+      outline: none;
+      transition: border-color .15s
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--role)
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 80px
+    }
+
+    .checkbox-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px
+    }
+
+    .cb-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 9px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all .15s
+    }
+
+    .cb-item:hover {
+      background: var(--role-l);
+      border-color: var(--role)
+    }
+
+    .cb-item input {
+      accent-color: var(--role)
+    }
+
+    .sheet-footer {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      justify-content: flex-end
+    }
+
+    /* NOTIFICATION BANNER */
+    .notif {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      border-radius: 9px;
+      margin-bottom: 16px;
+      font-size: 14px
+    }
+
+    .notif.info {
+      background: var(--role-l);
+      color: var(--role-d);
+      border: 1px solid oklch(82% 0.07 195)
+    }
+
+    .notif.amber {
+      background: var(--amber-l);
+      color: oklch(45% 0.15 60);
+      border: 1px solid oklch(85% 0.09 60)
+    }
+
+    .notif-icon {
+      font-size: 16px;
+      flex-shrink: 0
+    }
+
+    /* ACTIVITY DETAIL OVERLAY */
+    .act-overlay {
+      position: fixed;
+      inset: 0;
+      background: oklch(10% 0.02 195 / 0.5);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center
+    }
+
+    .act-overlay.open {
+      display: flex
+    }
+
+    .act-modal {
+      background: var(--card);
+      border-radius: 14px;
+      width: 480px;
+      max-width: 95vw;
+      padding: 24px;
+      max-height: 90vh;
+      overflow-y: auto
+    }
+
+    .am-title {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 4px
+    }
+
+    .am-sub {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 18px
+    }
+
+    .am-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 10px;
+      font-size: 14px
+    }
+
+    .am-label {
+      color: var(--muted);
+      width: 100px;
+      flex-shrink: 0;
+      font-size: 13px
+    }
+
+    .am-val {
+      font-weight: 500
+    }
+
+    .am-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 14px 0
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sb-logo">
+      <div class="sb-mark">TPSS</div>
+      <div>
+        <div class="sb-name">TPSS Staff</div>
+        <div class="sb-sub">ระบบจัดการตารางสอน</div>
+      </div>
+    </div>
+
+    <div class="sb-user">
+      <div class="sb-av">ส</div>
+      <div>
+        <div class="sb-uname">สมหญิง รักษาดี</div>
+        <div class="sb-urole">เจ้าหน้าที่</div>
+      </div>
+    </div>
+
+    <nav class="sb-nav">
+      <div class="sb-sec">เมนูหลัก</div>
+      <button class="nv on" onclick="go('overview', this)">
+        <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
+          <rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
+        </svg>
+        ภาพรวม
+      </button>
+      <button class="nv" onclick="go('academic', this)">
+        <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+          <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+        </svg>
+        ปีการศึกษา
+      </button>
+      <button class="nv" onclick="go('masterdata', this)">
+        <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M4 22h14a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v4"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <path d="M2 15h10"/><path d="M2 18h10"/><path d="M2 12h10"/>
+        </svg>
+        ข้อมูลหลัก
+      </button>
+      <button class="nv" onclick="go('schedule', this)">
+        <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <rect x="3" y="4" width="18" height="18" rx="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        ตารางสอน <span class="nv-bd" id="nb-pend" style="background:var(--warn);margin-left:auto;padding:2px 6px">5</span>
+      </button>
+      <button class="nv" onclick="go('reports', this)">
+        <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="18" y1="20" x2="18" y2="10"/>
+          <line x1="12" y1="20" x2="12" y2="4"/>
+          <line x1="6" y1="20" x2="6" y2="14"/>
+        </svg>
+        รายงาน
+      </button>
+      <div class="sb-sec" style="margin-top:8px">การสื่อสาร</div>
+      <button class="nv" onclick="go('inbox', this)">
+        <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+          <polyline points="22,6 12,13 2,6"/>
+        </svg>
+        กล่องข้อความ <span class="nv-bd" style="background:var(--err);margin-left:auto;padding:2px 7px">3</span>
+      </button>
+    </nav>
+
+    <div class="sb-foot">
+      <a href="login.html" class="nv">
+        <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round">
+          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+          <polyline points="16 17 21 12 16 7" />
+          <line x1="21" y1="12" x2="9" y2="12" />
+        </svg>
+        ออกจากระบบ
+      </a>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <header class="topbar">
+      <span class="tb-title" id="tb-title">ภาพรวม</span>
+      <div class="tb-sep"></div>
+      <span class="tb-sub" id="tb-sub">เจ้าหน้าที่จัดการข้อมูล</span>
+      <div class="tb-right">
+        <button class="btn btn-ghost btn-sm" id="btn-export" style="display:none"
+          onclick="alert('ส่งออกรายงาน PDF/Excel')">⬇ ส่งออก</button>
+        <button class="btn btn-primary btn-sm" id="btn-add-act" style="display:none" onclick="openAddSheet()">＋
+          เพิ่มกิจกรรม</button>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- SECTION: OVERVIEW -->
+      <section id="sec-overview" class="active">
+        <div class="stats-strip">
+          <div class="stat-card">
+            <div class="stat-val">12</div>
+            <div class="stat-label">วิชาในระบบ</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val">48</div>
+            <div class="stat-label">อาจารย์ผู้สอน</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val amber">5</div>
+            <div class="stat-label">ตารางรอข้อมูลเพิ่มเติม</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val green">18</div>
+            <div class="stat-label">ห้องเรียน/Lab</div>
+          </div>
+        </div>
+
+        <div class="notif amber">
+          <svg class="notif-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+          <span>มีวิชา <strong>NURS 3005</strong> และ <strong>NURS 4002</strong> ที่ยังไม่ได้กำหนดแหล่งฝึก —
+            กรุณาอัปเดตข้อมูลหลัก</span>
+        </div>
+
+        <!-- Quick actions -->
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:20px">
+          <div class="tbl-wrap" style="padding:0">
+            <div class="tbl-header">
+              <span class="tbl-title">งานที่ต้องดำเนินการ</span>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>งาน</th>
+                  <th>วิชา</th>
+                  <th>สถานะ</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>กำหนดอาจารย์กลุ่ม A1–A4</td>
+                  <td>NURS 3005</td>
+                  <td><span class="badge badge-red">เร่งด่วน</span></td>
+                </tr>
+                <tr>
+                  <td>อัปเดตห้องปฏิบัติการ Lab 3</td>
+                  <td>NURS 2003</td>
+                  <td><span class="badge badge-amber">รอดำเนินการ</span></td>
+                </tr>
+                <tr>
+                  <td>เพิ่มกิจกรรม Post-conference</td>
+                  <td>NURS 3002</td>
+                  <td><span class="badge badge-amber">รอดำเนินการ</span></td>
+                </tr>
+                <tr>
+                  <td>บันทึกตารางสัปดาห์ที่ 8</td>
+                  <td>NURS 4002</td>
+                  <td><span class="badge badge-amber">รอดำเนินการ</span></td>
+                </tr>
+                <tr>
+                  <td>ยืนยันสถานที่ฝึกปฏิบัติ</td>
+                  <td>NURS 3004</td>
+                  <td><span class="badge badge-gray">รอข้อมูล</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="tbl-wrap" style="padding:0">
+            <div class="tbl-header">
+              <span class="tbl-title">กิจกรรมเพิ่มล่าสุด</span>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>วันที่</th>
+                  <th>กิจกรรม</th>
+                  <th>ผู้บันทึก</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>6 พ.ค.</td>
+                  <td>Lecture NURS 3002 กลุ่ม A1–A9</td>
+                  <td>สมหญิง</td>
+                </tr>
+                <tr>
+                  <td>5 พ.ค.</td>
+                  <td>Lab ทักษะพยาบาล กลุ่ม B1–B3</td>
+                  <td>สมหญิง</td>
+                </tr>
+                <tr>
+                  <td>5 พ.ค.</td>
+                  <td>Round Ward รพ.ศิริราช</td>
+                  <td>วิชาการ</td>
+                </tr>
+                <tr>
+                  <td>4 พ.ค.</td>
+                  <td>Post-conference NURS 3002</td>
+                  <td>สมหญิง</td>
+                </tr>
+                <tr>
+                  <td>3 พ.ค.</td>
+                  <td>ปฐมนิเทศ NURS 4002</td>
+                  <td>วิชาการ</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION: MASTER DATA -->
+      <section id="sec-masterdata">
+        <div class="tab-bar">
+          <div class="tab active" onclick="mdTab('instructors',this)">อาจารย์ผู้สอน</div>
+          <div class="tab" onclick="mdTab('rooms',this)">ห้องเรียน/สถานที่</div>
+          <div class="tab" onclick="mdTab('courses',this)">วิชา</div>
+          <div class="tab" onclick="mdTab('groups',this)">กลุ่มนักศึกษา</div>
+          <div class="tab" onclick="mdTab('departments',this)">ภาควิชา</div>
+          <div class="tab" onclick="mdTab('curriculums',this)">หลักสูตร</div>
+          <div class="tab" onclick="mdTab('activity_types',this)">ประเภทกิจกรรม</div>
+          <div class="tab" onclick="mdTab('location_types',this)">ประเภทสถานที่</div>
+          <div class="tab" onclick="mdTab('course_offerings',this)">รายวิชาที่เปิดสอน</div>
+          <div class="tab" onclick="mdTab('practicum_series',this)">ชุดฝึกปฏิบัติ</div>
+          <div class="tab" onclick="mdTab('instructor_availability',this)">ความพร้อมอาจารย์</div>
+        </div>
+
+        <!-- Instructors - READ ONLY for Staff -->
+        <div id="md-instructors" class="tbl-wrap">
+          <div class="tbl-header">
+            <span class="tbl-title">อาจารย์ผู้สอน (48 คน)</span>
+            <div class="tbl-actions">
+              <div class="search-box"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--txt3);"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg><input placeholder="ค้นหาชื่ออาจารย์..."></div>
+              <span class="badge badge-gray" style="padding:6px 12px;font-size:12px">🔒 ดูได้อย่างเดียว</span>
+            </div>
+          </div>
+          <table>
+            <thead><tr>
+              <th>รหัส</th><th>ชื่อ-นามสกุล</th><th>ตำแหน่ง</th><th>สาขา</th><th>ภาระงาน (ชม.//สป.)</th><th>สถานะ</th>
+            </tr></thead>
+            <tbody id="tb-instructors"></tbody>
+          </table>
+        </div>
+
+        <!-- Rooms - READ ONLY for Staff -->
+        <div id="md-rooms" class="tbl-wrap" style="display:none">
+          <div class="tbl-header">
+            <span class="tbl-title">ห้องเรียน &amp; สถานที่ (18 รายการ)</span>
+            <div class="tbl-actions">
+              <div class="search-box"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--txt3);"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg><input placeholder="ค้นหาห้อง..."></div>
+              <span class="badge badge-gray" style="padding:6px 12px;font-size:12px">🔒 ดูได้อย่างเดียว</span>
+            </div>
+          </div>
+          <table>
+            <thead><tr>
+              <th>รหัส</th><th>ชื่อ</th><th>ประเภท</th><th>ความจุ (คน)</th><th>อาคาร</th><th>ที่อยู่แหล่งฝึกภายนอก</th><th>สถานะ</th>
+            </tr></thead>
+            <tbody id="tb-rooms"></tbody>
+          </table>
+        </div>
+
+        <!-- Courses - Staff can assign course head only -->
+        <div id="md-courses" class="tbl-wrap" style="display:none">
+          <div class="tbl-header">
+            <span class="tbl-title">วิชา (12 รายวิชา)</span>
+            <div class="tbl-actions">
+              <div class="search-box"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--txt3);"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg><input placeholder="ค้นหาวิชา..."></div>
+              <span style="font-size:12px;color:var(--txt3)">✏ แก้ไขเฉพาะหัวหน้าวิชา/เลขานุการ</span>
+            </div>
+          </div>
+          <table>
+            <thead><tr>
+              <th>รหัสวิชา</th><th>ชื่อวิชา</th><th>หน่วยกิต</th><th>หัวหน้าวิชา</th><th>นักศึกษา</th><th>สถานะ</th><th>กำหนดบุคคล</th>
+            </tr></thead>
+            <tbody id="tb-courses"></tbody>
+          </table>
+        </div>
+
+        <!-- Groups -->
+        <div id="md-groups" class="tbl-wrap" style="display:none">
+          <div class="tbl-header">
+            <span class="tbl-title">กลุ่มนักศึกษา</span>
+            <div class="tbl-actions">
+              <button class="btn btn-primary btn-sm" onclick="openMdSheet('group')">＋ เพิ่มกลุ่ม</button>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>ชื่อกลุ่ม</th>
+                <th>ปีการศึกษา</th>
+                <th>หลักสูตร</th>
+                <th>จำนวนนักศึกษา</th>
+                <th>จัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="tb-groups"></tbody>
+          </table>
+        </div>
+
+        <!-- Departments - READ ONLY for Staff -->
+        <div id="md-departments" class="tbl-wrap" style="display:none">
+          <div class="tbl-header">
+            <span class="tbl-title">ภาควิชา (5 ภาควิชา)</span>
+            <div class="tbl-actions">
+              <span class="badge badge-gray" style="padding:6px 12px;font-size:12px">🔒 แก้ไขได้เฉพาะ Admin</span>
+            </div>
+          </div>
+          <table>
+            <thead><tr>
+              <th>ชื่อภาควิชา</th><th>จำนวนอาจารย์</th>
+            </tr></thead>
+            <tbody>
+              <tr><td>ภาควิชาการพยาบาลอายุรศาสตร์และศัลยศาสตร์</td><td>12</td></tr>
+              <tr><td>ภาควิชาการพยาบาลสูติศาสตร์-นรีเวชวิทยา</td><td>8</td></tr>
+              <tr><td>ภาควิชาการพยาบาลกุมารเวชศาสตร์</td><td>7</td></tr>
+              <tr><td>ภาควิชาการพยาบาลสาธารณสุขและการพยาบาลชุมชน</td><td>9</td></tr>
+              <tr><td>ภาควิชาการพยาบาลสุขภาพจิตและจิตเวชศาสตร์</td><td>6</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Curriculums - READ ONLY for Staff -->
+        <div id="md-curriculums" class="tbl-wrap" style="display:none">
+          <div class="tbl-header">
+            <span class="tbl-title">หลักสูตร (2 หลักสูตร)</span>
+            <div class="tbl-actions">
+              <span class="badge badge-gray" style="padding:6px 12px;font-size:12px">🔒 แก้ไขได้เฉพาะ Admin</span>
+            </div>
+          </div>
+          <table>
+            <thead><tr>
+              <th>ชื่อหลักสูตร</th><th>ปีที่เริ่มใช้ (พ.ศ.)</th><th>สถานะ</th>
+            </tr></thead>
+            <tbody>
+              <tr><td>พยาบาลศาสตรบัณฑิต (ปรับปรุง 2565)</td><td>2565</td><td><span class="badge badge-green">ใช้งานอยู่</span></td></tr>
+              <tr><td>พยาบาลศาสตรบัณฑิต (ปรับปรุง 2560)</td><td>2560</td><td><span class="badge badge-gray">ปิดรับนักศึกษา</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Activity Types - READ ONLY for Staff -->
+        <div id="md-activity_types" class="tbl-wrap" style="display:none">
+          <div class="tbl-header">
+            <span class="tbl-title">ประเภทกิจกรรม</span>
+            <div class="tbl-actions">
+              <span class="badge badge-gray" style="padding:6px 12px;font-size:12px">🔒 แก้ไขได้เฉพาะ Admin</span>
+            </div>
+          </div>
+          <table>
+            <thead><tr>
+              <th>รหัส</th><th>ชื่อประเภทกิจกรรม</th><th>หมวดหมู่</th><th>กิจกรรมฝึกปฏิบัติ</th><th>สี</th>
+            </tr></thead>
+            <tbody id="tb-activity_types"></tbody>
+          </table>
+        </div>
+
+        <!-- Course Offerings - Staff can create/edit -->
+        <div id="md-course_offerings" class="tbl-wrap" style="display:none">
+          <div class="tbl-header">
+            <span class="tbl-title">รายวิชาที่เปิดสอน (Course Offerings)</span>
+            <div class="tbl-actions">
+              <div class="search-box"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--txt3);"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg><input placeholder="ค้นหาวิชา..."></div>
+              <button class="btn btn-primary btn-sm" onclick="openMdSheet('course_offering')">+ เปิดวิชาใหม่</button>
+            </div>
+          </div>
+          <table>
+            <thead><tr>
+              <th>รหัสวิชา</th>
+              <th>ชื่อวิชา</th>
+              <th>ปีการศึกษา / ภาค</th>
+              <th>ประเภท</th>
+              <th>อาจารย์ในวิชา (Pool)</th>
+              <th>สถานะ</th>
+              <th style="text-align:center">จัดการ</th>
+            </tr></thead>
+            <tbody id="tb-course_offerings"></tbody>
+          </table>
+        </div>
+
+        <!-- Practicum Series - Staff can create/edit -->
+        <div id="md-practicum_series" class="tbl-wrap" style="display:none">
+          <div class="tbl-header">
+            <span class="tbl-title">ชุดฝึกปฏิบัติ (Practicum Series)</span>
+            <div class="tbl-actions">
+              <button class="btn btn-primary btn-sm" onclick="openMdSheet('practicum_series')">+ เพิ่มชุดฝึก</button>
+            </div>
+          </div>
+          <table>
+            <thead><tr>
+              <th>ชื่อชุดฝึกปฏิบัติ</th>
+              <th>รายวิชา (Offering)</th>
+              <th>จำนวนสัปดาห์</th>
+              <th>ช่วงวันที่</th>
+              <th>กลุ่มนักศึกษา</th>
+              <th style="text-align:center">จัดการ</th>
+            </tr></thead>
+            <tbody id="tb-practicum_series"></tbody>
+          </table>
+        </div>
+
+        <!-- ── Location Types ── -->
+        <div id="md-location_types" class="tbl-wrap" style="display:none">
+          <div class="tbl-header">
+            <span class="tbl-title">ประเภทสถานที่ (Location Types)</span>
+            <div class="tbl-actions">
+              <button class="btn btn-primary btn-sm" onclick="openMdSheet('location_type')">+ เพิ่มประเภท</button>
+            </div>
+          </div>
+          <table>
+            <thead><tr>
+              <th style="width:80px">รหัส</th>
+              <th>ชื่อประเภทสถานที่</th>
+              <th>ตัวอย่างสถานที่</th>
+              <th style="text-align:center;width:80px">จัดการ</th>
+            </tr></thead>
+            <tbody id="tb-location_types"></tbody>
+          </table>
+        </div>
+
+        <!-- ── Instructor Availability ── -->
+        <div id="md-instructor_availability" class="tbl-wrap" style="display:none">
+          <div class="tbl-header">
+            <span class="tbl-title">ความพร้อมในการสอน (Instructor Availability)</span>
+            <div class="tbl-actions">
+              <button class="btn btn-primary btn-sm" onclick="openMdSheet('availability')">+ ตั้งค่าความพร้อม</button>
+            </div>
+          </div>
+          <p style="font-size:12px;color:var(--muted);margin:0 0 12px">ข้อมูลนี้ใช้สำหรับตรวจสอบ Conflict อัตโนมัติ (M4) — ช่วงเวลานอก Availability จะขึ้น Warning เมื่อจัดตาราง</p>
+          <table>
+            <thead><tr>
+              <th>อาจารย์</th>
+              <th style="text-align:center">จันทร์</th>
+              <th style="text-align:center">อังคาร</th>
+              <th style="text-align:center">พุธ</th>
+              <th style="text-align:center">พฤหัสบดี</th>
+              <th style="text-align:center">ศุกร์</th>
+              <th style="text-align:center">เสาร์</th>
+              <th style="text-align:center;width:80px">จัดการ</th>
+            </tr></thead>
+            <tbody id="tb-instructor_availability"></tbody>
+          </table>
+        </div>
+
+      </section>
+
+      <!-- SECTION: SCHEDULE -->
+      <section id="sec-schedule">
+        <div class="notif info">
+          <span class="notif-icon">ℹ️</span>
+          <span>ตารางสอนนี้จัดทำร่วมกับหัวหน้าวิชา — การเปลี่ยนแปลงจะส่งผลต่อตารางที่กำลังรออนุมัติด้วย</span>
+        </div>
+        <div class="sched-toolbar">
+          <div class="week-nav">
+            <button class="week-btn" onclick="changeWeek(-1)">‹</button>
+            <span class="week-label" id="week-label">สัปดาห์ที่ 3 (5–11 พ.ค. 2569)</span>
+            <button class="week-btn" onclick="changeWeek(1)">›</button>
+          </div>
+          <select class="course-filter" id="course-sel" onchange="renderSchedule()">
+            <option value="all">ทุกวิชา</option>
+            <option value="NURS3002" selected>NURS 3002 — การพยาบาลอนามัยชุมชน</option>
+            <option value="NURS3004">NURS 3004 — การพยาบาลผู้ใหญ่</option>
+            <option value="NURS4002">NURS 4002 — การพยาบาลเด็ก</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="alert('ดาวน์โหลดตาราง PDF')">⬇ PDF</button>
+        </div>
+        <div class="day-cols" id="day-cols"></div>
+      </section>
+
+      <!-- SECTION: REPORTS -->
+      <section id="sec-reports">
+        <div class="report-grid">
+          <!-- Workload -->
+          <div class="report-card">
+            <div class="rc-title">
+              ภาระงานอาจารย์ (สัปดาห์นี้)
+              <button class="btn btn-ghost btn-sm" onclick="alert('ส่งออก Excel')">⬇ Excel</button>
+            </div>
+            <div id="workload-rows"></div>
+          </div>
+          <!-- Room utilization -->
+          <div class="report-card">
+            <div class="rc-title">การใช้ห้องเรียน / Lab</div>
+            <div class="room-grid" id="room-grid"></div>
+          </div>
+          <!-- Course summary -->
+          <div class="report-card">
+            <div class="rc-title">
+              สรุปกิจกรรมรายวิชา
+              <button class="btn btn-ghost btn-sm" onclick="alert('ส่งออก PDF')">⬇ PDF</button>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>วิชา</th>
+                  <th>กิจกรรม</th>
+                  <th>กลุ่ม</th>
+                  <th>สถานะ</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>NURS 3002</td>
+                  <td>27</td>
+                  <td>9</td>
+                  <td><span class="badge badge-amber">รออนุมัติ</span></td>
+                </tr>
+                <tr>
+                  <td>NURS 3004</td>
+                  <td>18</td>
+                  <td>6</td>
+                  <td><span class="badge badge-green">เผยแพร่แล้ว</span></td>
+                </tr>
+                <tr>
+                  <td>NURS 4002</td>
+                  <td>12</td>
+                  <td>4</td>
+                  <td><span class="badge badge-gray">ร่าง</span></td>
+                </tr>
+                <tr>
+                  <td>NURS 2003</td>
+                  <td>9</td>
+                  <td>3</td>
+                  <td><span class="badge badge-green">เผยแพร่แล้ว</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <!-- Student groups -->
+          <div class="report-card">
+            <div class="rc-title">กลุ่มนักศึกษา — แหล่งฝึกสัปดาห์นี้</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>กลุ่ม</th>
+                  <th>แหล่งฝึก</th>
+                  <th>อาจารย์</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>A1–A3</td>
+                  <td>รพ.ศิริราช แผนก ICU</td>
+                  <td>รศ.ดร.พรทิพย์</td>
+                </tr>
+                <tr>
+                  <td>A4–A6</td>
+                  <td>รพ.ศิริราช แผนกอายุรกรรม</td>
+                  <td>ผศ.ดร.วันดี</td>
+                </tr>
+                <tr>
+                  <td>A7–A9</td>
+                  <td>ชุมชนบางกอกน้อย</td>
+                  <td>อ.ดร.กัลยา</td>
+                </tr>
+                <tr>
+                  <td>B1–B3</td>
+                  <td>รพ.สต.บางพลัด</td>
+                  <td>อ.ดร.สุภา</td>
+                </tr>
+                <tr>
+                  <td>B4–B6</td>
+                  <td>ANC/LR/PP รพ.ศิริราช</td>
+                  <td>รศ.นภา</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- SECTION: ACADEMIC YEAR -->
+      <section id="sec-academic">
+        <div class="notif info" style="margin-bottom:18px">
+          <span class="notif-icon">📅</span>
+          <span>ตั้งค่าปีการศึกษาก่อนเริ่มจัดตาราง — ข้อมูลนี้จะใช้กับตารางสอนทุกรายวิชาในภาคการศึกษานี้</span>
+        </div>
+
+        <div class="md-grid">
+          <!-- Academic year settings card -->
+          <div class="tbl-wrap" style="padding:20px">
+            <div class="rc-title" style="margin-bottom:18px">⚙ ปีการศึกษา / ภาคการศึกษาปัจจุบัน</div>
+            <div class="form-group">
+              <label>ปีการศึกษา</label>
+              <select style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-family:inherit;font-size:14px;background:var(--card);color:var(--text);outline:none">
+                <option selected>2569</option>
+                <option>2568</option>
+                <option>2567</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>ภาคการศึกษา</label>
+              <select style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-family:inherit;font-size:14px;background:var(--card);color:var(--text);outline:none">
+                <option selected>ภาคการศึกษาที่ 2</option>
+                <option>ภาคการศึกษาที่ 1</option>
+                <option>ภาคฤดูร้อน</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>วันเปิดภาค</label>
+                <input type="text" value="3 มกราคม 2569" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-family:inherit;font-size:14px;background:var(--card);color:var(--text);outline:none">
+              </div>
+              <div class="form-group">
+                <label>วันปิดภาค</label>
+                <input type="text" value="31 พฤษภาคม 2569" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-family:inherit;font-size:14px;background:var(--card);color:var(--text);outline:none">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>สถานะภาคการศึกษา</label>
+              <select id="sem-status" onchange="updateSemStatus(this)" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-family:inherit;font-size:14px;background:var(--card);color:var(--text);outline:none">
+                <option value="prep">⏳ เตรียมการ / ยังไม่เปิดภาค</option>
+                <option value="open" selected>● กำลังดำเนินการ</option>
+                <option value="midterm">📌 ช่วงสอบกลางภาค</option>
+                <option value="final">📌 ช่วงสอบปลายภาค</option>
+                <option value="closed">✓ สิ้นสุดแล้ว</option>
+              </select>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
+              <button class="btn btn-ghost" onclick="alert('ยกเลิก')">ยกเลิก</button>
+              <button class="btn btn-primary" onclick="alert('บันทึกการตั้งค่าปีการศึกษาเรียบร้อย')">💾 บันทึก</button>
+            </div>
+          </div>
+
+          <!-- Course head assignment card -->
+          <div class="tbl-wrap" style="padding:0">
+            <div class="tbl-header">
+              <span class="tbl-title">กำหนดหัวหน้าวิชา / เลขานุการวิชา</span>
+              <span style="font-size:12px;color:var(--txt3)">ระบุให้ครบก่อนเริ่มจัดตาราง</span>
+            </div>
+            <table>
+              <thead><tr>
+                <th>รหัสวิชา</th><th>ชื่อวิชา</th><th>หัวหน้าวิชา</th><th>เลขานุการ</th><th>กำหนด</th>
+              </tr></thead>
+              <tbody>
+                <tr>
+                  <td><span style="font-family:monospace;font-size:12px;color:var(--muted)">NURS3002</span></td>
+                  <td>การพยาบาลอนามัยชุมชน</td>
+                  <td><strong>รศ.ดร.มาลี</strong></td>
+                  <td><span style="color:var(--err);font-size:12px">ยังไม่กำหนด</span></td>
+                  <td><button class="icon-btn" onclick="openMdSheet('courseHead','NURS3002')">✏</button></td>
+                </tr>
+                <tr>
+                  <td><span style="font-family:monospace;font-size:12px;color:var(--muted)">NURS3004</span></td>
+                  <td>การพยาบาลผู้ใหญ่ฯ</td>
+                  <td><strong>ผศ.ดร.วันดี</strong></td>
+                  <td>อ.ดร.กัลยา</td>
+                  <td><button class="icon-btn" onclick="openMdSheet('courseHead','NURS3004')">✏</button></td>
+                </tr>
+                <tr>
+                  <td><span style="font-family:monospace;font-size:12px;color:var(--muted)">NURS4002</span></td>
+                  <td>การพยาบาลเด็กและวัยรุ่น</td>
+                  <td><strong>ผศ.ดร.มาลี</strong></td>
+                  <td><span style="color:var(--err);font-size:12px">ยังไม่กำหนด</span></td>
+                  <td><button class="icon-btn" onclick="openMdSheet('courseHead','NURS4002')">✏</button></td>
+                </tr>
+                <tr>
+                  <td><span style="font-family:monospace;font-size:12px;color:var(--muted)">NURS2003</span></td>
+                  <td>ปฏิบัติการพยาบาลพื้นฐาน</td>
+                  <td><strong>อ.ดร.สุภา</strong></td>
+                  <td>อ.ดร.ธนพล</td>
+                  <td><button class="icon-btn" onclick="openMdSheet('courseHead','NURS2003')">✏</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION: INBOX -->
+      <section id="sec-inbox">
+        <div class="notif amber" style="margin-bottom:18px">
+          <span class="notif-icon">⚠️</span>
+          <span>มีข้อความรอตอบกลับ <strong>3 รายการ</strong> — กรุณาตอบกลับภายใน 24 ชั่วโมง</span>
+        </div>
+
+
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <!-- Inbox list - full width -->
+          <div class="tbl-wrap" style="padding:0;overflow-x:auto">
+            <div class="tbl-header">
+              <span class="tbl-title">กล่องข้อความ — คำถาม/แจ้งปัญหาจากอาจารย์</span>
+              <div class="tbl-actions">
+                <span class="badge badge-red" style="padding:5px 10px">3 รอตอบ</span>
+              </div>
+            </div>
+            <table style="min-width:700px">
+              <thead><tr>
+                <th style="min-width:120px">จาก</th>
+                <th>เรื่อง</th>
+                <th style="min-width:90px">วิชา</th>
+                <th style="min-width:90px">วันที่</th>
+                <th style="min-width:80px">สถานะ</th>
+                <th style="min-width:180px">ดำเนินการ</th>
+              </tr></thead>
+              <tbody>
+                <tr style="background:oklch(97% 0.02 25 / 0.3)">
+                  <td style="font-weight:600">รศ.ดร.พรทิพย์</td>
+                  <td>ขอเปลี่ยนห้องเรียน Lab 1 วันพุธที่ 7 พ.ค.</td>
+                  <td><span class="badge badge-blue">NURS3002</span></td>
+                  <td style="font-size:12px;color:var(--muted)">7 พ.ค. 09:15</td>
+                  <td><span class="badge badge-red">รอตอบ</span></td>
+                  <td>
+                    <div class="td-actions">
+                      <button class="btn btn-primary btn-sm" onclick="openInboxReply('INS001','room')">✉ ตอบกลับ</button>
+                      <button class="btn btn-ghost btn-sm" onclick="alert('แก้ไขตารางด่วน')">🔧 แก้ตาราง</button>
+                    </div>
+                  </td>
+                </tr>
+                <tr style="background:oklch(97% 0.02 25 / 0.3)">
+                  <td style="font-weight:600">ผศ.ดร.วันดี</td>
+                  <td>ลา — ขอให้จัดหาผู้สอนแทน 9 พ.ค.</td>
+                  <td><span class="badge badge-blue">NURS3004</span></td>
+                  <td style="font-size:12px;color:var(--muted)">7 พ.ค. 08:40</td>
+                  <td><span class="badge badge-red">รอตอบ</span></td>
+                  <td>
+                    <div class="td-actions">
+                      <button class="btn btn-primary btn-sm" onclick="openInboxReply('INS002','sub')">✉ ตอบกลับ</button>
+                      <button class="btn btn-ghost btn-sm" onclick="alert('แก้ไขตารางด่วน')">🔧 แก้ตาราง</button>
+                    </div>
+                  </td>
+                </tr>
+                <tr style="background:oklch(97% 0.02 25 / 0.3)">
+                  <td style="font-weight:600">อ.ดร.กัลยา</td>
+                  <td>สอบถามตารางกลุ่ม A7–A9 สัปดาห์หน้า</td>
+                  <td><span class="badge badge-blue">NURS3002</span></td>
+                  <td style="font-size:12px;color:var(--muted)">6 พ.ค. 16:30</td>
+                  <td><span class="badge badge-red">รอตอบ</span></td>
+                  <td>
+                    <div class="td-actions">
+                      <button class="btn btn-primary btn-sm" onclick="openInboxReply('INS003','info')">✉ ตอบกลับ</button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-weight:600">อ.ดร.สุภา</td>
+                  <td>ยืนยันสถานที่สอบ Procedure</td>
+                  <td><span class="badge badge-blue">NURS2003</span></td>
+                  <td style="font-size:12px;color:var(--muted)">5 พ.ค. 14:00</td>
+                  <td><span class="badge badge-green">ตอบแล้ว</span></td>
+                  <td><span style="font-size:12px;color:var(--muted)">เสร็จสิ้น</span></td>
+                </tr>
+                <tr>
+                  <td style="font-weight:600">รศ.นภา จันทร์ดี</td>
+                  <td>ขอยืมห้อง Simulation 1 เพิ่มเติม</td>
+                  <td><span class="badge badge-blue">NURS3004</span></td>
+                  <td style="font-size:12px;color:var(--muted)">4 พ.ค. 11:20</td>
+                  <td><span class="badge badge-green">ตอบแล้ว</span></td>
+                  <td><span style="font-size:12px;color:var(--muted)">เสร็จสิ้น</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </section>
+
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+
+  <!-- REPLY MODAL -->
+  <div class="overlay" id="reply-overlay" onclick="closeReplyModal(event)" style="display:none;align-items:center;justify-content:center">
+    <div class="reply-dialog" onclick="event.stopPropagation()">
+      <div class="reply-dialog-header">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:18px">✉</span>
+          <span style="font-size:15px;font-weight:600">ตอบกลับข้อความ</span>
+        </div>
+        <button class="close-btn" onclick="closeReplyModal()">×</button>
+      </div>
+      <div class="reply-dialog-body">
+        <div class="reply-meta-bar" id="reply-meta-bar">
+          <!-- populated by JS -->
+        </div>
+        <div class="form-group" style="margin-top:14px">
+          <label>ถึง</label>
+          <input type="text" id="reply-to" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-family:inherit;font-size:14px;background:var(--bg);color:var(--text);outline:none" readonly>
+        </div>
+        <div class="form-group">
+          <label>เรื่อง</label>
+          <input type="text" id="reply-subject" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-family:inherit;font-size:14px;background:var(--card);color:var(--text);outline:none">
+        </div>
+        <div class="form-group">
+          <label>ข้อความตอบกลับ</label>
+          <textarea id="reply-msg" rows="5" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-family:inherit;font-size:14px;background:var(--card);color:var(--text);outline:none;resize:vertical"></textarea>
+        </div>
+        <div class="form-group">
+          <label>การดำเนินการที่เชื่อมโยง</label>
+          <select id="reply-action" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-family:inherit;font-size:14px;background:var(--card);color:var(--text);outline:none">
+            <option>แจ้งเพื่อทราบเท่านั้น</option>
+            <option selected>แก้ไขตารางพร้อมกัน</option>
+            <option>รอยืนยันจากหัวหน้าวิชา</option>
+          </select>
+        </div>
+      </div>
+      <div class="reply-dialog-footer">
+        <button class="btn btn-ghost" onclick="closeReplyModal()">ยกเลิก</button>
+        <button class="btn btn-primary" onclick="submitReply()">📤 ส่งตอบกลับ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD ACTIVITY SHEET -->
+  <div class="overlay" id="add-overlay" onclick="closeSheet(event)">
+    <div class="sheet">
+      <div class="sheet-title">
+        เพิ่มกิจกรรม
+        <button class="close-btn" onclick="closeAddSheet()">×</button>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>วิชา</label>
+          <select id="f-course">
+            <option>NURS 3002 — การพยาบาลอนามัยชุมชน</option>
+            <option>NURS 3004 — การพยาบาลผู้ใหญ่</option>
+            <option>NURS 4002 — การพยาบาลเด็ก</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>วัน</label>
+          <select id="f-day">
+            <option>จันทร์ 5 พ.ค.</option>
+            <option>อังคาร 6 พ.ค.</option>
+            <option>พุธ 7 พ.ค.</option>
+            <option>พฤหัสบดี 8 พ.ค.</option>
+            <option>ศุกร์ 9 พ.ค.</option>
+            <option>เสาร์ 10 พ.ค.</option>
+            <option>อาทิตย์ 11 พ.ค.</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>ประเภทกิจกรรม</label>
+          <select id="f-type">
+            <option value="lec">Lecture — บรรยาย</option>
+            <option value="lab">Lab — ปฏิบัติการ</option>
+            <option value="prac">ฝึกปฏิบัติ / Round Ward</option>
+            <option value="sdl">SDL — เรียนรู้ด้วยตนเอง</option>
+            <option value="exam">สอบ</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>ชื่อกิจกรรม</label>
+          <input type="text" id="f-name" placeholder="เช่น Post-conference ครั้งที่ 3">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>เวลาเริ่ม</label>
+          <input type="time" id="f-start" value="08:00">
+        </div>
+        <div class="form-group">
+          <label>เวลาสิ้นสุด</label>
+          <input type="time" id="f-end" value="10:00">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>สถานที่</label>
+          <select id="f-room">
+            <option>ห้อง 301 อาคารพยาบาลศาสตร์</option>
+            <option>Lab ทักษะพยาบาล 1</option>
+            <option>Lab ทักษะพยาบาล 2</option>
+            <option>รพ.ศิริราช — แผนก ICU</option>
+            <option>รพ.ศิริราช — แผนกอายุรกรรม</option>
+            <option>ชุมชนบางกอกน้อย</option>
+            <option>Online (Zoom)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>อาจารย์ผู้สอน</label>
+          <select id="f-instr">
+            <option>รศ.ดร.พรทิพย์ วงศ์ชนะ</option>
+            <option>ผศ.ดร.วันดี มีสุข</option>
+            <option>อ.ดร.กัลยา แสงทอง</option>
+            <option>อ.ดร.สุภา รักเรียน</option>
+            <option>รศ.นภา จันทร์ดี</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>กลุ่มนักศึกษา</label>
+        <div class="checkbox-grid">
+          <label class="cb-item"><input type="checkbox" name="grp" value="A1"> A1</label>
+          <label class="cb-item"><input type="checkbox" name="grp" value="A2"> A2</label>
+          <label class="cb-item"><input type="checkbox" name="grp" value="A3"> A3</label>
+          <label class="cb-item"><input type="checkbox" name="grp" value="A4"> A4</label>
+          <label class="cb-item"><input type="checkbox" name="grp" value="A5"> A5</label>
+          <label class="cb-item"><input type="checkbox" name="grp" value="A6"> A6</label>
+          <label class="cb-item"><input type="checkbox" name="grp" value="A7"> A7</label>
+          <label class="cb-item"><input type="checkbox" name="grp" value="A8"> A8</label>
+          <label class="cb-item"><input type="checkbox" name="grp" value="A9"> A9</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <label style="margin:0">แบ่งกลุ่มย่อย <span style="font-size:11px;font-weight:400;color:var(--txt3)">ไม่บังคับ</span></label>
+          <button type="button" onclick="addSubGroupRow('st')" style="font-size:12px;padding:4px 10px;border:1px solid var(--primary,#6366f1);color:var(--primary,#6366f1);background:white;border-radius:6px;cursor:pointer">+ เพิ่มกลุ่มย่อย</button>
+        </div>
+        <div id="st-subgrp-header" style="display:none;grid-template-columns:1fr 120px 32px;gap:8px;margin-bottom:4px;padding:0 2px">
+          <span style="font-size:11px;color:var(--txt3,#888)">ป้ายกลุ่ม (เช่น a, b)</span>
+          <span style="font-size:11px;color:var(--txt3,#888)">จำนวน นศ.</span>
+          <span></span>
+        </div>
+        <div id="st-subgrp-list"></div>
+        <div id="st-subgrp-total" style="display:none;font-size:12px;color:var(--txt3,#888);margin-top:6px;padding:6px 10px;background:#f4f4f5;border-radius:6px"></div>
+      </div>
+      <div class="form-group">
+        <label>หมายเหตุ</label>
+        <textarea id="f-note" placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)"></textarea>
+      </div>
+      <div class="sheet-footer">
+        <button class="btn btn-ghost" onclick="closeAddSheet()">ยกเลิก</button>
+        <button class="btn btn-primary" onclick="submitAdd()">บันทึกกิจกรรม</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MASTER DATA SHEET -->
+  <div class="overlay" id="md-overlay" onclick="closeMdSheet(event)">
+    <div class="sheet">
+      <div class="sheet-title">
+        <span id="md-sheet-title">เพิ่ม/แก้ไขข้อมูล</span>
+        <button class="close-btn" onclick="closeMdSheet()">×</button>
+      </div>
+      <div id="md-sheet-body"></div>
+      <div class="sheet-footer">
+        <button class="btn btn-ghost" onclick="closeMdSheet()">ยกเลิก</button>
+        <button class="btn btn-primary" onclick="saveMd()">บันทึก</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACTIVITY DETAIL -->
+  <div class="act-overlay" id="act-overlay" onclick="closeActOverlay(event)">
+    <div class="act-modal" id="act-modal">
+      <div class="am-title" id="am-title"></div>
+      <div class="am-sub" id="am-sub"></div>
+      <hr class="am-divider">
+      <div id="am-body"></div>
+      <hr class="am-divider">
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn btn-ghost btn-sm" onclick="closeActOverlay()">ปิด</button>
+        <button class="btn btn-red btn-sm" onclick="deleteActivity()">🗑 ลบกิจกรรม</button>
+        <button class="btn btn-primary btn-sm" onclick="openEditFromDetail()">✏ แก้ไข</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── DATA ──────────────────────────────────────────────────────────────────
+    const INSTRUCTORS = [
+      { id: 'INS001', name: 'รศ.ดร.พรทิพย์ วงศ์ชนะ', pos: 'รองศาสตราจารย์', branch: 'การพยาบาลชุมชน', load: 16, max: 18 },
+      { id: 'INS002', name: 'ผศ.ดร.วันดี มีสุข', pos: 'ผู้ช่วยศาสตราจารย์', branch: 'การพยาบาลผู้ใหญ่', load: 18, max: 18 },
+      { id: 'INS003', name: 'อ.ดร.กัลยา แสงทอง', pos: 'อาจารย์', branch: 'การพยาบาลชุมชน', load: 14, max: 18 },
+      { id: 'INS004', name: 'อ.ดร.สุภา รักเรียน', pos: 'อาจารย์', branch: 'การพยาบาลอนามัยแม่และเด็ก', load: 12, max: 18 },
+      { id: 'INS005', name: 'รศ.นภา จันทร์ดี', pos: 'รองศาสตราจารย์', branch: 'การพยาบาลผู้ใหญ่', load: 20, max: 18 },
+      { id: 'INS006', name: 'ผศ.ดร.มาลี สุขใจ', pos: 'ผู้ช่วยศาสตราจารย์', branch: 'การพยาบาลเด็ก', load: 10, max: 18 },
+      { id: 'INS007', name: 'อ.ดร.ธนพล รุ่งเรือง', pos: 'อาจารย์', branch: 'การพยาบาลสุขภาพจิต', load: 16, max: 18 },
+      { id: 'INS008', name: 'รศ.ดร.สุดา ใจดี', pos: 'รองศาสตราจารย์', branch: 'การพยาบาลผู้ใหญ่', load: 14, max: 18 },
+    ];
+    const ROOMS = [
+      { id: 'R301',  name: 'ห้อง 301',              type: 'ห้องบรรยาย', cap: 120, bldg: 'อาคารพยาบาลฯ', address: '',                                               status: 'active' },
+      { id: 'R302',  name: 'ห้อง 302',              type: 'ห้องบรรยาย', cap: 60,  bldg: 'อาคารพยาบาลฯ', address: '',                                               status: 'active' },
+      { id: 'LAB1',  name: 'Lab ทักษะพยาบาล 1',    type: 'Lab',         cap: 30,  bldg: 'อาคาร Lab',     address: '',                                               status: 'active' },
+      { id: 'LAB2',  name: 'Lab ทักษะพยาบาล 2',    type: 'Lab',         cap: 30,  bldg: 'อาคาร Lab',     address: '',                                               status: 'maintenance' },
+      { id: 'LAB3',  name: 'Lab ทักษะพยาบาล 3',    type: 'Lab',         cap: 25,  bldg: 'อาคาร Lab',     address: '',                                               status: 'active' },
+      { id: 'SIM1',  name: 'ห้อง Simulation 1',     type: 'Simulation',  cap: 15,  bldg: 'อาคาร Lab',     address: '',                                               status: 'active' },
+      { id: 'WARD1', name: 'หอผู้ป่วยอายุรกรรม',   type: 'Ward',        cap: 40,  bldg: 'ตึก 84 ปี',     address: 'โรงพยาบาลศิริราช เขตบางกอกน้อย กรุงเทพฯ 10700', status: 'active' },
+      { id: 'ICU1',  name: 'ICU ศิริราช',           type: 'Ward',        cap: 12,  bldg: 'ตึก 84 ปี',     address: 'โรงพยาบาลศิริราช เขตบางกอกน้อย กรุงเทพฯ 10700', status: 'active' },
+    ];
+    const COURSES = [
+      { id: 'NURS3002', name: 'การพยาบาลอนามัยชุมชน', credits: 3, head: 'รศ.ดร.มาลี', students: 270, status: 'pending' },
+      { id: 'NURS3004', name: 'การพยาบาลผู้ใหญ่และผู้สูงอายุ', credits: 4, head: 'ผศ.ดร.วันดี', students: 180, status: 'published' },
+      { id: 'NURS4002', name: 'การพยาบาลเด็กและวัยรุ่น', credits: 3, head: 'ผศ.ดร.มาลี', students: 120, status: 'draft' },
+      { id: 'NURS2003', name: 'ปฏิบัติการพยาบาลพื้นฐาน', credits: 2, head: 'อ.ดร.สุภา', students: 270, status: 'published' },
+    ];
+    const GROUPS = [
+      { name: 'A1', year: '2568/1', curriculum: 'พย.บ. 2565', count: 30 },
+      { name: 'A2', year: '2568/1', curriculum: 'พย.บ. 2565', count: 30 },
+      { name: 'A3', year: '2568/1', curriculum: 'พย.บ. 2565', count: 30 },
+      { name: 'A4', year: '2568/1', curriculum: 'พย.บ. 2565', count: 30 },
+      { name: 'A5', year: '2568/1', curriculum: 'พย.บ. 2565', count: 30 },
+      { name: 'A6', year: '2568/1', curriculum: 'พย.บ. 2565', count: 30 },
+      { name: 'A7', year: '2568/1', curriculum: 'พย.บ. 2565', count: 30 },
+      { name: 'A8', year: '2568/1', curriculum: 'พย.บ. 2565', count: 30 },
+      { name: 'A9', year: '2568/1', curriculum: 'พย.บ. 2565', count: 30 },
+    ];
+
+    const ACTIVITY_TYPES = [
+      { id: 'LEC',       name: 'บรรยาย (Lecture)',       category: 'lecture',   is_practicum: false, color: '#4f46e5' },
+      { id: 'LAB',       name: 'ปฏิบัติการ (Lab)',        category: 'practicum', is_practicum: true,  color: '#0891b2' },
+      { id: 'PRECONF',   name: 'Pre-conference',          category: 'practicum', is_practicum: true,  color: '#7c3aed' },
+      { id: 'ROUNDWARD', name: 'Round Ward / นิเทศ',      category: 'practicum', is_practicum: true,  color: '#b45309' },
+      { id: 'POSTCONF',  name: 'Post-conference',         category: 'practicum', is_practicum: true,  color: '#0f766e' },
+      { id: 'BEDSIDE',   name: 'Bedside Teaching',        category: 'practicum', is_practicum: true,  color: '#be123c' },
+      { id: 'REFLECT',   name: 'Reflection',              category: 'lecture',   is_practicum: false, color: '#6d28d9' },
+      { id: 'SDL',       name: 'SDL (เรียนรู้ด้วยตนเอง)', category: 'lecture',   is_practicum: false, color: '#374151' },
+      { id: 'EXAM',      name: 'สอบ (Examination)',       category: 'other',     is_practicum: false, color: '#dc2626' },
+      { id: 'ORIENT',    name: 'ปฐมนิเทศ (Orientation)', category: 'other',     is_practicum: false, color: '#2563eb' },
+    ];
+
+    const COURSE_OFFERINGS = [
+      { id: 'CO2569-001', code: 'NURS3002', name: 'การพยาบาลอนามัยชุมชน',        year: 2569, sem: 1, type: 'practicum',        instructors: ['รศ.ดร.มาลี', 'อ.ดร.กัลยา', 'อ.ดร.สุภา'], status: 'pending' },
+      { id: 'CO2569-002', code: 'NURS3004', name: 'การพยาบาลผู้ใหญ่และผู้สูงอายุ', year: 2569, sem: 1, type: 'theory_practicum', instructors: ['ผศ.ดร.วันดี', 'รศ.นภา'], status: 'published' },
+      { id: 'CO2569-003', code: 'NURS4002', name: 'การพยาบาลเด็กและวัยรุ่น',      year: 2569, sem: 1, type: 'practicum',        instructors: ['ผศ.ดร.มาลี'], status: 'draft' },
+      { id: 'CO2569-004', code: 'NURS2003', name: 'ปฏิบัติการพยาบาลพื้นฐาน',     year: 2569, sem: 1, type: 'practicum',        instructors: ['อ.ดร.สุภา', 'อ.ดร.ธนพล'], status: 'published' },
+    ];
+
+    const PRACTICUM_SERIES = [
+      { id: 'PS001', name: 'ฝึกปฏิบัติชุมชน รอบ 1', offering_code: 'NURS3002', weeks: 4, start: '11 พ.ค. 2569', end: '5 มิ.ย. 2569',  groups: 'A1–A3' },
+      { id: 'PS002', name: 'ฝึกปฏิบัติชุมชน รอบ 2', offering_code: 'NURS3002', weeks: 4, start: '8 มิ.ย. 2569',  end: '3 ก.ค. 2569',  groups: 'A4–A6' },
+      { id: 'PS003', name: 'ฝึก Ward อายุรกรรม',    offering_code: 'NURS3004', weeks: 6, start: '11 พ.ค. 2569', end: '19 มิ.ย. 2569', groups: 'A1–A9' },
+      { id: 'PS004', name: 'ฝึก Lab ทักษะพยาบาล',   offering_code: 'NURS2003', weeks: 2, start: '11 พ.ค. 2569', end: '22 พ.ค. 2569', groups: 'ทุกกลุ่ม' },
+    ];
+
+    const LOCATION_TYPES = [
+      { id: 'LT01', name: 'ห้องบรรยาย',                 example: 'ห้อง 301, ห้อง 302' },
+      { id: 'LT02', name: 'ห้องปฏิบัติการ (Lab)',        example: 'Lab ทักษะพยาบาล 1–3, Simulation' },
+      { id: 'LT03', name: 'หอผู้ป่วย (Ward)',             example: 'Ward 5A, ICU, OPD' },
+      { id: 'LT04', name: 'ออนไลน์ (Online)',             example: 'Zoom, MS Teams' },
+      { id: 'LT05', name: 'ภายนอก — โรงพยาบาล',         example: 'รพ.ศิริราช, รพ.รามาธิบดี' },
+      { id: 'LT06', name: 'ภายนอก — ชุมชน / รพ.สต.',   example: 'ชุมชนบางกอกน้อย, รพ.สต.บางพลัด' },
+    ];
+
+    // day_of_week: 1=จ, 2=อ, 3=พ, 4=พฤ, 5=ศ, 6=ส
+    const INSTRUCTOR_AVAIL = [
+      { name: 'รศ.ดร.มาลี ชาญวิชา',    avail: { 1:'07:00–17:00', 2:'07:00–17:00', 3:'07:00–12:00', 4:'07:00–17:00', 5:'07:00–17:00', 6:null } },
+      { name: 'อ.ดร.วิรัตน์ สุขสวัสดิ์', avail: { 1:'06:30–16:00', 2:'06:30–16:00', 3:'06:30–16:00', 4:'06:30–16:00', 5:'06:30–16:00', 6:null } },
+      { name: 'ผศ.ดร.วันดี ศรีสว่าง',    avail: { 1:'08:00–17:00', 2:'08:00–17:00', 3:null,          4:'08:00–17:00', 5:'08:00–17:00', 6:null } },
+      { name: 'รศ.นภา จันทร์สุข',        avail: { 1:'07:00–16:00', 2:'07:00–16:00', 3:'07:00–16:00', 4:null,          5:'07:00–16:00', 6:null } },
+    ];
+
+    const DAYS = ['จันทร์ 5 พ.ค.', 'อังคาร 6 พ.ค.', 'พุธ 7 พ.ค.', 'พฤหัส 8 พ.ค.', 'ศุกร์ 9 พ.ค.', 'เสาร์ 10 พ.ค.', 'อาทิตย์ 11 พ.ค.'];
+    const DAY_WEEKEND = [false, false, false, false, false, true, true];
+    const SCHEDULE = [
+      { day: 0, time: '06:30–07:00', name: 'Pre-conference', type: 'prac', loc: 'Ward 5A, รพ.ศิริราช', groups: 'A1–A3', instr: 'อ.ดร.วิรัตน์' },
+      { day: 0, time: '07:00–12:00', name: 'นิเทศ Round Ward', type: 'prac', loc: 'Ward 5A, รพ.ศิริราช', groups: 'A1–A3', instr: 'อ.ดร.วิรัตน์' },
+      { day: 0, time: '07:00–12:00', name: 'Lecture — อายุรกรรม', type: 'lec', loc: 'ห้อง 301', groups: 'A4–A6', instr: 'ผศ.ดร.สมศรี ใจดี' },
+      { day: 0, time: '13:00–16:00', name: 'SDL — ศึกษาเอกสาร', type: 'sdl', loc: 'ห้องสมุด', groups: 'A4–A9', instr: '—' },
+      { day: 1, time: '07:00–12:00', name: 'Round Ward', type: 'prac', loc: 'รพ.ศิริราช — ICU', groups: 'A1–A3', instr: 'รศ.ดร.พรทิพย์' },
+      { day: 1, time: '07:00–12:00', name: 'Round Ward', type: 'prac', loc: 'รพ.ศิริราช — อายุรกรรม', groups: 'A4–A6', instr: 'ผศ.ดร.วันดี' },
+      { day: 1, time: '07:00–12:00', name: 'ฝึกปฏิบัติชุมชน', type: 'prac', loc: 'ชุมชนบางกอกน้อย', groups: 'A7–A9', instr: 'อ.ดร.กัลยา' },
+      { day: 1, time: '13:00–15:00', name: 'Post-conference', type: 'lec', loc: 'ห้อง 302', groups: 'A1–A3', instr: 'รศ.ดร.พรทิพย์' },
+      { day: 2, time: '08:00–10:00', name: 'Lab ทักษะ — จัดการยา', type: 'lab', loc: 'Lab ทักษะพยาบาล 1', groups: 'A1–A3', instr: 'อ.ดร.สุภา' },
+      { day: 2, time: '08:00–10:00', name: 'Lab ทักษะ — จัดการยา', type: 'lab', loc: 'Lab ทักษะพยาบาล 2', groups: 'A4–A6', instr: 'ผศ.ดร.มาลี' },
+      { day: 2, time: '10:00–12:00', name: 'Bedside Teaching', type: 'prac', loc: 'รพ.ศิริราช — ICU', groups: 'A1–A3', instr: 'รศ.ดร.พรทิพย์' },
+      { day: 3, time: '07:00–16:00', name: 'ฝึกปฏิบัติ (เต็มวัน)', type: 'prac', loc: 'ชุมชนบางกอกน้อย', groups: 'A7–A9', instr: 'อ.ดร.กัลยา' },
+      { day: 3, time: '08:00–10:00', name: 'Conference ครั้งที่ 2', type: 'lec', loc: 'ห้อง 301', groups: 'A4–A6', instr: 'ผศ.ดร.วันดี' },
+      { day: 4, time: '08:00–12:00', name: 'Reflection & สรุป', type: 'lec', loc: 'ห้อง 301', groups: 'A1–A9', instr: 'รศ.ดร.พรทิพย์' },
+      { day: 4, time: '13:00–15:00', name: 'สอบ Procedure', type: 'exam', loc: 'Lab ทักษะพยาบาล 1', groups: 'A1–A3', instr: 'อ.ดร.สุภา' },
+    ];
+
+    let currentWeek = 3;
+    let currentActIdx = null;
+
+    // ── NAV ───────────────────────────────────────────────────────────────────
+    function go(key, btn) {
+      document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.nv').forEach(n => n.classList.remove('on'));
+      document.getElementById('sec-' + key).classList.add('active');
+      if (btn) btn.classList.add('on');
+      const titles = {
+        overview: 'ภาพรวม',
+        academic: 'ปีการศึกษา',
+        masterdata: 'ข้อมูลหลัก',
+        schedule: 'ตารางสอน',
+        reports: 'รายงาน',
+        inbox: 'กล่องข้อความ'
+      };
+      document.getElementById('tb-title').textContent = titles[key] || key;
+      document.getElementById('btn-add-act').style.display = key === 'schedule' ? '' : 'none';
+      document.getElementById('btn-export').style.display = key === 'reports' ? '' : 'none';
+      if (key === 'masterdata') renderMasterData();
+      if (key === 'schedule') renderSchedule();
+      if (key === 'reports') renderReports();
+    }
+
+    // ── MASTER DATA TAB ───────────────────────────────────────────────────────
+    function mdTab(key, btn) {
+      ['instructors', 'rooms', 'courses', 'groups', 'departments', 'curriculums', 'activity_types', 'location_types', 'course_offerings', 'practicum_series', 'instructor_availability'].forEach(k => {
+        const el = document.getElementById('md-' + k);
+        if (el) el.style.display = k === key ? '' : 'none';
+      });
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+    }
+
+    function renderMasterData() {
+      // Instructors - read only rows
+      const tb = document.getElementById('tb-instructors');
+      tb.innerHTML = INSTRUCTORS.map(i => {
+        const pct = Math.round(i.load / i.max * 100);
+        const over = i.load > i.max;
+        return `<tr>
+      <td><span style="font-family:monospace;font-size:12px;color:var(--muted)">${i.id}</span></td>
+      <td style="font-weight:500">${i.name}</td>
+      <td>${i.pos}</td>
+      <td>${i.branch}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="flex:1;height:6px;background:var(--bg);border-radius:3px;overflow:hidden;min-width:60px">
+            <div style="height:100%;border-radius:3px;background:${over ? 'var(--red)' : 'var(--role)'};width:${Math.min(pct, 100)}%"></div>
+          </div>
+          <span style="font-size:12px;font-weight:600;color:${over ? 'var(--red)' : 'var(--text)'}">${i.load}/${i.max}</span>
+        </div>
+      </td>
+      <td><span class="badge ${over ? 'badge-red' : 'badge-green'}">${over ? 'เกิน Quota' : 'ปกติ'}</span></td>
+    </tr>`;
+      }).join('');
+
+      // Rooms - read only rows
+      const tr = document.getElementById('tb-rooms');
+      tr.innerHTML = ROOMS.map(r => `<tr>
+    <td><span style="font-family:monospace;font-size:12px;color:var(--muted)">${r.id}</span></td>
+    <td style="font-weight:500">${r.name}</td>
+    <td>${r.type}</td>
+    <td>${r.cap}</td>
+    <td style="font-size:12px;color:var(--txt2)">${r.bldg || '<span style="color:var(--txt3)">—</span>'}</td>
+    <td style="font-size:12px;color:var(--txt2);max-width:180px">${r.address || '<span style="color:var(--txt3)">—</span>'}</td>
+    <td><span class="badge ${r.status === 'active' ? 'badge-ok' : r.status === 'maintenance' ? 'badge-err' : 'badge-gray'}">${r.status === 'active' ? 'พร้อมใช้' : r.status === 'maintenance' ? 'ซ่อมบำรุง' : 'ปิดใช้งาน'}</span></td>
+  </tr>`).join('');
+
+      // Courses - staff can assign course head/secretary only
+      const tc = document.getElementById('tb-courses');
+      tc.innerHTML = COURSES.map(c => `<tr>
+    <td><span style="font-family:monospace;font-size:12px;color:var(--muted)">${c.id}</span></td>
+    <td style="font-weight:500">${c.name}</td>
+    <td style="text-align:center">${c.credits}</td>
+    <td><strong>${c.head}</strong></td>
+    <td>${c.students} คน</td>
+    <td><span class="badge ${c.status === 'published' ? 'badge-green' : c.status === 'pending' ? 'badge-amber' : 'badge-gray'}">${c.status === 'published' ? 'เผยแพร่แล้ว' : c.status === 'pending' ? 'รออนุมัติ' : 'ร่าง'}</span></td>
+    <td><button class="icon-btn" title="กำหนดหัวหน้าวิชา/เลขานุการ" onclick="openMdSheet('courseHead','${c.id}')">👤</button></td>
+  </tr>`).join('');
+
+      // Groups - staff can assign training site
+      const tg = document.getElementById('tb-groups');
+      tg.innerHTML = GROUPS.map(g => `<tr>
+    <td><strong>${g.name}</strong></td>
+    <td>${g.year}</td>
+    <td>${g.curriculum}</td>
+    <td>${g.count} คน</td>
+    <td><button class="icon-btn" title="แก้ไขกลุ่ม" onclick="openMdSheet('group','${g.name}')">✏</button></td>
+  </tr>`).join('');
+
+      // Activity Types - read only
+      const CAT_TH = { lecture: 'บรรยาย', practicum: 'ฝึกปฏิบัติ', thesis: 'วิทยานิพนธ์', other: 'อื่นๆ' };
+      const tat = document.getElementById('tb-activity_types');
+      if (tat) tat.innerHTML = ACTIVITY_TYPES.map(a => `<tr>
+    <td><span style="font-family:monospace;font-size:12px;color:var(--muted)">${a.id}</span></td>
+    <td style="font-weight:500">${a.name}</td>
+    <td><span style="font-size:12px;background:var(--bg);border:1px solid var(--bd);border-radius:5px;padding:2px 8px">${CAT_TH[a.category] || a.category}</span></td>
+    <td style="text-align:center"><span class="badge ${a.is_practicum ? 'badge-green' : 'badge-gray'}">${a.is_practicum ? 'ใช่' : 'ไม่'}</span></td>
+    <td><span style="display:inline-block;width:16px;height:16px;border-radius:4px;background:${a.color};vertical-align:middle"></span> <span style="font-size:12px;color:var(--muted)">${a.color}</span></td>
+  </tr>`).join('');
+
+      // Course Offerings
+      const STATUS_CO = { draft: ['badge-gray','ร่าง'], pending: ['badge-amber','รออนุมัติ'], published: ['badge-green','เผยแพร่แล้ว'], rejected: ['badge-red','ส่งกลับแก้ไข'] };
+      const TYPE_CO = { theory: 'ทฤษฎี', practicum: 'ปฏิบัติ', theory_practicum: 'ทฤษฎี+ปฏิบัติ' };
+      const tco = document.getElementById('tb-course_offerings');
+      if (tco) tco.innerHTML = COURSE_OFFERINGS.map(co => {
+        const [scls, slbl] = STATUS_CO[co.status] || ['badge-gray', co.status];
+        const instrTags = co.instructors.map(i => `<span style="font-size:11px;background:var(--bg);border:1px solid var(--bd);border-radius:4px;padding:1px 6px;margin-right:3px">${i}</span>`).join('');
+        return `<tr>
+    <td><span style="font-family:monospace;font-size:12px;color:var(--muted)">${co.code}</span></td>
+    <td style="font-weight:500">${co.name}</td>
+    <td style="font-size:13px">${co.year} / ภาค ${co.sem}</td>
+    <td><span style="font-size:11px;background:var(--bg);border:1px solid var(--bd);border-radius:5px;padding:2px 7px">${TYPE_CO[co.type] || co.type}</span></td>
+    <td>${instrTags}</td>
+    <td><span class="badge ${scls}">${slbl}</span></td>
+    <td style="text-align:center">
+      <button class="icon-btn" title="จัดการ Instructor Pool" onclick="openMdSheet('course_offering','${co.id}')">✏</button>
+    </td>
+  </tr>`;
+      }).join('');
+
+      // Practicum Series
+      const tps = document.getElementById('tb-practicum_series');
+      if (tps) tps.innerHTML = PRACTICUM_SERIES.map(ps => `<tr>
+    <td style="font-weight:500">${ps.name}</td>
+    <td><span style="font-family:monospace;font-size:12px;color:var(--muted)">${ps.offering_code}</span></td>
+    <td style="text-align:center">${ps.weeks} สัปดาห์</td>
+    <td style="font-size:12px;color:var(--txt2)">${ps.start} — ${ps.end}</td>
+    <td><span style="font-size:12px;background:var(--bg);border:1px solid var(--bd);border-radius:4px;padding:2px 8px">${ps.groups}</span></td>
+    <td style="text-align:center">
+      <button class="icon-btn" title="แก้ไขชุดฝึก" onclick="openMdSheet('practicum_series','${ps.id}')">✏</button>
+      <button class="icon-btn del" title="ลบ" onclick="alert('ลบชุดฝึก ${ps.name}')">🗑</button>
+    </td>
+  </tr>`).join('');
+
+      // Location Types
+      const tlt = document.getElementById('tb-location_types');
+      if (tlt) tlt.innerHTML = LOCATION_TYPES.map(lt => `<tr>
+    <td><span style="font-family:monospace;font-size:12px;color:var(--muted)">${lt.id}</span></td>
+    <td style="font-weight:500">${lt.name}</td>
+    <td style="font-size:12px;color:var(--muted)">${lt.example}</td>
+    <td style="text-align:center">
+      <button class="icon-btn" title="แก้ไข" onclick="openMdSheet('location_type','${lt.id}')">✏</button>
+      <button class="icon-btn del" title="ลบ" onclick="alert('ลบประเภทสถานที่ ${lt.name}')">🗑</button>
+    </td>
+  </tr>`).join('');
+
+      // Instructor Availability
+      const dayKeys = [1, 2, 3, 4, 5, 6];
+      const tav = document.getElementById('tb-instructor_availability');
+      if (tav) tav.innerHTML = INSTRUCTOR_AVAIL.map(ia => {
+        const dayCells = dayKeys.map(d => {
+          const v = ia.avail[d];
+          if (!v) return `<td style="text-align:center;color:var(--muted);font-size:12px">—</td>`;
+          return `<td style="text-align:center;font-size:12px;color:var(--ok)">${v}</td>`;
+        }).join('');
+        return `<tr>
+    <td style="font-weight:500">${ia.name}</td>
+    ${dayCells}
+    <td style="text-align:center">
+      <button class="icon-btn" title="แก้ไขความพร้อม" onclick="openMdSheet('availability','${ia.name}')">✏</button>
+    </td>
+  </tr>`;
+      }).join('');
+    }
+
+    // ── SCHEDULE ──────────────────────────────────────────────────────────────
+    const TYPE_LABELS = { lec: 'Lecture', lab: 'Lab', prac: 'ฝึกปฏิบัติ', sdl: 'SDL', exam: 'สอบ' };
+
+    function renderSchedule() {
+      const cols = document.getElementById('day-cols');
+      cols.innerHTML = DAYS.map((d, di) => {
+        const acts = SCHEDULE.filter(a => a.day === di);
+        const actHtml = acts.map((a, ai) => `
+      <div class="act-card type-${a.type}" onclick="showActDetail(${di},${ai})">
+        <div class="act-time">${a.time} · ${TYPE_LABELS[a.type]}</div>
+        <div class="act-name">${a.name}</div>
+        <div class="act-loc">📍 ${a.loc}</div>
+        <div class="act-group">👥 ${a.groups}</div>
+      </div>`).join('');
+        const wkCls = DAY_WEEKEND[di] ? ' weekend' : '';
+        return `<div class="day-col${wkCls}">
+      <div class="day-head">
+        <div>
+          <div class="day-name">${d.split(' ')[0]}</div>
+          <div class="day-date">${d.split(' ').slice(1).join(' ')}</div>
+        </div>
+        <button class="day-add" title="เพิ่มกิจกรรม" onclick="openAddSheet(${di})">＋</button>
+      </div>
+      <div class="act-list">${actHtml || '<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px 0">ไม่มีกิจกรรม</div>'}</div>
+    </div>`;
+      }).join('');
+    }
+
+    function changeWeek(d) {
+      currentWeek = Math.max(1, Math.min(15, currentWeek + d));
+      const dates = ['5–11 พ.ค.', '12–18 พ.ค.', '19–25 พ.ค.', '26 พ.ค.–1 มิ.ย.'];
+      document.getElementById('week-label').textContent = `สัปดาห์ที่ ${currentWeek} (${dates[(currentWeek - 1) % 4]} 2569)`;
+    }
+
+    function showActDetail(di, ai) {
+      const a = SCHEDULE.filter(x => x.day === di)[ai];
+      if (!a) return;
+      // เก็บ index จริงใน SCHEDULE array
+      const schedIdx = SCHEDULE.indexOf(a);
+      document.getElementById('am-title').textContent = a.name;
+      document.getElementById('am-sub').textContent = `${DAYS[di]} · ${TYPE_LABELS[a.type]}`;
+      document.getElementById('am-body').innerHTML = `
+    <div class="am-row"><span class="am-label">เวลา</span><span class="am-val">${a.time}</span></div>
+    <div class="am-row"><span class="am-label">สถานที่</span><span class="am-val">${a.loc}</span></div>
+    <div class="am-row"><span class="am-label">กลุ่มนักศึกษา</span><span class="am-val">${a.groups}</span></div>
+    <div class="am-row"><span class="am-label">อาจารย์</span><span class="am-val">${a.instr}</span></div>
+    <div class="am-row"><span class="am-label">ประเภท</span><span class="am-val">${TYPE_LABELS[a.type]}</span></div>
+  `;
+      currentActIdx = { di, ai, schedIdx };
+      document.getElementById('act-overlay').classList.add('open');
+    }
+
+    function deleteActivity() {
+      const { schedIdx } = currentActIdx;
+      const a = SCHEDULE[schedIdx];
+      if (!a) return;
+      if (!confirm(`ลบกิจกรรม "${a.name}" ออกจากตาราง?\n\nการดำเนินการนี้ไม่สามารถย้อนกลับได้`)) return;
+      SCHEDULE.splice(schedIdx, 1);
+      closeActOverlay();
+      renderSchedule();
+    }
+
+    function closeActOverlay(e) {
+      if (!e || e.target === document.getElementById('act-overlay')) {
+        document.getElementById('act-overlay').classList.remove('open');
+      }
+    }
+
+    function openEditFromDetail() {
+      document.getElementById('act-overlay').classList.remove('open');
+      openAddSheet();
+    }
+
+    // ── SUB-GROUP BUILDER ────────────────────────────────────────────────────
+    const AUTO_LABELS_ST = ['a','b','c','d','e','f','g','h'];
+
+    function addSubGroupRow(prefix) {
+      const list = document.getElementById(prefix + '-subgrp-list');
+      const header = document.getElementById(prefix + '-subgrp-header');
+      const idx = list.children.length;
+      const label = AUTO_LABELS_ST[idx] || String(idx + 1);
+      const row = document.createElement('div');
+      row.style.cssText = 'display:grid;grid-template-columns:1fr 120px 32px;gap:8px;align-items:center;margin-bottom:8px';
+      row.innerHTML = `
+        <input type="text" value="${label}" maxlength="10" placeholder="เช่น a, b, 1"
+          style="padding:7px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;width:100%"
+          oninput="updateSubGroupSummary('${prefix}')">
+        <input type="number" value="15" min="1" placeholder="จำนวน"
+          style="padding:7px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;width:100%"
+          oninput="updateSubGroupSummary('${prefix}')">
+        <button type="button" title="ลบ" onclick="this.closest('div').remove();updateSubGroupSummary('${prefix}')"
+          style="width:32px;height:32px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13" stroke-linecap="round">
+            <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>
+          </svg>
+        </button>`;
+      list.appendChild(row);
+      if (header) header.style.display = 'grid';
+      updateSubGroupSummary(prefix);
+    }
+
+    function updateSubGroupSummary(prefix) {
+      const list = document.getElementById(prefix + '-subgrp-list');
+      const header = document.getElementById(prefix + '-subgrp-header');
+      const total = document.getElementById(prefix + '-subgrp-total');
+      if (!list) return;
+      const rows = list.children.length;
+      if (header) header.style.display = rows ? 'grid' : 'none';
+      if (!total) return;
+      if (!rows) { total.style.display = 'none'; return; }
+      const labels = [...list.querySelectorAll('input[type=text]')].map(i => i.value || '?');
+      const counts = [...list.querySelectorAll('input[type=number]')].map(i => parseInt(i.value) || 0);
+      const sum = counts.reduce((a, b) => a + b, 0);
+      const parts = labels.map((l, i) => `${l} = ${counts[i]} คน`).join(' · ');
+      total.style.display = '';
+      total.textContent = `${rows} กลุ่มย่อย: ${parts} — รวม ${sum} คน · ระบบจะสร้าง ${rows} กิจกรรมแยกกัน`;
+    }
+
+    // ── ADD SHEET ─────────────────────────────────────────────────────────────
+    function openAddSheet(dayIdx) {
+      if (dayIdx !== undefined) {
+        document.getElementById('f-day').selectedIndex = dayIdx;
+      }
+      document.getElementById('add-overlay').classList.add('open');
+    }
+    function closeAddSheet() {
+      document.getElementById('add-overlay').classList.remove('open');
+      const list = document.getElementById('st-subgrp-list');
+      const header = document.getElementById('st-subgrp-header');
+      const total = document.getElementById('st-subgrp-total');
+      if (list) list.innerHTML = '';
+      if (header) header.style.display = 'none';
+      if (total) total.style.display = 'none';
+    }
+    function closeSheet(e) {
+      if (e.target.classList.contains('overlay')) e.currentTarget.classList.remove('open');
+    }
+    function submitAdd() {
+      const name = document.getElementById('f-name').value.trim();
+      if (!name) { alert('กรุณาระบุชื่อกิจกรรม'); return; }
+      const day = document.getElementById('f-day').selectedIndex;
+      const type = document.getElementById('f-type').value;
+      const start = document.getElementById('f-start').value;
+      const end = document.getElementById('f-end').value;
+      const room = document.getElementById('f-room').value;
+      const instr = document.getElementById('f-instr').value;
+      const grps = [...document.querySelectorAll('input[name=grp]:checked')].map(c => c.value);
+      SCHEDULE.push({ day, time: `${start}–${end}`, name, type, loc: room, groups: grps.join(',') || 'ทุกกลุ่ม', instr });
+      closeAddSheet();
+      renderSchedule();
+    }
+
+    // ── MASTER DATA SHEET ─────────────────────────────────────────────────────
+    const MD_FORMS = {
+      // courseHead: กำหนดเฉพาะหัวหน้า/เลขานุการ (สิทธิ์เจ้าหน้าที่)
+      courseHead: `
+    <div class="notif info" style="margin-bottom:14px;padding:10px 14px">
+      <span style="font-size:13px">กำหนดบุคคลรับผิดชอบรายวิชา — ข้อมูลนี้ใช้สำหรับการอนุมัติตารางและรายงาน</span>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>หัวหน้าวิชา</label>
+        <select><option>รศ.ดร.พรทิพย์ วงศ์ชนะ</option><option>ผศ.ดร.วันดี มีสุข</option><option>ผศ.ดร.มาลี สุขใจ</option><option>อ.ดร.สุภา รักเรียน</option></select>
+      </div>
+      <div class="form-group"><label>เลขานุการวิชา</label>
+        <select><option>-- ยังไม่กำหนด --</option><option>อ.ดร.กัลยา แสงทอง</option><option>อ.ดร.ธนพล รุ่งเรือง</option><option>อ.ดร.สุภา รักเรียน</option></select>
+      </div>
+    </div>`,
+      group: `
+        <div class="form-row">
+          <div class="form-group"><label>รหัสกลุ่ม (group_code)</label><input type="text" value="A1" placeholder="เช่น A1, A2, B1"></div>
+          <div class="form-group"><label>ปีการศึกษา</label>
+            <select id="grp-year-sel-st" onchange="autoFillGroupCurriculumSt()">
+              <option value="2569">2569</option><option value="2568" selected>2568</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:16px">
+          <label>หลักสูตร</label>
+          <select id="grp-curriculum-sel-st"><option value="2565">พย.บ. 2565</option><option value="2560">พย.บ. 2560</option></select>
+          <div style="font-size:11px;color:var(--txt2);margin-top:4px">เติมอัตโนมัติตามปีการศึกษา — แก้ไขได้ถ้าต่างหลักสูตร</div>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>จำนวนนักศึกษา (student_count)</label><input type="number" min="1" value="30">
+          <div style="font-size:11px;color:var(--txt2);margin-top:4px">กลุ่มหลักเท่านั้น — กลุ่มย่อย (A1a, A1b) ระบุตอนสร้างกิจกรรมในตาราง</div>
+        </div>`,
+    };
+    const MD_TITLES = {
+      courseHead: 'กำหนดหัวหน้าวิชา / เลขานุการ',
+      group: 'เพิ่ม/แก้ไขกลุ่ม',
+      location_type: 'เพิ่ม/แก้ไขประเภทสถานที่',
+      availability: 'ตั้งค่าความพร้อมในการสอน',
+      course_offering: 'เปิดรายวิชา / จัดการ Instructor Pool',
+      practicum_series: 'เพิ่ม/แก้ไขชุดฝึกปฏิบัติ',
+    };
+
+    // เพิ่ม forms สำหรับ Course Offering และ Practicum Series
+    MD_FORMS.course_offering = `
+    <div class="form-row">
+      <div class="form-group"><label>รายวิชา (course_id)</label>
+        <select>
+          <option>NURS3002 — การพยาบาลอนามัยชุมชน</option>
+          <option>NURS3004 — การพยาบาลผู้ใหญ่และผู้สูงอายุ</option>
+          <option>NURS4002 — การพยาบาลเด็กและวัยรุ่น</option>
+          <option>NURS2003 — ปฏิบัติการพยาบาลพื้นฐาน</option>
+        </select>
+      </div>
+      <div class="form-group"><label>ปีการศึกษา (academic_year_id)</label>
+        <select><option>2569</option><option>2568</option></select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>ภาคการศึกษา (semester)</label>
+        <select><option>1</option><option>2</option><option>3 (ฤดูร้อน)</option></select>
+      </div>
+      <div class="form-group"><label>ประเภทวิชา (course_type)</label>
+        <select><option value="theory">ทฤษฎี</option><option value="practicum">ปฏิบัติ</option><option value="theory_practicum">ทฤษฎี+ปฏิบัติ</option></select>
+      </div>
+    </div>
+    <div style="margin-top:16px;border:1px solid var(--bd);border-radius:8px;padding:16px;background:var(--bg)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <label style="margin:0;font-size:13.5px">รายชื่ออาจารย์ในวิชา (Instructor Pool)</label>
+        <button class="btn btn-ghost btn-sm" style="background:var(--white)" onclick="event.preventDefault(); alert('เพิ่มอาจารย์จากฐานข้อมูล HR')">+ เพิ่มอาจารย์</button>
+      </div>
+      <table style="margin:0">
+        <thead><tr><th>ชื่ออาจารย์</th><th>บทบาทในวิชา</th><th>ลบ</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>รศ.ดร.มาลี สุขใจ</td>
+            <td><select style="font-size:12px;padding:3px 6px"><option>coordinator (หัวหน้าวิชา)</option><option>secretary (เลขานุการ)</option><option>instructor (อาจารย์ผู้สอน)</option><option>group_advisor</option><option>preceptor</option></select></td>
+            <td><button class="icon-btn del" onclick="event.preventDefault()">🗑</button></td>
+          </tr>
+          <tr>
+            <td>อ.ดร.กัลยา แสงทอง</td>
+            <td><select style="font-size:12px;padding:3px 6px"><option>instructor (อาจารย์ผู้สอน)</option><option>coordinator</option><option>secretary</option><option>group_advisor</option><option>preceptor</option></select></td>
+            <td><button class="icon-btn del" onclick="event.preventDefault()">🗑</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>`;
+
+    MD_FORMS.practicum_series = `
+    <div class="form-row">
+      <div class="form-group"><label>ชื่อชุดฝึกปฏิบัติ (series_name)</label>
+        <input type="text" placeholder="เช่น ฝึกปฏิบัติชุมชน รอบ 1">
+      </div>
+      <div class="form-group"><label>รายวิชาที่เปิดสอน (course_offering_id)</label>
+        <select>
+          <option>NURS3002 / 2569 / ภาค 1</option>
+          <option>NURS3004 / 2569 / ภาค 1</option>
+          <option>NURS4002 / 2569 / ภาค 1</option>
+          <option>NURS2003 / 2569 / ภาค 1</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>วันที่เริ่มต้น (start_date)</label>
+        <input type="date" value="2026-05-11">
+      </div>
+      <div class="form-group"><label>วันที่สิ้นสุด (end_date)</label>
+        <input type="date" value="2026-06-05">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>จำนวนสัปดาห์ (weeks)</label>
+        <input type="number" min="1" value="4">
+      </div>
+      <div class="form-group"><label>ลำดับ Rotation (order)</label>
+        <input type="number" min="1" value="1">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>กลุ่มนักศึกษาที่เข้าร่วม (student_groups)</label>
+      <div class="checkbox-grid">
+        <label class="cb-item"><input type="checkbox" value="A1" checked> A1</label>
+        <label class="cb-item"><input type="checkbox" value="A2" checked> A2</label>
+        <label class="cb-item"><input type="checkbox" value="A3" checked> A3</label>
+        <label class="cb-item"><input type="checkbox" value="A4"> A4</label>
+        <label class="cb-item"><input type="checkbox" value="A5"> A5</label>
+        <label class="cb-item"><input type="checkbox" value="A6"> A6</label>
+        <label class="cb-item"><input type="checkbox" value="A7"> A7</label>
+        <label class="cb-item"><input type="checkbox" value="A8"> A8</label>
+        <label class="cb-item"><input type="checkbox" value="A9"> A9</label>
+      </div>
+    </div>`;
+
+    MD_FORMS.location_type = `
+    <div class="form-group"><label>ชื่อประเภทสถานที่ (name)</label>
+      <input type="text" placeholder="เช่น หอผู้ป่วย (Ward)">
+    </div>
+    <div class="form-group"><label>ตัวอย่างสถานที่ (เพื่อแสดงใน UI — ไม่บันทึก DB)</label>
+      <input type="text" placeholder="เช่น Ward 5A, ICU, OPD">
+    </div>`;
+
+    MD_FORMS.availability = `
+    <div class="form-group"><label>อาจารย์</label>
+      <select>
+        <option>รศ.ดร.มาลี ชาญวิชา</option>
+        <option>อ.ดร.วิรัตน์ สุขสวัสดิ์</option>
+        <option>ผศ.ดร.วันดี ศรีสว่าง</option>
+        <option>รศ.นภา จันทร์สุข</option>
+      </select>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin:0 0 10px">ตั้งช่วงเวลาพร้อมสอนรายวัน — วันที่ไม่ได้ติ๊กจะถือว่าไม่ว่าง</p>
+    ${[['จันทร์','1'],['อังคาร','2'],['พุธ','3'],['พฤหัสบดี','4'],['ศุกร์','5'],['เสาร์','6']].map(([lbl,d]) => `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <label style="display:flex;align-items:center;gap:6px;min-width:90px;font-size:13px">
+        <input type="checkbox" ${d<'6'?'checked':''}> ${lbl}
+      </label>
+      <input type="time" value="${d<'6'?'07:00':''}" style="width:90px">
+      <span style="font-size:12px;color:var(--muted)">ถึง</span>
+      <input type="time" value="${d<'6'?'17:00':''}" style="width:90px">
+    </div>`).join('')}`;
+
+    function openMdSheet(type) {
+      document.getElementById('md-sheet-title').textContent = MD_TITLES[type] || 'แก้ไขข้อมูล';
+      document.getElementById('md-sheet-body').innerHTML = MD_FORMS[type] || '';
+      document.getElementById('md-overlay').classList.add('open');
+    }
+    function closeMdSheet(e) {
+      if (!e || e.target === document.getElementById('md-overlay')) {
+        document.getElementById('md-overlay').classList.remove('open');
+      }
+    }
+    function saveMd() { closeMdSheet(); }
+
+    function delItem(type, id) {
+      const labels = { instructor: 'อาจารย์', room: 'สถานที่', course: 'วิชา', group: 'กลุ่ม' };
+      const maps = { instructor: INSTRUCTORS, room: ROOMS, course: COURSES, group: GROUPS };
+      const arr = maps[type];
+      const idx = arr.findIndex(x => (x.id || x.name) === id);
+      if (idx === -1) return;
+      const name = arr[idx].name || arr[idx].id;
+      if (!confirm(`ลบ${labels[type]} "${name}" ออกจากระบบ?\n\nการดำเนินการนี้ไม่สามารถย้อนกลับได้`)) return;
+      arr.splice(idx, 1);
+      renderMasterData();
+    }
+
+    // ── ACADEMIC YEAR STATUS ──────────────────────────────────────────────────
+    function updateSemStatus(sel) {
+      const map = {
+        prep:    { cls: 'badge-gray',   label: '⏳ เตรียมการ' },
+        open:    { cls: 'badge-green',  label: '● กำลังดำเนินการ' },
+        midterm: { cls: 'badge-amber',  label: '📌 ช่วงสอบกลางภาค' },
+        final:   { cls: 'badge-amber',  label: '📌 ช่วงสอบปลายภาค' },
+        closed:  { cls: 'badge-blue',   label: '✓ สิ้นสุดแล้ว' },
+      };
+      const info = map[sel.value] || map.open;
+      const badge = document.getElementById('sem-status-badge');
+      if (badge) badge.innerHTML = `<span class="badge ${info.cls}" style="padding:5px 12px;font-size:12px">${info.label}</span>`;
+    }
+
+    // ── INBOX ─────────────────────────────────────────────────────────────────
+    const INBOX_NAMES = { INS001: 'รศ.ดร.พรทิพย์ วงศ์ชนะ', INS002: 'ผศ.ดร.วันดี มีสุข', INS003: 'อ.ดร.กัลยา แสงทอง' };
+    const INBOX_SUBJECTS = {
+      room: 'Re: ขอเปลี่ยนห้องเรียน Lab 1 วันพุธที่ 7 พ.ค.',
+      sub:  'Re: ลา — ขอให้จัดหาผู้สอนแทน 9 พ.ค.',
+      info: 'Re: สอบถามตารางกลุ่ม A7–A9 สัปดาห์หน้า'
+    };
+    const INBOX_TEMPLATES = {
+      room: 'ได้รับทราบแล้วค่ะ ดำเนินการเปลี่ยนห้องให้เป็น Lab 2 เรียบร้อยแล้ว',
+      sub:  'รับทราบค่ะ จะประสานงานหาผู้สอนแทนและแจ้งให้ทราบภายในวันนี้',
+      info: 'ตารางกลุ่ม A7–A9 สัปดาห์หน้า ยืนยันตามตารางที่ส่งให้แล้วนะคะ หากมีการเปลี่ยนแปลงจะแจ้งทันที'
+    };
+    const INBOX_META = {
+      INS001: { course: 'NURS3002', date: '7 พ.ค. 09:15', topic: 'ขอเปลี่ยนห้องเรียน Lab 1 วันพุธที่ 7 พ.ค.' },
+      INS002: { course: 'NURS3004', date: '7 พ.ค. 08:40', topic: 'ลา — ขอให้จัดหาผู้สอนแทน 9 พ.ค.' },
+      INS003: { course: 'NURS3002', date: '6 พ.ค. 16:30', topic: 'สอบถามตารางกลุ่ม A7–A9 สัปดาห์หน้า' },
+    };
+    function openInboxReply(insId, topicKey) {
+      const name    = INBOX_NAMES[insId]    || insId;
+      const subject = INBOX_SUBJECTS[topicKey] || 'Re:';
+      const msg     = INBOX_TEMPLATES[topicKey] || '';
+      const meta    = INBOX_META[insId] || {};
+
+      document.getElementById('reply-to').value      = name;
+      document.getElementById('reply-subject').value = subject;
+      document.getElementById('reply-msg').value     = msg;
+
+      const metaBar = document.getElementById('reply-meta-bar');
+      if (metaBar) metaBar.innerHTML = `
+        <span>จาก <strong>${name}</strong></span>
+        <span>วิชา <strong>${meta.course || '-'}</strong></span>
+        <span>วันที่ <strong>${meta.date || '-'}</strong></span>
+        <span style="flex:1;min-width:100%">"${meta.topic || ''}"</span>
+      `;
+
+      const ov = document.getElementById('reply-overlay');
+      ov.style.display = 'flex';
+      // trigger animation restart
+      const dlg = ov.querySelector('.reply-dialog');
+      dlg.style.animation = 'none';
+      dlg.offsetHeight; // reflow
+      dlg.style.animation = '';
+    }
+    function closeReplyModal(e) {
+      if (e && e.target !== document.getElementById('reply-overlay')) return;
+      document.getElementById('reply-overlay').style.display = 'none';
+    }
+    function submitReply() {
+      const to  = document.getElementById('reply-to').value;
+      document.getElementById('reply-overlay').style.display = 'none';
+      setTimeout(() => alert(`ส่งข้อความตอบกลับถึง ${to} เรียบร้อยแล้ว`), 100);
+    }
+
+    function renderReports() {
+      const wl = document.getElementById('workload-rows');
+      const WL = [
+        { name: 'รศ.ดร.พรทิพย์', load: 16, max: 18 },
+        { name: 'ผศ.ดร.วันดี', load: 18, max: 18 },
+        { name: 'อ.ดร.กัลยา', load: 14, max: 18 },
+        { name: 'อ.ดร.สุภา', load: 12, max: 18 },
+        { name: 'รศ.นภา จันทร์ดี', load: 20, max: 18 },
+        { name: 'ผศ.ดร.มาลี', load: 10, max: 18 },
+      ];
+      wl.innerHTML = WL.map(w => {
+        const pct = Math.round(w.load / w.max * 100);
+        const over = w.load > w.max;
+        return `<div class="rc-row">
+      <span style="font-size:13px;min-width:140px">${w.name}</span>
+      <div class="rc-bar-wrap"><div class="rc-bar ${over ? 'over' : ''}" style="width:${Math.min(pct, 100)}%"></div></div>
+      <span class="rc-num" style="color:${over ? 'var(--red)' : 'var(--text)'}">${w.load}/${w.max}</span>
+    </div>`;
+      }).join('');
+
+      const rg = document.getElementById('room-grid');
+      const ROOMS2 = [
+        { name: 'ห้อง 301', util: 92 },
+        { name: 'ห้อง 302', util: 75 },
+        { name: 'Lab 1', util: 88 },
+        { name: 'Lab 2', util: 0 },
+        { name: 'Lab 3', util: 45 },
+        { name: 'Sim 1', util: 60 },
+      ];
+      rg.innerHTML = ROOMS2.map(r => {
+        const cls = r.util >= 80 ? 'high' : r.util >= 40 ? 'mid' : 'low';
+        return `<div class="room-cell ${cls}">
+      <div class="rn">${r.name}</div>
+      <div class="ru">${r.util}% ใช้งาน</div>
+    </div>`;
+      }).join('');
+    }
+
+    // ── INIT ──────────────────────────────────────────────────────────────────
+    renderSchedule();
+  </script>
+</body>
+
+</html>

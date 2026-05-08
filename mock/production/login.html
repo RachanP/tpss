@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TPSS — เข้าสู่ระบบ</title>
+
+  <!-- Design System fonts (local — ไม่ต้องต่ออินเทอร์เน็ต) -->
+  <style>
+    /* TH Niramit AS — UI / body text: เส้นคม อ่านง่ายบนจอทุกขนาด */
+    @font-face {
+      font-family: 'Niramit';
+      src: url('ui/fonts/13Fonts/Fonts/TH Niramit AS.ttf') format('truetype');
+      font-weight: 400; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: 'Niramit';
+      src: url('ui/fonts/13Fonts/Fonts/TH Niramit AS Italic.ttf') format('truetype');
+      font-weight: 400; font-style: italic; font-display: swap;
+    }
+    @font-face {
+      font-family: 'Niramit';
+      src: url('ui/fonts/13Fonts/Fonts/TH Niramit AS Bold.ttf') format('truetype');
+      font-weight: 700; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: 'Niramit';
+      src: url('ui/fonts/13Fonts/Fonts/TH Niramit AS Bold Italic.ttf') format('truetype');
+      font-weight: 700; font-style: italic; font-display: swap;
+    }
+
+    /* TH Chakra Petch — Hero title: geometric, คมชัด ดีมากบนพื้นเข้ม */
+    @font-face {
+      font-family: 'ChakraPetch';
+      src: url('ui/fonts/13Fonts/Fonts/TH Chakra Petch.ttf') format('truetype');
+      font-weight: 400; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: 'ChakraPetch';
+      src: url('ui/fonts/13Fonts/Fonts/TH Chakra Petch Italic.ttf') format('truetype');
+      font-weight: 400; font-style: italic; font-display: swap;
+    }
+    @font-face {
+      font-family: 'ChakraPetch';
+      src: url('ui/fonts/13Fonts/Fonts/TH Chakra Petch Bold.ttf') format('truetype');
+      font-weight: 700; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: 'ChakraPetch';
+      src: url('ui/fonts/13Fonts/Fonts/TH Chakra Petch Bold Italic.ttf') format('truetype');
+      font-weight: 700; font-style: italic; font-display: swap;
+    }
+  </style>
+
+  <!-- ═══ Design System tokens (inline from colors_and_type.css) ═══ -->
+  <style>
+    :root {
+      /* BRAND */
+      --brand-navy:      #002454;
+      --brand-navy-700:  #0a3370;
+      --brand-navy-500:  #16498f;
+      --brand-navy-300:  #6b8bbf;
+      --brand-navy-100:  #d6e0f0;
+      --brand-navy-50:   #ecf1f9;
+      --brand-gold:      #c9a449;
+      --brand-gold-300:  #e0c887;
+      --brand-gold-100:  #f7eed1;
+
+      /* SURFACES */
+      --bg:              oklch(98% 0.008 220);
+      --surface:         #ffffff;
+      --nav-bg:          oklch(17% 0.04 240);
+      --nav-bg-2:        oklch(21% 0.05 240);
+      --nav-border:      oklch(25% 0.04 240);
+      --nav-text:        oklch(84% 0.02 220);
+      --nav-text-dim:    oklch(65% 0.03 220);
+      --nav-text-bright: oklch(97% 0.01 220);
+
+      /* FOREGROUND */
+      --fg-1:            oklch(16% 0.02 240);
+      --fg-2:            oklch(44% 0.03 240);
+      --fg-3:            oklch(64% 0.02 240);
+      --fg-disabled:     oklch(78% 0.01 240);
+
+      /* BORDERS */
+      --border:          oklch(89% 0.012 220);
+      --border-strong:   oklch(80% 0.015 220);
+
+      /* SEMANTIC */
+      --status-conflict:        oklch(52% 0.20 25);
+      --status-conflict-fg:     oklch(38% 0.18 25);
+      --status-conflict-bg:     oklch(95% 0.06 25);
+      --status-conflict-border: oklch(82% 0.08 25);
+
+      /* TYPOGRAPHY */
+      --font-sans:    'Niramit', system-ui, sans-serif;
+      --font-display: 'ChakraPetch', 'Niramit', system-ui, sans-serif;
+      --font-mono:    ui-monospace, monospace;
+
+      /* RADII */
+      --r-xs:   4px;
+      --r-sm:   6px;
+      --r-md:   8px;
+      --r-lg:   10px;
+      --r-xl:   12px;
+      --r-pill: 999px;
+
+      /* SHADOWS */
+      --shadow-xl:    0 16px 40px oklch(0% 0 0 / 0.16);
+      --shadow-focus: 0 0 0 3px color-mix(in oklch, var(--brand-navy) 22%, transparent);
+
+      /* MOTION */
+      --ease-out:  cubic-bezier(0.22, 1, 0.36, 1);
+      --dur-base:  180ms;
+      --dur-slow:  280ms;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 20px; }
+    body {
+      font-family: var(--font-sans);
+      color: var(--fg-1);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 52% 48%;
+    }
+
+    /* ═══════════════════════════════════════════════
+       LEFT — Institutional brand panel
+       uses --nav-bg dark navy + gold seal
+    ═══════════════════════════════════════════════ */
+    .login-left {
+      background: var(--nav-bg);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: clamp(2rem, 5vw, 3.5rem);
+      overflow: hidden;
+    }
+
+    /* subtle dot grid overlay */
+    .login-left::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(circle, oklch(40% 0.04 215 / 0.4) 1px, transparent 1px);
+      background-size: 36px 36px;
+      mask-image: radial-gradient(ellipse at 20% 30%, transparent 30%, black 80%);
+      pointer-events: none;
+    }
+
+    /* ghost TPSS text — nav-bg-2 so barely visible */
+    .login-left::before {
+      content: 'TPSS';
+      position: absolute;
+      bottom: -2rem;
+      right: -0.5rem;
+      font-size: clamp(8rem, 14vw, 13rem);
+      font-weight: 800;
+      color: oklch(24% 0.04 240);
+      line-height: 1;
+      letter-spacing: -0.04em;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .left-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── Mahidol Seal (from Login.jsx) ── */
+    .seal-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .seal-text-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .seal-th {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--nav-text-bright);
+      letter-spacing: 0.01em;
+      line-height: 1.2;
+    }
+
+    .seal-en {
+      font-size: 0.65rem;
+      font-weight: 400;
+      color: var(--nav-text);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .seal-faculty {
+      font-size: 0.82rem;
+      color: var(--brand-gold);
+      margin-top: 4px;
+      font-weight: 400;
+      letter-spacing: 0.01em;
+    }
+
+    /* gold rule after seal */
+    .brand-rule {
+      width: 36px;
+      height: 2px;
+      background: var(--brand-gold);
+      border-radius: 1px;
+      margin-bottom: 1.5rem;
+      opacity: 0.7;
+    }
+
+    /* eyebrow — design system .eyebrow style */
+    .left-eyebrow {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--brand-gold);
+      margin-bottom: 0.6rem;
+    }
+
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(1.6rem, 2.8vw, 2.3rem);
+      font-weight: 700;
+      color: #ffffff;
+      line-height: 1.4;
+      letter-spacing: 0.01em;
+      margin-bottom: 1rem;
+    }
+
+    .hero-desc {
+      font-size: 0.9rem;
+      color: var(--nav-text-bright);
+      line-height: 1.85;
+      font-weight: 400;
+      max-width: 380px;
+      opacity: 0.8;
+      margin-bottom: 0;
+    }
+
+    /* ── Feature list ── */
+    .feature-list {
+      margin-top: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      font-size: 0.85rem;
+      color: var(--nav-text-bright);
+      font-weight: 400;
+      opacity: 0.85;
+    }
+
+    .feature-item svg {
+      width: 17px;
+      height: 17px;
+      color: var(--brand-gold);
+      flex-shrink: 0;
+      opacity: 0.9;
+    }
+
+    /* ── Left footer ── */
+    .left-footer {
+      position: relative;
+      z-index: 1;
+      font-size: 0.8rem;
+      color: var(--nav-text);
+      font-family: var(--font-sans);
+      letter-spacing: 0.03em;
+    }
+
+    /* ═══════════════════════════════════════════════
+       RIGHT — Auth form
+       white surface with design-system components
+    ═══════════════════════════════════════════════ */
+    .login-right {
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: clamp(2rem, 4vw, 3rem);
+      border-left: 1px solid var(--border);
+      position: relative;
+    }
+
+    .login-inner {
+      max-width: 460px;
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      padding: 2.5rem 2.5rem 2.25rem;
+      box-shadow: 0 4px 24px oklch(0% 0 0 / 0.07);
+      animation: fadeUp var(--dur-slow) var(--ease-out) both;
+    }
+
+    /* ── Form eyebrow (design system: .eyebrow) ── */
+    .form-eyebrow {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--fg-3);
+      margin-bottom: 0.4rem;
+    }
+
+    .section-heading {
+      font-family: var(--font-sans);
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--fg-1);
+      letter-spacing: 0em;
+      line-height: 1.3;
+      margin-bottom: 1.5rem;
+    }
+
+    .section-sub {
+      font-size: 0.8rem;
+      color: var(--fg-2);
+      margin-bottom: 1.75rem;
+      line-height: 1.65;
+    }
+
+    .section-sub code {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--brand-navy-500);
+      background: var(--brand-navy-50);
+      padding: 1px 5px;
+      border-radius: var(--r-xs);
+    }
+
+    /* ── Alert (design system: .alert.conflict) ── */
+    .alert {
+      display: none;
+      align-items: flex-start;
+      gap: 10px;
+      border-radius: var(--r-lg);
+      padding: 10px 12px;
+      border: 1px solid;
+      border-left: 4px solid;
+      margin-bottom: 1.25rem;
+      font-size: 0.78rem;
+      animation: fadeUp var(--dur-base) var(--ease-out) both;
+    }
+
+    .alert.show { display: flex; }
+
+    .alert.conflict {
+      background: var(--status-conflict-bg);
+      border-color: color-mix(in oklch, var(--status-conflict) 20%, white);
+      border-left-color: var(--status-conflict);
+      color: var(--status-conflict-fg);
+    }
+
+    .alert-icon {
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--status-conflict);
+      color: white;
+      font-size: 0.75rem;
+      font-weight: 800;
+    }
+
+    /* ── Form field (design system: comp-inputs) ── */
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 1.1rem;
+    }
+
+    .flbl {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--fg-1);
+    }
+
+    .flbl-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-md);
+      background: var(--surface);
+      font-family: var(--font-sans);
+      font-size: 16px;
+      color: var(--fg-1);
+      outline: none;
+      transition: border-color var(--dur-base), box-shadow var(--dur-base);
+    }
+
+    .input::placeholder { color: var(--fg-3); }
+
+    .input:focus {
+      border-color: var(--brand-navy);
+      box-shadow: 0 0 0 3px color-mix(in oklch, var(--brand-navy) 18%, transparent);
+    }
+
+    .input.err {
+      border-color: var(--status-conflict);
+    }
+
+    .input.err:focus {
+      box-shadow: 0 0 0 3px color-mix(in oklch, var(--status-conflict) 22%, transparent);
+    }
+
+    /* input with icon (password) */
+    .input-wrap { position: relative; }
+
+    .input-wrap .input { padding-right: 2.6rem; }
+
+    .toggle-pw {
+      position: absolute;
+      right: 0.7rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--fg-3);
+      padding: 0;
+      display: flex;
+      align-items: center;
+      transition: color var(--dur-base);
+    }
+
+    .toggle-pw:hover { color: var(--fg-1); }
+
+    /* field error text */
+    .ferr {
+      display: none;
+      font-size: 13px;
+      color: var(--status-conflict-fg);
+      align-items: center;
+      gap: 4px;
+      font-weight: 700;
+    }
+
+    .ferr.show { display: flex; }
+    .ferr svg  { width: 11px; height: 11px; flex-shrink: 0; }
+
+    /* forgot link */
+    .forgot {
+      font-size: 11.5px;
+      color: var(--brand-navy-500);
+      text-decoration: none;
+      font-weight: 500;
+      transition: color var(--dur-base);
+    }
+
+    .forgot:hover { color: var(--brand-navy); text-decoration: underline; }
+
+    /* ── Remember me row ── */
+    .login-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.1rem;
+      margin-top: 0.1rem;
+    }
+
+    .check-label {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-size: 12px;
+      color: var(--fg-2);
+      cursor: pointer;
+    }
+
+    .check-label input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      accent-color: var(--brand-navy);
+      cursor: pointer;
+    }
+
+    /* ── Button (design system: comp-buttons — sharp 2px, formal) ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 12px 16px;
+      border-radius: 2px;           /* design system: sharp 2px */
+      border: 1px solid;
+      font-family: var(--font-sans);
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.02em;
+      transition: background var(--dur-base), filter var(--dur-base);
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: var(--brand-navy);
+      color: #fff;
+      border-color: var(--brand-navy);
+      width: 100%;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--brand-navy-700);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* spinner inside button */
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+
+    .btn.loading .spinner { display: block; }
+    .btn.loading .btn-text { opacity: 0.75; }
+
+    /* ── Right footer ── */
+    .right-footer {
+      position: absolute;
+      bottom: 1.25rem;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 0.78rem;
+      color: var(--fg-2);
+    }
+
+    /* ═══ ANIMATIONS ═══ */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ═══ RESPONSIVE ═══ */
+    @media (max-width: 820px) {
+      body { grid-template-columns: 1fr; }
+
+      .login-left {
+        min-height: auto;
+        padding: 2rem;
+        gap: 1.5rem;
+        justify-content: flex-start;
+      }
+
+      .login-left::before { font-size: 6rem; }
+      .pills { display: none; }
+
+      .login-right {
+        padding: 2rem 1.5rem 4rem;
+        min-height: 65vh;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════ LEFT — Institutional Brand ══════════ -->
+<div class="login-left">
+  <div class="left-content">
+
+    <!-- Mahidol Seal -->
+    <div class="seal-row">
+      <img src="picture/Mahidol_U_logo.png" width="72" height="72" alt="Mahidol University Logo" style="object-fit:contain;flex-shrink:0;">
+      <div class="seal-text-wrap">
+        <span class="seal-th">มหาวิทยาลัยมหิดล</span>
+        <span class="seal-en">Mahidol University</span>
+        <span class="seal-faculty">คณะพยาบาลศาสตร์ · Faculty of Nursing</span>
+      </div>
+    </div>
+
+    <div class="brand-rule"></div>
+
+    <p class="left-eyebrow">Teaching &amp; Practicum Scheduling System</p>
+    <h1 class="hero-title">ระบบจัดตาราง<br>สอนและฝึกปฏิบัติ</h1>
+    <p class="hero-desc">
+      บริหารตารางสอนและฝึกปฏิบัติพยาบาลศาสตร์
+      รองรับหลายกลุ่ม หลายกิจกรรม หลายสถานที่ฝึก
+      พร้อมระบบตรวจสอบตารางชนอัตโนมัติ
+    </p>
+
+    <div class="feature-list">
+      <div class="feature-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        ตรวจสอบ Conflict อัตโนมัติข้ามรายวิชา
+      </div>
+      <div class="feature-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        Block Schedule รองรับหลายกลุ่มและหลายสถานที่
+      </div>
+      <div class="feature-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+        </svg>
+        ระบบสิทธิ์ 5 บทบาทพร้อม Approval Workflow
+      </div>
+    </div>
+
+  </div>
+
+  <div class="left-footer">คณะพยาบาลศาสตร์ มหาวิทยาลัยมหิดล</div>
+</div>
+
+<!-- ══════════ RIGHT — Auth Form ══════════ -->
+<div class="login-right">
+  <div class="login-inner">
+
+    <!-- eyebrow -->
+    <p class="form-eyebrow">เข้าสู่ระบบ · Sign in</p>
+    <h2 class="section-heading">ลงชื่อเข้าใช้งาน</h2>
+
+    <!-- conflict alert (design system style) -->
+    <div class="alert conflict" id="alert-error">
+      <div class="alert-icon">!</div>
+      <div>
+        <div style="font-weight:700;font-size:12px;margin-bottom:2px">เข้าสู่ระบบไม่สำเร็จ</div>
+        <div id="alert-msg" style="font-size:11.5px;line-height:1.55">อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาลองอีกครั้ง</div>
+      </div>
+    </div>
+
+    <form id="login-form" onsubmit="return handleLogin();" novalidate autocomplete="on">
+
+      <!-- Email field (comp-inputs style) -->
+      <div class="field">
+        <label class="flbl" for="email">อีเมลมหาวิทยาลัย</label>
+        <input class="input" id="email" name="email" type="email"
+               autocomplete="email">
+        <span class="ferr" id="email-err">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <circle cx="12" cy="16" r=".5" fill="currentColor"/>
+          </svg>
+          กรุณากรอกอีเมลให้ถูกต้อง
+        </span>
+      </div>
+
+      <!-- Password field -->
+      <div class="field">
+        <label class="flbl" for="password">รหัสผ่าน</label>
+        <div class="input-wrap">
+          <input class="input" id="password" name="password" type="password"
+                 autocomplete="current-password">
+          <button type="button" class="toggle-pw" onclick="togglePw()" aria-label="แสดง/ซ่อนรหัสผ่าน">
+            <svg id="eye-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+        <span class="ferr" id="pw-err">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <circle cx="12" cy="16" r=".5" fill="currentColor"/>
+          </svg>
+          กรุณากรอกรหัสผ่าน
+        </span>
+      </div>
+
+      <!-- Submit button (design system: btn-primary, 2px radius) -->
+      <button class="btn btn-primary" id="submit-btn" type="submit">
+        <div class="spinner" id="spinner"></div>
+        <span class="btn-text">เข้าสู่ระบบ</span>
+      </button>
+
+    </form>
+
+  </div>
+
+  <div class="right-footer">
+    คณะพยาบาลศาสตร์ มหาวิทยาลัยมหิดล
+  </div>
+</div>
+
+<!-- ══════════ Scripts ══════════ -->
+<script>
+  /* toggle password */
+  let pwVisible = false;
+  function togglePw() {
+    pwVisible = !pwVisible;
+    document.getElementById('password').type = pwVisible ? 'text' : 'password';
+    document.getElementById('eye-icon').innerHTML = pwVisible
+      ? `<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/>
+         <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/>
+         <line x1="1" y1="1" x2="23" y2="23"/>`
+      : `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+         <circle cx="12" cy="12" r="3"/>`;
+  }
+
+  /* validation */
+  function validateEmail() {
+    const el = document.getElementById('email');
+    const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(el.value.trim()) || el.value === '';
+    const hasVal = el.value !== '';
+    el.classList.toggle('err', !ok && hasVal);
+    document.getElementById('email-err').classList.toggle('show', !ok && hasVal);
+    return ok && hasVal;
+  }
+
+  function validatePw() {
+    const el = document.getElementById('password');
+    const ok = el.value.length > 0;
+    el.classList.toggle('err', !ok);
+    document.getElementById('pw-err').classList.toggle('show', !ok);
+    return ok;
+  }
+
+  document.getElementById('email').addEventListener('blur', validateEmail);
+  document.getElementById('password').addEventListener('blur', validatePw);
+
+  /* submit */
+  function handleLogin() {
+    const emailOk = validateEmail();
+    const pwOk    = validatePw();
+    if (!emailOk || !pwOk) return false;
+
+    const btn     = document.getElementById('submit-btn');
+    const spinner = document.getElementById('spinner');
+    const alert   = document.getElementById('alert-error');
+
+    alert.classList.remove('show');
+    btn.disabled = true;
+    btn.classList.add('loading');
+    spinner.style.display = 'block';
+
+    /*
+     * Production (Blade): POST /login → Laravel auth
+     * → ดึง users.role จาก DB → redirect ตาม role:
+     *   admin       → /admin/dashboard
+     *   course_head → /maker/dashboard
+     *   executive   → /approver/dashboard
+     *   staff       → /staff/dashboard
+     *   instructor  → /lecturer/dashboard
+     *
+     * Mock: จำลอง redirect ด้วย email prefix
+     */
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.classList.remove('loading');
+      spinner.style.display = 'none';
+
+      const email = document.getElementById('email').value.toLowerCase();
+      if (email.includes('admin'))                          { window.location.href = 'admin.html';    return; }
+      if (email.includes('dean')  || email.includes('head'))  { window.location.href = 'approver.html'; return; }
+      if (email.includes('staff') || email.includes('office')){ window.location.href = 'staff.html';    return; }
+      if (email.includes('malee') || email.includes('wilawan')){ window.location.href = 'maker.html';   return; }
+      if (email.includes('napat') || email.includes('lect'))  { window.location.href = 'lecturer.html'; return; }
+
+      /* default → error alert */
+      alert.classList.add('show');
+      document.getElementById('email').classList.add('err');
+      document.getElementById('password').classList.add('err');
+    }, 900);
+
+    return false;
+  }
+</script>
+
+</body>
+</html>

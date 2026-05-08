@@ -1,0 +1,154 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8">
+<title>Roles · Unified theme</title>
+<link rel="stylesheet" href="_card.css">
+<style>
+  body { padding: 0; background: #fff; font-family: var(--font-sans); }
+
+  .eyebrow {
+    font-size: 10px; font-weight: 600; color: var(--fg-3);
+    letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 14px 16px 8px;
+    border-bottom: 1px solid var(--border);
+    background: #fff;
+    display: flex; align-items: baseline; justify-content: space-between;
+  }
+  .eyebrow .meta {
+    font-family: var(--font-mono); font-size: 10px;
+    font-weight: 400; color: var(--fg-3);
+    letter-spacing: 0; text-transform: none;
+  }
+
+  .lede {
+    padding: 12px 16px;
+    background: oklch(98% 0.006 230);
+    border-bottom: 1px solid var(--border);
+    font-size: 11.5px; color: var(--fg-2); line-height: 1.55;
+  }
+  .lede b { color: var(--brand-navy); font-weight: 600; }
+
+  /* Strict directory table */
+  table {
+    width: 100%; border-collapse: collapse;
+    background: #fff; font-size: 12px;
+  }
+  thead th {
+    background: oklch(98% 0.006 230);
+    color: var(--fg-2); font-weight: 600; text-align: left;
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 10.5px; letter-spacing: 0.04em;
+    text-transform: uppercase;
+    height: 28px; white-space: nowrap;
+  }
+  tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-subtle);
+    vertical-align: middle; color: var(--fg-1);
+  }
+  tbody tr:last-child td { border-bottom: 1px solid var(--border); }
+  tbody tr:hover td { background: oklch(98.5% 0.005 230); }
+
+  /* Avatar — square, formal, navy */
+  .av-cell { width: 36px; padding-right: 0; }
+  .av {
+    width: 28px; height: 28px;
+    background: var(--brand-navy);
+    color: #fff;
+    font-family: var(--font-sans);
+    font-weight: 600; font-size: 11px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 2px;
+    letter-spacing: 0.02em;
+  }
+
+  .nm { font-weight: 600; color: var(--fg-1); font-size: 12.5px; }
+  .title-th { color: var(--fg-2); font-size: 11.5px; }
+
+  /* Role tag — sharp 2px, navy outline */
+  .role-tag {
+    display: inline-flex; align-items: center;
+    height: 18px; padding: 0 7px;
+    border-radius: 2px;
+    background: #fff;
+    border: 1px solid var(--brand-navy);
+    color: var(--brand-navy);
+    font-family: var(--font-mono);
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 0.04em; text-transform: uppercase;
+    line-height: 1;
+  }
+
+  .scope { font-size: 11px; color: var(--fg-3); }
+
+  .foot {
+    padding: 10px 16px;
+    background: oklch(98% 0.006 230);
+    border-top: 1px solid var(--border);
+    font-size: 10.5px; color: var(--fg-3); line-height: 1.55;
+  }
+  .foot code {
+    font-family: var(--font-mono); background: #fff;
+    border: 1px solid var(--border);
+    padding: 0 4px; border-radius: 2px;
+    color: var(--fg-2);
+  }
+</style></head>
+<body>
+
+<div class="eyebrow">
+  <span>Role &amp; Identity Convention</span>
+  <span class="meta">5 roles · unified --brand-navy</span>
+</div>
+
+<div class="lede">
+  ทุกบทบาทใช้ธีม <b>Mahidol Navy</b> ร่วมกัน — ไม่กำหนดสีต่างกันเป็นรายบทบาท เพื่อหลีกเลี่ยงการชนกับสีเชิงความหมาย (Conflict, Approved). ระบุบทบาทผ่านป้ายข้อความขนาดเล็กข้างชื่อผู้ใช้ และเมนูที่ผู้ใช้แต่ละบทบาทเข้าถึงได้.
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th></th>
+      <th>ชื่อ–สกุล</th>
+      <th>บทบาท</th>
+      <th>ตำแหน่ง / ขอบเขตการใช้งาน</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="av-cell"><div class="av">วล</div></td>
+      <td><div class="nm">รศ.ดร.วิลาวรรณ สมบูรณ์</div></td>
+      <td><span class="role-tag">Maker</span></td>
+      <td><span class="title-th">หัวหน้าวิชา</span> <span class="scope">· พยอย 384</span></td>
+    </tr>
+    <tr>
+      <td class="av-cell"><div class="av">มล</div></td>
+      <td><div class="nm">ศ.ดร.มาลี ชาญวิชา</div></td>
+      <td><span class="role-tag">Approver</span></td>
+      <td><span class="title-th">รองคณบดีฝ่ายวิชาการ</span></td>
+    </tr>
+    <tr>
+      <td class="av-cell"><div class="av">สด</div></td>
+      <td><div class="nm">นางสาวสุดา ใจมั่น</div></td>
+      <td><span class="role-tag">Staff</span></td>
+      <td><span class="title-th">เจ้าหน้าที่งานบริการการศึกษา</span></td>
+    </tr>
+    <tr>
+      <td class="av-cell"><div class="av">ณภ</div></td>
+      <td><div class="nm">อ.ณภัทร ปั้นทอง</div></td>
+      <td><span class="role-tag">Lecturer</span></td>
+      <td><span class="title-th">อาจารย์ผู้สอน</span></td>
+    </tr>
+    <tr>
+      <td class="av-cell"><div class="av">SA</div></td>
+      <td><div class="nm">System Administrator</div></td>
+      <td><span class="role-tag">Admin</span></td>
+      <td><span class="title-th">ดูแลระบบและสิทธิ์ผู้ใช้</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="foot">
+  Tokens: avatar = <code>--brand-navy</code> · role tag = <code>border 1px --brand-navy</code> on white · type: <code>JetBrains Mono</code> 10px UPPERCASE.
+</div>
+
+</body></html>

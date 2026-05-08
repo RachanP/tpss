@@ -1,0 +1,71 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8">
+<title>Components · Conflict & Warning cards</title>
+<link rel="stylesheet" href="_card.css">
+<style>
+.list { display: flex; flex-direction: column; gap: 8px; }
+.alert {
+  display: flex; gap: 12px; align-items: flex-start;
+  border-radius: var(--r-lg); padding: 12px 14px;
+  border: 1px solid; border-left: 4px solid;
+}
+.alert.conflict {
+  background: var(--status-conflict-bg);
+  border-color: color-mix(in oklch, var(--status-conflict) 20%, white);
+  border-left-color: var(--status-conflict);
+}
+.alert.warning  {
+  background: var(--status-warning-bg);
+  border-color: color-mix(in oklch, var(--status-warning) 20%, white);
+  border-left-color: var(--status-warning);
+}
+.alert.success  {
+  background: var(--status-success-bg);
+  border-color: color-mix(in oklch, var(--status-success) 20%, white);
+  border-left-color: var(--status-success);
+}
+.icb {
+  width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 800; color: #fff;
+}
+.alert.conflict .icb { background: var(--status-conflict); }
+.alert.warning  .icb { background: var(--status-warning); }
+.alert.success  .icb { background: var(--status-success); }
+.ttl { font-size: 13px; font-weight: 700; }
+.alert.conflict .ttl { color: var(--status-conflict-fg); }
+.alert.warning  .ttl { color: var(--status-warning-fg); }
+.alert.success  .ttl { color: var(--status-success-fg); }
+.desc { font-size: 12px; color: var(--fg-2); margin-top: 4px; line-height: 1.55; }
+.link {
+  display: inline-flex; align-items: center; gap: 3px; font-size: 11.5px; font-weight: 600;
+  margin-top: 7px; color: var(--brand-navy); cursor: pointer; text-decoration: none;
+}
+.link:hover { text-decoration: underline; }
+</style></head>
+<body><div class="card">
+  <div style="font-size:13px;font-weight:700;margin-bottom:10px">Alerts — Conflict / Warning / Success</div>
+  <div class="list">
+    <div class="alert conflict">
+      <div class="icb">!</div>
+      <div>
+        <div class="ttl">ตารางชนระหว่างอาจารย์</div>
+        <div class="desc">อ.วิลาวรรณ สมบูรณ์ มีกิจกรรมซ้อนทับ — Lecture (พยอย 384) เวลา 08:00 ทับ Ward (พยอย 383) เวลา 08:30</div>
+        <a class="link" style="color:var(--status-conflict-fg)">ไปยังตำแหน่งที่ขัดแย้ง →</a>
+      </div>
+    </div>
+    <div class="alert warning">
+      <div class="icb">⚠</div>
+      <div>
+        <div class="ttl">ภาระงาน เกินเกณฑ์</div>
+        <div class="desc">อ.ณภัทร ปั้นทอง · 38 ชม./สัปดาห์ (เกินเกณฑ์ 30 ชม.) · บันทึกได้แต่ควรกระจายงานก่อนส่งอนุมัติ</div>
+      </div>
+    </div>
+    <div class="alert success">
+      <div class="icb">✓</div>
+      <div>
+        <div class="ttl">ตารางสัปดาห์ที่ 4 ผ่านการตรวจสอบแล้ว</div>
+        <div class="desc">ไม่พบ conflict · ภาระงานสมดุล · พร้อมส่งให้ผู้บริหารพิจารณา</div>
+      </div>
+    </div>
+  </div>
+</div></body></html>
