@@ -1,58 +1,43 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# TPSS — Teaching & Practicum Scheduling System
+**ระบบจัดตารางสอนและฝึกปฏิบัติพยาบาลศาสตร์ (Faculty of Nursing, Mahidol University)**
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## 🚀 เกี่ยวกับโปรเจกต์
+ระบบบริหารจัดการตารางเรียน (Block Schedule) และตารางฝึกปฏิบัติ (Rotation Schedule) ที่มีความซับซ้อนสูง สำหรับคณะพยาบาลศาสตร์ มหาวิทยาลัยมหิดล รองรับการตรวจสอบตารางชน (Conflict Detection) อัตโนมัติ และการบริหารภาระงานอาจารย์อย่างมีประสิทธิภาพ
 
-## About Laravel
+## 🛠 Tech Stack
+- **Backend**: Laravel 13 (PHP 8.3)
+- **Frontend**: Blade Templates + Alpine.js
+- **Design System**: Impeccable Design (Mahidol Navy Data Shell)
+- **Database**: MySQL 8.0+
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## 📦 การติดตั้ง (Setup)
+1. Clone repository
+2. ติดตั้ง dependencies:
+   ```bash
+   composer install
+   npm install
+   ```
+3. ตั้งค่าสภาพแวดล้อม:
+   - คัดลอก `.env.example` เป็น `.env`
+   - ตั้งค่าฐานข้อมูล (Database) ใน `.env`
+   - รัน `php artisan key:generate`
+4. สร้างโครงสร้างฐานข้อมูล:
+   ```bash
+   php artisan migrate
+   ```
+5. รันเซิร์ฟเวอร์ทดสอบ:
+   ```bash
+   php artisan serve
+   ```
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## 📂 โครงสร้างที่สำคัญ
+- `/mock/prototype`: ไฟล์ HTML ต้นแบบ (Prototypes) ครบทั้ง 5 บทบาท
+- `/mock/production/ui`: Design System, UI Kits และ CSS หลักของโครงการ
+- `/database/migrations`: ไฟล์ Migration ทั้งหมด (Phase 1 & 2) รวม 25 ไฟล์
+- `CLAUDE.md`: คู่มือการพัฒนาสำหรับ AI Agent และการตั้งค่าโปรเจกต์ (สำคัญมาก)
+- `PRODUCT.md` / `DESIGN.md`: เอกสารนิยามแบรนด์และคู่มือการออกแบบ (Impeccable Context)
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## 🤖 สำหรับนักพัฒนา (Agentic Workflow)
+โปรเจกต์นี้ได้รับการออกแบบมาให้รองรับการทำงานร่วมกับ AI Coding Agents (เช่น Claude Code, Antigravity, Cursor) โดยใช้กฎและแนวทางที่ระบุไว้ใน **`CLAUDE.md`**
 
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
-```
-
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+**กรุณาอ่าน `CLAUDE.md` ทุกครั้งเมื่อเริ่ม Session ใหม่เพื่อรักษาความต่อเนื่องของงาน**
