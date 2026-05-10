@@ -59,7 +59,7 @@
 
 | Sprint | วันที่ | Module | ชื่อ | SP |
 |--------|--------|--------|------|----|
-| Sprint 1 | 11–12 พ.ค. | M10 | Login & RBAC | 24 | 🟡 90% (Admin User Mgmt ✅) |
+| Sprint 1 | 11–12 พ.ค. | M10 | Login & RBAC | 24 | ✅ 100% (Admin User Mgmt & Role Switcher) |
 | Sprint 2 | 13–15 พ.ค. | M1 | Master Data Management | 43 |
 | Sprint 3 | 18–19 พ.ค. | M2 | Course Management | 19 |
 | Sprint 4 | 20–22 พ.ค. | M3 | Schedule Management | 41 |
@@ -344,7 +344,9 @@ main          ← production-ready เท่านั้น
 - Export รายงานเป็น PDF และ Excel
 - **ผู้บริหาร = Read-only + Approve/Reject เท่านั้น** — ห้าม implement UI ให้แก้ไขตารางหรือ Master Data ได้
 - **Stack = Laravel + Blade + Alpine.js + MySQL** — ห้ามเสนอโค้ดที่ใช้ React, Vue, หรือ Inertia.js
-- **Multi-role RBAC**: `users` ไม่มี `role` column แล้ว — ต้อง query จาก `user_roles` เสมอ, RBAC middleware เช็ค `active_role` จาก session, `is_primary = true` คือ role เริ่มต้นเมื่อ login ครั้งแรก
+- **Multi-role RBAC**: `users` ไม่มี `role` column — query จาก `user_roles` เสมอ, RBAC middleware เช็ค `active_role` จาก session, `is_primary = true` คือ role เริ่มต้นเมื่อ login ครั้งแรก
+- **Role Switcher**: พัฒนาเสร็จสมบูรณ์ใน Sidebar (Dropdown ▾) รองรับการสลับ active_role ใน session และ redirect ไปยัง dashboard ที่ถูกต้องทันที
+- **User Management**: ระบบจัดการผู้ใช้งาน (Admin) รองรับการกำหนดหลายบทบาท (Multi-role), เลือกบทบาทหลัก (Primary), และเปิด-ปิดสถานะการใช้งาน (Active/Inactive) พร้อม UI แบบ Role Cards และ Badge-primary (Dark Navy) สำหรับบทบาทหลัก
 
 ---
 

@@ -9,11 +9,12 @@
             email: '',
             password: '',
             roles: [],
+            primary_role: '',
             is_active: true
         },
         openAddModal() {
             this.editMode = false;
-            this.currentUser = { id: '', username: '', name: '', email: '', password: '', roles: ['staff'], is_active: true };
+            this.currentUser = { id: '', username: '', name: '', email: '', password: '', roles: ['staff'], primary_role: 'staff', is_active: true };
             this.showModal = true;
         },
         openEditModal(user) {
@@ -25,11 +26,13 @@
                 email: user.email, 
                 password: '', 
                 roles: user.roles.map(r => r.role),
+                primary_role: user.roles.find(r => r.is_primary)?.role || user.roles[0]?.role || '',
                 is_active: !!user.is_active
             };
             this.showModal = true;
         }
     }">
+
         <!-- Header & Stats -->
         <div class="stats-grid">
             <div class="st-card">
@@ -103,7 +106,7 @@
                             <td>
                                 <div style="display: flex; flex-wrap: wrap; gap: 4px;">
                                     @foreach($user->roles as $role)
-                                        <span class="badge {{ $role->role === 'admin' ? 'badge-admin' : 'badge-gray' }}" style="font-family: var(--font-mono); text-transform: uppercase; font-size: 10px;">
+                                        <span class="badge {{ $role->is_primary ? 'badge-primary' : 'badge-gray' }}" style="font-family: var(--font-mono); text-transform: uppercase; font-size: 10px;">
                                             {{ $role->role }}
                                         </span>
                                     @endforeach
@@ -145,10 +148,10 @@
         <template x-if="showModal">
             <div class="overlay" x-cloak @click.self="showModal = false">
                 <div class="modal-center" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
-                    <div class="modal-hdr">
-                        <div class="modal-ttl" x-text="editMode ? 'แก้ไขข้อมูลผู้ใช้งาน' : 'เพิ่มผู้ใช้งานใหม่'"></div>
-                        <button class="modal-cls" @click="showModal = false">
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    <div class="modal-hdr" style="background: var(--bg-2);">
+                        <div class="modal-ttl" style="font-family: var(--font-display); letter-spacing: -0.01em;" x-text="editMode ? 'แก้ไขข้อมูลผู้ใช้งาน' : 'เพิ่มผู้ใช้งานใหม่'"></div>
+                        <button type="button" class="modal-cls" @click="showModal = false">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                         </button>
                     </div>
                     <form :action="editMode ? '{{ url('admin/users') }}/' + currentUser.id : '{{ route('admin.users.store') }}'" method="POST">
@@ -177,18 +180,77 @@
                                 <input type="email" name="email" x-model="currentUser.email" required placeholder="email@mahidol.ac.th">
                             </div>
                             
-                            <div class="form-group" style="margin-bottom: 16px;">
-                                <label>บทบาท (Roles) <span style="font-size: 11px; color: var(--fg-3); font-weight: 400; margin-left: 4px;">— เลือกได้มากกว่า 1 บทบาท</span></label>
-                                <div class="role-chip-group">
-                                @foreach(['admin' => 'System Admin', 'staff' => 'Support Staff', 'course_head' => 'Course Head/Maker', 'executive' => 'Executive/Approver', 'instructor' => 'Instructor'] as $val => $label)
-                                    <label class="role-chip">
-                                        <input type="checkbox" name="roles[]" value="{{ $val }}" :checked="currentUser.roles.includes('{{ $val }}')">
-                                        <span>{{ $label }}</span>
-                                    </label>
-                                    @endforeach
+                            <div class="form-group" style="margin-bottom: 24px;">
+                                <label style="margin-bottom: 12px; font-weight: 700; color: var(--fg-1); display: block; font-size: 14px;">บทบาทและสิทธิ์การใช้งาน (RBAC)</label>
+                                <div class="role-grid">
+                                    @foreach(['admin' => 'System Admin', 'staff' => 'Support Staff', 'course_head' => 'Course Head', 'executive' => 'Executive', 'instructor' => 'Instructor'] as $val => $label)
+                                    @php
+                                        $icon = [
+                                            'admin'       => '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+                                            'staff'       => '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+                                            'course_head' => '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+                                            'executive'   => '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+                                            'instructor'  => '<path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>',
+                                        ][$val];
+                                        $desc = [
+                                            'admin'       => 'จัดการผู้ใช้งาน ตั้งค่าระบบ และดู Audit Log',
+                                            'staff'       => 'สนับสนุนการจัดตารางสอนและจัดการข้อมูลพื้นฐาน',
+                                            'course_head' => 'จัดการวิชาและจัดตารางสอนในหลักสูตรที่รับผิดชอบ',
+                                            'executive'   => 'เรียกดูรายงาน สรุปข้อมูล และอนุมัติตารางสอน',
+                                            'instructor'  => 'เรียกดูตารางสอนส่วนตัวและจัดการภาระงานตนเอง',
+                                        ][$val];
+                                    @endphp
+                                    <div class="role-card" 
+                                         :class="{ 'is-selected': currentUser.roles.includes('{{ $val }}'), 'is-primary': currentUser.primary_role === '{{ $val }}' }"
+                                         @click="if(currentUser.roles.includes('{{ $val }}')) { 
+                                                    if(currentUser.roles.length > 1 || currentUser.primary_role !== '{{ $val }}') {
+                                                        currentUser.roles = currentUser.roles.filter(r => r !== '{{ $val }}'); 
+                                                        if(currentUser.primary_role === '{{ $val }}') currentUser.primary_role = currentUser.roles[0] || ''; 
+                                                    }
+                                                 } else { 
+                                                    currentUser.roles.push('{{ $val }}'); 
+                                                    if(!currentUser.primary_role) currentUser.primary_role = '{{ $val }}'; 
+                                                 }">
+                                        
+                                        <div class="role-check">
+                                            <svg x-show="currentUser.roles.includes('{{ $val }}')" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                        </div>
 
+                                        <div class="role-icon-box">
+                                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                {!! $icon !!}
+                                            </svg>
+                                        </div>
+
+                                        <div class="role-info">
+                                            <div class="role-name">{{ $label }}</div>
+                                            <div class="role-desc">{{ $desc }}</div>
+                                        </div>
+
+                                        <template x-if="currentUser.roles.includes('{{ $val }}')">
+                                            <div class="role-actions">
+                                                <button type="button" class="btn-primary-role" 
+                                                        :class="{ 'active': currentUser.primary_role === '{{ $val }}' }"
+                                                        @click.stop="currentUser.primary_role = '{{ $val }}'">
+                                                    <span x-text="currentUser.primary_role === '{{ $val }}' ? 'Primary' : 'Set Primary'"></span>
+                                                </button>
+                                            </div>
+                                        </template>
+                                    </div>
+                                    @endforeach
                                 </div>
+                                
+                                <input type="hidden" name="primary_role" :value="currentUser.primary_role">
+                                <template x-for="role in currentUser.roles">
+                                    <input type="hidden" name="roles[]" :value="role">
+                                </template>
                             </div>
+
+
+
+
+
+
 
                             <div class="form-group">
                                 <label>สถานะการใช้งาน</label>

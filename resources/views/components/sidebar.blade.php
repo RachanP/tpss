@@ -54,34 +54,46 @@
                 <svg class="role-sw-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M6 9l6 6 6-6" />
                 </svg>
-            </div>
 
-            <!-- Role Dropdown Menu -->
-            <div class="role-drop" :class="{ 'open': roleMenuOpen }" x-cloak>
-                <div class="rd-hd">สลับบทบาท (Switch Role)</div>
-                @if($roles->count() > 0)
-                    @foreach($roles as $r)
-                        @if($r->role === $activeRole)
-                            <div class="rd-item rd-active">
-                                <div class="rd-dot" style="background:var(--role)"></div>
-                                {{ $roleNames[$r->role] ?? $r->role }}
-                                <span class="rd-cur">ใช้งานอยู่</span>
-                            </div>
-                        @else
-                            <form method="POST" action="{{ route('switch-role') }}" style="margin:0;">
-                                @csrf
-                                <input type="hidden" name="role" value="{{ $r->role }}">
-                                <button type="submit" class="rd-item">
-                                    <div class="rd-dot" style="background:transparent; border:1px solid oklch(50% .02 215)"></div>
-                                    {{ $roleNames[$r->role] ?? $r->role }}
-                                </button>
-                            </form>
-                        @endif
-                    @endforeach
-                @else
-                    <div class="rd-item rd-active">ไม่มีบทบาทอื่น</div>
-                @endif
+                <!-- Role Dropdown Menu -->
+                <div class="role-drop" :class="{ 'open': roleMenuOpen }" x-cloak @click.stop>
+                    <div class="rd-hd">สลับบทบาท</div>
+                    @if($roles->count() > 0)
+                        @php
+                            $roleIcons = [
+                                'admin'       => '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+                                'staff'       => '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+                                'course_head' => '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+                                'executive'   => '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+                                'instructor'  => '<path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>',
+                            ];
+                        @endphp
+                        @foreach($roles as $r)
+                            @if($r->role === $activeRole)
+                                <div class="rd-item rd-active">
+                                    <svg class="rd-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{!! $roleIcons[$r->role] ?? '' !!}</svg>
+                                    <span class="rd-label">{{ $roleNames[$r->role] ?? $r->role }}</span>
+                                    <span class="rd-cur">✓ ใช้งานอยู่</span>
+                                </div>
+                            @else
+                                <form method="POST" action="{{ route('switch-role') }}" style="margin:0;">
+                                    @csrf
+                                    <input type="hidden" name="role" value="{{ $r->role }}">
+                                    <button type="submit" class="rd-item rd-switch">
+                                        <svg class="rd-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{!! $roleIcons[$r->role] ?? '' !!}</svg>
+                                        <span class="rd-label">{{ $roleNames[$r->role] ?? $r->role }}</span>
+                                        <span class="rd-badge">สลับ →</span>
+                                    </button>
+                                </form>
+                            @endif
+                        @endforeach
+                    @else
+                        <div class="rd-item rd-active" style="opacity:.5;">ไม่มีบทบาทอื่น</div>
+                    @endif
+                </div>
+                {{-- end .role-drop --}}
             </div>
+            {{-- end .role-sw --}}
         </div>
     </div>
 

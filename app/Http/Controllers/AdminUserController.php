@@ -7,6 +7,7 @@ use App\Models\UserRole;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class AdminUserController extends Controller
 {
@@ -32,8 +33,10 @@ class AdminUserController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:4',
             'roles' => 'required|array|min:1',
+            'primary_role' => ['required', 'string', Rule::in($request->roles ?? [])],
             'is_active' => 'boolean',
         ]);
+
 
         DB::transaction(function () use ($validated) {
             $user = User::create([
@@ -48,7 +51,7 @@ class AdminUserController extends Controller
                 UserRole::create([
                     'user_id' => $user->id,
                     'role' => $role,
-                    'is_primary' => $role === $validated['roles'][0], // First role as primary for now
+                    'is_primary' => $role === $validated['primary_role'],
                 ]);
             }
         });
@@ -63,8 +66,10 @@ class AdminUserController extends Controller
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
             'password' => 'nullable|string|min:4',
             'roles' => 'required|array|min:1',
+            'primary_role' => ['required', 'string', Rule::in($request->roles ?? [])],
             'is_active' => 'required|boolean',
         ]);
+
 
         DB::transaction(function () use ($validated, $user, $request) {
             $user->update([
@@ -83,13 +88,14 @@ class AdminUserController extends Controller
                 UserRole::create([
                     'user_id' => $user->id,
                     'role' => $role,
-                    'is_primary' => $role === $validated['roles'][0],
+                    'is_primary' => $role === $validated['primary_role'],
                 ]);
             }
         });
 
         return redirect()->route('admin.users')->with('success', 'อัปเดตข้อมูลผู้ใช้เรียบร้อยแล้ว');
     }
+
 
 
     public function toggleStatus(User $user)
