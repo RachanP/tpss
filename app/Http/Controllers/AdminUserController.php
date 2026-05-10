@@ -61,19 +61,20 @@ class AdminUserController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'password' => 'nullable|string|min:4',
             'roles' => 'required|array|min:1',
-            'is_active' => 'boolean',
+            'is_active' => 'required|boolean',
         ]);
 
-        DB::transaction(function () use ($validated, $user) {
+        DB::transaction(function () use ($validated, $user, $request) {
             $user->update([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
-                'is_active' => $validated['is_active'] ?? true,
+                'is_active' => $validated['is_active'],
             ]);
 
             if ($request->filled('password')) {
-                $user->update(['password' => Hash::make($request->password)]);
+                $user->update(['password' => Hash::make($validated['password'])]);
             }
 
             // Sync roles
@@ -89,6 +90,7 @@ class AdminUserController extends Controller
 
         return redirect()->route('admin.users')->with('success', 'อัปเดตข้อมูลผู้ใช้เรียบร้อยแล้ว');
     }
+
 
     public function toggleStatus(User $user)
     {

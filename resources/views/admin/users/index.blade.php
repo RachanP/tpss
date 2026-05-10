@@ -77,15 +77,29 @@
                         <tr>
                             <td>
                                 <div style="display: flex; align-items: center; gap: 12px;">
-                                    <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--bg-2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--brand-navy); font-size: 14px;">
-                                        {{ strtoupper(substr($user->name, 0, 1)) }}
+                                    @php
+                                        $primaryRole = $user->roles->first()?->role ?? 'staff';
+                                        $roleTheme = [
+                                            'admin'       => ['bg' => 'oklch(95% 0.02 240)', 'fg' => 'oklch(35% 0.10 240)', 'icon' => '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>'],
+                                            'staff'       => ['bg' => 'oklch(96% 0.02 200)', 'fg' => 'oklch(45% 0.10 200)', 'icon' => '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'],
+                                            'course_head' => ['bg' => 'oklch(96% 0.04 80)',  'fg' => 'oklch(55% 0.12 80)',  'icon' => '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>'],
+                                            'executive'   => ['bg' => 'oklch(95% 0.04 290)', 'fg' => 'oklch(45% 0.15 290)', 'icon' => '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>'],
+                                            'instructor'  => ['bg' => 'oklch(96% 0.05 150)', 'fg' => 'oklch(45% 0.15 150)', 'icon' => '<path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>'],
+                                        ][$primaryRole] ?? ['bg' => '#f3f4f6', 'fg' => '#6b7280', 'icon' => ''];
+                                    @endphp
+
+                                    <div style="width: 38px; height: 38px; border-radius: 10px; background: {{ $roleTheme['bg'] }}; color: {{ $roleTheme['fg'] }}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: inset 0 0 0 1px color-mix(in oklch, {{ $roleTheme['fg'] }} 15%, transparent);">
+                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            {!! $roleTheme['icon'] !!}
+                                        </svg>
                                     </div>
                                     <div>
-                                        <div style="font-weight: 600; color: var(--fg-1);">{{ $user->name }}</div>
-                                        <div style="font-size: 12px; color: var(--fg-3); font-family: var(--font-mono);">{{ $user->username }}</div>
+                                        <div style="font-weight: 600; color: var(--fg-1); line-height: 1.3;">{{ $user->name }}</div>
+                                        <div style="font-size: 12px; color: var(--fg-3); font-family: var(--font-mono); margin-top: 1px;">{{ $user->username }}</div>
                                     </div>
                                 </div>
                             </td>
+
                             <td>
                                 <div style="display: flex; flex-wrap: wrap; gap: 4px;">
                                     @foreach($user->roles as $role)
@@ -166,12 +180,13 @@
                             <div class="form-group" style="margin-bottom: 16px;">
                                 <label>บทบาท (Roles) <span style="font-size: 11px; color: var(--fg-3); font-weight: 400; margin-left: 4px;">— เลือกได้มากกว่า 1 บทบาท</span></label>
                                 <div class="role-chip-group">
-                                    @foreach(['admin' => 'System Admin', 'staff' => 'Support Staff', 'maker' => 'Course Head/Maker', 'approver' => 'Executive/Approver', 'lecturer' => 'Instructor'] as $val => $label)
+                                @foreach(['admin' => 'System Admin', 'staff' => 'Support Staff', 'course_head' => 'Course Head/Maker', 'executive' => 'Executive/Approver', 'instructor' => 'Instructor'] as $val => $label)
                                     <label class="role-chip">
                                         <input type="checkbox" name="roles[]" value="{{ $val }}" :checked="currentUser.roles.includes('{{ $val }}')">
                                         <span>{{ $label }}</span>
                                     </label>
                                     @endforeach
+
                                 </div>
                             </div>
 

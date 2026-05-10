@@ -28,8 +28,24 @@
     </div>
 
     <!-- User & Role Switcher -->
+    @php
+        $roleTheme = [
+            'admin'       => ['bg' => 'oklch(95% 0.02 240 / 0.1)', 'fg' => 'var(--brand-gold)', 'icon' => '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>'],
+            'staff'       => ['bg' => 'oklch(96% 0.02 200 / 0.1)', 'fg' => 'oklch(85% 0.10 200)', 'icon' => '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'],
+            'course_head' => ['bg' => 'oklch(96% 0.04 80 / 0.1)',  'fg' => 'oklch(85% 0.12 80)',  'icon' => '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>'],
+            'executive'   => ['bg' => 'oklch(95% 0.04 290 / 0.1)', 'fg' => 'oklch(85% 0.15 290)', 'icon' => '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>'],
+            'instructor'  => ['bg' => 'oklch(96% 0.05 150 / 0.1)', 'fg' => 'oklch(85% 0.15 150)', 'icon' => '<path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>'],
+        ][$activeRole] ?? ['bg' => 'rgba(255,255,255,0.1)', 'fg' => '#fff', 'icon' => ''];
+    @endphp
+
     <div class="sb-user" x-data="{ roleMenuOpen: false }">
-        <div class="sb-av">{{ strtoupper(substr($user->name ?? 'U', 0, 1)) }}</div>
+        <div class="sb-av" style="background: {{ $roleTheme['bg'] }}; color: {{ $roleTheme['fg'] }}; border-color: color-mix(in oklch, {{ $roleTheme['fg'] }} 40%, transparent); border-radius: 10px;">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                {!! $roleTheme['icon'] !!}
+            </svg>
+        </div>
+
+
         <div>
             <div class="sb-uname">{{ $user->name ?? 'Guest' }}</div>
 
