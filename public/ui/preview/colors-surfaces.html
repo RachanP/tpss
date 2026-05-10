@@ -1,0 +1,39 @@
+<!doctype html><html><head><meta charset="utf-8">
+<title>Surfaces & Foreground</title>
+<link rel="stylesheet" href="_card.css">
+<style>
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.block { border-radius: var(--r-lg); padding: 14px; border: 1px solid var(--border); }
+.block .lbl { font-size: 11px; font-family: var(--font-mono); color: var(--fg-3); margin-bottom: 8px; }
+.fg-rows { display: flex; flex-direction: column; gap: 8px; }
+.fg-row  { display: flex; align-items: baseline; gap: 12px; }
+.fg-row .swatch { font-size: 13px; font-weight: 600; }
+.fg-row .meta   { font-size: 10px; font-family: var(--font-mono); color: var(--fg-3); margin-left: auto; }
+</style></head>
+<body><div class="card">
+  <div style="font-size:13px;font-weight:700;margin-bottom:14px">Surfaces & Foreground</div>
+  <div class="grid">
+    <div class="block" style="background: oklch(98% 0.008 220);">
+      <div class="lbl">--bg · page background</div>
+      <div class="block" style="background: #fff; padding: 10px;">
+        <div class="lbl" style="margin:0">--surface · card</div>
+      </div>
+    </div>
+    <div class="block" style="background: var(--surface);">
+      <div class="lbl">--surface-sunken (striped rows)</div>
+      <div style="background: oklch(97% 0.008 220); padding: 10px; border-radius: 6px;">
+        <div class="lbl" style="margin:0">row hover · 97% L</div>
+      </div>
+    </div>
+  </div>
+  <div style="height: 14px"></div>
+  <div class="block">
+    <div class="lbl">Foreground hierarchy</div>
+    <div class="fg-rows">
+      <div class="fg-row"><div class="swatch" style="color:var(--fg-1)">Primary text — ตารางสอน</div><div class="meta">--fg-1 · 16% L</div></div>
+      <div class="fg-row"><div class="swatch" style="color:var(--fg-2)">Secondary — labels & meta</div><div class="meta">--fg-2 · 44% L</div></div>
+      <div class="fg-row"><div class="swatch" style="color:var(--fg-3)">Tertiary — captions</div><div class="meta">--fg-3 · 64% L</div></div>
+      <div class="fg-row"><div class="swatch" style="color:var(--fg-disabled)">Disabled</div><div class="meta">--fg-disabled · 78% L</div></div>
+    </div>
+  </div>
+</div></body></html>

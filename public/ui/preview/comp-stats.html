@@ -1,0 +1,124 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8">
+<title>Components · Stat strip</title>
+<link rel="stylesheet" href="_card.css">
+<style>
+  body { padding: 0; background: #fff; font-family: var(--font-sans); }
+
+  .eyebrow {
+    font-size: 10px; font-weight: 600; color: var(--fg-3);
+    letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 14px 18px 8px;
+    border-bottom: 1px solid var(--border);
+    background: #fff;
+    display: flex; align-items: baseline; justify-content: space-between;
+  }
+  .eyebrow .meta {
+    font-family: var(--font-mono); font-size: 10px;
+    font-weight: 400; color: var(--fg-3);
+    letter-spacing: 0; text-transform: none;
+  }
+
+  /* KPI strip — flat white, hairline divides, single navy accent rule on top of HI */
+  .strip {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+  }
+  .st {
+    padding: 16px 18px;
+    border-right: 1px solid var(--border);
+    position: relative;
+    background: #fff;
+  }
+  .st:last-child { border-right: none; }
+
+  /* 2px navy stripe on top of every KPI = official ledger feel */
+  .st::before {
+    content: ""; position: absolute; left: 0; right: 0; top: 0;
+    height: 2px; background: var(--border);
+  }
+  .st.hi::before   { background: var(--brand-navy); }
+  .st.warn::before { background: var(--status-warning); }
+  .st.err::before  { background: var(--status-conflict); }
+
+  .st-lbl {
+    font-size: 10px; font-weight: 600;
+    color: var(--fg-3);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 10px;
+  }
+  .st-val {
+    font-size: 28px; font-weight: 700;
+    color: var(--fg-1);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+  .st.hi   .st-val { color: var(--brand-navy); }
+  .st.warn .st-val { color: var(--status-warning-fg); }
+  .st.err  .st-val { color: var(--status-conflict-fg); }
+  .st-unit {
+    font-size: 12px; font-weight: 500;
+    color: var(--fg-3);
+    margin-left: 4px;
+  }
+  .st-sub {
+    font-size: 11px; color: var(--fg-3);
+    margin-top: 8px;
+    line-height: 1.4;
+    font-variant-numeric: tabular-nums;
+  }
+  .st-sub strong {
+    color: var(--fg-2); font-weight: 600;
+  }
+  .st.warn .st-sub strong { color: var(--status-warning-fg); }
+  .st.err  .st-sub strong { color: var(--status-conflict-fg); }
+
+  .foot {
+    padding: 10px 18px;
+    background: oklch(98% 0.006 230);
+    border-top: 1px solid var(--border);
+    font-size: 10.5px; color: var(--fg-3); line-height: 1.55;
+  }
+  .foot code {
+    font-family: var(--font-mono); background: #fff;
+    border: 1px solid var(--border);
+    padding: 0 4px; border-radius: 2px;
+    color: var(--fg-2);
+  }
+</style></head>
+<body>
+
+<div class="eyebrow">
+  <span>KPI Summary Strip</span>
+  <span class="meta">flat white · 2px stripe top · 4 columns</span>
+</div>
+
+<div class="strip">
+  <div class="st hi">
+    <div class="st-lbl">ตารางสัปดาห์นี้</div>
+    <div class="st-val">42<span class="st-unit">ชม.</span></div>
+    <div class="st-sub">9 รายวิชา · 16 กลุ่ม</div>
+  </div>
+  <div class="st">
+    <div class="st-lbl">ห้องเรียน</div>
+    <div class="st-val">12<span class="st-unit">ห้อง</span></div>
+    <div class="st-sub">ใช้งาน <strong>78%</strong></div>
+  </div>
+  <div class="st warn">
+    <div class="st-lbl">Workload เกิน</div>
+    <div class="st-val">3<span class="st-unit">อาจารย์</span></div>
+    <div class="st-sub"><strong>เกิน 25 ชม./สัปดาห์</strong></div>
+  </div>
+  <div class="st err">
+    <div class="st-lbl">Conflict</div>
+    <div class="st-val">2<span class="st-unit">รายการ</span></div>
+    <div class="st-sub"><strong>ต้องแก้ไขก่อนบันทึก</strong></div>
+  </div>
+</div>
+
+<div class="foot">
+  หลักการ: พื้นทั้งหมดเป็น <b>สีขาว</b> เพื่อความสะอาดและอ่านง่ายในแดชบอร์ดข้อมูลหนาแน่น. ใช้ <b>แถบสี 2px ด้านบน</b> ของแต่ละ KPI เป็นสัญญาณสถานะ — <code>--brand-navy</code>, <code>--status-warning</code>, <code>--status-conflict</code>. หลีกเลี่ยงพื้นเหลือง/แดงเต็มกล่องเพื่อความเป็นทางการ.
+</div>
+
+</body></html>

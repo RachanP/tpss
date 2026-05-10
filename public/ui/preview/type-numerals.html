@@ -1,0 +1,42 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8">
+<title>Type · Tabular numerals</title>
+<link rel="stylesheet" href="_card.css">
+<style>
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.bx { border: 1px solid var(--border); border-radius: var(--r-lg); padding: 12px 14px; }
+.lb { font-size: 11px; color: var(--fg-3); margin-bottom: 8px; font-family: var(--font-mono); }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 4px 6px; text-align: right; font-size: 14px; }
+th { color: var(--fg-3); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+td:first-child, th:first-child { text-align: left; }
+.pn { font-variant-numeric: proportional-nums; }
+.tn { font-variant-numeric: tabular-nums; }
+.delta-up { color: var(--status-success-fg); }
+.delta-dn { color: var(--status-conflict-fg); }
+</style></head>
+<body><div class="card">
+  <div style="font-size:13px;font-weight:700;margin-bottom:14px">Numerals — always tabular in data</div>
+  <div class="grid">
+    <div class="bx">
+      <div class="lb">Proportional · ✗ wrong for tables</div>
+      <table class="pn">
+        <tr><th>วิชา</th><th>ชม.</th><th>กลุ่ม</th></tr>
+        <tr><td>พยอย 384</td><td>108.5</td><td>9</td></tr>
+        <tr><td>พยกม 383</td><td>72.0</td><td>4</td></tr>
+        <tr><td>พยสจ 485</td><td>136.25</td><td>16</td></tr>
+      </table>
+    </div>
+    <div class="bx" style="background:var(--brand-navy-50)">
+      <div class="lb">Tabular · ✓ aligns columns</div>
+      <table class="tn">
+        <tr><th>วิชา</th><th>ชม.</th><th>กลุ่ม</th></tr>
+        <tr><td>พยอย 384</td><td>108.5</td><td>9</td></tr>
+        <tr><td>พยกม 383</td><td>72.0</td><td>4</td></tr>
+        <tr><td>พยสจ 485</td><td>136.25</td><td>16</td></tr>
+      </table>
+    </div>
+  </div>
+  <div style="font-size:11px;color:var(--fg-3);margin-top:10px">
+    Apply <code class="code">.num</code> or <code class="code">font-variant-numeric: tabular-nums</code> to every workload, hour, count, percent.
+  </div>
+</div></body></html>

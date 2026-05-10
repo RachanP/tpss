@@ -1,0 +1,239 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8">
+<title>Components · Activity row</title>
+<link rel="stylesheet" href="_card.css">
+<style>
+  body { padding: 0; background: #fff; font-family: var(--font-sans); }
+
+  .eyebrow {
+    font-size: 10px; font-weight: 600; color: var(--fg-3);
+    letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 14px 20px 10px;
+    border-bottom: 1px solid var(--border);
+    background: #fff;
+    display: flex; align-items: baseline; justify-content: space-between;
+  }
+  .eyebrow .meta {
+    font-family: var(--font-mono); font-size: 10px;
+    font-weight: 400; color: var(--fg-3);
+    letter-spacing: 0; text-transform: none;
+  }
+
+  /* Section heading bar — formal ledger */
+  .day-hd {
+    display: flex; align-items: baseline; gap: 14px;
+    padding: 9px 20px;
+    background: var(--brand-navy);
+    color: #fff;
+    border-bottom: 1px solid var(--brand-navy);
+  }
+  .day-nm {
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .day-dt {
+    font-family: var(--font-mono);
+    font-size: 11px; color: oklch(85% 0.03 230);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+  .day-count {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 10px; color: oklch(78% 0.04 230);
+    letter-spacing: 0.04em;
+  }
+
+  /* Column header row */
+  .col-hd {
+    display: grid;
+    grid-template-columns: 36px 110px 1fr 220px;
+    background: oklch(98% 0.006 230);
+    border-bottom: 1px solid var(--border);
+  }
+  .col-hd > div {
+    padding: 6px 14px;
+    font-size: 9.5px; font-weight: 700; color: var(--fg-3);
+    letter-spacing: 0.1em; text-transform: uppercase;
+    border-right: 1px solid var(--border-subtle);
+  }
+  .col-hd > div:last-child { border-right: none; }
+  .col-hd .ch-num { text-align: center; padding-left: 0; padding-right: 0; }
+  .col-hd .ch-time { text-align: right; }
+
+  /* Activity row */
+  .list { display: flex; flex-direction: column; }
+  .act {
+    display: grid;
+    grid-template-columns: 36px 110px 1fr 220px;
+    background: #fff;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .act:last-child { border-bottom: none; }
+  .act:hover { background: oklch(99% 0.004 230); }
+
+  .ax-num {
+    text-align: center;
+    padding: 14px 0;
+    font-family: var(--font-mono);
+    font-size: 10.5px; color: var(--fg-3);
+    border-right: 1px solid var(--border-subtle);
+    font-variant-numeric: tabular-nums;
+  }
+  .ax-time {
+    padding: 13px 14px;
+    text-align: right;
+    border-right: 1px solid var(--border-subtle);
+    font-variant-numeric: tabular-nums;
+  }
+  .ax-t { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--fg-1); letter-spacing: 0.01em; }
+  .ax-d { font-size: 10.5px; color: var(--fg-3); margin-top: 3px; }
+
+  .ax-body {
+    padding: 11px 14px;
+    border-right: 1px solid var(--border-subtle);
+    min-width: 0;
+    position: relative;
+  }
+  /* 2px stripe on the body cell, left edge */
+  .ax-body::before {
+    content: ""; position: absolute; left: 0; top: 8px; bottom: 8px;
+    width: 2px; background: var(--c, var(--brand-navy));
+  }
+
+  .tag {
+    display: inline-flex; align-items: center;
+    height: 16px; padding: 0 6px;
+    border-radius: 2px;
+    font-family: var(--font-mono);
+    font-size: 9px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    line-height: 1; margin-bottom: 5px;
+    color: #fff; background: var(--c);
+  }
+  .nm  { font-size: 12.5px; font-weight: 600; color: var(--fg-1); line-height: 1.4; }
+  .loc { font-size: 10.5px; color: var(--fg-3); margin-top: 3px; line-height: 1.4; }
+
+  .act.conflict { background: color-mix(in oklch, var(--status-conflict) 2.5%, white); }
+  .act.conflict .ax-body::before { background: var(--status-conflict); }
+  .act.conflict .tag { background: var(--status-conflict); }
+
+  .ax-meta {
+    padding: 11px 14px;
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  }
+  .grp {
+    font-family: var(--font-mono);
+    font-size: 9.5px; font-weight: 600;
+    padding: 2px 7px; border-radius: 2px;
+    background: #fff; border: 1px solid var(--border-strong);
+    color: var(--fg-2);
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+  }
+  .err-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-family: var(--font-mono);
+    font-size: 9.5px; font-weight: 700;
+    color: #fff; background: var(--status-conflict);
+    border: 1px solid var(--status-conflict);
+    padding: 3px 7px; border-radius: 2px;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    line-height: 1;
+  }
+  .err-badge svg { width: 10px; height: 10px; }
+
+  .foot {
+    padding: 10px 20px;
+    background: oklch(98% 0.006 230);
+    border-top: 1px solid var(--border);
+    font-size: 10.5px; color: var(--fg-3); line-height: 1.6;
+  }
+  .foot code {
+    font-family: var(--font-mono); background: #fff;
+    border: 1px solid var(--border);
+    padding: 0 4px; border-radius: 2px;
+    color: var(--fg-2);
+  }
+</style></head>
+<body>
+
+<div class="eyebrow">
+  <span>Activity Row · Lecturer Schedule (Ledger Form)</span>
+  <span class="meta">5-column tabular · 2px inner stripe</span>
+</div>
+
+<div class="day-hd">
+  <span class="day-nm">วันจันทร์ / Monday</span>
+  <span class="day-dt">15 JUL 2568</span>
+  <span class="day-count">3 ITEMS · 9.5 HRS</span>
+</div>
+
+<div class="col-hd">
+  <div class="ch-num">#</div>
+  <div class="ch-time">เวลา</div>
+  <div>กิจกรรม</div>
+  <div>กลุ่ม / สถานะ</div>
+</div>
+
+<div class="list">
+
+  <div class="act" style="--c: var(--act-lecture)">
+    <div class="ax-num">01</div>
+    <div class="ax-time">
+      <div class="ax-t">08:00–10:00</div>
+      <div class="ax-d">2 ชม.</div>
+    </div>
+    <div class="ax-body">
+      <span class="tag">Lecture</span>
+      <div class="nm">การประเมินผู้สูงอายุเชิงครอบคลุม (CGA)</div>
+      <div class="loc">ห้องบรรยาย 405 · รศ.ดร.วิลาวรรณ สมบูรณ์, อ.ณภัทร ปั้นทอง</div>
+    </div>
+    <div class="ax-meta">
+      <span class="grp">A1–A4</span>
+      <span class="grp">120 คน</span>
+    </div>
+  </div>
+
+  <div class="act" style="--c: var(--act-ward)">
+    <div class="ax-num">02</div>
+    <div class="ax-time">
+      <div class="ax-t">10:00–16:00</div>
+      <div class="ax-d">6 ชม.</div>
+    </div>
+    <div class="ax-body">
+      <span class="tag">Ward</span>
+      <div class="nm">Round Ward · ฝึกปฏิบัติเคสผู้ป่วยสูงอายุ</div>
+      <div class="loc">หอผู้ป่วยอายุรกรรม 4 · โรงพยาบาลศิริราช</div>
+    </div>
+    <div class="ax-meta">
+      <span class="grp">A1</span>
+      <span class="grp">9 คน</span>
+    </div>
+  </div>
+
+  <div class="act conflict" style="--c: var(--act-conference)">
+    <div class="ax-num">03</div>
+    <div class="ax-time">
+      <div class="ax-t">13:00–14:30</div>
+      <div class="ax-d">1.5 ชม.</div>
+    </div>
+    <div class="ax-body">
+      <span class="tag">Conference</span>
+      <div class="nm">Post-conference · สรุปเคสและสะท้อนคิด</div>
+      <div class="loc">ห้องประชุม 308 · อ.ณภัทร ปั้นทอง</div>
+    </div>
+    <div class="ax-meta">
+      <span class="err-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 8v5M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>
+        Conflict
+      </span>
+    </div>
+  </div>
+
+</div>
+
+<div class="foot">
+  หลักการ: รูปแบบ <b>ledger 5-column</b> — ลำดับ / เวลา / กิจกรรม / กลุ่ม. หัวกลุ่มวันใช้ <code>--brand-navy</code> เป็นแถบเต็ม ไม่ใช้ tint อ่อน. tag กิจกรรมเป็น solid ขนาดเล็กเพื่อให้อ่านง่ายในตารางหนาแน่น และ conflict ใช้ badge solid แดงแทน outline เพื่อเน้นเมื่อมีปัญหาจริง.
+</div>
+
+</body></html>

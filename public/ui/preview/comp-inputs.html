@@ -1,0 +1,56 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8">
+<title>Components · Inputs</title>
+<link rel="stylesheet" href="_card.css">
+<style>
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.flbl { font-size: 12px; font-weight: 600; color: var(--fg-1); }
+.fhint { font-size: 11px; color: var(--fg-3); }
+.input {
+  width: 100%; padding: 8px 12px; border: 1.5px solid var(--border);
+  border-radius: var(--r-md); background: #fff; font-family: var(--font-sans);
+  font-size: 13px; color: var(--fg-1); outline: none;
+  transition: border-color .12s, box-shadow .12s;
+}
+.input:focus { border-color: var(--brand-navy); box-shadow: 0 0 0 3px color-mix(in oklch, var(--brand-navy) 18%, transparent); }
+.input.err   { border-color: var(--status-conflict); }
+.input.err:focus { box-shadow: 0 0 0 3px color-mix(in oklch, var(--status-conflict) 22%, transparent); }
+.search { position: relative; }
+.search svg { position: absolute; top: 50%; left: 11px; transform: translateY(-50%);
+              width: 13px; height: 13px; color: var(--fg-3); }
+.search input { padding-left: 32px; }
+.select {
+  appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;
+}
+.error-msg { font-size: 11px; color: var(--status-conflict); display: flex; align-items: center; gap: 4px; }
+</style></head>
+<body><div class="card">
+  <div style="font-size:13px;font-weight:700;margin-bottom:12px">Form fields</div>
+  <div class="grid">
+    <div class="field">
+      <label class="flbl">รหัสวิชา</label>
+      <input class="input" value="พยอย 384" />
+      <span class="fhint">Course code · ตัวอักษรไทย</span>
+    </div>
+    <div class="field">
+      <label class="flbl">หัวหน้าวิชา</label>
+      <select class="input select"><option>รศ.ดร.วิลาวรรณ สมบูรณ์</option></select>
+    </div>
+    <div class="field">
+      <label class="flbl">ค้นหา</label>
+      <div class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input class="input" placeholder="ค้นหาอาจารย์, วิชา, ห้อง…" />
+      </div>
+    </div>
+    <div class="field">
+      <label class="flbl">เวลาเริ่ม</label>
+      <input class="input err" value="08:00" />
+      <span class="error-msg">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r=".5" fill="currentColor"/></svg>
+        ตารางชนกับวิชา พยอย 383 (กลุ่ม A2)
+      </span>
+    </div>
+  </div>
+</div></body></html>
