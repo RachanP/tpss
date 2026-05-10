@@ -467,6 +467,7 @@ mock/
 | ER_v1.jpg อัปเดตให้ตรงกับ schema ปัจจุบัน (รวม user_roles, Phase 2 tables) | mock/er_v1.jpg | ✅ อัปเดตแล้ว (8 พ.ค. 2569) |
 | Enum values Phase 2 (approval action, conflict severity/type, warning type) | CLAUDE.md Database Enum section | ✅ อัปเดตแล้ว (8 พ.ค. 2569) |
 | Glossary เพิ่ม instructor_availability, location_type, course_offering_approval, schedule_conflict, active_role | CLAUDE.md Glossary | ✅ อัปเดตแล้ว (8 พ.ค. 2569) |
+| production/staff.html เสร็จแล้ว (Impeccable design, 6 sections, 11 master-data tabs, schedule grid, reports, inbox, 4 dialogs) | mock/production/staff.html | ✅ อัปเดตแล้ว (8 พ.ค. 2569) |
 
 ---
 
