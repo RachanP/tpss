@@ -44,8 +44,8 @@
 | Phase 1 | Initiation | 25–29 เม.ย. 2569 | ✅ เสร็จแล้ว |
 | Phase 2 | Requirements | 29 เม.ย. – 6 พ.ค. 2569 | ✅ เสร็จแล้ว |
 | Phase 3 | Design | 4–8 พ.ค. 2569 | ✅ เสร็จสมบูรณ์ (UI Mockup + Database Migrations) |
-| Phase 4-5 | Development | 11–28 พ.ค. 2569 | ยังไม่เริ่ม |
-| Phase 5 | Testing | 11 พ.ค. – 2 มิ.ย. 2569 | ยังไม่เริ่ม |
+| Phase 4-5 | Development | 11–28 พ.ค. 2569 | 🟡 กำลังดำเนินการ (Sprint 1: M10) |
+| Phase 5 | Testing | 11 พ.ค. – 2 มิ.ย. 2569 | 🟡 กำลังดำเนินการ (Internal Testing) |
 | Phase 6 | Deployment | 4–5 มิ.ย. 2569 | ยังไม่เริ่ม |
 | Phase 7 | Closure | 7 มิ.ย. 2569 | ยังไม่เริ่ม |
 
@@ -59,7 +59,7 @@
 
 | Sprint | วันที่ | Module | ชื่อ | SP |
 |--------|--------|--------|------|----|
-| Sprint 1 | 11–12 พ.ค. | M10 | Login & RBAC | 24 |
+| Sprint 1 | 11–12 พ.ค. | M10 | Login & RBAC | 24 | 🟡 90% (Admin User Mgmt ✅) |
 | Sprint 2 | 13–15 พ.ค. | M1 | Master Data Management | 43 |
 | Sprint 3 | 18–19 พ.ค. | M2 | Course Management | 19 |
 | Sprint 4 | 20–22 พ.ค. | M3 | Schedule Management | 41 |
@@ -395,7 +395,7 @@ mock/
 | `approver.html` | 🔲 ยังไม่เริ่ม | — |
 | `staff.html` | 🔲 ยังไม่เริ่ม | — |
 | `lecturer.html` | 🔲 ยังไม่เริ่ม | — |
-| `admin.html` | 🔲 ยังไม่เริ่ม | — |
+| `admin.html` | ✅ เสร็จ | Implemented as Blade view with RBAC and multi-role picker |
 
 ### Design System (`mock/production/ui/`)
 
