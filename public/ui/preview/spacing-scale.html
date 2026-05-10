@@ -1,0 +1,26 @@
+<!doctype html><html><head><meta charset="utf-8">
+<title>Spacing · Scale</title>
+<link rel="stylesheet" href="_card.css">
+<style>
+.row { display: grid; grid-template-columns: 80px 1fr 60px; align-items: center;
+       gap: 12px; padding: 4px 0; }
+.lbl { font-family: var(--font-mono); font-size: 10px; color: var(--fg-3); }
+.bar { height: 14px; background: var(--brand-navy); border-radius: 3px; }
+.px  { font-family: var(--font-mono); font-size: 10px; color: var(--fg-2); text-align: right; }
+</style></head>
+<body><div class="card">
+  <div style="font-size:13px;font-weight:700;margin-bottom:10px">Spacing scale</div>
+  <div style="font-size:11px;color:var(--fg-3);margin-bottom:14px">
+    Tight 2/4 px steps for dense data, 8 px base, 12/16/20 for layout.
+  </div>
+  <div class="row"><span class="lbl">--space-1</span><span class="bar" style="width:2px"></span><span class="px">2</span></div>
+  <div class="row"><span class="lbl">--space-2</span><span class="bar" style="width:4px"></span><span class="px">4</span></div>
+  <div class="row"><span class="lbl">--space-3</span><span class="bar" style="width:6px"></span><span class="px">6</span></div>
+  <div class="row"><span class="lbl">--space-4</span><span class="bar" style="width:8px"></span><span class="px">8</span></div>
+  <div class="row"><span class="lbl">--space-5</span><span class="bar" style="width:10px"></span><span class="px">10</span></div>
+  <div class="row"><span class="lbl">--space-6</span><span class="bar" style="width:12px"></span><span class="px">12</span></div>
+  <div class="row"><span class="lbl">--space-8</span><span class="bar" style="width:16px"></span><span class="px">16</span></div>
+  <div class="row"><span class="lbl">--space-10</span><span class="bar" style="width:20px"></span><span class="px">20</span></div>
+  <div class="row"><span class="lbl">--space-12</span><span class="bar" style="width:24px"></span><span class="px">24</span></div>
+  <div class="row"><span class="lbl">--space-16</span><span class="bar" style="width:32px"></span><span class="px">32</span></div>
+</div></body></html>

@@ -1,0 +1,74 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8">
+<title>Components · Schedule grid</title>
+<link rel="stylesheet" href="_card.css">
+<style>
+body { padding: 16px; }
+.grid {
+  display: grid; grid-template-columns: 56px repeat(5, 1fr);
+  gap: 1px; background: var(--border); border: 1px solid var(--border);
+  border-radius: var(--r-xl); overflow: hidden;
+}
+.cell { background: #fff; padding: 6px; min-height: 56px; }
+.hdr-row .cell { background: var(--bg-2); text-align: center;
+                 font-size: 11px; font-weight: 700; color: var(--fg-2);
+                 padding: 8px 6px; min-height: 0; }
+.time { background: var(--bg-2); font-size: 10px; font-weight: 600;
+        color: var(--fg-3); text-align: right; padding-right: 8px;
+        font-variant-numeric: tabular-nums; }
+.act-cell {
+  --c: var(--act-lecture);
+  background: color-mix(in oklch, var(--c) 12%, white);
+  border: 1px solid color-mix(in oklch, var(--c) 28%, white);
+  border-left: 3px solid var(--c);
+  border-radius: 4px; padding: 4px 6px; font-size: 10.5px;
+  cursor: pointer;
+}
+.act-cell.conflict { --c: var(--status-conflict);
+                     background: color-mix(in oklch, var(--status-conflict) 14%, white);
+                     border-color: color-mix(in oklch, var(--status-conflict) 30%, white); }
+.an { font-weight: 700; color: var(--fg-1); line-height: 1.25; }
+.al { font-size: 9px; color: var(--fg-3); margin-top: 2px; }
+.gp { display: inline-block; font-size: 8.5px; font-weight: 700;
+      padding: 0 5px; background: rgba(255,255,255,.7); border-radius: 3px;
+      margin-top: 2px; color: var(--fg-2); }
+</style></head>
+<body>
+<div class="grid">
+  <div class="hdr-row" style="display:contents;">
+    <div class="cell"></div>
+    <div class="cell">จันทร์ 18</div>
+    <div class="cell">อังคาร 19</div>
+    <div class="cell">พุธ 20</div>
+    <div class="cell">พฤหัส 21</div>
+    <div class="cell">ศุกร์ 22</div>
+  </div>
+
+  <div class="cell time">08:00</div>
+  <div class="cell"><div class="act-cell" style="--c: var(--act-lecture)"><div class="an">CGA Lecture</div><div class="al">ห้อง 405</div><span class="gp">A1–A4</span></div></div>
+  <div class="cell"><div class="act-cell" style="--c: var(--act-ward)"><div class="an">Ward Round</div><div class="al">ศัลยกรรม 4</div><span class="gp">A1</span></div></div>
+  <div class="cell"><div class="act-cell conflict"><div class="an">Conflict!</div><div class="al">overlap @09:30</div></div></div>
+  <div class="cell"><div class="act-cell" style="--c: var(--act-lab)"><div class="an">Lab — IV insert</div><span class="gp">A2,A3</span></div></div>
+  <div class="cell"></div>
+
+  <div class="cell time">10:00</div>
+  <div class="cell"></div>
+  <div class="cell"><div class="act-cell" style="--c: var(--act-ward)"><div class="an">Ward Round</div><span class="gp">A1</span></div></div>
+  <div class="cell"><div class="act-cell" style="--c: var(--act-community)"><div class="an">Community Visit</div><div class="al">รพ.สต. ศาลายา</div><span class="gp">B1–B4</span></div></div>
+  <div class="cell"><div class="act-cell" style="--c: var(--act-lab)"><div class="an">Lab — IV insert</div></div></div>
+  <div class="cell"><div class="act-cell" style="--c: var(--act-conference)"><div class="an">Conference</div><div class="al">case 03</div><span class="gp">A2</span></div></div>
+
+  <div class="cell time">12:00</div>
+  <div class="cell" style="background:var(--bg-2)"></div>
+  <div class="cell" style="background:var(--bg-2)"></div>
+  <div class="cell" style="background:var(--bg-2)"></div>
+  <div class="cell" style="background:var(--bg-2)"></div>
+  <div class="cell" style="background:var(--bg-2)"></div>
+
+  <div class="cell time">13:00</div>
+  <div class="cell"><div class="act-cell" style="--c: var(--act-sdl)"><div class="an">SDL</div></div></div>
+  <div class="cell"></div>
+  <div class="cell"><div class="act-cell" style="--c: var(--act-confer)"><div class="an">Post-conf</div><span class="gp">A1</span></div></div>
+  <div class="cell"></div>
+  <div class="cell"><div class="act-cell" style="--c: var(--act-exam)"><div class="an">Procedure exam</div><span class="gp">A1–A4</span></div></div>
+</div>
+</body></html>

@@ -1,0 +1,32 @@
+<!doctype html><html><head><meta charset="utf-8">
+<title>Shadow & Elevation</title>
+<link rel="stylesheet" href="_card.css">
+<style>
+.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+        padding: 8px; }
+.cell { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.box { width: 100%; height: 70px; background: #fff; border-radius: var(--r-lg); border: 1px solid var(--border-subtle); }
+.lb { font-family: var(--font-mono); font-size: 10px; color: var(--fg-3); }
+.nm { font-size: 11px; font-weight: 700; color: var(--fg-1); }
+</style></head>
+<body><div class="card">
+  <div style="font-size:13px;font-weight:700;margin-bottom:14px">Shadow & elevation</div>
+  <div class="grid">
+    <div class="cell"><div class="box" style="box-shadow:var(--shadow-xs)"></div>
+      <div class="nm">--shadow-xs</div><div class="lb">resting</div></div>
+    <div class="cell"><div class="box" style="box-shadow:var(--shadow-sm)"></div>
+      <div class="nm">--shadow-sm</div><div class="lb">topbar</div></div>
+    <div class="cell"><div class="box" style="box-shadow:var(--shadow-md)"></div>
+      <div class="nm">--shadow-md</div><div class="lb">card hover</div></div>
+    <div class="cell"><div class="box" style="box-shadow:var(--shadow-lg)"></div>
+      <div class="nm">--shadow-lg</div><div class="lb">popover</div></div>
+    <div class="cell"><div class="box" style="box-shadow:var(--shadow-xl)"></div>
+      <div class="nm">--shadow-xl</div><div class="lb">modal</div></div>
+    <div class="cell"><div class="box" style="box-shadow:var(--shadow-brand)"></div>
+      <div class="nm">--shadow-brand</div><div class="lb">role-tinted</div></div>
+    <div class="cell"><div class="box" style="box-shadow:var(--shadow-focus);border-color:var(--brand-navy)"></div>
+      <div class="nm">--shadow-focus</div><div class="lb">focus ring</div></div>
+    <div class="cell"><div class="box" style="border:1px dashed var(--border-strong);box-shadow:none"></div>
+      <div class="nm">flat / dashed</div><div class="lb">empty state</div></div>
+  </div>
+</div></body></html>

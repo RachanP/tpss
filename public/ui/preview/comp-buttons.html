@@ -1,0 +1,165 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8">
+<title>Components · Buttons</title>
+<link rel="stylesheet" href="_card.css">
+<style>
+  body { padding: 0; background: #fff; font-family: var(--font-sans); }
+
+  .eyebrow {
+    font-size: 10px; font-weight: 600; color: var(--fg-3);
+    letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 14px 18px 8px;
+    border-bottom: 1px solid var(--border);
+    background: #fff;
+    display: flex; align-items: baseline; justify-content: space-between;
+  }
+  .eyebrow .meta {
+    font-family: var(--font-mono); font-size: 10px;
+    font-weight: 400; color: var(--fg-3);
+    letter-spacing: 0; text-transform: none;
+  }
+
+  /* Strict directory table */
+  table { width: 100%; border-collapse: collapse; background: #fff; }
+  thead th {
+    background: oklch(98% 0.006 230);
+    color: var(--fg-2); font-weight: 600; text-align: left;
+    padding: 7px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+    height: 26px; white-space: nowrap;
+  }
+  tbody td {
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--border-subtle);
+    vertical-align: middle;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+
+  .tk { font-family: var(--font-mono); font-size: 10.5px; color: var(--fg-2); width: 110px; white-space: nowrap; }
+  .use { font-size: 11px; color: var(--fg-3); width: 200px; }
+
+  .demo { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+  /* Buttons — sharp 2px, formal */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 14px;
+    border-radius: 2px;
+    border: 1px solid;
+    font-family: var(--font-sans);
+    font-size: 12.5px; font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    line-height: 1.4;
+    transition: background 120ms;
+  }
+  .btn svg { width: 12px; height: 12px; }
+
+  .btn-primary   { background: var(--brand-navy); color: #fff; border-color: var(--brand-navy); }
+  .btn-primary:hover { background: var(--brand-navy-700); }
+  .btn-secondary { background: #fff; color: var(--fg-1); border-color: var(--border-strong); }
+  .btn-secondary:hover { background: oklch(98% 0.006 230); }
+  .btn-ghost     { background: transparent; color: var(--brand-navy); border-color: transparent; padding-left: 8px; padding-right: 8px; }
+  .btn-ghost:hover { background: var(--brand-navy-50); }
+  .btn-success   { background: #fff; color: var(--status-success-fg); border-color: color-mix(in oklch, var(--status-success) 50%, white); }
+  .btn-success:hover { background: var(--status-success-bg); }
+  .btn-danger    { background: #fff; color: var(--status-conflict-fg); border-color: color-mix(in oklch, var(--status-conflict) 45%, white); }
+  .btn-danger:hover { background: var(--status-conflict-bg); }
+  .btn-disabled  { background: oklch(96% 0.005 240); color: var(--fg-disabled); border-color: var(--border); cursor: not-allowed; }
+
+  .btn-sm { padding: 3px 9px; font-size: 11px; }
+
+  .foot {
+    padding: 10px 18px;
+    background: oklch(98% 0.006 230);
+    border-top: 1px solid var(--border);
+    font-size: 10.5px; color: var(--fg-3); line-height: 1.55;
+  }
+  .foot code {
+    font-family: var(--font-mono); background: #fff;
+    border: 1px solid var(--border);
+    padding: 0 4px; border-radius: 2px;
+    color: var(--fg-2);
+  }
+</style></head>
+<body>
+
+<div class="eyebrow">
+  <span>Action Controls</span>
+  <span class="meta">radius 2px · 1px border · 12.5/11px</span>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Token</th>
+      <th>Usage</th>
+      <th>Specimen</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="tk">.btn-primary</td>
+      <td class="use">การกระทำหลัก เช่น บันทึก / ส่งขออนุมัติ</td>
+      <td>
+        <div class="demo">
+          <button class="btn btn-primary">บันทึกตาราง</button>
+          <button class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12l5 5L20 7"/></svg>ส่งขออนุมัติ</button>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td class="tk">.btn-secondary</td>
+      <td class="use">การกระทำรอง เช่น ยกเลิก / เพิ่มกิจกรรม</td>
+      <td>
+        <div class="demo">
+          <button class="btn btn-secondary">ยกเลิก</button>
+          <button class="btn btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>เพิ่มกิจกรรม</button>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td class="tk">.btn-ghost</td>
+      <td class="use">ลิงก์/การกระทำเสริมในตาราง</td>
+      <td>
+        <div class="demo">
+          <button class="btn btn-ghost">ดูรายละเอียด</button>
+          <button class="btn btn-ghost btn-sm">แก้ไข</button>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td class="tk">.btn-success</td>
+      <td class="use">อนุมัติ — outline เขียวอ่อน</td>
+      <td>
+        <div class="demo">
+          <button class="btn btn-success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12l5 5L20 7"/></svg>อนุมัติ</button>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td class="tk">.btn-danger</td>
+      <td class="use">ตีกลับ/ปฏิเสธ — outline แดงอ่อน</td>
+      <td>
+        <div class="demo">
+          <button class="btn btn-danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>ตีกลับ</button>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td class="tk">.btn-disabled</td>
+      <td class="use">บันทึกไม่ได้เมื่อมี Conflict</td>
+      <td>
+        <div class="demo">
+          <button class="btn btn-disabled" disabled>ไม่สามารถบันทึก (มี Conflict)</button>
+        </div>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="foot">
+  หลักการ: ปุ่มหลักหนึ่งปุ่มต่อหน้าจอ ใช้ <code>--brand-navy</code> เป็น solid fill. ปุ่มสถานะ (success/danger) ใช้ <b>outline</b> ไม่ใช่ solid เพื่อสำรอง solid ไว้ใช้กับการกระทำหลักเท่านั้น.
+</div>
+
+</body></html>

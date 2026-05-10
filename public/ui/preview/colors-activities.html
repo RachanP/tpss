@@ -1,0 +1,204 @@
+<!doctype html><html><head><meta charset="utf-8">
+<title>Activity Types · Enterprise data table</title>
+<link rel="stylesheet" href="_card.css">
+<style>
+  body { padding: 0; background: #fff; font-family: var(--font-sans); }
+
+  .frame { padding: 0; }
+
+  /* Section eyebrow — small, crisp, formal */
+  .eyebrow {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--fg-3);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 14px 16px 8px;
+    border-bottom: 1px solid var(--border);
+    background: #fff;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+  .eyebrow .meta {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--fg-3);
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  /* Strict data table — hairline rules, no shadows, no rounded rows */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    font-size: 12px;
+  }
+  thead th {
+    background: oklch(98% 0.006 230);
+    color: var(--fg-2);
+    font-weight: 600;
+    text-align: left;
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    height: 28px;
+    white-space: nowrap;
+  }
+  thead th.num { text-align: right; }
+
+  tbody td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-subtle);
+    vertical-align: middle;
+    color: var(--fg-1);
+    height: 32px;
+  }
+  tbody tr:last-child td { border-bottom: 1px solid var(--border); }
+  tbody tr:hover td { background: oklch(98.5% 0.005 230); }
+
+  /* Color cell — left rail strip, no rounding */
+  td.swatch-cell {
+    width: 8px;
+    padding: 0;
+    background: var(--c);
+  }
+
+  /* Tag — sharp 2px corners, subtle bg */
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    height: 18px;
+    padding: 0 6px;
+    border-radius: 2px;
+    background: color-mix(in oklch, var(--c) 8%, white);
+    color: var(--c);
+    border: 1px solid color-mix(in oklch, var(--c) 18%, white);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    line-height: 1;
+    font-family: var(--font-sans);
+  }
+
+  .nm-th { font-weight: 500; color: var(--fg-1); }
+  .nm-en { color: var(--fg-3); font-size: 11px; }
+  .num   { font-variant-numeric: tabular-nums; text-align: right; }
+  .mono-cell { font-family: var(--font-mono); font-size: 10.5px; color: var(--fg-3); }
+
+  /* Footnote */
+  .foot {
+    padding: 8px 16px 12px;
+    background: oklch(98% 0.006 230);
+    border-top: 1px solid var(--border);
+    font-size: 10.5px;
+    color: var(--fg-3);
+    line-height: 1.55;
+  }
+  .foot code {
+    font-family: var(--font-mono);
+    background: #fff;
+    border: 1px solid var(--border);
+    padding: 0 4px;
+    border-radius: 2px;
+    color: var(--fg-2);
+  }
+</style></head>
+<body>
+
+<div class="frame">
+
+  <div class="eyebrow">
+    <span>Activity Type Palette</span>
+    <span class="meta">9 types · token: --act-*</span>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:8px"></th>
+        <th style="width:90px">Tag</th>
+        <th>ประเภทกิจกรรม</th>
+        <th>Token</th>
+        <th class="num">Hue</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="--c: oklch(52% 0.16 250)">
+        <td class="swatch-cell"></td>
+        <td><span class="tag">Lecture</span></td>
+        <td><span class="nm-th">บรรยาย</span> <span class="nm-en">· classroom lecture</span></td>
+        <td class="mono-cell">--act-lecture</td>
+        <td class="num mono-cell">250°</td>
+      </tr>
+      <tr style="--c: oklch(54% 0.16 165)">
+        <td class="swatch-cell"></td>
+        <td><span class="tag">Lab</span></td>
+        <td><span class="nm-th">ปฏิบัติการ</span> <span class="nm-en">· skills lab</span></td>
+        <td class="mono-cell">--act-lab</td>
+        <td class="num mono-cell">165°</td>
+      </tr>
+      <tr style="--c: oklch(54% 0.16 25)">
+        <td class="swatch-cell"></td>
+        <td><span class="tag">Ward</span></td>
+        <td><span class="nm-th">หอผู้ป่วย</span> <span class="nm-en">· clinical round</span></td>
+        <td class="mono-cell">--act-ward</td>
+        <td class="num mono-cell">25°</td>
+      </tr>
+      <tr style="--c: oklch(54% 0.15 80)">
+        <td class="swatch-cell"></td>
+        <td><span class="tag">Community</span></td>
+        <td><span class="nm-th">ชุมชน</span> <span class="nm-en">· field practicum</span></td>
+        <td class="mono-cell">--act-community</td>
+        <td class="num mono-cell">80°</td>
+      </tr>
+      <tr style="--c: oklch(50% 0.17 290)">
+        <td class="swatch-cell"></td>
+        <td><span class="tag">Conference</span></td>
+        <td><span class="nm-th">Pre / Post-conf</span> <span class="nm-en">· case discussion</span></td>
+        <td class="mono-cell">--act-conference</td>
+        <td class="num mono-cell">290°</td>
+      </tr>
+      <tr style="--c: oklch(50% 0.05 240)">
+        <td class="swatch-cell"></td>
+        <td><span class="tag">SDL</span></td>
+        <td><span class="nm-th">เรียนด้วยตนเอง</span> <span class="nm-en">· self-directed</span></td>
+        <td class="mono-cell">--act-sdl</td>
+        <td class="num mono-cell">240°</td>
+      </tr>
+      <tr style="--c: oklch(48% 0.20 15)">
+        <td class="swatch-cell"></td>
+        <td><span class="tag">Exam</span></td>
+        <td><span class="nm-th">สอบ</span> <span class="nm-en">· procedure / written</span></td>
+        <td class="mono-cell">--act-exam</td>
+        <td class="num mono-cell">15°</td>
+      </tr>
+      <tr style="--c: oklch(54% 0.13 200)">
+        <td class="swatch-cell"></td>
+        <td><span class="tag">Orient</span></td>
+        <td><span class="nm-th">ปฐมนิเทศ</span> <span class="nm-en">· orientation</span></td>
+        <td class="mono-cell">--act-orient</td>
+        <td class="num mono-cell">200°</td>
+      </tr>
+      <tr style="--c: oklch(70% 0.02 240)">
+        <td class="swatch-cell"></td>
+        <td><span class="tag">Holiday</span></td>
+        <td><span class="nm-th">วันหยุด</span> <span class="nm-en">· public holiday</span></td>
+        <td class="mono-cell">--act-holiday</td>
+        <td class="num mono-cell">240°</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="foot">
+    Used as a <code>border-left: 3px</code> rail on grid blocks plus a tinted <code>tag</code>. Never as full cell background — preserves whitespace and keeps the canvas authoritative.
+  </div>
+
+</div>
+
+</body></html>
