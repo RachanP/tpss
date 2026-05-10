@@ -501,6 +501,11 @@ mock/
 - ไอคอน: Feather/Lucide outlined SVG, stroke 1.75–2 px, `currentColor`
 - Anti-reference: ไม่ให้ดูเหมือน consumer app (Notion, Canva) หรือ patient-facing hospital app
 
+### Typography (การใช้งานฟอนต์)
+- **Kanit (`--font-display`)**: ใช้สำหรับ Header, Title, และส่วนหัวข้อหลักที่ต้องการความโดดเด่น
+- **IBM Plex Sans Thai (`--font-sans`)**: ใช้สำหรับ Detail, เนื้อหาทั่วไป (Body text), เมนู, และข้อความ UI ที่ต้องการความอ่านง่ายสบายตา
+- **TH Sarabun New (`--font-print`)**: ใช้สำหรับ Report, เอกสารส่งออก (PDF, Excel), และแบบฟอร์มเอกสารราชการ
+
 ### Design Principles
 1. **ข้อมูลมาก่อนประดับตา** — ทุก px รับใช้การอ่านข้อมูล ไม่ใช่ความสวยงาม
 2. **สีเป็นสัญญาณ ไม่ใช่ตกแต่ง** — แดง/เหลือง/เขียวมีความหมาย ห้ามใช้เป็น decoration
