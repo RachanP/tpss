@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\AdminUserController;
 use Illuminate\Support\Facades\Route;
 
 // ── Root redirect ──────────────────────────────────────────────────
@@ -24,6 +25,13 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/maker/dashboard',    [DashboardController::class, 'maker'])   ->name('maker.dashboard');
     Route::get('/approver/dashboard', [DashboardController::class, 'approver'])->name('approver.dashboard');
     Route::get('/lecturer/dashboard', [DashboardController::class, 'lecturer'])->name('lecturer.dashboard');
+
+    // Admin User Management
+    Route::get('/admin/users', 'App\Http\Controllers\AdminUserController@index')->name('admin.users');
+    Route::post('/admin/users', 'App\Http\Controllers\AdminUserController@store')->name('admin.users.store');
+    Route::put('/admin/users/{user}', 'App\Http\Controllers\AdminUserController@update')->name('admin.users.update');
+    Route::patch('/admin/users/{user}/toggle', 'App\Http\Controllers\AdminUserController@toggleStatus')->name('admin.users.toggle');
+    Route::delete('/admin/users/{user}', 'App\Http\Controllers\AdminUserController@destroy')->name('admin.users.destroy');
 
     // Role switcher
     Route::post('/switch-role', [DashboardController::class, 'switchRole'])->name('switch-role');

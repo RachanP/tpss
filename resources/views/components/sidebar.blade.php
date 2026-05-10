@@ -71,9 +71,9 @@
 
     <!-- Navigation Menus -->
     <div class="sb-nav">
-        <div class="sb-sec">เมนูหลัก</div>
 
         @if($activeRole === 'staff')
+            <div class="sb-sec">เมนูหลัก</div>
             <!-- Staff Menus -->
             <a href="#" class="nv {{ str_contains($currentPath, 'overview') ? 'on' : '' }}">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -127,6 +127,7 @@
             </a>
 
         @elseif($activeRole === 'course_head')
+            <div class="sb-sec">เมนูหลัก</div>
             <!-- Maker Menus -->
             <a href="#" class="nv {{ str_contains($currentPath, 'dashboard') ? 'on' : '' }}">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -161,6 +162,7 @@
             </a>
 
         @elseif($activeRole === 'instructor')
+            <div class="sb-sec">เมนูหลัก</div>
             <!-- Lecturer Menus -->
             <a href="#" class="nv {{ str_contains($currentPath, 'dashboard') ? 'on' : '' }}">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -187,6 +189,7 @@
             </a>
 
         @elseif($activeRole === 'executive')
+            <div class="sb-sec">เมนูหลัก</div>
             <!-- Approver Menus -->
             <a href="#" class="nv {{ str_contains($currentPath, 'dashboard') ? 'on' : '' }}">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -221,7 +224,7 @@
 
         @elseif($activeRole === 'admin')
             <div class="sb-sec">ระบบ</div>
-            <a href="#" class="nv {{ str_contains($currentPath, 'dashboard') ? 'on' : '' }}">
+            <a href="{{ route('admin.dashboard') }}" class="nv {{ Request::routeIs('admin.dashboard') ? 'on' : '' }}">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="3" width="7" height="7"></rect>
                     <rect x="14" y="3" width="7" height="7"></rect>
@@ -230,8 +233,8 @@
                 </svg>
                 ภาพรวมระบบ
             </a>
-            <a href="#" class="nv">
-                <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <a href="{{ route('admin.users') }}" class="nv {{ Request::routeIs('admin.users') ? 'on' : '' }}">
+                <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                     <circle cx="9" cy="7" r="4"></circle>
                     <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
