@@ -16,7 +16,7 @@ class AdminUserController extends Controller
 {
     public function index()
     {
-        $users = User::with(['roles', 'instructorProfile.department'])
+        $users = User::with(['roles', 'instructorProfile.department', 'headOfDepartments', 'secretaryOfDepartments'])
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -26,7 +26,7 @@ class AdminUserController extends Controller
             'inactive' => User::where('is_active', false)->count(),
         ];
 
-        $departments = Department::orderBy('name')->get();
+        $departments = Department::with(['head', 'secretary'])->orderBy('name')->get();
         
         $paCriteria = json_decode(SystemSetting::get('pa_criteria_config', '{}'), true);
         if (empty($paCriteria)) {
@@ -72,6 +72,22 @@ class AdminUserController extends Controller
             'instructor_culture_pct'    => 'nullable|integer|min:0|max:100',
             'instructor_other_pct'      => 'nullable|integer|min:0|max:100',
             'instructor_teaching_quota' => 'nullable|integer|min:0',
+            'instructor_department_position' => [
+                'nullable', 'string', 'in:head,secretary',
+                function ($attribute, $value, $fail) use ($request) {
+                    if (!$value) return;
+                    $deptId = $request->input('instructor_department_id');
+                    if (!$deptId) return;
+                    $dept = Department::find($deptId);
+                    if (!$dept) return;
+                    $conflictUserId = $value === 'head' ? $dept->head_user_id : $dept->secretary_user_id;
+                    if ($conflictUserId) {
+                        $conflictUser = User::find($conflictUserId);
+                        $posLabel = $value === 'head' ? 'หัวหน้าภาควิชา' : 'เลขานุการภาควิชา';
+                        $fail("ภาควิชา {$dept->name} มี{$posLabel}อยู่แล้วคือ {$conflictUser?->name} กรุณาถอดถอนท่านเดิมก่อน หรือเลือกภาควิชาอื่น");
+                    }
+                }
+            ],
         ]);
 
         DB::transaction(function () use ($validated, $request) {
@@ -109,6 +125,15 @@ class AdminUserController extends Controller
                     'other_pct'      => $validated['instructor_other_pct'] ?? 0,
                     'teaching_quota' => $validated['instructor_teaching_quota'] ?? 0,
                 ]);
+
+                // Handle department positions
+                if ($request->filled('instructor_department_position') && $request->filled('instructor_department_id')) {
+                    if ($validated['instructor_department_position'] === 'head') {
+                        Department::where('id', $validated['instructor_department_id'])->update(['head_user_id' => $user->id]);
+                    } else if ($validated['instructor_department_position'] === 'secretary') {
+                        Department::where('id', $validated['instructor_department_id'])->update(['secretary_user_id' => $user->id]);
+                    }
+                }
             }
         });
 
@@ -140,6 +165,22 @@ class AdminUserController extends Controller
             'instructor_culture_pct'    => 'nullable|integer|min:0|max:100',
             'instructor_other_pct'      => 'nullable|integer|min:0|max:100',
             'instructor_teaching_quota' => 'nullable|integer|min:0',
+            'instructor_department_position' => [
+                'nullable', 'string', 'in:head,secretary',
+                function ($attribute, $value, $fail) use ($request, $user) {
+                    if (!$value) return;
+                    $deptId = $request->input('instructor_department_id');
+                    if (!$deptId) return;
+                    $dept = Department::find($deptId);
+                    if (!$dept) return;
+                    $conflictUserId = $value === 'head' ? $dept->head_user_id : $dept->secretary_user_id;
+                    if ($conflictUserId && (int)$conflictUserId !== (int)$user->id) {
+                        $conflictUser = User::find($conflictUserId);
+                        $posLabel = $value === 'head' ? 'หัวหน้าภาควิชา' : 'เลขานุการภาควิชา';
+                        $fail("ภาควิชา {$dept->name} มี{$posLabel}อยู่แล้วคือ {$conflictUser?->name} กรุณาถอดถอนท่านเดิมก่อน หรือเลือกภาควิชาอื่น");
+                    }
+                }
+            ],
         ]);
 
         DB::transaction(function () use ($validated, $user, $request) {
@@ -183,6 +224,18 @@ class AdminUserController extends Controller
                         'teaching_quota' => $validated['instructor_teaching_quota'] ?? 0,
                     ]
                 );
+
+                // Handle department positions (clear old positions first)
+                Department::where('head_user_id', $user->id)->update(['head_user_id' => null]);
+                Department::where('secretary_user_id', $user->id)->update(['secretary_user_id' => null]);
+
+                if ($request->filled('instructor_department_position') && $request->filled('instructor_department_id')) {
+                    if ($validated['instructor_department_position'] === 'head') {
+                        Department::where('id', $validated['instructor_department_id'])->update(['head_user_id' => $user->id]);
+                    } else if ($validated['instructor_department_position'] === 'secretary') {
+                        Department::where('id', $validated['instructor_department_id'])->update(['secretary_user_id' => $user->id]);
+                    }
+                }
             } else {
                 // Remove profile if instructor role removed
                 InstructorProfile::where('user_id', $user->id)->delete();

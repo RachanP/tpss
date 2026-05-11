@@ -2,8 +2,10 @@
     <div x-data="{ 
         activeTab: new URLSearchParams(window.location.search).get('tab') || 'academic',
         workloadWeeks: {{ $workloadWeeks }},
+        teachingWeeks: {{ $teachingWeeks }},
         workloadHoursPerWeek: {{ $workloadHoursPerWeek }},
         get totalQuota() { return this.workloadWeeks * this.workloadHoursPerWeek },
+        get teachingQuota() { return this.teachingWeeks * this.workloadHoursPerWeek },
         showModal: false,
         editMode: false,
         currentYear: {
@@ -213,31 +215,41 @@
                             <div class="card-hdr">
                                 <div class="card-ttl">ค่าคงที่ภาระงานประจำปี</div>
                             </div>
-                            <div class="card-body">
-                                <div class="form-row" style="margin-bottom: 24px;">
-                                    <div class="form-group"
-                                        style="flex: 1; display: flex; flex-direction: column; align-items: center;">
-                                        <label style="text-align: center;">จำนวนสัปดาห์/ปี</label>
+                            <div class="card-body" style="display: flex; flex-direction: column; align-items: center; gap: 20px;">
+                                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; width: 100%;">
+                                    <div class="form-group" style="display: flex; flex-direction: column; align-items: center;">
+                                        <label style="text-align: center; font-size: 11px; white-space: nowrap;">สัปดาห์ทำงานรวม/ปี</label>
                                         <input type="number" name="teaching_quota_weeks" x-model.number="workloadWeeks"
                                             min="1" required
-                                            style="font-weight: 700; text-align: center; max-width: 120px;">
+                                            style="font-weight: 700; text-align: center; width: 80px;">
                                     </div>
-                                    <div class="form-group"
-                                        style="flex: 1; display: flex; flex-direction: column; align-items: center;">
-                                        <label style="text-align: center;">ชม. ทำงาน/สัปดาห์</label>
+                                    <div class="form-group" style="display: flex; flex-direction: column; align-items: center;">
+                                        <label style="text-align: center; font-size: 11px; white-space: nowrap;">สัปดาห์งานสอน/ปี</label>
+                                        <input type="number" name="teaching_load_weeks" x-model.number="teachingWeeks"
+                                            min="1" required
+                                            style="font-weight: 700; text-align: center; width: 80px;">
+                                    </div>
+                                    <div class="form-group" style="display: flex; flex-direction: column; align-items: center;">
+                                        <label style="text-align: center; font-size: 11px; white-space: nowrap;">ชั่วโมงทำงาน/สัปดาห์</label>
                                         <input type="number" name="teaching_quota_hours_per_week"
                                             x-model.number="workloadHoursPerWeek" min="1" required
-                                            style="font-weight: 700; text-align: center; max-width: 120px;">
+                                            style="font-weight: 700; text-align: center; width: 80px;">
                                     </div>
                                 </div>
-                                <div
-                                    style="padding: 16px; background: var(--bg-2); border-radius: 8px; text-align: center; border: 1px solid var(--border);">
-                                    <div style="font-size: 12px; color: var(--fg-3); margin-bottom: 4px;">
-                                        ชั่วโมงปฏิบัติงานรวมต่อปี</div>
-                                    <div
-                                        style="font-size: 32px; font-weight: 800; color: var(--brand-gold); line-height: 1;">
-                                        <span x-text="totalQuota"></span>
-                                        <span style="font-size: 14px; font-weight: 600; color: var(--fg-3);">ชม.</span>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%;">
+                                    <div style="padding: 16px 12px; background: var(--bg-2); border-radius: 12px; text-align: center; border: 1px solid var(--border); display: flex; flex-direction: column; justify-content: center; min-height: 80px;">
+                                        <div style="font-size: 11px; font-weight: 600; color: var(--fg-3); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">ปฏิบัติงานรวม</div>
+                                        <div style="font-size: 24px; font-weight: 800; color: var(--brand-navy); line-height: 1; display: flex; align-items: baseline; justify-content: center; gap: 4px;">
+                                            <span x-text="totalQuota"></span>
+                                            <span style="font-size: 13px; font-weight: 600; color: var(--fg-3);">ชม./ปี</span>
+                                        </div>
+                                    </div>
+                                    <div style="padding: 16px 12px; background: var(--brand-navy); border-radius: 12px; text-align: center; border: 1px solid var(--brand-navy); display: flex; flex-direction: column; justify-content: center; min-height: 80px; box-shadow: 0 4px 12px rgba(0, 35, 71, 0.15);">
+                                        <div style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.7); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">ฐานงานสอน (PA)</div>
+                                        <div style="font-size: 24px; font-weight: 800; color: white; line-height: 1; display: flex; align-items: baseline; justify-content: center; gap: 4px;">
+                                            <span x-text="teachingQuota"></span>
+                                            <span style="font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.6);">ชม./ปี</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

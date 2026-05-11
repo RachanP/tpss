@@ -269,6 +269,16 @@
                 </svg>
                 จัดการผู้ใช้งาน
             </a>
+            <a href="{{ route('admin.master_data') }}" class="nv {{ Request::routeIs('admin.master_data') ? 'on' : '' }}">
+                <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 22h14a2 2 0 002-2V7.5L14.5 2H6a2 2 0 00-2 2v4"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <path d="M2 15h10"></path>
+                    <path d="M2 18h10"></path>
+                    <path d="M2 12h10"></path>
+                </svg>
+                ข้อมูลหลัก
+            </a>
             <a href="{{ route('admin.settings') }}" class="nv {{ Request::routeIs('admin.settings') ? 'on' : '' }}">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="3"></circle>
@@ -290,16 +300,6 @@
             </a>
 
             <div class="sb-sec" style="margin-top: 15px;">จัดการตารางสอน</div>
-            <a href="#" class="nv">
-                <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M4 22h14a2 2 0 002-2V7.5L14.5 2H6a2 2 0 00-2 2v4"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                    <path d="M2 15h10"></path>
-                    <path d="M2 18h10"></path>
-                    <path d="M2 12h10"></path>
-                </svg>
-                ข้อมูลหลัก
-            </a>
             <a href="#" class="nv">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="4" width="18" height="18" rx="2"></rect>

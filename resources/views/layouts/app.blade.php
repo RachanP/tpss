@@ -17,7 +17,7 @@
         [x-cloak] { display: none !important; }
     </style>
 </head>
-<body class="bg-[var(--bg)] text-[var(--fg-1)] font-sans antialiased">
+<body class="bg-(--bg) text-(--fg-1) antialiased" x-data="{ sidebarOpen: true }">
     <div class="app-layout">
         <!-- Sidebar Component -->
         <x-sidebar />

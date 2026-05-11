@@ -1,113 +1,192 @@
 <x-app-layout title="จัดการผู้ใช้งาน">
-    <div x-data='{ 
-        showModal: false, 
-        editMode: false,
-        teachingTotalHours: {{ $systemSettings["teaching_quota_hours"] }},
-        currentUser: {
-            id: "",
-            username: "",
-            name: "",
-            email: "",
-            password: "",
-            roles: [],
-            primary_role: "",
-            is_active: true
-        },
-        instructorProfile: {
-            title: "",
-            department_id: "",
-            employment_type: "พนักงานมหาวิทยาลัย",
-            hired_at: "",
-            academic_degree: "ปริญญาโท",
-            teaching_pct: 0,
-            research_pct: 0,
-            service_pct: 0,
-            culture_pct: 0,
-            other_pct: 0,
-            teaching_quota: 0,
-            employee_id: ""
-        },
-        paCriteria: {{ json_encode($paCriteria) }},
-        get paRules() {
-            const title = this.instructorProfile.title;
-            const degree = this.instructorProfile.academic_degree;
-            const hiredAt = this.instructorProfile.hired_at;
-            const isNote1 = (title === "ผู้ช่วยอาจารย์" && degree === "ปริญญาเอก" && hiredAt && new Date(hiredAt) < new Date("2016-10-01"));
-            
-            if (title === "ผู้ช่วยอาจารย์ (คลินิก)") {
-                return this.paCriteria["ผู้ช่วยอาจารย์_คลินิก"] || {};
-            } else if (title === "ผู้ช่วยอาจารย์ (สอนภาคปฏิบัติ)") {
-                return this.paCriteria["ผู้ช่วยอาจารย์_ปฏิบัติ"] || {};
-            } else if (title === "ผู้ช่วยอาจารย์" && degree === "ปริญญาตรี") {
-                return this.paCriteria["ผู้ช่วยอาจารย์_ปตรี"] || {};
-            } else if (title === "ผู้ช่วยอาจารย์" || title === "อาจารย์" || title === "ผู้ช่วยศาสตราจารย์" || title === "รองศาสตราจารย์" || title === "ศาสตราจารย์" || isNote1) {
-                if (isNote1 || title === "อาจารย์" || title === "ผู้ช่วยศาสตราจารย์" || title === "รองศาสตราจารย์" || title === "ศาสตราจารย์") {
-                    return this.paCriteria["อาจารย์"] || {};
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('userManagement', () => ({
+                showModal: false, 
+                editMode: false,
+                teachingTotalHours: {{ \App\Models\SystemSetting::get('teaching_load_weeks', 39) * \App\Models\SystemSetting::get('teaching_quota_hours_per_week', 35) }}, 
+                currentUser: {
+                    id: '',
+                    username: '',
+                    prefix: '',
+                    name: '',
+                    email: '',
+                    password: '',
+                    roles: [],
+                    primary_role: '',
+                    is_active: true
+                },
+                instructorProfile: {
+                    title: '',
+                    employee_id: '',
+                    department_id: '',
+                    employment_type: 'พนักงานมหาวิทยาลัย',
+                    hired_at: '',
+                    academic_degree: 'ปริญญาโท',
+                    teaching_pct: 0,
+                    research_pct: 0,
+                    service_pct: 0,
+                    culture_pct: 0,
+                    other_pct: 0,
+                    teaching_quota: 0,
+                    employee_id: '',
+                    department_position: ''
+                },
+                departmentsData: {{ Js::from($departments) }},
+                paCriteria: {{ Js::from($paCriteria) }},
+                get paRules() {
+                    const title = this.instructorProfile.title;
+                    const degree = this.instructorProfile.academic_degree;
+                    const hiredAt = this.instructorProfile.hired_at;
+                    const isNote1 = (title === 'ผู้ช่วยอาจารย์' && degree === 'ปริญญาเอก' && hiredAt && new Date(hiredAt) < new Date('2016-10-01'));
+                    
+                    if (title === 'ผู้ช่วยอาจารย์ (คลินิก)') {
+                        return this.paCriteria['ผู้ช่วยอาจารย์_คลินิก'] || {};
+                    } else if (title === 'ผู้ช่วยอาจารย์ (สอนภาคปฏิบัติ)') {
+                        return this.paCriteria['ผู้ช่วยอาจารย์_ปฏิบัติ'] || {};
+                    } else if (title === 'ผู้ช่วยอาจารย์' && degree === 'ปริญญาตรี') {
+                        return this.paCriteria['ผู้ช่วยอาจารย์_ปตรี'] || {};
+                    } else if (title === 'ผู้ช่วยอาจารย์' || title === 'อาจารย์' || title === 'ผู้ช่วยศาสตราจารย์' || title === 'รองศาสตราจารย์' || title === 'ศาสตราจารย์' || isNote1) {
+                        if (isNote1 || title === 'อาจารย์' || title === 'ผู้ช่วยศาสตราจารย์' || title === 'รองศาสตราจารย์' || title === 'ศาสตราจารย์') {
+                            return this.paCriteria['อาจารย์'] || {};
+                        }
+                        return this.paCriteria['ผู้ช่วยอาจารย์'] || {};
+                    }
+                    return { t: '-', r: '-', s: '-', c: '-', o: '-' };
+                },
+                get paTotal() {
+                    return (this.instructorProfile.teaching_pct || 0) + 
+                           (this.instructorProfile.research_pct || 0) + 
+                           (this.instructorProfile.service_pct || 0) + 
+                           (this.instructorProfile.culture_pct || 0) + 
+                           (this.instructorProfile.other_pct || 0);
+                },
+                get hasInstructor() {
+                    return this.currentUser.roles.includes('instructor');
+                },
+                isOutOfRange(value, rule) {
+                    if (!rule || rule === '-') return false;
+                    const val = parseInt(value) || 0;
+                    
+                    if (rule.includes('≤')) {
+                        const max = parseInt(rule.replace('≤', '').trim()) || 0;
+                        return val > max;
+                    }
+                    
+                    if (rule.includes('-')) {
+                        const parts = rule.split('-');
+                        const min = parseInt(parts[0]) || 0;
+                        const max = parseInt(parts[1]) || 0;
+                        return val < min || val > max;
+                    }
+                    
+                    return false;
+                },
+                updateQuota() {
+                    this.instructorProfile.teaching_quota = Math.round((this.teachingTotalHours * (this.instructorProfile.teaching_pct || 0)) / 100);
+                },
+                openAddModal() {
+                    this.editMode = false;
+                    this.currentUser = { id: '', username: '', prefix: '', name: '', email: '', password: '', roles: ['staff'], primary_role: 'staff', is_active: true };
+                    this.instructorProfile = { title: '', employee_id: '', department_id: '', employment_type: 'พนักงานมหาวิทยาลัย', hired_at: '', academic_degree: 'ปริญญาโท', teaching_pct: 0, research_pct: 0, service_pct: 0, culture_pct: 0, other_pct: 0, teaching_quota: 0, department_position: '' };
+                    this.showModal = true;
+                },
+                openEditModal(user) {
+                    this.editMode = true;
+                    this.currentUser = { 
+                        id: user.id, 
+                        username: user.username, 
+                        prefix: user.prefix || '',
+                        name: user.name, 
+                        email: user.email, 
+                        password: '', 
+                        roles: user.roles ? user.roles.map(r => r.role) : [],
+                        primary_role: (user.roles && user.roles.find(r => r.is_primary)) ? user.roles.find(r => r.is_primary).role : (user.roles && user.roles[0] ? user.roles[0].role : ''),
+                        is_active: !!user.is_active
+                    };
+                    
+                    const profile = user.instructor_profile || user.instructorProfile || null;
+                    
+                    this.instructorProfile = profile ? {
+                        title: profile.title || '',
+                        employee_id: profile.employee_id || '',
+                        department_id: profile.department_id || '',
+                        employment_type: profile.employment_type || 'พนักงานมหาวิทยาลัย',
+                        hired_at: profile.hired_at || '',
+                        academic_degree: profile.academic_degree || 'ปริญญาโท',
+                        teaching_pct: profile.teaching_pct || 0,
+                        research_pct: profile.research_pct || 0,
+                        service_pct: profile.service_pct || 0,
+                        culture_pct: profile.culture_pct || 0,
+                        other_pct: profile.other_pct || 0,
+                        teaching_quota: profile.teaching_quota || 0,
+                        department_position: (user.head_of_departments && user.head_of_departments.length > 0) ? 'head' : ((user.secretary_of_departments && user.secretary_of_departments.length > 0) ? 'secretary' : '')
+                    } : { title: '', employee_id: '', department_id: '', employment_type: 'พนักงานมหาวิทยาลัย', hired_at: '', academic_degree: 'ปริญญาโท', teaching_pct: 0, research_pct: 0, service_pct: 0, culture_pct: 0, other_pct: 0, teaching_quota: 0, department_position: '' };
+                    
+                    this.showModal = true;
+                },
+                watchTitleChange(title) {
+                    const highPositions = ['อาจารย์', 'ผู้ช่วยศาสตราจารย์', 'รองศาสตราจารย์', 'ศาสตราจารย์'];
+                    if (highPositions.includes(title)) {
+                        this.instructorProfile.academic_degree = 'ปริญญาเอก';
+                    }
+                },
+                getConflictInfo() {
+                    if (!this.instructorProfile.department_id || !this.instructorProfile.department_position) return null;
+                    
+                    const deptId = String(this.instructorProfile.department_id);
+                    const pos = this.instructorProfile.department_position;
+                    
+                    const dept = this.departmentsData.find(d => String(d.id) === deptId);
+                    if (!dept) return null;
+                    
+                    const existingUserId = pos === 'head' ? dept.head_user_id : dept.secretary_user_id;
+                    const existingUser = pos === 'head' ? dept.head : dept.secretary;
+                    
+                    if (existingUserId && String(existingUserId) !== String(this.currentUser.id)) {
+                        return {
+                            posLabel: pos === 'head' ? 'หัวหน้าภาควิชา' : 'เลขานุการภาควิชา',
+                            name: existingUser ? (existingUser.formatted_name || existingUser.name) : 'ผู้ใช้งานท่านอื่น'
+                        };
+                    }
+                    return null;
+                },
+                confirmSave(e) {
+                    const conflict = this.getConflictInfo();
+                    if (conflict) {
+                        if (!confirm(`คำเตือน: ตำแหน่ง${conflict.posLabel}ของภาควิชานี้ มีคนครองตำแหน่งอยู่แล้วคือ "${conflict.name}"\n\nหากคุณบันทึก ระบบจะถอดถอนท่านเดิมออกและแต่งตั้งท่านนี้แทน\n\nคุณต้องการดำเนินการต่อหรือไม่?`)) {
+                            e.preventDefault();
+                            return false;
+                        }
+                    }
+                    return true;
                 }
-                return this.paCriteria["ผู้ช่วยอาจารย์"] || {};
-            }
-            return { t: "-", r: "-", s: "-", c: "-", o: "-" };
-        },
-        get paTotal() {
-            return (this.instructorProfile.teaching_pct || 0) + 
-                   (this.instructorProfile.research_pct || 0) + 
-                   (this.instructorProfile.service_pct || 0) + 
-                   (this.instructorProfile.culture_pct || 0) + 
-                   (this.instructorProfile.other_pct || 0);
-        },
-        get hasInstructor() {
-            return this.currentUser.roles.includes("instructor");
-        },
-        updateQuota() {
-            this.instructorProfile.teaching_quota = Math.round((this.teachingTotalHours * (this.instructorProfile.teaching_pct || 0)) / 100);
-        },
-        openAddModal() {
-            this.editMode = false;
-            this.currentUser = { id: "", username: "", prefix: "", name: "", email: "", password: "", roles: ["staff"], primary_role: "staff", is_active: true };
-            this.instructorProfile = { title: "", employee_id: "", department_id: "", employment_type: "พนักงานมหาวิทยาลัย", hired_at: "", academic_degree: "ปริญญาโท", teaching_pct: 0, research_pct: 0, service_pct: 0, culture_pct: 0, other_pct: 0, teaching_quota: 0 };
-            this.showModal = true;
-        },
-        openEditModal(user) {
-            this.editMode = true;
-            this.currentUser = { 
-                id: user.id, 
-                username: user.username, 
-                prefix: user.prefix || "",
-                name: user.name, 
-                email: user.email, 
-                password: "", 
-                roles: user.roles ? user.roles.map(r => r.role) : [],
-                primary_role: (user.roles && user.roles.find(r => r.is_primary)) ? user.roles.find(r => r.is_primary).role : (user.roles && user.roles[0] ? user.roles[0].role : ""),
-                is_active: !!user.is_active
-            };
-            
-            const profile = user.instructor_profile || user.instructorProfile || null;
-            
-            this.instructorProfile = profile ? {
-                title: profile.title || "",
-                employee_id: profile.employee_id || "",
-                department_id: profile.department_id || "",
-                employment_type: profile.employment_type || "พนักงานมหาวิทยาลัย",
-                hired_at: profile.hired_at || "",
-                academic_degree: profile.academic_degree || "ปริญญาโท",
-                teaching_pct: profile.teaching_pct || 0,
-                research_pct: profile.research_pct || 0,
-                service_pct: profile.service_pct || 0,
-                culture_pct: profile.culture_pct || 0,
-                other_pct: profile.other_pct || 0,
-                teaching_quota: profile.teaching_quota || 0
-            } : { title: "", employee_id: "", department_id: "", employment_type: "พนักงานมหาวิทยาลัย", hired_at: "", academic_degree: "ปริญญาโท", teaching_pct: 0, research_pct: 0, service_pct: 0, culture_pct: 0, other_pct: 0, teaching_quota: 0 };
-            
-            this.showModal = true;
-        },
-        watchTitleChange(title) {
-            // If title is Instructor or higher positions, auto-set degree to Doctorate
-            const highPositions = ["อาจารย์", "ผู้ช่วยศาสตราจารย์", "รองศาสตราจารย์", "ศาสตราจารย์"];
-            if (highPositions.includes(title)) {
-                this.instructorProfile.academic_degree = "ปริญญาเอก";
-            }
-        }
-    }' x-init='$watch("instructorProfile.teaching_pct", value => updateQuota()); $watch("instructorProfile.title", value => watchTitleChange(value))'>
+            }));
+        });
+    </script>
+
+    <div x-data="userManagement" x-init="
+        $watch('instructorProfile.teaching_pct', value => updateQuota());
+        $watch('instructorProfile.title', value => watchTitleChange(value));
+        @php $oldUserId = old('editing_user_id'); @endphp
+        @if($errors->any() && $oldUserId)
+            (function() {
+                const allUsers = {{ Js::from($users) }};
+                const targetUser = allUsers.find(u => String(u.id) === '{{ $oldUserId }}')
+                if (targetUser) {
+                    openEditModal(targetUser);
+                } else {
+                    showModal = true;
+                }
+                instructorProfile.department_id = '{{ old('instructor_department_id', '') }}';
+                instructorProfile.department_position = '{{ old('instructor_department_position', '') }}';
+            })();
+        @elseif($errors->any())
+            showModal = true;
+            instructorProfile.department_id = '{{ old('instructor_department_id', '') }}';
+            instructorProfile.department_position = '{{ old('instructor_department_position', '') }}';
+        @endif
+    ">
 
         <!-- Header & Stats -->
         <div class="stats-grid">
@@ -192,26 +271,33 @@
                                                 
                                                 if ($profile && $profile->title) {
                                                     $rawTitle = $profile->title;
+                                                    $titleMap = [
+                                                        'อาจารย์' => 'อ.',
+                                                        'ผู้ช่วยศาสตราจารย์' => 'ผศ.',
+                                                        'รองศาสตราจารย์' => 'รศ.',
+                                                        'ศาสตราจารย์' => 'ศ.',
+                                                        'ผู้ช่วยอาจารย์' => 'ผช.อ.',
+                                                        'ผู้ช่วยอาจารย์ (คลินิก)' => 'ผช.อ. (คลินิก)',
+                                                        'ผู้ช่วยอาจารย์ (สอนภาคปฏิบัติ)' => 'ผช.อ. (ปฏิบัติ)',
+                                                    ];
+                                                    $displayTitle = $titleMap[$rawTitle] ?? $rawTitle;
                                                     
                                                     if (str_contains($rawTitle, 'ผู้ช่วยอาจารย์')) {
                                                         if ($profile->academic_degree === 'ปริญญาเอก') {
                                                             $displayTitle = 'ดร.';
                                                         } else {
-                                                            // ถ้าไม่จบ ป.เอก ให้ใช้คำนำหน้าจากระบบ (นาย/นาง/นางสาว)
-                                                            $displayTitle = $userPrefix ?? '';
+                                                            $displayTitle = ($userPrefix ?? '') ?: $displayTitle;
                                                         }
                                                     } else {
-                                                        $displayTitle = $rawTitle;
                                                         if ($profile->academic_degree === 'ปริญญาเอก') {
-                                                            if ($displayTitle === 'อาจารย์') {
+                                                            if ($displayTitle === 'อ.') {
                                                                 $displayTitle = 'อ.ดร.';
                                                             } else if (!str_contains($displayTitle, 'ดร.')) {
-                                                                $displayTitle .= ' ดร.';
+                                                                $displayTitle .= 'ดร.';
                                                             }
                                                         }
                                                     }
                                                 } else {
-                                                    // สำหรับสายสนับสนุน (Staff/Admin)
                                                     $displayTitle = $userPrefix ?? '';
                                                 }
 
@@ -232,6 +318,18 @@
                                             <div
                                                 style="font-size: 12px; color: var(--fg-3); font-family: var(--font-mono); margin-top: 1px;">
                                                 {{ $user->username }}
+                                            </div>
+                                            <div style="display: flex; gap: 4px; margin-top: 4px;">
+                                                @if($user->headOfDepartments->isNotEmpty())
+                                                    <span class="badge" style="background: var(--status-success-bg); color: var(--status-success-fg); font-size: 10px; padding: 1px 6px;">
+                                                        หัวหน้าภาควิชา
+                                                    </span>
+                                                @endif
+                                                @if($user->secretaryOfDepartments->isNotEmpty())
+                                                    <span class="badge" style="background: var(--brand-gold-bg, #fef3c7); color: var(--brand-gold-fg, #92400e); font-size: 10px; padding: 1px 6px;">
+                                                        เลขานุการภาควิชา
+                                                    </span>
+                                                @endif
                                             </div>
                                         </div>
                                     </div>
@@ -318,8 +416,9 @@
                     </div>
                     <form
                         :action="editMode ? '{{ url('admin/users') }}/' + currentUser.id : '{{ route('admin.users.store') }}'"
-                        method="POST">
+                        method="POST" @submit="confirmSave($event)">
                         @csrf
+                        <input type="hidden" name="editing_user_id" :value="currentUser.id">
                         <template x-if="editMode">
                             <input type="hidden" name="_method" value="PUT">
                         </template>
@@ -483,6 +582,30 @@
                                         </div>
                                     </div>
 
+                                    <div class="form-group" style="margin-bottom: 20px;">
+                                        <label>ตำแหน่งบริหารในภาควิชา</label>
+                                        <select name="instructor_department_position" x-model="instructorProfile.department_position">
+                                            <option value="">-- ไม่มีตำแหน่งบริหาร --</option>
+                                            <option value="head">หัวหน้าภาควิชา</option>
+                                            <option value="secretary">เลขานุการภาควิชา</option>
+                                        </select>
+
+                                        {{-- Backend validation error (most reliable) --}}
+                                        @error('instructor_department_position')
+                                            <div style="margin-top: 8px; padding: 10px 14px; background: #fef2f2; border: 1.5px solid #fca5a5; border-radius: 8px; display: flex; align-items: flex-start; gap: 10px;">
+                                                <div style="background: #ef4444; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;">
+                                                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="white" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                                </div>
+                                                <div style="font-size: 12px; color: #991b1b; line-height: 1.6;">
+                                                    <strong style="display: block; font-size: 13px; margin-bottom: 2px;">ไม่สามารถบันทึกได้!</strong>
+                                                    {{ $message }}
+                                                </div>
+                                            </div>
+                                        @enderror
+
+                                        <p style="font-size: 11px; color: var(--fg-3); margin-top: 4px;">* เมื่อเลือกตำแหน่ง ระบบจะอัปเดตข้อมูลในภาควิชาที่เลือกด้านบนให้อัตโนมัติ</p>
+                                    </div>
+
                                     <div style="margin-top: 16px; margin-bottom: 24px;">
                                         <div style="font-weight: 700; color: var(--fg-1); font-size: 13px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
                                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--fg-3);">
@@ -538,7 +661,9 @@
                                                     1. ด้านการสอน (<span x-text="paRules.t"></span>)
                                                 </label>
                                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                                    <input type="number" name="instructor_teaching_pct" x-model.number="instructorProfile.teaching_pct" min="0" max="80" style="font-weight: 700;">
+                                                    <input type="number" name="instructor_teaching_pct" x-model.number="instructorProfile.teaching_pct" 
+                                                        :style='isOutOfRange(instructorProfile.teaching_pct, paRules.t) ? "border-color: var(--status-conflict-fg); background: oklch(97% 0.02 20); color: var(--status-conflict-fg)" : ""'
+                                                        style="font-weight: 700;">
                                                     <span style="font-size: 13px; color: var(--fg-3); width: 20px;">%</span>
                                                 </div>
                                             </div>
@@ -547,7 +672,9 @@
                                                     2. ด้านวิจัย (<span x-text="paRules.r"></span>)
                                                 </label>
                                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                                    <input type="number" name="instructor_research_pct" x-model.number="instructorProfile.research_pct" min="0" max="80" style="font-weight: 700;">
+                                                    <input type="number" name="instructor_research_pct" x-model.number="instructorProfile.research_pct" 
+                                                        :style='isOutOfRange(instructorProfile.research_pct, paRules.r) ? "border-color: var(--status-conflict-fg); background: oklch(97% 0.02 20); color: var(--status-conflict-fg)" : ""'
+                                                        style="font-weight: 700;">
                                                     <span style="font-size: 13px; color: var(--fg-3); width: 20px;">%</span>
                                                 </div>
                                             </div>
@@ -556,7 +683,9 @@
                                                     3. บริการวิชาการ (<span x-text="paRules.s"></span>)
                                                 </label>
                                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                                    <input type="number" name="instructor_service_pct" x-model.number="instructorProfile.service_pct" min="0" max="80" style="font-weight: 700;">
+                                                    <input type="number" name="instructor_service_pct" x-model.number="instructorProfile.service_pct" 
+                                                        :style='isOutOfRange(instructorProfile.service_pct, paRules.s) ? "border-color: var(--status-conflict-fg); background: oklch(97% 0.02 20); color: var(--status-conflict-fg)" : ""'
+                                                        style="font-weight: 700;">
                                                     <span style="font-size: 13px; color: var(--fg-3); width: 20px;">%</span>
                                                 </div>
                                             </div>
@@ -565,7 +694,9 @@
                                                     4. ศิลปวัฒนธรรม (<span x-text="paRules.c"></span>)
                                                 </label>
                                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                                    <input type="number" name="instructor_culture_pct" x-model.number="instructorProfile.culture_pct" min="0" max="80" style="font-weight: 700;">
+                                                    <input type="number" name="instructor_culture_pct" x-model.number="instructorProfile.culture_pct" 
+                                                        :style='isOutOfRange(instructorProfile.culture_pct, paRules.c) ? "border-color: var(--status-conflict-fg); background: oklch(97% 0.02 20); color: var(--status-conflict-fg)" : ""'
+                                                        style="font-weight: 700;">
                                                     <span style="font-size: 13px; color: var(--fg-3); width: 20px;">%</span>
                                                 </div>
                                             </div>
@@ -574,7 +705,9 @@
                                                     5. งานอื่นๆ มอบหมาย (<span x-text="paRules.o"></span>)
                                                 </label>
                                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                                    <input type="number" name="instructor_other_pct" x-model.number="instructorProfile.other_pct" min="0" max="80" style="font-weight: 700;">
+                                                    <input type="number" name="instructor_other_pct" x-model.number="instructorProfile.other_pct" 
+                                                    :style='isOutOfRange(instructorProfile.other_pct, paRules.o) ? "border-color: var(--status-conflict-fg); background: oklch(97% 0.02 20); color: var(--status-conflict-fg)" : ""'
+                                                    style="font-weight: 700;">
                                                     <span style="font-size: 13px; color: var(--fg-3); width: 20px;">%</span>
                                                 </div>
                                             </div>

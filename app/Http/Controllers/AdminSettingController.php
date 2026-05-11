@@ -15,8 +15,10 @@ class AdminSettingController extends Controller
         $paCriteria = json_decode(SystemSetting::get('pa_criteria_config', '{}'), true);
         
         $workloadWeeks = SystemSetting::get('teaching_quota_weeks', 46);
+        $teachingWeeks = SystemSetting::get('teaching_load_weeks', 39);
         $workloadHoursPerWeek = SystemSetting::get('teaching_quota_hours_per_week', 35);
         $workloadQuota = SystemSetting::get('teaching_quota_hours', 1610);
+        $teachingQuota = $teachingWeeks * $workloadHoursPerWeek;
         
         // Default PA if not set
         if (empty($paCriteria)) {
@@ -29,7 +31,7 @@ class AdminSettingController extends Controller
             ];
         }
 
-        return view('admin.settings', compact('academicYears', 'paCriteria', 'workloadQuota', 'workloadWeeks', 'workloadHoursPerWeek'));
+        return view('admin.settings', compact('academicYears', 'paCriteria', 'workloadQuota', 'teachingQuota', 'workloadWeeks', 'teachingWeeks', 'workloadHoursPerWeek'));
     }
 
     public function storeYear(Request $request)
@@ -76,6 +78,7 @@ class AdminSettingController extends Controller
     {
         $request->validate([
             'teaching_quota_weeks' => 'required|numeric|min:1',
+            'teaching_load_weeks' => 'required|numeric|min:1',
             'teaching_quota_hours_per_week' => 'required|numeric|min:1',
             'pa_criteria' => 'required|array'
         ]);
@@ -84,6 +87,7 @@ class AdminSettingController extends Controller
         $totalHours = $request->teaching_quota_weeks * $request->teaching_quota_hours_per_week;
 
         SystemSetting::set('teaching_quota_weeks', $request->teaching_quota_weeks);
+        SystemSetting::set('teaching_load_weeks', $request->teaching_load_weeks);
         SystemSetting::set('teaching_quota_hours_per_week', $request->teaching_quota_hours_per_week);
         SystemSetting::set('teaching_quota_hours', $totalHours);
         SystemSetting::set('pa_criteria_config', json_encode($request->pa_criteria));
