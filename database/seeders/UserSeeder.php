@@ -18,6 +18,7 @@ class UserSeeder extends Seeder
 
         $users = [
             [
+                'prefix' => 'นาย',
                 'username' => 'admin_01',
                 'name' => 'ราชันย์ พิพัฒน์',
                 'email' => 'admin_01@mahidol.edu',
@@ -27,6 +28,7 @@ class UserSeeder extends Seeder
 
         foreach ($users as $userData) {
             $user = User::create([
+                'prefix' => $userData['prefix'],
                 'username' => $userData['username'],
                 'name' => $userData['name'],
                 'email' => $userData['email'],

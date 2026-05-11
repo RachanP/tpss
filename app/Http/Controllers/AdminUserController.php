@@ -52,6 +52,7 @@ class AdminUserController extends Controller
 
         $validated = $request->validate([
             'username'     => 'required|string|max:100|unique:users',
+            'prefix'       => 'nullable|string|max:50',
             'name'         => 'required|string|max:255',
             'email'        => 'required|string|email|max:255|unique:users',
             'password'     => 'required|string|min:4',
@@ -76,6 +77,7 @@ class AdminUserController extends Controller
         DB::transaction(function () use ($validated, $request) {
             $user = User::create([
                 'username'  => $validated['username'],
+                'prefix'    => $validated['prefix'] ?? null,
                 'name'      => $validated['name'],
                 'email'     => $validated['email'],
                 'password'  => Hash::make($validated['password']),
@@ -118,6 +120,7 @@ class AdminUserController extends Controller
         $roles = $request->input('roles', []);
 
         $validated = $request->validate([
+            'prefix'       => 'nullable|string|max:50',
             'name'         => 'required|string|max:255',
             'email'        => 'required|string|email|max:255|unique:users,email,' . $user->id,
             'password'     => 'nullable|string|min:4',
@@ -141,6 +144,7 @@ class AdminUserController extends Controller
 
         DB::transaction(function () use ($validated, $user, $request) {
             $user->update([
+                'prefix'    => $validated['prefix'] ?? null,
                 'name'      => $validated['name'],
                 'email'     => $validated['email'],
                 'is_active' => $validated['is_active'],

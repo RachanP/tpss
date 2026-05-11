@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('instructor_profiles', function (Blueprint $table) {
-            $table->string('employee_id', 50)->nullable()->after('user_id')->comment('รหัสพนักงาน/อาจารย์');
+        Schema::table('users', function (Blueprint $table) {
+            $table->string('prefix', 50)->nullable()->after('id');
         });
     }
 
@@ -21,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('instructor_profiles', function (Blueprint $table) {
-            $table->dropColumn('employee_id');
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropColumn('prefix');
         });
     }
 };

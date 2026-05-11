@@ -63,7 +63,7 @@
         },
         openAddModal() {
             this.editMode = false;
-            this.currentUser = { id: "", username: "", name: "", email: "", password: "", roles: ["staff"], primary_role: "staff", is_active: true };
+            this.currentUser = { id: "", username: "", prefix: "", name: "", email: "", password: "", roles: ["staff"], primary_role: "staff", is_active: true };
             this.instructorProfile = { title: "", employee_id: "", department_id: "", employment_type: "พนักงานมหาวิทยาลัย", hired_at: "", academic_degree: "ปริญญาโท", teaching_pct: 0, research_pct: 0, service_pct: 0, culture_pct: 0, other_pct: 0, teaching_quota: 0 };
             this.showModal = true;
         },
@@ -72,6 +72,7 @@
             this.currentUser = { 
                 id: user.id, 
                 username: user.username, 
+                prefix: user.prefix || "",
                 name: user.name, 
                 email: user.email, 
                 password: "", 
@@ -98,8 +99,15 @@
             } : { title: "", employee_id: "", department_id: "", employment_type: "พนักงานมหาวิทยาลัย", hired_at: "", academic_degree: "ปริญญาโท", teaching_pct: 0, research_pct: 0, service_pct: 0, culture_pct: 0, other_pct: 0, teaching_quota: 0 };
             
             this.showModal = true;
+        },
+        watchTitleChange(title) {
+            // If title is Instructor or higher positions, auto-set degree to Doctorate
+            const highPositions = ["อาจารย์", "ผู้ช่วยศาสตราจารย์", "รองศาสตราจารย์", "ศาสตราจารย์"];
+            if (highPositions.includes(title)) {
+                this.instructorProfile.academic_degree = "ปริญญาเอก";
+            }
         }
-    }' x-init='$watch("instructorProfile.teaching_pct", value => updateQuota())'>
+    }' x-init='$watch("instructorProfile.teaching_pct", value => updateQuota()); $watch("instructorProfile.title", value => watchTitleChange(value))'>
 
         <!-- Header & Stats -->
         <div class="stats-grid">
@@ -175,8 +183,51 @@
                                                 {!! $roleTheme['icon'] !!}
                                             </svg>
                                         </div>
+                                        <div>
+                                            @php
+                                                $profile = $user->instructorProfile;
+                                                $displayTitle = '';
+                                                $cleanName = $user->name;
+                                                $userPrefix = $user->prefix;
+                                                
+                                                if ($profile && $profile->title) {
+                                                    $rawTitle = $profile->title;
+                                                    
+                                                    if (str_contains($rawTitle, 'ผู้ช่วยอาจารย์')) {
+                                                        if ($profile->academic_degree === 'ปริญญาเอก') {
+                                                            $displayTitle = 'ดร.';
+                                                        } else {
+                                                            // ถ้าไม่จบ ป.เอก ให้ใช้คำนำหน้าจากระบบ (นาย/นาง/นางสาว)
+                                                            $displayTitle = $userPrefix ?? '';
+                                                        }
+                                                    } else {
+                                                        $displayTitle = $rawTitle;
+                                                        if ($profile->academic_degree === 'ปริญญาเอก') {
+                                                            if ($displayTitle === 'อาจารย์') {
+                                                                $displayTitle = 'อ.ดร.';
+                                                            } else if (!str_contains($displayTitle, 'ดร.')) {
+                                                                $displayTitle .= ' ดร.';
+                                                            }
+                                                        }
+                                                    }
+                                                } else {
+                                                    // สำหรับสายสนับสนุน (Staff/Admin)
+                                                    $displayTitle = $userPrefix ?? '';
+                                                }
+
+                                                // จัดการช่องว่าง: ให้ชิดชื่อเลยสำหรับคำนำหน้าทั่วไป และ ดร.
+                                                $noSpacePrefixes = ['นาย', 'นาง', 'นางสาว', 'น.ส.', 'ดร.'];
+                                                $needsSpace = true;
+                                                foreach($noSpacePrefixes as $nsp) {
+                                                    if (str_ends_with($displayTitle, $nsp)) {
+                                                        $needsSpace = false;
+                                                        break;
+                                                    }
+                                                }
+                                                $separator = $needsSpace ? ' ' : '';
+                                            @endphp
                                             <div style="font-weight: 600; color: var(--fg-1); line-height: 1.3;">
-                                                {{ $user->name }}
+                                                {{ $displayTitle }}{{ $displayTitle ? $separator : '' }}{{ $cleanName }}
                                             </div>
                                             <div
                                                 style="font-size: 12px; color: var(--fg-3); font-family: var(--font-mono); margin-top: 1px;">
@@ -275,6 +326,21 @@
 
                         <div class="modal-body">
                             <div class="form-row">
+                                <div class="form-group" style="flex: 0 0 120px;">
+                                    <label>คำนำหน้าชื่อ</label>
+                                    <select name="prefix" x-model="currentUser.prefix">
+                                        <option value="">-- ระบุ --</option>
+                                        <option value="นาย">นาย</option>
+                                        <option value="นาง">นาง</option>
+                                        <option value="นางสาว">นางสาว</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="flex: 1;">
+                                    <label>ชื่อ-นามสกุล</label>
+                                    <input type="text" name="name" x-model="currentUser.name" placeholder="ชื่อ และ นามสกุล" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
                                 <div class="form-group">
                                     <label>รหัสเข้าระบบ</label>
                                     <input type="text" name="username" x-model="currentUser.username"
@@ -288,11 +354,7 @@
                                     <input type="password" name="password" :required="!editMode" placeholder="********">
                                 </div>
                             </div>
-                            <div class="form-group" style="margin-bottom: 16px;">
-                                <label>ชื่อ-นามสกุล</label>
-                                <input type="text" name="name" x-model="currentUser.name" required
-                                    placeholder="ชื่อ นามสกุล">
-                            </div>
+
                             <div class="form-group" style="margin-bottom: 16px;">
                                 <label>อีเมล</label>
                                 <input type="email" name="email" x-model="currentUser.email" required
@@ -441,7 +503,7 @@
                                                 <input type="date" name="instructor_hired_at" x-model="instructorProfile.hired_at">
                                             </div>
                                         </div>
-                                        <div class="form-group" style="margin-top: 12px;" x-show='instructorProfile.title === "ผู้ช่วยอาจารย์"'>
+                                        <div class="form-group" style="margin-top: 12px;" x-show='instructorProfile.title !== ""'>
                                             <label style="color: var(--status-success-fg); font-weight: 700;">วุฒิการศึกษาสูงสุด *</label>
                                             <select name="instructor_academic_degree" x-model="instructorProfile.academic_degree">
                                                 <option value="ปริญญาเอก">ปริญญาเอก</option>
