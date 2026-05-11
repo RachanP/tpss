@@ -27,11 +27,13 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/lecturer/dashboard', [DashboardController::class, 'lecturer'])->name('lecturer.dashboard');
 
     // Admin User Management
-    Route::get('/admin/users', 'App\Http\Controllers\AdminUserController@index')->name('admin.users');
-    Route::post('/admin/users', 'App\Http\Controllers\AdminUserController@store')->name('admin.users.store');
-    Route::put('/admin/users/{user}', 'App\Http\Controllers\AdminUserController@update')->name('admin.users.update');
-    Route::patch('/admin/users/{user}/toggle', 'App\Http\Controllers\AdminUserController@toggleStatus')->name('admin.users.toggle');
-    Route::delete('/admin/users/{user}', 'App\Http\Controllers\AdminUserController@destroy')->name('admin.users.destroy');
+    Route::middleware(['\App\Http\Middleware\CheckRole:admin'])->group(function () {
+        Route::get('/admin/users', 'App\Http\Controllers\AdminUserController@index')->name('admin.users');
+        Route::post('/admin/users', 'App\Http\Controllers\AdminUserController@store')->name('admin.users.store');
+        Route::put('/admin/users/{user}', 'App\Http\Controllers\AdminUserController@update')->name('admin.users.update');
+        Route::patch('/admin/users/{user}/toggle', 'App\Http\Controllers\AdminUserController@toggleStatus')->name('admin.users.toggle');
+        Route::delete('/admin/users/{user}', 'App\Http\Controllers\AdminUserController@destroy')->name('admin.users.destroy');
+    });
 
     // Role switcher
     Route::post('/switch-role', [DashboardController::class, 'switchRole'])->name('switch-role');
