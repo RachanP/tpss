@@ -44,7 +44,7 @@
 | Phase 1 | Initiation | 25–29 เม.ย. 2569 | ✅ เสร็จแล้ว |
 | Phase 2 | Requirements | 29 เม.ย. – 6 พ.ค. 2569 | ✅ เสร็จแล้ว |
 | Phase 3 | Design | 4–8 พ.ค. 2569 | ✅ เสร็จสมบูรณ์ (UI Mockup + Database Migrations) |
-| Phase 4-5 | Development | 11–28 พ.ค. 2569 | 🟡 กำลังดำเนินการ (Sprint 1: M10) |
+| Phase 4-5 | Development | 11–28 พ.ค. 2569 | 🟢 เสร็จสิ้น Sprint 1 (Login, RBAC, Settings, User Mgmt) |
 | Phase 5 | Testing | 11 พ.ค. – 2 มิ.ย. 2569 | 🟡 กำลังดำเนินการ (Internal Testing) |
 | Phase 6 | Deployment | 4–5 มิ.ย. 2569 | ยังไม่เริ่ม |
 | Phase 7 | Closure | 7 มิ.ย. 2569 | ยังไม่เริ่ม |
@@ -59,7 +59,7 @@
 
 | Sprint | วันที่ | Module | ชื่อ | SP |
 |--------|--------|--------|------|----|
-| Sprint 1 | 11–12 พ.ค. | M10 | Login & RBAC | 24 | ✅ 100% (Admin User Mgmt & Role Switcher) |
+| Sprint 1 | 11–12 พ.ค. | M10 | Login, RBAC & Admin Settings | 24 | ✅ 100% (Admin User Mgmt, Role Switcher, System Settings) |
 | Sprint 2 | 13–15 พ.ค. | M1 | Master Data Management | 43 |
 | Sprint 3 | 18–19 พ.ค. | M2 | Course Management | 19 |
 | Sprint 4 | 20–22 พ.ค. | M3 | Schedule Management | 41 |
@@ -100,7 +100,8 @@
 1. **Instructor Pool (รายชื่ออาจารย์ประจำวิชา):** หัวหน้าวิชา (Course Head) จะไม่ผูกอาจารย์ติดกับกลุ่มนักศึกษาแบบถาวรในหน้าตั้งค่าวิชา (M2) แต่ใช้วิธี **"เพิ่มรายชื่ออาจารย์ (Add Instructor)"** จากฐานข้อมูลกลาง (HR) เข้ามาในรายวิชา เพื่อสร้างเป็น Pool ของอาจารย์
 2. **Cross-Course Conflict Checking (M4):** อาจารย์ 1 ท่านสามารถถูกเพิ่มชื่อสอนได้หลายวิชาอิสระจากกัน ดังนั้นระบบ Conflict Check จะต้องอ้างอิงจาก **"รหัสประจำตัวอาจารย์ (Global Instructor ID)"** ไปตรวจสอบการซ้อนทับข้ามทุกรายวิชาในคณะทั้งหมด
 3. **Activity Assignment (M3):** เมื่อสร้างกิจกรรม หัวหน้าวิชาจะระบุผู้สอนโดยดึงจาก Instructor Pool ซึ่งรองรับ **Team Supervision (เลือกอาจารย์ผู้สอนได้หลายท่านต่อ 1 กิจกรรม)** 
-4. **Workload Validation (M6):** ก่อนส่งอนุมัติ หัวหน้าวิชาต้องตรวจสอบความสมดุลของ "ภาระงานอาจารย์ (Workload)" เพื่อให้แน่ใจว่าไม่มีอาจารย์ท่านใดรับภาระการสอนมากหรือน้อยเกินไป
+4. **Workload Validation (M6):** ก่อนส่งอนุมัติ หัวหน้าวิชาต้องตรวจสอบความสมดุลของ "ภาระงานอาจารย์ (Workload)" โดยระบบคำนวณจาก **(จำนวนสัปดาห์/ปี) x (ชม. ทำงาน/สัปดาห์)** เพื่อหาชั่วโมงปฏิบัติงานรวมต่อปี (Quota)
+5. **Instructor Profile Data:** เก็บข้อมูลส่วนตัวเพิ่มเติม ได้แก่ **รหัสพนักงาน (Employee ID)**, ตำแหน่งทางวิชาการ, ประเภทการจ้างงาน, และสัดส่วนการปฏิบัติงาน (%) เพื่อใช้ในเกณฑ์ PA
 
 ---
 
@@ -330,6 +331,9 @@
 - **Phase 1 (โปรเจกต์นี้)**: กรอกข้อมูลอาจารย์ **manual** ในระบบผ่าน M1 (Master Data Management) — Admin/Staff เป็นผู้กรอก
 - **Phase 2 (Future)**: วางแผน sync กับระบบ FIMS / HR ของมหาวิทยาลัย — ยังไม่ implement
 - ห้าม hardcode ข้อมูลอาจารย์ — ดึงจาก `users` + `instructor_profiles` เสมอ
+- **Instructor Employee ID**: เก็บใน `instructor_profiles.employee_id` เพื่อใช้ในการระบุตัวตนและตรวจสอบ Conflict ในอนาคต (Sprint 4)
+- **Active Tab Persistence**: หน้า System Settings ใช้พารามิเตอร์ `tab=pa` หรือ `tab=academic` ใน URL เพื่อจำสถานะหน้าจอหลังบันทึกข้อมูล
+- **Mathematical Symbol Helper**: ในหน้าตั้งค่าเกณฑ์ PA มีปุ่มช่วยคัดลอกสัญลักษณ์ `≤`, `≥`, `-`, `%` เพื่อความสะดวกในการบันทึกข้อมูลตามประกาศคณะฯ
 
 ---
 
