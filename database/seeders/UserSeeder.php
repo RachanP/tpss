@@ -19,33 +19,9 @@ class UserSeeder extends Seeder
         $users = [
             [
                 'username' => 'admin_01',
-                'name' => 'System Admin',
+                'name' => 'ราชันย์ พิพัฒน์',
                 'email' => 'admin_01@mahidol.edu',
                 'role' => 'admin'
-            ],
-            [
-                'username' => 'staff_01',
-                'name' => 'Support Staff',
-                'email' => 'staff_01@mahidol.edu',
-                'role' => 'staff'
-            ],
-            [
-                'username' => 'maker_01',
-                'name' => 'Course Head',
-                'email' => 'maker_01@mahidol.edu',
-                'role' => 'course_head'
-            ],
-            [
-                'username' => 'approver_01',
-                'name' => 'Executive',
-                'email' => 'approver_01@mahidol.edu',
-                'role' => 'executive'
-            ],
-            [
-                'username' => 'lecturer_01',
-                'name' => 'Instructor',
-                'email' => 'lecturer_01@mahidol.edu',
-                'role' => 'instructor'
             ]
         ];
 

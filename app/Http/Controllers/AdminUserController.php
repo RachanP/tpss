@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\UserRole;
+use App\Models\Department;
+use App\Models\InstructorProfile;
+use App\Models\SystemSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
@@ -13,45 +16,96 @@ class AdminUserController extends Controller
 {
     public function index()
     {
-        $users = User::with('roles')->orderBy('created_at', 'desc')->get();
-        
-        // Count users by role for stats if needed
+        $users = User::with(['roles', 'instructorProfile.department'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
         $stats = [
-            'total' => User::count(),
-            'active' => User::where('is_active', true)->count(),
+            'total'    => User::count(),
+            'active'   => User::where('is_active', true)->count(),
             'inactive' => User::where('is_active', false)->count(),
         ];
 
-        return view('admin.users.index', compact('users', 'stats'));
+        $departments = Department::orderBy('name')->get();
+        
+        $paCriteria = json_decode(SystemSetting::get('pa_criteria_config', '{}'), true);
+        if (empty($paCriteria)) {
+            $paCriteria = [
+                'อาจารย์' => ['t' => '20-70%', 'r' => '20-70%', 's' => '5-20%', 'c' => '5-15%', 'o' => '0-20%'],
+                'ผู้ช่วยอาจารย์' => ['t' => '≤ 70%', 'r' => '15-20%', 's' => '5-20%', 'c' => '5-20%', 'o' => '0-20%'],
+                'ผู้ช่วยอาจารย์_ปตรี' => ['t' => '30-60%', 'r' => '0%', 's' => '10-30%', 'c' => '10-20%', 'o' => '0-30%'],
+                'ผู้ช่วยอาจารย์_คลินิก' => ['t' => '≤ 10%', 'r' => '0-5%', 's' => '70-80%', 'c' => '0-5%', 'o' => '0-10%'],
+                'ผู้ช่วยอาจารย์_ปฏิบัติ' => ['t' => '≤ 70%', 'r' => '0%', 's' => '5-20%', 'c' => '5-20%', 'o' => '0-20%'],
+            ];
+        }
+
+        $systemSettings = [
+            'teaching_quota_hours' => SystemSetting::get('teaching_quota_hours', 1610)
+        ];
+
+        return view('admin.users.index', compact('users', 'stats', 'departments', 'systemSettings', 'paCriteria'));
     }
 
     public function store(Request $request)
     {
+        $roles = $request->input('roles', []);
+
         $validated = $request->validate([
-            'username' => 'required|string|max:100|unique:users',
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:4',
-            'roles' => 'required|array|min:1',
-            'primary_role' => ['required', 'string', Rule::in($request->roles ?? [])],
-            'is_active' => 'boolean',
+            'username'     => 'required|string|max:100|unique:users',
+            'name'         => 'required|string|max:255',
+            'email'        => 'required|string|email|max:255|unique:users',
+            'password'     => 'required|string|min:4',
+            'roles'        => 'required|array|min:1',
+            'primary_role' => ['required', 'string', Rule::in($roles)],
+            'is_active'    => 'boolean',
+            // instructor profile fields (optional)
+            'instructor_title'          => 'nullable|string|max:100',
+            'instructor_employee_id'     => 'nullable|string|max:50',
+            'instructor_department_id'  => 'nullable|integer|exists:departments,id',
+            'instructor_employment_type' => 'nullable|string|max:100',
+            'instructor_hired_at'        => 'nullable|date',
+            'instructor_academic_degree' => 'nullable|string|max:100',
+            'instructor_teaching_pct'   => 'nullable|integer|min:0|max:100',
+            'instructor_research_pct'   => 'nullable|integer|min:0|max:100',
+            'instructor_service_pct'    => 'nullable|integer|min:0|max:100',
+            'instructor_culture_pct'    => 'nullable|integer|min:0|max:100',
+            'instructor_other_pct'      => 'nullable|integer|min:0|max:100',
+            'instructor_teaching_quota' => 'nullable|integer|min:0',
         ]);
 
-
-        DB::transaction(function () use ($validated) {
+        DB::transaction(function () use ($validated, $request) {
             $user = User::create([
-                'username' => $validated['username'],
-                'name' => $validated['name'],
-                'email' => $validated['email'],
-                'password' => Hash::make($validated['password']),
+                'username'  => $validated['username'],
+                'name'      => $validated['name'],
+                'email'     => $validated['email'],
+                'password'  => Hash::make($validated['password']),
                 'is_active' => $validated['is_active'] ?? true,
             ]);
 
             foreach ($validated['roles'] as $role) {
                 UserRole::create([
-                    'user_id' => $user->id,
-                    'role' => $role,
+                    'user_id'    => $user->id,
+                    'role'       => $role,
                     'is_primary' => $role === $validated['primary_role'],
+                ]);
+            }
+
+            // Save instructor profile if instructor role is included
+            if (in_array('instructor', $validated['roles'])) {
+                InstructorProfile::create([
+                    'user_id'        => $user->id,
+                    'title'          => $validated['instructor_title'] ?? null,
+                    'employee_id'    => $validated['instructor_employee_id'] ?? null,
+                    'department_id'  => $validated['instructor_department_id'] ?? null,
+                    'employment_type' => $validated['instructor_employment_type'] ?? null,
+                    'hired_at'       => $validated['instructor_hired_at'] ?? null,
+                    'academic_degree' => $validated['instructor_academic_degree'] ?? null,
+                    'teaching_pct'   => $validated['instructor_teaching_pct'] ?? 0,
+                    'research_pct'   => $validated['instructor_research_pct'] ?? 0,
+                    'service_pct'    => $validated['instructor_service_pct'] ?? 0,
+                    'culture_pct'    => $validated['instructor_culture_pct'] ?? 0,
+                    'other_pct'      => $validated['instructor_other_pct'] ?? 0,
+                    'teaching_quota' => $validated['instructor_teaching_quota'] ?? 0,
                 ]);
             }
         });
@@ -61,20 +115,34 @@ class AdminUserController extends Controller
 
     public function update(Request $request, User $user)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
-            'password' => 'nullable|string|min:4',
-            'roles' => 'required|array|min:1',
-            'primary_role' => ['required', 'string', Rule::in($request->roles ?? [])],
-            'is_active' => 'required|boolean',
-        ]);
+        $roles = $request->input('roles', []);
 
+        $validated = $request->validate([
+            'name'         => 'required|string|max:255',
+            'email'        => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'password'     => 'nullable|string|min:4',
+            'roles'        => 'required|array|min:1',
+            'primary_role' => ['required', 'string', Rule::in($roles)],
+            'is_active'    => 'required|boolean',
+            // instructor profile fields (optional)
+            'instructor_title'          => 'nullable|string|max:100',
+            'instructor_employee_id'     => 'nullable|string|max:50',
+            'instructor_department_id'  => 'nullable|integer|exists:departments,id',
+            'instructor_employment_type' => 'nullable|string|max:100',
+            'instructor_hired_at'        => 'nullable|date',
+            'instructor_academic_degree' => 'nullable|string|max:100',
+            'instructor_teaching_pct'   => 'nullable|integer|min:0|max:100',
+            'instructor_research_pct'   => 'nullable|integer|min:0|max:100',
+            'instructor_service_pct'    => 'nullable|integer|min:0|max:100',
+            'instructor_culture_pct'    => 'nullable|integer|min:0|max:100',
+            'instructor_other_pct'      => 'nullable|integer|min:0|max:100',
+            'instructor_teaching_quota' => 'nullable|integer|min:0',
+        ]);
 
         DB::transaction(function () use ($validated, $user, $request) {
             $user->update([
-                'name' => $validated['name'],
-                'email' => $validated['email'],
+                'name'      => $validated['name'],
+                'email'     => $validated['email'],
                 'is_active' => $validated['is_active'],
             ]);
 
@@ -86,17 +154,39 @@ class AdminUserController extends Controller
             UserRole::where('user_id', $user->id)->delete();
             foreach ($validated['roles'] as $role) {
                 UserRole::create([
-                    'user_id' => $user->id,
-                    'role' => $role,
+                    'user_id'    => $user->id,
+                    'role'       => $role,
                     'is_primary' => $role === $validated['primary_role'],
                 ]);
+            }
+
+            // Sync instructor profile
+            if (in_array('instructor', $validated['roles'])) {
+                InstructorProfile::updateOrCreate(
+                    ['user_id' => $user->id],
+                    [
+                        'title'          => $validated['instructor_title'] ?? null,
+                        'employee_id'    => $validated['instructor_employee_id'] ?? null,
+                        'department_id'  => $validated['instructor_department_id'] ?? null,
+                        'employment_type' => $validated['instructor_employment_type'] ?? null,
+                        'hired_at'       => $validated['instructor_hired_at'] ?? null,
+                        'academic_degree' => $validated['instructor_academic_degree'] ?? null,
+                        'teaching_pct'   => $validated['instructor_teaching_pct'] ?? 0,
+                        'research_pct'   => $validated['instructor_research_pct'] ?? 0,
+                        'service_pct'    => $validated['instructor_service_pct'] ?? 0,
+                        'culture_pct'    => $validated['instructor_culture_pct'] ?? 0,
+                        'other_pct'      => $validated['instructor_other_pct'] ?? 0,
+                        'teaching_quota' => $validated['instructor_teaching_quota'] ?? 0,
+                    ]
+                );
+            } else {
+                // Remove profile if instructor role removed
+                InstructorProfile::where('user_id', $user->id)->delete();
             }
         });
 
         return redirect()->route('admin.users')->with('success', 'อัปเดตข้อมูลผู้ใช้เรียบร้อยแล้ว');
     }
-
-
 
     public function toggleStatus(User $user)
     {
@@ -106,8 +196,12 @@ class AdminUserController extends Controller
 
     public function destroy(User $user)
     {
-        // For safety, maybe soft delete or just deactivate
         $user->delete();
         return redirect()->route('admin.users')->with('success', 'ลบผู้ใช้เรียบร้อยแล้ว');
+    }
+
+    public function settings()
+    {
+        return view('admin.settings');
     }
 }

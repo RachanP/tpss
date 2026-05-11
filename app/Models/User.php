@@ -39,4 +39,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(UserRole::class);
     }
+
+    /**
+     * Get the user's instructor profile (if applicable).
+     */
+    public function instructorProfile()
+    {
+        return $this->hasOne(InstructorProfile::class);
+    }
 }

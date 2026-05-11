@@ -3,13 +3,12 @@
     $activeRole = session('active_role', 'staff');
     $roles = $user ? $user->roles : collect();
 
-    // Mapping internal roles to display names
     $roleNames = [
-        'admin' => 'ผู้ดูแลระบบ (Admin)',
-        'staff' => 'เจ้าหน้าที่ (Staff)',
-        'course_head' => 'หัวหน้าวิชา (Maker)',
-        'executive' => 'ผู้บริหาร (Approver)',
-        'instructor' => 'อาจารย์ (Lecturer)',
+        'admin' => 'ผู้ดูแลระบบ',
+        'staff' => 'เจ้าหน้าที่',
+        'course_head' => 'หัวหน้าวิชา',
+        'executive' => 'ผู้บริหาร',
+        'instructor' => 'อาจารย์ผู้สอน',
     ];
 
     // Get current path to highlight active menu
@@ -270,7 +269,7 @@
                 </svg>
                 จัดการผู้ใช้งาน
             </a>
-            <a href="#" class="nv">
+            <a href="{{ route('admin.settings') }}" class="nv {{ Request::routeIs('admin.settings') ? 'on' : '' }}">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="3"></circle>
                     <path
