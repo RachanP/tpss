@@ -31,6 +31,7 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['\App\Http\Middleware\CheckRole:admin'])->group(function () {
         Route::get('/admin/users', 'App\Http\Controllers\AdminUserController@index')->name('admin.users');
         Route::post('/admin/users', 'App\Http\Controllers\AdminUserController@store')->name('admin.users.store');
+        Route::post('/admin/users/import', 'App\Http\Controllers\AdminUserController@importUsers')->name('admin.users.import');
         Route::put('/admin/users/{user}', 'App\Http\Controllers\AdminUserController@update')->name('admin.users.update');
         Route::patch('/admin/users/{user}/toggle', 'App\Http\Controllers\AdminUserController@toggleStatus')->name('admin.users.toggle');
         Route::delete('/admin/users/{user}', 'App\Http\Controllers\AdminUserController@destroy')->name('admin.users.destroy');
@@ -48,9 +49,11 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/admin/master-data/location-types/{locationType}', 'App\Http\Controllers\Admin\MasterDataController@updateLocationType')->name('admin.location_types.update');
         Route::delete('/admin/master-data/location-types/{locationType}', 'App\Http\Controllers\Admin\MasterDataController@destroyLocationType')->name('admin.location_types.destroy');
         Route::post('/admin/master-data/rooms', 'App\Http\Controllers\Admin\MasterDataController@storeRoom')->name('admin.rooms.store');
+        Route::post('/admin/master-data/rooms/import', 'App\Http\Controllers\Admin\MasterDataController@importRooms')->name('admin.rooms.import');
         Route::put('/admin/master-data/rooms/{room}', 'App\Http\Controllers\Admin\MasterDataController@updateRoom')->name('admin.rooms.update');
         Route::delete('/admin/master-data/rooms/{room}', 'App\Http\Controllers\Admin\MasterDataController@destroyRoom')->name('admin.rooms.destroy');
         Route::post('/admin/master-data/courses', 'App\Http\Controllers\Admin\MasterDataController@storeCourse')->name('admin.courses.store');
+        Route::post('/admin/master-data/courses/import', 'App\Http\Controllers\Admin\MasterDataController@importCourses')->name('admin.courses.import');
         Route::put('/admin/master-data/courses/{course}', 'App\Http\Controllers\Admin\MasterDataController@updateCourse')->name('admin.courses.update');
         Route::delete('/admin/master-data/courses/{course}', 'App\Http\Controllers\Admin\MasterDataController@destroyCourse')->name('admin.courses.destroy');
         Route::post('/admin/master-data/curriculums', 'App\Http\Controllers\Admin\MasterDataController@storeCurriculum')->name('admin.curriculums.store');
@@ -76,9 +79,11 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/staff/master-data/location-types/{locationType}', 'App\Http\Controllers\Staff\MasterDataController@updateLocationType')->name('staff.location_types.update');
         Route::delete('/staff/master-data/location-types/{locationType}', 'App\Http\Controllers\Staff\MasterDataController@destroyLocationType')->name('staff.location_types.destroy');
         Route::post('/staff/master-data/rooms', 'App\Http\Controllers\Staff\MasterDataController@storeRoom')->name('staff.rooms.store');
+        Route::post('/staff/master-data/rooms/import', 'App\Http\Controllers\Staff\MasterDataController@importRooms')->name('staff.rooms.import');
         Route::put('/staff/master-data/rooms/{room}', 'App\Http\Controllers\Staff\MasterDataController@updateRoom')->name('staff.rooms.update');
         Route::delete('/staff/master-data/rooms/{room}', 'App\Http\Controllers\Staff\MasterDataController@destroyRoom')->name('staff.rooms.destroy');
         Route::post('/staff/master-data/courses', 'App\Http\Controllers\Staff\MasterDataController@storeCourse')->name('staff.courses.store');
+        Route::post('/staff/master-data/courses/import', 'App\Http\Controllers\Staff\MasterDataController@importCourses')->name('staff.courses.import');
         Route::put('/staff/master-data/courses/{course}', 'App\Http\Controllers\Staff\MasterDataController@updateCourse')->name('staff.courses.update');
         Route::delete('/staff/master-data/courses/{course}', 'App\Http\Controllers\Staff\MasterDataController@destroyCourse')->name('staff.courses.destroy');
         Route::post('/staff/master-data/student-groups', 'App\Http\Controllers\Staff\MasterDataController@storeStudentGroup')->name('staff.student_groups.store');

@@ -266,6 +266,129 @@ class AdminUserController extends Controller
         }
     }
 
+    public function importUsers(Request $request)
+    {
+        $request->validate(['csv_file' => 'required|file|mimes:csv,txt|max:5120']);
+
+        $file   = $request->file('csv_file');
+        $handle = fopen($file->getPathname(), 'r');
+
+        $header = fgetcsv($handle);
+        if (!$header) {
+            fclose($handle);
+            return back()->with('error', 'ไฟล์ CSV ว่างเปล่า');
+        }
+        $header = array_map(fn($h) => trim(str_replace("\xEF\xBB\xBF", '', $h)), $header);
+
+        $departments = Department::pluck('id', 'name')->toArray();
+        $degreeMap   = ['doctoral' => 'ปริญญาเอก', 'non_doctoral' => 'ปริญญาโท'];
+        $empTypeMap  = ['full_time' => 'พนักงานมหาวิทยาลัย', 'part_time' => 'อาจารย์พิเศษ'];
+        $validRoles  = ['admin', 'staff', 'course_head', 'executive', 'instructor'];
+
+        $successCount = 0;
+        $errors       = [];
+        $row          = 1;
+
+        while (($data = fgetcsv($handle)) !== false) {
+            $row++;
+            if (count(array_filter($data)) === 0) continue;
+
+            $csv         = array_combine($header, array_pad($data, count($header), ''));
+            $username    = trim($csv['username'] ?? '');
+            $email       = trim($csv['email'] ?? '');
+            $name        = trim($csv['name'] ?? '');
+            $password    = trim($csv['password'] ?? '');
+            $rolesStr    = trim($csv['roles'] ?? '');
+            $primaryRole = trim($csv['primary_role'] ?? '');
+
+            if (!$username || !$email || !$name || !$password || !$rolesStr || !$primaryRole) {
+                $errors[] = "แถว {$row}: ข้อมูลบังคับไม่ครบ (username, email, name, password, roles, primary_role)";
+                continue;
+            }
+            if (User::where('email', $email)->exists()) {
+                $errors[] = "แถว {$row}: email '{$email}' มีในระบบแล้ว — ข้ามแถวนี้";
+                continue;
+            }
+            if (User::where('username', $username)->exists()) {
+                $errors[] = "แถว {$row}: username '{$username}' มีในระบบแล้ว — ข้ามแถวนี้";
+                continue;
+            }
+
+            $roles = array_values(array_filter(array_map('trim', explode('|', $rolesStr))));
+            $invalid = array_diff($roles, $validRoles);
+            if ($invalid) {
+                $errors[] = "แถว {$row}: role ไม่ถูกต้อง: " . implode(', ', $invalid);
+                continue;
+            }
+            if (!in_array($primaryRole, $roles)) {
+                $errors[] = "แถว {$row}: primary_role '{$primaryRole}' ต้องอยู่ใน roles";
+                continue;
+            }
+
+            try {
+                DB::transaction(function () use ($csv, $username, $email, $name, $password, $roles, $primaryRole, $departments, $degreeMap, $empTypeMap) {
+                    $user = User::create([
+                        'username'  => $username,
+                        'prefix'    => trim($csv['prefix'] ?? '') ?: null,
+                        'name'      => $name,
+                        'email'     => $email,
+                        'password'  => Hash::make($password),
+                        'is_active' => true,
+                    ]);
+
+                    foreach ($roles as $role) {
+                        UserRole::create([
+                            'user_id'    => $user->id,
+                            'role'       => $role,
+                            'is_primary' => $role === $primaryRole,
+                        ]);
+                    }
+
+                    $employeeId = trim($csv['employee_id'] ?? '');
+                    $title      = trim($csv['title'] ?? '');
+                    $deptName   = trim($csv['department_name'] ?? '');
+                    $hiredAt    = trim($csv['hired_date'] ?? '');
+
+                    if ($employeeId || $title || $deptName || in_array('instructor', $roles)) {
+                        $deptId      = $deptName ? ($departments[$deptName] ?? null) : null;
+                        $degree      = $degreeMap[trim($csv['academic_degree'] ?? '')] ?? 'ปริญญาโท';
+                        $empType     = $empTypeMap[trim($csv['employment_type'] ?? '')] ?? 'พนักงานมหาวิทยาลัย';
+                        $teachingPct = max(0, min(100, (int)(trim($csv['teaching_pct'] ?? '0') ?: '0')));
+
+                        InstructorProfile::create([
+                            'user_id'         => $user->id,
+                            'employee_id'     => $employeeId ?: null,
+                            'title'           => $title ?: null,
+                            'department_id'   => $deptId,
+                            'academic_degree' => $degree,
+                            'employment_type' => $empType,
+                            'hired_at'        => $hiredAt ?: null,
+                            'teaching_pct'    => $teachingPct,
+                            'research_pct'    => 0,
+                            'service_pct'     => 0,
+                            'culture_pct'     => 0,
+                            'other_pct'       => 0,
+                            'teaching_quota'  => 0,
+                        ]);
+                    }
+                });
+                $successCount++;
+            } catch (\Exception $e) {
+                $errors[] = "แถว {$row}: เกิดข้อผิดพลาด — " . $e->getMessage();
+            }
+        }
+
+        fclose($handle);
+
+        $msg = "นำเข้าสำเร็จ {$successCount} รายการ";
+        if ($errors) {
+            return redirect()->route('admin.users')
+                ->with('success', $msg)
+                ->with('import_errors', $errors);
+        }
+        return redirect()->route('admin.users')->with('success', $msg);
+    }
+
     public function settings()
     {
         return view('admin.settings');

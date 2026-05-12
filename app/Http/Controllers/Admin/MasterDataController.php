@@ -489,4 +489,177 @@ class MasterDataController extends Controller
             return redirect()->back()->with('error', 'ไม่สามารถลบได้เนื่องจากมีตารางสอนผูกอยู่กับกลุ่มนี้');
         }
     }
+
+    // ── CSV Import ────────────────────────────────────────────────────
+
+    public function importRooms(Request $request)
+    {
+        $request->validate(['csv_file' => 'required|file|mimes:csv,txt|max:5120']);
+
+        $file   = $request->file('csv_file');
+        $handle = fopen($file->getPathname(), 'r');
+
+        $header = fgetcsv($handle);
+        if (!$header) {
+            fclose($handle);
+            return back()->with('error', 'ไฟล์ CSV ว่างเปล่า');
+        }
+        $header = array_map(fn($h) => trim(str_replace("\xEF\xBB\xBF", '', $h)), $header);
+
+        $locationTypes = LocationType::pluck('id', 'name')->toArray();
+        $successCount  = 0;
+        $errors        = [];
+        $row           = 1;
+
+        while (($data = fgetcsv($handle)) !== false) {
+            $row++;
+            if (count(array_filter($data)) === 0) continue;
+
+            $csv    = array_combine($header, array_pad($data, count($header), ''));
+            $name   = trim($csv['name'] ?? '');
+            $code   = trim($csv['code'] ?? '');
+            $ltName = trim($csv['location_type_name'] ?? '');
+
+            if (!$name || !$code || !$ltName) {
+                $errors[] = "แถว {$row}: ข้อมูลบังคับไม่ครบ (name, code, location_type_name)";
+                continue;
+            }
+
+            $ltId = $locationTypes[$ltName] ?? null;
+            if (!$ltId) {
+                $errors[] = "แถว {$row}: ประเภทสถานที่ '{$ltName}' ไม่พบในระบบ";
+                continue;
+            }
+
+            $status   = in_array(trim($csv['status'] ?? ''), ['active', 'inactive', 'maintenance'])
+                ? trim($csv['status'])
+                : 'active';
+            $capacity = (int)(trim($csv['capacity'] ?? '') ?: '0') ?: null;
+            $building = trim($csv['building'] ?? '') ?: null;
+
+            try {
+                Room::updateOrCreate(
+                    ['room_code' => $code],
+                    [
+                        'room_name'        => $name,
+                        'location_type_id' => $ltId,
+                        'capacity'         => $capacity,
+                        'building'         => $building,
+                        'status'           => $status,
+                    ]
+                );
+                $successCount++;
+            } catch (\Exception $e) {
+                $errors[] = "แถว {$row}: เกิดข้อผิดพลาด — " . $e->getMessage();
+            }
+        }
+
+        fclose($handle);
+
+        $routePrefix = session('active_role') === 'admin' ? 'admin' : 'staff';
+        $msg = "นำเข้าสำเร็จ {$successCount} ห้อง";
+        if ($errors) {
+            return redirect()->route("{$routePrefix}.master_data", ['tab' => 'rooms'])
+                ->with('success', $msg)->with('import_errors', $errors);
+        }
+        return redirect()->route("{$routePrefix}.master_data", ['tab' => 'rooms'])->with('success', $msg);
+    }
+
+    public function importCourses(Request $request)
+    {
+        $request->validate(['csv_file' => 'required|file|mimes:csv,txt|max:5120']);
+
+        $file   = $request->file('csv_file');
+        $handle = fopen($file->getPathname(), 'r');
+
+        $header = fgetcsv($handle);
+        if (!$header) {
+            fclose($handle);
+            return back()->with('error', 'ไฟล์ CSV ว่างเปล่า');
+        }
+        $header = array_map(fn($h) => trim(str_replace("\xEF\xBB\xBF", '', $h)), $header);
+
+        $curriculums  = Curriculum::pluck('id', 'name')->toArray();
+        $departments  = Department::pluck('id', 'name')->toArray();
+        $successCount = 0;
+        $errors       = [];
+        $row          = 1;
+
+        while (($data = fgetcsv($handle)) !== false) {
+            $row++;
+            if (count(array_filter($data)) === 0) continue;
+
+            $csv      = array_combine($header, array_pad($data, count($header), ''));
+            $code     = trim($csv['course_code'] ?? '');
+            $nameTh   = trim($csv['name_th'] ?? '');
+            $currName = trim($csv['curriculum_name'] ?? '');
+            $deptName = trim($csv['department_name'] ?? '');
+            $credits  = trim($csv['credits'] ?? '');
+
+            if (!$code || !$nameTh || !$currName || !$deptName || $credits === '') {
+                $errors[] = "แถว {$row}: ข้อมูลบังคับไม่ครบ (course_code, name_th, curriculum_name, department_name, credits)";
+                continue;
+            }
+
+            $currId = $curriculums[$currName] ?? null;
+            if (!$currId) {
+                $errors[] = "แถว {$row}: หลักสูตร '{$currName}' ไม่พบในระบบ";
+                continue;
+            }
+
+            $deptId = $departments[$deptName] ?? null;
+            if (!$deptId) {
+                $errors[] = "แถว {$row}: ภาควิชา '{$deptName}' ไม่พบในระบบ";
+                continue;
+            }
+
+            $lecture = (int)(trim($csv['lecture_hours'] ?? '0') ?: '0');
+            $lab     = (int)(trim($csv['lab_hours'] ?? '0') ?: '0');
+            if ($lecture > 0 && $lab > 0) {
+                $courseType = 'theory_practicum';
+            } elseif ($lecture == 0 && $lab > 0) {
+                $courseType = 'practicum';
+            } else {
+                $courseType = 'theory';
+            }
+
+            $status      = in_array(trim($csv['status'] ?? ''), ['active', 'inactive']) ? trim($csv['status']) : 'active';
+            $yearLevel   = (int)(trim($csv['default_year_level'] ?? '') ?: '0') ?: null;
+            $semester    = (int)(trim($csv['default_semester'] ?? '') ?: '0') ?: null;
+            $selfStudy   = (int)(trim($csv['self_study_hours'] ?? '0') ?: '0');
+
+            try {
+                Course::updateOrCreate(
+                    ['course_code' => $code, 'curriculum_id' => $currId],
+                    [
+                        'name_th'            => $nameTh,
+                        'name_en'            => trim($csv['name_en'] ?? '') ?: null,
+                        'department_id'      => $deptId,
+                        'credits'            => (int)$credits,
+                        'lecture_hours'      => $lecture,
+                        'lab_hours'          => $lab,
+                        'self_study_hours'   => $selfStudy,
+                        'default_year_level' => $yearLevel,
+                        'default_semester'   => $semester,
+                        'course_type'        => $courseType,
+                        'status'             => $status,
+                        'academic_level'     => 'undergraduate',
+                    ]
+                );
+                $successCount++;
+            } catch (\Exception $e) {
+                $errors[] = "แถว {$row}: เกิดข้อผิดพลาด — " . $e->getMessage();
+            }
+        }
+
+        fclose($handle);
+
+        $routePrefix = session('active_role') === 'admin' ? 'admin' : 'staff';
+        $msg = "นำเข้าสำเร็จ {$successCount} วิชา";
+        if ($errors) {
+            return redirect()->route("{$routePrefix}.master_data", ['tab' => 'courses'])
+                ->with('success', $msg)->with('import_errors', $errors);
+        }
+        return redirect()->route("{$routePrefix}.master_data", ['tab' => 'courses'])->with('success', $msg);
+    }
 }

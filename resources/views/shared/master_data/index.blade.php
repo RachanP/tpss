@@ -96,6 +96,8 @@
 
         // Rooms
         showRoomModal: false,
+        showImportRoomModal: false,
+        showImportCourseModal: false,
         editRoomMode: false,
         currentRoom: {
             id: '',
@@ -621,6 +623,15 @@
                 <div class="card-hdr">
                     <div class="card-ttl">ห้องและสถานที่ (Rooms & Locations)</div>
                     <div class="card-actions">
+                        <button class="btn btn-secondary" @click="showImportRoomModal = true">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                            นำเข้าจากไฟล์
+                        </button>
                         <button class="btn btn-primary" @click="openAddRoom()">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
                                 stroke-width="2" stroke-linecap="round">
@@ -702,6 +713,15 @@
                             </svg>
                             <input type="text" x-model="searchQuery" placeholder="รหัส หรือ ชื่อวิชา...">
                         </div>
+                        <button class="btn btn-secondary" @click="showImportCourseModal = true">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                            นำเข้าจากไฟล์
+                        </button>
                         <button class="btn btn-primary" @click="openAddCourse()">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
                                 stroke-width="2" stroke-linecap="round">
@@ -1812,6 +1832,110 @@
                 </div>
             </div>
         </template>
+
+        {{-- Import Room Modal --}}
+        <template x-if="showImportRoomModal">
+            <div class="overlay" x-cloak @click.self="showImportRoomModal = false">
+                <div class="modal-center" style="max-width: 480px;"
+                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0 scale-95"
+                    x-transition:enter-end="opacity-100 scale-100">
+                    <div class="modal-hdr" style="background: var(--bg-2);">
+                        <div class="modal-ttl" style="font-family: var(--font-display);">นำเข้าห้อง/สถานที่จากไฟล์ CSV</div>
+                        <button type="button" class="modal-cls" @click="showImportRoomModal = false">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <form method="POST" action="{{ route($routePrefix . '.rooms.import') }}" enctype="multipart/form-data">
+                        @csrf
+                        <div class="modal-body" style="padding: 24px;">
+                            <div style="background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 20px; font-size: 13px; line-height: 1.7; color: var(--fg-muted);">
+                                <strong style="color: var(--fg-base); display: block; margin-bottom: 4px;">รูปแบบไฟล์ CSV</strong>
+                                คอลัมน์บังคับ: <code>name, code, location_type_name</code><br>
+                                คอลัมน์เสริม: <code>capacity, floor, building, status</code><br>
+                                <span style="margin-top: 6px; display: block;">• status: <code>active</code>, <code>inactive</code>, หรือ <code>maintenance</code></span>
+                                <span>• ถ้า code ซ้ำ → อัปเดตข้อมูลแทน (upsert)</span>
+                            </div>
+                            <div style="margin-bottom: 16px;">
+                                <a href="{{ asset('templates/rooms_import.csv') }}"
+                                    style="font-size: 13px; color: var(--accent); text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                        <polyline points="7 10 12 15 17 10"/>
+                                        <line x1="12" y1="15" x2="12" y2="3"/>
+                                    </svg>
+                                    ดาวน์โหลดไฟล์ตัวอย่าง (rooms_import.csv)
+                                </a>
+                            </div>
+                            <div>
+                                <label class="frm-lbl">เลือกไฟล์ CSV <span style="color: var(--status-conflict-fg)">*</span></label>
+                                <input type="file" name="csv_file" accept=".csv,.txt" required
+                                    style="display: block; width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: var(--bg-1);">
+                                <div style="font-size: 12px; color: var(--fg-muted); margin-top: 4px;">UTF-8 (ไม่มี BOM), ไม่เกิน 5 MB</div>
+                            </div>
+                        </div>
+                        <div class="modal-foot">
+                            <button type="button" class="btn btn-ghost" @click="showImportRoomModal = false">ยกเลิก</button>
+                            <button type="submit" class="btn btn-primary">นำเข้าข้อมูล</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </template>
+
+        {{-- Import Course Modal --}}
+        <template x-if="showImportCourseModal">
+            <div class="overlay" x-cloak @click.self="showImportCourseModal = false">
+                <div class="modal-center" style="max-width: 480px;"
+                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0 scale-95"
+                    x-transition:enter-end="opacity-100 scale-100">
+                    <div class="modal-hdr" style="background: var(--bg-2);">
+                        <div class="modal-ttl" style="font-family: var(--font-display);">นำเข้ารายวิชาจากไฟล์ CSV</div>
+                        <button type="button" class="modal-cls" @click="showImportCourseModal = false">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <form method="POST" action="{{ route($routePrefix . '.courses.import') }}" enctype="multipart/form-data">
+                        @csrf
+                        <div class="modal-body" style="padding: 24px;">
+                            <div style="background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 20px; font-size: 13px; line-height: 1.7; color: var(--fg-muted);">
+                                <strong style="color: var(--fg-base); display: block; margin-bottom: 4px;">รูปแบบไฟล์ CSV</strong>
+                                คอลัมน์บังคับ: <code>course_code, name_th, curriculum_name, department_name, credits</code><br>
+                                คอลัมน์เสริม: <code>name_en, lecture_hours, lab_hours, self_study_hours, default_year_level, default_semester, status</code><br>
+                                <span style="margin-top: 6px; display: block;">• course_type คำนวณอัตโนมัติจาก lecture_hours + lab_hours</span>
+                                <span>• ถ้า course_code + curriculum ซ้ำ → อัปเดตข้อมูลแทน (upsert)</span>
+                            </div>
+                            <div style="margin-bottom: 16px;">
+                                <a href="{{ asset('templates/courses_import.csv') }}"
+                                    style="font-size: 13px; color: var(--accent); text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                        <polyline points="7 10 12 15 17 10"/>
+                                        <line x1="12" y1="15" x2="12" y2="3"/>
+                                    </svg>
+                                    ดาวน์โหลดไฟล์ตัวอย่าง (courses_import.csv)
+                                </a>
+                            </div>
+                            <div>
+                                <label class="frm-lbl">เลือกไฟล์ CSV <span style="color: var(--status-conflict-fg)">*</span></label>
+                                <input type="file" name="csv_file" accept=".csv,.txt" required
+                                    style="display: block; width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: var(--bg-1);">
+                                <div style="font-size: 12px; color: var(--fg-muted); margin-top: 4px;">UTF-8 (ไม่มี BOM), ไม่เกิน 5 MB</div>
+                            </div>
+                        </div>
+                        <div class="modal-foot">
+                            <button type="button" class="btn btn-ghost" @click="showImportCourseModal = false">ยกเลิก</button>
+                            <button type="submit" class="btn btn-primary">นำเข้าข้อมูล</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </template>
     </div>
 
     <style>
@@ -1903,4 +2027,19 @@
             });
         }
     </script>
+
+    @if(session('import_errors'))
+    <div style="position: fixed; bottom: 20px; right: 20px; max-width: 420px; background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12); z-index: 9999; overflow: hidden;"
+        x-data="{ open: true }" x-show="open">
+        <div style="background: oklch(96% 0.02 30); border-bottom: 1px solid var(--border); padding: 10px 16px; display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-size: 13px; font-weight: 600; color: oklch(40% 0.12 30);">รายการที่นำเข้าไม่ได้ ({{ count(session('import_errors')) }} รายการ)</span>
+            <button @click="open = false" style="background: none; border: none; cursor: pointer; color: var(--fg-muted);">✕</button>
+        </div>
+        <div style="max-height: 200px; overflow-y: auto; padding: 12px 16px;">
+            @foreach(session('import_errors') as $err)
+                <div style="font-size: 12px; color: var(--fg-base); padding: 4px 0; border-bottom: 1px solid var(--border-subtle);">{{ $err }}</div>
+            @endforeach
+        </div>
+    </div>
+    @endif
 </x-app-layout>
