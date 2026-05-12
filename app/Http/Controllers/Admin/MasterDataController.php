@@ -11,7 +11,6 @@ use App\Models\Course;
 use App\Models\Curriculum;
 use App\Models\ActivityType;
 use App\Models\StudentGroup;
-use App\Models\AcademicYear;
 use Illuminate\Http\Request;
 
 class MasterDataController extends Controller
@@ -37,8 +36,13 @@ class MasterDataController extends Controller
         // Rooms with their types
         $rooms = Room::with('locationType')->get();
 
+        // Staff users for assigned_staff dropdown
+        $staffUsers = User::whereHas('roles', function ($q) {
+            $q->where('role', 'staff');
+        })->with('instructorProfile')->where('is_active', true)->orderBy('name')->get();
+
         // Courses with curriculum and head instructor
-        $courses = Course::with(['curriculum', 'department', 'headInstructor'])->get();
+        $courses = Course::with(['curriculum', 'department', 'headInstructor', 'assignedStaff'])->get();
 
         // Curriculums with course count
         $curriculums = Curriculum::withCount('courses')->get();
@@ -46,13 +50,14 @@ class MasterDataController extends Controller
         // Activity Types
         $activityTypes = ActivityType::orderBy('name')->get();
 
-        // Academic Years (for student group dropdown)
-        $academicYears = AcademicYear::orderByDesc('name')->orderByDesc('semester')->get();
-
         // Student Groups
-        $studentGroups = StudentGroup::with(['curriculum', 'academicYear'])->get();
+        $studentGroups = StudentGroup::with('curriculum')->get();
 
-        return view('admin.master_data.index', compact(
+        $activeRole = session('active_role');
+        $isAdmin    = $activeRole === 'admin';
+        $routePrefix = $isAdmin ? 'admin' : 'staff';
+
+        return view('shared.master_data.index', compact(
             'instructors',
             'departments',
             'users',
@@ -61,8 +66,10 @@ class MasterDataController extends Controller
             'courses',
             'curriculums',
             'activityTypes',
-            'academicYears',
-            'studentGroups'
+            'studentGroups',
+            'staffUsers',
+            'isAdmin',
+            'routePrefix'
         ));
     }
 
@@ -234,6 +241,7 @@ class MasterDataController extends Controller
             'curriculum_id' => 'required|exists:curriculums,id',
             'department_id' => 'required|exists:departments,id',
             'head_instructor_id' => 'nullable|exists:users,id',
+            'assigned_staff_id' => 'nullable|exists:users,id',
             'academic_level' => 'nullable|in:undergraduate,graduate',
             'default_year_level' => 'nullable|integer|min:1|max:4',
             'default_semester' => 'nullable|integer|min:1|max:3',
@@ -274,6 +282,7 @@ class MasterDataController extends Controller
             'curriculum_id' => 'required|exists:curriculums,id',
             'department_id' => 'required|exists:departments,id',
             'head_instructor_id' => 'nullable|exists:users,id',
+            'assigned_staff_id' => 'nullable|exists:users,id',
             'course_type' => 'required|in:theory,practicum,theory_practicum',
             'academic_level' => 'nullable|in:undergraduate,graduate',
             'default_year_level' => 'nullable|integer|min:1|max:4',
@@ -414,12 +423,10 @@ class MasterDataController extends Controller
     public function storeActivityType(Request $request)
     {
         $validated = $request->validate([
-            'name'         => 'required|string|max:100|unique:activity_types,name',
-            'color_code'   => 'required|string|max:10',
-            'category'     => 'required|in:lecture,practicum,thesis,other',
-            'is_practicum' => 'nullable|boolean',
+            'name'       => 'required|string|max:100|unique:activity_types,name',
+            'color_code' => 'required|string|max:10',
+            'category'   => 'required|in:lecture,practicum,thesis,other',
         ]);
-        $validated['is_practicum'] = $request->boolean('is_practicum');
         ActivityType::create($validated);
         return redirect()->route('admin.master_data', ['tab' => 'activity_types'])->with('success', 'เพิ่มประเภทกิจกรรมเรียบร้อยแล้ว');
     }
@@ -427,12 +434,10 @@ class MasterDataController extends Controller
     public function updateActivityType(Request $request, ActivityType $activityType)
     {
         $validated = $request->validate([
-            'name'         => 'required|string|max:100|unique:activity_types,name,' . $activityType->id,
-            'color_code'   => 'required|string|max:10',
-            'category'     => 'required|in:lecture,practicum,thesis,other',
-            'is_practicum' => 'nullable|boolean',
+            'name'       => 'required|string|max:100|unique:activity_types,name,' . $activityType->id,
+            'color_code' => 'required|string|max:10',
+            'category'   => 'required|in:lecture,practicum,thesis,other',
         ]);
-        $validated['is_practicum'] = $request->boolean('is_practicum');
         $activityType->update($validated);
         return redirect()->route('admin.master_data', ['tab' => 'activity_types'])->with('success', 'อัปเดตประเภทกิจกรรมเรียบร้อยแล้ว');
     }
@@ -452,11 +457,11 @@ class MasterDataController extends Controller
     public function storeStudentGroup(Request $request)
     {
         $validated = $request->validate([
-            'group_code'       => 'required|string|max:255|unique:student_groups,group_code',
-            'curriculum_id'    => 'required|exists:curriculums,id',
-            'academic_year_id' => 'required|exists:academic_years,id',
-            'student_count'    => 'required|integer|min:1',
-            'color_code'       => 'nullable|string|max:10',
+            'group_code'    => 'required|string|max:255|unique:student_groups,group_code',
+            'curriculum_id' => 'required|exists:curriculums,id',
+            'year_level'    => 'required|integer|min:1|max:4',
+            'student_count' => 'required|integer|min:1',
+            'color_code'    => 'nullable|string|max:10',
         ]);
         StudentGroup::create($validated);
         return redirect()->route('admin.master_data', ['tab' => 'student_groups'])->with('success', 'เพิ่มกลุ่มนักศึกษาเรียบร้อยแล้ว');
@@ -465,11 +470,11 @@ class MasterDataController extends Controller
     public function updateStudentGroup(Request $request, StudentGroup $studentGroup)
     {
         $validated = $request->validate([
-            'group_code'       => 'required|string|max:255|unique:student_groups,group_code,' . $studentGroup->id,
-            'curriculum_id'    => 'required|exists:curriculums,id',
-            'academic_year_id' => 'required|exists:academic_years,id',
-            'student_count'    => 'required|integer|min:1',
-            'color_code'       => 'nullable|string|max:10',
+            'group_code'    => 'required|string|max:255|unique:student_groups,group_code,' . $studentGroup->id,
+            'curriculum_id' => 'required|exists:curriculums,id',
+            'year_level'    => 'required|integer|min:1|max:4',
+            'student_count' => 'required|integer|min:1',
+            'color_code'    => 'nullable|string|max:10',
         ]);
         $studentGroup->update($validated);
         return redirect()->route('admin.master_data', ['tab' => 'student_groups'])->with('success', 'อัปเดตกลุ่มนักศึกษาเรียบร้อยแล้ว');

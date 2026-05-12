@@ -20,8 +20,9 @@ class CourseSeeder extends Seeder
 
         $deptMental = Department::where('name', 'LIKE', '%สุขภาพจิต%')->first();
         $deptFoundation = Department::where('name', 'LIKE', '%รากฐาน%')->first();
-        
+
         $instructor = User::where('username', 'rachan_p')->first() ?? User::first();
+        $staff = User::whereHas('roles', fn($q) => $q->where('role', 'staff'))->first();
 
         $courses = [
             [
@@ -39,6 +40,8 @@ class CourseSeeder extends Seeder
                 'color_code' => '#3b82f6',
                 'department_id' => $deptFoundation->id ?? 1,
                 'head_instructor_id' => $instructor->id,
+                'assigned_staff_id' => $staff?->id,
+                'status' => 'active',
             ],
             [
                 'course_code' => 'NSBS 212',
@@ -55,6 +58,8 @@ class CourseSeeder extends Seeder
                 'color_code' => '#10b981',
                 'department_id' => $deptFoundation->id ?? 1,
                 'head_instructor_id' => $instructor->id,
+                'assigned_staff_id' => $staff?->id,
+                'status' => 'active',
             ],
             [
                 'course_code' => 'NSBS 213',
@@ -71,6 +76,8 @@ class CourseSeeder extends Seeder
                 'color_code' => '#8b5cf6',
                 'department_id' => $deptMental->id ?? 3,
                 'head_instructor_id' => $instructor->id,
+                'assigned_staff_id' => $staff?->id,
+                'status' => 'active',
             ],
             [
                 'course_code' => 'NSBS 221',
@@ -87,6 +94,8 @@ class CourseSeeder extends Seeder
                 'color_code' => '#f59e0b',
                 'department_id' => $deptFoundation->id ?? 1,
                 'head_instructor_id' => $instructor->id,
+                'assigned_staff_id' => $staff?->id,
+                'status' => 'active',
             ],
         ];
 

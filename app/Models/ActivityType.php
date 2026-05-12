@@ -6,5 +6,5 @@ use Illuminate\Database\Eloquent\Model;
 
 class ActivityType extends Model
 {
-    protected $fillable = ['name', 'color_code', 'category', 'is_practicum'];
+    protected $fillable = ['name', 'color_code', 'category'];
 }

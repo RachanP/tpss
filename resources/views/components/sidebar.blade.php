@@ -108,15 +108,16 @@
                 </svg>
                 ภาพรวม
             </a>
-            <a href="#" class="nv">
+            <a href="{{ route('staff.settings') }}" class="nv {{ Request::routeIs('staff.settings') ? 'on' : '' }}">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
-                    <path d="M2 17l10 5 10-5"></path>
-                    <path d="M2 12l10 5 10-5"></path>
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
                 </svg>
-                งานวิชาการ
+                ตั้งค่าปีการศึกษา
             </a>
-            <a href="#" class="nv">
+            <a href="{{ route('staff.master_data') }}" class="nv {{ str_contains($currentPath, 'master-data') ? 'on' : '' }}">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                     <line x1="3" y1="9" x2="21" y2="9"></line>
@@ -142,15 +143,6 @@
                     <polyline points="10 9 9 9 8 9"></polyline>
                 </svg>
                 รายงาน
-            </a>
-
-            <div class="sb-sec" style="margin-top: 15px;">การสื่อสาร</div>
-            <a href="#" class="nv">
-                <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                    <polyline points="22,6 12,13 2,6"></polyline>
-                </svg>
-                กล่องข้อความ
             </a>
 
         @elseif($activeRole === 'course_head')

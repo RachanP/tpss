@@ -18,9 +18,10 @@ class DatabaseSeeder extends Seeder
             DepartmentSeeder::class,
             AcademicYearSeeder::class,
             UserSeeder::class,
-            DepartmentSeeder::class,
             RoomSeeder::class,
             CourseSeeder::class,
+            ActivityTypeSeeder::class,
+            StudentGroupSeeder::class,
         ]);
     }
 }

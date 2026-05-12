@@ -31,7 +31,9 @@ class AdminSettingController extends Controller
             ];
         }
 
-        return view('admin.settings', compact('academicYears', 'paCriteria', 'workloadQuota', 'teachingQuota', 'workloadWeeks', 'teachingWeeks', 'workloadHoursPerWeek'));
+        $isAdmin     = true;
+        $routePrefix = 'admin';
+        return view('admin.settings', compact('academicYears', 'paCriteria', 'workloadQuota', 'teachingQuota', 'workloadWeeks', 'teachingWeeks', 'workloadHoursPerWeek', 'isAdmin', 'routePrefix'));
     }
 
     public function storeYear(Request $request)

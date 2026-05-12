@@ -12,6 +12,7 @@ class Course extends Model
         'curriculum_id',
         'department_id',
         'head_instructor_id',
+        'assigned_staff_id',
         'name_th',
         'name_en',
         'course_type',
@@ -50,5 +51,10 @@ class Course extends Model
     public function headInstructor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'head_instructor_id');
+    }
+
+    public function assignedStaff(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_staff_id');
     }
 }

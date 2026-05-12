@@ -37,14 +37,14 @@
 | จำนวน Sprint | 7 Sprints (Phase 1) + 5 Sub-Sprints (Phase 2) |
 | Story Points รวม | 280 SP | 61 User Stories |
 
-### สถานะ Phase (ณ 8 พ.ค. 2569)
+### สถานะ Phase (ณ 12 พ.ค. 2569)
 
 | Phase | ชื่อ | ช่วงวันที่ | สถานะ |
 |-------|------|-----------|-------|
 | Phase 1 | Initiation | 25–29 เม.ย. 2569 | ✅ เสร็จแล้ว |
 | Phase 2 | Requirements | 29 เม.ย. – 6 พ.ค. 2569 | ✅ เสร็จแล้ว |
 | Phase 3 | Design | 4–8 พ.ค. 2569 | ✅ เสร็จสมบูรณ์ (UI Mockup + Database Migrations) |
-| Phase 4-5 | Development | 11–28 พ.ค. 2569 | 🟢 เสร็จสิ้น Sprint 1 (Login, RBAC, Settings, User Mgmt) |
+| Phase 4-5 | Development | 11–28 พ.ค. 2569 | 🟢 เสร็จสิ้น Sprint 1+2 (Login, RBAC, Settings, User Mgmt, Master Data) |
 | Phase 5 | Testing | 11 พ.ค. – 2 มิ.ย. 2569 | 🟡 กำลังดำเนินการ (Internal Testing) |
 | Phase 6 | Deployment | 4–5 มิ.ย. 2569 | ยังไม่เริ่ม |
 | Phase 7 | Closure | 7 มิ.ย. 2569 | ยังไม่เริ่ม |
@@ -60,8 +60,8 @@
 | Sprint | วันที่ | Module | ชื่อ | SP |
 |--------|--------|--------|------|----|
 | Sprint 1 | 11–12 พ.ค. | M10 | Login, RBAC & Admin Settings | 24 | ✅ 100% (Admin User Mgmt, Role Switcher, System Settings) |
-| Sprint 2 | 12–15 พ.ค. | M1 | Master Data Management | 43 | ✅ 100% (CRUD, Cloning, SweetAlert2, Integrity Logic, Activity Types, Student Groups) |
-| Sprint 3 | 18–19 พ.ค. | M2 | Course Management | 19 |
+| Sprint 2 | 12–15 พ.ค. | M1 | Master Data Management | 43 | ✅ 100% (CRUD ทุก entity, Staff access, Shared views, Settings, Swatch picker) |
+| Sprint 3 | 18–19 พ.ค. | M2 | Course Management | 19 | 🔜 เริ่มถัดไป |
 | Sprint 4 | 20–22 พ.ค. | M3 | Schedule Management | 41 |
 | Sprint 5 | 21–26 พ.ค. | M4 | Conflict Checking | 29 |
 | Sprint 6 | 22–26 พ.ค. | M8 | Views & Calendar | 24 |
@@ -524,8 +524,40 @@ mock/
 | Enum values Phase 2 (approval action, conflict severity/type, warning type) | CLAUDE.md Database Enum section | ✅ อัปเดตแล้ว (8 พ.ค. 2569) |
 | Glossary เพิ่ม instructor_availability, location_type, course_offering_approval, schedule_conflict, active_role | CLAUDE.md Glossary | ✅ อัปเดตแล้ว (8 พ.ค. 2569) |
 | production/staff.html เสร็จแล้ว (Impeccable design, 6 sections, 11 master-data tabs, schedule grid, reports, inbox, 4 dialogs) | mock/production/staff.html | ✅ อัปเดตแล้ว (8 พ.ค. 2569) |
+| Sprint 2 M1 เสร็จสมบูรณ์ — Staff access, Shared views, Settings, Course assigned_staff | code | ✅ อัปเดตแล้ว (12 พ.ค. 2569) |
 
 ---
+
+## Sprint 2 (M1) — สิ่งที่ implement เสร็จแล้ว (12 พ.ค. 2569)
+
+### Architecture ที่เพิ่มมา
+- **Shared Views**: `views/shared/master_data/index.blade.php` และ `views/shared/settings/index.blade.php` — ใช้ร่วมกันระหว่าง Admin และ Staff โดยส่ง `$isAdmin` + `$routePrefix` จาก controller
+- **Staff\MasterDataController** extends Admin\MasterDataController — zero code duplication
+- **Staff\SettingController** extends AdminSettingController — Staff จัดการปีการศึกษาได้ทั้งหมด (เพิ่ม/แก้ไข/ตั้งปัจจุบัน) แต่ไม่เห็นแท็บ PA criteria
+- **Lock icon** (`shared/master_data/_lock_icon.blade.php`) — แสดงบน tab ที่ Staff ดูอย่างเดียว
+
+### Staff สิทธิ์ Master Data (implement แล้ว)
+| Tab | Staff |
+|-----|-------|
+| ภาควิชา | ดูอย่างเดียว 🔒 |
+| หลักสูตร | ดูอย่างเดียว 🔒 |
+| รายวิชา | CRUD ✅ |
+| อาจารย์ | ดูอย่างเดียว 🔒 |
+| กลุ่มนักศึกษา | CRUD ✅ |
+| ประเภทสถานที่ | CRUD ✅ |
+| ห้อง | CRUD ✅ |
+| ประเภทกิจกรรม | ดูอย่างเดียว 🔒 |
+
+### Schema เพิ่มเติม (migrations ที่ต้อง run)
+- `modify_student_groups_add_year_level` — ลบ `academic_year_id`, เพิ่ม `year_level` (1-4)
+- `drop_is_practicum_from_activity_types_table` — ลบ `is_practicum` (redundant กับ `category`)
+- `add_assigned_staff_to_courses_table` — เพิ่ม `assigned_staff_id` FK → users
+
+### คำถามที่รอคำตอบจากลูกค้า (pending)
+1. **ผู้ประสานรายวิชา** = login ด้วย `course_head` role เดียวกับหัวหน้าวิชาหรือเปล่า?
+2. **เลขานุการวิชา** — จัดการใน M1 (ระดับวิชา) หรือ M2 (ระดับปีการศึกษา)?
+3. **Course Offering** — ใครกด "ยืนยันเปิด" ได้ (Staff เท่านั้น หรือ Course Head ด้วย)?
+4. **Notification** — Course Head รู้ว่าวิชาตัวเองถูกยืนยันเปิดยังไง?
 
 ## Design Context: Impeccable Design Frontend (อัปเดต 8 พ.ค. 2569)
 
