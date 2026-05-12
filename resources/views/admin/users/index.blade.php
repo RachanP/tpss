@@ -15,7 +15,7 @@
                     password: '',
                     roles: [],
                     primary_role: '',
-                    is_active: true
+                    is_active: 1
                 },
                 instructorProfile: {
                     title: '',
@@ -102,7 +102,7 @@
                 openAddModal() {
                     this.editMode = false;
                     this.errorMsg = '';
-                    this.currentUser = { id: '', username: '', prefix: '', name: '', email: '', password: '', roles: ['staff'], primary_role: 'staff', is_active: true };
+                    this.currentUser = { id: '', username: '', prefix: '', name: '', email: '', password: '', roles: ['staff'], primary_role: 'staff', is_active: 1 };
                     this.instructorProfile = { title: '', employee_id: '', department_id: '', employment_type: 'พนักงานมหาวิทยาลัย', hired_at: '', academic_degree: 'ปริญญาโท', is_english_passed: false, teaching_pct: 0, research_pct: 0, service_pct: 0, culture_pct: 0, other_pct: 0, teaching_quota: 0, department_position: '' };
                     this.showModal = true;
                 },
@@ -118,7 +118,7 @@
                         password: '', 
                         roles: user.roles ? user.roles.map(r => r.role) : [],
                         primary_role: (user.roles && user.roles.find(r => r.is_primary)) ? user.roles.find(r => r.is_primary).role : (user.roles && user.roles[0] ? user.roles[0].role : ''),
-                        is_active: !!user.is_active
+                        is_active: user.is_active ? 1 : 0
                     };
                     
                     const profile = user.instructor_profile || user.instructorProfile || null;
@@ -197,12 +197,54 @@
                     
                     const conflict = this.getConflictInfo();
                     if (conflict) {
-                        if (!confirm(`คำเตือน: ตำแหน่ง${conflict.posLabel}ของภาควิชานี้ มีคนครองตำแหน่งอยู่แล้วคือ "${conflict.name}"\n\nหากคุณบันทึก ระบบจะถอดถอนท่านเดิมออกและแต่งตั้งท่านนี้แทน\n\nคุณต้องการดำเนินการต่อหรือไม่?`)) {
-                            e.preventDefault();
-                            return false;
-                        }
+                        e.preventDefault();
+                        var form = e.target;
+                        var posLabel = conflict.posLabel;
+                        var name = conflict.name;
+
+                        var innerHtml = '<div style="text-align:center;">'
+                            + '<div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#fffbeb,#fef3c7);'
+                            + 'border:2px solid #fcd34d;display:flex;align-items:center;justify-content:center;'
+                            + 'margin:0 auto 16px;box-shadow:0 4px 16px rgba(217,119,6,0.15);">'
+                            + '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#d97706" stroke-width="2" '
+                            + 'stroke-linecap="round" stroke-linejoin="round">'
+                            + '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>'
+                            + '<line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>'
+                            + '<div style="font-family:Kanit,sans-serif;font-size:19px;font-weight:700;color:#0f172a;line-height:1.2;">'
+                            + 'ตำแหน่งนี้มีผู้ดำรงอยู่แล้ว</div>'
+                            + '<div style="font-size:13px;color:#94a3b8;margin-top:4px;">กรุณาตรวจสอบก่อนดำเนินการ</div>'
+                            + '<div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:10px;padding:14px 16px;margin-top:14px;text-align:left;">'
+                            + '<div style="font-size:12.5px;color:#92400e;line-height:1.7;">'
+                            + 'ตำแหน่ง <strong>' + posLabel + '</strong> ของภาควิชานี้ มีคนครองอยู่แล้วคือ<br>'
+                            + '<strong style="font-size:14px;color:#78350f;">' + name + '</strong>'
+                            + '</div>'
+                            + '<div style="font-size:12px;color:#b45309;margin-top:8px;padding-top:8px;border-top:1px solid #fde68a;">'
+                            + 'หากบันทึก ระบบจะถอดถอนท่านเดิมและแต่งตั้งท่านนี้แทนโดยอัตโนมัติ'
+                            + '</div></div></div>';
+
+                        Swal.fire({
+                            html: innerHtml,
+                            showCancelButton: true,
+                            confirmButtonText: 'ดำเนินการต่อ',
+                            cancelButtonText: 'ยกเลิก',
+                            reverseButtons: true,
+                            focusCancel: true,
+                            buttonsStyling: false,
+                            customClass: {
+                                popup:         'tpss-delete-popup',
+                                confirmButton: 'tpss-warn-confirm',
+                                cancelButton:  'tpss-delete-cancel',
+                                actions:       'tpss-delete-actions',
+                            }
+                        }).then(function(result) {
+                            if (result.isConfirmed) form.submit();
+                        });
+                        return false;
                     }
                     return true;
+                },
+                doDelete(formId, label) {
+                    window.tpssConfirmDelete(formId, label, null);
                 }
             }));
         });
@@ -419,19 +461,20 @@
                                                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                                             </svg>
                                         </button>
-                                        <form action="{{ route('admin.users.destroy', $user) }}" method="POST"
-                                            onsubmit="return confirm('ยืนยันการลบผู้ใช้?')">
+                                        <form id="del-user-{{ $user->id }}" action="{{ route('admin.users.destroy', $user) }}" method="POST" style="display:none;">
                                             @csrf
                                             @method('DELETE')
-                                            <button class="action-btn del" title="ลบ">
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                                    stroke-linecap="round" stroke-linejoin="round">
-                                                    <polyline points="3 6 5 6 21 6" />
-                                                    <path
-                                                        d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                                </svg>
-                                            </button>
                                         </form>
+                                        <button class="action-btn del" title="ลบ" type="button"
+                                            data-form="del-user-{{ $user->id }}"
+                                            data-label="{{ $user->name }}"
+                                            onclick="tpssDelete(this)">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="3 6 5 6 21 6" />
+                                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                            </svg>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -591,9 +634,9 @@
 
                             <div class="form-group">
                                 <label>สถานะการใช้งาน</label>
-                                <select name="is_active" x-model="currentUser.is_active">
-                                    <option :value="1">ใช้งานปกติ (Active)</option>
-                                    <option :value="0">ระงับการใช้งาน (Inactive)</option>
+                                <select name="is_active" x-model.number="currentUser.is_active">
+                                    <option value="1">ใช้งานปกติ (Active)</option>
+                                    <option value="0">ระงับการใช้งาน (Inactive)</option>
                                 </select>
                             </div>
 

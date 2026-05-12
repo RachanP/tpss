@@ -74,22 +74,7 @@ class AdminUserController extends Controller
             'instructor_other_pct'      => "$reqInstructor|integer|min:0|max:100",
             'instructor_teaching_quota' => 'nullable|integer|min:0',
             'instructor_is_english_passed' => 'nullable|boolean',
-            'instructor_department_position' => [
-                'nullable', 'string', 'in:head,secretary',
-                function ($attribute, $value, $fail) use ($request) {
-                    if (!$value) return;
-                    $deptId = $request->input('instructor_department_id');
-                    if (!$deptId) return;
-                    $dept = Department::find($deptId);
-                    if (!$dept) return;
-                    $conflictUserId = $value === 'head' ? $dept->head_user_id : $dept->secretary_user_id;
-                    if ($conflictUserId) {
-                        $conflictUser = User::find($conflictUserId);
-                        $posLabel = $value === 'head' ? 'หัวหน้าภาควิชา' : 'เลขานุการภาควิชา';
-                        $fail("ภาควิชา {$dept->name} มี{$posLabel}อยู่แล้วคือ {$conflictUser?->name} กรุณาถอดถอนท่านเดิมก่อน หรือเลือกภาควิชาอื่น");
-                    }
-                }
-            ],
+            'instructor_department_position' => 'nullable|string|in:head,secretary',
         ]);
 
         if ($reqInstructor === 'required') {
@@ -138,12 +123,15 @@ class AdminUserController extends Controller
                     'is_english_passed' => $request->boolean('instructor_is_english_passed'),
                 ]);
 
-                // Handle department positions
+                // Handle department positions — clear old holder first, then assign new
                 if ($request->filled('instructor_department_position') && $request->filled('instructor_department_id')) {
+                    $deptId = $validated['instructor_department_id'];
                     if ($validated['instructor_department_position'] === 'head') {
-                        Department::where('id', $validated['instructor_department_id'])->update(['head_user_id' => $user->id]);
+                        Department::where('head_user_id', $user->id)->update(['head_user_id' => null]);
+                        Department::where('id', $deptId)->update(['head_user_id' => $user->id]);
                     } else if ($validated['instructor_department_position'] === 'secretary') {
-                        Department::where('id', $validated['instructor_department_id'])->update(['secretary_user_id' => $user->id]);
+                        Department::where('secretary_user_id', $user->id)->update(['secretary_user_id' => null]);
+                        Department::where('id', $deptId)->update(['secretary_user_id' => $user->id]);
                     }
                 }
             }
@@ -179,22 +167,7 @@ class AdminUserController extends Controller
             'instructor_other_pct'      => "$reqInstructor|integer|min:0|max:100",
             'instructor_teaching_quota' => 'nullable|integer|min:0',
             'instructor_is_english_passed' => 'nullable|boolean',
-            'instructor_department_position' => [
-                'nullable', 'string', 'in:head,secretary',
-                function ($attribute, $value, $fail) use ($request, $user) {
-                    if (!$value) return;
-                    $deptId = $request->input('instructor_department_id');
-                    if (!$deptId) return;
-                    $dept = Department::find($deptId);
-                    if (!$dept) return;
-                    $conflictUserId = $value === 'head' ? $dept->head_user_id : $dept->secretary_user_id;
-                    if ($conflictUserId && (int)$conflictUserId !== (int)$user->id) {
-                        $conflictUser = User::find($conflictUserId);
-                        $posLabel = $value === 'head' ? 'หัวหน้าภาควิชา' : 'เลขานุการภาควิชา';
-                        $fail("ภาควิชา {$dept->name} มี{$posLabel}อยู่แล้วคือ {$conflictUser?->name} กรุณาถอดถอนท่านเดิมก่อน หรือเลือกภาควิชาอื่น");
-                    }
-                }
-            ],
+            'instructor_department_position' => 'nullable|string|in:head,secretary',
         ]);
 
         if ($reqInstructor === 'required') {
@@ -277,8 +250,20 @@ class AdminUserController extends Controller
 
     public function destroy(User $user)
     {
-        $user->delete();
-        return redirect()->route('admin.users')->with('success', 'ลบผู้ใช้เรียบร้อยแล้ว');
+        try {
+            DB::transaction(function () use ($user) {
+                // Release department positions held by this user (FK has no cascade)
+                Department::where('head_user_id', $user->id)->update(['head_user_id' => null]);
+                Department::where('secretary_user_id', $user->id)->update(['secretary_user_id' => null]);
+                // Remove instructor profile (FK has no cascade)
+                InstructorProfile::where('user_id', $user->id)->delete();
+                // user_roles cascades on delete
+                $user->delete();
+            });
+            return redirect()->route('admin.users')->with('success', 'ลบผู้ใช้เรียบร้อยแล้ว');
+        } catch (\Illuminate\Database\QueryException $e) {
+            return redirect()->route('admin.users')->with('error', 'ไม่สามารถลบผู้ใช้นี้ได้ เนื่องจากมีข้อมูลผูกพันอยู่ในระบบ (เช่น เป็นหัวหน้าวิชา หรือมีตารางสอน)');
+        }
     }
 
     public function settings()

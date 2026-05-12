@@ -1,5 +1,5 @@
 <x-app-layout title="ข้อมูลหลักระบบ (Master Data)">
-    <div x-data="{ 
+    <div x-data="{
         activeTab: new URLSearchParams(window.location.search).get('tab') || 'instructors',
         searchQuery: '',
         showDeptModal: false,
@@ -55,6 +55,7 @@
             };
             this.showInstructorModal = true;
         },
+        departmentsData: {{ Js::from($departments->map(fn($d) => ['id' => $d->id, 'name' => $d->name, 'head_user_id' => $d->head_user_id, 'secretary_user_id' => $d->secretary_user_id])) }},
         headSearch: '',
         secretarySearch: '',
         showHeadDropdown: false,
@@ -64,10 +65,18 @@
             this.headSearch = user.name;
             this.showHeadDropdown = false;
         },
+        clearHead() {
+            this.currentDept.head_user_id = '';
+            this.headSearch = '';
+        },
         selectSecretary(user) {
             this.currentDept.secretary_user_id = user.id;
             this.secretarySearch = user.name;
             this.showSecretaryDropdown = false;
+        },
+        clearSecretary() {
+            this.currentDept.secretary_user_id = '';
+            this.secretarySearch = '';
         },
 
         // Location Types
@@ -191,31 +200,60 @@
 
         usersList: {{ Js::from($users->map(fn($u) => ['id' => $u->id, 'name' => $u->formatted_name])) }},
 
-        confirmDelete(formId, message = 'คุณแน่ใจหรือไม่ที่จะลบข้อมูลนี้?') {
-            if (typeof Swal === 'undefined') {
-                if (confirm(message)) {
-                    document.getElementById(formId).submit();
-                }
+        confirmDeptSave(e) {
+            var form     = e.target;
+            var headId   = String(this.currentDept.head_user_id || '');
+            var secId    = String(this.currentDept.secretary_user_id || '');
+            var deptId   = String(this.currentDept.id || '');
+
+            var headConflict = headId ? this.departmentsData.find(
+                function(d) { return String(d.head_user_id) === headId && String(d.id) !== deptId; }
+            ) : null;
+            var secConflict = secId ? this.departmentsData.find(
+                function(d) { return String(d.secretary_user_id) === secId && String(d.id) !== deptId; }
+            ) : null;
+
+            if (!headConflict && !secConflict) return;
+            e.preventDefault();
+
+            var lines = [];
+            if (headConflict) {
+                var hName = (this.usersList.find(function(u) { return String(u.id) === headId; }) || {}).name || 'บุคคลนี้';
+                lines.push(hName + ' เป็นหัวหน้าภาควิชา ' + headConflict.name + ' อยู่แล้ว');
+            }
+            if (secConflict) {
+                var sName = (this.usersList.find(function(u) { return String(u.id) === secId; }) || {}).name || 'บุคคลนี้';
+                lines.push(sName + ' เป็นเลขานุการภาควิชา ' + secConflict.name + ' อยู่แล้ว');
+            }
+            tpssDeptConflictWarn(form, lines);
+        },
+        getInstructorTeachingRule() {
+            const title  = this.currentInstructor.title;
+            const degree = this.currentInstructor.academic_degree;
+            if (title === 'ผู้ช่วยอาจารย์ (คลินิก)')       return { label: '≤ 10%',   max: 10,  min: 0  };
+            if (title === 'ผู้ช่วยอาจารย์ (สอนภาคปฏิบัติ)') return { label: '≤ 70%',   max: 70,  min: 0  };
+            if (title === 'ผู้ช่วยอาจารย์' && degree === 'ปริญญาตรี') return { label: '30–60%', max: 60,  min: 30 };
+            if (title === 'ผู้ช่วยอาจารย์')                 return { label: '≤ 70%',   max: 70,  min: 0  };
+            return { label: '20–70%', max: 70, min: 20 };
+        },
+        confirmInstructorSave(e) {
+            const rule = this.getInstructorTeachingRule();
+            const pct  = parseInt(this.currentInstructor.teaching_pct) || 0;
+            if (pct < rule.min || pct > rule.max) {
+                e.preventDefault();
+                tpssToast(
+                    'สัดส่วนงานสอน ' + pct + '% ไม่อยู่ในเกณฑ์ที่กำหนด ('
+                    + rule.label + ') สำหรับตำแหน่ง ' + (this.currentInstructor.title || 'ที่เลือก'),
+                    'error'
+                );
                 return;
             }
-
-            Swal.fire({
-                title: 'ยืนยันการลบ',
-                text: message,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'ใช่, ลบเลย!',
-                cancelButtonText: 'ยกเลิก',
-                reverseButtons: true
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    document.getElementById(formId).submit();
-                }
-            });
+        },
+        confirmDelete(formId, itemLabel, warnText) {
+            window.tpssConfirmDelete(formId, itemLabel, warnText);
         }
-    }">
+    }"
+    x-init="$watch('activeTab', tab => history.replaceState(null, '', '?tab=' + tab))">
 
         <!-- Header -->
         <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
@@ -776,7 +814,7 @@
                     </div>
                     <form
                         :action="editDeptMode ? '{{ url('admin/master-data/departments') }}/' + currentDept.id : '{{ route('admin.departments.store') }}'"
-                        method="POST">
+                        method="POST" @submit="confirmDeptSave($event)">
                         @csrf
                         <input type="hidden" name="_method" value="PUT" :disabled="!editDeptMode">
                         <div class="modal-body">
@@ -788,50 +826,60 @@
                             <div class="form-row">
                                 <div class="form-group" style="position: relative;">
                                     <label>หัวหน้าภาควิชา</label>
-                                    <div style="position: relative;">
-                                        <input type="text" x-model="headSearch" @input="showHeadDropdown = true"
-                                            @focus="showHeadDropdown = true" @click.away="showHeadDropdown = false"
-                                            placeholder="พิมพ์ชื่อเพื่อค้นหา..." autocomplete="off">
-                                        <div class="search-results" x-show="showHeadDropdown && headSearch" x-cloak>
-                                            <template
-                                                x-for="user in usersList.filter(u => u.name.toLowerCase().includes(headSearch.toLowerCase()))"
-                                                :key="user.id">
-                                                <div class="search-item" @click="selectHead(user)" x-text="user.name">
-                                                </div>
-                                            </template>
-                                            <div x-show="usersList.filter(u => u.name.toLowerCase().includes(headSearch.toLowerCase())).length === 0"
-                                                class="search-item-empty">ไม่พบข้อมูล</div>
+                                    <div style="position: relative; display: flex; gap: 6px; align-items: flex-start;">
+                                        <div style="flex: 1; position: relative;">
+                                            <input type="text" x-model="headSearch" @input="showHeadDropdown = true"
+                                                @focus="showHeadDropdown = true" @click.away="showHeadDropdown = false"
+                                                placeholder="พิมพ์ชื่อเพื่อค้นหา..." autocomplete="off">
+                                            <div class="search-results" x-show="showHeadDropdown && headSearch" x-cloak>
+                                                <template
+                                                    x-for="user in usersList.filter(u => u.name.toLowerCase().includes(headSearch.toLowerCase()))"
+                                                    :key="user.id">
+                                                    <div class="search-item" @click="selectHead(user)" x-text="user.name"></div>
+                                                </template>
+                                                <div x-show="usersList.filter(u => u.name.toLowerCase().includes(headSearch.toLowerCase())).length === 0"
+                                                    class="search-item-empty">ไม่พบข้อมูล</div>
+                                            </div>
                                         </div>
+                                        <button type="button" x-show="currentDept.head_user_id" @click="clearHead()"
+                                            title="ล้างข้อมูล"
+                                            style="flex-shrink:0;margin-top:6px;width:32px;height:32px;border-radius:6px;border:1px solid var(--border);background:var(--bg-2);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--fg-3);">
+                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                        </button>
                                     </div>
                                     <input type="hidden" name="head_user_id" x-model="currentDept.head_user_id">
                                 </div>
                                 <div class="form-group" style="position: relative;">
                                     <label>เลขานุการภาควิชา</label>
-                                    <div style="position: relative;">
-                                        <input type="text" x-model="secretarySearch"
-                                            @input="showSecretaryDropdown = true" @focus="showSecretaryDropdown = true"
-                                            @click.away="showSecretaryDropdown = false"
-                                            placeholder="พิมพ์ชื่อเพื่อค้นหา..." autocomplete="off">
-                                        <div class="search-results" x-show="showSecretaryDropdown && secretarySearch"
-                                            x-cloak>
-                                            <template
-                                                x-for="user in usersList.filter(u => u.name.toLowerCase().includes(secretarySearch.toLowerCase()))"
-                                                :key="user.id">
-                                                <div class="search-item" @click="selectSecretary(user)"
-                                                    x-text="user.name"></div>
-                                            </template>
-                                            <div x-show="usersList.filter(u => u.name.toLowerCase().includes(secretarySearch.toLowerCase())).length === 0"
-                                                class="search-item-empty">ไม่พบข้อมูล</div>
+                                    <div style="position: relative; display: flex; gap: 6px; align-items: flex-start;">
+                                        <div style="flex: 1; position: relative;">
+                                            <input type="text" x-model="secretarySearch"
+                                                @input="showSecretaryDropdown = true" @focus="showSecretaryDropdown = true"
+                                                @click.away="showSecretaryDropdown = false"
+                                                placeholder="พิมพ์ชื่อเพื่อค้นหา..." autocomplete="off">
+                                            <div class="search-results" x-show="showSecretaryDropdown && secretarySearch" x-cloak>
+                                                <template
+                                                    x-for="user in usersList.filter(u => u.name.toLowerCase().includes(secretarySearch.toLowerCase()))"
+                                                    :key="user.id">
+                                                    <div class="search-item" @click="selectSecretary(user)" x-text="user.name"></div>
+                                                </template>
+                                                <div x-show="usersList.filter(u => u.name.toLowerCase().includes(secretarySearch.toLowerCase())).length === 0"
+                                                    class="search-item-empty">ไม่พบข้อมูล</div>
+                                            </div>
                                         </div>
+                                        <button type="button" x-show="currentDept.secretary_user_id" @click="clearSecretary()"
+                                            title="ล้างข้อมูล"
+                                            style="flex-shrink:0;margin-top:6px;width:32px;height:32px;border-radius:6px;border:1px solid var(--border);background:var(--bg-2);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--fg-3);">
+                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                        </button>
                                     </div>
-                                    <input type="hidden" name="secretary_user_id"
-                                        x-model="currentDept.secretary_user_id">
+                                    <input type="hidden" name="secretary_user_id" x-model="currentDept.secretary_user_id">
                                 </div>
                             </div>
                         </div>
                         <div class="modal-foot" style="display: flex; justify-content: space-between;">
                             <div>
-                                <button type="button" class="btn btn-ghost" x-show="editDeptMode" @click="confirmDelete('deleteDeptForm', 'คุณแน่ใจหรือไม่ที่จะลบข้อมูลภาควิชานี้? (หากมีข้อมูลผูกพันอยู่จะไม่สามารถลบได้)')" style="color: var(--status-conflict-fg);">
+                                <button type="button" class="btn btn-ghost" x-show="editDeptMode" @click="confirmDelete('deleteDeptForm', currentDept.name, 'หากมีข้อมูลผูกพันอยู่จะไม่สามารถลบได้')" style="color: var(--status-conflict-fg);">
                                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; display: inline-block; vertical-align: middle;"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg> ลบข้อมูล
                                 </button>
                             </div>
@@ -865,39 +913,37 @@
                             </svg>
                         </button>
                     </div>
-                    <form :action="'{{ url('admin/master-data/instructors') }}/' + currentInstructor.id" method="POST">
+                    <form :action="'{{ url('admin/master-data/instructors') }}/' + currentInstructor.id" method="POST"
+                        @submit="confirmInstructorSave($event)">
                         @csrf
                         <input type="hidden" name="_method" value="PUT">
                         <div class="modal-body">
                             <div
                                 style="display: grid; grid-template-columns: 140px 1fr; gap: 20px; margin-bottom: 20px;">
                                 <div class="form-group">
-                                    <label>คำนำหน้า</label>
-                                    <select name="prefix" x-model="currentInstructor.prefix">
+                                    <label>คำนำหน้า <span style="color:var(--status-conflict-fg)">*</span></label>
+                                    <select name="prefix" x-model="currentInstructor.prefix" required>
                                         <option value="นาย">นาย</option>
                                         <option value="นาง">นาง</option>
                                         <option value="นางสาว">นางสาว</option>
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label>ชื่อ-นามสกุล</label>
-                                    <input type="text" :value="currentInstructor.name" disabled
-                                        style="background: var(--bg-2); cursor: not-allowed;">
-                                    <p style="font-size: 11px; color: var(--fg-3); margin-top: 4px;">* ชื่อ-นามสกุล
-                                        แก้ไขได้ที่หน้าจัดการผู้ใช้งานเท่านั้น</p>
+                                    <label>ชื่อ-นามสกุล <span style="color:var(--status-conflict-fg)">*</span></label>
+                                    <input type="text" name="name" x-model="currentInstructor.name" required>
                                 </div>
                             </div>
 
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                                 <div class="form-group">
-                                    <label>รหัสพนักงาน</label>
+                                    <label>รหัสพนักงาน <span style="color:var(--status-conflict-fg)">*</span></label>
                                     <input type="text" name="employee_id" x-model="currentInstructor.employee_id"
-                                        placeholder="รหัสพนักงาน 6 หลัก">
+                                        placeholder="รหัสพนักงาน" required>
                                 </div>
                                 <div class="form-group">
-                                    <label>ภาควิชา</label>
-                                    <select name="department_id" x-model="currentInstructor.department_id">
-                                        <option value="">-- ไม่ระบุ --</option>
+                                    <label>ภาควิชา <span style="color:var(--status-conflict-fg)">*</span></label>
+                                    <select name="department_id" x-model="currentInstructor.department_id" required>
+                                        <option value="">-- เลือกภาควิชา --</option>
                                         @foreach($departments as $dept)
                                             <option value="{{ $dept->id }}">{{ $dept->name }}</option>
                                         @endforeach
@@ -907,8 +953,8 @@
 
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                                 <div class="form-group">
-                                    <label>ตำแหน่งทางวิชาการ</label>
-                                    <select name="title" x-model="currentInstructor.title">
+                                    <label>ตำแหน่งทางวิชาการ <span style="color:var(--status-conflict-fg)">*</span></label>
+                                    <select name="title" x-model="currentInstructor.title" required>
                                         <option value="อาจารย์">อาจารย์</option>
                                         <option value="ผู้ช่วยศาสตราจารย์">ผู้ช่วยศาสตราจารย์</option>
                                         <option value="รองศาสตราจารย์">รองศาสตราจารย์</option>
@@ -920,8 +966,8 @@
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label>วุฒิการศึกษา</label>
-                                    <select name="academic_degree" x-model="currentInstructor.academic_degree">
+                                    <label>วุฒิการศึกษา <span style="color:var(--status-conflict-fg)">*</span></label>
+                                    <select name="academic_degree" x-model="currentInstructor.academic_degree" required>
                                         <option value="ปริญญาเอก">ปริญญาเอก</option>
                                         <option value="ปริญญาโท">ปริญญาโท</option>
                                         <option value="ปริญญาตรี">ปริญญาตรี</option>
@@ -931,16 +977,16 @@
 
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                                 <div class="form-group">
-                                    <label>ประเภทบุคลากร</label>
-                                    <select name="employment_type" x-model="currentInstructor.employment_type">
+                                    <label>ประเภทบุคลากร <span style="color:var(--status-conflict-fg)">*</span></label>
+                                    <select name="employment_type" x-model="currentInstructor.employment_type" required>
                                         <option value="พนักงานมหาวิทยาลัย">พนักงานมหาวิทยาลัย</option>
                                         <option value="ข้าราชการ">ข้าราชการ</option>
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label>สัดส่วนงานสอน (%)</label>
+                                    <label>สัดส่วนงานสอน (%) <span style="color:var(--status-conflict-fg)">*</span></label>
                                     <input type="number" name="teaching_pct"
-                                        x-model.number="currentInstructor.teaching_pct" min="0" max="100">
+                                        x-model.number="currentInstructor.teaching_pct" min="0" max="100" required>
                                 </div>
                             </div>
                         </div>
@@ -985,7 +1031,7 @@
                         </div>
                         <div class="modal-foot" style="display: flex; justify-content: space-between;">
                             <div>
-                                <button type="button" class="btn btn-ghost" x-show="editLocTypeMode" @click="confirmDelete('deleteLocTypeForm', 'คุณแน่ใจหรือไม่ที่จะลบประเภทสถานที่นี้?')" style="color: var(--status-conflict-fg);">
+                                <button type="button" class="btn btn-ghost" x-show="editLocTypeMode" @click="confirmDelete('deleteLocTypeForm', currentLocType.name, null)" style="color: var(--status-conflict-fg);">
                                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; display: inline-block; vertical-align: middle;"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg> ลบข้อมูล
                                 </button>
                             </div>
@@ -1082,7 +1128,7 @@
                         </div>
                         <div class="modal-foot" style="display: flex; justify-content: space-between;">
                             <div>
-                                <button type="button" class="btn btn-ghost" x-show="editRoomMode" @click="confirmDelete('deleteRoomForm', 'คุณแน่ใจหรือไม่ที่จะลบห้องนี้?')" style="color: var(--status-conflict-fg);">
+                                <button type="button" class="btn btn-ghost" x-show="editRoomMode" @click="confirmDelete('deleteRoomForm', currentRoom.room_name, null)" style="color: var(--status-conflict-fg);">
                                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; display: inline-block; vertical-align: middle;"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg> ลบข้อมูล
                                 </button>
                             </div>
@@ -1240,7 +1286,7 @@
                         </div>
                         <div class="modal-foot" style="display: flex; justify-content: space-between;">
                             <div>
-                                <button type="button" class="btn btn-ghost" x-show="editCourseMode" @click="confirmDelete('deleteCourseForm', 'คุณแน่ใจหรือไม่ที่จะลบรายวิชานี้? (หากมีการผูกตารางสอนแล้วจะไม่สามารถลบได้)')" style="color: var(--status-conflict-fg);">
+                                <button type="button" class="btn btn-ghost" x-show="editCourseMode" @click="confirmDelete('deleteCourseForm', currentCourse.name_th + (currentCourse.course_code ? ' (' + currentCourse.course_code + ')' : ''), 'หากมีการผูกตารางสอนแล้วจะไม่สามารถลบได้')" style="color: var(--status-conflict-fg);">
                                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; display: inline-block; vertical-align: middle;"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg> ลบข้อมูล
                                 </button>
                             </div>
@@ -1300,7 +1346,7 @@
                         </div>
                         <div class="modal-foot" style="display: flex; justify-content: space-between;">
                             <div>
-                                <button type="button" class="btn btn-ghost" x-show="editCurriculumMode" @click="confirmDelete('deleteCurriculumForm', 'คุณแน่ใจหรือไม่ที่จะลบหลักสูตรนี้? (ต้องลบวิชาในหลักสูตรออกให้หมดก่อน)')" style="color: var(--status-conflict-fg);">
+                                <button type="button" class="btn btn-ghost" x-show="editCurriculumMode" @click="confirmDelete('deleteCurriculumForm', currentCurriculum.name, 'ต้องลบวิชาในหลักสูตรออกให้หมดก่อน')" style="color: var(--status-conflict-fg);">
                                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; display: inline-block; vertical-align: middle;"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg> ลบข้อมูล
                                 </button>
                             </div>
@@ -1404,4 +1450,50 @@
             font-style: italic;
         }
     </style>
+
+    <script>
+        function tpssDeptConflictWarn(form, lines) {
+            var lineHtml = lines.map(function(l) { return '<li style="margin-bottom:4px;">' + l + '</li>'; }).join('');
+            var innerHtml = '<div style="text-align:center;">'
+                + '<div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#fffbeb,#fef3c7);'
+                + 'border:2px solid #fcd34d;display:flex;align-items:center;justify-content:center;'
+                + 'margin:0 auto 16px;box-shadow:0 4px 16px rgba(217,119,6,0.15);">'
+                + '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#d97706" stroke-width="2"'
+                + ' stroke-linecap="round" stroke-linejoin="round">'
+                + '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>'
+                + '<line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>'
+                + '<div style="font-family:Kanit,sans-serif;font-size:19px;font-weight:700;color:#0f172a;">ตำแหน่งซ้ำกับภาควิชาอื่น</div>'
+                + '<div style="font-size:13px;color:#94a3b8;margin-top:4px;">กรุณาตรวจสอบก่อนดำเนินการ</div>'
+                + '<div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:10px;padding:14px 16px;margin-top:14px;text-align:left;">'
+                + '<ul style="margin:0;padding-left:18px;font-size:13px;color:#92400e;line-height:1.8;">' + lineHtml + '</ul>'
+                + '<div style="font-size:12px;color:#b45309;margin-top:8px;padding-top:8px;border-top:1px solid #fde68a;">'
+                + 'หากดำเนินการต่อ ระบบจะย้ายตำแหน่งออกจากภาควิชาเดิมให้อัตโนมัติ'
+                + '</div></div></div>';
+
+            Swal.fire({
+                html: innerHtml,
+                showCancelButton: true,
+                confirmButtonText: 'ดำเนินการต่อ',
+                cancelButtonText: 'ยกเลิก',
+                reverseButtons: true,
+                focusCancel: true,
+                buttonsStyling: false,
+                customClass: {
+                    popup:         'tpss-delete-popup',
+                    confirmButton: 'tpss-warn-confirm',
+                    cancelButton:  'tpss-delete-cancel',
+                    actions:       'tpss-delete-actions'
+                }
+            }).then(function(result) {
+                if (result.isConfirmed) {
+                    var input = document.createElement('input');
+                    input.type  = 'hidden';
+                    input.name  = 'force_position_override';
+                    input.value = '1';
+                    form.appendChild(input);
+                    form.submit();
+                }
+            });
+        }
+    </script>
 </x-app-layout>

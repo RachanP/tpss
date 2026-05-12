@@ -63,6 +63,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/admin/master-data/curriculums', 'App\Http\Controllers\Admin\MasterDataController@storeCurriculum')->name('admin.curriculums.store');
         Route::put('/admin/master-data/curriculums/{curriculum}', 'App\Http\Controllers\Admin\MasterDataController@updateCurriculum')->name('admin.curriculums.update');
         Route::post('/admin/master-data/curriculums/{curriculum}/clone', 'App\Http\Controllers\Admin\MasterDataController@cloneCurriculum')->name('admin.curriculums.clone');
+        Route::delete('/admin/master-data/curriculums/{curriculum}', 'App\Http\Controllers\Admin\MasterDataController@destroyCurriculum')->name('admin.curriculums.destroy');
     });
 
     // Role switcher

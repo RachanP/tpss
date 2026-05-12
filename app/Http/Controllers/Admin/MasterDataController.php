@@ -142,38 +142,26 @@ class MasterDataController extends Controller
             'secretary_user_id'=> 'nullable|exists:users,id',
         ]);
 
-        // If head is being changed, check for duplicate conflict
         $newHeadId = $validated['head_user_id'] ?? null;
         $newSecId  = $validated['secretary_user_id'] ?? null;
+        $forceOverride = $request->boolean('force_position_override');
 
-        // Block duplicate: same person as both head and secretary
+        // Block: same person as both head and secretary
         if ($newHeadId && $newSecId && (int)$newHeadId === (int)$newSecId) {
-            return back()->withInput()->withErrors([
-                'head_user_id' => 'ผู้เดียวกันไม่สามารถเป็นทั้งหัวหน้าและเลขานุการในคราวเดียวกันได้'
-            ]);
+            return back()->withErrors(['head_user_id' => 'ผู้เดียวกันไม่สามารถเป็นทั้งหัวหน้าและเลขานุการได้']);
         }
 
-        // If head is being replaced, block if new head is already head of another dept
-        if ($newHeadId && (int)$newHeadId !== (int)($department->head_user_id ?? 0)) {
-            $conflict = Department::where('id', '!=', $department->id)
-                ->where('head_user_id', $newHeadId)->first();
-            if ($conflict) {
-                $person = User::find($newHeadId);
-                return back()->withInput()->withErrors([
-                    'head_user_id' => "{$person?->name} เป็นหัวหน้าภาควิชา {$conflict->name} อยู่แล้ว"
-                ]);
+        // If override confirmed by user, release positions from other depts first
+        if ($forceOverride) {
+            if ($newHeadId) {
+                Department::where('id', '!=', $department->id)
+                    ->where('head_user_id', $newHeadId)
+                    ->update(['head_user_id' => null]);
             }
-        }
-
-        // If secretary is being replaced, block if new sec is already sec of another dept
-        if ($newSecId && (int)$newSecId !== (int)($department->secretary_user_id ?? 0)) {
-            $conflict = Department::where('id', '!=', $department->id)
-                ->where('secretary_user_id', $newSecId)->first();
-            if ($conflict) {
-                $person = User::find($newSecId);
-                return back()->withInput()->withErrors([
-                    'secretary_user_id' => "{$person?->name} เป็นเลขานุการภาควิชา {$conflict->name} อยู่แล้ว"
-                ]);
+            if ($newSecId) {
+                Department::where('id', '!=', $department->id)
+                    ->where('secretary_user_id', $newSecId)
+                    ->update(['secretary_user_id' => null]);
             }
         }
 
@@ -188,11 +176,18 @@ class MasterDataController extends Controller
         $profile = $user->instructorProfile;
 
         $request->validate([
-            'employee_id' => 'nullable|string|max:50|unique:instructor_profiles,employee_id,' . ($profile ? $profile->id : 'NULL'),
+            'name'            => 'required|string|max:255',
+            'prefix'          => 'required|string|max:50',
+            'employee_id'     => 'required|string|max:50|unique:instructor_profiles,employee_id,' . ($profile ? $profile->id : 'NULL'),
+            'department_id'   => 'required|integer|exists:departments,id',
+            'title'           => 'required|string|max:100',
+            'academic_degree' => 'required|string|max:100',
+            'employment_type' => 'required|string|max:100',
+            'teaching_pct'    => 'required|integer|min:0|max:100',
         ]);
 
-        // Update user prefix
-        $user->update(['prefix' => $request->prefix]);
+        // Update user name and prefix
+        $user->update(['name' => $request->name, 'prefix' => $request->prefix]);
 
         // If department is changing and user was head/secretary of old dept, clear that role
         if ($profile && $request->filled('department_id') && (int)$request->department_id !== (int)$profile->department_id) {
@@ -357,12 +352,16 @@ class MasterDataController extends Controller
 
     public function destroyLocationType(LocationType $locationType)
     {
-        try {
-            $locationType->delete();
-            return redirect()->route('admin.master_data', ['tab' => 'rooms'])->with('success', 'ลบประเภทสถานที่เรียบร้อยแล้ว');
-        } catch (\Illuminate\Database\QueryException $e) {
-            return redirect()->back()->with('error', 'ไม่สามารถลบได้เนื่องจากมีห้องผูกอยู่');
+        // Release FK on rooms before deleting
+        $affected = $locationType->rooms()->count();
+        $locationType->rooms()->update(['location_type_id' => null]);
+        $locationType->delete();
+
+        $msg = 'ลบประเภทสถานที่เรียบร้อยแล้ว';
+        if ($affected > 0) {
+            $msg .= " (ยกเลิกการกำหนดประเภทจาก {$affected} ห้อง)";
         }
+        return redirect()->route('admin.master_data', ['tab' => 'location_types'])->with('success', $msg);
     }
 
     public function destroyRoom(Room $room)
