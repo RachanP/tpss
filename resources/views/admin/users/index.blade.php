@@ -906,8 +906,7 @@
                                 <span>• academic_degree: <code>doctoral</code> หรือ <code>non_doctoral</code></span>
                             </div>
                             <div style="margin-bottom: 16px;">
-                                <a href="{{ 
-                                 }}"
+                                <a href="{{ asset('templates/users_import.csv') }}"
                                     style="font-size: 13px; color: var(--accent); text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
                                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
