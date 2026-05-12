@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             LocationTypeSeeder::class,
             SystemSettingSeeder::class,
             DepartmentSeeder::class,
+            AcademicYearSeeder::class,
             UserSeeder::class,
             DepartmentSeeder::class,
             RoomSeeder::class,
