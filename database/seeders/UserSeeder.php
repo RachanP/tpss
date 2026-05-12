@@ -39,13 +39,14 @@ class UserSeeder extends Seeder
                     'service_pct' => 15,
                     'culture_pct' => 15,
                     'other_pct' => 0,
+                    'hired_at' => '2020-01-15',
                     'teaching_quota' => 683,
                 ]
             ],
             [
                 'prefix' => 'นางสาว',
                 'username' => 'pronpimon',
-                'name' => 'พรภิมร ประเสริฐสุข',
+                'name' => 'พรภิมล ประเสริฐสุข',
                 'email' => 'pronpimon@mahidol.edu',
                 'is_active' => true,
                 'roles' => [
@@ -62,8 +63,45 @@ class UserSeeder extends Seeder
                     'service_pct' => 20,
                     'culture_pct' => 10,
                     'other_pct' => 0,
+                    'hired_at' => '2010-05-20',
                     'teaching_quota' => 273,
                 ]
+            ],
+            [
+                'prefix' => 'ดร.',
+                'username' => 'somsak_t',
+                'name' => 'สมศักดิ์ ตันติเวช',
+                'email' => 'somsak.tan@mahidol.edu',
+                'is_active' => true,
+                'roles' => [
+                    ['role' => 'instructor', 'is_primary' => true],
+                    ['role' => 'staff', 'is_primary' => false],
+                ],
+                'profile' => [
+                    'employee_id' => '60101',
+                    'title' => 'รองศาสตราจารย์',
+                    'department_id' => 1,
+                    'employment_type' => 'พนักงานมหาวิทยาลัย',
+                    'academic_degree' => 'ปริญญาเอก',
+                    'teaching_pct' => 40,
+                    'research_pct' => 40,
+                    'service_pct' => 10,
+                    'culture_pct' => 5,
+                    'other_pct' => 5,
+                    'hired_at' => '2005-10-10',
+                    'teaching_quota' => 546,
+                ]
+            ],
+            [
+                'prefix' => 'นาง',
+                'username' => 'staff_01',
+                'name' => 'สมใจ รักดี',
+                'email' => 'somjai.rak@mahidol.edu',
+                'is_active' => true,
+                'roles' => [
+                    ['role' => 'staff', 'is_primary' => true],
+                ],
+                // No profile for pure staff
             ]
         ];
 

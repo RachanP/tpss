@@ -96,11 +96,12 @@
             capacity: '',
             location_type_id: '',
             status: 'active',
-            address: ''
+            address: '',
+            equipment_type: ''
         },
         openAddRoom() {
             this.editRoomMode = false;
-            this.currentRoom = { id: '', room_code: '', room_name: '', building: '', capacity: '', location_type_id: '', status: 'active', address: '' };
+            this.currentRoom = { id: '', room_code: '', room_name: '', building: '', capacity: '', location_type_id: '', status: 'active', address: '', equipment_type: '' };
             this.showRoomModal = true;
         },
         openEditRoom(room) {
@@ -113,7 +114,8 @@
                 capacity: room.capacity,
                 location_type_id: room.location_type_id,
                 status: room.status,
-                address: room.address || ''
+                address: room.address || '',
+                equipment_type: Array.isArray(room.equipment_type) ? room.equipment_type.join(', ') : ''
             };
             this.showRoomModal = true;
         },
@@ -736,8 +738,8 @@
                                         placeholder="เช่น อาคาร 1">
                                 </div>
                                 <div class="form-group">
-                                    <label>ความจุ (คน) <span style="color: var(--status-conflict-fg)">*</span></label>
-                                    <input type="number" name="capacity" x-model="currentRoom.capacity" required
+                                    <label>ความจุ (คน)</label>
+                                    <input type="number" name="capacity" x-model="currentRoom.capacity"
                                         min="0">
                                 </div>
                             </div>
@@ -759,6 +761,11 @@
                                         <option value="inactive">ไม่พร้อมใช้</option>
                                     </select>
                                 </div>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 20px;">
+                                <label>ครุภัณฑ์ / อุปกรณ์</label>
+                                <input type="text" name="equipment_type" x-model="currentRoom.equipment_type" 
+                                    placeholder="เช่น โปรเจคเตอร์, คอมพิวเตอร์, ไมโครโฟน (คั่นด้วยลูกน้ำ ,)">
                             </div>
                             <div class="form-group">
                                 <label>รายละเอียดที่ตั้ง / ที่อยู่ (แหล่งฝึกภายนอก)</label>

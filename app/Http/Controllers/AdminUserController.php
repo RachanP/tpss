@@ -49,6 +49,7 @@ class AdminUserController extends Controller
     public function store(Request $request)
     {
         $roles = $request->input('roles', []);
+        $reqInstructor = in_array('instructor', $roles) ? 'required' : 'nullable';
 
         $validated = $request->validate([
             'username'     => 'required|string|max:100|unique:users',
@@ -59,18 +60,18 @@ class AdminUserController extends Controller
             'roles'        => 'required|array|min:1',
             'primary_role' => ['required', 'string', Rule::in($roles)],
             'is_active'    => 'boolean',
-            // instructor profile fields (optional)
-            'instructor_title'          => 'nullable|string|max:100',
-            'instructor_employee_id'     => 'nullable|string|max:50',
-            'instructor_department_id'  => 'nullable|integer|exists:departments,id',
-            'instructor_employment_type' => 'nullable|string|max:100',
-            'instructor_hired_at'        => 'nullable|date',
-            'instructor_academic_degree' => 'nullable|string|max:100',
-            'instructor_teaching_pct'   => 'nullable|integer|min:0|max:100',
-            'instructor_research_pct'   => 'nullable|integer|min:0|max:100',
-            'instructor_service_pct'    => 'nullable|integer|min:0|max:100',
-            'instructor_culture_pct'    => 'nullable|integer|min:0|max:100',
-            'instructor_other_pct'      => 'nullable|integer|min:0|max:100',
+            // instructor profile fields
+            'instructor_title'          => "$reqInstructor|string|max:100",
+            'instructor_employee_id'     => "$reqInstructor|string|max:50|unique:instructor_profiles,employee_id",
+            'instructor_department_id'  => "$reqInstructor|integer|exists:departments,id",
+            'instructor_employment_type' => "$reqInstructor|string|max:100",
+            'instructor_hired_at'        => "$reqInstructor|date",
+            'instructor_academic_degree' => "$reqInstructor|string|max:100",
+            'instructor_teaching_pct'   => "$reqInstructor|integer|min:0|max:100",
+            'instructor_research_pct'   => "$reqInstructor|integer|min:0|max:100",
+            'instructor_service_pct'    => "$reqInstructor|integer|min:0|max:100",
+            'instructor_culture_pct'    => "$reqInstructor|integer|min:0|max:100",
+            'instructor_other_pct'      => "$reqInstructor|integer|min:0|max:100",
             'instructor_teaching_quota' => 'nullable|integer|min:0',
             'instructor_is_english_passed' => 'nullable|boolean',
             'instructor_department_position' => [
@@ -90,6 +91,15 @@ class AdminUserController extends Controller
                 }
             ],
         ]);
+
+        if ($reqInstructor === 'required') {
+            $totalPct = (int)$request->instructor_teaching_pct + (int)$request->instructor_research_pct + (int)$request->instructor_service_pct + (int)$request->instructor_culture_pct + (int)$request->instructor_other_pct;
+            if ($totalPct !== 100) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'instructor_teaching_pct' => "สัดส่วนภาระงานรวมต้องเท่ากับ 100% (ปัจจุบัน {$totalPct}%)"
+                ]);
+            }
+        }
 
         DB::transaction(function () use ($validated, $request) {
             $user = User::create([
@@ -125,7 +135,7 @@ class AdminUserController extends Controller
                     'culture_pct'    => $validated['instructor_culture_pct'] ?? 0,
                     'other_pct'      => $validated['instructor_other_pct'] ?? 0,
                     'teaching_quota' => $validated['instructor_teaching_quota'] ?? 0,
-                    'is_english_passed' => $request->has('instructor_is_english_passed'),
+                    'is_english_passed' => $request->boolean('instructor_is_english_passed'),
                 ]);
 
                 // Handle department positions
@@ -145,6 +155,7 @@ class AdminUserController extends Controller
     public function update(Request $request, User $user)
     {
         $roles = $request->input('roles', []);
+        $reqInstructor = in_array('instructor', $roles) ? 'required' : 'nullable';
 
         $validated = $request->validate([
             'prefix'       => 'nullable|string|max:50',
@@ -154,18 +165,18 @@ class AdminUserController extends Controller
             'roles'        => 'required|array|min:1',
             'primary_role' => ['required', 'string', Rule::in($roles)],
             'is_active'    => 'required|boolean',
-            // instructor profile fields (optional)
-            'instructor_title'          => 'nullable|string|max:100',
-            'instructor_employee_id'     => 'nullable|string|max:50',
-            'instructor_department_id'  => 'nullable|integer|exists:departments,id',
-            'instructor_employment_type' => 'nullable|string|max:100',
-            'instructor_hired_at'        => 'nullable|date',
-            'instructor_academic_degree' => 'nullable|string|max:100',
-            'instructor_teaching_pct'   => 'nullable|integer|min:0|max:100',
-            'instructor_research_pct'   => 'nullable|integer|min:0|max:100',
-            'instructor_service_pct'    => 'nullable|integer|min:0|max:100',
-            'instructor_culture_pct'    => 'nullable|integer|min:0|max:100',
-            'instructor_other_pct'      => 'nullable|integer|min:0|max:100',
+            // instructor profile fields
+            'instructor_title'          => "$reqInstructor|string|max:100",
+            'instructor_employee_id'     => "$reqInstructor|string|max:50|unique:instructor_profiles,employee_id," . ($user->instructorProfile ? $user->instructorProfile->id : 'NULL'),
+            'instructor_department_id'  => "$reqInstructor|integer|exists:departments,id",
+            'instructor_employment_type' => "$reqInstructor|string|max:100",
+            'instructor_hired_at'        => "$reqInstructor|date",
+            'instructor_academic_degree' => "$reqInstructor|string|max:100",
+            'instructor_teaching_pct'   => "$reqInstructor|integer|min:0|max:100",
+            'instructor_research_pct'   => "$reqInstructor|integer|min:0|max:100",
+            'instructor_service_pct'    => "$reqInstructor|integer|min:0|max:100",
+            'instructor_culture_pct'    => "$reqInstructor|integer|min:0|max:100",
+            'instructor_other_pct'      => "$reqInstructor|integer|min:0|max:100",
             'instructor_teaching_quota' => 'nullable|integer|min:0',
             'instructor_is_english_passed' => 'nullable|boolean',
             'instructor_department_position' => [
@@ -185,6 +196,15 @@ class AdminUserController extends Controller
                 }
             ],
         ]);
+
+        if ($reqInstructor === 'required') {
+            $totalPct = (int)$request->instructor_teaching_pct + (int)$request->instructor_research_pct + (int)$request->instructor_service_pct + (int)$request->instructor_culture_pct + (int)$request->instructor_other_pct;
+            if ($totalPct !== 100) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'instructor_teaching_pct' => "สัดส่วนภาระงานรวมต้องเท่ากับ 100% (ปัจจุบัน {$totalPct}%)"
+                ]);
+            }
+        }
 
         DB::transaction(function () use ($validated, $user, $request) {
             $user->update([
@@ -225,7 +245,7 @@ class AdminUserController extends Controller
                         'culture_pct'    => $validated['instructor_culture_pct'] ?? 0,
                         'other_pct'      => $validated['instructor_other_pct'] ?? 0,
                         'teaching_quota' => $validated['instructor_teaching_quota'] ?? 0,
-                        'is_english_passed' => $request->has('instructor_is_english_passed'),
+                        'is_english_passed' => $request->boolean('instructor_is_english_passed'),
                     ]
                 );
 

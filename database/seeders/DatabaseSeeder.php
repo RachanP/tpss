@@ -14,9 +14,10 @@ class DatabaseSeeder extends Seeder
         $this->call([
             LocationTypeSeeder::class,
             SystemSettingSeeder::class,
-            DepartmentSeeder::class, // รอบแรกสร้างชื่อภาควิชา
-            UserSeeder::class,       // สร้างผู้ใช้งานและผูกกับภาควิชา
-            DepartmentSeeder::class, // รอบสองผูกหัวหน้า/เลขาภาควิชา
+            DepartmentSeeder::class,
+            UserSeeder::class,
+            DepartmentSeeder::class,
+            RoomSeeder::class,
         ]);
     }
 }

@@ -4,6 +4,7 @@
             Alpine.data('userManagement', () => ({
                 showModal: false, 
                 editMode: false,
+                errorMsg: '',
                 teachingTotalHours: {{ \App\Models\SystemSetting::get('teaching_load_weeks', 39) * \App\Models\SystemSetting::get('teaching_quota_hours_per_week', 35) }}, 
                 currentUser: {
                     id: '',
@@ -100,12 +101,14 @@
                 },
                 openAddModal() {
                     this.editMode = false;
+                    this.errorMsg = '';
                     this.currentUser = { id: '', username: '', prefix: '', name: '', email: '', password: '', roles: ['staff'], primary_role: 'staff', is_active: true };
                     this.instructorProfile = { title: '', employee_id: '', department_id: '', employment_type: 'พนักงานมหาวิทยาลัย', hired_at: '', academic_degree: 'ปริญญาโท', is_english_passed: false, teaching_pct: 0, research_pct: 0, service_pct: 0, culture_pct: 0, other_pct: 0, teaching_quota: 0, department_position: '' };
                     this.showModal = true;
                 },
                 openEditModal(user) {
                     this.editMode = true;
+                    this.errorMsg = '';
                     this.currentUser = { 
                         id: user.id, 
                         username: user.username, 
@@ -166,6 +169,32 @@
                     return null;
                 },
                 confirmSave(e) {
+                    this.errorMsg = '';
+                    if (this.hasInstructor) {
+                        const outOfRange = 
+                            this.isOutOfRange(this.instructorProfile.teaching_pct, this.paRules.t) ||
+                            this.isOutOfRange(this.instructorProfile.research_pct, this.paRules.r) ||
+                            this.isOutOfRange(this.instructorProfile.service_pct, this.paRules.s) ||
+                            this.isOutOfRange(this.instructorProfile.culture_pct, this.paRules.c) ||
+                            this.isOutOfRange(this.instructorProfile.other_pct, this.paRules.o);
+                            
+                        if (outOfRange) {
+                            this.errorMsg = `กรุณาระบุสัดส่วนภาระงานแต่ละด้านให้อยู่ในช่วงที่กำหนดตามเกณฑ์ตำแหน่ง`;
+                            const modalBody = document.querySelector('.modal-body');
+                            if(modalBody) modalBody.scrollTo({ top: 0, behavior: 'smooth' });
+                            e.preventDefault();
+                            return false;
+                        }
+                        
+                        if (this.paTotal !== 100) {
+                            this.errorMsg = `สัดส่วนภาระงานรวมต้องเท่ากับ 100% (ปัจจุบันรวมได้ ${this.paTotal}%)`;
+                            const modalBody = document.querySelector('.modal-body');
+                            if(modalBody) modalBody.scrollTo({ top: 0, behavior: 'smooth' });
+                            e.preventDefault();
+                            return false;
+                        }
+                    }
+                    
                     const conflict = this.getConflictInfo();
                     if (conflict) {
                         if (!confirm(`คำเตือน: ตำแหน่ง${conflict.posLabel}ของภาควิชานี้ มีคนครองตำแหน่งอยู่แล้วคือ "${conflict.name}"\n\nหากคุณบันทึก ระบบจะถอดถอนท่านเดิมออกและแต่งตั้งท่านนี้แทน\n\nคุณต้องการดำเนินการต่อหรือไม่?`)) {
@@ -438,6 +467,25 @@
                         </template>
 
                         <div class="modal-body">
+                            <!-- Custom Alert UI -->
+                            <div x-show="errorMsg" style="margin-bottom: 20px; padding: 12px 16px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; display: flex; align-items: flex-start; gap: 12px;" x-transition x-cloak>
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                </svg>
+                                <div style="flex: 1;">
+                                    <div style="color: #991b1b; font-weight: 700; font-size: 14px; margin-bottom: 2px;">ไม่สามารถบันทึกข้อมูลได้</div>
+                                    <div style="color: #b91c1c; font-size: 13px;" x-text="errorMsg"></div>
+                                </div>
+                                <button type="button" @click="errorMsg = ''" style="background: transparent; border: none; cursor: pointer; color: #ef4444; padding: 4px; border-radius: 4px; display: flex; align-items: center; justify-content: center;" onmouseover="this.style.background='rgba(239,68,68,0.1)'" onmouseout="this.style.background='transparent'">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                </button>
+                            </div>
+
                             <div class="form-row">
                                 <div class="form-group" style="flex: 0 0 120px;">
                                     <label>คำนำหน้าชื่อ</label>
@@ -564,15 +612,15 @@
 
                                     <!-- รหัสพนักงาน / อาจารย์ -->
                                     <div class="form-group" style="margin-bottom: 20px;">
-                                        <label style="font-size: 13px; font-weight: 600; color: var(--fg-2);">รหัสพนักงาน / รหัสอาจารย์</label>
+                                        <label style="font-size: 13px; font-weight: 600; color: var(--fg-2);">รหัสพนักงาน / รหัสอาจารย์ <span style="color: #ef4444;">*</span></label>
                                         <input type="text" name="instructor_employee_id" x-model="instructorProfile.employee_id" 
-                                            placeholder="กรอกรหัสพนักงาน เช่น 600xxx"
+                                            placeholder="กรอกรหัสพนักงาน เช่น 600xxx" required
                                             style="background: oklch(98% 0.005 240); border: 1.5px solid var(--bg-3);">
                                     </div>
                                     <div class="form-row">
                                         <div class="form-group">
-                                            <label>ตำแหน่งทางวิชาการ</label>
-                                            <select name="instructor_title" x-model="instructorProfile.title">
+                                            <label>ตำแหน่งทางวิชาการ <span style="color: #ef4444;">*</span></label>
+                                            <select name="instructor_title" x-model="instructorProfile.title" required>
                                                 <option value="">-- เลือกตำแหน่ง --</option>
                                                 <option value="อาจารย์">อาจารย์ (อ.)</option>
                                                 <option value="ผู้ช่วยศาสตราจารย์">ผู้ช่วยศาสตราจารย์ (ผศ.)</option>
@@ -585,9 +633,9 @@
                                             </select>
                                         </div>
                                         <div class="form-group">
-                                            <label>ภาควิชา / หน่วยงาน</label>
+                                            <label>ภาควิชา / หน่วยงาน <span style="color: #ef4444;">*</span></label>
                                             <select name="instructor_department_id"
-                                                x-model="instructorProfile.department_id">
+                                                x-model="instructorProfile.department_id" required>
                                                 <option value="">-- เลือกภาควิชา --</option>
                                                 @foreach($departments as $dept)
                                                     <option value="{{ $dept->id }}">{{ $dept->name }}</option>
@@ -597,7 +645,7 @@
                                     </div>
 
                                     <div class="form-group" style="margin-bottom: 20px;">
-                                        <label>ตำแหน่งบริหารในภาควิชา</label>
+                                        <label>ตำแหน่งบริหารในภาควิชา <span style="font-weight: normal; color: var(--fg-3); font-size: 0.9em;">(ไม่บังคับ)</span></label>
                                         <select name="instructor_department_position" x-model="instructorProfile.department_position">
                                             <option value="">-- ไม่มีตำแหน่งบริหาร --</option>
                                             <option value="head">หัวหน้าภาควิชา</option>
@@ -629,20 +677,20 @@
                                         </div>
                                         <div class="form-row">
                                             <div class="form-group">
-                                                <label>ประเภทการจ้างงาน</label>
-                                                <select name="instructor_employment_type" x-model="instructorProfile.employment_type">
+                                                <label>ประเภทการจ้างงาน <span style="color: #ef4444;">*</span></label>
+                                                <select name="instructor_employment_type" x-model="instructorProfile.employment_type" required>
                                                     <option value="พนักงานมหาวิทยาลัย">พนักงานมหาวิทยาลัย</option>
                                                     <option value="ข้าราชการ">ข้าราชการ</option>
                                                 </select>
                                             </div>
                                             <div class="form-group">
-                                                <label>วันที่บรรจุเข้าทำงาน</label>
-                                                <input type="date" name="instructor_hired_at" x-model="instructorProfile.hired_at">
+                                                <label>วันที่บรรจุเข้าทำงาน <span style="color: #ef4444;">*</span></label>
+                                                <input type="date" name="instructor_hired_at" x-model="instructorProfile.hired_at" required>
                                             </div>
                                         </div>
                                         <div class="form-group" style="margin-top: 12px;" x-show='instructorProfile.title !== ""'>
-                                            <label style="color: var(--status-success-fg); font-weight: 700;">วุฒิการศึกษาสูงสุด *</label>
-                                            <select name="instructor_academic_degree" x-model="instructorProfile.academic_degree">
+                                            <label style="color: var(--status-success-fg); font-weight: 700;">วุฒิการศึกษาสูงสุด <span style="color: #ef4444;">*</span></label>
+                                            <select name="instructor_academic_degree" x-model="instructorProfile.academic_degree" required>
                                                 <option value="ปริญญาเอก">ปริญญาเอก</option>
                                                 <option value="ปริญญาโท">ปริญญาโท</option>
                                                 <option value="ปริญญาตรี">ปริญญาตรี</option>
@@ -657,30 +705,33 @@
                                                 
                                                 <label style="font-size: 13px; font-weight: 700; color: var(--fg-2); margin-bottom: 10px; display: block; padding-left: 2px;">เกณฑ์ภาษาอังกฤษ</label>
                                                 
-                                                <div style="display: flex; gap: 10px; align-items: center;">
+                                                <div style="display: flex; gap: 12px; align-items: center;">
                                                     <!-- Option: Not Passed -->
-                                                    <button type="button" 
+                                                    <button type="button"
                                                         @click="instructorProfile.is_english_passed = false"
-                                                        style="padding: 8px 20px; border-radius: 10px; cursor: pointer; transition: all 0.2s; font-size: 13px; font-weight: 700; appearance: none; outline: none; border: 1.5px solid;"
-                                                        :style="!instructorProfile.is_english_passed 
-                                                            ? 'background: oklch(98% 0.02 30); color: oklch(50% 0.15 30); border-color: oklch(50% 0.15 30);' 
+                                                        style="padding: 10px 20px; border-radius: 8px; cursor: pointer; transition: all 0.2s; font-size: 14px; font-weight: 600; appearance: none; outline: none; border: 1px solid; display: flex; align-items: center; gap: 8px;"
+                                                        :style="!instructorProfile.is_english_passed
+                                                            ? 'background: #fef2f2; color: #ef4444; border-color: #fca5a5; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);'
                                                             : 'background: white; color: var(--fg-3); border-color: var(--border);'">
-                                                        ยังไม่ผ่าน
+                                                        <svg x-show="!instructorProfile.is_english_passed" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                                        <svg x-show="instructorProfile.is_english_passed" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.5;"><circle cx="12" cy="12" r="10"></circle></svg>
+                                                        ยังไม่ผ่านเกณฑ์
                                                     </button>
-                                                    
+
                                                     <!-- Option: Passed -->
-                                                    <button type="button" 
+                                                    <button type="button"
                                                         @click="instructorProfile.is_english_passed = true"
-                                                        style="padding: 8px 20px; border-radius: 10px; cursor: pointer; transition: all 0.2s; font-size: 13px; font-weight: 700; appearance: none; outline: none; border: 1.5px solid;"
-                                                        :style="instructorProfile.is_english_passed 
-                                                            ? 'background: var(--brand-navy); color: white; border-color: var(--brand-navy);' 
+                                                        style="padding: 10px 20px; border-radius: 8px; cursor: pointer; transition: all 0.2s; font-size: 14px; font-weight: 600; appearance: none; outline: none; border: 1px solid; display: flex; align-items: center; gap: 8px;"
+                                                        :style="instructorProfile.is_english_passed
+                                                            ? 'background: #f0fdf4; color: #10b981; border-color: #6ee7b7; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);'
                                                             : 'background: white; color: var(--fg-3); border-color: var(--border);'">
+                                                        <svg x-show="instructorProfile.is_english_passed" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                                        <svg x-show="!instructorProfile.is_english_passed" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.5;"><circle cx="12" cy="12" r="10"></circle></svg>
                                                         ผ่านเกณฑ์แล้ว
                                                     </button>
                                                 </div>
-
                                                 <!-- Hidden input for form submission -->
-                                                <input type="checkbox" name="instructor_is_english_passed" x-model="instructorProfile.is_english_passed" style="display: none;">
+                                                <input type="hidden" name="instructor_is_english_passed" :value="instructorProfile.is_english_passed ? 1 : 0">
                                             </div>
                                         </div>
 
@@ -703,56 +754,56 @@
                                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                                             <div class="form-group">
                                                 <label style="font-size: 12px; color: var(--fg-2);">
-                                                    1. ด้านการสอน (<span x-text="paRules.t"></span>)
+                                                    1. ด้านการสอน (<span x-text="paRules.t"></span>) <span style="color: #ef4444;">*</span>
                                                 </label>
                                                 <div style="display: flex; align-items: center; gap: 8px;">
                                                     <input type="number" name="instructor_teaching_pct" x-model.number="instructorProfile.teaching_pct" 
                                                         :style='isOutOfRange(instructorProfile.teaching_pct, paRules.t) ? "border-color: var(--status-conflict-fg); background: oklch(97% 0.02 20); color: var(--status-conflict-fg)" : ""'
-                                                        style="font-weight: 700;">
+                                                        style="font-weight: 700;" required>
                                                     <span style="font-size: 13px; color: var(--fg-3); width: 20px;">%</span>
                                                 </div>
                                             </div>
                                             <div class="form-group">
                                                 <label style="font-size: 12px; color: var(--fg-2);">
-                                                    2. ด้านวิจัย (<span x-text="paRules.r"></span>)
+                                                    2. ด้านวิจัย (<span x-text="paRules.r"></span>) <span style="color: #ef4444;">*</span>
                                                 </label>
                                                 <div style="display: flex; align-items: center; gap: 8px;">
                                                     <input type="number" name="instructor_research_pct" x-model.number="instructorProfile.research_pct" 
                                                         :style='isOutOfRange(instructorProfile.research_pct, paRules.r) ? "border-color: var(--status-conflict-fg); background: oklch(97% 0.02 20); color: var(--status-conflict-fg)" : ""'
-                                                        style="font-weight: 700;">
+                                                        style="font-weight: 700;" required>
                                                     <span style="font-size: 13px; color: var(--fg-3); width: 20px;">%</span>
                                                 </div>
                                             </div>
                                             <div class="form-group">
                                                 <label style="font-size: 12px; color: var(--fg-2);">
-                                                    3. บริการวิชาการ (<span x-text="paRules.s"></span>)
+                                                    3. บริการวิชาการ (<span x-text="paRules.s"></span>) <span style="color: #ef4444;">*</span>
                                                 </label>
                                                 <div style="display: flex; align-items: center; gap: 8px;">
                                                     <input type="number" name="instructor_service_pct" x-model.number="instructorProfile.service_pct" 
                                                         :style='isOutOfRange(instructorProfile.service_pct, paRules.s) ? "border-color: var(--status-conflict-fg); background: oklch(97% 0.02 20); color: var(--status-conflict-fg)" : ""'
-                                                        style="font-weight: 700;">
+                                                        style="font-weight: 700;" required>
                                                     <span style="font-size: 13px; color: var(--fg-3); width: 20px;">%</span>
                                                 </div>
                                             </div>
                                             <div class="form-group">
                                                 <label style="font-size: 12px; color: var(--fg-2);">
-                                                    4. ศิลปวัฒนธรรม (<span x-text="paRules.c"></span>)
+                                                    4. ศิลปวัฒนธรรม (<span x-text="paRules.c"></span>) <span style="color: #ef4444;">*</span>
                                                 </label>
                                                 <div style="display: flex; align-items: center; gap: 8px;">
                                                     <input type="number" name="instructor_culture_pct" x-model.number="instructorProfile.culture_pct" 
                                                         :style='isOutOfRange(instructorProfile.culture_pct, paRules.c) ? "border-color: var(--status-conflict-fg); background: oklch(97% 0.02 20); color: var(--status-conflict-fg)" : ""'
-                                                        style="font-weight: 700;">
+                                                        style="font-weight: 700;" required>
                                                     <span style="font-size: 13px; color: var(--fg-3); width: 20px;">%</span>
                                                 </div>
                                             </div>
                                             <div class="form-group" style="grid-column: span 2;">
                                                 <label style="font-size: 12px; color: var(--fg-2);">
-                                                    5. งานอื่นๆ มอบหมาย (<span x-text="paRules.o"></span>)
+                                                    5. งานอื่นๆ มอบหมาย (<span x-text="paRules.o"></span>) <span style="color: #ef4444;">*</span>
                                                 </label>
                                                 <div style="display: flex; align-items: center; gap: 8px;">
                                                     <input type="number" name="instructor_other_pct" x-model.number="instructorProfile.other_pct" 
                                                     :style='isOutOfRange(instructorProfile.other_pct, paRules.o) ? "border-color: var(--status-conflict-fg); background: oklch(97% 0.02 20); color: var(--status-conflict-fg)" : ""'
-                                                    style="font-weight: 700;">
+                                                    style="font-weight: 700;" required>
                                                     <span style="font-size: 13px; color: var(--fg-3); width: 20px;">%</span>
                                                 </div>
                                             </div>

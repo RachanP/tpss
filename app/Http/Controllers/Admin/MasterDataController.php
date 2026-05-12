@@ -66,14 +66,21 @@ class MasterDataController extends Controller
     public function storeRoom(Request $request)
     {
         $validated = $request->validate([
-            'room_code'        => 'required|string|max:255|unique:rooms,room_code',
+            'room_code'        => 'required|string|max:255|unique:rooms,room_code' . (isset($room) ? ',' . $room->id : ''),
             'room_name'        => 'required|string|max:255',
             'building'         => 'nullable|string|max:100',
-            'capacity'         => 'required|integer|min:0',
+            'capacity'         => 'nullable|integer|min:0',
             'location_type_id' => 'required|exists:location_types,id',
             'status'           => 'required|in:active,inactive,maintenance',
             'address'          => 'nullable|string',
+            'equipment_type'   => 'nullable|string',
         ]);
+
+        if (!empty($validated['equipment_type'])) {
+            $validated['equipment_type'] = array_values(array_filter(array_map('trim', explode(',', $validated['equipment_type']))));
+        } else {
+            $validated['equipment_type'] = [];
+        }
 
         Room::create($validated);
 
@@ -86,11 +93,18 @@ class MasterDataController extends Controller
             'room_code'        => 'required|string|max:255|unique:rooms,room_code,' . $room->id,
             'room_name'        => 'required|string|max:255',
             'building'         => 'nullable|string|max:100',
-            'capacity'         => 'required|integer|min:0',
+            'capacity'         => 'nullable|integer|min:0',
             'location_type_id' => 'required|exists:location_types,id',
             'status'           => 'required|in:active,inactive,maintenance',
             'address'          => 'nullable|string',
+            'equipment_type'   => 'nullable|string',
         ]);
+
+        if (!empty($validated['equipment_type'])) {
+            $validated['equipment_type'] = array_values(array_filter(array_map('trim', explode(',', $validated['equipment_type']))));
+        } else {
+            $validated['equipment_type'] = [];
+        }
 
         $room->update($validated);
 
@@ -100,7 +114,7 @@ class MasterDataController extends Controller
     public function storeDepartment(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:departments,name',
             'head_user_id' => 'nullable|exists:users,id',
             'secretary_user_id' => 'nullable|exists:users,id',
         ]);
@@ -113,7 +127,7 @@ class MasterDataController extends Controller
     public function updateDepartment(Request $request, Department $department)
     {
         $validated = $request->validate([
-            'name'             => 'required|string|max:255',
+            'name'             => 'required|string|max:255|unique:departments,name,' . $department->id,
             'head_user_id'     => 'nullable|exists:users,id',
             'secretary_user_id'=> 'nullable|exists:users,id',
         ]);
@@ -162,6 +176,10 @@ class MasterDataController extends Controller
     {
         $user = User::findOrFail($id);
         $profile = $user->instructorProfile;
+
+        $request->validate([
+            'employee_id' => 'nullable|string|max:50|unique:instructor_profiles,employee_id,' . ($profile ? $profile->id : 'NULL'),
+        ]);
 
         // Update user prefix
         $user->update(['prefix' => $request->prefix]);

@@ -16,7 +16,7 @@ return new class extends Migration
         Schema::create('instructor_profiles', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('user_id')->unique();
-            $table->string('employee_id', 50)->nullable()->comment('รหัสพนักงาน/อาจารย์');
+            $table->string('employee_id', 50)->nullable()->unique()->comment('รหัสพนักงาน/อาจารย์');
             $table->foreign('user_id')->references('id')->on('users');
             $table->string('title', 100)->nullable()->comment('คำนำหน้า/ตำแหน่งทางวิชาการ');
             $table->unsignedBigInteger('department_id')->nullable();
