@@ -72,6 +72,7 @@ class AdminUserController extends Controller
             'instructor_culture_pct'    => 'nullable|integer|min:0|max:100',
             'instructor_other_pct'      => 'nullable|integer|min:0|max:100',
             'instructor_teaching_quota' => 'nullable|integer|min:0',
+            'instructor_is_english_passed' => 'nullable|boolean',
             'instructor_department_position' => [
                 'nullable', 'string', 'in:head,secretary',
                 function ($attribute, $value, $fail) use ($request) {
@@ -124,6 +125,7 @@ class AdminUserController extends Controller
                     'culture_pct'    => $validated['instructor_culture_pct'] ?? 0,
                     'other_pct'      => $validated['instructor_other_pct'] ?? 0,
                     'teaching_quota' => $validated['instructor_teaching_quota'] ?? 0,
+                    'is_english_passed' => $request->has('instructor_is_english_passed'),
                 ]);
 
                 // Handle department positions
@@ -165,6 +167,7 @@ class AdminUserController extends Controller
             'instructor_culture_pct'    => 'nullable|integer|min:0|max:100',
             'instructor_other_pct'      => 'nullable|integer|min:0|max:100',
             'instructor_teaching_quota' => 'nullable|integer|min:0',
+            'instructor_is_english_passed' => 'nullable|boolean',
             'instructor_department_position' => [
                 'nullable', 'string', 'in:head,secretary',
                 function ($attribute, $value, $fail) use ($request, $user) {
@@ -222,6 +225,7 @@ class AdminUserController extends Controller
                         'culture_pct'    => $validated['instructor_culture_pct'] ?? 0,
                         'other_pct'      => $validated['instructor_other_pct'] ?? 0,
                         'teaching_quota' => $validated['instructor_teaching_quota'] ?? 0,
+                        'is_english_passed' => $request->has('instructor_is_english_passed'),
                     ]
                 );
 

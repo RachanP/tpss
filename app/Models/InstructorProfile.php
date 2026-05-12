@@ -14,6 +14,7 @@ class InstructorProfile extends Model
         'employment_type',
         'hired_at',
         'academic_degree',
+        'is_english_passed',
         'teaching_pct',
         'research_pct',
         'service_pct',

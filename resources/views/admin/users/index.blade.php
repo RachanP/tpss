@@ -29,7 +29,7 @@
                     culture_pct: 0,
                     other_pct: 0,
                     teaching_quota: 0,
-                    employee_id: '',
+                    is_english_passed: false,
                     department_position: ''
                 },
                 departmentsData: {{ Js::from($departments) }},
@@ -38,7 +38,21 @@
                     const title = this.instructorProfile.title;
                     const degree = this.instructorProfile.academic_degree;
                     const hiredAt = this.instructorProfile.hired_at;
+                    const isEnglishPassed = this.instructorProfile.is_english_passed;
+
+                    // หมายเหตุ 1: บรรจุก่อน 1 ต.ค. 2559 และจบปริญญาเอก -> ใช้เกณฑ์อาจารย์
                     const isNote1 = (title === 'ผู้ช่วยอาจารย์' && degree === 'ปริญญาเอก' && hiredAt && new Date(hiredAt) < new Date('2016-10-01'));
+                    
+                    // หมายเหตุ 2: บรรจุตั้งแต่ 1 ต.ค. 2559 และจบปริญญาเอก แต่ภาษาอังกฤษไม่ผ่าน -> ใช้เกณฑ์ผู้ช่วยอาจารย์
+                    // (ถ้าผ่านภาษาอังกฤษแล้ว หรือบรรจุก่อน 2559 จะไปเข้าเงื่อนไขเกณฑ์อาจารย์)
+                    const useInstructorRules = (
+                        title === 'อาจารย์' || 
+                        title === 'ผู้ช่วยศาสตราจารย์' || 
+                        title === 'รองศาสตราจารย์' || 
+                        title === 'ศาสตราจารย์' || 
+                        isNote1 ||
+                        (title === 'ผู้ช่วยอาจารย์' && degree === 'ปริญญาเอก' && isEnglishPassed)
+                    );
                     
                     if (title === 'ผู้ช่วยอาจารย์ (คลินิก)') {
                         return this.paCriteria['ผู้ช่วยอาจารย์_คลินิก'] || {};
@@ -46,10 +60,9 @@
                         return this.paCriteria['ผู้ช่วยอาจารย์_ปฏิบัติ'] || {};
                     } else if (title === 'ผู้ช่วยอาจารย์' && degree === 'ปริญญาตรี') {
                         return this.paCriteria['ผู้ช่วยอาจารย์_ปตรี'] || {};
-                    } else if (title === 'ผู้ช่วยอาจารย์' || title === 'อาจารย์' || title === 'ผู้ช่วยศาสตราจารย์' || title === 'รองศาสตราจารย์' || title === 'ศาสตราจารย์' || isNote1) {
-                        if (isNote1 || title === 'อาจารย์' || title === 'ผู้ช่วยศาสตราจารย์' || title === 'รองศาสตราจารย์' || title === 'ศาสตราจารย์') {
-                            return this.paCriteria['อาจารย์'] || {};
-                        }
+                    } else if (useInstructorRules) {
+                        return this.paCriteria['อาจารย์'] || {};
+                    } else if (title === 'ผู้ช่วยอาจารย์') {
                         return this.paCriteria['ผู้ช่วยอาจารย์'] || {};
                     }
                     return { t: '-', r: '-', s: '-', c: '-', o: '-' };
@@ -88,7 +101,7 @@
                 openAddModal() {
                     this.editMode = false;
                     this.currentUser = { id: '', username: '', prefix: '', name: '', email: '', password: '', roles: ['staff'], primary_role: 'staff', is_active: true };
-                    this.instructorProfile = { title: '', employee_id: '', department_id: '', employment_type: 'พนักงานมหาวิทยาลัย', hired_at: '', academic_degree: 'ปริญญาโท', teaching_pct: 0, research_pct: 0, service_pct: 0, culture_pct: 0, other_pct: 0, teaching_quota: 0, department_position: '' };
+                    this.instructorProfile = { title: '', employee_id: '', department_id: '', employment_type: 'พนักงานมหาวิทยาลัย', hired_at: '', academic_degree: 'ปริญญาโท', is_english_passed: false, teaching_pct: 0, research_pct: 0, service_pct: 0, culture_pct: 0, other_pct: 0, teaching_quota: 0, department_position: '' };
                     this.showModal = true;
                 },
                 openEditModal(user) {
@@ -120,8 +133,9 @@
                         culture_pct: profile.culture_pct || 0,
                         other_pct: profile.other_pct || 0,
                         teaching_quota: profile.teaching_quota || 0,
+                        is_english_passed: !!profile.is_english_passed,
                         department_position: (user.head_of_departments && user.head_of_departments.length > 0) ? 'head' : ((user.secretary_of_departments && user.secretary_of_departments.length > 0) ? 'secretary' : '')
-                    } : { title: '', employee_id: '', department_id: '', employment_type: 'พนักงานมหาวิทยาลัย', hired_at: '', academic_degree: 'ปริญญาโท', teaching_pct: 0, research_pct: 0, service_pct: 0, culture_pct: 0, other_pct: 0, teaching_quota: 0, department_position: '' };
+                    } : { title: '', employee_id: '', department_id: '', employment_type: 'พนักงานมหาวิทยาลัย', hired_at: '', academic_degree: 'ปริญญาโท', is_english_passed: false, teaching_pct: 0, research_pct: 0, service_pct: 0, culture_pct: 0, other_pct: 0, teaching_quota: 0, department_position: '' };
                     
                     this.showModal = true;
                 },
@@ -636,8 +650,39 @@
                                             <div style="font-size: 11px; color: var(--fg-3); margin-top: 4px;" x-show='instructorProfile.academic_degree === "ปริญญาเอก" && instructorProfile.hired_at && new Date(instructorProfile.hired_at) < new Date("2016-10-01")'>
                                                 ✨ เข้าเงื่อนไขหมายเหตุ 1: บรรจุก่อน 2559 และจบ ป.เอก ให้ใช้เกณฑ์ "อาจารย์"
                                             </div>
+
+                                            <!-- English Proficiency (Note 2) - Clean Rounded Buttons No Background -->
+                                            <div style="margin-top: 15px;" 
+                                                x-show='instructorProfile.title === "ผู้ช่วยอาจารย์" && instructorProfile.academic_degree === "ปริญญาเอก" && instructorProfile.hired_at && new Date(instructorProfile.hired_at) >= new Date("2016-10-01")'>
+                                                
+                                                <label style="font-size: 13px; font-weight: 700; color: var(--fg-2); margin-bottom: 10px; display: block; padding-left: 2px;">เกณฑ์ภาษาอังกฤษ</label>
+                                                
+                                                <div style="display: flex; gap: 10px; align-items: center;">
+                                                    <!-- Option: Not Passed -->
+                                                    <button type="button" 
+                                                        @click="instructorProfile.is_english_passed = false"
+                                                        style="padding: 8px 20px; border-radius: 10px; cursor: pointer; transition: all 0.2s; font-size: 13px; font-weight: 700; appearance: none; outline: none; border: 1.5px solid;"
+                                                        :style="!instructorProfile.is_english_passed 
+                                                            ? 'background: oklch(98% 0.02 30); color: oklch(50% 0.15 30); border-color: oklch(50% 0.15 30);' 
+                                                            : 'background: white; color: var(--fg-3); border-color: var(--border);'">
+                                                        ยังไม่ผ่าน
+                                                    </button>
+                                                    
+                                                    <!-- Option: Passed -->
+                                                    <button type="button" 
+                                                        @click="instructorProfile.is_english_passed = true"
+                                                        style="padding: 8px 20px; border-radius: 10px; cursor: pointer; transition: all 0.2s; font-size: 13px; font-weight: 700; appearance: none; outline: none; border: 1.5px solid;"
+                                                        :style="instructorProfile.is_english_passed 
+                                                            ? 'background: var(--brand-navy); color: white; border-color: var(--brand-navy);' 
+                                                            : 'background: white; color: var(--fg-3); border-color: var(--border);'">
+                                                        ผ่านเกณฑ์แล้ว
+                                                    </button>
+                                                </div>
+
+                                                <!-- Hidden input for form submission -->
+                                                <input type="checkbox" name="instructor_is_english_passed" x-model="instructorProfile.is_english_passed" style="display: none;">
+                                            </div>
                                         </div>
-                                    </div>
 
                                     <div
                                         style="background: var(--bg-1); border-radius: 12px; padding: 20px; border: 1px solid var(--border); margin-top: 8px;">

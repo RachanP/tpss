@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
+            LocationTypeSeeder::class,
             SystemSettingSeeder::class,
             DepartmentSeeder::class, // รอบแรกสร้างชื่อภาควิชา
             UserSeeder::class,       // สร้างผู้ใช้งานและผูกกับภาควิชา

@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Department;
 use App\Models\User;
+use App\Models\LocationType;
+use App\Models\Room;
 use Illuminate\Http\Request;
 
 class MasterDataController extends Controller
@@ -24,7 +26,75 @@ class MasterDataController extends Controller
         // Active users for head/secretary dropdown
         $users = User::with('instructorProfile')->where('is_active', true)->orderBy('name')->get();
 
-        return view('admin.master_data.index', compact('instructors', 'departments', 'users'));
+        // Location Types
+        $locationTypes = LocationType::withCount('rooms')->get();
+
+        // Rooms with their types
+        $rooms = Room::with('locationType')->get();
+
+        return view('admin.master_data.index', compact(
+            'instructors', 
+            'departments', 
+            'users', 
+            'locationTypes', 
+            'rooms'
+        ));
+    }
+
+    public function storeLocationType(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:100|unique:location_types,name',
+        ]);
+
+        LocationType::create($validated);
+
+        return redirect()->route('admin.master_data', ['tab' => 'location_types'])->with('success', 'เพิ่มประเภทสถานที่เรียบร้อยแล้ว');
+    }
+
+    public function updateLocationType(Request $request, LocationType $locationType)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:100|unique:location_types,name,' . $locationType->id,
+        ]);
+
+        $locationType->update($validated);
+
+        return redirect()->route('admin.master_data', ['tab' => 'location_types'])->with('success', 'อัปเดตประเภทสถานที่เรียบร้อยแล้ว');
+    }
+
+    public function storeRoom(Request $request)
+    {
+        $validated = $request->validate([
+            'room_code'        => 'required|string|max:255|unique:rooms,room_code',
+            'room_name'        => 'required|string|max:255',
+            'building'         => 'nullable|string|max:100',
+            'capacity'         => 'required|integer|min:0',
+            'location_type_id' => 'required|exists:location_types,id',
+            'status'           => 'required|in:active,inactive,maintenance',
+            'address'          => 'nullable|string',
+        ]);
+
+        Room::create($validated);
+
+        return redirect()->route('admin.master_data', ['tab' => 'rooms'])->with('success', 'เพิ่มห้อง/สถานที่เรียบร้อยแล้ว');
+    }
+
+    public function updateRoom(Request $request, Room $room)
+    {
+        $validated = $request->validate([
+            'room_code'        => 'required|string|max:255|unique:rooms,room_code,' . $room->id,
+            'room_name'        => 'required|string|max:255',
+            'building'         => 'nullable|string|max:100',
+            'capacity'         => 'required|integer|min:0',
+            'location_type_id' => 'required|exists:location_types,id',
+            'status'           => 'required|in:active,inactive,maintenance',
+            'address'          => 'nullable|string',
+        ]);
+
+        $room->update($validated);
+
+        return redirect()->route('admin.master_data', ['tab' => 'rooms'])->with('success', 'อัปเดตห้อง/สถานที่เรียบร้อยแล้ว');
     }
 
     public function storeDepartment(Request $request)
