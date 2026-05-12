@@ -64,6 +64,16 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/admin/master-data/curriculums/{curriculum}', 'App\Http\Controllers\Admin\MasterDataController@updateCurriculum')->name('admin.curriculums.update');
         Route::post('/admin/master-data/curriculums/{curriculum}/clone', 'App\Http\Controllers\Admin\MasterDataController@cloneCurriculum')->name('admin.curriculums.clone');
         Route::delete('/admin/master-data/curriculums/{curriculum}', 'App\Http\Controllers\Admin\MasterDataController@destroyCurriculum')->name('admin.curriculums.destroy');
+
+        // Activity Types
+        Route::post('/admin/master-data/activity-types', 'App\Http\Controllers\Admin\MasterDataController@storeActivityType')->name('admin.activity_types.store');
+        Route::put('/admin/master-data/activity-types/{activityType}', 'App\Http\Controllers\Admin\MasterDataController@updateActivityType')->name('admin.activity_types.update');
+        Route::delete('/admin/master-data/activity-types/{activityType}', 'App\Http\Controllers\Admin\MasterDataController@destroyActivityType')->name('admin.activity_types.destroy');
+
+        // Student Groups
+        Route::post('/admin/master-data/student-groups', 'App\Http\Controllers\Admin\MasterDataController@storeStudentGroup')->name('admin.student_groups.store');
+        Route::put('/admin/master-data/student-groups/{studentGroup}', 'App\Http\Controllers\Admin\MasterDataController@updateStudentGroup')->name('admin.student_groups.update');
+        Route::delete('/admin/master-data/student-groups/{studentGroup}', 'App\Http\Controllers\Admin\MasterDataController@destroyStudentGroup')->name('admin.student_groups.destroy');
     });
 
     // Role switcher

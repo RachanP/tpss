@@ -60,7 +60,7 @@
 | Sprint | วันที่ | Module | ชื่อ | SP |
 |--------|--------|--------|------|----|
 | Sprint 1 | 11–12 พ.ค. | M10 | Login, RBAC & Admin Settings | 24 | ✅ 100% (Admin User Mgmt, Role Switcher, System Settings) |
-| Sprint 2 | 12–15 พ.ค. | M1 | Master Data Management | 43 | ✅ 100% (CRUD, Cloning, SweetAlert2, Integrity Logic) |
+| Sprint 2 | 12–15 พ.ค. | M1 | Master Data Management | 43 | ✅ 100% (CRUD, Cloning, SweetAlert2, Integrity Logic, Activity Types, Student Groups) |
 | Sprint 3 | 18–19 พ.ค. | M2 | Course Management | 19 |
 | Sprint 4 | 20–22 พ.ค. | M3 | Schedule Management | 41 |
 | Sprint 5 | 21–26 พ.ค. | M4 | Conflict Checking | 29 |

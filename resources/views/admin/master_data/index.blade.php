@@ -249,6 +249,36 @@
                 return;
             }
         },
+        // Activity Types
+        showActivityTypeModal: false,
+        editActivityTypeMode: false,
+        currentActivityType: { id: '', name: '', color_code: '#3498db', category: 'lecture', is_practicum: false },
+        openAddActivityType() {
+            this.editActivityTypeMode = false;
+            this.currentActivityType = { id: '', name: '', color_code: '#3498db', category: 'lecture', is_practicum: false };
+            this.showActivityTypeModal = true;
+        },
+        openEditActivityType(at) {
+            this.editActivityTypeMode = true;
+            this.currentActivityType = { ...at };
+            this.showActivityTypeModal = true;
+        },
+
+        // Student Groups
+        showStudentGroupModal: false,
+        editStudentGroupMode: false,
+        currentStudentGroup: { id: '', group_code: '', curriculum_id: '', academic_year_id: '', student_count: '', color_code: '#3498db' },
+        openAddStudentGroup() {
+            this.editStudentGroupMode = false;
+            this.currentStudentGroup = { id: '', group_code: '', curriculum_id: '', academic_year_id: '', student_count: '', color_code: '#3498db' };
+            this.showStudentGroupModal = true;
+        },
+        openEditStudentGroup(sg) {
+            this.editStudentGroupMode = true;
+            this.currentStudentGroup = { ...sg };
+            this.showStudentGroupModal = true;
+        },
+
         confirmDelete(formId, itemLabel, warnText) {
             window.tpssConfirmDelete(formId, itemLabel, warnText);
         }
@@ -319,6 +349,27 @@
                         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                     </svg>
                     หลักสูตร
+                </button>
+                <button type="button" @click="activeTab = 'activity_types'"
+                    :class="activeTab === 'activity_types' ? 'btn-primary' : 'btn btn-ghost'"
+                    style="padding: 8px 16px; border-radius: 6px;">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+                        style="margin-right: 6px;">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                    </svg>
+                    ประเภทกิจกรรม
+                </button>
+                <button type="button" @click="activeTab = 'student_groups'"
+                    :class="activeTab === 'student_groups' ? 'btn-primary' : 'btn btn-ghost'"
+                    style="padding: 8px 16px; border-radius: 6px;">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+                        style="margin-right: 6px;">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    กลุ่มนักศึกษา
                 </button>
             </div>
         </div>
@@ -1365,6 +1416,270 @@
         </template>
 
 
+
+        <!-- Tab: Activity Types -->
+        <div x-show="activeTab === 'activity_types'" x-cloak>
+            <div class="card">
+                <div class="card-hdr">
+                    <div class="card-ttl">ประเภทกิจกรรมการสอน</div>
+                    <div class="card-actions">
+                        <button type="button" class="btn btn-primary" @click="openAddActivityType()">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            เพิ่มประเภทกิจกรรม
+                        </button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>สี</th>
+                                <th>ชื่อประเภทกิจกรรม</th>
+                                <th>หมวดหมู่</th>
+                                <th style="text-align: center;">เกี่ยวกับฝึกปฏิบัติ</th>
+                                <th style="text-align: center;">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($activityTypes as $at)
+                                <tr>
+                                    <td>
+                                        <span style="display: inline-block; width: 20px; height: 20px; border-radius: 4px; background: {{ $at->color_code }}; border: 1px solid var(--border);"></span>
+                                    </td>
+                                    <td style="font-weight: 600; color: var(--fg-1);">{{ $at->name }}</td>
+                                    <td>
+                                        @php
+                                            $catLabel = ['lecture' => 'บรรยาย', 'practicum' => 'ปฏิบัติ', 'thesis' => 'วิทยานิพนธ์', 'other' => 'อื่นๆ'];
+                                        @endphp
+                                        <span class="pill pill-neutral">{{ $catLabel[$at->category] ?? $at->category }}</span>
+                                    </td>
+                                    <td style="text-align: center;">
+                                        @if($at->is_practicum)
+                                            <span class="pill pill-active">ใช่</span>
+                                        @else
+                                            <span style="color: var(--fg-3); font-size: 13px;">-</span>
+                                        @endif
+                                    </td>
+                                    <td style="text-align: center;">
+                                        <button type="button" class="action-btn edit"
+                                            @click="openEditActivityType({{ Js::from(['id' => $at->id, 'name' => $at->name, 'color_code' => $at->color_code, 'category' => $at->category, 'is_practicum' => (bool)$at->is_practicum]) }})">
+                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                            แก้ไข
+                                        </button>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="5" style="text-align: center; color: var(--fg-3); padding: 40px;">ยังไม่มีประเภทกิจกรรม</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Student Groups -->
+        <div x-show="activeTab === 'student_groups'" x-cloak>
+            <div class="card">
+                <div class="card-hdr">
+                    <div class="card-ttl">กลุ่มนักศึกษา</div>
+                    <div class="card-actions">
+                        <button type="button" class="btn btn-primary" @click="openAddStudentGroup()">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            เพิ่มกลุ่มนักศึกษา
+                        </button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>รหัสกลุ่ม</th>
+                                <th>หลักสูตร</th>
+                                <th>ปีการศึกษา / ภาคเรียน</th>
+                                <th style="text-align: right;">จำนวนนักศึกษา</th>
+                                <th>สี</th>
+                                <th style="text-align: center;">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($studentGroups as $sg)
+                                <tr>
+                                    <td style="font-weight: 700; font-family: var(--font-mono); color: var(--brand-navy);">{{ $sg->group_code }}</td>
+                                    <td style="font-size: 13px; color: var(--fg-2);">{{ $sg->curriculum->name ?? '-' }}</td>
+                                    <td style="font-size: 13px; color: var(--fg-2);">
+                                        @if($sg->academicYear)
+                                            {{ $sg->academicYear->name }} / ภาค {{ $sg->academicYear->semester }}
+                                        @else
+                                            -
+                                        @endif
+                                    </td>
+                                    <td style="text-align: right; font-weight: 600;">{{ number_format($sg->student_count) }} คน</td>
+                                    <td>
+                                        <span style="display: inline-block; width: 20px; height: 20px; border-radius: 4px; background: {{ $sg->color_code ?? '#3498db' }}; border: 1px solid var(--border);"></span>
+                                    </td>
+                                    <td style="text-align: center;">
+                                        <button type="button" class="action-btn edit"
+                                            @click="openEditStudentGroup({{ Js::from(['id' => $sg->id, 'group_code' => $sg->group_code, 'curriculum_id' => $sg->curriculum_id, 'academic_year_id' => $sg->academic_year_id, 'student_count' => $sg->student_count, 'color_code' => $sg->color_code ?? '#3498db']) }})">
+                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                            แก้ไข
+                                        </button>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="6" style="text-align: center; color: var(--fg-3); padding: 40px;">ยังไม่มีกลุ่มนักศึกษา</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add/Edit Modal (Activity Type) -->
+        <template x-if="showActivityTypeModal">
+            <div class="overlay" x-cloak @click.self="showActivityTypeModal = false">
+                <div class="modal-center" style="max-width: 420px;"
+                    x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95"
+                    x-transition:enter-end="opacity-100 scale-100">
+                    <div class="modal-hdr" style="background: var(--bg-2);">
+                        <div class="modal-ttl" style="font-family: var(--font-display);"
+                            x-text="editActivityTypeMode ? 'แก้ไขประเภทกิจกรรม' : 'เพิ่มประเภทกิจกรรมใหม่'"></div>
+                        <button type="button" class="modal-cls" @click="showActivityTypeModal = false">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <form :action="editActivityTypeMode ? '{{ url('admin/master-data/activity-types') }}/' + currentActivityType.id : '{{ route('admin.activity_types.store') }}'" method="POST">
+                        @csrf
+                        <input type="hidden" name="_method" value="PUT" :disabled="!editActivityTypeMode">
+                        <div class="modal-body">
+                            <div class="form-group" style="margin-bottom: 20px;">
+                                <label>ชื่อประเภทกิจกรรม <span style="color: var(--status-conflict-fg)">*</span></label>
+                                <input type="text" name="name" x-model="currentActivityType.name" required placeholder="เช่น บรรยาย, ฝึกปฏิบัติในห้องเรียน">
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                                <div class="form-group">
+                                    <label>หมวดหมู่ <span style="color: var(--status-conflict-fg)">*</span></label>
+                                    <select name="category" x-model="currentActivityType.category" required>
+                                        <option value="lecture">บรรยาย (Lecture)</option>
+                                        <option value="practicum">ปฏิบัติ (Practicum)</option>
+                                        <option value="thesis">วิทยานิพนธ์ (Thesis)</option>
+                                        <option value="other">อื่นๆ (Other)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>สีแสดงผล <span style="color: var(--status-conflict-fg)">*</span></label>
+                                    <input type="color" name="color_code" x-model="currentActivityType.color_code" required style="width: 100%; height: 40px; padding: 4px; cursor: pointer;">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                    <input type="checkbox" name="is_practicum" x-model="currentActivityType.is_practicum" style="width: 18px; height: 18px;">
+                                    <span style="font-weight: 600; color: var(--fg-1);">กิจกรรมนี้เกี่ยวข้องกับการฝึกปฏิบัติ (Practicum)</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="modal-foot" style="display: flex; justify-content: space-between;">
+                            <div>
+                                <button type="button" class="btn btn-ghost" x-show="editActivityTypeMode"
+                                    @click="confirmDelete('deleteActivityTypeForm', currentActivityType.name, 'ประเภทกิจกรรมที่ลบแล้วจะไม่สามารถกู้คืนได้')"
+                                    style="color: var(--status-conflict-fg);">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; display: inline-block; vertical-align: middle;"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                    ลบข้อมูล
+                                </button>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" class="btn btn-ghost" @click="showActivityTypeModal = false">ยกเลิก</button>
+                                <button type="submit" class="btn btn-primary">บันทึกข้อมูล</button>
+                            </div>
+                        </div>
+                    </form>
+                    <form id="deleteActivityTypeForm" :action="'{{ url('admin/master-data/activity-types') }}/' + currentActivityType.id" method="POST" style="display: none;">
+                        @csrf
+                        @method('DELETE')
+                    </form>
+                </div>
+            </div>
+        </template>
+
+        <!-- Add/Edit Modal (Student Group) -->
+        <template x-if="showStudentGroupModal">
+            <div class="overlay" x-cloak @click.self="showStudentGroupModal = false">
+                <div class="modal-center" style="max-width: 480px;"
+                    x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95"
+                    x-transition:enter-end="opacity-100 scale-100">
+                    <div class="modal-hdr" style="background: var(--bg-2);">
+                        <div class="modal-ttl" style="font-family: var(--font-display);"
+                            x-text="editStudentGroupMode ? 'แก้ไขกลุ่มนักศึกษา' : 'เพิ่มกลุ่มนักศึกษาใหม่'"></div>
+                        <button type="button" class="modal-cls" @click="showStudentGroupModal = false">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <form :action="editStudentGroupMode ? '{{ url('admin/master-data/student-groups') }}/' + currentStudentGroup.id : '{{ route('admin.student_groups.store') }}'" method="POST">
+                        @csrf
+                        <input type="hidden" name="_method" value="PUT" :disabled="!editStudentGroupMode">
+                        <div class="modal-body">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                                <div class="form-group">
+                                    <label>รหัสกลุ่ม <span style="color: var(--status-conflict-fg)">*</span></label>
+                                    <input type="text" name="group_code" x-model="currentStudentGroup.group_code" required placeholder="เช่น A1, B3, NS-01">
+                                </div>
+                                <div class="form-group">
+                                    <label>จำนวนนักศึกษา (คน) <span style="color: var(--status-conflict-fg)">*</span></label>
+                                    <input type="number" name="student_count" x-model="currentStudentGroup.student_count" required min="1" placeholder="เช่น 30">
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 20px;">
+                                <label>หลักสูตร <span style="color: var(--status-conflict-fg)">*</span></label>
+                                <select name="curriculum_id" x-model="currentStudentGroup.curriculum_id" required>
+                                    <option value="">-- เลือกหลักสูตร --</option>
+                                    @foreach($curriculums as $curr)
+                                        <option value="{{ $curr->id }}">{{ $curr->name }} ({{ $curr->effective_year }})</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 20px;">
+                                <label>ปีการศึกษา / ภาคเรียน <span style="color: var(--status-conflict-fg)">*</span></label>
+                                <select name="academic_year_id" x-model="currentStudentGroup.academic_year_id" required>
+                                    <option value="">-- เลือกปีการศึกษา --</option>
+                                    @foreach($academicYears as $ay)
+                                        <option value="{{ $ay->id }}">{{ $ay->name }} / ภาค {{ $ay->semester }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>สีแสดงผล (ไม่บังคับ)</label>
+                                <input type="color" name="color_code" x-model="currentStudentGroup.color_code" style="width: 100%; height: 40px; padding: 4px; cursor: pointer;">
+                            </div>
+                        </div>
+                        <div class="modal-foot" style="display: flex; justify-content: space-between;">
+                            <div>
+                                <button type="button" class="btn btn-ghost" x-show="editStudentGroupMode"
+                                    @click="confirmDelete('deleteStudentGroupForm', currentStudentGroup.group_code, 'กลุ่มนักศึกษาที่ลบแล้วจะไม่สามารถกู้คืนได้')"
+                                    style="color: var(--status-conflict-fg);">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; display: inline-block; vertical-align: middle;"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                    ลบข้อมูล
+                                </button>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" class="btn btn-ghost" @click="showStudentGroupModal = false">ยกเลิก</button>
+                                <button type="submit" class="btn btn-primary">บันทึกข้อมูล</button>
+                            </div>
+                        </div>
+                    </form>
+                    <form id="deleteStudentGroupForm" :action="'{{ url('admin/master-data/student-groups') }}/' + currentStudentGroup.id" method="POST" style="display: none;">
+                        @csrf
+                        @method('DELETE')
+                    </form>
+                </div>
+            </div>
+        </template>
 
         <!-- Clone Curriculum Modal -->
         <template x-if="showCloneCurriculumModal">

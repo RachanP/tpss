@@ -9,6 +9,9 @@ use App\Models\LocationType;
 use App\Models\Room;
 use App\Models\Course;
 use App\Models\Curriculum;
+use App\Models\ActivityType;
+use App\Models\StudentGroup;
+use App\Models\AcademicYear;
 use Illuminate\Http\Request;
 
 class MasterDataController extends Controller
@@ -40,14 +43,26 @@ class MasterDataController extends Controller
         // Curriculums with course count
         $curriculums = Curriculum::withCount('courses')->get();
 
+        // Activity Types
+        $activityTypes = ActivityType::orderBy('name')->get();
+
+        // Academic Years (for student group dropdown)
+        $academicYears = AcademicYear::orderByDesc('name')->orderByDesc('semester')->get();
+
+        // Student Groups
+        $studentGroups = StudentGroup::with(['curriculum', 'academicYear'])->get();
+
         return view('admin.master_data.index', compact(
-            'instructors', 
-            'departments', 
-            'users', 
-            'locationTypes', 
+            'instructors',
+            'departments',
+            'users',
+            'locationTypes',
             'rooms',
             'courses',
-            'curriculums'
+            'curriculums',
+            'activityTypes',
+            'academicYears',
+            'studentGroups'
         ));
     }
 
@@ -391,6 +406,82 @@ class MasterDataController extends Controller
             return redirect()->route('admin.master_data', ['tab' => 'curriculums'])->with('success', 'ลบหลักสูตรเรียบร้อยแล้ว');
         } catch (\Illuminate\Database\QueryException $e) {
             return redirect()->back()->with('error', 'ไม่สามารถลบได้เนื่องจากมีรายวิชาผูกอยู่ กรุณาลบวิชาในหลักสูตรนี้ออกก่อน');
+        }
+    }
+
+    // ── Activity Types ────────────────────────────────────────────────
+
+    public function storeActivityType(Request $request)
+    {
+        $validated = $request->validate([
+            'name'         => 'required|string|max:100|unique:activity_types,name',
+            'color_code'   => 'required|string|max:10',
+            'category'     => 'required|in:lecture,practicum,thesis,other',
+            'is_practicum' => 'nullable|boolean',
+        ]);
+        $validated['is_practicum'] = $request->boolean('is_practicum');
+        ActivityType::create($validated);
+        return redirect()->route('admin.master_data', ['tab' => 'activity_types'])->with('success', 'เพิ่มประเภทกิจกรรมเรียบร้อยแล้ว');
+    }
+
+    public function updateActivityType(Request $request, ActivityType $activityType)
+    {
+        $validated = $request->validate([
+            'name'         => 'required|string|max:100|unique:activity_types,name,' . $activityType->id,
+            'color_code'   => 'required|string|max:10',
+            'category'     => 'required|in:lecture,practicum,thesis,other',
+            'is_practicum' => 'nullable|boolean',
+        ]);
+        $validated['is_practicum'] = $request->boolean('is_practicum');
+        $activityType->update($validated);
+        return redirect()->route('admin.master_data', ['tab' => 'activity_types'])->with('success', 'อัปเดตประเภทกิจกรรมเรียบร้อยแล้ว');
+    }
+
+    public function destroyActivityType(ActivityType $activityType)
+    {
+        try {
+            $activityType->delete();
+            return redirect()->route('admin.master_data', ['tab' => 'activity_types'])->with('success', 'ลบประเภทกิจกรรมเรียบร้อยแล้ว');
+        } catch (\Illuminate\Database\QueryException $e) {
+            return redirect()->back()->with('error', 'ไม่สามารถลบได้เนื่องจากมีกิจกรรมผูกอยู่กับประเภทนี้');
+        }
+    }
+
+    // ── Student Groups ────────────────────────────────────────────────
+
+    public function storeStudentGroup(Request $request)
+    {
+        $validated = $request->validate([
+            'group_code'       => 'required|string|max:255|unique:student_groups,group_code',
+            'curriculum_id'    => 'required|exists:curriculums,id',
+            'academic_year_id' => 'required|exists:academic_years,id',
+            'student_count'    => 'required|integer|min:1',
+            'color_code'       => 'nullable|string|max:10',
+        ]);
+        StudentGroup::create($validated);
+        return redirect()->route('admin.master_data', ['tab' => 'student_groups'])->with('success', 'เพิ่มกลุ่มนักศึกษาเรียบร้อยแล้ว');
+    }
+
+    public function updateStudentGroup(Request $request, StudentGroup $studentGroup)
+    {
+        $validated = $request->validate([
+            'group_code'       => 'required|string|max:255|unique:student_groups,group_code,' . $studentGroup->id,
+            'curriculum_id'    => 'required|exists:curriculums,id',
+            'academic_year_id' => 'required|exists:academic_years,id',
+            'student_count'    => 'required|integer|min:1',
+            'color_code'       => 'nullable|string|max:10',
+        ]);
+        $studentGroup->update($validated);
+        return redirect()->route('admin.master_data', ['tab' => 'student_groups'])->with('success', 'อัปเดตกลุ่มนักศึกษาเรียบร้อยแล้ว');
+    }
+
+    public function destroyStudentGroup(StudentGroup $studentGroup)
+    {
+        try {
+            $studentGroup->delete();
+            return redirect()->route('admin.master_data', ['tab' => 'student_groups'])->with('success', 'ลบกลุ่มนักศึกษาเรียบร้อยแล้ว');
+        } catch (\Illuminate\Database\QueryException $e) {
+            return redirect()->back()->with('error', 'ไม่สามารถลบได้เนื่องจากมีตารางสอนผูกอยู่กับกลุ่มนี้');
         }
     }
 }
