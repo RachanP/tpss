@@ -47,6 +47,25 @@ class AdminSettingController extends Controller
 
         if ($validated['is_active']) {
             AcademicYear::where('is_active', true)->update(['is_active' => false]);
+
+            // Auto-sync courses status based on default_semester AND curriculum status
+            // 1. Force inactive for any course whose curriculum is inactive
+            \App\Models\Course::whereHas('curriculum', function($q) {
+                $q->where('is_active', false);
+            })->update(['status' => 'inactive']);
+
+            // 2. For active curriculums, open courses matching the semester
+            \App\Models\Course::whereHas('curriculum', function($q) {
+                $q->where('is_active', true);
+            })->where('default_semester', $validated['semester'])->update(['status' => 'active']);
+
+            // 3. For active curriculums, close courses NOT matching the semester
+            \App\Models\Course::whereHas('curriculum', function($q) {
+                $q->where('is_active', true);
+            })->where(function($query) use ($validated) {
+                $query->where('default_semester', '!=', $validated['semester'])
+                      ->orWhereNull('default_semester');
+            })->update(['status' => 'inactive']);
         }
 
         AcademicYear::create($validated);
@@ -67,6 +86,25 @@ class AdminSettingController extends Controller
 
         if ($validated['is_active']) {
             AcademicYear::where('id', '!=', $year->id)->where('is_active', true)->update(['is_active' => false]);
+
+            // Auto-sync courses status based on default_semester AND curriculum status
+            // 1. Force inactive for any course whose curriculum is inactive
+            \App\Models\Course::whereHas('curriculum', function($q) {
+                $q->where('is_active', false);
+            })->update(['status' => 'inactive']);
+
+            // 2. For active curriculums, open courses matching the semester
+            \App\Models\Course::whereHas('curriculum', function($q) {
+                $q->where('is_active', true);
+            })->where('default_semester', $validated['semester'])->update(['status' => 'active']);
+
+            // 3. For active curriculums, close courses NOT matching the semester
+            \App\Models\Course::whereHas('curriculum', function($q) {
+                $q->where('is_active', true);
+            })->where(function($query) use ($validated) {
+                $query->where('default_semester', '!=', $validated['semester'])
+                      ->orWhereNull('default_semester');
+            })->update(['status' => 'inactive']);
         }
 
         $year->update($validated);

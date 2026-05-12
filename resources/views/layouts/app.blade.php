@@ -11,6 +11,9 @@
     <!-- Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
 
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <!-- Base Styles -->
     <style>
         /* Fallback if Vite is not ready */
@@ -44,5 +47,30 @@
             </div>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            @if(session('success'))
+                Swal.fire({
+                    icon: 'success',
+                    title: 'สำเร็จ',
+                    text: "{!! addslashes(session('success')) !!}",
+                    timer: 3000,
+                    showConfirmButton: false,
+                    timerProgressBar: true
+                });
+            @endif
+
+            @if(session('error'))
+                Swal.fire({
+                    icon: 'error',
+                    title: 'เกิดข้อผิดพลาด',
+                    text: "{!! addslashes(session('error')) !!}",
+                    confirmButtonText: 'รับทราบ',
+                    confirmButtonColor: '#002d62'
+                });
+            @endif
+        });
+    </script>
 </body>
 </html>

@@ -41,15 +41,28 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/admin/master-data', 'App\Http\Controllers\Admin\MasterDataController@index')->name('admin.master_data');
         Route::post('/admin/master-data/departments', 'App\Http\Controllers\Admin\MasterDataController@storeDepartment')->name('admin.departments.store');
         Route::put('/admin/master-data/departments/{department}', 'App\Http\Controllers\Admin\MasterDataController@updateDepartment')->name('admin.departments.update');
+        Route::delete('/admin/master-data/departments/{department}', 'App\Http\Controllers\Admin\MasterDataController@destroyDepartment')->name('admin.departments.destroy');
         Route::put('/admin/master-data/instructors/{id}', 'App\Http\Controllers\Admin\MasterDataController@updateInstructor')->name('admin.instructors.update');
         
         // Location Types
         Route::post('/admin/master-data/location-types', 'App\Http\Controllers\Admin\MasterDataController@storeLocationType')->name('admin.location_types.store');
         Route::put('/admin/master-data/location-types/{locationType}', 'App\Http\Controllers\Admin\MasterDataController@updateLocationType')->name('admin.location_types.update');
+        Route::delete('/admin/master-data/location-types/{locationType}', 'App\Http\Controllers\Admin\MasterDataController@destroyLocationType')->name('admin.location_types.destroy');
 
         // Rooms
         Route::post('/admin/master-data/rooms', 'App\Http\Controllers\Admin\MasterDataController@storeRoom')->name('admin.rooms.store');
         Route::put('/admin/master-data/rooms/{room}', 'App\Http\Controllers\Admin\MasterDataController@updateRoom')->name('admin.rooms.update');
+        Route::delete('/admin/master-data/rooms/{room}', 'App\Http\Controllers\Admin\MasterDataController@destroyRoom')->name('admin.rooms.destroy');
+
+        // Courses
+        Route::post('/admin/master-data/courses', 'App\Http\Controllers\Admin\MasterDataController@storeCourse')->name('admin.courses.store');
+        Route::put('/admin/master-data/courses/{course}', 'App\Http\Controllers\Admin\MasterDataController@updateCourse')->name('admin.courses.update');
+        Route::delete('/admin/master-data/courses/{course}', 'App\Http\Controllers\Admin\MasterDataController@destroyCourse')->name('admin.courses.destroy');
+
+        // Curriculums
+        Route::post('/admin/master-data/curriculums', 'App\Http\Controllers\Admin\MasterDataController@storeCurriculum')->name('admin.curriculums.store');
+        Route::put('/admin/master-data/curriculums/{curriculum}', 'App\Http\Controllers\Admin\MasterDataController@updateCurriculum')->name('admin.curriculums.update');
+        Route::post('/admin/master-data/curriculums/{curriculum}/clone', 'App\Http\Controllers\Admin\MasterDataController@cloneCurriculum')->name('admin.curriculums.clone');
     });
 
     // Role switcher

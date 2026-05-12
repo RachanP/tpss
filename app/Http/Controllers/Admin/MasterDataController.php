@@ -7,6 +7,8 @@ use App\Models\Department;
 use App\Models\User;
 use App\Models\LocationType;
 use App\Models\Room;
+use App\Models\Course;
+use App\Models\Curriculum;
 use Illuminate\Http\Request;
 
 class MasterDataController extends Controller
@@ -32,12 +34,20 @@ class MasterDataController extends Controller
         // Rooms with their types
         $rooms = Room::with('locationType')->get();
 
+        // Courses with curriculum and head instructor
+        $courses = Course::with(['curriculum', 'department', 'headInstructor'])->get();
+
+        // Curriculums with course count
+        $curriculums = Curriculum::withCount('courses')->get();
+
         return view('admin.master_data.index', compact(
             'instructors', 
             'departments', 
             'users', 
             'locationTypes', 
-            'rooms'
+            'rooms',
+            'courses',
+            'curriculums'
         ));
     }
 
@@ -203,5 +213,185 @@ class MasterDataController extends Controller
         }
 
         return redirect()->back()->with('success', 'อัปเดตข้อมูลอาจารย์เรียบร้อยแล้ว');
+    }
+
+    public function storeCourse(Request $request)
+    {
+        $validated = $request->validate([
+            'course_code' => 'required|string|max:20|unique:courses,course_code',
+            'name_th' => 'required|string|max:255',
+            'name_en' => 'nullable|string|max:255',
+            'curriculum_id' => 'required|exists:curriculums,id',
+            'department_id' => 'required|exists:departments,id',
+            'head_instructor_id' => 'nullable|exists:users,id',
+            'academic_level' => 'nullable|in:undergraduate,graduate',
+            'default_year_level' => 'nullable|integer|min:1|max:4',
+            'default_semester' => 'nullable|integer|min:1|max:3',
+            'credits' => 'required|integer|min:0',
+            'lecture_hours' => 'nullable|integer|min:0',
+            'lab_hours' => 'nullable|integer|min:0',
+            'self_study_hours' => 'nullable|integer|min:0',
+            'color_code' => 'nullable|string|max:7',
+            'status' => 'required|in:active,inactive',
+            'requires_practicum_rotation' => 'nullable|boolean'
+        ]);
+
+        // Auto-calculate course type
+        $lecture = $validated['lecture_hours'] ?? 0;
+        $lab = $validated['lab_hours'] ?? 0;
+        
+        if ($lecture > 0 && $lab > 0) {
+            $validated['course_type'] = 'theory_practicum';
+        } elseif ($lecture == 0 && $lab > 0) {
+            $validated['course_type'] = 'practicum';
+        } else {
+            $validated['course_type'] = 'theory';
+        }
+
+        $validated['requires_practicum_rotation'] = $request->has('requires_practicum_rotation');
+
+        Course::create($validated);
+
+        return redirect()->route('admin.master_data', ['tab' => 'courses'])->with('success', 'เพิ่มรายวิชาเรียบร้อยแล้ว');
+    }
+
+    public function updateCourse(Request $request, Course $course)
+    {
+        $validated = $request->validate([
+            'course_code' => 'required|string|max:20|unique:courses,course_code,' . $course->id,
+            'name_th' => 'required|string|max:255',
+            'name_en' => 'nullable|string|max:255',
+            'curriculum_id' => 'required|exists:curriculums,id',
+            'department_id' => 'required|exists:departments,id',
+            'head_instructor_id' => 'nullable|exists:users,id',
+            'course_type' => 'required|in:theory,practicum,theory_practicum',
+            'academic_level' => 'nullable|in:undergraduate,graduate',
+            'default_year_level' => 'nullable|integer|min:1|max:4',
+            'default_semester' => 'nullable|integer|min:1|max:3',
+            'credits' => 'required|integer|min:0',
+            'lecture_hours' => 'nullable|integer|min:0',
+            'lab_hours' => 'nullable|integer|min:0',
+            'self_study_hours' => 'nullable|integer|min:0',
+            'color_code' => 'nullable|string|max:7',
+            'status' => 'required|in:active,inactive',
+            'requires_practicum_rotation' => 'nullable|boolean'
+        ]);
+
+        $validated['requires_practicum_rotation'] = $request->has('requires_practicum_rotation');
+
+        $course->update($validated);
+
+        return redirect()->route('admin.master_data', ['tab' => 'courses'])->with('success', 'อัปเดตข้อมูลรายวิชาเรียบร้อยแล้ว');
+    }
+
+    public function storeCurriculum(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'effective_year' => 'required|integer',
+            'is_active' => 'required|boolean'
+        ]);
+
+        Curriculum::create($validated);
+
+        return redirect()->route('admin.master_data', ['tab' => 'curriculums'])->with('success', 'เพิ่มหลักสูตรเรียบร้อยแล้ว');
+    }
+
+    public function updateCurriculum(Request $request, Curriculum $curriculum)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'effective_year' => 'required|integer',
+            'is_active' => 'required|boolean'
+        ]);
+
+        $curriculum->update($validated);
+
+        return redirect()->route('admin.master_data', ['tab' => 'curriculums'])->with('success', 'อัปเดตข้อมูลหลักสูตรเรียบร้อยแล้ว');
+    }
+
+    public function cloneCurriculum(Request $request, Curriculum $curriculum)
+    {
+        // Business Rule: Can only clone inactive curriculums
+        if ($curriculum->is_active) {
+            return redirect()->back()->with('error', 'ไม่สามารถคัดลอกหลักสูตรที่กำลังเปิดใช้งานอยู่ได้ กรุณาปิดการใช้งานหลักสูตรต้นฉบับก่อน');
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'effective_year' => 'required|integer'
+        ]);
+
+        // Create new curriculum
+        $newCurriculum = Curriculum::create([
+            'name' => $validated['name'],
+            'effective_year' => $validated['effective_year'],
+            'is_active' => true // Default to active
+        ]);
+
+        // Clone all courses
+        $courses = $curriculum->courses;
+        foreach ($courses as $course) {
+            $newCourse = $course->replicate();
+            $newCourse->curriculum_id = $newCurriculum->id;
+            
+            // Database uses composite unique key ['course_code', 'curriculum_id']
+            // So we can safely keep the exact same course_code.
+            // head_instructor_id is copied automatically via replicate()
+            
+            $newCourse->save();
+        }
+
+        return redirect()->route('admin.master_data', ['tab' => 'curriculums'])->with('success', 'คัดลอกหลักสูตรและรายวิชาทั้งหมดเรียบร้อยแล้ว (' . $courses->count() . ' วิชา)');
+    }
+
+    public function destroyDepartment(Department $department)
+    {
+        try {
+            $department->delete();
+            return redirect()->route('admin.master_data', ['tab' => 'departments'])->with('success', 'ลบภาควิชาเรียบร้อยแล้ว');
+        } catch (\Illuminate\Database\QueryException $e) {
+            return redirect()->back()->with('error', 'ไม่สามารถลบได้เนื่องจากมีข้อมูลผูกพันอยู่ (เช่น มีอาจารย์หรือวิชาสังกัดอยู่)');
+        }
+    }
+
+    public function destroyLocationType(LocationType $locationType)
+    {
+        try {
+            $locationType->delete();
+            return redirect()->route('admin.master_data', ['tab' => 'rooms'])->with('success', 'ลบประเภทสถานที่เรียบร้อยแล้ว');
+        } catch (\Illuminate\Database\QueryException $e) {
+            return redirect()->back()->with('error', 'ไม่สามารถลบได้เนื่องจากมีห้องผูกอยู่');
+        }
+    }
+
+    public function destroyRoom(Room $room)
+    {
+        try {
+            $room->delete();
+            return redirect()->route('admin.master_data', ['tab' => 'rooms'])->with('success', 'ลบห้องเรียบร้อยแล้ว');
+        } catch (\Illuminate\Database\QueryException $e) {
+            return redirect()->back()->with('error', 'ไม่สามารถลบได้เนื่องจากมีข้อมูลผูกพันอยู่');
+        }
+    }
+
+    public function destroyCourse(Course $course)
+    {
+        try {
+            $course->delete();
+            return redirect()->route('admin.master_data', ['tab' => 'courses'])->with('success', 'ลบรายวิชาเรียบร้อยแล้ว');
+        } catch (\Illuminate\Database\QueryException $e) {
+            return redirect()->back()->with('error', 'ไม่สามารถลบได้เนื่องจากมีข้อมูลการสอนผูกอยู่');
+        }
+    }
+
+    public function destroyCurriculum(Curriculum $curriculum)
+    {
+        try {
+            $curriculum->delete();
+            return redirect()->route('admin.master_data', ['tab' => 'curriculums'])->with('success', 'ลบหลักสูตรเรียบร้อยแล้ว');
+        } catch (\Illuminate\Database\QueryException $e) {
+            return redirect()->back()->with('error', 'ไม่สามารถลบได้เนื่องจากมีรายวิชาผูกอยู่ กรุณาลบวิชาในหลักสูตรนี้ออกก่อน');
+        }
     }
 }

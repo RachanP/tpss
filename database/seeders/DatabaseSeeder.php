@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
+            CurriculumSeeder::class,
             LocationTypeSeeder::class,
             SystemSettingSeeder::class,
             DepartmentSeeder::class,
@@ -19,6 +20,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             DepartmentSeeder::class,
             RoomSeeder::class,
+            CourseSeeder::class,
         ]);
     }
 }
