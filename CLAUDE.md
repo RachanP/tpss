@@ -175,7 +175,7 @@
 | # | Role | สิทธิ์หลัก | ลักษณะการเข้าถึง |
 |---|------|-----------|-----------------|
 | 1 | System Admin (ผู้ดูแลระบบ) | จัดการ Master Data ทั้งหมด, จัดการสิทธิ์ผู้ใช้งาน, Admin Override แก้ไขตารางแทน Course Head ได้ | Read + Write ทุกส่วน |
-| 2 | Support Staff (เจ้าหน้าที่) | กรอกข้อมูลพื้นฐาน (Master Data), **ร่วมกับ Course Head** บันทึกตารางสอน/ฝึกปฏิบัติ, ออกรายงาน | Read + Write (ตาราง + Master Data) |
+| 2 | Support Staff (เจ้าหน้าที่) | จัดการ Master Data (rooms, location_types, courses, student_groups — CRUD / departments, instructors, curriculums, activity_types — Read only), จัดการปีการศึกษา (เพิ่ม/แก้ไข/ตั้งปัจจุบัน), **ร่วมกับ Course Head** บันทึกตารางสอน, ออกรายงาน | Read + Write (บางส่วนของ Master Data + ตาราง) |
 | 3 | Course Head / Maker (หัวหน้าวิชา) | **ร่วมกับ Support Staff** สร้าง/แก้ไขตาราง, ตรวจสอบ Conflict/Warning, **ส่งขออนุมัติให้ผู้บริหาร** | Read + Write (ตาราง) |
 | 4 | Executive / Approver (ผู้บริหาร) | **ดูตารางทั้งหมด** (View All), ดูรายงานภาระงาน/การใช้ห้อง, **อนุมัติ / ตีกลับตาราง** ที่ Course Head ส่งมา — ไม่สามารถสร้าง/แก้ไขตาราง/ข้อมูลพื้นฐานได้ | Read-only + Approve/Reject เท่านั้น |
 | 5 | Instructor (อาจารย์ผู้สอน) | ดูตารางสอนและภาระงานของตนเองเท่านั้น, รับการแจ้งเตือนเมื่อตารางเปลี่ยน | Read-only (เฉพาะของตัวเอง) |
@@ -218,6 +218,43 @@
 
 ---
 
+## Shared View Pattern (implement แล้วใน Sprint 2)
+
+เมื่อ Admin และ Staff ใช้ view เดียวกัน ให้วางไฟล์จริงใน `views/shared/<module>/index.blade.php` แล้วให้ role-specific view เป็นแค่ `@include`:
+
+```
+views/
+├── shared/
+│   ├── master_data/
+│   │   ├── index.blade.php      ← เนื้อหาจริง รับ $isAdmin + $routePrefix
+│   │   └── _lock_icon.blade.php ← SVG partial สำหรับ tab read-only
+│   └── settings/
+│       └── index.blade.php      ← เนื้อหาจริง รับ $isAdmin + $routePrefix
+├── admin/
+│   ├── master_data/ (ลบแล้ว — ย้ายไป shared/)
+│   └── settings.blade.php       ← @include('shared.settings.index')
+└── staff/
+    └── settings.blade.php       ← @include('shared.settings.index')
+```
+
+### Variables ที่ต้องส่งจาก Controller ไปยัง Shared View
+| Variable | Type | ความหมาย |
+|----------|------|----------|
+| `$isAdmin` | bool | ควบคุม visibility ของฟีเจอร์ admin-only (เช่น แท็บ PA, ปุ่มเพิ่ม/ลบใน tab ที่ lock) |
+| `$routePrefix` | string | `'admin'` หรือ `'staff'` — ใช้ใน form action และ route() calls |
+
+### Controller Pattern
+```php
+// Staff controller extends Admin controller เสมอ — ไม่ duplicate logic
+class Staff\MasterDataController extends Admin\MasterDataController { }
+class Staff\SettingController extends AdminSettingController {
+    public function index() { /* override เพื่อ set $isAdmin = false */ }
+    // storeYear(), updateYear() — inherited โดยตรง ไม่ต้อง override
+}
+```
+
+---
+
 ## Naming Conventions (ใช้สม่ำเสมอทั้งโปรเจกต์)
 
 | ประเภท | รูปแบบ | ตัวอย่าง |
@@ -225,7 +262,7 @@
 | Model | PascalCase | `CourseOffering`, `StudentGroup` |
 | Controller | PascalCase + Controller | `ScheduleController`, `CourseOfferingController` |
 | Route name | kebab-case + dot notation | `course-offerings.index`, `schedules.store` |
-| View path | snake_case จัดตาม role | `maker/schedule/index.blade.php` |
+| View path | snake_case จัดตาม role หรือ `shared/` ถ้าใช้ร่วมกัน | `admin/settings.blade.php`, `shared/master_data/index.blade.php` |
 | DB table | snake_case plural | `course_offerings`, `student_groups` |
 | DB column | snake_case | `approval_status`, `created_at` |
 | Alpine.js var | camelCase | `showModal`, `selectedInstructor` |
@@ -239,7 +276,8 @@
 
 | คำไทย | ชื่อใน Code / DB |
 |-------|----------------|
-| หัวหน้าวิชา / Maker | `course_head` |
+| หัวหน้าวิชา / ผู้ประสานรายวิชา / Maker | `course_head` (role เดียวกัน ตาม SRS UC-04) |
+| เจ้าหน้าที่ผู้ดูแลวิชา (ต่อวิชา) | `assigned_staff_id` (FK ใน `courses` table) |
 | เจ้าหน้าที่ / Support Staff | `staff` |
 | ผู้บริหาร / Approver | `executive` |
 | อาจารย์ผู้สอน / Instructor | `instructor` |
