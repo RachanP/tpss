@@ -251,7 +251,7 @@
 /* baseline reset shared by previews + UI kit */
 *, *::before, *::after { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; padding: 0; }
-html { font-size: 15px; }
+html { font-size: 15px; scrollbar-gutter: stable; overflow-y: scroll; }
 body { font-family: var(--font-sans); color: var(--fg-1); background: var(--bg);
        -webkit-font-smoothing: antialiased; }
 
@@ -833,6 +833,33 @@ input:focus, select:focus, textarea:focus {
 
 .btn-red { background: var(--status-conflict); color: white; }
 .btn-red:hover { background: oklch(45% 0.20 25); }
+
+.tabs {
+  align-items: center;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.tabs > button {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 8px;
+  min-height: 38px;
+  margin: 0;
+  border: 1px solid transparent;
+  font-family: inherit;
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-snug);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast);
+}
+
+.tabs > .btn-primary {
+  border-color: var(--brand-navy);
+}
 
 .search-box {
   display: flex;
