@@ -713,6 +713,7 @@
                                 <th>ชื่อรายวิชา (ไทย / อังกฤษ)</th>
                                 <th>ภาควิชา / หลักสูตร</th>
                                 <th style="text-align: center;">หน่วยกิต</th>
+                                <th style="text-align: center;">รับสูงสุด</th>
                                 <th style="text-align: center;">ปี/เทอม</th>
                                 <th>หัวหน้าวิชาเริ่มต้น</th>
                                 <th style="text-align: center;">สถานะ</th>
@@ -740,6 +741,9 @@
                                     <td style="text-align: center;">
                                         <div style="font-weight: 700; color: var(--fg-1);">{{ $course->credits }}</div>
                                         <div style="font-size: 10px; color: var(--fg-3);">({{ $course->lecture_hours }}-{{ $course->lab_hours }}-{{ $course->self_study_hours }})</div>
+                                    </td>
+                                    <td style="text-align: center; color: var(--fg-2);">
+                                        {{ $course->capacity ? number_format($course->capacity) . ' คน' : '-' }}
                                     </td>
                                     <td style="text-align: center;">
                                         @if($course->default_year_level)
