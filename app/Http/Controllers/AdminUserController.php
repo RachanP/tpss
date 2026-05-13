@@ -280,10 +280,11 @@ class AdminUserController extends Controller
         }
         $header = array_map(fn($h) => trim(str_replace("\xEF\xBB\xBF", '', $h)), $header);
 
-        $departments = Department::pluck('id', 'name')->toArray();
-        $degreeMap   = ['doctoral' => 'ปริญญาเอก', 'non_doctoral' => 'ปริญญาโท'];
-        $empTypeMap  = ['full_time' => 'พนักงานมหาวิทยาลัย', 'part_time' => 'อาจารย์พิเศษ'];
-        $validRoles  = ['admin', 'staff', 'course_head', 'executive', 'instructor'];
+        $departments     = Department::pluck('id', 'name')->toArray();
+        $degreeMap       = ['doctoral' => 'ปริญญาเอก', 'non_doctoral' => 'ปริญญาโท'];
+        $empTypeMap      = ['full_time' => 'พนักงานมหาวิทยาลัย', 'part_time' => 'อาจารย์พิเศษ'];
+        $validRoles      = ['admin', 'staff', 'course_head', 'executive', 'instructor'];
+        $updateOnDup     = $request->boolean('update_on_duplicate');
 
         $successCount = 0;
         $errors       = [];
@@ -305,14 +306,6 @@ class AdminUserController extends Controller
                 $errors[] = "แถว {$row}: ข้อมูลบังคับไม่ครบ (username, email, name, password, roles, primary_role)";
                 continue;
             }
-            if (User::where('email', $email)->exists()) {
-                $errors[] = "แถว {$row}: email '{$email}' มีในระบบแล้ว — ข้ามแถวนี้";
-                continue;
-            }
-            if (User::where('username', $username)->exists()) {
-                $errors[] = "แถว {$row}: username '{$username}' มีในระบบแล้ว — ข้ามแถวนี้";
-                continue;
-            }
 
             $roles = array_values(array_filter(array_map('trim', explode('|', $rolesStr))));
             $invalid = array_diff($roles, $validRoles);
@@ -325,51 +318,64 @@ class AdminUserController extends Controller
                 continue;
             }
 
+            // Check for existing user by email or username
+            $existingByEmail    = User::where('email', $email)->first();
+            $existingByUsername = User::where('username', $username)->first();
+            $existing = $existingByEmail ?? $existingByUsername;
+
+            if ($existing && !$updateOnDup) {
+                $key = $existingByEmail ? "email '{$email}'" : "username '{$username}'";
+                $errors[] = "แถว {$row}: {$key} มีในระบบแล้ว — ข้ามแถวนี้";
+                continue;
+            }
+
             try {
-                DB::transaction(function () use ($csv, $username, $email, $name, $password, $roles, $primaryRole, $departments, $degreeMap, $empTypeMap) {
-                    $user = User::create([
-                        'username'  => $username,
-                        'prefix'    => trim($csv['prefix'] ?? '') ?: null,
-                        'name'      => $name,
-                        'email'     => $email,
-                        'password'  => Hash::make($password),
-                        'is_active' => true,
-                    ]);
+                DB::transaction(function () use ($csv, $username, $email, $name, $roles, $primaryRole, $departments, $degreeMap, $empTypeMap, $existing, $password) {
+                    $profileData = $this->buildProfileData($csv, $departments, $degreeMap, $empTypeMap);
 
-                    foreach ($roles as $role) {
-                        UserRole::create([
-                            'user_id'    => $user->id,
-                            'role'       => $role,
-                            'is_primary' => $role === $primaryRole,
+                    if ($existing) {
+                        // Update: name, prefix, roles, profile — no password change
+                        $existing->update([
+                            'prefix' => trim($csv['prefix'] ?? '') ?: null,
+                            'name'   => $name,
                         ]);
-                    }
 
-                    $employeeId = trim($csv['employee_id'] ?? '');
-                    $title      = trim($csv['title'] ?? '');
-                    $deptName   = trim($csv['department_name'] ?? '');
-                    $hiredAt    = trim($csv['hired_date'] ?? '');
+                        UserRole::where('user_id', $existing->id)->delete();
+                        foreach ($roles as $role) {
+                            UserRole::create([
+                                'user_id'    => $existing->id,
+                                'role'       => $role,
+                                'is_primary' => $role === $primaryRole,
+                            ]);
+                        }
 
-                    if ($employeeId || $title || $deptName || in_array('instructor', $roles)) {
-                        $deptId      = $deptName ? ($departments[$deptName] ?? null) : null;
-                        $degree      = $degreeMap[trim($csv['academic_degree'] ?? '')] ?? 'ปริญญาโท';
-                        $empType     = $empTypeMap[trim($csv['employment_type'] ?? '')] ?? 'พนักงานมหาวิทยาลัย';
-                        $teachingPct = max(0, min(100, (int)(trim($csv['teaching_pct'] ?? '0') ?: '0')));
-
-                        InstructorProfile::create([
-                            'user_id'         => $user->id,
-                            'employee_id'     => $employeeId ?: null,
-                            'title'           => $title ?: null,
-                            'department_id'   => $deptId,
-                            'academic_degree' => $degree,
-                            'employment_type' => $empType,
-                            'hired_at'        => $hiredAt ?: null,
-                            'teaching_pct'    => $teachingPct,
-                            'research_pct'    => 0,
-                            'service_pct'     => 0,
-                            'culture_pct'     => 0,
-                            'other_pct'       => 0,
-                            'teaching_quota'  => 0,
+                        if ($profileData !== null) {
+                            InstructorProfile::updateOrCreate(
+                                ['user_id' => $existing->id],
+                                $profileData
+                            );
+                        }
+                    } else {
+                        $user = User::create([
+                            'username'  => $username,
+                            'prefix'    => trim($csv['prefix'] ?? '') ?: null,
+                            'name'      => $name,
+                            'email'     => $email,
+                            'password'  => Hash::make($password),
+                            'is_active' => true,
                         ]);
+
+                        foreach ($roles as $role) {
+                            UserRole::create([
+                                'user_id'    => $user->id,
+                                'role'       => $role,
+                                'is_primary' => $role === $primaryRole,
+                            ]);
+                        }
+
+                        if ($profileData !== null) {
+                            InstructorProfile::create(array_merge(['user_id' => $user->id], $profileData));
+                        }
                     }
                 });
                 $successCount++;
@@ -387,6 +393,38 @@ class AdminUserController extends Controller
                 ->with('import_errors', $errors);
         }
         return redirect()->route('admin.users')->with('success', $msg);
+    }
+
+    private function buildProfileData(array $csv, array $departments, array $degreeMap, array $empTypeMap): ?array
+    {
+        $employeeId = trim($csv['employee_id'] ?? '');
+        $title      = trim($csv['title'] ?? '');
+        $deptName   = trim($csv['department_name'] ?? '');
+        $hiredAt    = trim($csv['hired_date'] ?? '');
+
+        if (!$employeeId && !$title && !$deptName && !$hiredAt) {
+            return null;
+        }
+
+        $deptId      = $deptName ? ($departments[$deptName] ?? null) : null;
+        $degree      = $degreeMap[trim($csv['academic_degree'] ?? '')] ?? 'ปริญญาโท';
+        $empType     = $empTypeMap[trim($csv['employment_type'] ?? '')] ?? 'พนักงานมหาวิทยาลัย';
+        $teachingPct = max(0, min(100, (int)(trim($csv['teaching_pct'] ?? '0') ?: '0')));
+
+        return [
+            'employee_id'     => $employeeId ?: null,
+            'title'           => $title ?: null,
+            'department_id'   => $deptId,
+            'academic_degree' => $degree,
+            'employment_type' => $empType,
+            'hired_at'        => $hiredAt ?: null,
+            'teaching_pct'    => $teachingPct,
+            'research_pct'    => 0,
+            'service_pct'     => 0,
+            'culture_pct'     => 0,
+            'other_pct'       => 0,
+            'teaching_quota'  => 0,
+        ];
     }
 
     public function settings()

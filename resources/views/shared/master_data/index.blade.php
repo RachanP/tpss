@@ -1869,12 +1869,19 @@
                                     ดาวน์โหลดไฟล์ตัวอย่าง (rooms_import.csv)
                                 </a>
                             </div>
-                            <div>
+                            <div style="margin-bottom: 16px;">
                                 <label class="frm-lbl">เลือกไฟล์ CSV <span style="color: var(--status-conflict-fg)">*</span></label>
                                 <input type="file" name="csv_file" accept=".csv,.txt" required
                                     style="display: block; width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: var(--bg-1);">
                                 <div style="font-size: 12px; color: var(--fg-muted); margin-top: 4px;">UTF-8 (ไม่มี BOM), ไม่เกิน 5 MB</div>
                             </div>
+                            <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-2);">
+                                <input type="checkbox" name="update_on_duplicate" value="1" checked style="margin-top: 2px; flex-shrink: 0;">
+                                <div>
+                                    <div style="font-size: 13px; font-weight: 600; color: var(--fg-base);">อัปเดตข้อมูลถ้า code ซ้ำ</div>
+                                    <div style="font-size: 12px; color: var(--fg-muted); margin-top: 2px;">ถ้าไม่ติ๊ก จะข้ามแถวที่ซ้ำโดยไม่อัปเดต</div>
+                                </div>
+                            </label>
                         </div>
                         <div class="modal-foot">
                             <button type="button" class="btn btn-ghost" @click="showImportRoomModal = false">ยกเลิก</button>
@@ -1921,12 +1928,19 @@
                                     ดาวน์โหลดไฟล์ตัวอย่าง (courses_import.csv)
                                 </a>
                             </div>
-                            <div>
+                            <div style="margin-bottom: 16px;">
                                 <label class="frm-lbl">เลือกไฟล์ CSV <span style="color: var(--status-conflict-fg)">*</span></label>
                                 <input type="file" name="csv_file" accept=".csv,.txt" required
                                     style="display: block; width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: var(--bg-1);">
                                 <div style="font-size: 12px; color: var(--fg-muted); margin-top: 4px;">UTF-8 (ไม่มี BOM), ไม่เกิน 5 MB</div>
                             </div>
+                            <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-2);">
+                                <input type="checkbox" name="update_on_duplicate" value="1" checked style="margin-top: 2px; flex-shrink: 0;">
+                                <div>
+                                    <div style="font-size: 13px; font-weight: 600; color: var(--fg-base);">อัปเดตข้อมูลถ้า course_code + หลักสูตร ซ้ำ</div>
+                                    <div style="font-size: 12px; color: var(--fg-muted); margin-top: 2px;">ถ้าไม่ติ๊ก จะข้ามแถวที่ซ้ำโดยไม่อัปเดต</div>
+                                </div>
+                            </label>
                         </div>
                         <div class="modal-foot">
                             <button type="button" class="btn btn-ghost" @click="showImportCourseModal = false">ยกเลิก</button>

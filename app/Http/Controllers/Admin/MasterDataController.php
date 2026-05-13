@@ -507,6 +507,7 @@ class MasterDataController extends Controller
         $header = array_map(fn($h) => trim(str_replace("\xEF\xBB\xBF", '', $h)), $header);
 
         $locationTypes = LocationType::pluck('id', 'name')->toArray();
+        $updateOnDup   = $request->boolean('update_on_duplicate');
         $successCount  = 0;
         $errors        = [];
         $row           = 1;
@@ -528,6 +529,12 @@ class MasterDataController extends Controller
             $ltId = $locationTypes[$ltName] ?? null;
             if (!$ltId) {
                 $errors[] = "แถว {$row}: ประเภทสถานที่ '{$ltName}' ไม่พบในระบบ";
+                continue;
+            }
+
+            $exists = Room::where('room_code', $code)->exists();
+            if ($exists && !$updateOnDup) {
+                $errors[] = "แถว {$row}: code '{$code}' มีในระบบแล้ว — ข้ามแถวนี้";
                 continue;
             }
 
@@ -581,6 +588,7 @@ class MasterDataController extends Controller
 
         $curriculums  = Curriculum::pluck('id', 'name')->toArray();
         $departments  = Department::pluck('id', 'name')->toArray();
+        $updateOnDup  = $request->boolean('update_on_duplicate');
         $successCount = 0;
         $errors       = [];
         $row          = 1;
@@ -610,6 +618,12 @@ class MasterDataController extends Controller
             $deptId = $departments[$deptName] ?? null;
             if (!$deptId) {
                 $errors[] = "แถว {$row}: ภาควิชา '{$deptName}' ไม่พบในระบบ";
+                continue;
+            }
+
+            $exists = Course::where('course_code', $code)->where('curriculum_id', $currId)->exists();
+            if ($exists && !$updateOnDup) {
+                $errors[] = "แถว {$row}: course_code '{$code}' ในหลักสูตรนี้มีอยู่แล้ว — ข้ามแถวนี้";
                 continue;
             }
 
