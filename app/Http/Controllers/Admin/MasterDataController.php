@@ -10,7 +10,6 @@ use App\Models\Room;
 use App\Models\Course;
 use App\Models\Curriculum;
 use App\Models\ActivityType;
-use App\Models\StudentGroup;
 use Illuminate\Http\Request;
 
 class MasterDataController extends Controller
@@ -50,9 +49,6 @@ class MasterDataController extends Controller
         // Activity Types
         $activityTypes = ActivityType::orderBy('name')->get();
 
-        // Student Groups
-        $studentGroups = StudentGroup::with('curriculum')->get();
-
         $activeRole = session('active_role');
         $isAdmin    = $activeRole === 'admin';
         $routePrefix = $isAdmin ? 'admin' : 'staff';
@@ -66,7 +62,6 @@ class MasterDataController extends Controller
             'courses',
             'curriculums',
             'activityTypes',
-            'studentGroups',
             'staffUsers',
             'isAdmin',
             'routePrefix'
@@ -249,6 +244,7 @@ class MasterDataController extends Controller
             'lecture_hours' => 'nullable|integer|min:0',
             'lab_hours' => 'nullable|integer|min:0',
             'self_study_hours' => 'nullable|integer|min:0',
+            'capacity' => 'nullable|integer|min:1',
             'color_code' => 'nullable|string|max:7',
             'status' => 'required|in:active,inactive',
             'requires_practicum_rotation' => 'nullable|boolean'
@@ -291,6 +287,7 @@ class MasterDataController extends Controller
             'lecture_hours' => 'nullable|integer|min:0',
             'lab_hours' => 'nullable|integer|min:0',
             'self_study_hours' => 'nullable|integer|min:0',
+            'capacity' => 'nullable|integer|min:1',
             'color_code' => 'nullable|string|max:7',
             'status' => 'required|in:active,inactive',
             'requires_practicum_rotation' => 'nullable|boolean'
@@ -449,44 +446,6 @@ class MasterDataController extends Controller
             return redirect()->route('admin.master_data', ['tab' => 'activity_types'])->with('success', 'ลบประเภทกิจกรรมเรียบร้อยแล้ว');
         } catch (\Illuminate\Database\QueryException $e) {
             return redirect()->back()->with('error', 'ไม่สามารถลบได้เนื่องจากมีกิจกรรมผูกอยู่กับประเภทนี้');
-        }
-    }
-
-    // ── Student Groups ────────────────────────────────────────────────
-
-    public function storeStudentGroup(Request $request)
-    {
-        $validated = $request->validate([
-            'group_code'    => 'required|string|max:255|unique:student_groups,group_code',
-            'curriculum_id' => 'required|exists:curriculums,id',
-            'year_level'    => 'required|integer|min:1|max:4',
-            'student_count' => 'required|integer|min:1',
-            'color_code'    => 'nullable|string|max:10',
-        ]);
-        StudentGroup::create($validated);
-        return redirect()->route('admin.master_data', ['tab' => 'student_groups'])->with('success', 'เพิ่มกลุ่มนักศึกษาเรียบร้อยแล้ว');
-    }
-
-    public function updateStudentGroup(Request $request, StudentGroup $studentGroup)
-    {
-        $validated = $request->validate([
-            'group_code'    => 'required|string|max:255|unique:student_groups,group_code,' . $studentGroup->id,
-            'curriculum_id' => 'required|exists:curriculums,id',
-            'year_level'    => 'required|integer|min:1|max:4',
-            'student_count' => 'required|integer|min:1',
-            'color_code'    => 'nullable|string|max:10',
-        ]);
-        $studentGroup->update($validated);
-        return redirect()->route('admin.master_data', ['tab' => 'student_groups'])->with('success', 'อัปเดตกลุ่มนักศึกษาเรียบร้อยแล้ว');
-    }
-
-    public function destroyStudentGroup(StudentGroup $studentGroup)
-    {
-        try {
-            $studentGroup->delete();
-            return redirect()->route('admin.master_data', ['tab' => 'student_groups'])->with('success', 'ลบกลุ่มนักศึกษาเรียบร้อยแล้ว');
-        } catch (\Illuminate\Database\QueryException $e) {
-            return redirect()->back()->with('error', 'ไม่สามารถลบได้เนื่องจากมีตารางสอนผูกอยู่กับกลุ่มนี้');
         }
     }
 

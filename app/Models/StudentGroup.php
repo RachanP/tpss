@@ -6,10 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class StudentGroup extends Model
 {
-    protected $fillable = ['group_code', 'curriculum_id', 'year_level', 'student_count', 'color_code'];
+    protected $fillable = ['group_code', 'course_offering_id', 'student_count', 'color_code'];
 
-    public function curriculum()
+    public function courseOffering()
     {
-        return $this->belongsTo(Curriculum::class);
+        return $this->belongsTo(CourseOffering::class);
     }
 }

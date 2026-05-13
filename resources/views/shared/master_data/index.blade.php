@@ -151,6 +151,7 @@
             lecture_hours: 0,
             lab_hours: 0,
             self_study_hours: 0,
+            capacity: '',
             color_code: '#3b82f6',
             status: 'active',
             requires_practicum_rotation: false
@@ -159,7 +160,7 @@
         showCourseHeadDropdown: false,
         openAddCourse() {
             this.editCourseMode = false;
-            this.currentCourse = { id: '', course_code: '', name_th: '', name_en: '', curriculum_id: '', department_id: '', head_instructor_id: '', assigned_staff_id: '', course_type: 'theory', academic_level: 'undergraduate', default_year_level: '', default_semester: '', credits: '', lecture_hours: 0, lab_hours: 0, self_study_hours: 0, color_code: '#3b82f6', status: 'active', requires_practicum_rotation: false };
+            this.currentCourse = { id: '', course_code: '', name_th: '', name_en: '', curriculum_id: '', department_id: '', head_instructor_id: '', assigned_staff_id: '', course_type: 'theory', academic_level: 'undergraduate', default_year_level: '', default_semester: '', credits: '', lecture_hours: 0, lab_hours: 0, self_study_hours: 0, capacity: '', color_code: '#3b82f6', status: 'active', requires_practicum_rotation: false };
             this.courseHeadSearch = '';
             this.showCourseModal = true;
         },
@@ -267,21 +268,6 @@
             this.showActivityTypeModal = true;
         },
 
-        // Student Groups
-        showStudentGroupModal: false,
-        editStudentGroupMode: false,
-        currentStudentGroup: { id: '', group_code: '', curriculum_id: '', year_level: '1', student_count: '', color_code: '#3498db' },
-        openAddStudentGroup() {
-            this.editStudentGroupMode = false;
-            this.currentStudentGroup = { id: '', group_code: '', curriculum_id: '', year_level: '1', student_count: '', color_code: '#3498db' };
-            this.showStudentGroupModal = true;
-        },
-        openEditStudentGroup(sg) {
-            this.editStudentGroupMode = true;
-            this.currentStudentGroup = { ...sg };
-            this.showStudentGroupModal = true;
-        },
-
         confirmDelete(formId, itemLabel, warnText) {
             window.tpssConfirmDelete(formId, itemLabel, warnText);
         }
@@ -341,20 +327,7 @@
                     อาจารย์ผู้สอน
                     @if(!$isAdmin)@include('shared.master_data._lock_icon')@endif
                 </button>
-                {{-- 5. กลุ่มนักศึกษา (ต้องมีหลักสูตรก่อน) --}}
-                <button type="button" @click="activeTab = 'student_groups'"
-                    :class="activeTab === 'student_groups' ? 'btn-primary' : 'btn btn-ghost'"
-                    style="padding: 8px 16px; border-radius: 6px;">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
-                        style="margin-right: 6px;">
-                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="9" cy="7" r="4"></circle>
-                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                    </svg>
-                    กลุ่มนักศึกษา
-                </button>
-                {{-- 6. ประเภทสถานที่ (ต้องมีก่อนสร้างห้อง) --}}
+                {{-- 5. ประเภทสถานที่ (ต้องมีก่อนสร้างห้อง) --}}
                 <button type="button" @click="activeTab = 'location_types'"
                     :class="activeTab === 'location_types' ? 'btn-primary' : 'btn btn-ghost'"
                     style="padding: 8px 16px; border-radius: 6px;">
@@ -1411,6 +1384,11 @@
                                 </div>
                             </div>
 
+                            <div class="form-group" style="margin-bottom: 20px;">
+                                <label>จำนวนนักศึกษาสูงสุด (คน)</label>
+                                <input type="number" name="capacity" x-model="currentCourse.capacity" min="1" placeholder="เช่น 240">
+                            </div>
+
                             {{-- Practicum Rotation --}}
                             <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:12px 14px;background:var(--bg-2);border-radius:8px;border:1px solid var(--border);">
                                 <input type="checkbox" name="requires_practicum_rotation" x-model="currentCourse.requires_practicum_rotation" style="width:16px;height:16px;accent-color:var(--brand-navy);flex-shrink:0;">
@@ -1560,60 +1538,6 @@
             </div>
         </div>
 
-        <!-- Tab: Student Groups -->
-        <div x-show="activeTab === 'student_groups'" x-cloak>
-            <div class="card">
-                <div class="card-hdr">
-                    <div class="card-ttl">กลุ่มนักศึกษา</div>
-                    <div class="card-actions">
-                        <button type="button" class="btn btn-primary" @click="openAddStudentGroup()">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                            เพิ่มกลุ่มนักศึกษา
-                        </button>
-                    </div>
-                </div>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>รหัสกลุ่ม</th>
-                                <th>หลักสูตร</th>
-                                <th style="text-align: center;">ชั้นปี</th>
-                                <th style="text-align: right;">จำนวนนักศึกษา</th>
-                                <th>สี</th>
-                                <th style="text-align: center;">จัดการ</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($studentGroups as $sg)
-                                <tr>
-                                    <td style="font-weight: 700; font-family: var(--font-mono); color: var(--brand-navy);">{{ $sg->group_code }}</td>
-                                    <td style="font-size: 13px; color: var(--fg-2);">{{ $sg->curriculum->name ?? '-' }}</td>
-                                    <td style="text-align: center;">
-                                        <span class="badge badge-gray" style="font-size: 11px;">ปี {{ $sg->year_level }}</span>
-                                    </td>
-                                    <td style="text-align: right; font-weight: 600;">{{ number_format($sg->student_count) }} คน</td>
-                                    <td>
-                                        <span style="display: inline-block; width: 20px; height: 20px; border-radius: 4px; background: {{ $sg->color_code ?? '#3498db' }}; border: 1px solid var(--border);"></span>
-                                    </td>
-                                    <td style="text-align: center;">
-                                        <button type="button" class="action-btn" title="แก้ไข"
-                                            @click="openEditStudentGroup({{ Js::from(['id' => $sg->id, 'group_code' => $sg->group_code, 'curriculum_id' => $sg->curriculum_id, 'year_level' => $sg->year_level, 'student_count' => $sg->student_count, 'color_code' => $sg->color_code ?? '#3498db']) }})">
-                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                        </button>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="6" style="text-align: center; color: var(--fg-3); padding: 40px;">ยังไม่มีกลุ่มนักศึกษา</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
         <!-- Add/Edit Modal (Activity Type) -->
         <template x-if="showActivityTypeModal">
             <div class="overlay" x-cloak @click.self="showActivityTypeModal = false">
@@ -1690,102 +1614,6 @@
                         </div>
                     </form>
                     <form id="deleteActivityTypeForm" :action="'{{ url('admin/master-data/activity-types') }}/' + currentActivityType.id" method="POST" style="display: none;">
-                        @csrf
-                        @method('DELETE')
-                    </form>
-                </div>
-            </div>
-        </template>
-
-        <!-- Add/Edit Modal (Student Group) -->
-        <template x-if="showStudentGroupModal">
-            <div class="overlay" x-cloak @click.self="showStudentGroupModal = false">
-                <div class="modal-center" style="max-width: 480px;"
-                    x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95"
-                    x-transition:enter-end="opacity-100 scale-100">
-                    <div class="modal-hdr" style="background: var(--bg-2);">
-                        <div class="modal-ttl" style="font-family: var(--font-display);"
-                            x-text="editStudentGroupMode ? 'แก้ไขกลุ่มนักศึกษา' : 'เพิ่มกลุ่มนักศึกษาใหม่'"></div>
-                        <button type="button" class="modal-cls" @click="showStudentGroupModal = false">
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-                                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                            </svg>
-                        </button>
-                    </div>
-                    <form :action="editStudentGroupMode ? '{{ url($routePrefix . '/master-data/student-groups') }}/' + currentStudentGroup.id : '{{ route($routePrefix . '.student_groups.store') }}'" method="POST">
-                        @csrf
-                        <input type="hidden" name="_method" value="PUT" :disabled="!editStudentGroupMode">
-                        <div class="modal-body">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-                                <div class="form-group">
-                                    <label>รหัสกลุ่ม <span style="color: var(--status-conflict-fg)">*</span></label>
-                                    <input type="text" name="group_code" x-model="currentStudentGroup.group_code" required placeholder="เช่น A1, B3, NS-01">
-                                </div>
-                                <div class="form-group">
-                                    <label>จำนวนนักศึกษา (คน) <span style="color: var(--status-conflict-fg)">*</span></label>
-                                    <input type="number" name="student_count" x-model="currentStudentGroup.student_count" required min="1" placeholder="เช่น 30">
-                                </div>
-                            </div>
-                            <div class="form-group" style="margin-bottom: 20px;">
-                                <label>หลักสูตร <span style="color: var(--status-conflict-fg)">*</span></label>
-                                <select name="curriculum_id" x-model="currentStudentGroup.curriculum_id" required>
-                                    <option value="">-- เลือกหลักสูตร --</option>
-                                    @foreach($curriculums as $curr)
-                                        <option value="{{ $curr->id }}">{{ $curr->name }} ({{ $curr->effective_year }})</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="form-group" style="margin-bottom: 20px;">
-                                <label>ชั้นปี <span style="color: var(--status-conflict-fg)">*</span></label>
-                                <select name="year_level" x-model="currentStudentGroup.year_level" required>
-                                    <option value="1">ชั้นปีที่ 1</option>
-                                    <option value="2">ชั้นปีที่ 2</option>
-                                    <option value="3">ชั้นปีที่ 3</option>
-                                    <option value="4">ชั้นปีที่ 4</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>สีแสดงผล (ไม่บังคับ)</label>
-                                <div x-data="{ open: false }" style="position: relative;">
-                                    <button type="button" @click="open = !open"
-                                        style="width: 100%; height: 38px; border: 1px solid var(--border); border-radius: 4px; display: flex; align-items: center; gap: 10px; padding: 0 10px; background: var(--bg-1); cursor: pointer;">
-                                        <span :style="'width:20px;height:20px;border-radius:3px;background:' + currentStudentGroup.color_code + ';border:1px solid rgba(0,0,0,.15);flex-shrink:0'"></span>
-                                        <span style="font-size: 13px; color: var(--fg-2); font-family: var(--font-mono);" x-text="currentStudentGroup.color_code"></span>
-                                    </button>
-                                    <div x-show="open" @click.outside="open = false" x-cloak
-                                        style="position: absolute; z-index: 50; top: calc(100% + 4px); left: 0; background: var(--bg-1); border: 1px solid var(--border); border-radius: 6px; padding: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.12); width: 220px;">
-                                        <div style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; margin-bottom: 10px;">
-                                            <template x-for="c in ['#3B82F6','#2563EB','#1D4ED8','#0EA5E9','#06B6D4','#10B981','#059669','#047857','#F59E0B','#EF4444','#DC2626','#8B5CF6','#7C3AED','#EC4899','#F97316','#6B7280']">
-                                                <button type="button" @click="currentStudentGroup.color_code = c; open = false"
-                                                    :style="'width:20px;height:20px;border-radius:3px;background:' + c + ';border:2px solid ' + (currentStudentGroup.color_code === c ? 'var(--brand-navy)' : 'transparent') + ';cursor:pointer'"></button>
-                                            </template>
-                                        </div>
-                                        <div style="display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--border); padding-top: 10px;">
-                                            <input type="color" x-model="currentStudentGroup.color_code"
-                                                style="width: 32px; height: 28px; padding: 1px; border: 1px solid var(--border); border-radius: 3px; cursor: pointer; flex-shrink: 0;">
-                                            <span style="font-size: 12px; color: var(--fg-3);">กำหนดเอง</span>
-                                        </div>
-                                    </div>
-                                    <input type="hidden" name="color_code" x-model="currentStudentGroup.color_code">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="modal-foot" style="display: flex; justify-content: space-between;">
-                            <div>
-                                <button type="button" class="btn btn-ghost" x-show="editStudentGroupMode"
-                                    @click="confirmDelete('deleteStudentGroupForm', currentStudentGroup.group_code, 'กลุ่มนักศึกษาที่ลบแล้วจะไม่สามารถกู้คืนได้')"
-                                    style="color: var(--status-conflict-fg);">
-                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; display: inline-block; vertical-align: middle;"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                                    ลบข้อมูล
-                                </button>
-                            </div>
-                            <div style="display: flex; gap: 8px;">
-                                <button type="button" class="btn btn-ghost" @click="showStudentGroupModal = false">ยกเลิก</button>
-                                <button type="submit" class="btn btn-primary">บันทึกข้อมูล</button>
-                            </div>
-                        </div>
-                    </form>
-                    <form id="deleteStudentGroupForm" :action="'{{ url($routePrefix . '/master-data/student-groups') }}/' + currentStudentGroup.id" method="POST" style="display: none;">
                         @csrf
                         @method('DELETE')
                     </form>

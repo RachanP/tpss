@@ -21,7 +21,7 @@ class DatabaseSeeder extends Seeder
             RoomSeeder::class,
             CourseSeeder::class,
             ActivityTypeSeeder::class,
-            StudentGroupSeeder::class,
+            CourseOfferingSeeder::class,
         ]);
     }
 }

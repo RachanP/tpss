@@ -32,4 +32,9 @@ class CourseOffering extends Model
     {
         return $this->belongsTo(User::class, 'coordinator_id');
     }
+
+    public function studentGroups()
+    {
+        return $this->hasMany(StudentGroup::class);
+    }
 }

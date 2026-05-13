@@ -155,6 +155,31 @@
 
 ---
 
+## Student Group Architecture (ตัดสินใจ 13 พ.ค. 2569)
+
+**กลุ่มนักศึกษา = Section ของรายวิชา ไม่ใช่ข้อมูลกลาง**
+
+แต่ละ course offering มีจำนวนนักศึกษาและจำนวนกลุ่มที่ต่างกัน ดังนั้น `student_groups` ต้องผูกกับ `course_offering_id` โดยตรง ไม่ใช่ `curriculum_id + year_level`
+
+```
+courses
+└── capacity: 270  ← max รวม (Master Data — M1)
+
+course_offerings (M2)
+├── NSBS 301 ปี 2569 ภาค 1
+│   └── student_groups: A1(30), A2(30), ... A9(30)  ← สร้างตอน setup offering
+└── NSBS 302 ปี 2569 ภาค 1
+    └── student_groups: A1(25), A2(25), A3(25), A4(25)  ← ต่างกันได้
+```
+
+### หลักการสำคัญ
+- **ไม่มี tab กลุ่มนักศึกษาใน M1** — กลุ่มสร้างใน M2 ตอน confirm course offering
+- **Conflict checking ไม่เช็ค student overlap ข้ามวิชา** — เช็คแค่ room + instructor
+- **TPSS ไม่ track รายคน** — กลุ่มคือ slot ที่มี capacity, ไม่ใช่รายชื่อนักศึกษา
+- **`courses.capacity`** = จำนวนรับสูงสุดของวิชา, `SUM(student_groups.size)` ต่อ offering ควรใกล้เคียง capacity
+
+---
+
 ## Workflow หลักของระบบ
 
 ```
@@ -175,7 +200,7 @@
 | # | Role | สิทธิ์หลัก | ลักษณะการเข้าถึง |
 |---|------|-----------|-----------------|
 | 1 | System Admin (ผู้ดูแลระบบ) | จัดการ Master Data ทั้งหมด, จัดการสิทธิ์ผู้ใช้งาน, Admin Override แก้ไขตารางแทน Course Head ได้ | Read + Write ทุกส่วน |
-| 2 | Support Staff (เจ้าหน้าที่) | จัดการ Master Data (rooms, location_types, courses, student_groups — CRUD / departments, instructors, curriculums, activity_types — Read only), จัดการปีการศึกษา (เพิ่ม/แก้ไข/ตั้งปัจจุบัน), **ร่วมกับ Course Head** บันทึกตารางสอน, ออกรายงาน | Read + Write (บางส่วนของ Master Data + ตาราง) |
+| 2 | Support Staff (เจ้าหน้าที่) | จัดการ Master Data (rooms, location_types, courses — CRUD / departments, instructors, curriculums, activity_types — Read only), จัดการปีการศึกษา (เพิ่ม/แก้ไข/ตั้งปัจจุบัน), **ร่วมกับ Course Head** บันทึกตารางสอน, ออกรายงาน | Read + Write (บางส่วนของ Master Data + ตาราง) |
 | 3 | Course Head / Maker (หัวหน้าวิชา) | **ร่วมกับ Support Staff** สร้าง/แก้ไขตาราง, ตรวจสอบ Conflict/Warning, **ส่งขออนุมัติให้ผู้บริหาร** | Read + Write (ตาราง) |
 | 4 | Executive / Approver (ผู้บริหาร) | **ดูตารางทั้งหมด** (View All), ดูรายงานภาระงาน/การใช้ห้อง, **อนุมัติ / ตีกลับตาราง** ที่ Course Head ส่งมา — ไม่สามารถสร้าง/แก้ไขตาราง/ข้อมูลพื้นฐานได้ | Read-only + Approve/Reject เท่านั้น |
 | 5 | Instructor (อาจารย์ผู้สอน) | ดูตารางสอนและภาระงานของตนเองเท่านั้น, รับการแจ้งเตือนเมื่อตารางเปลี่ยน | Read-only (เฉพาะของตัวเอง) |
@@ -563,6 +588,7 @@ mock/
 | Glossary เพิ่ม instructor_availability, location_type, course_offering_approval, schedule_conflict, active_role | CLAUDE.md Glossary | ✅ อัปเดตแล้ว (8 พ.ค. 2569) |
 | production/staff.html เสร็จแล้ว (Impeccable design, 6 sections, 11 master-data tabs, schedule grid, reports, inbox, 4 dialogs) | mock/production/staff.html | ✅ อัปเดตแล้ว (8 พ.ค. 2569) |
 | Sprint 2 M1 เสร็จสมบูรณ์ — Staff access, Shared views, Settings, Course assigned_staff | code | ✅ อัปเดตแล้ว (12 พ.ค. 2569) |
+| Student Groups ย้ายจาก M1 → M2 (per course_offering, ไม่ใช่ per curriculum+year_level) | CLAUDE.md Student Group Architecture | ✅ อัปเดตแล้ว (13 พ.ค. 2569) |
 
 ---
 
@@ -581,15 +607,18 @@ mock/
 | หลักสูตร | ดูอย่างเดียว 🔒 |
 | รายวิชา | CRUD ✅ |
 | อาจารย์ | ดูอย่างเดียว 🔒 |
-| กลุ่มนักศึกษา | CRUD ✅ |
+| กลุ่มนักศึกษา | ลบออกจาก M1 แล้ว — ย้ายไปสร้างใน M2 (Course Offering) |
 | ประเภทสถานที่ | CRUD ✅ |
 | ห้อง | CRUD ✅ |
 | ประเภทกิจกรรม | ดูอย่างเดียว 🔒 |
 
 ### Schema เพิ่มเติม (migrations ที่ต้อง run)
-- `modify_student_groups_add_year_level` — ลบ `academic_year_id`, เพิ่ม `year_level` (1-4)
 - `drop_is_practicum_from_activity_types_table` — ลบ `is_practicum` (redundant กับ `category`)
 - `add_assigned_staff_to_courses_table` — เพิ่ม `assigned_staff_id` FK → users
+- `add_capacity_to_courses_table` — เพิ่ม `capacity` (จำนวนนักศึกษาสูงสุดของวิชา)
+- `refactor_student_groups_to_course_offering` — เปลี่ยน FK จาก `curriculum_id + academic_year_id` → `course_offering_id`
+
+> **ยกเลิก**: `modify_student_groups_add_year_level` — ไม่จำเป็นแล้ว เนื่องจาก student_groups ย้ายไปผูกกับ course_offering แทน
 
 ### คำถามที่รอคำตอบจากลูกค้า (pending)
 1. **ผู้ประสานรายวิชา** = login ด้วย `course_head` role เดียวกับหัวหน้าวิชาหรือเปล่า?

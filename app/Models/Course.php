@@ -24,6 +24,7 @@ class Course extends Model
         'lecture_hours',
         'lab_hours',
         'self_study_hours',
+        'capacity',
         'color_code',
         'status'
     ];
@@ -34,6 +35,7 @@ class Course extends Model
         'lecture_hours' => 'integer',
         'lab_hours' => 'integer',
         'self_study_hours' => 'integer',
+        'capacity' => 'integer',
         'default_year_level' => 'integer',
         'default_semester' => 'integer',
     ];

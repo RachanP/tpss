@@ -63,9 +63,6 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/admin/master-data/activity-types', 'App\Http\Controllers\Admin\MasterDataController@storeActivityType')->name('admin.activity_types.store');
         Route::put('/admin/master-data/activity-types/{activityType}', 'App\Http\Controllers\Admin\MasterDataController@updateActivityType')->name('admin.activity_types.update');
         Route::delete('/admin/master-data/activity-types/{activityType}', 'App\Http\Controllers\Admin\MasterDataController@destroyActivityType')->name('admin.activity_types.destroy');
-        Route::post('/admin/master-data/student-groups', 'App\Http\Controllers\Admin\MasterDataController@storeStudentGroup')->name('admin.student_groups.store');
-        Route::put('/admin/master-data/student-groups/{studentGroup}', 'App\Http\Controllers\Admin\MasterDataController@updateStudentGroup')->name('admin.student_groups.update');
-        Route::delete('/admin/master-data/student-groups/{studentGroup}', 'App\Http\Controllers\Admin\MasterDataController@destroyStudentGroup')->name('admin.student_groups.destroy');
     });
 
     // ── Staff only ─────────────────────────────────────────────────────
@@ -86,9 +83,6 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/staff/master-data/courses/import', 'App\Http\Controllers\Staff\MasterDataController@importCourses')->name('staff.courses.import');
         Route::put('/staff/master-data/courses/{course}', 'App\Http\Controllers\Staff\MasterDataController@updateCourse')->name('staff.courses.update');
         Route::delete('/staff/master-data/courses/{course}', 'App\Http\Controllers\Staff\MasterDataController@destroyCourse')->name('staff.courses.destroy');
-        Route::post('/staff/master-data/student-groups', 'App\Http\Controllers\Staff\MasterDataController@storeStudentGroup')->name('staff.student_groups.store');
-        Route::put('/staff/master-data/student-groups/{studentGroup}', 'App\Http\Controllers\Staff\MasterDataController@updateStudentGroup')->name('staff.student_groups.update');
-        Route::delete('/staff/master-data/student-groups/{studentGroup}', 'App\Http\Controllers\Staff\MasterDataController@destroyStudentGroup')->name('staff.student_groups.destroy');
     });
 
     // Role switcher
