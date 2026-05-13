@@ -825,6 +825,9 @@ input:focus, select:focus, textarea:focus {
 .btn-primary { background: var(--brand-navy); color: white; }
 .btn-primary:hover { background: var(--brand-navy-700); }
 
+.btn-secondary { background: var(--bg-1); color: var(--fg-1); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--bg-2); }
+
 .btn-ghost { background: transparent; color: var(--fg-2); border: 1px solid var(--border); }
 .btn-ghost:hover { background: var(--bg-2); color: var(--fg-1); }
 

@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use App\Models\UserRole;
+use App\Models\InstructorProfile;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -18,51 +19,119 @@ class UserSeeder extends Seeder
 
         $users = [
             [
+                'prefix' => 'นาย',
                 'username' => 'admin_01',
-                'name' => 'System Admin',
-                'email' => 'admin_01@mahidol.edu',
-                'role' => 'admin'
+                'name' => 'ราชันย์ พิพัฒน์',
+                'email' => 'rachan@mahidol.edu',
+                'is_active' => true,
+                'roles' => [
+                    ['role' => 'admin', 'is_primary' => true],
+                    ['role' => 'instructor', 'is_primary' => false],
+                ],
+                'profile' => [
+                    'employee_id' => '52123',
+                    'title' => 'ผู้ช่วยอาจารย์',
+                    'department_id' => 3, // ภาควิชาสุขภาพจิตฯ
+                    'employment_type' => 'พนักงานมหาวิทยาลัย',
+                    'academic_degree' => 'ปริญญาโท',
+                    'teaching_pct' => 50,
+                    'research_pct' => 20,
+                    'service_pct' => 15,
+                    'culture_pct' => 15,
+                    'other_pct' => 0,
+                    'hired_at' => '2020-01-15',
+                    'teaching_quota' => 683,
+                ]
             ],
             [
+                'prefix' => 'นางสาว',
+                'username' => 'pronpimon',
+                'name' => 'พรภิมล ประเสริฐสุข',
+                'email' => 'pronpimon@mahidol.edu',
+                'is_active' => true,
+                'roles' => [
+                    ['role' => 'instructor', 'is_primary' => true],
+                ],
+                'profile' => [
+                    'employee_id' => '14235',
+                    'title' => 'ศาสตราจารย์',
+                    'department_id' => 3, // ภาควิชาสุขภาพจิตฯ
+                    'employment_type' => 'ข้าราชการ',
+                    'academic_degree' => 'ปริญญาเอก',
+                    'teaching_pct' => 20,
+                    'research_pct' => 50,
+                    'service_pct' => 20,
+                    'culture_pct' => 10,
+                    'other_pct' => 0,
+                    'hired_at' => '2010-05-20',
+                    'teaching_quota' => 273,
+                ]
+            ],
+            [
+                'prefix' => 'ดร.',
+                'username' => 'somsak_t',
+                'name' => 'สมศักดิ์ ตันติเวช',
+                'email' => 'somsak.tan@mahidol.edu',
+                'is_active' => true,
+                'roles' => [
+                    ['role' => 'instructor', 'is_primary' => true],
+                    ['role' => 'staff', 'is_primary' => false],
+                ],
+                'profile' => [
+                    'employee_id' => '60101',
+                    'title' => 'รองศาสตราจารย์',
+                    'department_id' => 1,
+                    'employment_type' => 'พนักงานมหาวิทยาลัย',
+                    'academic_degree' => 'ปริญญาเอก',
+                    'teaching_pct' => 40,
+                    'research_pct' => 40,
+                    'service_pct' => 10,
+                    'culture_pct' => 5,
+                    'other_pct' => 5,
+                    'hired_at' => '2005-10-10',
+                    'teaching_quota' => 546,
+                ]
+            ],
+            [
+                'prefix' => 'นาง',
                 'username' => 'staff_01',
-                'name' => 'Support Staff',
-                'email' => 'staff_01@mahidol.edu',
-                'role' => 'staff'
-            ],
-            [
-                'username' => 'maker_01',
-                'name' => 'Course Head',
-                'email' => 'maker_01@mahidol.edu',
-                'role' => 'course_head'
-            ],
-            [
-                'username' => 'approver_01',
-                'name' => 'Executive',
-                'email' => 'approver_01@mahidol.edu',
-                'role' => 'executive'
-            ],
-            [
-                'username' => 'lecturer_01',
-                'name' => 'Instructor',
-                'email' => 'lecturer_01@mahidol.edu',
-                'role' => 'instructor'
+                'name' => 'สมใจ รักดี',
+                'email' => 'somjai.rak@mahidol.edu',
+                'is_active' => true,
+                'roles' => [
+                    ['role' => 'staff', 'is_primary' => true],
+                ],
+                // No profile for pure staff
             ]
         ];
 
         foreach ($users as $userData) {
-            $user = User::create([
-                'username' => $userData['username'],
-                'name' => $userData['name'],
-                'email' => $userData['email'],
-                'password' => $password,
-                'is_active' => true,
-            ]);
+            $user = User::firstOrCreate(
+                ['username' => $userData['username']],
+                [
+                    'prefix' => $userData['prefix'],
+                    'name' => $userData['name'],
+                    'email' => $userData['email'],
+                    'password' => $password,
+                    'is_active' => $userData['is_active'],
+                ]
+            );
 
-            UserRole::create([
-                'user_id' => $user->id,
-                'role' => $userData['role'],
-                'is_primary' => true,
-            ]);
+            // Roles
+            foreach ($userData['roles'] as $roleData) {
+                UserRole::firstOrCreate(
+                    ['user_id' => $user->id, 'role' => $roleData['role']],
+                    ['is_primary' => $roleData['is_primary']]
+                );
+            }
+
+            // Profile
+            if (isset($userData['profile'])) {
+                InstructorProfile::updateOrCreate(
+                    ['user_id' => $user->id],
+                    $userData['profile']
+                );
+            }
         }
     }
 }

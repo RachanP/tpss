@@ -105,9 +105,14 @@
 |---------|--------|-----------|----------|
 | `id` | BIGINT UNSIGNED | PK, AI | รหัสประวัติ |
 | `user_id` | BIGINT UNSIGNED | UNIQUE, FK→users | อ้างอิงผู้ใช้ (1:1) |
-| `title` | VARCHAR(100) | NULL | ตำแหน่งวิชาการ เช่น รศ.ดร. |
+| `title` | VARCHAR(100) | NULL | ตำแหน่งวิชาการ เช่น อ., ผศ., รศ., ศ. |
 | `department_id` | BIGINT UNSIGNED | FK→departments, NULL | ภาควิชาที่สังกัด |
-| `teaching_quota` | INTEGER | NULL | ภาระงานสอน (ชม./เทอม) |
+| `teaching_pct` | INTEGER | DEFAULT 50 | % ภาระงานสอน (20-70%) |
+| `research_pct` | INTEGER | DEFAULT 20 | % ภาระงานวิจัย (20-70%) |
+| `service_pct` | INTEGER | DEFAULT 10 | % ภาระงานบริการวิชาการ (5-20%) |
+| `culture_pct` | INTEGER | DEFAULT 10 | % ภาระงานทำนุบำรุงศิลปะฯ (5-15%) |
+| `other_pct` | INTEGER | DEFAULT 10 | % ภาระงานอื่นๆ ที่ได้รับมอบหมาย (0-20%) |
+| `teaching_quota` | INTEGER | NULL | ชม.สอน/ปี (คำนวณจาก % สอน × ชม.ทำงานรวม) |
 | `created_at` | TIMESTAMP | NULL | วันที่สร้าง |
 | `updated_at` | TIMESTAMP | NULL | วันที่แก้ไข |
 
@@ -372,8 +377,8 @@
 | คอลัมน์ | ประเภท | Constraint | คำอธิบาย |
 |---------|--------|-----------|----------|
 | `id` | BIGINT UNSIGNED | PK, AI | รหัส |
-| `setting_key` | VARCHAR(100) | UNIQUE | เช่น `current_academic_year_id` |
-| `setting_value` | TEXT | NULL | ค่าตั้งค่า |
+| `setting_key` | VARCHAR(100) | UNIQUE | เช่น `current_academic_year_id`, `teaching_quota_hours` |
+| `setting_value` | TEXT | NULL | ค่าตั้งค่า (เช่น 1610) |
 | `description` | VARCHAR(255) | NULL | คำอธิบาย |
 | `created_at` | TIMESTAMP | NULL | วันที่สร้าง |
 | `updated_at` | TIMESTAMP | NULL | วันที่แก้ไข |
