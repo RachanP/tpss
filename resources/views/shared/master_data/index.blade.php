@@ -1429,7 +1429,7 @@
                                     <input type="text" name="name_en" x-model="currentCourse.name_en" placeholder="Pediatric Nursing 1">
                                 </div>
                             </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr 80px; gap: 16px; margin-bottom: 20px;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 80px; gap: 16px; margin-bottom: 16px;">
                                 <div class="form-group" style="margin-bottom:0;">
                                     <label>หลักสูตร <span style="color:var(--status-conflict-fg)">*</span></label>
                                     <select name="curriculum_id" x-model="currentCourse.curriculum_id" required>
@@ -1451,6 +1451,23 @@
                                 <div class="form-group" style="margin-bottom:0;">
                                     <label>หน่วยกิต <span style="color:var(--status-conflict-fg)">*</span></label>
                                     <input type="number" name="credits" x-model="currentCourse.credits" required min="0" placeholder="2">
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label>ประเภทวิชา <span style="color:var(--status-conflict-fg)">*</span></label>
+                                    <select name="course_type" x-model="currentCourse.course_type" required>
+                                        <option value="theory">ภาคทฤษฎี</option>
+                                        <option value="practicum">ภาคปฏิบัติ</option>
+                                        <option value="theory_practicum">ทฤษฎี + ปฏิบัติ</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label>ระดับการศึกษา</label>
+                                    <select name="academic_level" x-model="currentCourse.academic_level">
+                                        <option value="undergraduate">ปริญญาตรี</option>
+                                        <option value="graduate">บัณฑิตศึกษา</option>
+                                    </select>
                                 </div>
                             </div>
 

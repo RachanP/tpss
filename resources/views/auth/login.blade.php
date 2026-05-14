@@ -608,6 +608,17 @@
     <p class="form-eyebrow">เข้าสู่ระบบ · Sign in</p>
     <h2 class="section-heading">ลงชื่อเข้าใช้งาน</h2>
 
+    <!-- Session expired alert -->
+    @if(request('expired') == '1')
+    <div class="alert conflict show" id="alert-error" style="background:#fffbeb;border-color:#fde68a;">
+      <div class="alert-icon" style="background:#fef3c7;color:#d97706;border-color:#fbbf24;">!</div>
+      <div>
+        <div style="font-weight:700;font-size:12px;margin-bottom:2px;color:#92400e;">เซสชันหมดอายุ</div>
+        <div style="font-size:11.5px;line-height:1.55;color:#78716c;">คุณถูกออกจากระบบเนื่องจากไม่มีการใช้งานนานเกินไป กรุณาลงชื่อเข้าใช้งานอีกครั้ง</div>
+      </div>
+    </div>
+    @endif
+
     <!-- conflict alert -->
     @if ($errors->has('username') || $errors->has('password'))
     <div class="alert conflict show" id="alert-error">

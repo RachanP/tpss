@@ -16,6 +16,9 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middl
 // ── Authenticated ──────────────────────────────────────────────────
 Route::middleware(['auth', 'no-back'])->group(function () {
 
+    // Session keepalive — ใช้โดย session-warning.js เพื่อต่ออายุ session
+    Route::get('/session/ping', fn() => response()->json(['ok' => true]))->name('session.ping');
+
     // Hub: redirect to role-specific dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 

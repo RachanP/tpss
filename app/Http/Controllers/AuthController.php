@@ -84,7 +84,7 @@ class AuthController extends Controller
         ]);
 
         $user = Auth::user();
-        $user->password = \Illuminate\Support\Facades\Hash::make($request->new_password);
+        $user->password = $request->new_password;
         $user->save();
 
         return back()->with('success', 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว');

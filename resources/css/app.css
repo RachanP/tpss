@@ -301,7 +301,7 @@ body { font-family: var(--font-sans); color: var(--fg-1); background: var(--bg);
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.4);
-  backdrop-filter: blur(2px);
+  backdrop-filter: none;
   z-index: calc(var(--z-sidebar) - 1);
   display: none;
 }
@@ -792,7 +792,7 @@ input:focus, select:focus, textarea:focus {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(2px);
+  backdrop-filter: none;
   z-index: var(--z-modal);
   display: flex;
   align-items: center;
@@ -902,6 +902,10 @@ input:focus, select:focus, textarea:focus {
   align-items: center;
   max-width: 100%;
   overflow-x: auto;
+  /* ป้องกัน tabs ขยับ: flex-shrink+min-width ให้ tabs หดตัวได้เมื่อ viewport แคบ
+     แทนที่จะขยายล้น container แล้วทำให้ page มี horizontal scrollbar */
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .tabs > button {
@@ -1153,5 +1157,93 @@ input:focus, select:focus, textarea:focus {
     display: block;
     overflow-x: auto;
     white-space: nowrap;
+  }
+}
+
+/* ── TABLET / IPAD (769px – 1024px) ──────────────────────────────── */
+@media (min-width: 769px) and (max-width: 1024px) {
+  /* Table horizontal scroll */
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  /* 4-column grids -> 2x2 inside modal body */
+  .modal-body div[style*="1fr 1fr 1fr 1fr"] {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* Modal: ไม่ให้ชนขอบ viewport */
+  .modal-center {
+    max-width: calc(100vw - 48px) !important;
+  }
+
+  .overlay {
+    padding: 16px;
+    align-items: flex-start;
+    padding-top: 40px;
+  }
+}
+
+/* ── HAMBURGER: CSS-ONLY (ไม่ขึ้นกับ JS window.innerWidth) ──────── */
+.hamburger-btn { display: none; }
+@media (max-width: 1024px) {
+  .hamburger-btn { display: flex; }
+}
+
+/* ── PHONE LANDSCAPE: COMPACT SIDEBAR (max-height: 500px) ───────────
+   บน phone แนวนอน สูงแค่ ~390px → logo+user+footer กิน 270px
+   เหลือ sb-nav แค่ 120px — ย่อ fixed sections เพื่อคืนพื้นที่ให้ nav
+   ────────────────────────────────────────────────────────────────── */
+@media (max-height: 500px) {
+  /* Logo: ลด padding + ซ่อน text ชื่อระบบ เหลือแค่ logo icon */
+  .sb-logo {
+    padding: 8px 14px;
+    gap: 8px;
+  }
+  .sb-logo img {
+    width: 32px;
+    height: 32px;
+  }
+  .sb-name,
+  .sb-sub {
+    display: none;
+  }
+
+  /* User section: ลด padding + avatar เล็กลง */
+  .sb-user {
+    padding: 7px 14px;
+  }
+  .sb-av {
+    width: 32px;
+    height: 32px;
+    font-size: 13px;
+  }
+  .sb-uname {
+    font-size: 13px;
+  }
+
+  /* Nav: ลด padding ด้านบนล่าง */
+  .sb-nav {
+    padding: 4px 8px;
+    gap: 0;
+  }
+  .sb-sec {
+    padding: 6px 10px 3px;
+    font-size: 10px;
+  }
+  .nv {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+  .nv-ic {
+    width: 14px;
+    height: 14px;
+  }
+
+  /* Footer: ลด padding */
+  .sb-foot {
+    padding: 4px 8px 8px;
   }
 }

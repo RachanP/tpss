@@ -92,7 +92,7 @@ class AdminUserController extends Controller
                 'prefix'      => $validated['prefix'] ?? null,
                 'name'        => $validated['name'],
                 'email'       => $validated['email'],
-                'password'    => Hash::make($validated['password']),
+                'password'    => $validated['password'],
                 'employee_id' => $validated['employee_id'] ?? null,
                 'is_active'   => $validated['is_active'] ?? true,
             ]);
@@ -191,7 +191,7 @@ class AdminUserController extends Controller
             ]);
 
             if ($request->filled('password')) {
-                $user->update(['password' => Hash::make($validated['password'])]);
+                $user->update(['password' => $validated['password']]);
             }
 
             // Sync roles
