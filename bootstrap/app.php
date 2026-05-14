@@ -14,9 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\CheckActiveUser::class,
         ]);
-        $middleware->validateCsrfTokens(except: [
-            '*'
-        ]);
+
         $middleware->alias([
             'no-back' => \App\Http\Middleware\PreventBackHistory::class,
         ]);

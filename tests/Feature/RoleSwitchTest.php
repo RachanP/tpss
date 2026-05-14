@@ -24,6 +24,7 @@ class RoleSwitchTest extends TestCase
             'name' => 'Multi Role User',
             'email' => 'multi@example.com',
             'password' => Hash::make('password123'),
+            'is_active' => true,
         ]);
 
         // Role 1: Staff (Primary)
@@ -43,10 +44,17 @@ class RoleSwitchTest extends TestCase
 
     public function test_user_can_switch_role(): void
     {
-        $this->actingAs($this->user);
-        session(['active_role' => 'staff']);
+        $csrfToken = 'valid-test-csrf-token';
+
+        $this
+            ->withSession([
+                'active_role' => 'staff',
+                '_token' => $csrfToken,
+            ])
+            ->actingAs($this->user);
 
         $response = $this->post('/switch-role', [
+            '_token' => $csrfToken,
             'role' => 'instructor',
         ]);
 
@@ -56,11 +64,18 @@ class RoleSwitchTest extends TestCase
 
     public function test_user_cannot_switch_to_unauthorized_role(): void
     {
-        $this->actingAs($this->user);
-        session(['active_role' => 'staff']);
+        $csrfToken = 'valid-test-csrf-token';
+
+        $this
+            ->withSession([
+                'active_role' => 'staff',
+                '_token' => $csrfToken,
+            ])
+            ->actingAs($this->user);
 
         // Try switching to admin (which user doesn't have)
         $response = $this->post('/switch-role', [
+            '_token' => $csrfToken,
             'role' => 'admin',
         ]);
 
