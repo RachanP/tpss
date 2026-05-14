@@ -617,6 +617,7 @@ class MasterDataController extends Controller
                         'course_type'        => $courseType,
                         'status'             => $status,
                         'academic_level'     => 'undergraduate',
+                        'capacity'           => (int)(trim($csv['capacity'] ?? '') ?: '0') ?: null,
                     ]
                 );
                 $successCount++;

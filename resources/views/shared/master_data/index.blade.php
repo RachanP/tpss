@@ -713,8 +713,6 @@
                                 <th>ชื่อรายวิชา (ไทย / อังกฤษ)</th>
                                 <th>ภาควิชา / หลักสูตร</th>
                                 <th style="text-align: center;">หน่วยกิต</th>
-                                <th style="text-align: center;">รับสูงสุด</th>
-                                <th style="text-align: center;">ปี/เทอม</th>
                                 <th>หัวหน้าวิชาเริ่มต้น</th>
                                 <th style="text-align: center;">สถานะ</th>
                                 <th style="text-align: center;">จัดการ</th>
@@ -733,6 +731,14 @@
                                     <td>
                                         <div style="font-weight: 600; color: var(--fg-1);">{{ $course->name_th }}</div>
                                         <div style="font-size: 11px; color: var(--fg-3); font-style: italic;">{{ $course->name_en ?? '-' }}</div>
+                                        <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px;">
+                                            @if($course->default_year_level)
+                                                <span style="font-size: 10px; color: var(--fg-3); background: var(--bg-2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; white-space: nowrap;">ปี {{ $course->default_year_level }} · ภาค {{ $course->default_semester == 3 ? 'ฤดูร้อน' : $course->default_semester }}</span>
+                                            @endif
+                                            @if($course->capacity)
+                                                <span style="font-size: 10px; color: var(--fg-3); background: var(--bg-2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; white-space: nowrap;">รับ {{ number_format($course->capacity) }} คน</span>
+                                            @endif
+                                        </div>
                                     </td>
                                     <td>
                                         <div style="font-size: 13px; color: var(--fg-2);">{{ $course->department->name ?? '-' }}</div>
@@ -741,19 +747,6 @@
                                     <td style="text-align: center;">
                                         <div style="font-weight: 700; color: var(--fg-1);">{{ $course->credits }}</div>
                                         <div style="font-size: 10px; color: var(--fg-3);">({{ $course->lecture_hours }}-{{ $course->lab_hours }}-{{ $course->self_study_hours }})</div>
-                                    </td>
-                                    <td style="text-align: center; color: var(--fg-2);">
-                                        {{ $course->capacity ? number_format($course->capacity) . ' คน' : '-' }}
-                                    </td>
-                                    <td style="text-align: center;">
-                                        @if($course->default_year_level)
-                                            <span class="badge badge-gray" style="font-size: 11px;">
-                                                ปี {{ $course->default_year_level }} 
-                                                ภาคเรียนที่ {{ $course->default_semester == 3 ? 'ฤดูร้อน' : ($course->default_semester ?? '-') }}
-                                            </span>
-                                        @else
-                                            <span style="color: var(--fg-4); font-size: 11px;">-</span>
-                                        @endif
                                     </td>
                                     <td>
                                         @if($course->headInstructor)
@@ -783,7 +776,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" style="text-align: center; padding: 40px; color: var(--fg-3);">ยังไม่มีข้อมูลรายวิชา</td>
+                                    <td colspan="7" style="text-align: center; padding: 40px; color: var(--fg-3);">ยังไม่มีข้อมูลรายวิชา</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -1745,7 +1738,7 @@
                             <div style="background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 20px; font-size: 13px; line-height: 1.7; color: var(--fg-muted);">
                                 <strong style="color: var(--fg-base); display: block; margin-bottom: 4px;">รูปแบบไฟล์ CSV</strong>
                                 คอลัมน์บังคับ: <code>course_code, name_th, curriculum_name, department_name, credits</code><br>
-                                คอลัมน์เสริม: <code>name_en, lecture_hours, lab_hours, self_study_hours, default_year_level, default_semester, status</code><br>
+                                คอลัมน์เสริม: <code>name_en, lecture_hours, lab_hours, self_study_hours, capacity, default_year_level, default_semester, status</code><br>
                                 <span style="margin-top: 6px; display: block;">• course_type คำนวณอัตโนมัติจาก lecture_hours + lab_hours</span>
                                 <span>• ถ้า course_code + curriculum ซ้ำ → อัปเดตข้อมูลแทน (upsert)</span>
                             </div>
