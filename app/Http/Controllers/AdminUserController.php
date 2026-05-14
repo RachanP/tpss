@@ -57,12 +57,13 @@ class AdminUserController extends Controller
             'name'         => 'required|string|max:255',
             'email'        => 'required|string|email|max:255|unique:users',
             'password'     => 'required|string|min:4',
+            'employee_id'  => 'nullable|string|max:50|unique:users,employee_id',
             'roles'        => 'required|array|min:1',
             'primary_role' => ['required', 'string', Rule::in($roles)],
             'is_active'    => 'boolean',
             // instructor profile fields
             'instructor_title'          => "$reqInstructor|string|max:100",
-            'instructor_employee_id'     => "$reqInstructor|string|max:50|unique:instructor_profiles,employee_id",
+            'instructor_employee_id'     => null, // deprecated — moved to users.employee_id
             'instructor_department_id'  => "$reqInstructor|integer|exists:departments,id",
             'instructor_employment_type' => "$reqInstructor|string|max:100",
             'instructor_hired_at'        => "$reqInstructor|date",
@@ -88,12 +89,13 @@ class AdminUserController extends Controller
 
         DB::transaction(function () use ($validated, $request) {
             $user = User::create([
-                'username'  => $validated['username'],
-                'prefix'    => $validated['prefix'] ?? null,
-                'name'      => $validated['name'],
-                'email'     => $validated['email'],
-                'password'  => Hash::make($validated['password']),
-                'is_active' => $validated['is_active'] ?? true,
+                'username'    => $validated['username'],
+                'prefix'      => $validated['prefix'] ?? null,
+                'name'        => $validated['name'],
+                'email'       => $validated['email'],
+                'password'    => Hash::make($validated['password']),
+                'employee_id' => $validated['employee_id'] ?? null,
+                'is_active'   => $validated['is_active'] ?? true,
             ]);
 
             foreach ($validated['roles'] as $role) {
@@ -109,7 +111,6 @@ class AdminUserController extends Controller
                 InstructorProfile::create([
                     'user_id'        => $user->id,
                     'title'          => $validated['instructor_title'] ?? null,
-                    'employee_id'    => $validated['instructor_employee_id'] ?? null,
                     'department_id'  => $validated['instructor_department_id'] ?? null,
                     'employment_type' => $validated['instructor_employment_type'] ?? null,
                     'hired_at'       => $validated['instructor_hired_at'] ?? null,
@@ -150,12 +151,13 @@ class AdminUserController extends Controller
             'name'         => 'required|string|max:255',
             'email'        => 'required|string|email|max:255|unique:users,email,' . $user->id,
             'password'     => 'nullable|string|min:4',
+            'employee_id'  => 'nullable|string|max:50|unique:users,employee_id,' . $user->id,
             'roles'        => 'required|array|min:1',
             'primary_role' => ['required', 'string', Rule::in($roles)],
             'is_active'    => 'required|boolean',
             // instructor profile fields
             'instructor_title'          => "$reqInstructor|string|max:100",
-            'instructor_employee_id'     => "$reqInstructor|string|max:50|unique:instructor_profiles,employee_id," . ($user->instructorProfile ? $user->instructorProfile->id : 'NULL'),
+            'instructor_employee_id'     => null, // deprecated — moved to users.employee_id
             'instructor_department_id'  => "$reqInstructor|integer|exists:departments,id",
             'instructor_employment_type' => "$reqInstructor|string|max:100",
             'instructor_hired_at'        => "$reqInstructor|date",
@@ -181,10 +183,11 @@ class AdminUserController extends Controller
 
         DB::transaction(function () use ($validated, $user, $request) {
             $user->update([
-                'prefix'    => $validated['prefix'] ?? null,
-                'name'      => $validated['name'],
-                'email'     => $validated['email'],
-                'is_active' => $validated['is_active'],
+                'prefix'      => $validated['prefix'] ?? null,
+                'name'        => $validated['name'],
+                'email'       => $validated['email'],
+                'employee_id' => $validated['employee_id'] ?? null,
+                'is_active'   => $validated['is_active'],
             ]);
 
             if ($request->filled('password')) {
@@ -207,7 +210,6 @@ class AdminUserController extends Controller
                     ['user_id' => $user->id],
                     [
                         'title'          => $validated['instructor_title'] ?? null,
-                        'employee_id'    => $validated['instructor_employee_id'] ?? null,
                         'department_id'  => $validated['instructor_department_id'] ?? null,
                         'employment_type' => $validated['instructor_employment_type'] ?? null,
                         'hired_at'       => $validated['instructor_hired_at'] ?? null,
@@ -334,10 +336,11 @@ class AdminUserController extends Controller
                     $profileData = $this->buildProfileData($csv, $departments, $degreeMap, $empTypeMap);
 
                     if ($existing) {
-                        // Update: name, prefix, roles, profile — no password change
+                        // Update: name, prefix, employee_id, roles, profile — no password change
                         $existing->update([
-                            'prefix' => trim($csv['prefix'] ?? '') ?: null,
-                            'name'   => $name,
+                            'prefix'      => trim($csv['prefix'] ?? '') ?: null,
+                            'name'        => $name,
+                            'employee_id' => trim($csv['employee_id'] ?? '') ?: null,
                         ]);
 
                         UserRole::where('user_id', $existing->id)->delete();
@@ -357,12 +360,13 @@ class AdminUserController extends Controller
                         }
                     } else {
                         $user = User::create([
-                            'username'  => $username,
-                            'prefix'    => trim($csv['prefix'] ?? '') ?: null,
-                            'name'      => $name,
-                            'email'     => $email,
-                            'password'  => Hash::make($password),
-                            'is_active' => true,
+                            'username'    => $username,
+                            'prefix'      => trim($csv['prefix'] ?? '') ?: null,
+                            'name'        => $name,
+                            'email'       => $email,
+                            'password'    => Hash::make($password),
+                            'employee_id' => trim($csv['employee_id'] ?? '') ?: null,
+                            'is_active'   => true,
                         ]);
 
                         foreach ($roles as $role) {
@@ -397,12 +401,11 @@ class AdminUserController extends Controller
 
     private function buildProfileData(array $csv, array $departments, array $degreeMap, array $empTypeMap): ?array
     {
-        $employeeId = trim($csv['employee_id'] ?? '');
-        $title      = trim($csv['title'] ?? '');
-        $deptName   = trim($csv['department_name'] ?? '');
-        $hiredAt    = trim($csv['hired_date'] ?? '');
+        $title    = trim($csv['title'] ?? '');
+        $deptName = trim($csv['department_name'] ?? '');
+        $hiredAt  = trim($csv['hired_date'] ?? '');
 
-        if (!$employeeId && !$title && !$deptName && !$hiredAt) {
+        if (!$title && !$deptName && !$hiredAt) {
             return null;
         }
 
@@ -412,7 +415,6 @@ class AdminUserController extends Controller
         $teachingPct = max(0, min(100, (int)(trim($csv['teaching_pct'] ?? '0') ?: '0')));
 
         return [
-            'employee_id'     => $employeeId ?: null,
             'title'           => $title ?: null,
             'department_id'   => $deptId,
             'academic_degree' => $degree,

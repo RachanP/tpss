@@ -8,7 +8,6 @@ class InstructorProfile extends Model
 {
     protected $fillable = [
         'user_id',
-        'employee_id',
         'title',
         'department_id',
         'employment_type',

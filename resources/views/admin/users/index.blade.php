@@ -103,30 +103,30 @@
                 openAddModal() {
                     this.editMode = false;
                     this.errorMsg = '';
-                    this.currentUser = { id: '', username: '', prefix: '', name: '', email: '', password: '', roles: ['staff'], primary_role: 'staff', is_active: 1 };
-                    this.instructorProfile = { title: '', employee_id: '', department_id: '', employment_type: 'พนักงานมหาวิทยาลัย', hired_at: '', academic_degree: 'ปริญญาโท', is_english_passed: false, teaching_pct: 0, research_pct: 0, service_pct: 0, culture_pct: 0, other_pct: 0, teaching_quota: 0, department_position: '' };
+                    this.currentUser = { id: '', username: '', prefix: '', name: '', email: '', password: '', employee_id: '', roles: ['staff'], primary_role: 'staff', is_active: 1 };
+                    this.instructorProfile = { title: '', department_id: '', employment_type: 'พนักงานมหาวิทยาลัย', hired_at: '', academic_degree: 'ปริญญาโท', is_english_passed: false, teaching_pct: 0, research_pct: 0, service_pct: 0, culture_pct: 0, other_pct: 0, teaching_quota: 0, department_position: '' };
                     this.showModal = true;
                 },
                 openEditModal(user) {
                     this.editMode = true;
                     this.errorMsg = '';
-                    this.currentUser = { 
-                        id: user.id, 
-                        username: user.username, 
+                    this.currentUser = {
+                        id: user.id,
+                        username: user.username,
                         prefix: user.prefix || '',
-                        name: user.name, 
-                        email: user.email, 
-                        password: '', 
+                        name: user.name,
+                        email: user.email,
+                        password: '',
+                        employee_id: user.employee_id || '',
                         roles: user.roles ? user.roles.map(r => r.role) : [],
                         primary_role: (user.roles && user.roles.find(r => r.is_primary)) ? user.roles.find(r => r.is_primary).role : (user.roles && user.roles[0] ? user.roles[0].role : ''),
                         is_active: user.is_active ? 1 : 0
                     };
-                    
+
                     const profile = user.instructor_profile || user.instructorProfile || null;
-                    
+
                     this.instructorProfile = profile ? {
                         title: profile.title || '',
-                        employee_id: profile.employee_id || '',
                         department_id: profile.department_id || '',
                         employment_type: profile.employment_type || 'พนักงานมหาวิทยาลัย',
                         hired_at: profile.hired_at || '',
@@ -139,7 +139,7 @@
                         teaching_quota: profile.teaching_quota || 0,
                         is_english_passed: !!profile.is_english_passed,
                         department_position: (user.head_of_departments && user.head_of_departments.length > 0) ? 'head' : ((user.secretary_of_departments && user.secretary_of_departments.length > 0) ? 'secretary' : '')
-                    } : { title: '', employee_id: '', department_id: '', employment_type: 'พนักงานมหาวิทยาลัย', hired_at: '', academic_degree: 'ปริญญาโท', is_english_passed: false, teaching_pct: 0, research_pct: 0, service_pct: 0, culture_pct: 0, other_pct: 0, teaching_quota: 0, department_position: '' };
+                    } : { title: '', department_id: '', employment_type: 'พนักงานมหาวิทยาลัย', hired_at: '', academic_degree: 'ปริญญาโท', is_english_passed: false, teaching_pct: 0, research_pct: 0, service_pct: 0, culture_pct: 0, other_pct: 0, teaching_quota: 0, department_position: '' };
                     
                     this.showModal = true;
                 },
@@ -569,10 +569,17 @@
                                 </div>
                             </div>
 
-                            <div class="form-group" style="margin-bottom: 16px;">
-                                <label>อีเมล</label>
-                                <input type="email" name="email" x-model="currentUser.email" required
-                                    placeholder="email@mahidol.ac.th">
+                            <div class="form-row">
+                                <div class="form-group" style="flex: 1;">
+                                    <label>อีเมล</label>
+                                    <input type="email" name="email" x-model="currentUser.email" required
+                                        placeholder="email@mahidol.ac.th">
+                                </div>
+                                <div class="form-group" style="flex: 0 0 160px;">
+                                    <label>รหัสพนักงาน</label>
+                                    <input type="text" name="employee_id" x-model="currentUser.employee_id"
+                                        placeholder="เช่น 52123">
+                                </div>
                             </div>
 
                             <div class="form-group" style="margin-bottom: 24px;">
@@ -663,13 +670,6 @@
                                         ข้อมูลโปรไฟล์อาจารย์ผู้สอน
                                     </div>
 
-                                    <!-- รหัสพนักงาน / อาจารย์ -->
-                                    <div class="form-group" style="margin-bottom: 20px;">
-                                        <label style="font-size: 13px; font-weight: 600; color: var(--fg-2);">รหัสพนักงาน / รหัสอาจารย์ <span style="color: #ef4444;">*</span></label>
-                                        <input type="text" name="instructor_employee_id" x-model="instructorProfile.employee_id" 
-                                            placeholder="กรอกรหัสพนักงาน เช่น 600xxx" required
-                                            style="background: oklch(98% 0.005 240); border: 1.5px solid var(--bg-3);">
-                                    </div>
                                     <div class="form-row">
                                         <div class="form-group">
                                             <label>ตำแหน่งทางวิชาการ <span style="color: #ef4444;">*</span></label>

@@ -195,7 +195,7 @@ class MasterDataController extends Controller
         $request->validate([
             'name'            => 'required|string|max:255',
             'prefix'          => 'required|string|max:50',
-            'employee_id'     => 'required|string|max:50|unique:instructor_profiles,employee_id,' . ($profile ? $profile->id : 'NULL'),
+            'employee_id'     => 'nullable|string|max:50|unique:users,employee_id,' . $user->id,
             'department_id'   => 'required|integer|exists:departments,id',
             'title'           => 'required|string|max:100',
             'academic_degree' => 'required|string|max:100',
@@ -203,8 +203,8 @@ class MasterDataController extends Controller
             'teaching_pct'    => 'required|integer|min:0|max:100',
         ]);
 
-        // Update user name and prefix
-        $user->update(['name' => $request->name, 'prefix' => $request->prefix]);
+        // Update user name, prefix, and employee_id
+        $user->update(['name' => $request->name, 'prefix' => $request->prefix, 'employee_id' => $request->employee_id ?: null]);
 
         // If department is changing and user was head/secretary of old dept, clear that role
         if ($profile && $request->filled('department_id') && (int)$request->department_id !== (int)$profile->department_id) {
@@ -215,7 +215,6 @@ class MasterDataController extends Controller
         // Update profile
         if ($profile) {
             $profile->update([
-                'employee_id'     => $request->employee_id,
                 'title'           => $request->title,
                 'academic_degree' => $request->academic_degree,
                 'department_id'   => $request->department_id,

@@ -46,7 +46,7 @@
                 id: instructor.id,
                 prefix: instructor.prefix || '',
                 name: instructor.name,
-                employee_id: instructor.instructor_profile?.employee_id || '',
+                employee_id: instructor.employee_id || '',
                 title: instructor.instructor_profile?.title || '',
                 academic_degree: instructor.instructor_profile?.academic_degree || '',
                 department_id: instructor.instructor_profile?.department_id || '',
@@ -408,7 +408,6 @@
                                 <th>ชื่อ-นามสกุล</th>
                                 <th>ตำแหน่งทางวิชาการ</th>
                                 <th>ภาควิชา</th>
-                                <th>ประเภทบุคลากร</th>
                                 <th style="text-align: right;">ชั่วโมงสอนสะสม</th>
                                 <th style="text-align: right; padding-right: 24px;">เกณฑ์ภาระงานสอน</th>
                                 @if($isAdmin)<th style="text-align: center;">จัดการ</th>@endif
@@ -419,15 +418,17 @@
                                 <tr
                                     x-show="!searchQuery || '{{ $instructor->formatted_name }}'.toLowerCase().includes(searchQuery.toLowerCase())">
                                     <td style="font-weight: 600; color: var(--fg-2);">
-                                        {{ $instructor->instructorProfile->employee_id ?? '-' }}
+                                        {{ $instructor->employee_id ?? '-' }}
                                     </td>
                                     <td>
                                         <div style="font-weight: 600; color: var(--fg-1);">
                                             {{ $instructor->formatted_name }}
                                         </div>
-                                        <div style="font-size: 12px; color: var(--fg-3); font-family: var(--font-mono);">
-                                            {{ $instructor->email }}
+                                        @if($instructor->instructorProfile && $instructor->instructorProfile->employment_type)
+                                        <div style="font-size: 11px; color: var(--fg-3); margin-top: 2px;">
+                                            {{ $instructor->instructorProfile->employment_type }}
                                         </div>
+                                        @endif
                                     </td>
                                     <td style="color: var(--fg-2); font-size: 13px;">
                                         {{ $instructor->instructorProfile->title ?? '-' }}
@@ -438,9 +439,6 @@
                                     </td>
                                     <td style="color: var(--fg-2); font-size: 13px;">
                                         {{ $instructor->instructorProfile->department->name ?? '-' }}
-                                    </td>
-                                    <td style="color: var(--fg-2); font-size: 13px;">
-                                        {{ $instructor->instructorProfile->employment_type ?? '-' }}
                                     </td>
                                     <td style="text-align: right; color: var(--fg-3); font-style: italic;">
                                         -
@@ -755,10 +753,10 @@
                                         <div style="font-size: 11px; color: var(--fg-3); font-style: italic;">{{ $course->name_en ?? '-' }}</div>
                                         <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px;">
                                             @if($course->default_year_level)
-                                                <span style="font-size: 10px; color: var(--fg-3); background: var(--bg-2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; white-space: nowrap;">ปี {{ $course->default_year_level }} · ภาค {{ $course->default_semester == 3 ? 'ฤดูร้อน' : $course->default_semester }}</span>
+                                                <span style="font-size: 10px; font-weight: 600; color: var(--fg-1); background: var(--bg-2); border: 1px solid var(--border-strong, #c8cdd6); border-radius: 4px; padding: 2px 7px; white-space: nowrap;">ปี {{ $course->default_year_level }} · ภาค {{ $course->default_semester == 3 ? 'ฤดูร้อน' : $course->default_semester }}</span>
                                             @endif
                                             @if($course->capacity)
-                                                <span style="font-size: 10px; color: var(--fg-3); background: var(--bg-2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; white-space: nowrap;">รับ {{ number_format($course->capacity) }} คน</span>
+                                                <span style="font-size: 10px; font-weight: 600; color: #1a56a0; background: #e8f0fb; border: 1px solid #b3cdf0; border-radius: 4px; padding: 2px 7px; white-space: nowrap;">รับ {{ number_format($course->capacity) }} คน</span>
                                             @endif
                                         </div>
                                     </td>
@@ -1022,9 +1020,9 @@
 
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                                 <div class="form-group">
-                                    <label>รหัสพนักงาน <span style="color:var(--status-conflict-fg)">*</span></label>
+                                    <label>รหัสพนักงาน</label>
                                     <input type="text" name="employee_id" x-model="currentInstructor.employee_id"
-                                        placeholder="รหัสพนักงาน" required>
+                                        placeholder="เช่น 52123">
                                 </div>
                                 <div class="form-group">
                                     <label>ภาควิชา <span style="color:var(--status-conflict-fg)">*</span></label>
@@ -1300,60 +1298,63 @@
                                 <span style="font-size:11px;font-weight:700;color:var(--fg-3);text-transform:uppercase;letter-spacing:.6px;white-space:nowrap;">ผู้รับผิดชอบ</span>
                                 <div style="flex:1;height:1px;background:var(--border);"></div>
                             </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
-                                {{-- หัวหน้าวิชา: combobox --}}
-                                <div class="form-group" style="position:relative;margin-bottom:0;">
-                                    <label>หัวหน้าวิชา / ผู้ประสานรายวิชา</label>
-                                    <div style="position:relative;">
-                                        <input type="text" x-model="courseHeadSearch"
-                                            @input="showCourseHeadDropdown = true"
-                                            @focus="showCourseHeadDropdown = true"
-                                            @click.away="showCourseHeadDropdown = false"
-                                            placeholder="พิมพ์ชื่อเพื่อค้นหา..."
-                                            style="padding-right: 32px;">
-                                        <button type="button"
-                                            @click="showCourseHeadDropdown = !showCourseHeadDropdown"
-                                            style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:2px;color:var(--fg-3);">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
-                                        </button>
-                                    </div>
-                                    <div class="search-results" x-show="showCourseHeadDropdown" x-cloak style="max-height:180px;overflow-y:auto;">
+                            {{-- หัวหน้าวิชา: combobox (full row) --}}
+                            <div class="form-group" style="position:relative;margin-bottom:16px;">
+                                <label>หัวหน้าวิชา / ผู้ประสานรายวิชา</label>
+                                <div style="position:relative;">
+                                    <input type="text" x-model="courseHeadSearch"
+                                        @input="showCourseHeadDropdown = true"
+                                        @focus="showCourseHeadDropdown = true"
+                                        @click.away="showCourseHeadDropdown = false"
+                                        placeholder="พิมพ์ชื่อเพื่อค้นหา..."
+                                        style="padding-right:32px;">
+                                    <button type="button"
+                                        @click="showCourseHeadDropdown = !showCourseHeadDropdown"
+                                        style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:2px;color:var(--fg-3);">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                                    </button>
+                                    <div class="search-results" x-show="showCourseHeadDropdown" x-cloak style="max-height:180px;overflow-y:auto;z-index:9999;">
                                         <template x-for="user in usersList.filter(u => (u.formatted_name||u.name).toLowerCase().includes(courseHeadSearch.toLowerCase()))" :key="user.id">
                                             <div class="search-item" @click="selectCourseHead(user)" x-text="user.formatted_name || user.name"></div>
                                         </template>
                                         <div x-show="usersList.filter(u => (u.formatted_name||u.name).toLowerCase().includes(courseHeadSearch.toLowerCase())).length === 0"
                                             style="padding:8px 12px;color:var(--fg-4);font-size:12px;">ไม่พบผู้ใช้</div>
                                     </div>
-                                    <input type="hidden" name="head_instructor_id" x-model="currentCourse.head_instructor_id">
                                 </div>
+                                <input type="hidden" name="head_instructor_id" x-model="currentCourse.head_instructor_id">
+                            </div>
 
-                                {{-- เจ้าหน้าที่: multi-select chips --}}
-                                <div class="form-group" style="margin-bottom:0;">
-                                    <label>เจ้าหน้าที่ผู้ดูแลวิชา <span style="font-weight:400;color:var(--fg-4);font-size:11px;">(เลือกได้หลายคน)</span></label>
+                            {{-- เจ้าหน้าที่: multi-select chips (full row, dropdown ไม่บัง) --}}
+                            <div class="form-group" style="margin-bottom:20px;position:relative;">
+                                <label>เจ้าหน้าที่ผู้ดูแลวิชา <span style="font-weight:400;color:var(--fg-4);font-size:11px;">(เลือกได้หลายคน)</span></label>
+                                <template x-for="s in selectedStaff" :key="s.id">
+                                    <input type="hidden" name="staff_ids[]" :value="s.id">
+                                </template>
+                                {{-- chips --}}
+                                <div x-show="selectedStaff.length > 0"
+                                    style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;max-height:72px;overflow-y:auto;padding:2px 0;">
                                     <template x-for="s in selectedStaff" :key="s.id">
-                                        <input type="hidden" name="staff_ids[]" :value="s.id">
+                                        <span style="display:inline-flex;align-items:center;gap:4px;background:var(--brand-navy);color:#fff;font-size:11px;padding:3px 10px;border-radius:99px;white-space:nowrap;">
+                                            <span x-text="s.name"></span>
+                                            <button type="button" @click="removeStaff(s.id)"
+                                                style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,0.7);padding:0;line-height:1;font-size:15px;margin-left:2px;">&times;</button>
+                                        </span>
                                     </template>
-                                    <div style="border:1px solid var(--border);border-radius:6px;padding:6px 8px;background:var(--bg-1);min-height:38px;display:flex;flex-wrap:wrap;gap:4px;align-items:center;position:relative;">
-                                        <template x-for="s in selectedStaff" :key="s.id">
-                                            <span style="display:inline-flex;align-items:center;gap:4px;background:var(--brand-navy);color:#fff;font-size:11px;padding:2px 8px;border-radius:99px;">
-                                                <span x-text="s.name"></span>
-                                                <button type="button" @click="removeStaff(s.id)" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,0.7);padding:0;line-height:1;font-size:14px;">&times;</button>
-                                            </span>
+                                </div>
+                                {{-- search input + dropdown --}}
+                                <div style="position:relative;">
+                                    <input type="text" x-model="staffSearch"
+                                        @input="showStaffDropdown = true"
+                                        @focus="showStaffDropdown = true"
+                                        @click.away="showStaffDropdown = false"
+                                        placeholder="พิมพ์ชื่อเพื่อเพิ่มเจ้าหน้าที่...">
+                                    <div x-show="showStaffDropdown" x-cloak
+                                        style="position:absolute;top:100%;left:0;right:0;background:var(--bg-1,#fff);border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:9999;max-height:160px;overflow-y:auto;margin-top:2px;">
+                                        <template x-for="u in filteredStaffList()" :key="u.id">
+                                            <div class="search-item" @click="addStaff(u)" x-text="u.formatted_name || u.name"></div>
                                         </template>
-                                        <input type="text" x-model="staffSearch"
-                                            @input="showStaffDropdown = true"
-                                            @focus="showStaffDropdown = true"
-                                            @click.away="showStaffDropdown = false"
-                                            placeholder="พิมพ์เพื่อเพิ่ม..."
-                                            style="border:none;outline:none;background:transparent;font-size:13px;flex:1;min-width:100px;padding:0;">
-                                        <div x-show="showStaffDropdown" x-cloak
-                                            style="position:absolute;top:100%;left:0;right:0;background:var(--bg-1);border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:100;max-height:160px;overflow-y:auto;margin-top:2px;">
-                                            <template x-for="u in filteredStaffList()" :key="u.id">
-                                                <div class="search-item" @click="addStaff(u)" x-text="u.formatted_name || u.name"></div>
-                                            </template>
-                                            <div x-show="filteredStaffList().length === 0"
-                                                style="padding:8px 12px;color:var(--fg-4);font-size:12px;">ไม่พบเจ้าหน้าที่</div>
-                                        </div>
+                                        <div x-show="filteredStaffList().length === 0"
+                                            style="padding:8px 12px;color:var(--fg-4);font-size:12px;">ไม่พบเจ้าหน้าที่</div>
                                     </div>
                                 </div>
                             </div>
@@ -1399,7 +1400,7 @@
                                             <span style="font-size:12px;color:var(--fg-2);font-family:var(--font-mono);" x-text="currentCourse.color_code"></span>
                                         </button>
                                         <div x-show="open" @click.outside="open=false" x-cloak
-                                            style="position:absolute;z-index:50;top:calc(100% + 4px);right:0;background:var(--bg-1);border:1px solid var(--border);border-radius:6px;padding:12px;box-shadow:0 4px 16px rgba(0,0,0,.12);width:220px;">
+                                            style="position:absolute;z-index:9999;top:calc(100% + 4px);right:0;background:#ffffff;border:1px solid var(--border);border-radius:6px;padding:12px;box-shadow:0 4px 16px rgba(0,0,0,.15);width:220px;">
                                             <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-bottom:10px;">
                                                 <template x-for="c in ['#3B82F6','#2563EB','#1D4ED8','#0EA5E9','#06B6D4','#10B981','#059669','#047857','#F59E0B','#EF4444','#DC2626','#8B5CF6','#7C3AED','#EC4899','#F97316','#6B7280']">
                                                     <button type="button" @click="currentCourse.color_code=c;open=false"
@@ -1439,7 +1440,7 @@
 
                             <div class="form-group" style="margin-bottom: 20px;">
                                 <label>จำนวนนักศึกษาสูงสุด (คน)</label>
-                                <input type="number" name="capacity" x-model="currentCourse.capacity" min="1" placeholder="เช่น 240">
+                                <input type="number" name="capacity" x-model="currentCourse.capacity" min="1" placeholder="เช่น 240" onwheel="this.blur()">
                             </div>
 
                             {{-- Practicum Rotation --}}
@@ -1847,11 +1848,11 @@
             top: 100%;
             left: 0;
             right: 0;
-            background: var(--surface);
+            background: var(--bg-1, #ffffff);
             border: 1px solid var(--border);
             border-radius: var(--r-md);
-            box-shadow: var(--shadow-lg);
-            z-index: 1000;
+            box-shadow: 0 4px 16px rgba(0,0,0,.12);
+            z-index: 9999;
             max-height: 200px;
             overflow-y: auto;
             margin-top: 4px;
