@@ -60,6 +60,14 @@ class DashboardController extends Controller
         $request->validate(['role' => 'required|string']);
 
         $user = Auth::user();
+
+        if (!$user->is_active) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            return redirect()->route('login')->withErrors(['username' => 'บัญชีผู้ใช้นี้ถูกระงับการใช้งาน']);
+        }
+
         $hasRole = UserRole::where('user_id', $user->id)
             ->where('role', $request->role)
             ->exists();

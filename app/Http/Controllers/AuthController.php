@@ -31,6 +31,8 @@ class AuthController extends Controller
 
             if (!$user->is_active) {
                 Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
                 return back()->withErrors([
                     'username' => 'บัญชีผู้ใช้นี้ถูกระงับการใช้งาน',
                 ])->onlyInput('username');

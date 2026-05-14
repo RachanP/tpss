@@ -14,17 +14,17 @@ Route::post('/login', [AuthController::class, 'login'])->middleware('guest');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
 
 // ── Authenticated ──────────────────────────────────────────────────
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'no-back'])->group(function () {
 
     // Hub: redirect to role-specific dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    // Role-specific dashboards
-    Route::get('/admin/dashboard',    [DashboardController::class, 'admin'])   ->name('admin.dashboard');
-    Route::get('/staff/dashboard',    [DashboardController::class, 'staff'])   ->name('staff.dashboard');
-    Route::get('/maker/dashboard',    [DashboardController::class, 'maker'])   ->name('maker.dashboard');
-    Route::get('/approver/dashboard', [DashboardController::class, 'approver'])->name('approver.dashboard');
-    Route::get('/lecturer/dashboard', [DashboardController::class, 'lecturer'])->name('lecturer.dashboard');
+    // Role-specific dashboards — guarded by role
+    Route::get('/admin/dashboard',    [DashboardController::class, 'admin'])   ->name('admin.dashboard')   ->middleware('\App\Http\Middleware\CheckRole:admin');
+    Route::get('/staff/dashboard',    [DashboardController::class, 'staff'])   ->name('staff.dashboard')   ->middleware('\App\Http\Middleware\CheckRole:staff');
+    Route::get('/maker/dashboard',    [DashboardController::class, 'maker'])   ->name('maker.dashboard')   ->middleware('\App\Http\Middleware\CheckRole:course_head');
+    Route::get('/approver/dashboard', [DashboardController::class, 'approver'])->name('approver.dashboard')->middleware('\App\Http\Middleware\CheckRole:executive');
+    Route::get('/lecturer/dashboard', [DashboardController::class, 'lecturer'])->name('lecturer.dashboard')->middleware('\App\Http\Middleware\CheckRole:instructor');
 
     // Admin User Management
     // ── Admin only ─────────────────────────────────────────────────────
