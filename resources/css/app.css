@@ -544,6 +544,26 @@ body { font-family: var(--font-sans); color: var(--fg-1); background: var(--bg);
   color: oklch(75% .05 15);
   background: oklch(20% .03 15 / .5);
 }
+/* ── SIDEBAR SCROLLBAR ────────────────────────────────────────── */
+.sb-nav::-webkit-scrollbar {
+  width: 4px;
+}
+.sb-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sb-nav::-webkit-scrollbar-thumb {
+  background: oklch(40% .04 240 / .5);
+  border-radius: 99px;
+}
+.sb-nav::-webkit-scrollbar-thumb:hover {
+  background: oklch(50% .05 240 / .7);
+}
+/* Firefox */
+.sb-nav {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(40% .04 240 / .5) transparent;
+}
+
 /* ── UI COMPONENTS ────────────────────────────────────────────── */
 
 /* Cards & Sections */
@@ -1152,23 +1172,10 @@ input:focus, select:focus, textarea:focus {
     grid-template-columns: repeat(4, 1fr) !important;
   }
 
-  /* Make all tables scrollable horizontally without needing a wrapper */
-  table {
-    display: block;
-    overflow-x: auto;
-    white-space: nowrap;
-  }
 }
 
 /* ── TABLET / IPAD (769px – 1024px) ──────────────────────────────── */
 @media (min-width: 769px) and (max-width: 1024px) {
-  /* Table horizontal scroll */
-  table {
-    display: block;
-    overflow-x: auto;
-    white-space: nowrap;
-  }
-
   /* 4-column grids -> 2x2 inside modal body */
   .modal-body div[style*="1fr 1fr 1fr 1fr"] {
     grid-template-columns: 1fr 1fr !important;

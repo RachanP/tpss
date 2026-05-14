@@ -25,7 +25,7 @@
     init() {
         window.addEventListener('resize', () => {
             if (window.innerWidth > 1024) this.sidebarOpen = true;
-            else if (window.innerWidth <= 768) this.sidebarOpen = false;
+            else this.sidebarOpen = false;
         });
     }
 }">

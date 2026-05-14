@@ -1,7 +1,7 @@
 ﻿prefix,name,email,username,password,roles,primary_role,employee_id,title,academic_degree,department_name,employment_type,hired_date,teaching_pct,research_pct,service_pct,culture_pct,other_pct
-นาย,ราชันย์ พิพัฒน์,rachan@mahidol.ac.th,rachan_p,Ns@12345,instructor|course_head|admin,admin,MU001,ผู้ช่วยอาจารย์,ปริญญาเอก,การพยาบาลรากฐาน,พนักงานมหาวิทยาลัย,10/1/2010,60,20,10,5,5
-นาง,สมศรี มีสุข,somsri@mahidol.ac.th,somsri_m,Ns@12345,instructor|course_head,course_head,MU002,อาจารย์,,การพยาบาลจิตเวช,พนักงานมหาวิทยาลัย,3/15/2015,50,30,10,10,0
-นางสาว,วรรณา ใจดี,wanna@mahidol.ac.th,wanna_j,Ns@12345,instructor,instructor,MU003,ผู้ช่วยอาจารย์,ปริญญาโท,การพยาบาลรากฐาน,พนักงานมหาวิทยาลัย,6/1/2018,70,10,10,5,5
-นาย,วิชัย ดีงาม,wichai@mahidol.ac.th,wichai_d,Ns@12345,instructor|staff,staff,MU004,ผู้ช่วยอาจารย์,,การพยาบาลอนามัยชุมชน,พนักงานมหาวิทยาลัย,3/1/2019,40,40,10,5,5
-นาง,มาลี รักดี,malee@mahidol.ac.th,malee_r,Ns@12345,instructor|executive,executive,MU005,รองศาสตราจารย์,ปริญญาเอก,การพยาบาลจิตเวช,พนักงานมหาวิทยาลัย,8/1/2005,30,50,10,5,5
-นาย,ธนา รักงาน,thana@mahidol.ac.th,thana_r,Ns@12345,staff,staff,MU006,,,,,,,,,,
+นาย,ราชันย์ พิพัฒน์,rachan@mahidol.ac.th,rachan_p,password,instructor|course_head|admin,admin,MU001,ผู้ช่วยอาจารย์,ปริญญาเอก,การพยาบาลรากฐาน,พนักงานมหาวิทยาลัย,10/1/2010,60,20,10,5,5
+นาง,สมศรี มีสุข,somsri@mahidol.ac.th,somsri_m,password,instructor|course_head,course_head,MU002,อาจารย์,,การพยาบาลจิตเวช,พนักงานมหาวิทยาลัย,3/15/2015,50,30,10,10,0
+นางสาว,วรรณา ใจดี,wanna@mahidol.ac.th,wanna_j,password,instructor,instructor,MU003,ผู้ช่วยอาจารย์,ปริญญาโท,การพยาบาลรากฐาน,พนักงานมหาวิทยาลัย,6/1/2018,70,10,10,5,5
+นาย,วิชัย ดีงาม,wichai@mahidol.ac.th,wichai_d,password,instructor|staff,staff,MU004,ผู้ช่วยอาจารย์,,การพยาบาลอนามัยชุมชน,พนักงานมหาวิทยาลัย,3/1/2019,40,40,10,5,5
+นาง,มาลี รักดี,malee@mahidol.ac.th,malee_r,password,instructor|executive,executive,MU005,รองศาสตราจารย์,ปริญญาเอก,การพยาบาลจิตเวช,พนักงานมหาวิทยาลัย,8/1/2005,30,50,10,5,5
+นาย,ธนา รักงาน,thana@mahidol.ac.th,thana_r,password,staff,staff,MU006,,,,,,,,,,
