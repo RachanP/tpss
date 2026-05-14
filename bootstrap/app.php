@@ -11,6 +11,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->web(append: [
+            \App\Http\Middleware\CheckActiveUser::class,
+        ]);
+
         $middleware->alias([
             'no-back' => \App\Http\Middleware\PreventBackHistory::class,
         ]);

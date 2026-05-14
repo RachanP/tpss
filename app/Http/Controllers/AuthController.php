@@ -71,4 +71,22 @@ class AuthController extends Controller
 
         return redirect('/login');
     }
+
+    public function updatePassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'new_password' => ['required', 'string', 'min:8', 'confirmed'],
+        ], [
+            'current_password.current_password' => 'รหัสผ่านปัจจุบันไม่ถูกต้อง',
+            'new_password.min' => 'รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 8 ตัวอักษร',
+            'new_password.confirmed' => 'การยืนยันรหัสผ่านใหม่ไม่ตรงกัน',
+        ]);
+
+        $user = Auth::user();
+        $user->password = $request->new_password;
+        $user->save();
+
+        return back()->with('success', 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว');
+    }
 }

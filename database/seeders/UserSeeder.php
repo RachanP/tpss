@@ -6,13 +6,11 @@ use App\Models\User;
 use App\Models\UserRole;
 use App\Models\InstructorProfile;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
-
 class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        $password = Hash::make('password');
+        $password = 'password';
 
         $users = [
             [

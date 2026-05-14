@@ -36,12 +36,12 @@
     }">
 
         @if($isAdmin)
-        <div style="display: flex; justify-content: flex-end; margin-bottom: 24px;">
+        <div class="tabs-container" style="display: flex; justify-content: flex-end; margin-bottom: 24px; width: 100%; overflow: hidden;">
             <div class="tabs"
-                style="display: flex; gap: 8px; background: var(--bg-2); padding: 4px; border-radius: 8px; border: 1px solid var(--border);">
+                style="display: flex; gap: 8px; background: var(--bg-2); padding: 4px; border-radius: 8px; border: 1px solid var(--border); overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; max-width: 100%;">
                 <button type="button" @click="activeTab = 'academic'"
                     :class="activeTab === 'academic' ? 'btn-primary' : 'btn btn-ghost'"
-                    style="padding: 8px 16px; border-radius: 6px;">
+                    style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
                         style="margin-right: 6px;">
                         <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -53,7 +53,7 @@
                 </button>
                 <button type="button" @click="activeTab = 'pa'"
                     :class="activeTab === 'pa' ? 'btn-primary' : 'btn btn-ghost'"
-                    style="padding: 8px 16px; border-radius: 6px;">
+                    style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
                         style="margin-right: 6px;">
                         <line x1="19" y1="5" x2="5" y2="19"></line>
@@ -212,7 +212,7 @@
         <div x-show="activeTab === 'pa'" x-cloak>
             <form action="{{ route('admin.settings.constants.update') }}" method="POST">
                 @csrf
-                <div style="display: grid; grid-template-columns: 360px 1fr; gap: 24px; align-items: start;">
+                <div class="settings-grid">
 
                     <div style="display: flex; flex-direction: column; gap: 24px;">
                         <div class="card">
@@ -220,21 +220,21 @@
                                 <div class="card-ttl">ค่าคงที่ภาระงานประจำปี</div>
                             </div>
                             <div class="card-body" style="display: flex; flex-direction: column; align-items: center; gap: 20px;">
-                                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; width: 100%;">
+                                <div class="stats-grid">
                                     <div class="form-group" style="display: flex; flex-direction: column; align-items: center;">
-                                        <label style="text-align: center; font-size: 11px; white-space: nowrap;">สัปดาห์ทำงานรวม/ปี</label>
+                                        <label style="text-align: center; font-size: 11px;">สัปดาห์ทำงานรวม/ปี</label>
                                         <input type="number" name="teaching_quota_weeks" x-model.number="workloadWeeks"
                                             min="1" required
                                             style="font-weight: 700; text-align: center; width: 80px;">
                                     </div>
                                     <div class="form-group" style="display: flex; flex-direction: column; align-items: center;">
-                                        <label style="text-align: center; font-size: 11px; white-space: nowrap;">สัปดาห์งานสอน/ปี</label>
+                                        <label style="text-align: center; font-size: 11px;">สัปดาห์งานสอน/ปี</label>
                                         <input type="number" name="teaching_load_weeks" x-model.number="teachingWeeks"
                                             min="1" required
                                             style="font-weight: 700; text-align: center; width: 80px;">
                                     </div>
                                     <div class="form-group" style="display: flex; flex-direction: column; align-items: center;">
-                                        <label style="text-align: center; font-size: 11px; white-space: nowrap;">ชั่วโมงทำงาน/สัปดาห์</label>
+                                        <label style="text-align: center; font-size: 11px;">ชั่วโมงทำงาน/สัปดาห์</label>
                                         <input type="number" name="teaching_quota_hours_per_week"
                                             x-model.number="workloadHoursPerWeek" min="1" required
                                             style="font-weight: 700; text-align: center; width: 80px;">
@@ -273,20 +273,22 @@
                     </div>
 
                     <div class="card">
-                        <div class="card-hdr" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div class="settings-hdr">
                             <div class="card-ttl">สัดส่วนเกณฑ์ PA ตามตำแหน่งทางวิชาการ</div>
-                            <div style="display: flex; align-items: center; gap: 12px;">
-                                <div style="display: flex; align-items: center; gap: 4px; background: var(--bg-1); padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border);">
+                            <div class="hdr-helper">
+                                <div class="copy-box">
                                     <span style="font-size: 11px; color: var(--fg-3); margin-right: 4px;">คลิกเพื่อก๊อปปี้:</span>
-                                    @foreach(['≤', '≥', '-', '%'] as $sym)
-                                        <button type="button"
-                                            onclick="navigator.clipboard.writeText('{{ $sym }}')"
-                                            class="btn-ghost"
-                                            style="padding: 2px 6px; font-size: 13px; font-weight: 700; min-width: 28px;"
-                                            title="คลิกเพื่อคัดลอก {{ $sym }}">
-                                            {{ $sym }}
-                                        </button>
-                                    @endforeach
+                                    <div style="display: flex; gap: 4px;">
+                                        @foreach(['≤', '≥', '-', '%'] as $sym)
+                                            <button type="button"
+                                                onclick="navigator.clipboard.writeText('{{ $sym }}')"
+                                                class="btn-ghost"
+                                                style="padding: 2px 6px; font-size: 13px; font-weight: 700; min-width: 28px;"
+                                                title="คลิกเพื่อคัดลอก {{ $sym }}">
+                                                {{ $sym }}
+                                            </button>
+                                        @endforeach
+                                    </div>
                                 </div>
                                 <div style="font-size: 12px; color: var(--fg-3);">หน่วย: เปอร์เซ็นต์ (%)</div>
                             </div>
@@ -339,6 +341,76 @@
 
     <style>
         [x-cloak] { display: none !important; }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 24px;
+            align-items: start;
+        }
+        
+        .settings-grid > div {
+            min-width: 0; /* Prevent grid items from stretching the viewport */
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            width: 100%;
+        }
+
+        .settings-hdr {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--surface);
+            gap: 16px;
+        }
+
+        .hdr-helper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .copy-box {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: var(--bg-1);
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+        }
+
+        @media (max-width: 1024px) {
+            .settings-grid {
+                grid-template-columns: 1fr;
+            }
+            .settings-hdr {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .hdr-helper {
+                width: 100%;
+                justify-content: space-between;
+                flex-wrap: wrap;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            .tabs-container {
+                justify-content: flex-start !important;
+                width: 100%;
+            }
+        }
+
         .pa-input {
             width: 80px; margin: 0 auto; display: block;
             padding: 8px !important; font-size: 13px !important;

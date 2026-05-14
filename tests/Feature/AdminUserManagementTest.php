@@ -98,6 +98,7 @@ class AdminUserManagementTest extends TestCase
         ]);
 
         $response = $this->put("/admin/users/{$user->id}", [
+            'username' => 'update-me',
             'name' => 'New Name',
             'email' => 'new-email@example.com',
             'roles' => ['admin'],
@@ -110,6 +111,32 @@ class AdminUserManagementTest extends TestCase
             'id' => $user->id,
             'name' => 'New Name',
             'email' => 'new-email@example.com',
+        ]);
+    }
+
+    public function test_admin_can_update_username(): void
+    {
+        $this->actingAs($this->admin);
+        $user = User::create([
+            'username' => 'old-username',
+            'name' => 'Some Name',
+            'email' => 'some@example.com',
+            'password' => 'password',
+        ]);
+
+        $response = $this->put("/admin/users/{$user->id}", [
+            'username' => 'new-username',
+            'name' => 'Some Name',
+            'email' => 'some@example.com',
+            'roles' => ['staff'],
+            'primary_role' => 'staff',
+            'is_active' => true,
+        ]);
+
+        $response->assertRedirect('/admin/users');
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'username' => 'new-username',
         ]);
     }
 

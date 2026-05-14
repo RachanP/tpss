@@ -214,9 +214,24 @@
   --z-toast:     300;
 
   /* ════ LAYOUT ═════════════════════════════════════════════════ */
-  --sidebar-w:   220px;
-  --topbar-h:    52px;
-  --content-pad: 20px;
+  --sidebar-w:   240px;
+  --topbar-h:    56px;
+  --content-pad: 24px;
+}
+
+@media (max-width: 1024px) {
+  :root {
+    --sidebar-w: 220px;
+    --content-pad: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --sidebar-w: 0px; /* Hide on mobile by default */
+    --content-pad: 16px;
+    --topbar-h: 52px;
+  }
 }
 
 /* ────────── SEMANTIC TYPOGRAPHY ────────── */
@@ -264,12 +279,13 @@ body { font-family: var(--font-sans); color: var(--fg-1); background: var(--bg);
 .sidebar {
   position: fixed;
   inset: 0 auto 0 0;
-  width: var(--sidebar-w);
+  width: 240px; /* Fixed width for transition */
   background: var(--nav-bg);
   border-right: 1px solid var(--nav-border);
   display: flex;
   flex-direction: column;
   z-index: var(--z-sidebar);
+  transition: transform var(--dur-slow) var(--ease-out);
 }
 
 .main-content {
@@ -278,6 +294,35 @@ body { font-family: var(--font-sans); color: var(--fg-1); background: var(--bg);
   flex-direction: column;
   min-height: 100vh;
   flex: 1;
+  transition: margin-left var(--dur-slow) var(--ease-out);
+}
+
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: none;
+  z-index: calc(var(--z-sidebar) - 1);
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .sidebar {
+    width: 280px;
+    transform: translateX(-100%);
+  }
+  .sidebar.is-open {
+    transform: translateX(0);
+    box-shadow: 20px 0 50px rgba(0,0,0,0.3);
+  }
+
+  .main-content {
+    margin-left: 0;
+  }
+
+  .sidebar-overlay.is-open {
+    display: block;
+  }
 }
 
 .topbar {
@@ -499,6 +544,26 @@ body { font-family: var(--font-sans); color: var(--fg-1); background: var(--bg);
   color: oklch(75% .05 15);
   background: oklch(20% .03 15 / .5);
 }
+/* ── SIDEBAR SCROLLBAR ────────────────────────────────────────── */
+.sb-nav::-webkit-scrollbar {
+  width: 4px;
+}
+.sb-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sb-nav::-webkit-scrollbar-thumb {
+  background: oklch(40% .04 240 / .5);
+  border-radius: 99px;
+}
+.sb-nav::-webkit-scrollbar-thumb:hover {
+  background: oklch(50% .05 240 / .7);
+}
+/* Firefox */
+.sb-nav {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(40% .04 240 / .5) transparent;
+}
+
 /* ── UI COMPONENTS ────────────────────────────────────────────── */
 
 /* Cards & Sections */
@@ -518,6 +583,18 @@ body { font-family: var(--font-sans); color: var(--fg-1); background: var(--bg);
   align-items: center;
   justify-content: space-between;
   background: var(--surface);
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .card-hdr {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .card-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
 }
 
 .card-ttl {
@@ -652,6 +729,13 @@ tr:hover td {
   margin-bottom: 16px;
 }
 
+@media (max-width: 640px) {
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
 .form-group { flex: 1; }
 .form-group.full { grid-column: 1 / -1; }
 
@@ -728,7 +812,7 @@ input:focus, select:focus, textarea:focus {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(2px);
+  backdrop-filter: none;
   z-index: var(--z-modal);
   display: flex;
   align-items: center;
@@ -838,6 +922,10 @@ input:focus, select:focus, textarea:focus {
   align-items: center;
   max-width: 100%;
   overflow-x: auto;
+  /* ป้องกัน tabs ขยับ: flex-shrink+min-width ให้ tabs หดตัวได้เมื่อ viewport แคบ
+     แทนที่จะขยายล้น container แล้วทำให้ page มี horizontal scrollbar */
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .tabs > button {
@@ -884,7 +972,8 @@ input:focus, select:focus, textarea:focus {
   font-size: var(--fs-base);
   color: var(--fg-1);
   outline: none;
-  width: 200px;
+  width: 100%;
+  max-width: 200px;
 }
 
 .search-box svg {
@@ -1069,4 +1158,99 @@ input:focus, select:focus, textarea:focus {
   opacity: 0;
   transition: opacity .15s;
   white-space: nowrap;
+}
+
+/* ── GLOBAL MOBILE GRID OVERRIDES ────────────────────────────── */
+@media (max-width: 768px) {
+  /* Automatically stack any inline grids that use columns */
+  div[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Exception: Keep micro-grids (like 8-column checkboxes) somewhat side-by-side */
+  div[style*="repeat(8"] {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+
+}
+
+/* ── TABLET / IPAD (769px – 1024px) ──────────────────────────────── */
+@media (min-width: 769px) and (max-width: 1024px) {
+  /* 4-column grids -> 2x2 inside modal body */
+  .modal-body div[style*="1fr 1fr 1fr 1fr"] {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* Modal: ไม่ให้ชนขอบ viewport */
+  .modal-center {
+    max-width: calc(100vw - 48px) !important;
+  }
+
+  .overlay {
+    padding: 16px;
+    align-items: flex-start;
+    padding-top: 40px;
+  }
+}
+
+/* ── HAMBURGER: CSS-ONLY (ไม่ขึ้นกับ JS window.innerWidth) ──────── */
+.hamburger-btn { display: none; }
+@media (max-width: 1024px) {
+  .hamburger-btn { display: flex; }
+}
+
+/* ── PHONE LANDSCAPE: COMPACT SIDEBAR (max-height: 500px) ───────────
+   บน phone แนวนอน สูงแค่ ~390px → logo+user+footer กิน 270px
+   เหลือ sb-nav แค่ 120px — ย่อ fixed sections เพื่อคืนพื้นที่ให้ nav
+   ────────────────────────────────────────────────────────────────── */
+@media (max-height: 500px) {
+  /* Logo: ลด padding + ซ่อน text ชื่อระบบ เหลือแค่ logo icon */
+  .sb-logo {
+    padding: 8px 14px;
+    gap: 8px;
+  }
+  .sb-logo img {
+    width: 32px;
+    height: 32px;
+  }
+  .sb-name,
+  .sb-sub {
+    display: none;
+  }
+
+  /* User section: ลด padding + avatar เล็กลง */
+  .sb-user {
+    padding: 7px 14px;
+  }
+  .sb-av {
+    width: 32px;
+    height: 32px;
+    font-size: 13px;
+  }
+  .sb-uname {
+    font-size: 13px;
+  }
+
+  /* Nav: ลด padding ด้านบนล่าง */
+  .sb-nav {
+    padding: 4px 8px;
+    gap: 0;
+  }
+  .sb-sec {
+    padding: 6px 10px 3px;
+    font-size: 10px;
+  }
+  .nv {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+  .nv-ic {
+    width: 14px;
+    height: 14px;
+  }
+
+  /* Footer: ลด padding */
+  .sb-foot {
+    padding: 4px 8px 8px;
+  }
 }

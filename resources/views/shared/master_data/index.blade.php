@@ -300,11 +300,11 @@
         <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
             <div style="flex: 1;"></div>
             <div class="tabs"
-                style="display: flex; gap: 8px; background: var(--bg-2); padding: 4px; border-radius: 8px; border: 1px solid var(--border);">
+                style="display: flex; gap: 8px; background: var(--bg-2); padding: 4px; border-radius: 8px; border: 1px solid var(--border); overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch;">
                 {{-- 1. ภาควิชา (ต้องมีก่อนสร้างหลักสูตร/อาจารย์) --}}
                 <button type="button" @click="activeTab = 'departments'"
                     :class="activeTab === 'departments' ? 'btn-primary' : 'btn btn-ghost'"
-                    style="padding: 8px 16px; border-radius: 6px;">
+                    style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
                         style="margin-right: 6px;">
                         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
@@ -316,7 +316,7 @@
                 {{-- 2. หลักสูตร (ต้องมีก่อนสร้างรายวิชา/กลุ่ม) --}}
                 <button type="button" @click="activeTab = 'curriculums'"
                     :class="activeTab === 'curriculums' ? 'btn-primary' : 'btn btn-ghost'"
-                    style="padding: 8px 16px; border-radius: 6px;">
+                    style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
                         style="margin-right: 6px;">
                         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
@@ -327,7 +327,7 @@
                 {{-- 3. รายวิชา (ต้องมีหลักสูตรก่อน) --}}
                 <button type="button" @click="activeTab = 'courses'"
                     :class="activeTab === 'courses' ? 'btn-primary' : 'btn btn-ghost'"
-                    style="padding: 8px 16px; border-radius: 6px;">
+                    style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
                         style="margin-right: 6px;">
                         <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
@@ -338,7 +338,7 @@
                 {{-- 4. อาจารย์ผู้สอน (ต้องมีภาควิชาก่อน) --}}
                 <button type="button" @click="activeTab = 'instructors'"
                     :class="activeTab === 'instructors' ? 'btn-primary' : 'btn btn-ghost'"
-                    style="padding: 8px 16px; border-radius: 6px;">
+                    style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
                         style="margin-right: 6px;">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -352,7 +352,7 @@
                 {{-- 5. ห้องและสถานที่ (รวมประเภท) --}}
                 <button type="button" @click="activeTab = 'location_types'"
                     :class="activeTab === 'location_types' ? 'btn-primary' : 'btn btn-ghost'"
-                    style="padding: 8px 16px; border-radius: 6px;">
+                    style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
                         style="margin-right: 6px;">
                         <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
@@ -363,7 +363,7 @@
                 {{-- 8. ประเภทกิจกรรม (ใช้ตอนสร้างตาราง) --}}
                 <button type="button" @click="activeTab = 'activity_types'"
                     :class="activeTab === 'activity_types' ? 'btn-primary' : 'btn btn-ghost'"
-                    style="padding: 8px 16px; border-radius: 6px;">
+                    style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
                         style="margin-right: 6px;">
                         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
@@ -1429,7 +1429,7 @@
                                     <input type="text" name="name_en" x-model="currentCourse.name_en" placeholder="Pediatric Nursing 1">
                                 </div>
                             </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr 80px; gap: 16px; margin-bottom: 20px;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 80px; gap: 16px; margin-bottom: 16px;">
                                 <div class="form-group" style="margin-bottom:0;">
                                     <label>หลักสูตร <span style="color:var(--status-conflict-fg)">*</span></label>
                                     <select name="curriculum_id" x-model="currentCourse.curriculum_id" required>
@@ -1451,6 +1451,23 @@
                                 <div class="form-group" style="margin-bottom:0;">
                                     <label>หน่วยกิต <span style="color:var(--status-conflict-fg)">*</span></label>
                                     <input type="number" name="credits" x-model="currentCourse.credits" required min="0" placeholder="2">
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label>ประเภทวิชา <span style="color:var(--status-conflict-fg)">*</span></label>
+                                    <select name="course_type" x-model="currentCourse.course_type" required>
+                                        <option value="theory">ภาคทฤษฎี</option>
+                                        <option value="practicum">ภาคปฏิบัติ</option>
+                                        <option value="theory_practicum">ทฤษฎี + ปฏิบัติ</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label>ระดับการศึกษา</label>
+                                    <select name="academic_level" x-model="currentCourse.academic_level">
+                                        <option value="undergraduate">ปริญญาตรี</option>
+                                        <option value="graduate">บัณฑิตศึกษา</option>
+                                    </select>
                                 </div>
                             </div>
 
@@ -1894,13 +1911,7 @@
                     <form method="POST" action="{{ route($routePrefix . '.rooms.import') }}" enctype="multipart/form-data">
                         @csrf
                         <div class="modal-body" style="padding: 24px;">
-                            <div style="background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 20px; font-size: 13px; line-height: 1.7; color: var(--fg-muted);">
-                                <strong style="color: var(--fg-base); display: block; margin-bottom: 4px;">รูปแบบไฟล์ CSV</strong>
-                                คอลัมน์บังคับ: <code>name, code, location_type_name</code><br>
-                                คอลัมน์เสริม: <code>capacity, floor, building, status</code><br>
-                                <span style="margin-top: 6px; display: block;">• status: <code>active</code>, <code>inactive</code>, หรือ <code>maintenance</code></span>
-                                <span>• ถ้า code ซ้ำ → อัปเดตข้อมูลแทน (upsert)</span>
-                            </div>
+
                             <div style="margin-bottom: 16px;">
                                 <a href="{{ asset('templates/rooms_import.csv') }}"
                                     style="font-size: 13px; color: var(--accent); text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
@@ -1916,7 +1927,7 @@
                                 <label class="frm-lbl">เลือกไฟล์ CSV <span style="color: var(--status-conflict-fg)">*</span></label>
                                 <input type="file" name="csv_file" accept=".csv,.txt" required
                                     style="display: block; width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: var(--bg-1);">
-                                <div style="font-size: 12px; color: var(--fg-muted); margin-top: 4px;">UTF-8 (ไม่มี BOM), ไม่เกิน 5 MB</div>
+                                <div style="font-size: 12px; color: var(--fg-muted); margin-top: 4px;">รองรับไฟล์ภาษาไทย (UTF-8), ไม่เกิน 5 MB</div>
                             </div>
                             <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-2);">
                                 <input type="checkbox" name="update_on_duplicate" value="1" checked style="margin-top: 2px; flex-shrink: 0;">
@@ -1953,13 +1964,7 @@
                     <form method="POST" action="{{ route($routePrefix . '.courses.import') }}" enctype="multipart/form-data">
                         @csrf
                         <div class="modal-body" style="padding: 24px;">
-                            <div style="background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 20px; font-size: 13px; line-height: 1.7; color: var(--fg-muted);">
-                                <strong style="color: var(--fg-base); display: block; margin-bottom: 4px;">รูปแบบไฟล์ CSV</strong>
-                                คอลัมน์บังคับ: <code>course_code, name_th, curriculum_name, department_name, credits</code><br>
-                                คอลัมน์เสริม: <code>name_en, lecture_hours, lab_hours, self_study_hours, capacity, default_year_level, default_semester, status</code><br>
-                                <span style="margin-top: 6px; display: block;">• course_type คำนวณอัตโนมัติจาก lecture_hours + lab_hours</span>
-                                <span>• ถ้า course_code + curriculum ซ้ำ → อัปเดตข้อมูลแทน (upsert)</span>
-                            </div>
+
                             <div style="margin-bottom: 16px;">
                                 <a href="{{ asset('templates/courses_import.csv') }}"
                                     style="font-size: 13px; color: var(--accent); text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
@@ -1975,7 +1980,7 @@
                                 <label class="frm-lbl">เลือกไฟล์ CSV <span style="color: var(--status-conflict-fg)">*</span></label>
                                 <input type="file" name="csv_file" accept=".csv,.txt" required
                                     style="display: block; width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: var(--bg-1);">
-                                <div style="font-size: 12px; color: var(--fg-muted); margin-top: 4px;">UTF-8 (ไม่มี BOM), ไม่เกิน 5 MB</div>
+                                <div style="font-size: 12px; color: var(--fg-muted); margin-top: 4px;">รองรับไฟล์ภาษาไทย (UTF-8), ไม่เกิน 5 MB</div>
                             </div>
                             <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-2);">
                                 <input type="checkbox" name="update_on_duplicate" value="1" checked style="margin-top: 2px; flex-shrink: 0;">
