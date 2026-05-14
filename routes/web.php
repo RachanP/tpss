@@ -87,5 +87,8 @@ Route::middleware(['auth', 'no-back'])->group(function () {
 
     // Role switcher
     Route::post('/switch-role', [DashboardController::class, 'switchRole'])->name('switch-role');
+
+    // Profile Management
+    Route::put('/profile/password', [AuthController::class, 'updatePassword'])->name('profile.password.update');
 });
 

@@ -155,6 +155,8 @@
         </div>
     </div>
 
+    <x-profile-modal />
+
     <script>
         /* ─── tpssDelete(btn) — call via onclick="tpssDelete(this)"
            btn must have data-form="<form-id>" and data-label="<item name>"

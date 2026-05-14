@@ -316,6 +316,13 @@
     <!-- Sidebar Footer -->
     <div class="sb-foot">
 
+        <button type="button" class="nv" @click="$dispatch('open-profile-modal')">
+            <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            ตั้งค่าบัญชี
+        </button>
         <a href="#" class="nv">
             <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
