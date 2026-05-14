@@ -146,6 +146,7 @@ class AdminUserController extends Controller
         $reqInstructor = in_array('instructor', $roles) ? 'required' : 'nullable';
 
         $validated = $request->validate([
+            'username'     => 'required|string|max:100|unique:users,username,' . $user->id,
             'prefix'       => 'nullable|string|max:50',
             'name'         => 'required|string|max:255',
             'email'        => 'required|string|email|max:255|unique:users,email,' . $user->id,
@@ -181,6 +182,7 @@ class AdminUserController extends Controller
 
         DB::transaction(function () use ($validated, $user, $request) {
             $user->update([
+                'username'    => $validated['username'],
                 'prefix'      => $validated['prefix'] ?? null,
                 'name'        => $validated['name'],
                 'email'       => $validated['email'],

@@ -573,8 +573,7 @@
                                 <div class="form-group">
                                     <label>ชื่อผู้ใช้งาน</label>
                                     <input type="text" name="username" x-model="currentUser.username"
-                                        :readonly="editMode"
-                                        :style="editMode ? 'background: var(--bg-2); color: var(--fg-3)' : ''" required
+                                        required
                                         placeholder="เช่น staff_01">
                                 </div>
                                 <div class="form-group">
