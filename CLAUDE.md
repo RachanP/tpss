@@ -102,7 +102,7 @@
 3. **Activity Assignment (M3):** เมื่อสร้างกิจกรรม หัวหน้าวิชาจะระบุผู้สอนโดยดึงจาก Instructor Pool ซึ่งรองรับ **Team Supervision (เลือกอาจารย์ผู้สอนได้หลายท่านต่อ 1 กิจกรรม)** 
 4. **Workload Validation (M6):** ก่อนส่งอนุมัติ หัวหน้าวิชาต้องตรวจสอบความสมดุลของ "ภาระงานอาจารย์ (Workload)" โดยระบบคำนวณจาก **(จำนวนสัปดาห์/ปี) x (ชม. ทำงาน/สัปดาห์)** เพื่อหาชั่วโมงปฏิบัติงานรวมต่อปี (Quota)
 5. - **Instructor Profile Data**: เก็บข้อมูลส่วนตัวเพิ่มเติม ได้แก่ **คำนำหน้าชื่อ (Prefix)**, **รหัสพนักงาน (Employee ID)**, ตำแหน่งทางวิชาการ, ประเภทการจ้างงาน, และสัดส่วนการปฏิบัติงาน (%) เพื่อใช้ในเกณฑ์ PA
-6. - **Name Display Logic**: ระบบจัดการการแสดงผลชื่ออย่างชาญฉลาด โดยนำตำแหน่งทางวิชาการ, วุฒิการศึกษา (ดร.), และคำนำหน้าชื่อมาผสมกันอย่างถูกต้อง (เช่น **อ.ดร.ราชันย์**, **ผศ. สมศรี**, **ดร.สมบัติ**, **นายมานะ**) และกำจัดคำนำหน้าซ้ำซ้อนอัตโนมัติ
+6. - **Name Display Logic**: ระบบจัดการการแสดงผลชื่ออย่างชาญฉลาด โดยนำตำแหน่งทางวิชาการ, วุฒิการศึกษา (ดร.), และคำนำหน้าชื่อมาผสมกันอย่างถูกต้อง **ไม่มีเว้นวรรคระหว่างตำแหน่ง/คำนำหน้ากับชื่อ** (เช่น **อ.ดร.ราชันย์**, **ผศ.สมศรี**, **ดร.สมบัติ**, **นายมานะ**) และกำจัดคำนำหน้าซ้ำซ้อนอัตโนมัติ
 
 ---
 
@@ -589,6 +589,8 @@ mock/
 | production/staff.html เสร็จแล้ว (Impeccable design, 6 sections, 11 master-data tabs, schedule grid, reports, inbox, 4 dialogs) | mock/production/staff.html | ✅ อัปเดตแล้ว (8 พ.ค. 2569) |
 | Sprint 2 M1 เสร็จสมบูรณ์ — Staff access, Shared views, Settings, Course assigned_staff | code | ✅ อัปเดตแล้ว (12 พ.ค. 2569) |
 | Student Groups ย้ายจาก M1 → M2 (per course_offering, ไม่ใช่ per curriculum+year_level) | CLAUDE.md Student Group Architecture | ✅ อัปเดตแล้ว (13 พ.ค. 2569) |
+| M1 UI: accordion drill-down (dept→อาจารย์, curriculum→วิชา, location_type→ห้อง), tab ห้อง+ประเภทรวมเป็นหนึ่ง | CLAUDE.md Sprint 2 section | ✅ อัปเดตแล้ว (14 พ.ค. 2569) |
+| M3 design constraint: schedules ต้องใช้ start_date/end_date (block-based), ต้องมี student_group_id, M2 ต้องเสร็จก่อน | CLAUDE.md ข้อค้นพบจากตารางสอนจริง | ✅ อัปเดตแล้ว (14 พ.ค. 2569) |
 
 ---
 
@@ -603,14 +605,20 @@ mock/
 ### Staff สิทธิ์ Master Data (implement แล้ว)
 | Tab | Staff |
 |-----|-------|
-| ภาควิชา | ดูอย่างเดียว 🔒 |
-| หลักสูตร | ดูอย่างเดียว 🔒 |
+| ภาควิชา | ดูอย่างเดียว 🔒 + accordion ดูรายชื่ออาจารย์ภายใน |
+| หลักสูตร | ดูอย่างเดียว 🔒 + accordion ดูรายวิชาภายใน |
 | รายวิชา | CRUD ✅ |
 | อาจารย์ | ดูอย่างเดียว 🔒 |
 | กลุ่มนักศึกษา | ลบออกจาก M1 แล้ว — ย้ายไปสร้างใน M2 (Course Offering) |
-| ประเภทสถานที่ | CRUD ✅ |
-| ห้อง | CRUD ✅ |
+| ห้องและสถานที่ | CRUD ✅ (รวม tab ประเภทสถานที่ + ห้อง เป็น tab เดียว) + accordion ดูห้องภายในแต่ละประเภท |
 | ประเภทกิจกรรม | ดูอย่างเดียว 🔒 |
+
+### UI Pattern: Accordion Drill-Down (implement แล้ว 14 พ.ค. 2569)
+- **ภาควิชา → อาจารย์**: กดหัว accordion เพื่อดูรายชื่ออาจารย์ในภาควิชานั้น (title, employment_type, academic_degree)
+- **หลักสูตร → รายวิชา**: กดหัว accordion เพื่อดูรายวิชาทั้งหมดในหลักสูตร (course_code, name_th/en, credits, year_level, semester)
+- **ประเภทสถานที่ → ห้อง**: กดหัว accordion เพื่อดูห้องภายในประเภท + ปุ่มแก้ไขแต่ละห้อง
+- **Alpine.js pattern สำคัญ**: `:style` กับ `style="display:flex"` บน element เดียวกันทำให้ flex หาย → ต้องแยกเป็น 2 div (outer: `@click` + `:style` background / inner: `display:flex`)
+- **Cascade delete**: ลบประเภทสถานที่ → ลบห้องทั้งหมดในประเภทนั้นด้วย (พร้อม warning แจ้งจำนวน)
 
 ### Schema เพิ่มเติม (migrations ที่ต้อง run)
 - `drop_is_practicum_from_activity_types_table` — ลบ `is_practicum` (redundant กับ `category`)
@@ -625,6 +633,26 @@ mock/
 2. **เลขานุการวิชา** — จัดการใน M1 (ระดับวิชา) หรือ M2 (ระดับปีการศึกษา)?
 3. **Course Offering** — ใครกด "ยืนยันเปิด" ได้ (Staff เท่านั้น หรือ Course Head ด้วย)?
 4. **Notification** — Course Head รู้ว่าวิชาตัวเองถูกยืนยันเปิดยังไง?
+
+---
+
+## ข้อค้นพบจากตารางสอนจริง (วิเคราะห์ 14 พ.ค. 2569)
+
+> อ้างอิงไฟล์: `Doc/ตัวอย่างตารางสอน/` (ปี 1-4, เทอม 1-2)
+
+### สิ่งที่ต้องรู้ก่อนออกแบบ M3 (Schedule Management)
+
+1. **Block-based ไม่ใช่ Weekly Repeat**: ตารางแบ่งเป็นช่วง (Period 1: สัปดาห์ 1-6, Period 2: สัปดาห์ 7-14) แต่ละช่วงมีวิชาและกลุ่มต่างกัน — **`schedules` table ต้องเก็บ `start_date`/`end_date` ไม่ใช่ `day_of_week`**
+
+2. **วันที่เฉพาะเจาะจง**: บางกิจกรรมระบุวันที่ตรงๆ เช่น "15-19 ก.ค. 2568" ไม่ใช่แค่วันในสัปดาห์
+
+3. **Parallel Groups**: วันเดียวกัน กลุ่ม A ฝึกปฏิบัติที่ Ward, กลุ่ม B อยู่ห้องเรียน → schedule แต่ละ slot ต้อง link กับ `student_group_id`
+
+4. **Nested Groups**: ปี 3-4 แบ่งเป็น A→A1/A2 และ B→B1/B2 บางวิชามี 4 กลุ่มพร้อมกัน
+
+5. **หลายอาจารย์ต่อ 1 กิจกรรม**: `schedule_instructors` pivot (เตรียมไว้แล้วใน migration) รองรับได้ ✅
+
+6. **M2 ต้องเสร็จก่อน M3 เสมอ**: ทุก schedule slot ต้อง FK → `course_offering_id` และ `student_group_id` ซึ่งสร้างใน M2
 
 ## Design Context: Impeccable Design Frontend (อัปเดต 8 พ.ค. 2569)
 

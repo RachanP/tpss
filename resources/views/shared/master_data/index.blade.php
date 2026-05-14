@@ -1,4 +1,4 @@
-<x-app-layout title="ข้อมูลหลักระบบ (Master Data)">
+<x-app-layout title="ข้อมูลหลักระบบ">
     <div x-data="{
         activeTab: new URLSearchParams(window.location.search).get('tab') || 'instructors',
         searchQuery: '',
@@ -487,7 +487,7 @@
         <div x-show="activeTab === 'departments'" x-cloak>
             <div class="card">
                 <div class="card-hdr">
-                    <div class="card-ttl">ภาควิชา (Departments)</div>
+                    <div class="card-ttl">ภาควิชา</div>
                     @if($isAdmin)
                     <div class="card-actions">
                         <button class="btn btn-primary" @click="openAddDept()">
@@ -573,14 +573,30 @@
                                         </thead>
                                         <tbody>
                                             @foreach($dept->instructorProfiles->sortBy(fn($p) => $p->user->name ?? '') as $profile)
+                                                @php
+                                                    $pTitle  = $profile->title ?? '';
+                                                    $pDegree = $profile->academic_degree ?? '';
+                                                    $pName   = $profile->user->name ?? '-';
+                                                    $isDr    = $pDegree === 'ปริญญาเอก';
+                                                    $abbr    = match($pTitle) {
+                                                        'ศาสตราจารย์'         => 'ศ.',
+                                                        'รองศาสตราจารย์'      => 'รศ.',
+                                                        'ผู้ช่วยศาสตราจารย์'  => 'ผศ.',
+                                                        'อาจารย์'             => 'อ.',
+                                                        default               => null,
+                                                    };
+                                                    $displayName = $abbr
+                                                        ? $abbr . ($isDr ? 'ดร.' : '') . $pName
+                                                        : ($profile->user->prefix ?? '') . $pName;
+                                                @endphp
                                                 <tr style="border-top: 1px solid var(--border); transition: background 0.1s;"
                                                     onmouseover="this.style.background='var(--bg-2)'" onmouseout="this.style.background=''">
                                                     <td style="padding: 11px 16px 11px 56px; font-size: 13px; font-weight: 600; color: var(--fg-1);">
-                                                        {{ $profile->user->prefix ?? '' }} {{ $profile->user->name ?? '-' }}
+                                                        {{ trim($displayName) }}
                                                     </td>
-                                                    <td style="padding: 11px 16px; font-size: 13px; color: var(--fg-2);">{{ $profile->title ?? '-' }}</td>
+                                                    <td style="padding: 11px 16px; font-size: 13px; color: var(--fg-2);">{{ $pTitle ?: '-' }}</td>
                                                     <td style="padding: 11px 16px; font-size: 13px; color: var(--fg-2);">{{ $profile->employment_type ?? '-' }}</td>
-                                                    <td style="padding: 11px 16px; font-size: 13px; color: var(--fg-2); text-align: center;">{{ $profile->academic_degree ?? '-' }}</td>
+                                                    <td style="padding: 11px 16px; font-size: 13px; color: var(--fg-2); text-align: center;">{{ $pDegree ?: '-' }}</td>
                                                 </tr>
                                             @endforeach
                                         </tbody>
@@ -602,7 +618,7 @@
         <div x-show="activeTab === 'location_types'" x-cloak>
             <div class="card">
                 <div class="card-hdr">
-                    <div class="card-ttl">ห้องและสถานที่ (Rooms & Locations)</div>
+                    <div class="card-ttl">ห้องและสถานที่</div>
                     <div class="card-actions">
                         <button class="btn btn-secondary" @click="showImportRoomModal = true">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -780,7 +796,7 @@
         <div x-show="activeTab === 'courses'" x-cloak>
             <div class="card">
                 <div class="card-hdr">
-                    <div class="card-ttl">คลังรายวิชา (Courses Library)</div>
+                    <div class="card-ttl">คลังรายวิชา</div>
                     <div class="card-actions">
                         <div class="search-box" style="width: 240px;">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -893,7 +909,7 @@
         <div x-show="activeTab === 'curriculums'" x-cloak>
             <div class="card">
                 <div class="card-hdr">
-                    <div class="card-ttl">การจัดการหลักสูตร (Curriculum Management)</div>
+                    <div class="card-ttl">การจัดการหลักสูตร</div>
                     @if($isAdmin)
                     <div class="card-actions">
                         <button class="btn btn-primary" @click="openAddCurriculum()">
