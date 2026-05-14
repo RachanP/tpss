@@ -82,15 +82,15 @@
         // Location Types
         showLocTypeModal: false,
         editLocTypeMode: false,
-        currentLocType: { id: '', name: '' },
+        currentLocType: { id: '', name: '', rooms_count: 0 },
         openAddLocType() {
             this.editLocTypeMode = false;
-            this.currentLocType = { id: '', name: '' };
+            this.currentLocType = { id: '', name: '', rooms_count: 0 };
             this.showLocTypeModal = true;
         },
         openEditLocType(type) {
             this.editLocTypeMode = true;
-            this.currentLocType = { id: type.id, name: type.name };
+            this.currentLocType = { id: type.id, name: type.name, rooms_count: type.rooms_count };
             this.showLocTypeModal = true;
         },
 
@@ -349,19 +349,9 @@
                     อาจารย์ผู้สอน
                     @if(!$isAdmin)@include('shared.master_data._lock_icon')@endif
                 </button>
-                {{-- 5. ประเภทสถานที่ (ต้องมีก่อนสร้างห้อง) --}}
+                {{-- 5. ห้องและสถานที่ (รวมประเภท) --}}
                 <button type="button" @click="activeTab = 'location_types'"
                     :class="activeTab === 'location_types' ? 'btn-primary' : 'btn btn-ghost'"
-                    style="padding: 8px 16px; border-radius: 6px;">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
-                        style="margin-right: 6px;">
-                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-                    </svg>
-                    ประเภทสถานที่
-                </button>
-                {{-- 7. ห้องและสถานที่ (ต้องมีประเภทก่อน) --}}
-                <button type="button" @click="activeTab = 'rooms'"
-                    :class="activeTab === 'rooms' ? 'btn-primary' : 'btn btn-ghost'"
                     style="padding: 8px 16px; border-radius: 6px;">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
                         style="margin-right: 6px;">
@@ -501,193 +491,287 @@
                     @if($isAdmin)
                     <div class="card-actions">
                         <button class="btn btn-primary" @click="openAddDept()">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
-                                stroke-width="2" stroke-linecap="round">
-                                <line x1="12" y1="5" x2="12" y2="19" />
-                                <line x1="5" y1="12" x2="19" y2="12" />
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                             </svg>
                             เพิ่มภาควิชา
                         </button>
                     </div>
                     @endif
                 </div>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>ชื่อภาควิชา</th>
-                                <th>หัวหน้าภาควิชา</th>
-                                <th>เลขานุการภาควิชา</th>
-                                <th style="text-align: center;">จำนวนอาจารย์</th>
-                                @if($isAdmin)<th style="text-align: center;">จัดการ</th>@endif
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($departments as $dept)
-                                <tr>
-                                    <td style="font-weight: 600; color: var(--fg-1);">{{ $dept->name }}</td>
-                                    <td style="color: var(--fg-2); font-size: 13px;">{{ $dept->head->name ?? '-' }}</td>
-                                    <td style="color: var(--fg-2); font-size: 13px;">{{ $dept->secretary->name ?? '-' }}
-                                    </td>
-                                    <td style="text-align: center; font-weight: 600; color: var(--brand-navy);">
-                                        {{ $dept->instructors_count }} คน
-                                    </td>
-                                    @if($isAdmin)
-                                    <td style="text-align: center;">
-                                        <button class="action-btn" title="แก้ไข"
-                                            @click="openEditDept({{ Js::from($dept) }})">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                                stroke-linecap="round" stroke-linejoin="round">
-                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                            </svg>
-                                        </button>
-                                    </td>
-                                    @endif
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="5" style="text-align: center; padding: 40px; color: var(--fg-3);">
-                                        ยังไม่มีข้อมูลภาควิชา</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+
+                <div x-data="{ expandedDept: null }" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 8px;">
+                    @forelse($departments as $dept)
+                        <div style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+
+                            {{-- Header --}}
+                            <div @click="expandedDept = expandedDept === {{ $dept->id }} ? null : {{ $dept->id }}"
+                                style="cursor: pointer; user-select: none; transition: background 0.15s;"
+                                :style="expandedDept === {{ $dept->id }} ? 'background: #f0f4ff;' : 'background: #fff;'">
+                            <div style="display: flex; align-items: center; gap: 16px; padding: 14px 16px;">
+
+                                {{-- Chevron --}}
+                                <div style="flex-shrink: 0; width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: background 0.15s;"
+                                    :style="expandedDept === {{ $dept->id }} ? 'background: var(--brand-navy);' : 'background: var(--bg-3);'">
+                                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                                        style="transition: transform 0.2s;"
+                                        :style="expandedDept === {{ $dept->id }} ? 'transform:rotate(90deg); color:#fff' : 'color: var(--fg-3)'">
+                                        <polyline points="9 18 15 12 9 6"/>
+                                    </svg>
+                                </div>
+
+                                {{-- Name + head/sec --}}
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="font-weight: 600; font-size: 14px; color: var(--fg-1);">{{ $dept->name }}</div>
+                                    <div style="margin-top: 3px; font-size: 12px; color: var(--fg-3); display: flex; gap: 16px; flex-wrap: wrap;">
+                                        <span>หัวหน้า: {{ $dept->head->name ?? '-' }}</span>
+                                        <span>เลขานุการ: {{ $dept->secretary->name ?? '-' }}</span>
+                                    </div>
+                                </div>
+
+                                {{-- Count badge --}}
+                                @if($dept->instructors_count > 0)
+                                <div style="flex-shrink: 0; background: var(--bg-3); border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 700; color: var(--fg-2);">
+                                    {{ $dept->instructors_count }} คน
+                                </div>
+                                @else
+                                <div style="flex-shrink: 0; font-size: 12px; color: var(--fg-4, #94a3b8);">ยังไม่มีอาจารย์</div>
+                                @endif
+
+                                {{-- Edit (admin only) --}}
+                                @if($isAdmin)
+                                <div @click.stop style="flex-shrink: 0;">
+                                    <button class="action-btn" title="แก้ไข" @click.stop="openEditDept({{ Js::from($dept) }})">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                                @endif
+
+                            </div>{{-- /flex inner --}}
+                            </div>{{-- /click outer --}}
+
+                            {{-- Expanded instructor list --}}
+                            <div x-show="expandedDept === {{ $dept->id }}" x-cloak
+                                x-transition:enter="transition ease-out duration-150"
+                                x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                                x-transition:leave="transition ease-in duration-100"
+                                x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                                style="border-top: 1px solid var(--border);">
+
+                                @if($dept->instructorProfiles->count() > 0)
+                                    <table style="width: 100%; border-collapse: collapse;">
+                                        <thead>
+                                            <tr style="background: var(--bg-2);">
+                                                <th style="padding: 8px 16px 8px 56px; text-align: left; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">ชื่ออาจารย์</th>
+                                                <th style="padding: 8px 16px; text-align: left; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">ตำแหน่ง</th>
+                                                <th style="padding: 8px 16px; text-align: left; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">ประเภทบุคลากร</th>
+                                                <th style="padding: 8px 16px; text-align: center; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">วุฒิการศึกษา</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($dept->instructorProfiles->sortBy(fn($p) => $p->user->name ?? '') as $profile)
+                                                <tr style="border-top: 1px solid var(--border); transition: background 0.1s;"
+                                                    onmouseover="this.style.background='var(--bg-2)'" onmouseout="this.style.background=''">
+                                                    <td style="padding: 11px 16px 11px 56px; font-size: 13px; font-weight: 600; color: var(--fg-1);">
+                                                        {{ $profile->user->prefix ?? '' }} {{ $profile->user->name ?? '-' }}
+                                                    </td>
+                                                    <td style="padding: 11px 16px; font-size: 13px; color: var(--fg-2);">{{ $profile->title ?? '-' }}</td>
+                                                    <td style="padding: 11px 16px; font-size: 13px; color: var(--fg-2);">{{ $profile->employment_type ?? '-' }}</td>
+                                                    <td style="padding: 11px 16px; font-size: 13px; color: var(--fg-2); text-align: center;">{{ $profile->academic_degree ?? '-' }}</td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                @else
+                                    <div style="padding: 20px 56px; font-size: 13px; color: var(--fg-3);">ยังไม่มีอาจารย์ในภาควิชานี้</div>
+                                @endif
+                            </div>
+
+                        </div>
+                    @empty
+                        <div style="text-align: center; padding: 48px 20px; color: var(--fg-3);">ยังไม่มีข้อมูลภาควิชา</div>
+                    @endforelse
                 </div>
             </div>
         </div>
 
-        <!-- Tab: Location Types -->
+        <!-- Tab: Location Types + Rooms (merged) -->
         <div x-show="activeTab === 'location_types'" x-cloak>
-            <div class="card">
-                <div class="card-hdr">
-                    <div class="card-ttl">ประเภทสถานที่ (Location Types)</div>
-                    <div class="card-actions">
-                        <button class="btn btn-primary" @click="openAddLocType()">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
-                                stroke-width="2" stroke-linecap="round">
-                                <line x1="12" y1="5" x2="12" y2="19" />
-                                <line x1="5" y1="12" x2="19" y2="12" />
-                            </svg>
-                            เพิ่มประเภท
-                        </button>
-                    </div>
-                </div>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>ชื่อประเภท</th>
-                                <th style="text-align: center;">จำนวนสถานที่</th>
-                                <th style="text-align: center;">จัดการ</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($locationTypes as $type)
-                                <tr>
-                                    <td style="font-weight: 600; color: var(--fg-1);">{{ $type->name }}</td>
-                                    <td style="text-align: center; color: var(--fg-2);">{{ $type->rooms_count }} แห่ง</td>
-                                    <td style="text-align: center;">
-                                        <button class="action-btn" title="แก้ไข"
-                                            @click="openEditLocType({{ Js::from($type) }})">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                                stroke-linecap="round" stroke-linejoin="round">
-                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                            </svg>
-                                        </button>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="3" style="text-align: center; padding: 40px; color: var(--fg-3);">
-                                        ยังไม่มีข้อมูลประเภทสถานที่</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tab: Rooms -->
-        <div x-show="activeTab === 'rooms'" x-cloak>
             <div class="card">
                 <div class="card-hdr">
                     <div class="card-ttl">ห้องและสถานที่ (Rooms & Locations)</div>
                     <div class="card-actions">
                         <button class="btn btn-secondary" @click="showImportRoomModal = true">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
-                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                                 <polyline points="17 8 12 3 7 8"/>
                                 <line x1="12" y1="3" x2="12" y2="15"/>
                             </svg>
                             นำเข้าจากไฟล์
                         </button>
-                        <button class="btn btn-primary" @click="openAddRoom()">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
-                                stroke-width="2" stroke-linecap="round">
-                                <line x1="12" y1="5" x2="12" y2="19" />
-                                <line x1="5" y1="12" x2="19" y2="12" />
+                        <button class="btn btn-ghost" @click="openAddRoom()">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                <line x1="5" y1="12" x2="19" y2="12"/>
                             </svg>
-                            เพิ่มห้อง/สถานที่
+                            เพิ่มสถานที่
+                        </button>
+                        <button class="btn btn-primary" @click="openAddLocType()">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            เพิ่มประเภท
                         </button>
                     </div>
                 </div>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>รหัสห้อง</th>
-                                <th>ชื่อสถานที่</th>
-                                <th>อาคาร</th>
-                                <th>ประเภท</th>
-                                <th style="text-align: center;">ความจุ</th>
-                                <th style="text-align: center;">สถานะ</th>
-                                <th style="text-align: center;">จัดการ</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($rooms as $room)
-                                <tr>
-                                    <td style="font-weight: 700; color: var(--brand-navy); font-family: var(--font-mono);">{{ $room->room_code }}</td>
-                                    <td style="font-weight: 600; color: var(--fg-1);">{{ $room->room_name }}</td>
-                                    <td style="color: var(--fg-2);">{{ $room->building ?? '-' }}</td>
-                                    <td>
-                                        <span class="badge badge-gray" style="font-size: 11px;">
-                                            {{ $room->locationType->name ?? '-' }}
-                                        </span>
-                                    </td>
-                                    <td style="text-align: center; font-weight: 600;">{{ $room->capacity }}</td>
-                                    <td style="text-align: center;">
-                                        @if($room->status === 'active')
-                                            <span class="badge badge-success">พร้อมใช้งาน</span>
-                                        @elseif($room->status === 'maintenance')
-                                            <span class="badge badge-warning">ปิดซ่อมบำรุง</span>
-                                        @else
-                                            <span class="badge badge-gray">ไม่พร้อมใช้</span>
+                <div x-data="{ expandedType: null }" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 8px;">
+                    @forelse($locationTypes as $type)
+                        @php
+                            $statusCounts = $type->rooms->groupBy('status');
+                            $activeCount = $statusCounts->get('active', collect())->count();
+                            $inactiveCount = $statusCounts->get('inactive', collect())->count();
+                            $maintenanceCount = $statusCounts->get('maintenance', collect())->count();
+                        @endphp
+
+                        {{-- Card wrapper --}}
+                        <div style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+
+                            {{-- Header row --}}
+                            <div @click="expandedType = expandedType === {{ $type->id }} ? null : {{ $type->id }}"
+                                style="cursor: pointer; user-select: none; transition: background 0.15s;"
+                                :style="expandedType === {{ $type->id }} ? 'background: #f0f4ff;' : 'background: #fff;'">
+                            <div style="display: flex; align-items: center; gap: 16px; padding: 14px 16px;">
+
+                                {{-- Chevron pill --}}
+                                <div style="flex-shrink: 0; width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: background 0.15s;"
+                                    :style="expandedType === {{ $type->id }} ? 'background: var(--brand-navy);' : 'background: var(--bg-3);'">
+                                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+                                        stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                                        style="transition: transform 0.2s;"
+                                        :style="expandedType === {{ $type->id }} ? 'transform:rotate(90deg); color:#fff' : 'color: var(--fg-3)'">
+                                        <polyline points="9 18 15 12 9 6"/>
+                                    </svg>
+                                </div>
+
+                                {{-- Name + status --}}
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="font-weight: 600; font-size: 14px; color: var(--fg-1);">{{ $type->name }}</div>
+                                    <div style="margin-top: 4px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                        @if($activeCount > 0)
+                                            <span style="font-size: 11px; display: inline-flex; align-items: center; gap: 5px; color: #059669;">
+                                                <span style="width: 7px; height: 7px; border-radius: 50%; background: #10b981; flex-shrink: 0;"></span>ใช้งาน {{ $activeCount }} แห่ง
+                                            </span>
                                         @endif
-                                    </td>
-                                    <td style="text-align: center;">
-                                        <button class="action-btn" title="แก้ไข"
-                                            @click="openEditRoom({{ Js::from($room) }})">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                                stroke-linecap="round" stroke-linejoin="round">
-                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                            </svg>
-                                        </button>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="7" style="text-align: center; padding: 40px; color: var(--fg-3);">
-                                        ยังไม่มีข้อมูลห้องและสถานที่</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+                                        @if($maintenanceCount > 0)
+                                            <span style="font-size: 11px; display: inline-flex; align-items: center; gap: 5px; color: #d97706;">
+                                                <span style="width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; flex-shrink: 0;"></span>ซ่อมบำรุง {{ $maintenanceCount }} แห่ง
+                                            </span>
+                                        @endif
+                                        @if($inactiveCount > 0)
+                                            <span style="font-size: 11px; display: inline-flex; align-items: center; gap: 5px; color: var(--fg-3);">
+                                                <span style="width: 7px; height: 7px; border-radius: 50%; background: #cbd5e1; flex-shrink: 0;"></span>ปิด {{ $inactiveCount }} แห่ง
+                                            </span>
+                                        @endif
+                                        @if($type->rooms_count === 0)
+                                            <span style="font-size: 11px; color: var(--fg-4, #94a3b8);">ยังไม่มีสถานที่</span>
+                                        @endif
+                                    </div>
+                                </div>
+
+                                {{-- Total count badge --}}
+                                @if($type->rooms_count > 0)
+                                <div style="flex-shrink: 0; background: var(--bg-3); border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 700; color: var(--fg-2);">
+                                    {{ $type->rooms_count }} แห่ง
+                                </div>
+                                @endif
+
+                                {{-- Edit --}}
+                                <div @click.stop style="flex-shrink: 0;">
+                                    <button class="action-btn" title="แก้ไขประเภท"
+                                        @click.stop="openEditLocType({{ Js::from(['id' => $type->id, 'name' => $type->name, 'rooms_count' => $type->rooms_count]) }})">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>{{-- /flex inner --}}
+                            </div>{{-- /click outer --}}
+
+                            {{-- Expanded room list --}}
+                            <div x-show="expandedType === {{ $type->id }}" x-cloak
+                                x-transition:enter="transition ease-out duration-150"
+                                x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                                x-transition:leave="transition ease-in duration-100"
+                                x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                                style="border-top: 1px solid var(--border);">
+
+                                @if($type->rooms->count() > 0)
+                                    <table style="width: 100%; border-collapse: collapse;">
+                                        <thead>
+                                            <tr style="background: var(--bg-2);">
+                                                <th style="padding: 8px 16px 8px 56px; text-align: left; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">รหัส</th>
+                                                <th style="padding: 8px 16px; text-align: left; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">ชื่อห้อง / สถานที่</th>
+                                                <th style="padding: 8px 16px; text-align: left; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">อาคาร</th>
+                                                <th style="padding: 8px 16px; text-align: center; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">ความจุ</th>
+                                                <th style="padding: 8px 16px; text-align: center; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">สถานะ</th>
+                                                <th style="padding: 8px 16px; width: 48px;"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($type->rooms->sortBy('room_name') as $room)
+                                                @php $statusMap = ['active' => ['ใช้งาน', '#059669', '#d1fae5'], 'inactive' => ['ปิดใช้งาน', '#6b7280', '#f3f4f6'], 'maintenance' => ['ซ่อมบำรุง', '#d97706', '#fef3c7']]; $s = $statusMap[$room->status] ?? $statusMap['active']; @endphp
+                                                <tr style="border-top: 1px solid var(--border); transition: background 0.1s;"
+                                                    onmouseover="this.style.background='var(--bg-2)'" onmouseout="this.style.background=''">
+                                                    <td style="padding: 11px 16px 11px 56px; font-size: 12px; color: var(--fg-3); font-family: var(--font-mono, monospace);">{{ $room->room_code ?: '—' }}</td>
+                                                    <td style="padding: 11px 16px; font-size: 13px; font-weight: 600; color: var(--fg-1);">{{ $room->room_name }}</td>
+                                                    <td style="padding: 11px 16px; font-size: 13px; color: var(--fg-2);">{{ $room->building ?: '—' }}</td>
+                                                    <td style="padding: 11px 16px; font-size: 13px; color: var(--fg-2); text-align: center;">{{ $room->capacity ? number_format($room->capacity) . ' คน' : '—' }}</td>
+                                                    <td style="padding: 11px 16px; text-align: center;">
+                                                        <span style="font-size: 11px; font-weight: 600; color: {{ $s[1] }}; background: {{ $s[2] }}; border-radius: 20px; padding: 3px 10px;">{{ $s[0] }}</span>
+                                                    </td>
+                                                    <td style="padding: 8px 12px; text-align: center;">
+                                                        <button class="action-btn" title="แก้ไข"
+                                                            @click.stop="openEditRoom({{ Js::from($room->only('id','room_code','room_name','building','capacity','location_type_id','status','address','equipment_type')) }})">
+                                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                                            </svg>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                @else
+                                    <div style="padding: 20px 56px; font-size: 13px; color: var(--fg-3);">ยังไม่มีสถานที่ในประเภทนี้</div>
+                                @endif
+
+                                @if($isAdmin)
+                                <div style="padding: 10px 16px; border-top: 1px solid var(--border); background: var(--bg-2);">
+                                    <button type="button" class="btn btn-ghost" style="font-size: 12px; padding: 5px 12px; gap: 6px;"
+                                        @click="openAddRoom(); $nextTick(() => currentRoom.location_type_id = '{{ $type->id }}')">
+                                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                                            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                                        </svg>
+                                        เพิ่มสถานที่ในประเภทนี้
+                                    </button>
+                                </div>
+                                @endif
+                            </div>
+                        </div>{{-- end card --}}
+                    @empty
+                        <div style="text-align: center; padding: 48px 20px; color: var(--fg-3);">
+                            <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" style="color: #cbd5e1; margin: 0 auto 12px; display: block;">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+                            </svg>
+                            ยังไม่มีข้อมูลประเภทสถานที่
+                        </div>
+                    @endforelse
                 </div>
             </div>
         </div>
@@ -813,69 +897,128 @@
                     @if($isAdmin)
                     <div class="card-actions">
                         <button class="btn btn-primary" @click="openAddCurriculum()">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
-                                stroke-width="2" stroke-linecap="round">
-                                <line x1="12" y1="5" x2="12" y2="19" />
-                                <line x1="5" y1="12" x2="19" y2="12" />
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                             </svg>
                             เพิ่มหลักสูตรใหม่
                         </button>
                     </div>
                     @endif
                 </div>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>ชื่อหลักสูตร</th>
-                                <th style="text-align: center;">ปีที่เริ่มใช้</th>
-                                <th style="text-align: center;">จำนวนวิชา</th>
-                                <th style="text-align: center;">สถานะ</th>
-                                @if($isAdmin)<th style="text-align: center;">จัดการ</th>@endif
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($curriculums as $curr)
-                                <tr>
-                                    <td style="font-weight: 600; color: var(--fg-1);">{{ $curr->name }}</td>
-                                    <td style="text-align: center; color: var(--fg-2);">{{ $curr->effective_year }}</td>
-                                    <td style="text-align: center; font-weight: 700; color: var(--brand-navy);">{{ $curr->courses_count }} วิชา</td>
-                                    <td style="text-align: center;">
-                                        @if($curr->is_active)
-                                            <span class="badge" style="background: #e6fffa; color: #047481; border: 1px solid #b2f5ea; padding: 4px 12px; border-radius: 99px; font-weight: 700; font-size: 11px; display: inline-block;">กำลังใช้งาน</span>
-                                        @else
-                                            <span class="badge" style="background: #f7fafc; color: #4a5568; border: 1px solid #edf2f7; padding: 4px 12px; border-radius: 99px; font-weight: 700; font-size: 11px; display: inline-block;">ปิดใช้งาน</span>
-                                        @endif
-                                    </td>
-                                    @if($isAdmin)
-                                    <td style="text-align: center;">
-                                        <div style="display: flex; justify-content: center; gap: 8px;">
-                                            <button class="action-btn" title="แก้ไขชื่อ/ปี" @click="openEditCurriculum({{ Js::from($curr) }})">
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                                    stroke-linecap="round" stroke-linejoin="round">
-                                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                                </svg>
-                                            </button>
-                                            @if(!$curr->is_active)
-                                                <button class="action-btn" title="คัดลอกหลักสูตรและรายวิชา" @click="openCloneCurriculum({{ Js::from($curr) }})" style="color: var(--brand-navy);">
-                                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                                                    </svg>
-                                                </button>
-                                            @endif
-                                        </div>
-                                    </td>
+
+                <div x-data="{ expandedCurriculum: null }" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 8px;">
+                    @forelse($curriculums as $curr)
+                        <div style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+
+                            {{-- Header --}}
+                            <div @click="expandedCurriculum = expandedCurriculum === {{ $curr->id }} ? null : {{ $curr->id }}"
+                                style="cursor: pointer; user-select: none; transition: background 0.15s;"
+                                :style="expandedCurriculum === {{ $curr->id }} ? 'background: #f0f4ff;' : 'background: #fff;'">
+                            <div style="display: flex; align-items: center; gap: 16px; padding: 14px 16px;">
+
+                                {{-- Chevron --}}
+                                <div style="flex-shrink: 0; width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: background 0.15s;"
+                                    :style="expandedCurriculum === {{ $curr->id }} ? 'background: var(--brand-navy);' : 'background: var(--bg-3);'">
+                                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                                        style="transition: transform 0.2s;"
+                                        :style="expandedCurriculum === {{ $curr->id }} ? 'transform:rotate(90deg); color:#fff' : 'color: var(--fg-3)'">
+                                        <polyline points="9 18 15 12 9 6"/>
+                                    </svg>
+                                </div>
+
+                                {{-- Name + year --}}
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="font-weight: 600; font-size: 14px; color: var(--fg-1);">{{ $curr->name }}</div>
+                                    <div style="margin-top: 3px; font-size: 12px; color: var(--fg-3);">
+                                        ปีที่เริ่มใช้: {{ $curr->effective_year ? $curr->effective_year + 543 : '-' }}
+                                    </div>
+                                </div>
+
+                                {{-- Status badge --}}
+                                @if($curr->is_active)
+                                    <span style="flex-shrink:0; background:#e6fffa; color:#047481; border:1px solid #b2f5ea; padding:3px 10px; border-radius:99px; font-size:11px; font-weight:700;">กำลังใช้งาน</span>
+                                @else
+                                    <span style="flex-shrink:0; background:#f7fafc; color:#4a5568; border:1px solid #edf2f7; padding:3px 10px; border-radius:99px; font-size:11px; font-weight:700;">ปิดใช้งาน</span>
+                                @endif
+
+                                {{-- Course count --}}
+                                @if($curr->courses_count > 0)
+                                <div style="flex-shrink: 0; background: var(--bg-3); border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 700; color: var(--fg-2);">
+                                    {{ $curr->courses_count }} วิชา
+                                </div>
+                                @else
+                                <div style="flex-shrink: 0; font-size: 12px; color: var(--fg-4, #94a3b8);">ยังไม่มีวิชา</div>
+                                @endif
+
+                                {{-- Actions (admin only) --}}
+                                @if($isAdmin)
+                                <div @click.stop style="flex-shrink: 0; display: flex; gap: 4px;">
+                                    <button class="action-btn" title="แก้ไขชื่อ/ปี" @click.stop="openEditCurriculum({{ Js::from($curr) }})">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                        </svg>
+                                    </button>
+                                    @if(!$curr->is_active)
+                                    <button class="action-btn" title="คัดลอกหลักสูตรและรายวิชา" @click.stop="openCloneCurriculum({{ Js::from($curr) }})" style="color: var(--brand-navy);">
+                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                        </svg>
+                                    </button>
                                     @endif
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="5" style="text-align: center; padding: 40px; color: var(--fg-3);">ยังไม่มีข้อมูลหลักสูตร</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+                                </div>
+                                @endif
+
+                            </div>{{-- /flex inner --}}
+                            </div>{{-- /click outer --}}
+
+                            {{-- Expanded course list --}}
+                            <div x-show="expandedCurriculum === {{ $curr->id }}" x-cloak
+                                x-transition:enter="transition ease-out duration-150"
+                                x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                                x-transition:leave="transition ease-in duration-100"
+                                x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                                style="border-top: 1px solid var(--border);">
+
+                                @if($curr->courses->count() > 0)
+                                    <table style="width: 100%; border-collapse: collapse;">
+                                        <thead>
+                                            <tr style="background: var(--bg-2);">
+                                                <th style="padding: 8px 16px 8px 56px; text-align: left; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">รหัสวิชา</th>
+                                                <th style="padding: 8px 16px; text-align: left; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">ชื่อวิชา</th>
+                                                <th style="padding: 8px 16px; text-align: center; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">หน่วยกิต</th>
+                                                <th style="padding: 8px 16px; text-align: center; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">ชั้นปี</th>
+                                                <th style="padding: 8px 16px; text-align: center; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">ภาค</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($curr->courses as $course)
+                                                <tr style="border-top: 1px solid var(--border); transition: background 0.1s;"
+                                                    onmouseover="this.style.background='var(--bg-2)'" onmouseout="this.style.background=''">
+                                                    <td style="padding: 11px 16px 11px 56px; font-size: 12px; color: var(--fg-3); font-family: var(--font-mono, monospace);">{{ $course->course_code }}</td>
+                                                    <td style="padding: 11px 16px; font-size: 13px; font-weight: 600; color: var(--fg-1);">
+                                                        {{ $course->name_th }}
+                                                        @if($course->name_en)
+                                                            <div style="font-size: 11px; font-weight: 400; color: var(--fg-3); margin-top: 1px;">{{ $course->name_en }}</div>
+                                                        @endif
+                                                    </td>
+                                                    <td style="padding: 11px 16px; font-size: 13px; color: var(--fg-2); text-align: center;">{{ $course->credits }}</td>
+                                                    <td style="padding: 11px 16px; font-size: 13px; color: var(--fg-2); text-align: center;">{{ $course->default_year_level ? 'ปี ' . $course->default_year_level : '-' }}</td>
+                                                    <td style="padding: 11px 16px; font-size: 13px; color: var(--fg-2); text-align: center;">{{ $course->default_semester ?? '-' }}</td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                @else
+                                    <div style="padding: 20px 56px; font-size: 13px; color: var(--fg-3);">ยังไม่มีรายวิชาในหลักสูตรนี้</div>
+                                @endif
+                            </div>
+
+                        </div>
+                    @empty
+                        <div style="text-align: center; padding: 48px 20px; color: var(--fg-3);">ยังไม่มีข้อมูลหลักสูตร</div>
+                    @endforelse
                 </div>
             </div>
         </div>
@@ -1115,7 +1258,9 @@
                         </div>
                         <div class="modal-foot" style="display: flex; justify-content: space-between;">
                             <div>
-                                <button type="button" class="btn btn-ghost" x-show="editLocTypeMode" @click="confirmDelete('deleteLocTypeForm', currentLocType.name, null)" style="color: var(--status-conflict-fg);">
+                                <button type="button" class="btn btn-ghost" x-show="editLocTypeMode"
+                                    @click="confirmDelete('deleteLocTypeForm', currentLocType.name, currentLocType.rooms_count > 0 ? 'ห้อง/สถานที่ในประเภทนี้อีก ' + currentLocType.rooms_count + ' แห่งจะถูกลบออกด้วย' : null)"
+                                    style="color: var(--status-conflict-fg);">
                                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; display: inline-block; vertical-align: middle;"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg> ลบข้อมูล
                                 </button>
                             </div>
@@ -1595,7 +1740,7 @@
         <!-- Add/Edit Modal (Activity Type) -->
         <template x-if="showActivityTypeModal">
             <div class="overlay" x-cloak @click.self="showActivityTypeModal = false">
-                <div class="modal-center" style="max-width: 420px;"
+                <div class="modal-center" style="max-width: 520px;"
                     x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95"
                     x-transition:enter-end="opacity-100 scale-100">
                     <div class="modal-hdr" style="background: var(--bg-2);">
@@ -1610,7 +1755,7 @@
                     <form :action="editActivityTypeMode ? '{{ url('admin/master-data/activity-types') }}/' + currentActivityType.id : '{{ route('admin.activity_types.store') }}'" method="POST">
                         @csrf
                         <input type="hidden" name="_method" value="PUT" :disabled="!editActivityTypeMode">
-                        <div class="modal-body">
+                        <div class="modal-body" style="overflow: visible;">
                             <div class="form-group" style="margin-bottom: 20px;">
                                 <label>ชื่อประเภทกิจกรรม <span style="color: var(--status-conflict-fg)">*</span></label>
                                 <input type="text" name="name" x-model="currentActivityType.name" required placeholder="เช่น บรรยาย, ฝึกปฏิบัติในห้องเรียน">
@@ -1634,7 +1779,7 @@
                                             <span style="font-size: 13px; color: var(--fg-2); font-family: var(--font-mono);" x-text="currentActivityType.color_code"></span>
                                         </button>
                                         <div x-show="open" @click.outside="open = false" x-cloak
-                                            style="position: absolute; z-index: 50; top: calc(100% + 4px); left: 0; background: var(--bg-1); border: 1px solid var(--border); border-radius: 6px; padding: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.12); width: 220px;">
+                                            style="position: absolute; z-index: 9999; bottom: calc(100% + 4px); left: 0; background: #ffffff; border: 1px solid var(--border); border-radius: 6px; padding: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.12); width: 220px;">
                                             <div style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; margin-bottom: 10px;">
                                                 <template x-for="c in ['#3B82F6','#2563EB','#1D4ED8','#0EA5E9','#06B6D4','#10B981','#059669','#047857','#F59E0B','#EF4444','#DC2626','#8B5CF6','#7C3AED','#EC4899','#F97316','#6B7280']">
                                                     <button type="button" @click="currentActivityType.color_code = c; open = false"

@@ -63,7 +63,6 @@ class AdminUserController extends Controller
             'is_active'    => 'boolean',
             // instructor profile fields
             'instructor_title'          => "$reqInstructor|string|max:100",
-            'instructor_employee_id'     => null, // deprecated — moved to users.employee_id
             'instructor_department_id'  => "$reqInstructor|integer|exists:departments,id",
             'instructor_employment_type' => "$reqInstructor|string|max:100",
             'instructor_hired_at'        => "$reqInstructor|date",
@@ -157,7 +156,6 @@ class AdminUserController extends Controller
             'is_active'    => 'required|boolean',
             // instructor profile fields
             'instructor_title'          => "$reqInstructor|string|max:100",
-            'instructor_employee_id'     => null, // deprecated — moved to users.employee_id
             'instructor_department_id'  => "$reqInstructor|integer|exists:departments,id",
             'instructor_employment_type' => "$reqInstructor|string|max:100",
             'instructor_hired_at'        => "$reqInstructor|date",

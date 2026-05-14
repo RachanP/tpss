@@ -22,7 +22,7 @@ class MasterDataController extends Controller
         })->with(['instructorProfile.department', 'roles'])->get();
 
         // Departments with count of instructors
-        $departments = Department::with(['head', 'secretary'])
+        $departments = Department::with(['head', 'secretary', 'instructorProfiles.user'])
             ->withCount('instructorProfiles as instructors_count')
             ->get();
 
@@ -30,7 +30,7 @@ class MasterDataController extends Controller
         $users = User::with('instructorProfile')->where('is_active', true)->orderBy('name')->get();
 
         // Location Types
-        $locationTypes = LocationType::withCount('rooms')->get();
+        $locationTypes = LocationType::withCount('rooms')->with('rooms')->get();
 
         // Rooms with their types
         $rooms = Room::with('locationType')->get();
@@ -43,8 +43,8 @@ class MasterDataController extends Controller
         // Courses with curriculum and head instructor
         $courses = Course::with(['curriculum', 'department', 'headInstructor', 'assignedStaff'])->get();
 
-        // Curriculums with course count
-        $curriculums = Curriculum::withCount('courses')->get();
+        // Curriculums with course count and courses list
+        $curriculums = Curriculum::withCount('courses')->with(['courses' => fn($q) => $q->orderBy('course_code')])->get();
 
         // Activity Types
         $activityTypes = ActivityType::orderBy('name')->get();
@@ -111,7 +111,7 @@ class MasterDataController extends Controller
 
         Room::create($validated);
 
-        return redirect()->route('admin.master_data', ['tab' => 'rooms'])->with('success', 'เพิ่มห้อง/สถานที่เรียบร้อยแล้ว');
+        return redirect()->route('admin.master_data', ['tab' => 'location_types'])->with('success', 'เพิ่มห้อง/สถานที่เรียบร้อยแล้ว');
     }
 
     public function updateRoom(Request $request, Room $room)
@@ -135,7 +135,7 @@ class MasterDataController extends Controller
 
         $room->update($validated);
 
-        return redirect()->route('admin.master_data', ['tab' => 'rooms'])->with('success', 'อัปเดตห้อง/สถานที่เรียบร้อยแล้ว');
+        return redirect()->route('admin.master_data', ['tab' => 'location_types'])->with('success', 'อัปเดตห้อง/สถานที่เรียบร้อยแล้ว');
     }
 
     public function storeDepartment(Request $request)
@@ -378,14 +378,13 @@ class MasterDataController extends Controller
 
     public function destroyLocationType(LocationType $locationType)
     {
-        // Release FK on rooms before deleting
         $affected = $locationType->rooms()->count();
-        $locationType->rooms()->update(['location_type_id' => null]);
+        $locationType->rooms()->delete();
         $locationType->delete();
 
         $msg = 'ลบประเภทสถานที่เรียบร้อยแล้ว';
         if ($affected > 0) {
-            $msg .= " (ยกเลิกการกำหนดประเภทจาก {$affected} ห้อง)";
+            $msg .= " (ลบห้อง/สถานที่ที่เกี่ยวข้องออก {$affected} แห่ง)";
         }
         return redirect()->route('admin.master_data', ['tab' => 'location_types'])->with('success', $msg);
     }
@@ -394,7 +393,7 @@ class MasterDataController extends Controller
     {
         try {
             $room->delete();
-            return redirect()->route('admin.master_data', ['tab' => 'rooms'])->with('success', 'ลบห้องเรียบร้อยแล้ว');
+            return redirect()->route('admin.master_data', ['tab' => 'location_types'])->with('success', 'ลบห้องเรียบร้อยแล้ว');
         } catch (\Illuminate\Database\QueryException $e) {
             return redirect()->back()->with('error', 'ไม่สามารถลบได้เนื่องจากมีข้อมูลผูกพันอยู่');
         }
@@ -530,10 +529,10 @@ class MasterDataController extends Controller
         $routePrefix = session('active_role') === 'admin' ? 'admin' : 'staff';
         $msg = "นำเข้าสำเร็จ {$successCount} ห้อง";
         if ($errors) {
-            return redirect()->route("{$routePrefix}.master_data", ['tab' => 'rooms'])
+            return redirect()->route("{$routePrefix}.master_data", ['tab' => 'location_types'])
                 ->with('success', $msg)->with('import_errors', $errors);
         }
-        return redirect()->route("{$routePrefix}.master_data", ['tab' => 'rooms'])->with('success', $msg);
+        return redirect()->route("{$routePrefix}.master_data", ['tab' => 'location_types'])->with('success', $msg);
     }
 
     public function importCourses(Request $request)
