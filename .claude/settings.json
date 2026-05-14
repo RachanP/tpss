@@ -1,0 +1,9 @@
+{
+  "enabledMcpjsonServers": ["mysql"],
+  "permissions": {
+    "allow": [
+      "Bash(php artisan route:list *)",
+      "Bash(php artisan migrate:status)"
+    ]
+  }
+}
