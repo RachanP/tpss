@@ -232,5 +232,11 @@
             @endif
         });
     </script>
+    <script>
+        // Force reload when restored from bfcache (browser back after logout)
+        window.addEventListener('pageshow', function(e) {
+            if (e.persisted) { window.location.reload(); }
+        });
+    </script>
 </body>
 </html>
