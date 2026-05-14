@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Department;
 use App\Models\User;
 use App\Models\UserRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -47,9 +48,20 @@ class AdminUserManagementTest extends TestCase
 
     public function test_admin_can_create_user(): void
     {
-        $this->actingAs($this->admin);
+        $csrfToken = 'valid-test-csrf-token';
+        $department = Department::create([
+            'name' => 'Test Nursing Department',
+        ]);
+
+        $this
+            ->withSession([
+                'active_role' => 'admin',
+                '_token' => $csrfToken,
+            ])
+            ->actingAs($this->admin);
 
         $response = $this->post('/admin/users', [
+            '_token' => $csrfToken,
             'username' => 'newuser',
             'name' => 'New User',
             'email' => 'new@example.com',
@@ -57,6 +69,16 @@ class AdminUserManagementTest extends TestCase
             'roles' => ['staff', 'instructor'],
             'primary_role' => 'staff',
             'is_active' => true,
+            'instructor_title' => 'Instructor',
+            'instructor_department_id' => $department->id,
+            'instructor_employment_type' => 'Full-time',
+            'instructor_hired_at' => '2026-05-14',
+            'instructor_academic_degree' => 'Master',
+            'instructor_teaching_pct' => 50,
+            'instructor_research_pct' => 20,
+            'instructor_service_pct' => 10,
+            'instructor_culture_pct' => 10,
+            'instructor_other_pct' => 10,
         ]);
 
         $response->assertRedirect('/admin/users');
