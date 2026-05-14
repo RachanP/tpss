@@ -1,6 +1,8 @@
 *.log
 .DS_Store
 .env
+.env.claude
+.mcp.json
 /.claude/settings.local.json
 .env.backup
 .env.production
