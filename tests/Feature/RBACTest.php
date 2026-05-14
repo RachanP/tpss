@@ -12,24 +12,37 @@ class RBACTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_non_admin_cannot_access_admin_users_page(): void
+    private function createUserWithRole(string $role, string $suffix): User
     {
         $user = User::create([
-            'username' => 'staff_user',
-            'name' => 'Staff User',
-            'email' => 'staff@example.com',
+            'username' => "{$role}_{$suffix}",
+            'name' => "{$role} {$suffix}",
+            'email' => "{$role}_{$suffix}@example.com",
             'password' => Hash::make('password'),
+            'is_active' => true,
         ]);
 
         UserRole::create([
             'user_id' => $user->id,
-            'role' => 'staff',
+            'role' => $role,
             'is_primary' => true,
         ]);
 
-        session(['active_role' => 'staff']);
+        return $user;
+    }
 
-        $this->actingAs($user);
+    private function actingAsRole(User $user, string $activeRole): self
+    {
+        return $this
+            ->withSession(['active_role' => $activeRole])
+            ->actingAs($user);
+    }
+
+    public function test_non_admin_cannot_access_admin_users_page(): void
+    {
+        $user = $this->createUserWithRole('staff', 'admin_users_denied');
+
+        $this->actingAsRole($user, 'staff');
 
         // This should be blocked if RBAC is implemented
         $response = $this->get('/admin/users');
@@ -39,25 +52,80 @@ class RBACTest extends TestCase
 
     public function test_admin_can_access_admin_users_page(): void
     {
-        $admin = User::create([
-            'username' => 'admin_user',
-            'name' => 'Admin User',
-            'email' => 'admin@example.com',
-            'password' => Hash::make('password'),
-        ]);
+        $admin = $this->createUserWithRole('admin', 'admin_users_allowed');
 
-        UserRole::create([
-            'user_id' => $admin->id,
-            'role' => 'admin',
-            'is_primary' => true,
-        ]);
-
-        session(['active_role' => 'admin']);
-
-        $this->actingAs($admin);
+        $this->actingAsRole($admin, 'admin');
 
         $response = $this->get('/admin/users');
 
         $response->assertStatus(200);
+    }
+
+    public function test_each_role_can_access_own_dashboard(): void
+    {
+        $dashboards = [
+            'admin' => '/admin/dashboard',
+            'staff' => '/staff/dashboard',
+            'course_head' => '/maker/dashboard',
+            'executive' => '/approver/dashboard',
+            'instructor' => '/lecturer/dashboard',
+        ];
+
+        foreach ($dashboards as $role => $dashboard) {
+            $user = $this->createUserWithRole($role, 'own_dashboard');
+
+            $this->actingAsRole($user, $role);
+
+            $this->get($dashboard)->assertStatus(200);
+        }
+    }
+
+    public function test_each_role_is_denied_a_representative_dashboard_it_does_not_own(): void
+    {
+        $deniedDashboards = [
+            'admin' => '/staff/dashboard',
+            'staff' => '/admin/dashboard',
+            'course_head' => '/approver/dashboard',
+            'executive' => '/lecturer/dashboard',
+            'instructor' => '/maker/dashboard',
+        ];
+
+        foreach ($deniedDashboards as $role => $dashboard) {
+            $user = $this->createUserWithRole($role, 'representative_denied');
+
+            $this->actingAsRole($user, $role);
+
+            $this->get($dashboard)->assertStatus(403);
+        }
+    }
+
+    public function test_non_admin_roles_cannot_access_admin_dashboard(): void
+    {
+        foreach (['staff', 'course_head', 'executive', 'instructor'] as $role) {
+            $user = $this->createUserWithRole($role, 'admin_dashboard_denied');
+
+            $this->actingAsRole($user, $role);
+
+            $this->get('/admin/dashboard')->assertStatus(403);
+        }
+    }
+
+    public function test_dashboard_remains_auth_only_role_aware_hub(): void
+    {
+        $dashboards = [
+            'admin' => '/admin/dashboard',
+            'staff' => '/staff/dashboard',
+            'course_head' => '/maker/dashboard',
+            'executive' => '/approver/dashboard',
+            'instructor' => '/lecturer/dashboard',
+        ];
+
+        foreach ($dashboards as $role => $dashboard) {
+            $user = $this->createUserWithRole($role, 'hub_redirect');
+
+            $this->actingAsRole($user, $role);
+
+            $this->get('/dashboard')->assertRedirect($dashboard);
+        }
     }
 }
