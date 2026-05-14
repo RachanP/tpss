@@ -1,0 +1,56 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<title>Brand · Primary</title>
+<link rel="stylesheet" href="_card.css">
+<style>
+.swatches { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 10px; }
+.sw { border-radius: var(--r-lg); padding: 14px 14px 12px; min-height: 96px;
+      display: flex; flex-direction: column; justify-content: space-between; }
+.sw .name { font-size: 13px; font-weight: 700; line-height: 1.2; }
+.sw .meta { font-size: 11px; opacity: 0.85; font-family: var(--font-mono); margin-top: 4px; }
+.sw .hex  { font-size: 11px; font-family: var(--font-mono); margin-top: auto; opacity: 0.85; }
+.sw.dark  { color: #fff; }
+.sw.light { color: var(--fg-1); border: 1px solid var(--border); }
+.lede { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+.lede .ttl { font-size: 13px; font-weight: 700; }
+.lede .sub { font-size: 11px; color: var(--fg-3); }
+</style></head>
+<body><div class="card">
+  <div class="lede">
+    <div class="ttl">Mahidol Navy</div>
+    <div class="sub">Primary brand color · medical, formal, trustworthy</div>
+  </div>
+  <div class="swatches">
+    <div class="sw dark" style="background:#002454;">
+      <div><div class="name">Navy 900</div><div class="meta">primary brand</div></div>
+      <div class="hex">#002454</div>
+    </div>
+    <div class="sw dark" style="background:#0a3370;">
+      <div><div class="name">Navy 700</div></div>
+      <div class="hex">#0a3370</div>
+    </div>
+    <div class="sw dark" style="background:#16498f;">
+      <div><div class="name">Navy 500</div></div>
+      <div class="hex">#16498f</div>
+    </div>
+    <div class="sw light" style="background:#6b8bbf;color:#fff;">
+      <div><div class="name">Navy 300</div></div>
+      <div class="hex">#6b8bbf</div>
+    </div>
+    <div class="sw light" style="background:#d6e0f0;">
+      <div><div class="name">Navy 100</div><div class="meta">tints, badges</div></div>
+      <div class="hex">#d6e0f0</div>
+    </div>
+    <div class="sw light" style="background:#ecf1f9;">
+      <div><div class="name">Navy 50</div><div class="meta">surface tint</div></div>
+      <div class="hex">#ecf1f9</div>
+    </div>
+    <div class="sw light" style="background:#ffffff;">
+      <div><div class="name">White</div><div class="meta">surface</div></div>
+      <div class="hex">#ffffff</div>
+    </div>
+    <div class="sw light" style="background:oklch(98% 0.008 220);">
+      <div><div class="name">Page bg</div><div class="meta">soft cyan-blue</div></div>
+      <div class="hex">oklch(98% .008 220)</div>
+    </div>
+  </div>
+</div></body></html>

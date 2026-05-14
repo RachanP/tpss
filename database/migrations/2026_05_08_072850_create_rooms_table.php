@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('room_code', 255)->unique();
             $table->string('room_name', 255);
             $table->string('building', 100)->nullable();
-            $table->integer('capacity');
+            $table->integer('capacity')->nullable();
             $table->unsignedBigInteger('location_type_id');
             $table->foreign('location_type_id')->references('id')->on('location_types');
             $table->json('equipment_type')->nullable();

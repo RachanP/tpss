@@ -37,15 +37,15 @@
 | จำนวน Sprint | 7 Sprints (Phase 1) + 5 Sub-Sprints (Phase 2) |
 | Story Points รวม | 280 SP | 61 User Stories |
 
-### สถานะ Phase (ณ 8 พ.ค. 2569)
+### สถานะ Phase (ณ 12 พ.ค. 2569)
 
 | Phase | ชื่อ | ช่วงวันที่ | สถานะ |
 |-------|------|-----------|-------|
 | Phase 1 | Initiation | 25–29 เม.ย. 2569 | ✅ เสร็จแล้ว |
 | Phase 2 | Requirements | 29 เม.ย. – 6 พ.ค. 2569 | ✅ เสร็จแล้ว |
 | Phase 3 | Design | 4–8 พ.ค. 2569 | ✅ เสร็จสมบูรณ์ (UI Mockup + Database Migrations) |
-| Phase 4-5 | Development | 11–28 พ.ค. 2569 | ยังไม่เริ่ม |
-| Phase 5 | Testing | 11 พ.ค. – 2 มิ.ย. 2569 | ยังไม่เริ่ม |
+| Phase 4-5 | Development | 11–28 พ.ค. 2569 | 🟢 เสร็จสิ้น Sprint 1+2 (Login, RBAC, Settings, User Mgmt, Master Data) |
+| Phase 5 | Testing | 11 พ.ค. – 2 มิ.ย. 2569 | 🟡 กำลังดำเนินการ (Internal Testing) |
 | Phase 6 | Deployment | 4–5 มิ.ย. 2569 | ยังไม่เริ่ม |
 | Phase 7 | Closure | 7 มิ.ย. 2569 | ยังไม่เริ่ม |
 
@@ -59,9 +59,9 @@
 
 | Sprint | วันที่ | Module | ชื่อ | SP |
 |--------|--------|--------|------|----|
-| Sprint 1 | 11–12 พ.ค. | M10 | Login & RBAC | 24 |
-| Sprint 2 | 13–15 พ.ค. | M1 | Master Data Management | 43 |
-| Sprint 3 | 18–19 พ.ค. | M2 | Course Management | 19 |
+| Sprint 1 | 11–12 พ.ค. | M10 | Login, RBAC & Admin Settings | 24 | ✅ 100% (Admin User Mgmt, Role Switcher, System Settings) |
+| Sprint 2 | 12–15 พ.ค. | M1 | Master Data Management | 43 | ✅ 100% (CRUD ทุก entity, Staff access, Shared views, Settings, Swatch picker) |
+| Sprint 3 | 18–19 พ.ค. | M2 | Course Management | 19 | 🔜 เริ่มถัดไป |
 | Sprint 4 | 20–22 พ.ค. | M3 | Schedule Management | 41 |
 | Sprint 5 | 21–26 พ.ค. | M4 | Conflict Checking | 29 |
 | Sprint 6 | 22–26 พ.ค. | M8 | Views & Calendar | 24 |
@@ -100,7 +100,83 @@
 1. **Instructor Pool (รายชื่ออาจารย์ประจำวิชา):** หัวหน้าวิชา (Course Head) จะไม่ผูกอาจารย์ติดกับกลุ่มนักศึกษาแบบถาวรในหน้าตั้งค่าวิชา (M2) แต่ใช้วิธี **"เพิ่มรายชื่ออาจารย์ (Add Instructor)"** จากฐานข้อมูลกลาง (HR) เข้ามาในรายวิชา เพื่อสร้างเป็น Pool ของอาจารย์
 2. **Cross-Course Conflict Checking (M4):** อาจารย์ 1 ท่านสามารถถูกเพิ่มชื่อสอนได้หลายวิชาอิสระจากกัน ดังนั้นระบบ Conflict Check จะต้องอ้างอิงจาก **"รหัสประจำตัวอาจารย์ (Global Instructor ID)"** ไปตรวจสอบการซ้อนทับข้ามทุกรายวิชาในคณะทั้งหมด
 3. **Activity Assignment (M3):** เมื่อสร้างกิจกรรม หัวหน้าวิชาจะระบุผู้สอนโดยดึงจาก Instructor Pool ซึ่งรองรับ **Team Supervision (เลือกอาจารย์ผู้สอนได้หลายท่านต่อ 1 กิจกรรม)** 
-4. **Workload Validation (M6):** ก่อนส่งอนุมัติ หัวหน้าวิชาต้องตรวจสอบความสมดุลของ "ภาระงานอาจารย์ (Workload)" เพื่อให้แน่ใจว่าไม่มีอาจารย์ท่านใดรับภาระการสอนมากหรือน้อยเกินไป
+4. **Workload Validation (M6):** ก่อนส่งอนุมัติ หัวหน้าวิชาต้องตรวจสอบความสมดุลของ "ภาระงานอาจารย์ (Workload)" โดยระบบคำนวณจาก **(จำนวนสัปดาห์/ปี) x (ชม. ทำงาน/สัปดาห์)** เพื่อหาชั่วโมงปฏิบัติงานรวมต่อปี (Quota)
+5. - **Instructor Profile Data**: เก็บข้อมูลส่วนตัวเพิ่มเติม ได้แก่ **คำนำหน้าชื่อ (Prefix)**, **รหัสพนักงาน (Employee ID)**, ตำแหน่งทางวิชาการ, ประเภทการจ้างงาน, และสัดส่วนการปฏิบัติงาน (%) เพื่อใช้ในเกณฑ์ PA
+6. - **Name Display Logic**: ระบบจัดการการแสดงผลชื่ออย่างชาญฉลาด โดยนำตำแหน่งทางวิชาการ, วุฒิการศึกษา (ดร.), และคำนำหน้าชื่อมาผสมกันอย่างถูกต้อง **ไม่มีเว้นวรรคระหว่างตำแหน่ง/คำนำหน้ากับชื่อ** (เช่น **อ.ดร.ราชันย์**, **ผศ.สมศรี**, **ดร.สมบัติ**, **นายมานะ**) และกำจัดคำนำหน้าซ้ำซ้อนอัตโนมัติ
+
+---
+
+## เกณฑ์ภาระงาน (Performance Agreement - PA) ปี 2569
+
+ระบบคำนวณสัดส่วนภาระงาน (%) อัตโนมัติตามตำแหน่งและวุฒิการศึกษา ดังนี้:
+
+### 1. กลุ่มคณาจารย์ (อ., ผศ., รศ., ศ.)
+- **การสอน**: 20-70%
+- **การวิจัย**: 20-70%
+- **บริการวิชาการ**: 5-20%
+- **ศิลปวัฒนธรรม**: 5-15%
+- **งานมอบหมายอื่น**: 0-20%
+
+### 2. กลุ่มผู้ช่วยอาจารย์ (4 ประเภท)
+| ประเภท | การสอน | วิจัย | บริการ | ศิลปะฯ | มอบหมาย |
+|-------|-------|-------|-------|-------|-------|
+| **ปกติ (ป.โท/เอก)** | ≤ 70% | 15-20% | 5-20% | 5-20% | 0-20% |
+| **วุฒิ ป.ตรี** | 30-60% | 0% | 10-30% | 10-20% | 0-30% |
+| **คลินิก** | ≤ 10% | 0-5% | 70-80% | 0-5% | 0-10% |
+| **สอนภาคปฏิบัติ** | ≤ 70% | 0% | 5-20% | 5-20% | 0-20% |
+
+### 3. โลจิกพิเศษ (หมายเหตุท้ายประกาศ)
+- **หมายเหตุ 1**: ผู้ช่วยอาจารย์ที่บรรจุ **ก่อน 1 ต.ค. 2559** และจบ **ป.เอก** → ให้ใช้เกณฑ์เดียวกับ **"อาจารย์"**
+- **หมายเหตุ 2**: ผู้ช่วยอาจารย์ที่บรรจุ **ตั้งแต่ 1 ต.ค. 2559** และจบ **ป.เอก** (แต่ภาษาอังกฤษไม่ผ่าน) → ให้ใช้เกณฑ์ **"ผู้ช่วยอาจารย์ปกติ"**
+
+---
+
+## สถาปัตยกรรมหลักสูตรและการเปิดรายวิชา (Curriculum & Course Offering Architecture)
+
+เพื่อให้ระบบทำงานได้อย่างอัตโนมัติและลดภาระผู้ใช้งาน (Automation over Manual):
+
+1. **Curriculum as Master Plan (หลักสูตรคือแม่แบบ)**: 
+   - ข้อมูลหลักสูตรทำหน้าที่เป็น "แผนผังแผนการเรียน" (Master Template) 
+   - ในแต่ละ **รายวิชา (Course)** จะมีการระบุ **ชั้นปีเริ่มต้น (`default_year_level`)** และ **ภาคเรียนเริ่มต้น (`default_semester`)** ไว้ล่วงหน้าตามแผนการเรียนของหลักสูตรนั้นๆ
+2. **Dynamic Course Offering & Verification (การเปิดวิชาและตรวจสอบจริง)**:
+   - ระบบใช้ตาราง **`course_offerings`** เป็นตัวกลางระหว่างแม่แบบ (Courses) และตารางสอนจริง (Schedules)
+   - เมื่อขึ้นเทอมใหม่ ระบบจะสร้าง **"ร่างรายการเปิดวิชา" (Draft Offerings)** ตามแผนการเรียน
+   - **Manual Override**: เจ้าหน้าที่ (Staff) สามารถเลือก **"ยืนยันเปิด" (Confirm)**, **"ข้ามการเปิด" (Skip)** ในกรณีที่วิชานั้นไม่เปิดสอนในปีนั้น หรือ **"เปิดวิชาพิเศษ"** ที่ไม่อยู่ในแผนได้
+3. **Head of Course Dashboard (การแจ้งเตือนงานค้าง)**:
+   - เฉพาะวิชาที่มีสถานะเป็น "เปิดสอน" ใน `course_offerings` ของเทอมปัจจุบันเท่านั้น ที่จะไปปรากฏใน Dashboard ของหัวหน้าวิชา
+   - หัวหน้าวิชาจะเห็นภารกิจจัดตารางสอนเฉพาะวิชาที่สตาฟกดยืนยันเปิดแล้วเท่านั้น
+4. **Consistency & Conflict Prevention**:
+   - ระบบตรวจสอบการชนกันของตารางเรียน (Student Conflict) โดยอ้างอิงจากรายชื่อวิชาที่อยู่ใน `course_offerings` ภายใต้หลักสูตรและชั้นปีเดียวกัน
+
+5. **Academic Year Change & Auto-Sync Logic (ระบบเปลี่ยนปีการศึกษาอัตโนมัติ)**:
+   - เมื่อมีการเปลี่ยนปีการศึกษาหรือภาคเรียนในหน้า System Settings ระบบจะทำการตรวจสอบสถานะของ **หลักสูตร (Curriculums)** ทั้งหมด
+   - **Inactive Curriculum Protection**: หากหลักสูตรใดมีสถานะเป็น `inactive` (ปิดใช้งาน) ระบบจะทำการ Force Update ให้รายวิชาทั้งหมดภายใต้หลักสูตรนั้นมีสถานะเป็น `inactive` ทันที เพื่อป้องกันไม่ให้วิชาที่ล้าสมัยไปปรากฏในรายการเปิดสอนของปีการศึกษาใหม่
+   - **Cloning for Versioning**: ระบบรองรับการคัดลอก (Clone) หลักสูตรต้นฉบับมาเป็นเวอร์ชันใหม่ (เช่น ปี 2569 → 2574) เพื่อให้สามารถแก้ไขข้อมูลรายวิชาในหลักสูตรใหม่ได้โดยไม่กระทบต่อประวัติภาระงานในหลักสูตรเดิม
+
+---
+
+## Student Group Architecture (ตัดสินใจ 13 พ.ค. 2569)
+
+**กลุ่มนักศึกษา = Section ของรายวิชา ไม่ใช่ข้อมูลกลาง**
+
+แต่ละ course offering มีจำนวนนักศึกษาและจำนวนกลุ่มที่ต่างกัน ดังนั้น `student_groups` ต้องผูกกับ `course_offering_id` โดยตรง ไม่ใช่ `curriculum_id + year_level`
+
+```
+courses
+└── capacity: 270  ← max รวม (Master Data — M1)
+
+course_offerings (M2)
+├── NSBS 301 ปี 2569 ภาค 1
+│   └── student_groups: A1(30), A2(30), ... A9(30)  ← สร้างตอน setup offering
+└── NSBS 302 ปี 2569 ภาค 1
+    └── student_groups: A1(25), A2(25), A3(25), A4(25)  ← ต่างกันได้
+```
+
+### หลักการสำคัญ
+- **ไม่มี tab กลุ่มนักศึกษาใน M1** — กลุ่มสร้างใน M2 ตอน confirm course offering
+- **Conflict checking ไม่เช็ค student overlap ข้ามวิชา** — เช็คแค่ room + instructor
+- **TPSS ไม่ track รายคน** — กลุ่มคือ slot ที่มี capacity, ไม่ใช่รายชื่อนักศึกษา
+- **`courses.capacity`** = จำนวนรับสูงสุดของวิชา, `SUM(student_groups.size)` ต่อ offering ควรใกล้เคียง capacity
 
 ---
 
@@ -124,7 +200,7 @@
 | # | Role | สิทธิ์หลัก | ลักษณะการเข้าถึง |
 |---|------|-----------|-----------------|
 | 1 | System Admin (ผู้ดูแลระบบ) | จัดการ Master Data ทั้งหมด, จัดการสิทธิ์ผู้ใช้งาน, Admin Override แก้ไขตารางแทน Course Head ได้ | Read + Write ทุกส่วน |
-| 2 | Support Staff (เจ้าหน้าที่) | กรอกข้อมูลพื้นฐาน (Master Data), **ร่วมกับ Course Head** บันทึกตารางสอน/ฝึกปฏิบัติ, ออกรายงาน | Read + Write (ตาราง + Master Data) |
+| 2 | Support Staff (เจ้าหน้าที่) | จัดการ Master Data (rooms, location_types, courses — CRUD / departments, instructors, curriculums, activity_types — Read only), จัดการปีการศึกษา (เพิ่ม/แก้ไข/ตั้งปัจจุบัน), **ร่วมกับ Course Head** บันทึกตารางสอน, ออกรายงาน | Read + Write (บางส่วนของ Master Data + ตาราง) |
 | 3 | Course Head / Maker (หัวหน้าวิชา) | **ร่วมกับ Support Staff** สร้าง/แก้ไขตาราง, ตรวจสอบ Conflict/Warning, **ส่งขออนุมัติให้ผู้บริหาร** | Read + Write (ตาราง) |
 | 4 | Executive / Approver (ผู้บริหาร) | **ดูตารางทั้งหมด** (View All), ดูรายงานภาระงาน/การใช้ห้อง, **อนุมัติ / ตีกลับตาราง** ที่ Course Head ส่งมา — ไม่สามารถสร้าง/แก้ไขตาราง/ข้อมูลพื้นฐานได้ | Read-only + Approve/Reject เท่านั้น |
 | 5 | Instructor (อาจารย์ผู้สอน) | ดูตารางสอนและภาระงานของตนเองเท่านั้น, รับการแจ้งเตือนเมื่อตารางเปลี่ยน | Read-only (เฉพาะของตัวเอง) |
@@ -167,6 +243,43 @@
 
 ---
 
+## Shared View Pattern (implement แล้วใน Sprint 2)
+
+เมื่อ Admin และ Staff ใช้ view เดียวกัน ให้วางไฟล์จริงใน `views/shared/<module>/index.blade.php` แล้วให้ role-specific view เป็นแค่ `@include`:
+
+```
+views/
+├── shared/
+│   ├── master_data/
+│   │   ├── index.blade.php      ← เนื้อหาจริง รับ $isAdmin + $routePrefix
+│   │   └── _lock_icon.blade.php ← SVG partial สำหรับ tab read-only
+│   └── settings/
+│       └── index.blade.php      ← เนื้อหาจริง รับ $isAdmin + $routePrefix
+├── admin/
+│   ├── master_data/ (ลบแล้ว — ย้ายไป shared/)
+│   └── settings.blade.php       ← @include('shared.settings.index')
+└── staff/
+    └── settings.blade.php       ← @include('shared.settings.index')
+```
+
+### Variables ที่ต้องส่งจาก Controller ไปยัง Shared View
+| Variable | Type | ความหมาย |
+|----------|------|----------|
+| `$isAdmin` | bool | ควบคุม visibility ของฟีเจอร์ admin-only (เช่น แท็บ PA, ปุ่มเพิ่ม/ลบใน tab ที่ lock) |
+| `$routePrefix` | string | `'admin'` หรือ `'staff'` — ใช้ใน form action และ route() calls |
+
+### Controller Pattern
+```php
+// Staff controller extends Admin controller เสมอ — ไม่ duplicate logic
+class Staff\MasterDataController extends Admin\MasterDataController { }
+class Staff\SettingController extends AdminSettingController {
+    public function index() { /* override เพื่อ set $isAdmin = false */ }
+    // storeYear(), updateYear() — inherited โดยตรง ไม่ต้อง override
+}
+```
+
+---
+
 ## Naming Conventions (ใช้สม่ำเสมอทั้งโปรเจกต์)
 
 | ประเภท | รูปแบบ | ตัวอย่าง |
@@ -174,7 +287,7 @@
 | Model | PascalCase | `CourseOffering`, `StudentGroup` |
 | Controller | PascalCase + Controller | `ScheduleController`, `CourseOfferingController` |
 | Route name | kebab-case + dot notation | `course-offerings.index`, `schedules.store` |
-| View path | snake_case จัดตาม role | `maker/schedule/index.blade.php` |
+| View path | snake_case จัดตาม role หรือ `shared/` ถ้าใช้ร่วมกัน | `admin/settings.blade.php`, `shared/master_data/index.blade.php` |
 | DB table | snake_case plural | `course_offerings`, `student_groups` |
 | DB column | snake_case | `approval_status`, `created_at` |
 | Alpine.js var | camelCase | `showModal`, `selectedInstructor` |
@@ -188,7 +301,8 @@
 
 | คำไทย | ชื่อใน Code / DB |
 |-------|----------------|
-| หัวหน้าวิชา / Maker | `course_head` |
+| หัวหน้าวิชา / ผู้ประสานรายวิชา / Maker | `course_head` (role เดียวกัน ตาม SRS UC-04) |
+| เจ้าหน้าที่ผู้ดูแลวิชา (ต่อวิชา) | `assigned_staff_id` (FK ใน `courses` table) |
 | เจ้าหน้าที่ / Support Staff | `staff` |
 | ผู้บริหาร / Approver | `executive` |
 | อาจารย์ผู้สอน / Instructor | `instructor` |
@@ -305,6 +419,9 @@
 - **Phase 1 (โปรเจกต์นี้)**: กรอกข้อมูลอาจารย์ **manual** ในระบบผ่าน M1 (Master Data Management) — Admin/Staff เป็นผู้กรอก
 - **Phase 2 (Future)**: วางแผน sync กับระบบ FIMS / HR ของมหาวิทยาลัย — ยังไม่ implement
 - ห้าม hardcode ข้อมูลอาจารย์ — ดึงจาก `users` + `instructor_profiles` เสมอ
+- **Instructor Employee ID**: เก็บใน `instructor_profiles.employee_id` เพื่อใช้ในการระบุตัวตนและตรวจสอบ Conflict ในอนาคต (Sprint 4)
+- **Active Tab Persistence**: หน้า System Settings ใช้พารามิเตอร์ `tab=pa` หรือ `tab=academic` ใน URL เพื่อจำสถานะหน้าจอหลังบันทึกข้อมูล
+- **Mathematical Symbol Helper**: ในหน้าตั้งค่าเกณฑ์ PA มีปุ่มช่วยคัดลอกสัญลักษณ์ `≤`, `≥`, `-`, `%` เพื่อความสะดวกในการบันทึกข้อมูลตามประกาศคณะฯ
 
 ---
 
@@ -344,7 +461,9 @@ main          ← production-ready เท่านั้น
 - Export รายงานเป็น PDF และ Excel
 - **ผู้บริหาร = Read-only + Approve/Reject เท่านั้น** — ห้าม implement UI ให้แก้ไขตารางหรือ Master Data ได้
 - **Stack = Laravel + Blade + Alpine.js + MySQL** — ห้ามเสนอโค้ดที่ใช้ React, Vue, หรือ Inertia.js
-- **Multi-role RBAC**: `users` ไม่มี `role` column แล้ว — ต้อง query จาก `user_roles` เสมอ, RBAC middleware เช็ค `active_role` จาก session, `is_primary = true` คือ role เริ่มต้นเมื่อ login ครั้งแรก
+- **Multi-role RBAC**: `users` ไม่มี `role` column — query จาก `user_roles` เสมอ, RBAC middleware เช็ค `active_role` จาก session, `is_primary = true` คือ role เริ่มต้นเมื่อ login ครั้งแรก
+- **Role Switcher**: พัฒนาเสร็จสมบูรณ์ใน Sidebar (Dropdown ▾) รองรับการสลับ active_role ใน session และ redirect ไปยัง dashboard ที่ถูกต้องทันที
+- **User Management**: ระบบจัดการผู้ใช้งาน (Admin) รองรับการกำหนดหลายบทบาท (Multi-role), เลือกบทบาทหลัก (Primary), และเปิด-ปิดสถานะการใช้งาน (Active/Inactive) พร้อมระบบจัดการ **คำนำหน้าชื่อ (Prefix)** และ **วุฒิการศึกษา (Doctorate mapping)** ที่แสดงผลได้ถูกต้องตามระเบียบมหาวิทยาลัย มียูไอแบบ Role Cards และ Badge-primary (Dark Navy) สำหรับบทบาทหลัก
 
 ---
 
@@ -395,7 +514,7 @@ mock/
 | `approver.html` | 🔲 ยังไม่เริ่ม | — |
 | `staff.html` | 🔲 ยังไม่เริ่ม | — |
 | `lecturer.html` | 🔲 ยังไม่เริ่ม | — |
-| `admin.html` | 🔲 ยังไม่เริ่ม | — |
+| `admin.html` | ✅ เสร็จ | Implemented as Blade view with RBAC and multi-role picker |
 
 ### Design System (`mock/production/ui/`)
 
@@ -468,8 +587,72 @@ mock/
 | Enum values Phase 2 (approval action, conflict severity/type, warning type) | CLAUDE.md Database Enum section | ✅ อัปเดตแล้ว (8 พ.ค. 2569) |
 | Glossary เพิ่ม instructor_availability, location_type, course_offering_approval, schedule_conflict, active_role | CLAUDE.md Glossary | ✅ อัปเดตแล้ว (8 พ.ค. 2569) |
 | production/staff.html เสร็จแล้ว (Impeccable design, 6 sections, 11 master-data tabs, schedule grid, reports, inbox, 4 dialogs) | mock/production/staff.html | ✅ อัปเดตแล้ว (8 พ.ค. 2569) |
+| Sprint 2 M1 เสร็จสมบูรณ์ — Staff access, Shared views, Settings, Course assigned_staff | code | ✅ อัปเดตแล้ว (12 พ.ค. 2569) |
+| Student Groups ย้ายจาก M1 → M2 (per course_offering, ไม่ใช่ per curriculum+year_level) | CLAUDE.md Student Group Architecture | ✅ อัปเดตแล้ว (13 พ.ค. 2569) |
+| M1 UI: accordion drill-down (dept→อาจารย์, curriculum→วิชา, location_type→ห้อง), tab ห้อง+ประเภทรวมเป็นหนึ่ง | CLAUDE.md Sprint 2 section | ✅ อัปเดตแล้ว (14 พ.ค. 2569) |
+| M3 design constraint: schedules ต้องใช้ start_date/end_date (block-based), ต้องมี student_group_id, M2 ต้องเสร็จก่อน | CLAUDE.md ข้อค้นพบจากตารางสอนจริง | ✅ อัปเดตแล้ว (14 พ.ค. 2569) |
 
 ---
+
+## Sprint 2 (M1) — สิ่งที่ implement เสร็จแล้ว (12 พ.ค. 2569)
+
+### Architecture ที่เพิ่มมา
+- **Shared Views**: `views/shared/master_data/index.blade.php` และ `views/shared/settings/index.blade.php` — ใช้ร่วมกันระหว่าง Admin และ Staff โดยส่ง `$isAdmin` + `$routePrefix` จาก controller
+- **Staff\MasterDataController** extends Admin\MasterDataController — zero code duplication
+- **Staff\SettingController** extends AdminSettingController — Staff จัดการปีการศึกษาได้ทั้งหมด (เพิ่ม/แก้ไข/ตั้งปัจจุบัน) แต่ไม่เห็นแท็บ PA criteria
+- **Lock icon** (`shared/master_data/_lock_icon.blade.php`) — แสดงบน tab ที่ Staff ดูอย่างเดียว
+
+### Staff สิทธิ์ Master Data (implement แล้ว)
+| Tab | Staff |
+|-----|-------|
+| ภาควิชา | ดูอย่างเดียว 🔒 + accordion ดูรายชื่ออาจารย์ภายใน |
+| หลักสูตร | ดูอย่างเดียว 🔒 + accordion ดูรายวิชาภายใน |
+| รายวิชา | CRUD ✅ |
+| อาจารย์ | ดูอย่างเดียว 🔒 |
+| กลุ่มนักศึกษา | ลบออกจาก M1 แล้ว — ย้ายไปสร้างใน M2 (Course Offering) |
+| ห้องและสถานที่ | CRUD ✅ (รวม tab ประเภทสถานที่ + ห้อง เป็น tab เดียว) + accordion ดูห้องภายในแต่ละประเภท |
+| ประเภทกิจกรรม | ดูอย่างเดียว 🔒 |
+
+### UI Pattern: Accordion Drill-Down (implement แล้ว 14 พ.ค. 2569)
+- **ภาควิชา → อาจารย์**: กดหัว accordion เพื่อดูรายชื่ออาจารย์ในภาควิชานั้น (title, employment_type, academic_degree)
+- **หลักสูตร → รายวิชา**: กดหัว accordion เพื่อดูรายวิชาทั้งหมดในหลักสูตร (course_code, name_th/en, credits, year_level, semester)
+- **ประเภทสถานที่ → ห้อง**: กดหัว accordion เพื่อดูห้องภายในประเภท + ปุ่มแก้ไขแต่ละห้อง
+- **Alpine.js pattern สำคัญ**: `:style` กับ `style="display:flex"` บน element เดียวกันทำให้ flex หาย → ต้องแยกเป็น 2 div (outer: `@click` + `:style` background / inner: `display:flex`)
+- **Cascade delete**: ลบประเภทสถานที่ → ลบห้องทั้งหมดในประเภทนั้นด้วย (พร้อม warning แจ้งจำนวน)
+
+### Schema เพิ่มเติม (migrations ที่ต้อง run)
+- `drop_is_practicum_from_activity_types_table` — ลบ `is_practicum` (redundant กับ `category`)
+- `add_assigned_staff_to_courses_table` — เพิ่ม `assigned_staff_id` FK → users
+- `add_capacity_to_courses_table` — เพิ่ม `capacity` (จำนวนนักศึกษาสูงสุดของวิชา)
+- `refactor_student_groups_to_course_offering` — เปลี่ยน FK จาก `curriculum_id + academic_year_id` → `course_offering_id`
+
+> **ยกเลิก**: `modify_student_groups_add_year_level` — ไม่จำเป็นแล้ว เนื่องจาก student_groups ย้ายไปผูกกับ course_offering แทน
+
+### คำถามที่รอคำตอบจากลูกค้า (pending)
+1. **ผู้ประสานรายวิชา** = login ด้วย `course_head` role เดียวกับหัวหน้าวิชาหรือเปล่า?
+2. **เลขานุการวิชา** — จัดการใน M1 (ระดับวิชา) หรือ M2 (ระดับปีการศึกษา)?
+3. **Course Offering** — ใครกด "ยืนยันเปิด" ได้ (Staff เท่านั้น หรือ Course Head ด้วย)?
+4. **Notification** — Course Head รู้ว่าวิชาตัวเองถูกยืนยันเปิดยังไง?
+
+---
+
+## ข้อค้นพบจากตารางสอนจริง (วิเคราะห์ 14 พ.ค. 2569)
+
+> อ้างอิงไฟล์: `Doc/ตัวอย่างตารางสอน/` (ปี 1-4, เทอม 1-2)
+
+### สิ่งที่ต้องรู้ก่อนออกแบบ M3 (Schedule Management)
+
+1. **Block-based ไม่ใช่ Weekly Repeat**: ตารางแบ่งเป็นช่วง (Period 1: สัปดาห์ 1-6, Period 2: สัปดาห์ 7-14) แต่ละช่วงมีวิชาและกลุ่มต่างกัน — **`schedules` table ต้องเก็บ `start_date`/`end_date` ไม่ใช่ `day_of_week`**
+
+2. **วันที่เฉพาะเจาะจง**: บางกิจกรรมระบุวันที่ตรงๆ เช่น "15-19 ก.ค. 2568" ไม่ใช่แค่วันในสัปดาห์
+
+3. **Parallel Groups**: วันเดียวกัน กลุ่ม A ฝึกปฏิบัติที่ Ward, กลุ่ม B อยู่ห้องเรียน → schedule แต่ละ slot ต้อง link กับ `student_group_id`
+
+4. **Nested Groups**: ปี 3-4 แบ่งเป็น A→A1/A2 และ B→B1/B2 บางวิชามี 4 กลุ่มพร้อมกัน
+
+5. **หลายอาจารย์ต่อ 1 กิจกรรม**: `schedule_instructors` pivot (เตรียมไว้แล้วใน migration) รองรับได้ ✅
+
+6. **M2 ต้องเสร็จก่อน M3 เสมอ**: ทุก schedule slot ต้อง FK → `course_offering_id` และ `student_group_id` ซึ่งสร้างใน M2
 
 ## Design Context: Impeccable Design Frontend (อัปเดต 8 พ.ค. 2569)
 

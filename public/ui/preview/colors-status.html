@@ -1,0 +1,129 @@
+<!doctype html><html><head><meta charset="utf-8">
+<title>Semantic Status</title>
+<link rel="stylesheet" href="_card.css">
+<style>
+  body { padding: 22px 24px; }
+  .stack { display: flex; flex-direction: column; gap: 14px; }
+
+  .group-label {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    font-weight: 600;
+    color: var(--fg-3);
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    margin-bottom: 8px;
+  }
+
+  /* PILL ROW */
+  .pills { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+  .pill {
+    --c: var(--brand-navy);
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 24px;
+    padding: 0 10px 0 8px;
+    border-radius: 999px;
+    background: color-mix(in oklch, var(--c) 10%, white);
+    color: var(--c);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .pill svg {
+    width: 13px; height: 13px;
+    stroke: currentColor;
+    stroke-width: 1.75;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    flex-shrink: 0;
+  }
+  .pill .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
+
+  .p-conflict { --c: var(--status-conflict); }
+  .p-warning  { --c: var(--status-warning); }
+  .p-success  { --c: var(--status-success); }
+  .p-draft    { --c: oklch(48% 0.015 240); }
+  .p-info     { --c: var(--brand-navy); }
+
+  /* SOLID variant — for compact emphasis (e.g. counters) */
+  .pill.solid {
+    background: var(--c);
+    color: #fff;
+  }
+
+  /* TOKEN TABLE */
+  .tokens {
+    margin-top: 4px;
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    column-gap: 14px;
+    row-gap: 5px;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--fg-3);
+    border-top: 1px solid var(--border-subtle);
+    padding-top: 12px;
+  }
+  .tokens .k { color: var(--fg-2); }
+  .tokens .v { color: var(--fg-3); }
+</style></head>
+<body>
+
+<div class="stack">
+
+  <div>
+    <div class="group-label">Subtle · default</div>
+    <div class="pills">
+      <span class="pill p-conflict">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><circle cx="12" cy="16.2" r=".6" fill="currentColor" stroke="none"/></svg>
+        Conflict
+      </span>
+      <span class="pill p-warning">
+        <svg viewBox="0 0 24 24"><path d="M12 4l9 16H3z"/><path d="M12 11v4"/><circle cx="12" cy="17.5" r=".6" fill="currentColor" stroke="none"/></svg>
+        Workload
+      </span>
+      <span class="pill p-success">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></svg>
+        Approved
+      </span>
+      <span class="pill p-draft">
+        <span class="dot"></span>
+        Draft
+      </span>
+      <span class="pill p-info">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".6" fill="currentColor" stroke="none"/></svg>
+        In review
+      </span>
+    </div>
+  </div>
+
+  <div>
+    <div class="group-label">Solid · for counters & emphasis</div>
+    <div class="pills">
+      <span class="pill p-conflict solid">2 Conflicts</span>
+      <span class="pill p-warning  solid">3 Warnings</span>
+      <span class="pill p-success  solid">12 Approved</span>
+      <span class="pill p-draft    solid">5 Drafts</span>
+    </div>
+  </div>
+
+  <div class="tokens">
+    <span class="k">conflict</span><span class="v">oklch(52% .20 25)  · bg 10%</span>
+    <span class="k">warning</span> <span class="v">oklch(62% .16 65)  · bg 10%</span>
+    <span class="k">success</span> <span class="v">oklch(52% .15 148) · bg 10%</span>
+    <span class="k">draft</span>   <span class="v">oklch(48% .015 240) · bg 10%</span>
+  </div>
+
+</div>
+
+</body></html>

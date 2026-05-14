@@ -16,11 +16,20 @@ return new class extends Migration
         Schema::create('instructor_profiles', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('user_id')->unique();
+            $table->string('employee_id', 50)->nullable()->unique()->comment('รหัสพนักงาน/อาจารย์');
             $table->foreign('user_id')->references('id')->on('users');
-            $table->string('title', 100)->nullable()->comment('\\u0e04\\u0e33\\u0e19\\u0e33\\u0e2b\\u0e19\\u0e49\\u0e32/\\u0e15\\u0e33\\u0e41\\u0e2b\\u0e19\\u0e48\\u0e07\\u0e17\\u0e32\\u0e07\\u0e27\\u0e34\\u0e0a\\u0e32\\u0e01\\u0e32\\u0e23');
+            $table->string('title', 100)->nullable()->comment('คำนำหน้า/ตำแหน่งทางวิชาการ');
             $table->unsignedBigInteger('department_id')->nullable();
+            $table->string('employment_type')->nullable()->comment('พนักงานมหาวิทยาลัย, ข้าราชการ');
+            $table->date('hired_at')->nullable()->comment('วันบรรจุ');
+            $table->string('academic_degree')->nullable()->comment('วุฒิการศึกษา (ป.ตรี, ป.โท, ป.เอก)');
+            $table->integer('teaching_pct')->default(50)->comment('ภาระงานสอนที่มอบหมาย (%)');
+            $table->integer('research_pct')->default(20)->comment('ภาระงานวิจัย (%)');
+            $table->integer('service_pct')->default(10)->comment('ภาระงานบริการวิชาการ (%)');
+            $table->integer('culture_pct')->default(10)->comment('ภาระงานศิลปวัฒนธรรม/พัฒนาองค์กร (%)');
+            $table->integer('other_pct')->default(10)->comment('ภาระงานอื่นๆ ที่ได้รับมอบหมาย (%)');
             $table->foreign('department_id')->references('id')->on('departments');
-            $table->integer('teaching_quota')->nullable()->comment('\\u0e20\\u0e32\\u0e23\\u0e30\\u0e07\\u0e32\\u0e19\\u0e2a\\u0e2d\\u0e19\\u0e15\\u0e32\\u0e21\\u0e40\\u0e01\\u0e13\\u0e11\\u0e4c (\\u0e0a\\u0e31\\u0e48\\u0e27\\u0e42\\u0e21\\u0e07/\\u0e40\\u0e17\\u0e2d\\u0e21)');
+            $table->integer('teaching_quota')->nullable()->comment('ชม.สอนต่อปี (คำนวณจาก % x ชม.ทำงานรวม)');
             $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->nullable();
         });

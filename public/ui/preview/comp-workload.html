@@ -1,0 +1,61 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8">
+<title>Components · Workload bar</title>
+<link rel="stylesheet" href="_card.css">
+<style>
+.list { display: flex; flex-direction: column; gap: 4px; }
+.row {
+  display: grid; grid-template-columns: 180px 1fr 80px 22px;
+  align-items: center; gap: 12px; padding: 8px 12px;
+  border-radius: var(--r-md); background: #fff;
+  border: 1px solid var(--border-subtle);
+}
+.row:hover { background: oklch(97% 0.004 240); }
+.who { display: flex; flex-direction: column; }
+.nm { font-size: 13px; font-weight: 600; }
+.dpt { font-size: 11px; color: var(--fg-3); }
+.bar { height: 8px; background: var(--bg-2); border-radius: 4px; overflow: hidden; position: relative; }
+.bar .fill { height: 100%; border-radius: 4px; background: var(--brand-navy); transition: width .4s var(--ease-out); }
+.bar .fill.warn { background: var(--status-warning); }
+.bar .fill.over { background: var(--status-conflict); }
+.bar .target { position: absolute; left: 75%; top: -2px; width: 1px; height: 12px;
+               background: var(--fg-3); }
+.num { font-size: 13px; font-weight: 700; text-align: right;
+       font-variant-numeric: tabular-nums; }
+.ic-warn { color: var(--status-warning-fg); font-size: 13px; text-align: center; }
+.ic-err  { color: var(--status-conflict-fg); font-size: 13px; text-align: center; }
+.lede { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+.lede .ttl { font-size: 13px; font-weight: 700; }
+.lede .target-lbl { font-size: 11px; color: var(--fg-3); }
+</style></head>
+<body><div class="card">
+  <div class="lede">
+    <div class="ttl">ภาระงานอาจารย์ · สัปดาห์ 4</div>
+    <div class="target-lbl">เกณฑ์: 30 ชม./สัปดาห์</div>
+  </div>
+  <div class="list">
+    <div class="row">
+      <div class="who"><div class="nm">รศ.ดร.วิลาวรรณ สมบูรณ์</div><div class="dpt">หัวหน้าวิชา · ผู้สูงอายุ</div></div>
+      <div class="bar"><div class="fill" style="width:60%"></div><div class="target"></div></div>
+      <div class="num">18.0 ชม.</div>
+      <div></div>
+    </div>
+    <div class="row">
+      <div class="who"><div class="nm">อ.ณภัทร ปั้นทอง</div><div class="dpt">อาจารย์ผู้สอน · ผู้สูงอายุ</div></div>
+      <div class="bar"><div class="fill warn" style="width:95%"></div><div class="target"></div></div>
+      <div class="num" style="color:var(--status-warning-fg)">28.5 ชม.</div>
+      <div class="ic-warn">⚠</div>
+    </div>
+    <div class="row">
+      <div class="who"><div class="nm">อ.มนัสชนก ประทีป</div><div class="dpt">อาจารย์ประจำกลุ่ม</div></div>
+      <div class="bar"><div class="fill over" style="width:127%"></div><div class="target"></div></div>
+      <div class="num" style="color:var(--status-conflict-fg)">38.0 ชม.</div>
+      <div class="ic-err">!</div>
+    </div>
+    <div class="row">
+      <div class="who"><div class="nm">อ.ภานุพงศ์ ศิริ</div><div class="dpt">อาจารย์ผู้สอน</div></div>
+      <div class="bar"><div class="fill" style="width:40%"></div><div class="target"></div></div>
+      <div class="num">12.0 ชม.</div>
+      <div></div>
+    </div>
+  </div>
+</div></body></html>
