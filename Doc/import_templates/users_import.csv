@@ -1,4 +1,4 @@
-prefix,name,email,username,password,roles,primary_role,employee_id,title,academic_degree,department_name,employment_type,teaching_pct,hired_date
+﻿prefix,name,email,username,password,roles,primary_role,employee_id,title,academic_degree,department_name,employment_type,teaching_pct,hired_date
 นาย,ราชันย์ พิพัฒน์,rachan@mahidol.ac.th,rachan_p,Ns@12345,instructor|course_head|admin,admin,MU001,ผู้ช่วยอาจารย์,doctoral,การพยาบาลรากฐาน,full_time,60,2010-10-01
 นาง,สมศรี มีสุข,somsri@mahidol.ac.th,somsri_m,Ns@12345,instructor|course_head,course_head,MU002,อาจารย์,,การพยาบาลจิตเวช,full_time,50,2015-03-15
 นางสาว,วรรณา ใจดี,wanna@mahidol.ac.th,wanna_j,Ns@12345,instructor,instructor,MU003,ผู้ช่วยอาจารย์,non_doctoral,การพยาบาลรากฐาน,full_time,55,2018-06-01

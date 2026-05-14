@@ -460,14 +460,14 @@ class MasterDataController extends Controller
         $request->validate(['csv_file' => 'required|file|mimes:csv,txt|max:5120']);
 
         $file   = $request->file('csv_file');
-        $handle = fopen($file->getPathname(), 'r');
+        $handle = $this->openCsvHandle($file);
 
         $header = fgetcsv($handle);
         if (!$header) {
             fclose($handle);
             return back()->with('error', 'ไฟล์ CSV ว่างเปล่า');
         }
-        $header = array_map(fn($h) => trim(str_replace("\xEF\xBB\xBF", '', $h)), $header);
+        $header = array_map(fn($h) => trim($h), $header);
 
         $locationTypes = LocationType::pluck('id', 'name')->toArray();
         $updateOnDup   = $request->boolean('update_on_duplicate');
@@ -540,14 +540,14 @@ class MasterDataController extends Controller
         $request->validate(['csv_file' => 'required|file|mimes:csv,txt|max:5120']);
 
         $file   = $request->file('csv_file');
-        $handle = fopen($file->getPathname(), 'r');
+        $handle = $this->openCsvHandle($file);
 
         $header = fgetcsv($handle);
         if (!$header) {
             fclose($handle);
             return back()->with('error', 'ไฟล์ CSV ว่างเปล่า');
         }
-        $header = array_map(fn($h) => trim(str_replace("\xEF\xBB\xBF", '', $h)), $header);
+        $header = array_map(fn($h) => trim($h), $header);
 
         $curriculums  = Curriculum::pluck('id', 'name')->toArray();
         $departments  = Department::pluck('id', 'name')->toArray();

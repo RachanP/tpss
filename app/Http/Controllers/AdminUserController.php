@@ -271,14 +271,14 @@ class AdminUserController extends Controller
         $request->validate(['csv_file' => 'required|file|mimes:csv,txt|max:5120']);
 
         $file   = $request->file('csv_file');
-        $handle = fopen($file->getPathname(), 'r');
+        $handle = $this->openCsvHandle($file);
 
         $header = fgetcsv($handle);
         if (!$header) {
             fclose($handle);
             return back()->with('error', 'ไฟล์ CSV ว่างเปล่า');
         }
-        $header = array_map(fn($h) => trim(str_replace("\xEF\xBB\xBF", '', $h)), $header);
+        $header = array_map(fn($h) => trim($h), $header);
 
         $departments     = Department::pluck('id', 'name')->toArray();
         $degreeMap       = ['doctoral' => 'ปริญญาเอก', 'non_doctoral' => 'ปริญญาโท'];

@@ -1,4 +1,4 @@
-name,code,location_type_name,capacity,floor,building,status
+﻿name,code,location_type_name,capacity,floor,building,status
 ห้องเรียน 101,R101,ห้องเรียน,50,1,อาคารพยาบาลศาสตร์,active
 ห้องเรียน 102,R102,ห้องเรียน,50,1,อาคารพยาบาลศาสตร์,active
 ห้องเรียน 201,R201,ห้องเรียน,60,2,อาคารพยาบาลศาสตร์,active
