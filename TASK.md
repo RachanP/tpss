@@ -2,20 +2,21 @@
 
 ## Last Updated
 <!-- Update this date at the start or end of each AI-assisted session. -->
-2026-05-12
+2026-05-14
 
 ## Current Sprint
 <!-- Keep this to the active sprint/module only; do not record project history here. -->
-AI Workflow Setup - memory files only
+Workflow hardening - branch target rules
 
 ## Current Focus
 <!-- Name the exact feature/page/file being worked on now, not a broad module. -->
-Create root-level `TASK.md` and `MEMORY.md` for AI coding-agent continuity.
+Update AI workflow docs so future sessions target `sprint`, not `main`.
 
 ## Allowed Directories
 <!-- List only paths the AI may modify for the current session. Tighten this before coding. -->
 - `TASK.md`
 - `MEMORY.md`
+- `docs/internal/GIT_WORKFLOW.md`
 
 ## Scope Boundary
 <!-- Treat these as hard constraints. Move permanent rules into `MEMORY.md`. -->
@@ -24,32 +25,34 @@ Create root-level `TASK.md` and `MEMORY.md` for AI coding-agent continuity.
 - Do not change Laravel, Blade, Alpine.js, MySQL, or RBAC architecture.
 - Do not add React, Vue, Inertia, or a frontend SPA architecture.
 - Do not rewrite CLAUDE.md, README.md, PRODUCT.md, DESIGN.md, or project docs.
+- Active development PR target is `sprint`; never target `main` for feature/fix work.
 
 ## Active Tasks
 <!-- Keep at most 7 one-line tasks; replace this list each session. -->
 - [x] Read CLAUDE.md, README.md, PRODUCT.md, and DESIGN.md.
-- [x] Create branch `ai-workflow-memory-system`.
-- [x] Draft `TASK.md` as short-term operational memory.
-- [x] Draft `MEMORY.md` as long-term project memory.
-- [x] Review both files for duplicated long-term knowledge.
+- [x] Read TASK.md and MEMORY.md.
+- [x] Update permanent branch target rules in MEMORY.md.
+- [x] Update short-term workflow focus in TASK.md.
+- [x] Update docs/internal/GIT_WORKFLOW.md with `feature/fix -> sprint`.
 
 ## Definition of Done
 <!-- Make completion measurable for the current session only. -->
-- Branch is `ai-workflow-memory-system`.
-- `TASK.md` is under 90 lines and contains only operational focus.
-- `MEMORY.md` is under 120 lines and contains permanent decisions, constraints, and reasons.
-- Long-term decisions appear only in `MEMORY.md`; `TASK.md` references them without duplicating them.
+- `MEMORY.md` states `sprint` is the integration branch.
+- `TASK.md` warns not to target `main` for feature/fix PRs.
+- `docs/internal/GIT_WORKFLOW.md` shows creating new work from latest `sprint`.
+- Recovery note says previous mistaken `main` merge was fixed by syncing `main -> sprint`.
 
 ## Blocked / Waiting
 <!-- Record unanswered questions or external blockers; clear this when resolved. -->
-- Working tree still contains untracked `GitCommands.md`; owner should decide whether to track, ignore, or remove it.
+- None.
 
 ## Completed This Sprint
 <!-- Add completed items only; keep this short and prune when sprint changes. -->
 - Created AI workflow memory file drafts for TPSS.
+- Locked branch workflow: feature/fix branches target `sprint`; `main` is stable/release only.
 
 ## Next Up
 <!-- Add only 2-3 backlog items; do not write implementation plans here. -->
-- Decide the next real implementation focus, e.g. Sprint 3 - M2 Course Management.
 - Update Allowed Directories before any feature coding starts.
 - Keep `TASK.md` current in 3-5 lines per session.
+- Start each new feature/fix from latest `sprint`.

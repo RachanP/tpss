@@ -2,6 +2,16 @@
 
 เอกสารนี้สรุปคำสั่ง Git ที่ใช้บ่อยในการทำงานร่วมกับเพื่อนในโปรเจกต์ เรียงตามลำดับ workflow ที่ควรใช้จริง
 
+## Branch Rules (NON-NEGOTIABLE)
+
+- All feature/fix work must flow `feature-or-fix-branch -> sprint`.
+- New work branches must always be created from latest `sprint`.
+- Pull requests for active development must target `sprint`.
+- `main` is stable/release only.
+- Never open feature/fix PRs directly into `main`.
+
+Recovery note: fixes were previously merged into `main` by mistake. The repo was recovered by syncing `main -> sprint`. Do not repeat this; use `feature/fix -> sprint` for active development.
+
 ---
 
 ## 1. เช็กสถานะก่อนเริ่มงาน
@@ -54,11 +64,13 @@ git pull --ff-only
 ## 3. สร้าง branch สำหรับงานใหม่
 
 ```bash
+git switch sprint
+git pull --ff-only
 git switch -c feature/example-name
 ```
 
-ใช้สร้าง branch ใหม่และย้ายเข้า branch นั้นทันที  
-ควรใช้เมื่อต้องทำงานใหม่ เช่น feature, fix, database update
+ใช้สร้าง branch ใหม่จาก `sprint` ล่าสุดและย้ายเข้า branch นั้นทันที
+ควรใช้เมื่อต้องทำงานใหม่ เช่น feature, fix, database update และ PR ต้อง target เข้า `sprint`
 
 ตัวอย่างชื่อ branch:
 
@@ -69,16 +81,12 @@ git switch -c database/update-seeders
 ```
 
 ```bash
-git switch main
+git switch sprint
 ```
 
-ใช้ย้ายกลับไป branch `main`
+ใช้ย้ายกลับไป branch `sprint` ก่อนเริ่มงานใหม่
 
-```bash
-git switch 2-m1-master_data
-```
-
-ใช้ย้ายไป branch ที่มีอยู่แล้ว เช่น branch งานปัจจุบันของโปรเจกต์
+`main` ใช้สำหรับ stable/release เท่านั้น ห้ามเปิด feature/fix PR เข้า `main`
 
 ---
 
@@ -182,6 +190,7 @@ git push
 
 ```bash
 git status
+git switch sprint
 git pull --ff-only
 ```
 
@@ -190,10 +199,12 @@ git pull --ff-only
 ### เริ่มงานใหม่
 
 ```bash
+git switch sprint
+git pull --ff-only
 git switch -c feature/my-task
 ```
 
-สร้าง branch แยกสำหรับงานนั้น
+สร้าง branch แยกสำหรับงานนั้นจาก `sprint` ล่าสุด
 
 ### ระหว่างทำงาน
 
@@ -222,7 +233,7 @@ git commit -m "feat: describe your change"
 git push -u origin feature/my-task
 ```
 
-ส่ง branch ขึ้น GitHub เพื่อให้เพื่อน review หรือเปิด Pull Request
+ส่ง branch ขึ้น GitHub เพื่อให้เพื่อน review หรือเปิด Pull Request โดย target เข้า `sprint` เท่านั้น
 
 ---
 

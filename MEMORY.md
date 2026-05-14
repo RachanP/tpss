@@ -14,6 +14,7 @@ These decisions are considered project memory and must not be silently reverted.
 [DECISION] Follow "Mahidol Navy Data Shell" visual system - Supports formal, legible, data-dense institutional work - 2026-05-12
 [DECISION] Treat role switching and RBAC as first-class workflow concerns - Users may have multiple operational roles - 2026-05-12
 [DECISION] Treat Conflict Detection as core scheduling logic, not decoration - It protects timetable integrity before approval/publishing - 2026-05-12
+[DECISION] Use `sprint` as the integration branch for all active development - Feature/fix branches must target `sprint`, while `main` stays stable/release only - 2026-05-14
 
 ## Rejected Approaches
 [REJECTED] React/Vue/Inertia production architecture - Rejected because production stack is Laravel Blade + Alpine.js and SPA churn would violate scope.
@@ -25,6 +26,19 @@ These decisions are considered project memory and must not be silently reverted.
 [REJECTED] Single-role-only user model - Rejected because staff, maker, lecturer, approver, and admin responsibilities may overlap.
 [REJECTED] Directly editing migrations without request - Rejected because migration history is a contract and schema changes need explicit approval.
 [REJECTED] Replacing domain Thai terminology with generic English labels - Rejected because local staff workflows are Thai-first and institution-specific.
+[REJECTED] Opening feature/fix PRs directly into `main` - Rejected because `main` is stable/release only; active development integrates through `sprint`.
+
+## Git Workflow Rules (NON-NEGOTIABLE)
+All active feature/fix branches must be created from latest `sprint`.
+All active feature/fix PRs must target `sprint`.
+Never open feature/fix PRs directly into `main`.
+`main` is stable/release only and must not receive direct development work.
+Before starting new work, run `git switch sprint` and `git pull --ff-only`, then create the branch.
+
+## Recovery Note
+Feature/fix work was previously merged into `main` by mistake.
+The repo was recovered by syncing `main -> sprint`.
+Do not repeat this; future active development must use `feature-or-fix-branch -> sprint`.
 
 ## Domain Rules (NON-NEGOTIABLE)
 Block Schedule is not a simple recurring weekly class timetable.
