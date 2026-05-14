@@ -130,7 +130,7 @@
                         department_id: profile.department_id || '',
                         employment_type: profile.employment_type || 'พนักงานมหาวิทยาลัย',
                         hired_at: profile.hired_at || '',
-                        academic_degree: profile.academic_degree || 'ปริญญาโท',
+                        academic_degree: profile.academic_degree || '',
                         teaching_pct: profile.teaching_pct || 0,
                         research_pct: profile.research_pct || 0,
                         service_pct: profile.service_pct || 0,
@@ -139,15 +139,18 @@
                         teaching_quota: profile.teaching_quota || 0,
                         is_english_passed: !!profile.is_english_passed,
                         department_position: (user.head_of_departments && user.head_of_departments.length > 0) ? 'head' : ((user.secretary_of_departments && user.secretary_of_departments.length > 0) ? 'secretary' : '')
-                    } : { title: '', department_id: '', employment_type: 'พนักงานมหาวิทยาลัย', hired_at: '', academic_degree: 'ปริญญาโท', is_english_passed: false, teaching_pct: 0, research_pct: 0, service_pct: 0, culture_pct: 0, other_pct: 0, teaching_quota: 0, department_position: '' };
+                    } : { title: '', department_id: '', employment_type: 'พนักงานมหาวิทยาลัย', hired_at: '', academic_degree: '', is_english_passed: false, teaching_pct: 0, research_pct: 0, service_pct: 0, culture_pct: 0, other_pct: 0, teaching_quota: 0, department_position: '' };
                     
                     this.showModal = true;
                 },
                 watchTitleChange(title) {
+                    // ยกเลิกการบังคับใส่ "ปริญญาเอก" อัตโนมัติ เพื่อให้คงค่าว่างไว้ตาม Template หรือตามที่กรอกจริง
+                    /*
                     const highPositions = ['อาจารย์', 'ผู้ช่วยศาสตราจารย์', 'รองศาสตราจารย์', 'ศาสตราจารย์'];
                     if (highPositions.includes(title)) {
                         this.instructorProfile.academic_degree = 'ปริญญาเอก';
                     }
+                    */
                 },
                 getConflictInfo() {
                     if (!this.instructorProfile.department_id || !this.instructorProfile.department_position) return null;
@@ -414,7 +417,19 @@
                                                 style="font-size: 12px; color: var(--fg-3); font-family: var(--font-mono); margin-top: 1px;">
                                                 {{ $user->username }}
                                             </div>
-                                            <div style="display: flex; gap: 4px; margin-top: 4px;">
+                                            <div style="display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap;">
+                                                @php
+                                                    $profileWarnings = $user->instructorProfile ? $user->instructorProfile->getProfileWarnings($paCriteria) : [];
+                                                @endphp
+                                                @if(!empty($profileWarnings))
+                                                    <span class="badge" style="background: #fef08a; color: #854d0e; font-size: 10px; padding: 1px 6px; cursor: help;" title="{{ implode(', ', $profileWarnings) }}">
+                                                        @if(count($profileWarnings) === 1)
+                                                            ⚠️ {{ $profileWarnings[0] }}
+                                                        @else
+                                                            ⚠️ ข้อมูลไม่สมบูรณ์ ({{ count($profileWarnings) }})
+                                                        @endif
+                                                    </span>
+                                                @endif
                                                 @if($user->headOfDepartments->isNotEmpty())
                                                     <span class="badge" style="background: var(--status-success-bg); color: var(--status-success-fg); font-size: 10px; padding: 1px 6px;">
                                                         หัวหน้าภาควิชา
@@ -744,6 +759,7 @@
                                         <div class="form-group" style="margin-top: 12px;" x-show='instructorProfile.title !== ""'>
                                             <label style="color: var(--status-success-fg); font-weight: 700;">วุฒิการศึกษาสูงสุด <span style="color: #ef4444;">*</span></label>
                                             <select name="instructor_academic_degree" x-model="instructorProfile.academic_degree" required>
+                                                <option value="" disabled>-- เลือกวุฒิการศึกษา --</option>
                                                 <option value="ปริญญาเอก">ปริญญาเอก</option>
                                                 <option value="ปริญญาโท">ปริญญาโท</option>
                                                 <option value="ปริญญาตรี">ปริญญาตรี</option>
@@ -898,13 +914,7 @@
                     <form method="POST" action="{{ route('admin.users.import') }}" enctype="multipart/form-data">
                         @csrf
                         <div class="modal-body" style="padding: 24px;">
-                            <div style="background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 20px; font-size: 13px; line-height: 1.7; color: var(--fg-muted);">
-                                <strong style="color: var(--fg-base); display: block; margin-bottom: 4px;">รูปแบบไฟล์ CSV</strong>
-                                คอลัมน์บังคับ: <code>prefix, name, email, username, password, roles, primary_role</code><br>
-                                คอลัมน์เสริม: <code>employee_id, title, academic_degree, department_name, employment_type, teaching_pct, hired_date</code><br>
-                                <span style="margin-top: 6px; display: block;">• roles คั่นด้วย <code>|</code> เช่น <code>instructor|course_head</code></span>
-                                <span>• academic_degree: <code>doctoral</code> หรือ <code>non_doctoral</code></span>
-                            </div>
+
                             <div style="margin-bottom: 16px;">
                                 <a href="{{ asset('templates/users_import.csv') }}"
                                     style="font-size: 13px; color: var(--accent); text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
@@ -920,7 +930,7 @@
                                 <label class="frm-lbl">เลือกไฟล์ CSV <span style="color: var(--status-conflict-fg)">*</span></label>
                                 <input type="file" name="csv_file" accept=".csv,.txt" required
                                     style="display: block; width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: var(--bg-1);">
-                                <div style="font-size: 12px; color: var(--fg-muted); margin-top: 4px;">UTF-8 (ไม่มี BOM), ไม่เกิน 5 MB, แนะนำไม่เกิน 500 แถว</div>
+                                <div style="font-size: 12px; color: var(--fg-muted); margin-top: 4px;">รองรับไฟล์ภาษาไทย (UTF-8), ไม่เกิน 5 MB, แนะนำไม่เกิน 500 แถว</div>
                             </div>
                             <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-2);">
                                 <input type="checkbox" name="update_on_duplicate" value="1" style="margin-top: 2px; flex-shrink: 0;">
@@ -950,6 +960,21 @@
         <div style="max-height: 200px; overflow-y: auto; padding: 12px 16px;">
             @foreach(session('import_errors') as $err)
                 <div style="font-size: 12px; color: var(--fg-base); padding: 4px 0; border-bottom: 1px solid var(--border-subtle);">{{ $err }}</div>
+            @endforeach
+        </div>
+    </div>
+    @endif
+
+    @if(session('import_warnings'))
+    <div style="position: fixed; bottom: {{ session('import_errors') ? '280px' : '20px' }}; right: 20px; max-width: 420px; background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12); z-index: 9999; overflow: hidden;"
+        x-data="{ open: true }" x-show="open">
+        <div style="background: #fef9c3; border-bottom: 1px solid var(--border); padding: 10px 16px; display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-size: 13px; font-weight: 600; color: #854d0e;">พบข้อสังเกตการนำเข้า ({{ count(session('import_warnings')) }} รายการ)</span>
+            <button @click="open = false" style="background: none; border: none; cursor: pointer; color: var(--fg-muted);">✕</button>
+        </div>
+        <div style="max-height: 200px; overflow-y: auto; padding: 12px 16px;">
+            @foreach(session('import_warnings') as $warn)
+                <div style="font-size: 12px; color: var(--fg-base); padding: 4px 0; border-bottom: 1px solid var(--border-subtle);">{{ $warn }}</div>
             @endforeach
         </div>
     </div>

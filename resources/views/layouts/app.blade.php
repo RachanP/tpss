@@ -20,7 +20,10 @@
         [x-cloak] { display: none !important; }
     </style>
 </head>
-<body class="bg-(--bg) text-(--fg-1) antialiased" x-data="{ sidebarOpen: true }">
+<body class="bg-(--bg) text-(--fg-1) antialiased" x-data="{ sidebarOpen: window.innerWidth > 1024 }">
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" :class="{ 'is-open': sidebarOpen }" @click="sidebarOpen = false"></div>
+
     <div class="app-layout">
         <!-- Sidebar Component -->
         <x-sidebar />
@@ -29,6 +32,15 @@
         <div class="main-content">
             <!-- Topbar -->
             <div class="topbar">
+                <!-- Hamburger Menu -->
+                <button @click="sidebarOpen = !sidebarOpen" class="action-btn" style="display: none; border: none; background: transparent;" :style="{ display: window.innerWidth <= 1024 ? 'flex' : 'none' }">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+
                 <div class="tb-title">{{ $title ?? 'Dashboard' }}</div>
                 
                 <div class="tb-right" style="margin-left: auto;">

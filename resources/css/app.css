@@ -214,9 +214,24 @@
   --z-toast:     300;
 
   /* ════ LAYOUT ═════════════════════════════════════════════════ */
-  --sidebar-w:   220px;
-  --topbar-h:    52px;
-  --content-pad: 20px;
+  --sidebar-w:   240px;
+  --topbar-h:    56px;
+  --content-pad: 24px;
+}
+
+@media (max-width: 1024px) {
+  :root {
+    --sidebar-w: 220px;
+    --content-pad: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --sidebar-w: 0px; /* Hide on mobile by default */
+    --content-pad: 16px;
+    --topbar-h: 52px;
+  }
 }
 
 /* ────────── SEMANTIC TYPOGRAPHY ────────── */
@@ -264,12 +279,13 @@ body { font-family: var(--font-sans); color: var(--fg-1); background: var(--bg);
 .sidebar {
   position: fixed;
   inset: 0 auto 0 0;
-  width: var(--sidebar-w);
+  width: 240px; /* Fixed width for transition */
   background: var(--nav-bg);
   border-right: 1px solid var(--nav-border);
   display: flex;
   flex-direction: column;
   z-index: var(--z-sidebar);
+  transition: transform var(--dur-slow) var(--ease-out);
 }
 
 .main-content {
@@ -278,6 +294,35 @@ body { font-family: var(--font-sans); color: var(--fg-1); background: var(--bg);
   flex-direction: column;
   min-height: 100vh;
   flex: 1;
+  transition: margin-left var(--dur-slow) var(--ease-out);
+}
+
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(2px);
+  z-index: calc(var(--z-sidebar) - 1);
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .sidebar {
+    width: 280px;
+    transform: translateX(-100%);
+  }
+  .sidebar.is-open {
+    transform: translateX(0);
+    box-shadow: 20px 0 50px rgba(0,0,0,0.3);
+  }
+
+  .main-content {
+    margin-left: 0;
+  }
+
+  .sidebar-overlay.is-open {
+    display: block;
+  }
 }
 
 .topbar {
@@ -518,6 +563,18 @@ body { font-family: var(--font-sans); color: var(--fg-1); background: var(--bg);
   align-items: center;
   justify-content: space-between;
   background: var(--surface);
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .card-hdr {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .card-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
 }
 
 .card-ttl {
@@ -650,6 +707,13 @@ tr:hover td {
   grid-template-columns: 1fr 1fr;
   gap: 16px;
   margin-bottom: 16px;
+}
+
+@media (max-width: 640px) {
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
 }
 
 .form-group { flex: 1; }
@@ -884,7 +948,8 @@ input:focus, select:focus, textarea:focus {
   font-size: var(--fs-base);
   color: var(--fg-1);
   outline: none;
-  width: 200px;
+  width: 100%;
+  max-width: 200px;
 }
 
 .search-box svg {

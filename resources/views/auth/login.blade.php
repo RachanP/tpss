@@ -505,16 +505,40 @@
 
       .login-left {
         min-height: auto;
-        padding: 2rem;
+        padding: 2.5rem 1.5rem;
         gap: 1.5rem;
-        justify-content: flex-start;
+        justify-content: center;
+        text-align: center;
+      }
+
+      .seal-row {
+        justify-content: center;
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .brand-rule {
+        margin: 0 auto 1.5rem;
+      }
+
+      .hero-desc {
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      .feature-list {
+        align-items: center;
       }
 
       .login-left::before { font-size: 6rem; }
 
       .login-right {
-        padding: 2rem 1.5rem 4rem;
-        min-height: 65vh;
+        padding: 2rem 1rem 4rem;
+        min-height: 60vh;
+      }
+
+      .login-inner {
+        padding: 2rem 1.5rem;
       }
     }
   </style>

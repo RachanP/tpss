@@ -281,13 +281,13 @@ class AdminUserController extends Controller
         $header = array_map(fn($h) => trim($h), $header);
 
         $departments     = Department::pluck('id', 'name')->toArray();
-        $degreeMap       = ['doctoral' => 'ปริญญาเอก', 'non_doctoral' => 'ปริญญาโท'];
-        $empTypeMap      = ['full_time' => 'พนักงานมหาวิทยาลัย', 'part_time' => 'อาจารย์พิเศษ'];
         $validRoles      = ['admin', 'staff', 'course_head', 'executive', 'instructor'];
         $updateOnDup     = $request->boolean('update_on_duplicate');
+        $paCriteria      = json_decode(\App\Models\SystemSetting::get('pa_criteria_config', '{}'), true);
 
         $successCount = 0;
         $errors       = [];
+        $warnings     = [];
         $row          = 1;
 
         while (($data = fgetcsv($handle)) !== false) {
@@ -318,6 +318,19 @@ class AdminUserController extends Controller
                 continue;
             }
 
+            if (in_array('instructor', $roles)) {
+                $t = max(0, min(100, (int)(trim($csv['teaching_pct'] ?? '0') ?: '0')));
+                $r = max(0, min(100, (int)(trim($csv['research_pct'] ?? '0') ?: '0')));
+                $s = max(0, min(100, (int)(trim($csv['service_pct'] ?? '0') ?: '0')));
+                $c = max(0, min(100, (int)(trim($csv['culture_pct'] ?? '0') ?: '0')));
+                $o = max(0, min(100, (int)(trim($csv['other_pct'] ?? '0') ?: '0')));
+                $total = $t + $r + $s + $c + $o;
+                if ($total !== 100) {
+                    $errors[] = "แถว {$row}: สัดส่วนภาระงานรวมของอาจารย์ต้องเท่ากับ 100% (ปัจจุบัน {$total}%)";
+                    continue;
+                }
+            }
+
             // Check for existing user by email or username
             $existingByEmail    = User::where('email', $email)->first();
             $existingByUsername = User::where('username', $username)->first();
@@ -330,8 +343,8 @@ class AdminUserController extends Controller
             }
 
             try {
-                DB::transaction(function () use ($csv, $username, $email, $name, $roles, $primaryRole, $departments, $degreeMap, $empTypeMap, $existing, $password) {
-                    $profileData = $this->buildProfileData($csv, $departments, $degreeMap, $empTypeMap);
+                DB::transaction(function () use ($csv, $username, $email, $name, $roles, $primaryRole, $departments, $existing, $password, &$warnings, $paCriteria, $row) {
+                    $profileData = $this->buildProfileData($csv, $departments);
 
                     if ($existing) {
                         // Update: name, prefix, employee_id, roles, profile — no password change
@@ -350,11 +363,15 @@ class AdminUserController extends Controller
                             ]);
                         }
 
-                        if ($profileData !== null) {
-                            InstructorProfile::updateOrCreate(
+                        if ($profileData !== null && in_array('instructor', $roles)) {
+                            $profile = InstructorProfile::updateOrCreate(
                                 ['user_id' => $existing->id],
                                 $profileData
                             );
+                            $profileWarnings = $profile->getProfileWarnings($paCriteria);
+                            if (!empty($profileWarnings)) {
+                                $warnings[] = "แถว {$row} ({$name}): " . implode(', ', $profileWarnings);
+                            }
                         }
                     } else {
                         $user = User::create([
@@ -375,8 +392,12 @@ class AdminUserController extends Controller
                             ]);
                         }
 
-                        if ($profileData !== null) {
-                            InstructorProfile::create(array_merge(['user_id' => $user->id], $profileData));
+                        if ($profileData !== null && in_array('instructor', $roles)) {
+                            $profile = InstructorProfile::create(array_merge(['user_id' => $user->id], $profileData));
+                            $profileWarnings = $profile->getProfileWarnings($paCriteria);
+                            if (!empty($profileWarnings)) {
+                                $warnings[] = "แถว {$row} ({$name}): " . implode(', ', $profileWarnings);
+                            }
                         }
                     }
                 });
@@ -389,15 +410,19 @@ class AdminUserController extends Controller
         fclose($handle);
 
         $msg = "นำเข้าสำเร็จ {$successCount} รายการ";
+        $redirect = redirect()->route('admin.users')->with('success', $msg);
+        
         if ($errors) {
-            return redirect()->route('admin.users')
-                ->with('success', $msg)
-                ->with('import_errors', $errors);
+            $redirect->with('import_errors', $errors);
         }
-        return redirect()->route('admin.users')->with('success', $msg);
+        if ($warnings) {
+            $redirect->with('import_warnings', $warnings);
+        }
+        
+        return $redirect;
     }
 
-    private function buildProfileData(array $csv, array $departments, array $degreeMap, array $empTypeMap): ?array
+    private function buildProfileData(array $csv, array $departments): ?array
     {
         $title    = trim($csv['title'] ?? '');
         $deptName = trim($csv['department_name'] ?? '');
@@ -407,22 +432,54 @@ class AdminUserController extends Controller
             return null;
         }
 
-        $deptId      = $deptName ? ($departments[$deptName] ?? null) : null;
-        $degree      = $degreeMap[trim($csv['academic_degree'] ?? '')] ?? 'ปริญญาโท';
-        $empType     = $empTypeMap[trim($csv['employment_type'] ?? '')] ?? 'พนักงานมหาวิทยาลัย';
+        $parsedHiredAt = null;
+        if ($hiredAt) {
+            try {
+                if (str_contains($hiredAt, '/')) {
+                    $parsedHiredAt = \Carbon\Carbon::createFromFormat('d/m/Y', $hiredAt)->format('Y-m-d');
+                } else {
+                    $parsedHiredAt = \Carbon\Carbon::parse($hiredAt)->format('Y-m-d');
+                }
+            } catch (\Exception $e) {
+                try {
+                    $parsedHiredAt = \Carbon\Carbon::parse(str_replace('/', '-', $hiredAt))->format('Y-m-d');
+                } catch (\Exception $e2) {
+                    $parsedHiredAt = null;
+                }
+            }
+        }
+
+        $deptId = null;
+        if ($deptName) {
+            $deptId = $departments[$deptName] ?? null;
+            if (!$deptId) {
+                foreach ($departments as $dbName => $id) {
+                    if (str_replace('ภาควิชา', '', $dbName) === str_replace('ภาควิชา', '', $deptName) || str_contains($dbName, $deptName)) {
+                        $deptId = $id;
+                        break;
+                    }
+                }
+            }
+        }
+        $degree      = trim($csv['academic_degree'] ?? '') ?: null;
+        $empType     = trim($csv['employment_type'] ?? '') ?: null;
         $teachingPct = max(0, min(100, (int)(trim($csv['teaching_pct'] ?? '0') ?: '0')));
+        $researchPct = max(0, min(100, (int)(trim($csv['research_pct'] ?? '0') ?: '0')));
+        $servicePct  = max(0, min(100, (int)(trim($csv['service_pct'] ?? '0') ?: '0')));
+        $culturePct  = max(0, min(100, (int)(trim($csv['culture_pct'] ?? '0') ?: '0')));
+        $otherPct    = max(0, min(100, (int)(trim($csv['other_pct'] ?? '0') ?: '0')));
 
         return [
             'title'           => $title ?: null,
             'department_id'   => $deptId,
             'academic_degree' => $degree,
             'employment_type' => $empType,
-            'hired_at'        => $hiredAt ?: null,
+            'hired_at'        => $parsedHiredAt,
             'teaching_pct'    => $teachingPct,
-            'research_pct'    => 0,
-            'service_pct'     => 0,
-            'culture_pct'     => 0,
-            'other_pct'       => 0,
+            'research_pct'    => $researchPct,
+            'service_pct'     => $servicePct,
+            'culture_pct'     => $culturePct,
+            'other_pct'       => $otherPct,
             'teaching_quota'  => 0,
         ];
     }

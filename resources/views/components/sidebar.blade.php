@@ -15,7 +15,7 @@
     $currentPath = request()->path();
 @endphp
 
-<div class="sidebar">
+<div class="sidebar" :class="{ 'is-open': sidebarOpen }">
     <!-- Logo -->
     <div class="sb-logo">
         <img src="{{ asset('picture/Mahidol_U_logo.png') }}" alt="Logo"
