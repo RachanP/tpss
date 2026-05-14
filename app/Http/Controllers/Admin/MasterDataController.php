@@ -491,7 +491,12 @@ class MasterDataController extends Controller
             fclose($handle);
             return back()->with('error', 'ไฟล์ CSV ว่างเปล่า');
         }
-        $header = array_map(fn($h) => trim($h), $header);
+        $header = $this->normalizeCsvHeader($header);
+        $missingHeaders = $this->missingCsvHeaders($header, ['name', 'code', 'location_type_name']);
+        if ($missingHeaders) {
+            fclose($handle);
+            return back()->with('error', 'หัวไฟล์ CSV ไม่ครบ: ' . implode(', ', $missingHeaders));
+        }
 
         $locationTypes = LocationType::pluck('id', 'name')->toArray();
         $updateOnDup   = $request->boolean('update_on_duplicate');
@@ -501,9 +506,11 @@ class MasterDataController extends Controller
 
         while (($data = fgetcsv($handle)) !== false) {
             $row++;
-            if (count(array_filter($data)) === 0) continue;
+            if (!$this->csvRowHasData($data)) continue;
 
-            $csv    = array_combine($header, array_pad($data, count($header), ''));
+            $csv = $this->combineCsvRow($header, $data, $row, $errors);
+            if ($csv === null) continue;
+
             $name   = trim($csv['name'] ?? '');
             $code   = trim($csv['code'] ?? '');
             $ltName = trim($csv['location_type_name'] ?? '');
@@ -571,7 +578,18 @@ class MasterDataController extends Controller
             fclose($handle);
             return back()->with('error', 'ไฟล์ CSV ว่างเปล่า');
         }
-        $header = array_map(fn($h) => trim($h), $header);
+        $header = $this->normalizeCsvHeader($header);
+        $missingHeaders = $this->missingCsvHeaders($header, [
+            'course_code',
+            'name_th',
+            'curriculum_name',
+            'department_name',
+            'credits',
+        ]);
+        if ($missingHeaders) {
+            fclose($handle);
+            return back()->with('error', 'หัวไฟล์ CSV ไม่ครบ: ' . implode(', ', $missingHeaders));
+        }
 
         $curriculums  = Curriculum::pluck('id', 'name')->toArray();
         $departments  = Department::pluck('id', 'name')->toArray();
@@ -582,9 +600,11 @@ class MasterDataController extends Controller
 
         while (($data = fgetcsv($handle)) !== false) {
             $row++;
-            if (count(array_filter($data)) === 0) continue;
+            if (!$this->csvRowHasData($data)) continue;
 
-            $csv      = array_combine($header, array_pad($data, count($header), ''));
+            $csv = $this->combineCsvRow($header, $data, $row, $errors);
+            if ($csv === null) continue;
+
             $code     = trim($csv['course_code'] ?? '');
             $nameTh   = trim($csv['name_th'] ?? '');
             $currName = trim($csv['curriculum_name'] ?? '');
