@@ -11,6 +11,7 @@ use App\Models\Course;
 use App\Models\Curriculum;
 use App\Models\ActivityType;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class MasterDataController extends Controller
 {
@@ -229,7 +230,13 @@ class MasterDataController extends Controller
     public function storeCourse(Request $request)
     {
         $validated = $request->validate([
-            'course_code' => 'required|string|max:20|unique:courses,course_code',
+            'course_code' => [
+                'required',
+                'string',
+                'max:20',
+                Rule::unique('courses', 'course_code')
+                    ->where(fn ($query) => $query->where('curriculum_id', $request->input('curriculum_id'))),
+            ],
             'name_th' => 'required|string|max:255',
             'name_en' => 'nullable|string|max:255',
             'curriculum_id' => 'required|exists:curriculums,id',
@@ -273,7 +280,14 @@ class MasterDataController extends Controller
     public function updateCourse(Request $request, Course $course)
     {
         $validated = $request->validate([
-            'course_code' => 'required|string|max:20|unique:courses,course_code,' . $course->id,
+            'course_code' => [
+                'required',
+                'string',
+                'max:20',
+                Rule::unique('courses', 'course_code')
+                    ->where(fn ($query) => $query->where('curriculum_id', $request->input('curriculum_id')))
+                    ->ignore($course->id),
+            ],
             'name_th' => 'required|string|max:255',
             'name_en' => 'nullable|string|max:255',
             'curriculum_id' => 'required|exists:curriculums,id',
