@@ -556,7 +556,7 @@
                             </div>
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label>รหัสเข้าระบบ</label>
+                                    <label>ชื่อผู้ใช้งาน</label>
                                     <input type="text" name="username" x-model="currentUser.username"
                                         :readonly="editMode"
                                         :style="editMode ? 'background: var(--bg-2); color: var(--fg-3)' : ''" required
