@@ -57,6 +57,16 @@ class AdminUserManagementTest extends TestCase
             'roles' => ['staff', 'instructor'],
             'primary_role' => 'staff',
             'is_active' => true,
+            'instructor_title' => 'อาจารย์',
+            'instructor_department_id' => \App\Models\Department::create(['name' => 'Test Department', 'code' => 'TEST'])->id,
+            'instructor_employment_type' => 'พนักงานมหาวิทยาลัย',
+            'instructor_hired_at' => '2023-01-01',
+            'instructor_academic_degree' => 'ปริญญาโท',
+            'instructor_teaching_pct' => 50,
+            'instructor_research_pct' => 30,
+            'instructor_service_pct' => 10,
+            'instructor_culture_pct' => 10,
+            'instructor_other_pct' => 0,
         ]);
 
         $response->assertRedirect('/admin/users');
