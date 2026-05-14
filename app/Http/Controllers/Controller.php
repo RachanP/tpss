@@ -26,4 +26,35 @@ abstract class Controller
         rewind($handle);
         return $handle;
     }
+
+    protected function normalizeCsvHeader(array $header): array
+    {
+        return array_map(fn($h) => trim((string) $h), $header);
+    }
+
+    protected function missingCsvHeaders(array $header, array $required): array
+    {
+        return array_values(array_diff($required, $header));
+    }
+
+    protected function csvRowHasData(array $data): bool
+    {
+        return count(array_filter($data, fn($v) => trim((string) $v) !== '')) > 0;
+    }
+
+    protected function combineCsvRow(array $header, array $data, int $row, array &$errors): ?array
+    {
+        if (count($data) !== count($header)) {
+            $errors[] = "แถว {$row}: จำนวนคอลัมน์ไม่ตรงกับหัวตาราง";
+            return null;
+        }
+
+        $combined = array_combine($header, $data);
+        if ($combined === false) {
+            $errors[] = "แถว {$row}: ไม่สามารถอ่านข้อมูล CSV ได้";
+            return null;
+        }
+
+        return $combined;
+    }
 }

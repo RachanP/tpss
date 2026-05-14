@@ -58,7 +58,7 @@ class AdminUserController extends Controller
             'prefix'       => 'nullable|string|max:50',
             'name'         => 'required|string|max:255',
             'email'        => 'required|string|email|max:255|unique:users',
-            'password'     => 'required|string|min:4',
+            'password'     => 'required|string|min:8',
             'employee_id'  => 'nullable|string|max:50|unique:users,employee_id',
             'roles'        => 'required|array|min:1',
             'primary_role' => ['required', 'string', Rule::in($roles)],
@@ -152,7 +152,7 @@ class AdminUserController extends Controller
             'prefix'       => 'nullable|string|max:50',
             'name'         => 'required|string|max:255',
             'email'        => 'required|string|email|max:255|unique:users,email,' . $user->id,
-            'password'     => 'nullable|string|min:4',
+            'password'     => 'nullable|string|min:8',
             'employee_id'  => 'nullable|string|max:50|unique:users,employee_id,' . $user->id,
             'roles'        => 'required|array|min:1',
             'primary_role' => ['required', 'string', Rule::in($roles)],
@@ -282,7 +282,12 @@ class AdminUserController extends Controller
             fclose($handle);
             return back()->with('error', 'ไฟล์ CSV ว่างเปล่า');
         }
-        $header = array_map(fn($h) => trim($h), $header);
+        $header = $this->normalizeCsvHeader($header);
+        $missing = $this->missingCsvHeaders($header, ['username', 'email', 'name', 'password', 'roles', 'primary_role']);
+        if ($missing) {
+            fclose($handle);
+            return back()->with('error', 'หัวไฟล์ CSV ไม่ครบ: ' . implode(', ', $missing));
+        }
 
         $departments     = Department::pluck('id', 'name')->toArray();
         $validRoles      = ['admin', 'staff', 'course_head', 'executive', 'instructor'];
@@ -296,9 +301,10 @@ class AdminUserController extends Controller
 
         while (($data = fgetcsv($handle)) !== false) {
             $row++;
-            if (count(array_filter($data)) === 0) continue;
+            if (!$this->csvRowHasData($data)) continue;
 
-            $csv         = array_combine($header, array_pad($data, count($header), ''));
+            $csv = $this->combineCsvRow($header, $data, $row, $errors);
+            if ($csv === null) continue;
             $username    = trim($csv['username'] ?? '');
             $email       = trim($csv['email'] ?? '');
             $name        = trim($csv['name'] ?? '');
@@ -386,6 +392,8 @@ class AdminUserController extends Controller
                             if (!empty($profileWarnings)) {
                                 $warnings[] = "แถว {$row} ({$name}): " . implode(', ', $profileWarnings);
                             }
+                        } else {
+                            InstructorProfile::where('user_id', $existing->id)->delete();
                         }
                     } else {
                         $user = User::create([

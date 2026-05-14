@@ -12,22 +12,29 @@ class CheckRole
 {
     public function handle(Request $request, Closure $next, ...$roles): Response
     {
-        $activeRole = session('active_role');
+        $user = Auth::user();
 
-        if (!in_array($activeRole, $roles)) {
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        $activeRole = $request->session()->get('active_role');
+
+        if (!is_string($activeRole) || $activeRole === '') {
             abort(403, 'ไม่มีสิทธิ์เข้าถึงส่วนนี้');
         }
 
         // ยืนยันว่า user ถือ role นั้นจริงใน DB (ป้องกัน session tampering)
-        $hasRole = UserRole::where('user_id', Auth::id())
+        $hasRole = UserRole::where('user_id', $user->id)
             ->where('role', $activeRole)
             ->exists();
 
         if (!$hasRole) {
-            Auth::logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-            return redirect()->route('login')->withErrors(['username' => 'Session ไม่ถูกต้อง กรุณาเข้าสู่ระบบใหม่']);
+            abort(403, 'ไม่มีสิทธิ์เข้าถึงส่วนนี้');
+        }
+
+        if (!in_array($activeRole, $roles, true)) {
+            abort(403, 'ไม่มีสิทธิ์เข้าถึงส่วนนี้');
         }
 
         return $next($request);

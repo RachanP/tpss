@@ -104,7 +104,7 @@ class User extends Authenticatable
         } else {
             $displayTitle = $userPrefix ?? '';
         }
-        $needsSpace = !empty($displayTitle) && !in_array($displayTitle, ['นาย', 'นาง', 'นางสาว', 'ดร.']) && !str_ends_with($displayTitle, 'ดร.');
+        $needsSpace = !empty($displayTitle) && in_array($displayTitle, ['นาย', 'นาง', 'นางสาว']);
         return $displayTitle . ($needsSpace ? ' ' : '') . $this->name;
     }
 }

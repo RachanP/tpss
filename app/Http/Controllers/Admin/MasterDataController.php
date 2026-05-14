@@ -11,6 +11,7 @@ use App\Models\Course;
 use App\Models\Curriculum;
 use App\Models\ActivityType;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class MasterDataController extends Controller
 {
@@ -72,6 +73,16 @@ class MasterDataController extends Controller
         ));
     }
 
+    private function masterDataRouteName(): string
+    {
+        return session('active_role') === 'staff' ? 'staff.master_data' : 'admin.master_data';
+    }
+
+    private function redirectToMasterData(string $tab): \Illuminate\Http\RedirectResponse
+    {
+        return redirect()->route($this->masterDataRouteName(), ['tab' => $tab]);
+    }
+
     public function storeLocationType(Request $request)
     {
         $validated = $request->validate([
@@ -80,7 +91,7 @@ class MasterDataController extends Controller
 
         LocationType::create($validated);
 
-        return redirect()->route('admin.master_data', ['tab' => 'location_types'])->with('success', 'เพิ่มประเภทสถานที่เรียบร้อยแล้ว');
+        return $this->redirectToMasterData('location_types')->with('success', 'เพิ่มประเภทสถานที่เรียบร้อยแล้ว');
     }
 
     public function updateLocationType(Request $request, LocationType $locationType)
@@ -91,7 +102,7 @@ class MasterDataController extends Controller
 
         $locationType->update($validated);
 
-        return redirect()->route('admin.master_data', ['tab' => 'location_types'])->with('success', 'อัปเดตประเภทสถานที่เรียบร้อยแล้ว');
+        return $this->redirectToMasterData('location_types')->with('success', 'อัปเดตประเภทสถานที่เรียบร้อยแล้ว');
     }
 
     public function storeRoom(Request $request)
@@ -115,7 +126,7 @@ class MasterDataController extends Controller
 
         Room::create($validated);
 
-        return redirect()->route('admin.master_data', ['tab' => 'location_types'])->with('success', 'เพิ่มห้อง/สถานที่เรียบร้อยแล้ว');
+        return $this->redirectToMasterData('location_types')->with('success', 'เพิ่มห้อง/สถานที่เรียบร้อยแล้ว');
     }
 
     public function updateRoom(Request $request, Room $room)
@@ -139,7 +150,7 @@ class MasterDataController extends Controller
 
         $room->update($validated);
 
-        return redirect()->route('admin.master_data', ['tab' => 'location_types'])->with('success', 'อัปเดตห้อง/สถานที่เรียบร้อยแล้ว');
+        return $this->redirectToMasterData('location_types')->with('success', 'อัปเดตห้อง/สถานที่เรียบร้อยแล้ว');
     }
 
     public function storeDepartment(Request $request)
@@ -233,7 +244,11 @@ class MasterDataController extends Controller
     public function storeCourse(Request $request)
     {
         $validated = $request->validate([
-            'course_code'                 => 'required|string|max:20|unique:courses,course_code',
+            'course_code'                 => [
+                'required', 'string', 'max:20',
+                Rule::unique('courses', 'course_code')
+                    ->where(fn($q) => $q->where('curriculum_id', $request->input('curriculum_id'))),
+            ],
             'name_th'                     => 'required|string|max:255',
             'name_en'                     => 'nullable|string|max:255',
             'curriculum_id'               => 'required|exists:curriculums,id',
@@ -262,13 +277,18 @@ class MasterDataController extends Controller
         $course = Course::create($validated);
         $course->assignedStaff()->sync($staffIds);
 
-        return redirect()->route('admin.master_data', ['tab' => 'courses'])->with('success', 'เพิ่มรายวิชาเรียบร้อยแล้ว');
+        return $this->redirectToMasterData('courses')->with('success', 'เพิ่มรายวิชาเรียบร้อยแล้ว');
     }
 
     public function updateCourse(Request $request, Course $course)
     {
         $validated = $request->validate([
-            'course_code'                 => 'required|string|max:20|unique:courses,course_code,' . $course->id,
+            'course_code'                 => [
+                'required', 'string', 'max:20',
+                Rule::unique('courses', 'course_code')
+                    ->where(fn($q) => $q->where('curriculum_id', $request->input('curriculum_id')))
+                    ->ignore($course->id),
+            ],
             'name_th'                     => 'required|string|max:255',
             'name_en'                     => 'nullable|string|max:255',
             'curriculum_id'               => 'required|exists:curriculums,id',
@@ -297,7 +317,7 @@ class MasterDataController extends Controller
         $course->update($validated);
         $course->assignedStaff()->sync($staffIds);
 
-        return redirect()->route('admin.master_data', ['tab' => 'courses'])->with('success', 'อัปเดตข้อมูลรายวิชาเรียบร้อยแล้ว');
+        return $this->redirectToMasterData('courses')->with('success', 'อัปเดตข้อมูลรายวิชาเรียบร้อยแล้ว');
     }
 
     public function storeCurriculum(Request $request)
@@ -310,7 +330,7 @@ class MasterDataController extends Controller
 
         Curriculum::create($validated);
 
-        return redirect()->route('admin.master_data', ['tab' => 'curriculums'])->with('success', 'เพิ่มหลักสูตรเรียบร้อยแล้ว');
+        return $this->redirectToMasterData('curriculums')->with('success', 'เพิ่มหลักสูตรเรียบร้อยแล้ว');
     }
 
     public function updateCurriculum(Request $request, Curriculum $curriculum)
@@ -323,7 +343,7 @@ class MasterDataController extends Controller
 
         $curriculum->update($validated);
 
-        return redirect()->route('admin.master_data', ['tab' => 'curriculums'])->with('success', 'อัปเดตข้อมูลหลักสูตรเรียบร้อยแล้ว');
+        return $this->redirectToMasterData('curriculums')->with('success', 'อัปเดตข้อมูลหลักสูตรเรียบร้อยแล้ว');
     }
 
     public function cloneCurriculum(Request $request, Curriculum $curriculum)
@@ -358,14 +378,14 @@ class MasterDataController extends Controller
             $newCourse->save();
         }
 
-        return redirect()->route('admin.master_data', ['tab' => 'curriculums'])->with('success', 'คัดลอกหลักสูตรและรายวิชาทั้งหมดเรียบร้อยแล้ว (' . $courses->count() . ' วิชา)');
+        return $this->redirectToMasterData('curriculums')->with('success', 'คัดลอกหลักสูตรและรายวิชาทั้งหมดเรียบร้อยแล้ว (' . $courses->count() . ' วิชา)');
     }
 
     public function destroyDepartment(Department $department)
     {
         try {
             $department->delete();
-            return redirect()->route('admin.master_data', ['tab' => 'departments'])->with('success', 'ลบภาควิชาเรียบร้อยแล้ว');
+            return $this->redirectToMasterData('departments')->with('success', 'ลบภาควิชาเรียบร้อยแล้ว');
         } catch (\Illuminate\Database\QueryException $e) {
             return redirect()->back()->with('error', 'ไม่สามารถลบได้เนื่องจากมีข้อมูลผูกพันอยู่ (เช่น มีอาจารย์หรือวิชาสังกัดอยู่)');
         }
@@ -381,14 +401,14 @@ class MasterDataController extends Controller
         if ($affected > 0) {
             $msg .= " (ลบห้อง/สถานที่ที่เกี่ยวข้องออก {$affected} แห่ง)";
         }
-        return redirect()->route('admin.master_data', ['tab' => 'location_types'])->with('success', $msg);
+        return $this->redirectToMasterData('location_types')->with('success', $msg);
     }
 
     public function destroyRoom(Room $room)
     {
         try {
             $room->delete();
-            return redirect()->route('admin.master_data', ['tab' => 'location_types'])->with('success', 'ลบห้องเรียบร้อยแล้ว');
+            return $this->redirectToMasterData('location_types')->with('success', 'ลบห้องเรียบร้อยแล้ว');
         } catch (\Illuminate\Database\QueryException $e) {
             return redirect()->back()->with('error', 'ไม่สามารถลบได้เนื่องจากมีข้อมูลผูกพันอยู่');
         }
@@ -398,7 +418,7 @@ class MasterDataController extends Controller
     {
         try {
             $course->delete();
-            return redirect()->route('admin.master_data', ['tab' => 'courses'])->with('success', 'ลบรายวิชาเรียบร้อยแล้ว');
+            return $this->redirectToMasterData('courses')->with('success', 'ลบรายวิชาเรียบร้อยแล้ว');
         } catch (\Illuminate\Database\QueryException $e) {
             return redirect()->back()->with('error', 'ไม่สามารถลบได้เนื่องจากมีข้อมูลการสอนผูกอยู่');
         }
@@ -408,7 +428,7 @@ class MasterDataController extends Controller
     {
         try {
             $curriculum->delete();
-            return redirect()->route('admin.master_data', ['tab' => 'curriculums'])->with('success', 'ลบหลักสูตรเรียบร้อยแล้ว');
+            return $this->redirectToMasterData('curriculums')->with('success', 'ลบหลักสูตรเรียบร้อยแล้ว');
         } catch (\Illuminate\Database\QueryException $e) {
             return redirect()->back()->with('error', 'ไม่สามารถลบได้เนื่องจากมีรายวิชาผูกอยู่ กรุณาลบวิชาในหลักสูตรนี้ออกก่อน');
         }
@@ -424,7 +444,7 @@ class MasterDataController extends Controller
             'category'   => 'required|in:lecture,practicum,thesis,other',
         ]);
         ActivityType::create($validated);
-        return redirect()->route('admin.master_data', ['tab' => 'activity_types'])->with('success', 'เพิ่มประเภทกิจกรรมเรียบร้อยแล้ว');
+        return $this->redirectToMasterData('activity_types')->with('success', 'เพิ่มประเภทกิจกรรมเรียบร้อยแล้ว');
     }
 
     public function updateActivityType(Request $request, ActivityType $activityType)
@@ -435,14 +455,14 @@ class MasterDataController extends Controller
             'category'   => 'required|in:lecture,practicum,thesis,other',
         ]);
         $activityType->update($validated);
-        return redirect()->route('admin.master_data', ['tab' => 'activity_types'])->with('success', 'อัปเดตประเภทกิจกรรมเรียบร้อยแล้ว');
+        return $this->redirectToMasterData('activity_types')->with('success', 'อัปเดตประเภทกิจกรรมเรียบร้อยแล้ว');
     }
 
     public function destroyActivityType(ActivityType $activityType)
     {
         try {
             $activityType->delete();
-            return redirect()->route('admin.master_data', ['tab' => 'activity_types'])->with('success', 'ลบประเภทกิจกรรมเรียบร้อยแล้ว');
+            return $this->redirectToMasterData('activity_types')->with('success', 'ลบประเภทกิจกรรมเรียบร้อยแล้ว');
         } catch (\Illuminate\Database\QueryException $e) {
             return redirect()->back()->with('error', 'ไม่สามารถลบได้เนื่องจากมีกิจกรรมผูกอยู่กับประเภทนี้');
         }
@@ -462,7 +482,12 @@ class MasterDataController extends Controller
             fclose($handle);
             return back()->with('error', 'ไฟล์ CSV ว่างเปล่า');
         }
-        $header = array_map(fn($h) => trim($h), $header);
+        $header = $this->normalizeCsvHeader($header);
+        $missing = $this->missingCsvHeaders($header, ['room_code', 'room_name', 'location_type_name']);
+        if ($missing) {
+            fclose($handle);
+            return back()->with('error', 'หัวไฟล์ CSV ไม่ครบ: ' . implode(', ', $missing));
+        }
 
         $locationTypes = LocationType::pluck('id', 'name')->toArray();
         $updateOnDup   = $request->boolean('update_on_duplicate');
@@ -472,9 +497,10 @@ class MasterDataController extends Controller
 
         while (($data = fgetcsv($handle)) !== false) {
             $row++;
-            if (count(array_filter($data)) === 0) continue;
+            if (!$this->csvRowHasData($data)) continue;
 
-            $csv      = array_combine($header, array_pad($data, count($header), ''));
+            $csv = $this->combineCsvRow($header, $data, $row, $errors);
+            if ($csv === null) continue;
             $roomName = trim($csv['room_name'] ?? '');
             $roomCode = trim($csv['room_code'] ?? '');
             $ltName   = trim($csv['location_type_name'] ?? '');
@@ -528,12 +554,11 @@ class MasterDataController extends Controller
 
         fclose($handle);
 
-        $routePrefix = session('active_role') === 'admin' ? 'admin' : 'staff';
         $failCount = count($errors);
         $msg = $failCount > 0
             ? "นำเข้าสำเร็จ {$successCount} ห้อง, ข้าม {$failCount} แถว — ดูรายละเอียดด้านล่างขวา"
             : "นำเข้าสำเร็จทั้งหมด {$successCount} ห้อง";
-        $redirect = redirect()->route("{$routePrefix}.master_data", ['tab' => 'location_types'])->with('success', $msg);
+        $redirect = $this->redirectToMasterData('location_types')->with('success', $msg);
         if ($errors) $redirect->with('import_errors', $errors);
         return $redirect;
     }
@@ -550,7 +575,12 @@ class MasterDataController extends Controller
             fclose($handle);
             return back()->with('error', 'ไฟล์ CSV ว่างเปล่า');
         }
-        $header = array_map(fn($h) => trim($h), $header);
+        $header = $this->normalizeCsvHeader($header);
+        $missing = $this->missingCsvHeaders($header, ['course_code', 'name_th', 'curriculum_name', 'credits']);
+        if ($missing) {
+            fclose($handle);
+            return back()->with('error', 'หัวไฟล์ CSV ไม่ครบ: ' . implode(', ', $missing));
+        }
 
         $curriculums    = Curriculum::pluck('id', 'name')->toArray();
         $departments    = Department::pluck('id', 'name')->toArray();
@@ -562,9 +592,10 @@ class MasterDataController extends Controller
 
         while (($data = fgetcsv($handle)) !== false) {
             $row++;
-            if (count(array_filter($data)) === 0) continue;
+            if (!$this->csvRowHasData($data)) continue;
 
-            $csv        = array_combine($header, array_pad($data, count($header), ''));
+            $csv = $this->combineCsvRow($header, $data, $row, $errors);
+            if ($csv === null) continue;
             $code       = trim($csv['course_code'] ?? '');
             $nameTh     = trim($csv['name_th'] ?? '');
             $currName   = trim($csv['curriculum_name'] ?? '');
@@ -668,12 +699,11 @@ class MasterDataController extends Controller
 
         fclose($handle);
 
-        $routePrefix = session('active_role') === 'admin' ? 'admin' : 'staff';
         $failCount = count($errors);
         $msg = $failCount > 0
             ? "นำเข้าสำเร็จ {$successCount} วิชา, ข้าม {$failCount} แถว — ดูรายละเอียดด้านล่างขวา"
             : "นำเข้าสำเร็จทั้งหมด {$successCount} วิชา";
-        $redirect = redirect()->route("{$routePrefix}.master_data", ['tab' => 'courses'])->with('success', $msg);
+        $redirect = $this->redirectToMasterData('courses')->with('success', $msg);
         if ($errors) $redirect->with('import_errors', $errors);
         return $redirect;
     }
