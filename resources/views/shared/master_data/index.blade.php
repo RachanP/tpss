@@ -142,7 +142,6 @@
             curriculum_id: '',
             department_id: '',
             head_instructor_id: '',
-            assigned_staff_id: '',
             course_type: 'theory',
             academic_level: 'undergraduate',
             default_year_level: '',
@@ -158,22 +157,45 @@
         },
         courseHeadSearch: '',
         showCourseHeadDropdown: false,
+        selectedStaff: [],
+        staffSearch: '',
+        showStaffDropdown: false,
         openAddCourse() {
             this.editCourseMode = false;
-            this.currentCourse = { id: '', course_code: '', name_th: '', name_en: '', curriculum_id: '', department_id: '', head_instructor_id: '', assigned_staff_id: '', course_type: 'theory', academic_level: 'undergraduate', default_year_level: '', default_semester: '', credits: '', lecture_hours: 0, lab_hours: 0, self_study_hours: 0, capacity: '', color_code: '#3b82f6', status: 'active', requires_practicum_rotation: false };
+            this.currentCourse = { id: '', course_code: '', name_th: '', name_en: '', curriculum_id: '', department_id: '', head_instructor_id: '', course_type: 'theory', academic_level: 'undergraduate', default_year_level: '', default_semester: '', credits: '', lecture_hours: 0, lab_hours: 0, self_study_hours: 0, capacity: '', color_code: '#3b82f6', status: 'active', requires_practicum_rotation: false };
             this.courseHeadSearch = '';
+            this.selectedStaff = [];
+            this.staffSearch = '';
             this.showCourseModal = true;
         },
         openEditCourse(course) {
             this.editCourseMode = true;
             this.currentCourse = { ...course };
             this.courseHeadSearch = course.head_instructor ? course.head_instructor.formatted_name : '';
+            this.selectedStaff = course.assigned_staff ? course.assigned_staff.map(s => ({ id: s.id, name: s.formatted_name || s.name })) : [];
+            this.staffSearch = '';
             this.showCourseModal = true;
         },
         selectCourseHead(user) {
             this.currentCourse.head_instructor_id = user.id;
-            this.courseHeadSearch = user.name;
+            this.courseHeadSearch = user.formatted_name || user.name;
             this.showCourseHeadDropdown = false;
+        },
+        addStaff(user) {
+            if (!this.selectedStaff.find(s => s.id === user.id)) {
+                this.selectedStaff.push({ id: user.id, name: user.formatted_name || user.name });
+            }
+            this.staffSearch = '';
+            this.showStaffDropdown = false;
+        },
+        removeStaff(id) {
+            this.selectedStaff = this.selectedStaff.filter(s => s.id !== id);
+        },
+        filteredStaffList() {
+            return staffUsers.filter(u =>
+                !this.selectedStaff.find(s => s.id === u.id) &&
+                (u.formatted_name || u.name).toLowerCase().includes(this.staffSearch.toLowerCase())
+            );
         },
 
         // Curriculums
@@ -202,7 +224,7 @@
             this.showCloneCurriculumModal = true;
         },
 
-        usersList: {{ Js::from($users->map(fn($u) => ['id' => $u->id, 'name' => $u->formatted_name])) }},
+        usersList: {{ Js::from($users->map(fn($u) => ['id' => $u->id, 'name' => $u->formatted_name, 'formatted_name' => $u->formatted_name])) }},
 
         confirmDeptSave(e) {
             var form     = e.target;
@@ -1279,26 +1301,60 @@
                                 <div style="flex:1;height:1px;background:var(--border);"></div>
                             </div>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+                                {{-- หัวหน้าวิชา: combobox --}}
                                 <div class="form-group" style="position:relative;margin-bottom:0;">
                                     <label>หัวหน้าวิชา / ผู้ประสานรายวิชา</label>
-                                    <input type="text" x-model="courseHeadSearch" @input="showCourseHeadDropdown = true"
-                                        @focus="showCourseHeadDropdown = true" @click.away="showCourseHeadDropdown = false"
-                                        placeholder="พิมพ์ชื่อเพื่อค้นหา...">
-                                    <div class="search-results" x-show="showCourseHeadDropdown && courseHeadSearch" x-cloak>
-                                        <template x-for="user in usersList.filter(u => u.name.toLowerCase().includes(courseHeadSearch.toLowerCase()))" :key="user.id">
-                                            <div class="search-item" @click="selectCourseHead(user)" x-text="user.name"></div>
+                                    <div style="position:relative;">
+                                        <input type="text" x-model="courseHeadSearch"
+                                            @input="showCourseHeadDropdown = true"
+                                            @focus="showCourseHeadDropdown = true"
+                                            @click.away="showCourseHeadDropdown = false"
+                                            placeholder="พิมพ์ชื่อเพื่อค้นหา..."
+                                            style="padding-right: 32px;">
+                                        <button type="button"
+                                            @click="showCourseHeadDropdown = !showCourseHeadDropdown"
+                                            style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:2px;color:var(--fg-3);">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                                        </button>
+                                    </div>
+                                    <div class="search-results" x-show="showCourseHeadDropdown" x-cloak style="max-height:180px;overflow-y:auto;">
+                                        <template x-for="user in usersList.filter(u => (u.formatted_name||u.name).toLowerCase().includes(courseHeadSearch.toLowerCase()))" :key="user.id">
+                                            <div class="search-item" @click="selectCourseHead(user)" x-text="user.formatted_name || user.name"></div>
                                         </template>
+                                        <div x-show="usersList.filter(u => (u.formatted_name||u.name).toLowerCase().includes(courseHeadSearch.toLowerCase())).length === 0"
+                                            style="padding:8px 12px;color:var(--fg-4);font-size:12px;">ไม่พบผู้ใช้</div>
                                     </div>
                                     <input type="hidden" name="head_instructor_id" x-model="currentCourse.head_instructor_id">
                                 </div>
+
+                                {{-- เจ้าหน้าที่: multi-select chips --}}
                                 <div class="form-group" style="margin-bottom:0;">
-                                    <label>เจ้าหน้าที่ผู้ดูแลวิชา</label>
-                                    <select name="assigned_staff_id" x-model="currentCourse.assigned_staff_id">
-                                        <option value="">-- ไม่ระบุ --</option>
-                                        @foreach($staffUsers as $staff)
-                                            <option value="{{ $staff->id }}">{{ $staff->formatted_name }}</option>
-                                        @endforeach
-                                    </select>
+                                    <label>เจ้าหน้าที่ผู้ดูแลวิชา <span style="font-weight:400;color:var(--fg-4);font-size:11px;">(เลือกได้หลายคน)</span></label>
+                                    <template x-for="s in selectedStaff" :key="s.id">
+                                        <input type="hidden" name="staff_ids[]" :value="s.id">
+                                    </template>
+                                    <div style="border:1px solid var(--border);border-radius:6px;padding:6px 8px;background:var(--bg-1);min-height:38px;display:flex;flex-wrap:wrap;gap:4px;align-items:center;position:relative;">
+                                        <template x-for="s in selectedStaff" :key="s.id">
+                                            <span style="display:inline-flex;align-items:center;gap:4px;background:var(--brand-navy);color:#fff;font-size:11px;padding:2px 8px;border-radius:99px;">
+                                                <span x-text="s.name"></span>
+                                                <button type="button" @click="removeStaff(s.id)" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,0.7);padding:0;line-height:1;font-size:14px;">&times;</button>
+                                            </span>
+                                        </template>
+                                        <input type="text" x-model="staffSearch"
+                                            @input="showStaffDropdown = true"
+                                            @focus="showStaffDropdown = true"
+                                            @click.away="showStaffDropdown = false"
+                                            placeholder="พิมพ์เพื่อเพิ่ม..."
+                                            style="border:none;outline:none;background:transparent;font-size:13px;flex:1;min-width:100px;padding:0;">
+                                        <div x-show="showStaffDropdown" x-cloak
+                                            style="position:absolute;top:100%;left:0;right:0;background:var(--bg-1);border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:100;max-height:160px;overflow-y:auto;margin-top:2px;">
+                                            <template x-for="u in filteredStaffList()" :key="u.id">
+                                                <div class="search-item" @click="addStaff(u)" x-text="u.formatted_name || u.name"></div>
+                                            </template>
+                                            <div x-show="filteredStaffList().length === 0"
+                                                style="padding:8px 12px;color:var(--fg-4);font-size:12px;">ไม่พบเจ้าหน้าที่</div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1822,6 +1878,8 @@
     </style>
 
     <script>
+        const staffUsers = {{ Js::from($staffUsers->map(fn($u) => ['id' => $u->id, 'name' => $u->formatted_name, 'formatted_name' => $u->formatted_name])) }};
+
         function tpssDeptConflictWarn(form, lines) {
             var lineHtml = lines.map(function(l) { return '<li style="margin-bottom:4px;">' + l + '</li>'; }).join('');
             var innerHtml = '<div style="text-align:center;">'

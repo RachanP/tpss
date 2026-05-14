@@ -236,7 +236,8 @@ class MasterDataController extends Controller
             'curriculum_id' => 'required|exists:curriculums,id',
             'department_id' => 'required|exists:departments,id',
             'head_instructor_id' => 'nullable|exists:users,id',
-            'assigned_staff_id' => 'nullable|exists:users,id',
+            'staff_ids' => 'nullable|array',
+            'staff_ids.*' => 'exists:users,id',
             'academic_level' => 'nullable|in:undergraduate,graduate',
             'default_year_level' => 'nullable|integer|min:1|max:4',
             'default_semester' => 'nullable|integer|min:1|max:3',
@@ -250,10 +251,8 @@ class MasterDataController extends Controller
             'requires_practicum_rotation' => 'nullable|boolean'
         ]);
 
-        // Auto-calculate course type
         $lecture = $validated['lecture_hours'] ?? 0;
         $lab = $validated['lab_hours'] ?? 0;
-        
         if ($lecture > 0 && $lab > 0) {
             $validated['course_type'] = 'theory_practicum';
         } elseif ($lecture == 0 && $lab > 0) {
@@ -263,8 +262,11 @@ class MasterDataController extends Controller
         }
 
         $validated['requires_practicum_rotation'] = $request->has('requires_practicum_rotation');
+        $staffIds = $validated['staff_ids'] ?? [];
+        unset($validated['staff_ids']);
 
-        Course::create($validated);
+        $course = Course::create($validated);
+        $course->assignedStaff()->sync($staffIds);
 
         return redirect()->route('admin.master_data', ['tab' => 'courses'])->with('success', 'เพิ่มรายวิชาเรียบร้อยแล้ว');
     }
@@ -278,7 +280,8 @@ class MasterDataController extends Controller
             'curriculum_id' => 'required|exists:curriculums,id',
             'department_id' => 'required|exists:departments,id',
             'head_instructor_id' => 'nullable|exists:users,id',
-            'assigned_staff_id' => 'nullable|exists:users,id',
+            'staff_ids' => 'nullable|array',
+            'staff_ids.*' => 'exists:users,id',
             'course_type' => 'required|in:theory,practicum,theory_practicum',
             'academic_level' => 'nullable|in:undergraduate,graduate',
             'default_year_level' => 'nullable|integer|min:1|max:4',
@@ -294,8 +297,11 @@ class MasterDataController extends Controller
         ]);
 
         $validated['requires_practicum_rotation'] = $request->has('requires_practicum_rotation');
+        $staffIds = $validated['staff_ids'] ?? [];
+        unset($validated['staff_ids']);
 
         $course->update($validated);
+        $course->assignedStaff()->sync($staffIds);
 
         return redirect()->route('admin.master_data', ['tab' => 'courses'])->with('success', 'อัปเดตข้อมูลรายวิชาเรียบร้อยแล้ว');
     }

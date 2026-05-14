@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Course extends Model
 {
@@ -12,7 +13,6 @@ class Course extends Model
         'curriculum_id',
         'department_id',
         'head_instructor_id',
-        'assigned_staff_id',
         'name_th',
         'name_en',
         'course_type',
@@ -55,8 +55,8 @@ class Course extends Model
         return $this->belongsTo(User::class, 'head_instructor_id');
     }
 
-    public function assignedStaff(): BelongsTo
+    public function assignedStaff(): BelongsToMany
     {
-        return $this->belongsTo(User::class, 'assigned_staff_id');
+        return $this->belongsToMany(User::class, 'course_staff');
     }
 }
