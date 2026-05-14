@@ -6,6 +6,7 @@
                 showImportModal: false,
                 editMode: false,
                 errorMsg: '',
+                search: '',
                 teachingTotalHours: {{ \App\Models\SystemSetting::get('teaching_load_weeks', 39) * \App\Models\SystemSetting::get('teaching_quota_hours_per_week', 35) }}, 
                 currentUser: {
                     id: '',
@@ -304,7 +305,7 @@
                             <circle cx="11" cy="11" r="8" />
                             <line x1="21" y1="21" x2="16.65" y2="16.65" />
                         </svg>
-                        <input type="text" placeholder="ค้นหาชื่อ หรือรหัส...">
+                        <input type="text" placeholder="ค้นหาชื่อ หรือรหัส..." x-model="search">
                     </div>
                     <button class="btn btn-secondary" @click="showImportModal = true">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
@@ -338,7 +339,7 @@
                     </thead>
                     <tbody>
                         @foreach($users as $user)
-                            <tr>
+                            <tr x-show="search === '' || '{{ strtolower($user->name . ' ' . $user->username . ' ' . ($user->instructorProfile?->employee_id ?? '')) }}'.includes(search.toLowerCase())">
                                 <td>
                                     <div style="display: flex; align-items: center; gap: 12px;">
                                         @php
@@ -913,6 +914,18 @@
                     <form method="POST" action="{{ route('admin.users.import') }}" enctype="multipart/form-data">
                         @csrf
                         <div class="modal-body" style="padding: 24px;">
+
+                            @if($departmentCount === 0)
+                            <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; background: oklch(97% 0.04 85); border: 1px solid oklch(82% 0.10 85); border-radius: 6px; margin-bottom: 16px;">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="oklch(50% 0.14 85)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 1px;">
+                                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                                </svg>
+                                <div>
+                                    <div style="font-size: 13px; font-weight: 600; color: oklch(45% 0.14 85);">ยังไม่มีภาควิชาในระบบ</div>
+                                    <div style="font-size: 12px; color: oklch(45% 0.14 85); margin-top: 2px;">ถ้า CSV มีอาจารย์ที่ระบุ <strong>department_name</strong> ระบบจะข้ามข้อมูลภาควิชาของแถวนั้น — กรุณาเพิ่มภาควิชาใน <strong>Master Data</strong> ก่อนถ้าต้องการ</div>
+                                </div>
+                            </div>
+                            @endif
 
                             <div style="margin-bottom: 16px;">
                                 <a href="{{ asset('templates/users_import.csv') }}"

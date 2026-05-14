@@ -162,7 +162,7 @@
         showStaffDropdown: false,
         openAddCourse() {
             this.editCourseMode = false;
-            this.currentCourse = { id: '', course_code: '', name_th: '', name_en: '', curriculum_id: '', department_id: '', head_instructor_id: '', course_type: 'theory', academic_level: 'undergraduate', default_year_level: '', default_semester: '', credits: '', lecture_hours: 0, lab_hours: 0, self_study_hours: 0, capacity: '', color_code: '#3b82f6', status: 'active', requires_practicum_rotation: false };
+            this.currentCourse = { id: '', course_code: '', name_th: '', name_en: '', curriculum_id: '', department_id: '', head_instructor_id: '', course_type: 'theory', academic_level: 'undergraduate', default_year_level: '', default_semester: '', credits: '', lecture_hours: 0, lab_hours: 0, self_study_hours: 0, capacity: '', color_code: '#3b82f6', status: 'active', requires_practicum_rotation: '0' };
             this.courseHeadSearch = '';
             this.selectedStaff = [];
             this.staffSearch = '';
@@ -171,6 +171,7 @@
         openEditCourse(course) {
             this.editCourseMode = true;
             this.currentCourse = { ...course };
+            this.currentCourse.requires_practicum_rotation = course.requires_practicum_rotation ? '1' : '0';
             this.courseHeadSearch = course.head_instructor ? course.head_instructor.formatted_name : '';
             this.selectedStaff = course.assigned_staff ? course.assigned_staff.map(s => ({ id: s.id, name: s.formatted_name || s.name })) : [];
             this.staffSearch = '';
@@ -1440,9 +1441,9 @@
                                     </select>
                                 </div>
                                 <div class="form-group" style="margin-bottom:0;">
-                                    <label>ภาควิชาที่ดูแล <span style="color:var(--status-conflict-fg)">*</span></label>
-                                    <select name="department_id" x-model="currentCourse.department_id" required>
-                                        <option value="">-- เลือกภาควิชา --</option>
+                                    <label>ภาควิชาที่ดูแล <span style="font-weight:400;color:var(--fg-4);font-size:11px;">(วิชาเรียนรวมไม่ต้องระบุ)</span></label>
+                                    <select name="department_id" x-model="currentCourse.department_id">
+                                        <option value="">-- ไม่สังกัดภาควิชา --</option>
                                         @foreach($departments as $dept)
                                             <option value="{{ $dept->id }}">{{ $dept->name }}</option>
                                         @endforeach
@@ -1478,7 +1479,7 @@
                             </div>
                             {{-- หัวหน้าวิชา: combobox (full row) --}}
                             <div class="form-group" style="position:relative;margin-bottom:16px;">
-                                <label>หัวหน้าวิชา / ผู้ประสานรายวิชา</label>
+                                <label>หัวหน้าวิชา / ผู้ประสานรายวิชา <span style="color:var(--status-conflict-fg)">*</span></label>
                                 <div style="position:relative;">
                                     <input type="text" x-model="courseHeadSearch"
                                         @input="showCourseHeadDropdown = true"
@@ -1544,9 +1545,9 @@
                             </div>
                             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px;">
                                 <div class="form-group" style="margin-bottom:0;">
-                                    <label>ชั้นปีตามแผน</label>
-                                    <select name="default_year_level" x-model="currentCourse.default_year_level">
-                                        <option value="">-- ไม่ระบุ --</option>
+                                    <label>ชั้นปีตามแผน <span style="color:var(--status-conflict-fg)">*</span></label>
+                                    <select name="default_year_level" x-model="currentCourse.default_year_level" required>
+                                        <option value="">-- เลือกชั้นปี --</option>
                                         <option value="1">ชั้นปีที่ 1</option>
                                         <option value="2">ชั้นปีที่ 2</option>
                                         <option value="3">ชั้นปีที่ 3</option>
@@ -1554,9 +1555,9 @@
                                     </select>
                                 </div>
                                 <div class="form-group" style="margin-bottom:0;">
-                                    <label>ภาคเรียนตามแผน</label>
-                                    <select name="default_semester" x-model="currentCourse.default_semester">
-                                        <option value="">-- ไม่ระบุ --</option>
+                                    <label>ภาคเรียนตามแผน <span style="color:var(--status-conflict-fg)">*</span></label>
+                                    <select name="default_semester" x-model="currentCourse.default_semester" required>
+                                        <option value="">-- เลือกภาคเรียน --</option>
                                         <option value="1">ภาคเรียนที่ 1</option>
                                         <option value="2">ภาคเรียนที่ 2</option>
                                         <option value="3">ภาคฤดูร้อน</option>
@@ -1603,32 +1604,39 @@
                             </div>
                             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px;background:var(--bg-2);padding:14px 16px;border-radius:8px;border:1px solid var(--border);">
                                 <div class="form-group" style="margin-bottom:0;">
-                                    <label>บรรยาย (ชม.)</label>
-                                    <input type="number" name="lecture_hours" x-model="currentCourse.lecture_hours" min="0" placeholder="0">
+                                    <label>บรรยาย (ชม.) <span style="color:var(--status-conflict-fg)">*</span></label>
+                                    <input type="number" name="lecture_hours" x-model="currentCourse.lecture_hours" min="0" placeholder="0" required>
                                 </div>
                                 <div class="form-group" style="margin-bottom:0;">
-                                    <label>ปฏิบัติ / แล็บ (ชม.)</label>
-                                    <input type="number" name="lab_hours" x-model="currentCourse.lab_hours" min="0" placeholder="0">
+                                    <label>ปฏิบัติ / แล็บ (ชม.) <span style="color:var(--status-conflict-fg)">*</span></label>
+                                    <input type="number" name="lab_hours" x-model="currentCourse.lab_hours" min="0" placeholder="0" required>
                                 </div>
                                 <div class="form-group" style="margin-bottom:0;">
-                                    <label>ศึกษาด้วยตนเอง (ชม.)</label>
-                                    <input type="number" name="self_study_hours" x-model="currentCourse.self_study_hours" min="0" placeholder="0">
+                                    <label>ศึกษาด้วยตนเอง (ชม.) <span style="color:var(--status-conflict-fg)">*</span></label>
+                                    <input type="number" name="self_study_hours" x-model="currentCourse.self_study_hours" min="0" placeholder="0" required>
                                 </div>
                             </div>
 
                             <div class="form-group" style="margin-bottom: 20px;">
-                                <label>จำนวนนักศึกษาสูงสุด (คน)</label>
-                                <input type="number" name="capacity" x-model="currentCourse.capacity" min="1" placeholder="เช่น 240" onwheel="this.blur()">
+                                <label>จำนวนนักศึกษาสูงสุด (คน) <span style="color:var(--status-conflict-fg)">*</span></label>
+                                <input type="number" name="capacity" x-model="currentCourse.capacity" min="1" placeholder="เช่น 240" required onwheel="this.blur()">
                             </div>
 
-                            {{-- Practicum Rotation --}}
-                            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:12px 14px;background:var(--bg-2);border-radius:8px;border:1px solid var(--border);">
-                                <input type="checkbox" name="requires_practicum_rotation" x-model="currentCourse.requires_practicum_rotation" style="width:16px;height:16px;accent-color:var(--brand-navy);flex-shrink:0;">
-                                <div>
-                                    <div style="font-weight:600;font-size:14px;color:var(--fg-1);">วิชานี้ต้องมีการวนกลุ่มนักศึกษา</div>
-                                    <div style="font-size:12px;color:var(--fg-3);margin-top:2px;">Practicum Rotation — นักศึกษาหมุนเวียนระหว่างกลุ่มและแหล่งฝึก</div>
+                            {{-- Practicum Rotation: theory → hidden input 0, practicum/theory_practicum → select required --}}
+                            <template x-if="currentCourse.course_type === 'theory'">
+                                <input type="hidden" name="requires_practicum_rotation" value="0">
+                            </template>
+                            <template x-if="currentCourse.course_type !== 'theory'">
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label>การวนกลุ่มนักศึกษาระหว่างแหล่งฝึก (Rotation) <span style="color:var(--status-conflict-fg)">*</span></label>
+                                    <select name="requires_practicum_rotation" x-model="currentCourse.requires_practicum_rotation" required>
+                                        <option value="">-- กรุณาเลือก --</option>
+                                        <option value="1">ใช่ — ทุกกลุ่มต้องหมุนเวียนครบทุกแหล่งฝึก</option>
+                                        <option value="0">ไม่ใช่ — แต่ละกลุ่มอยู่แหล่งฝึกตายตัว</option>
+                                    </select>
+                                    <div style="font-size:11px;color:var(--fg-3);margin-top:4px;">นักศึกษาทุกกลุ่มต้องผ่านทุกแหล่งฝึกให้ครบเท่ากัน แต่เวลาต่างกัน</div>
                                 </div>
-                            </label>
+                            </template>
 
                         </div>
                         <div class="modal-foot" style="display: flex; justify-content: space-between;">
@@ -1912,6 +1920,18 @@
                         @csrf
                         <div class="modal-body" style="padding: 24px;">
 
+                            @if($locationTypes->isEmpty())
+                            <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; background: oklch(97% 0.04 85); border: 1px solid oklch(82% 0.10 85); border-radius: 6px; margin-bottom: 16px;">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="oklch(50% 0.14 85)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 1px;">
+                                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                                </svg>
+                                <div>
+                                    <div style="font-size: 13px; font-weight: 600; color: oklch(45% 0.14 85);">ยังไม่มีประเภทสถานที่ในระบบ</div>
+                                    <div style="font-size: 12px; color: oklch(45% 0.14 85); margin-top: 2px;">การนำเข้าจะล้มเหลวทุกแถว — กรุณาเพิ่มประเภทสถานที่ (เช่น ห้องเรียน, หอผู้ป่วย) ในแท็บ <strong>ห้องและสถานที่</strong> ก่อน</div>
+                                </div>
+                            </div>
+                            @endif
+
                             <div style="margin-bottom: 16px;">
                                 <a href="{{ asset('templates/rooms_import.csv') }}"
                                     style="font-size: 13px; color: var(--accent); text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
@@ -1964,6 +1984,27 @@
                     <form method="POST" action="{{ route($routePrefix . '.courses.import') }}" enctype="multipart/form-data">
                         @csrf
                         <div class="modal-body" style="padding: 24px;">
+
+                            @php
+                                $courseImportIssues = [];
+                                if ($curriculums->isEmpty()) $courseImportIssues[] = 'ยังไม่มีหลักสูตร — ทุกแถวใน CSV ต้องระบุ <strong>curriculum_name</strong> ที่มีอยู่ในระบบ';
+                                if ($usersWithEmployeeIdCount === 0) $courseImportIssues[] = 'ยังไม่มีผู้ใช้งานที่มี Employee ID — ทุกแถวต้องระบุ <strong>head_instructor_employee_id</strong> ที่มีอยู่ในระบบ';
+                            @endphp
+                            @if(count($courseImportIssues) > 0)
+                            <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; background: oklch(97% 0.04 85); border: 1px solid oklch(82% 0.10 85); border-radius: 6px; margin-bottom: 16px;">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="oklch(50% 0.14 85)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 1px;">
+                                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                                </svg>
+                                <div>
+                                    <div style="font-size: 13px; font-weight: 600; color: oklch(45% 0.14 85);">ต้องเตรียมข้อมูลก่อนนำเข้า</div>
+                                    <ul style="font-size: 12px; color: oklch(45% 0.14 85); margin: 4px 0 0 0; padding-left: 16px;">
+                                        @foreach($courseImportIssues as $issue)
+                                            <li style="margin-top: 2px;">{!! $issue !!}</li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            </div>
+                            @endif
 
                             <div style="margin-bottom: 16px;">
                                 <a href="{{ asset('templates/courses_import.csv') }}"
@@ -2106,4 +2147,5 @@
         </div>
     </div>
     @endif
+
 </x-app-layout>

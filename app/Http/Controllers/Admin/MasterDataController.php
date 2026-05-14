@@ -49,6 +49,9 @@ class MasterDataController extends Controller
         // Activity Types
         $activityTypes = ActivityType::orderBy('name')->get();
 
+        // Pre-flight counts for import warnings
+        $usersWithEmployeeIdCount = User::whereNotNull('employee_id')->where('employee_id', '!=', '')->count();
+
         $activeRole = session('active_role');
         $isAdmin    = $activeRole === 'admin';
         $routePrefix = $isAdmin ? 'admin' : 'staff';
@@ -64,7 +67,8 @@ class MasterDataController extends Controller
             'activityTypes',
             'staffUsers',
             'isAdmin',
-            'routePrefix'
+            'routePrefix',
+            'usersWithEmployeeIdCount'
         ));
     }
 
@@ -229,38 +233,29 @@ class MasterDataController extends Controller
     public function storeCourse(Request $request)
     {
         $validated = $request->validate([
-            'course_code' => 'required|string|max:20|unique:courses,course_code',
-            'name_th' => 'required|string|max:255',
-            'name_en' => 'nullable|string|max:255',
-            'curriculum_id' => 'required|exists:curriculums,id',
-            'department_id' => 'required|exists:departments,id',
-            'head_instructor_id' => 'nullable|exists:users,id',
-            'staff_ids' => 'nullable|array',
-            'staff_ids.*' => 'exists:users,id',
-            'academic_level' => 'nullable|in:undergraduate,graduate',
-            'default_year_level' => 'nullable|integer|min:1|max:4',
-            'default_semester' => 'nullable|integer|min:1|max:3',
-            'credits' => 'required|integer|min:0',
-            'lecture_hours' => 'nullable|integer|min:0',
-            'lab_hours' => 'nullable|integer|min:0',
-            'self_study_hours' => 'nullable|integer|min:0',
-            'capacity' => 'nullable|integer|min:1',
-            'color_code' => 'nullable|string|max:7',
-            'status' => 'required|in:active,inactive',
-            'requires_practicum_rotation' => 'nullable|boolean'
+            'course_code'                 => 'required|string|max:20|unique:courses,course_code',
+            'name_th'                     => 'required|string|max:255',
+            'name_en'                     => 'nullable|string|max:255',
+            'curriculum_id'               => 'required|exists:curriculums,id',
+            'department_id'               => 'nullable|exists:departments,id',
+            'head_instructor_id'          => 'required|exists:users,id',
+            'staff_ids'                   => 'nullable|array',
+            'staff_ids.*'                 => 'exists:users,id',
+            'course_type'                 => 'required|in:theory,practicum,theory_practicum',
+            'academic_level'              => 'nullable|in:undergraduate,graduate',
+            'default_year_level'          => 'required|integer|min:1|max:4',
+            'default_semester'            => 'required|integer|min:1|max:3',
+            'credits'                     => 'required|integer|min:0',
+            'lecture_hours'               => 'required|integer|min:0',
+            'lab_hours'                   => 'required|integer|min:0',
+            'self_study_hours'            => 'required|integer|min:0',
+            'capacity'                    => 'required|integer|min:1',
+            'color_code'                  => 'nullable|string|max:7',
+            'status'                      => 'required|in:active,inactive',
+            'requires_practicum_rotation' => 'required|boolean',
         ]);
 
-        $lecture = $validated['lecture_hours'] ?? 0;
-        $lab = $validated['lab_hours'] ?? 0;
-        if ($lecture > 0 && $lab > 0) {
-            $validated['course_type'] = 'theory_practicum';
-        } elseif ($lecture == 0 && $lab > 0) {
-            $validated['course_type'] = 'practicum';
-        } else {
-            $validated['course_type'] = 'theory';
-        }
-
-        $validated['requires_practicum_rotation'] = $request->has('requires_practicum_rotation');
+        $validated['requires_practicum_rotation'] = $request->boolean('requires_practicum_rotation');
         $staffIds = $validated['staff_ids'] ?? [];
         unset($validated['staff_ids']);
 
@@ -273,29 +268,29 @@ class MasterDataController extends Controller
     public function updateCourse(Request $request, Course $course)
     {
         $validated = $request->validate([
-            'course_code' => 'required|string|max:20|unique:courses,course_code,' . $course->id,
-            'name_th' => 'required|string|max:255',
-            'name_en' => 'nullable|string|max:255',
-            'curriculum_id' => 'required|exists:curriculums,id',
-            'department_id' => 'required|exists:departments,id',
-            'head_instructor_id' => 'nullable|exists:users,id',
-            'staff_ids' => 'nullable|array',
-            'staff_ids.*' => 'exists:users,id',
-            'course_type' => 'required|in:theory,practicum,theory_practicum',
-            'academic_level' => 'nullable|in:undergraduate,graduate',
-            'default_year_level' => 'nullable|integer|min:1|max:4',
-            'default_semester' => 'nullable|integer|min:1|max:3',
-            'credits' => 'required|integer|min:0',
-            'lecture_hours' => 'nullable|integer|min:0',
-            'lab_hours' => 'nullable|integer|min:0',
-            'self_study_hours' => 'nullable|integer|min:0',
-            'capacity' => 'nullable|integer|min:1',
-            'color_code' => 'nullable|string|max:7',
-            'status' => 'required|in:active,inactive',
-            'requires_practicum_rotation' => 'nullable|boolean'
+            'course_code'                 => 'required|string|max:20|unique:courses,course_code,' . $course->id,
+            'name_th'                     => 'required|string|max:255',
+            'name_en'                     => 'nullable|string|max:255',
+            'curriculum_id'               => 'required|exists:curriculums,id',
+            'department_id'               => 'nullable|exists:departments,id',
+            'head_instructor_id'          => 'required|exists:users,id',
+            'staff_ids'                   => 'nullable|array',
+            'staff_ids.*'                 => 'exists:users,id',
+            'course_type'                 => 'required|in:theory,practicum,theory_practicum',
+            'academic_level'              => 'nullable|in:undergraduate,graduate',
+            'default_year_level'          => 'required|integer|min:1|max:4',
+            'default_semester'            => 'required|integer|min:1|max:3',
+            'credits'                     => 'required|integer|min:0',
+            'lecture_hours'               => 'required|integer|min:0',
+            'lab_hours'                   => 'required|integer|min:0',
+            'self_study_hours'            => 'required|integer|min:0',
+            'capacity'                    => 'required|integer|min:1',
+            'color_code'                  => 'nullable|string|max:7',
+            'status'                      => 'required|in:active,inactive',
+            'requires_practicum_rotation' => 'required|boolean',
         ]);
 
-        $validated['requires_practicum_rotation'] = $request->has('requires_practicum_rotation');
+        $validated['requires_practicum_rotation'] = $request->boolean('requires_practicum_rotation');
         $staffIds = $validated['staff_ids'] ?? [];
         unset($validated['staff_ids']);
 
@@ -479,13 +474,13 @@ class MasterDataController extends Controller
             $row++;
             if (count(array_filter($data)) === 0) continue;
 
-            $csv    = array_combine($header, array_pad($data, count($header), ''));
-            $name   = trim($csv['name'] ?? '');
-            $code   = trim($csv['code'] ?? '');
-            $ltName = trim($csv['location_type_name'] ?? '');
+            $csv      = array_combine($header, array_pad($data, count($header), ''));
+            $roomName = trim($csv['room_name'] ?? '');
+            $roomCode = trim($csv['room_code'] ?? '');
+            $ltName   = trim($csv['location_type_name'] ?? '');
 
-            if (!$name || !$code || !$ltName) {
-                $errors[] = "แถว {$row}: ข้อมูลบังคับไม่ครบ (name, code, location_type_name)";
+            if (!$roomName || !$roomCode || !$ltName) {
+                $errors[] = "แถว {$row}: ข้อมูลบังคับไม่ครบ (room_code, room_name, location_type_name)";
                 continue;
             }
 
@@ -495,26 +490,33 @@ class MasterDataController extends Controller
                 continue;
             }
 
-            $exists = Room::where('room_code', $code)->exists();
+            $exists = Room::where('room_code', $roomCode)->exists();
             if ($exists && !$updateOnDup) {
-                $errors[] = "แถว {$row}: code '{$code}' มีในระบบแล้ว — ข้ามแถวนี้";
+                $errors[] = "แถว {$row}: room_code '{$roomCode}' มีในระบบแล้ว — ข้ามแถวนี้";
                 continue;
             }
 
-            $status   = in_array(trim($csv['status'] ?? ''), ['active', 'inactive', 'maintenance'])
+            $status        = in_array(trim($csv['status'] ?? ''), ['active', 'inactive', 'maintenance'])
                 ? trim($csv['status'])
                 : 'active';
-            $capacity = (int)(trim($csv['capacity'] ?? '') ?: '0') ?: null;
-            $building = trim($csv['building'] ?? '') ?: null;
+            $capacity      = (int)(trim($csv['capacity'] ?? '') ?: '0') ?: null;
+            $building      = trim($csv['building'] ?? '') ?: null;
+            $address       = trim($csv['address'] ?? '') ?: null;
+            $equipmentRaw  = trim($csv['equipment_type'] ?? '');
+            $equipmentType = $equipmentRaw
+                ? array_values(array_filter(array_map('trim', explode(',', $equipmentRaw))))
+                : null;
 
             try {
                 Room::updateOrCreate(
-                    ['room_code' => $code],
+                    ['room_code' => $roomCode],
                     [
-                        'room_name'        => $name,
+                        'room_name'        => $roomName,
                         'location_type_id' => $ltId,
                         'capacity'         => $capacity,
                         'building'         => $building,
+                        'address'          => $address,
+                        'equipment_type'   => $equipmentType,
                         'status'           => $status,
                     ]
                 );
@@ -527,12 +529,13 @@ class MasterDataController extends Controller
         fclose($handle);
 
         $routePrefix = session('active_role') === 'admin' ? 'admin' : 'staff';
-        $msg = "นำเข้าสำเร็จ {$successCount} ห้อง";
-        if ($errors) {
-            return redirect()->route("{$routePrefix}.master_data", ['tab' => 'location_types'])
-                ->with('success', $msg)->with('import_errors', $errors);
-        }
-        return redirect()->route("{$routePrefix}.master_data", ['tab' => 'location_types'])->with('success', $msg);
+        $failCount = count($errors);
+        $msg = $failCount > 0
+            ? "นำเข้าสำเร็จ {$successCount} ห้อง, ข้าม {$failCount} แถว — ดูรายละเอียดด้านล่างขวา"
+            : "นำเข้าสำเร็จทั้งหมด {$successCount} ห้อง";
+        $redirect = redirect()->route("{$routePrefix}.master_data", ['tab' => 'location_types'])->with('success', $msg);
+        if ($errors) $redirect->with('import_errors', $errors);
+        return $redirect;
     }
 
     public function importCourses(Request $request)
@@ -549,9 +552,10 @@ class MasterDataController extends Controller
         }
         $header = array_map(fn($h) => trim($h), $header);
 
-        $curriculums  = Curriculum::pluck('id', 'name')->toArray();
-        $departments  = Department::pluck('id', 'name')->toArray();
-        $updateOnDup  = $request->boolean('update_on_duplicate');
+        $curriculums    = Curriculum::pluck('id', 'name')->toArray();
+        $departments    = Department::pluck('id', 'name')->toArray();
+        $employeeIds    = User::whereNotNull('employee_id')->pluck('id', 'employee_id')->toArray();
+        $updateOnDup    = $request->boolean('update_on_duplicate');
         $successCount = 0;
         $errors       = [];
         $row          = 1;
@@ -560,15 +564,21 @@ class MasterDataController extends Controller
             $row++;
             if (count(array_filter($data)) === 0) continue;
 
-            $csv      = array_combine($header, array_pad($data, count($header), ''));
-            $code     = trim($csv['course_code'] ?? '');
-            $nameTh   = trim($csv['name_th'] ?? '');
-            $currName = trim($csv['curriculum_name'] ?? '');
-            $deptName = trim($csv['department_name'] ?? '');
-            $credits  = trim($csv['credits'] ?? '');
+            $csv        = array_combine($header, array_pad($data, count($header), ''));
+            $code       = trim($csv['course_code'] ?? '');
+            $nameTh     = trim($csv['name_th'] ?? '');
+            $currName   = trim($csv['curriculum_name'] ?? '');
+            $credits    = trim($csv['credits'] ?? '');
+            $headEmpId  = trim($csv['head_instructor_employee_id'] ?? '');
+            $courseType = trim($csv['course_type'] ?? '');
 
-            if (!$code || !$nameTh || !$currName || !$deptName || $credits === '') {
-                $errors[] = "แถว {$row}: ข้อมูลบังคับไม่ครบ (course_code, name_th, curriculum_name, department_name, credits)";
+            if (!$code || !$nameTh || !$currName || $credits === '' || !$headEmpId || !$courseType) {
+                $errors[] = "แถว {$row}: ข้อมูลบังคับไม่ครบ (course_code, name_th, curriculum_name, credits, head_instructor_employee_id, course_type)";
+                continue;
+            }
+
+            if (!in_array($courseType, ['theory', 'practicum', 'theory_practicum'])) {
+                $errors[] = "แถว {$row}: course_type ต้องเป็น theory, practicum หรือ theory_practicum";
                 continue;
             }
 
@@ -578,11 +588,43 @@ class MasterDataController extends Controller
                 continue;
             }
 
-            $deptId = $departments[$deptName] ?? null;
-            if (!$deptId) {
-                $errors[] = "แถว {$row}: ภาควิชา '{$deptName}' ไม่พบในระบบ";
+            $headId = $employeeIds[$headEmpId] ?? null;
+            if (!$headId) {
+                $errors[] = "แถว {$row}: ไม่พบผู้ใช้ที่มีรหัสพนักงาน '{$headEmpId}'";
                 continue;
             }
+
+            // department_name เป็น optional — วิชาเรียนรวมไม่ต้องสังกัดภาควิชา
+            $deptName = trim($csv['department_name'] ?? '');
+            $deptId   = null;
+            if ($deptName !== '') {
+                $deptId = $departments[$deptName] ?? null;
+                if (!$deptId) {
+                    $errors[] = "แถว {$row}: ไม่พบภาควิชา '{$deptName}' — ถ้าเป็นวิชาเรียนรวมให้เว้นช่อง department_name ว่างไว้";
+                    continue;
+                }
+            }
+
+            $yearLevel = trim($csv['default_year_level'] ?? '');
+            $semester  = trim($csv['default_semester'] ?? '');
+            if ($yearLevel === '' || $semester === '') {
+                $errors[] = "แถว {$row}: ต้องระบุ default_year_level และ default_semester";
+                continue;
+            }
+
+            $capacity = trim($csv['capacity'] ?? '');
+            if ($capacity === '' || (int)$capacity < 1) {
+                $errors[] = "แถว {$row}: ต้องระบุ capacity (จำนวนนักศึกษาสูงสุด ≥ 1)";
+                continue;
+            }
+
+            // requires_practicum_rotation บังคับสำหรับ practicum / theory_practicum
+            $rotationRaw = trim($csv['requires_practicum_rotation'] ?? '');
+            if (in_array($courseType, ['practicum', 'theory_practicum']) && $rotationRaw === '') {
+                $errors[] = "แถว {$row}: วิชาประเภท {$courseType} ต้องระบุ requires_practicum_rotation (0 หรือ 1)";
+                continue;
+            }
+            $rotation = in_array($rotationRaw, ['1', 'true', 'yes']) ? true : false;
 
             $exists = Course::where('course_code', $code)->where('curriculum_id', $currId)->exists();
             if ($exists && !$updateOnDup) {
@@ -590,38 +632,32 @@ class MasterDataController extends Controller
                 continue;
             }
 
-            $lecture = (int)(trim($csv['lecture_hours'] ?? '0') ?: '0');
-            $lab     = (int)(trim($csv['lab_hours'] ?? '0') ?: '0');
-            if ($lecture > 0 && $lab > 0) {
-                $courseType = 'theory_practicum';
-            } elseif ($lecture == 0 && $lab > 0) {
-                $courseType = 'practicum';
-            } else {
-                $courseType = 'theory';
-            }
-
-            $status      = in_array(trim($csv['status'] ?? ''), ['active', 'inactive']) ? trim($csv['status']) : 'active';
-            $yearLevel   = (int)(trim($csv['default_year_level'] ?? '') ?: '0') ?: null;
-            $semester    = (int)(trim($csv['default_semester'] ?? '') ?: '0') ?: null;
-            $selfStudy   = (int)(trim($csv['self_study_hours'] ?? '0') ?: '0');
+            $lecture   = (int)(trim($csv['lecture_hours'] ?? '0') ?: '0');
+            $lab       = (int)(trim($csv['lab_hours'] ?? '0') ?: '0');
+            $selfStudy = (int)(trim($csv['self_study_hours'] ?? '0') ?: '0');
+            $status    = in_array(trim($csv['status'] ?? ''), ['active', 'inactive']) ? trim($csv['status']) : 'active';
+            $colorCode = trim($csv['color_code'] ?? '') ?: null;
 
             try {
                 Course::updateOrCreate(
                     ['course_code' => $code, 'curriculum_id' => $currId],
                     [
-                        'name_th'            => $nameTh,
-                        'name_en'            => trim($csv['name_en'] ?? '') ?: null,
-                        'department_id'      => $deptId,
-                        'credits'            => (int)$credits,
-                        'lecture_hours'      => $lecture,
-                        'lab_hours'          => $lab,
-                        'self_study_hours'   => $selfStudy,
-                        'default_year_level' => $yearLevel,
-                        'default_semester'   => $semester,
-                        'course_type'        => $courseType,
-                        'status'             => $status,
-                        'academic_level'     => 'undergraduate',
-                        'capacity'           => (int)(trim($csv['capacity'] ?? '') ?: '0') ?: null,
+                        'name_th'                     => $nameTh,
+                        'name_en'                     => trim($csv['name_en'] ?? '') ?: null,
+                        'department_id'               => $deptId,
+                        'head_instructor_id'          => $headId,
+                        'course_type'                 => $courseType,
+                        'credits'                     => (int)$credits,
+                        'lecture_hours'               => $lecture,
+                        'lab_hours'                   => $lab,
+                        'self_study_hours'            => $selfStudy,
+                        'default_year_level'          => (int)$yearLevel,
+                        'default_semester'            => (int)$semester,
+                        'capacity'                    => (int)$capacity,
+                        'requires_practicum_rotation' => $rotation,
+                        'color_code'                  => $colorCode,
+                        'status'                      => $status,
+                        'academic_level'              => 'undergraduate',
                     ]
                 );
                 $successCount++;
@@ -633,11 +669,12 @@ class MasterDataController extends Controller
         fclose($handle);
 
         $routePrefix = session('active_role') === 'admin' ? 'admin' : 'staff';
-        $msg = "นำเข้าสำเร็จ {$successCount} วิชา";
-        if ($errors) {
-            return redirect()->route("{$routePrefix}.master_data", ['tab' => 'courses'])
-                ->with('success', $msg)->with('import_errors', $errors);
-        }
-        return redirect()->route("{$routePrefix}.master_data", ['tab' => 'courses'])->with('success', $msg);
+        $failCount = count($errors);
+        $msg = $failCount > 0
+            ? "นำเข้าสำเร็จ {$successCount} วิชา, ข้าม {$failCount} แถว — ดูรายละเอียดด้านล่างขวา"
+            : "นำเข้าสำเร็จทั้งหมด {$successCount} วิชา";
+        $redirect = redirect()->route("{$routePrefix}.master_data", ['tab' => 'courses'])->with('success', $msg);
+        if ($errors) $redirect->with('import_errors', $errors);
+        return $redirect;
     }
 }

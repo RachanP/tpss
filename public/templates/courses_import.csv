@@ -1,9 +1,6 @@
-﻿course_code,name_th,name_en,curriculum_name,department_name,credits,lecture_hours,lab_hours,self_study_hours,capacity,default_year_level,default_semester,status
-NSBS 111,กระบวนการพยาบาล 1,Nursing Process 1,หลักสูตรพยาบาลศาสตรบัณฑิต 2565,การพยาบาลรากฐาน,2,2,0,4,252,1,1,active
-NSBS 112,กระบวนการพยาบาล 2,Nursing Process 2,หลักสูตรพยาบาลศาสตรบัณฑิต 2565,การพยาบาลรากฐาน,2,2,0,4,252,1,2,active
-NSBS 211,การพยาบาลอนามัยชุมชน 1,Community Health Nursing 1,หลักสูตรพยาบาลศาสตรบัณฑิต 2565,การพยาบาลอนามัยชุมชน,2,2,0,4,240,2,1,active
-NSBS 212,การพยาบาลเด็ก 1,Pediatric Nursing 1,หลักสูตรพยาบาลศาสตรบัณฑิต 2565,การพยาบาลรากฐาน,3,2,1,6,240,2,1,active
-NSBS 213,สุขภาพจิตและการพยาบาลจิตเวช 1,Mental Health and Psychiatric Nursing 1,หลักสูตรพยาบาลศาสตรบัณฑิต 2565,การพยาบาลจิตเวช,2,2,0,4,240,2,1,active
-NSBS 221,การพยาบาลเด็ก 2,Pediatric Nursing 2,หลักสูตรพยาบาลศาสตรบัณฑิต 2565,การพยาบาลรากฐาน,2,0,2,4,240,2,2,active
-NSBS 311,การพยาบาลผู้ใหญ่ 1,Adult Nursing 1,หลักสูตรพยาบาลศาสตรบัณฑิต 2565,การพยาบาลรากฐาน,3,2,1,6,240,3,1,active
-NSBS 312,การพยาบาลผู้ใหญ่ 2,Adult Nursing 2,หลักสูตรพยาบาลศาสตรบัณฑิต 2565,การพยาบาลรากฐาน,3,2,1,6,240,3,2,active
+course_code,name_th,name_en,curriculum_name,department_name,head_instructor_employee_id,course_type,credits,lecture_hours,lab_hours,self_study_hours,capacity,default_year_level,default_semester,requires_practicum_rotation,color_code,status
+NSBS 111,กระบวนการพยาบาล 1,Nursing Process 1,หลักสูตรพยาบาลศาสตรบัณฑิต 2565,ภาควิชาการพยาบาลรากฐาน,MU002,theory,2,2,0,4,252,1,1,0,#3B82F6,active
+NSBS 112,กระบวนการพยาบาล 2,Nursing Process 2,หลักสูตรพยาบาลศาสตรบัณฑิต 2565,ภาควิชาการพยาบาลรากฐาน,MU002,theory,2,2,0,4,252,1,2,0,#3B82F6,active
+NSBS 221,การพยาบาลเด็ก 2,Pediatric Nursing 2,หลักสูตรพยาบาลศาสตรบัณฑิต 2565,ภาควิชาการพยาบาลรากฐาน,MU002,theory_practicum,2,0,2,4,240,2,2,1,#10B981,active
+NSBS 311,การพยาบาลผู้ใหญ่ 1 ภาคปฏิบัติ,Adult Nursing Practicum 1,หลักสูตรพยาบาลศาสตรบัณฑิต 2565,ภาควิชาการพยาบาลรากฐาน,MU002,practicum,3,0,3,6,240,3,1,1,#EF4444,active
+NSBS 001,ทักษะชีวิตและสุขภาวะ,Life Skills and Wellness,หลักสูตรพยาบาลศาสตรบัณฑิต 2565,ภาควิชาการพยาบาลรากฐาน,MU002,theory,1,1,0,2,300,1,1,0,#6B7280,active

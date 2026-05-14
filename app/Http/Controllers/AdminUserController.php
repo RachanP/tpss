@@ -43,7 +43,9 @@ class AdminUserController extends Controller
             'teaching_quota_hours' => SystemSetting::get('teaching_quota_hours', 1610)
         ];
 
-        return view('admin.users.index', compact('users', 'stats', 'departments', 'systemSettings', 'paCriteria'));
+        $departmentCount = $departments->count();
+
+        return view('admin.users.index', compact('users', 'stats', 'departments', 'systemSettings', 'paCriteria', 'departmentCount'));
     }
 
     public function store(Request $request)
@@ -321,6 +323,16 @@ class AdminUserController extends Controller
             }
 
             if (in_array('instructor', $roles)) {
+                $missingFields = [];
+                if (empty(trim($csv['title'] ?? '')))           $missingFields[] = 'title';
+                if (empty(trim($csv['academic_degree'] ?? ''))) $missingFields[] = 'academic_degree';
+                if (empty(trim($csv['employment_type'] ?? ''))) $missingFields[] = 'employment_type';
+                if (empty(trim($csv['hired_date'] ?? '')))      $missingFields[] = 'hired_date';
+                if ($missingFields) {
+                    $errors[] = "แถว {$row}: อาจารย์ต้องระบุข้อมูล (" . implode(', ', $missingFields) . ")";
+                    continue;
+                }
+
                 $t = max(0, min(100, (int)(trim($csv['teaching_pct'] ?? '0') ?: '0')));
                 $r = max(0, min(100, (int)(trim($csv['research_pct'] ?? '0') ?: '0')));
                 $s = max(0, min(100, (int)(trim($csv['service_pct'] ?? '0') ?: '0')));

@@ -36,12 +36,6 @@ class InstructorProfile extends Model
     {
         $warnings = [];
 
-        if (empty($this->title)) $warnings[] = 'ไม่ระบุตำแหน่งทางวิชาการ';
-        if (empty($this->department_id)) $warnings[] = 'ไม่พบภาควิชา';
-        if (empty($this->hired_at)) $warnings[] = 'ไม่ระบุวันที่เข้าทำงาน';
-        if (empty($this->academic_degree)) $warnings[] = 'ไม่ระบุวุฒิการศึกษาสูงสุด';
-        if (empty($this->employment_type)) $warnings[] = 'ไม่ระบุประเภทการจ้างงาน';
-
         if (empty($this->title)) {
             return $warnings;
         }
