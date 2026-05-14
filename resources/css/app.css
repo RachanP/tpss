@@ -1135,3 +1135,23 @@ input:focus, select:focus, textarea:focus {
   transition: opacity .15s;
   white-space: nowrap;
 }
+
+/* ── GLOBAL MOBILE GRID OVERRIDES ────────────────────────────── */
+@media (max-width: 768px) {
+  /* Automatically stack any inline grids that use columns */
+  div[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Exception: Keep micro-grids (like 8-column checkboxes) somewhat side-by-side */
+  div[style*="repeat(8"] {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+
+  /* Make all tables scrollable horizontally without needing a wrapper */
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
