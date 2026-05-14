@@ -22,13 +22,18 @@ class RBACTest extends TestCase
             'is_active' => true,
         ]);
 
+        $this->assignRole($user, $role, true);
+
+        return $user;
+    }
+
+    private function assignRole(User $user, string $role, bool $isPrimary = false): void
+    {
         UserRole::create([
             'user_id' => $user->id,
             'role' => $role,
-            'is_primary' => true,
+            'is_primary' => $isPrimary,
         ]);
-
-        return $user;
     }
 
     private function actingAsRole(User $user, string $activeRole): self
@@ -127,5 +132,50 @@ class RBACTest extends TestCase
 
             $this->get('/dashboard')->assertRedirect($dashboard);
         }
+    }
+
+    public function test_dashboard_requires_active_role_session(): void
+    {
+        $admin = $this->createUserWithRole('admin', 'missing_active_role');
+
+        $this->actingAs($admin);
+
+        $this->get('/admin/dashboard')->assertStatus(403);
+    }
+
+    public function test_tampered_active_role_not_owned_by_user_is_denied(): void
+    {
+        $staff = $this->createUserWithRole('staff', 'tampered_role');
+
+        $this->actingAsRole($staff, 'admin');
+
+        $this->get('/admin/dashboard')->assertStatus(403);
+    }
+
+    public function test_stale_active_role_after_role_removal_is_denied(): void
+    {
+        $admin = $this->createUserWithRole('admin', 'stale_role');
+
+        UserRole::where('user_id', $admin->id)
+            ->where('role', 'admin')
+            ->delete();
+
+        $this->actingAsRole($admin, 'admin');
+
+        $this->get('/admin/dashboard')->assertStatus(403);
+    }
+
+    public function test_multi_role_user_can_access_only_the_active_role_dashboard(): void
+    {
+        $user = $this->createUserWithRole('staff', 'active_role_only');
+        $this->assignRole($user, 'instructor');
+
+        $this->actingAsRole($user, 'instructor');
+        $this->get('/lecturer/dashboard')->assertStatus(200);
+        $this->get('/staff/dashboard')->assertStatus(403);
+
+        $this->actingAsRole($user, 'staff');
+        $this->get('/staff/dashboard')->assertStatus(200);
+        $this->get('/lecturer/dashboard')->assertStatus(403);
     }
 }
