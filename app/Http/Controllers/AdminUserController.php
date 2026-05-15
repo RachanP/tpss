@@ -29,7 +29,8 @@ class AdminUserController extends Controller
         $departments = Department::with(['head', 'secretary'])->orderBy('name')->get();
         
         $paCriteria = json_decode(SystemSetting::get('pa_criteria_config', '{}'), true);
-        $firstField = !empty($paCriteria) ? reset(reset($paCriteria)) : null;
+        $firstGroup = !empty($paCriteria) ? reset($paCriteria) : null;
+        $firstField = $firstGroup ? reset($firstGroup) : null;
         if (empty($paCriteria) || !is_array($firstField)) {
             $paCriteria = \App\Http\Controllers\AdminSettingController::defaultPaCriteria();
         }
