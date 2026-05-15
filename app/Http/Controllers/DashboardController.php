@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Admin\AlertController;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Models\UserRole;
@@ -38,7 +39,10 @@ class DashboardController extends Controller
         $teachingWeeks = \App\Models\SystemSetting::get('teaching_load_weeks', 39);
         $hoursPerWeek = \App\Models\SystemSetting::get('teaching_quota_hours_per_week', 35);
 
-        return view('admin.dashboard', compact('instructors', 'teachingWeeks', 'hoursPerWeek'));
+        $alerts   = AlertController::getSummary();
+        $criticals = AlertController::getCriticals();
+
+        return view('admin.dashboard', compact('instructors', 'teachingWeeks', 'hoursPerWeek', 'alerts', 'criticals'));
     }
 
     public function staff()

@@ -80,6 +80,7 @@ class MasterDataController extends Controller
 
     private function redirectToMasterData(string $tab): \Illuminate\Http\RedirectResponse
     {
+        AlertController::flushCache();
         return redirect()->route($this->masterDataRouteName(), ['tab' => $tab]);
     }
 
@@ -88,6 +89,7 @@ class MasterDataController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:100|unique:location_types,name',
         ]);
+        $validated['requires_capacity'] = $request->boolean('requires_capacity');
 
         LocationType::create($validated);
 
@@ -99,6 +101,7 @@ class MasterDataController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:100|unique:location_types,name,' . $locationType->id,
         ]);
+        $validated['requires_capacity'] = $request->boolean('requires_capacity');
 
         $locationType->update($validated);
 
@@ -162,7 +165,7 @@ class MasterDataController extends Controller
         ]);
 
         Department::create($validated);
-
+        AlertController::flushCache();
         return redirect()->back()->with('success', 'เพิ่มภาควิชาเรียบร้อยแล้ว');
     }
 
@@ -198,7 +201,7 @@ class MasterDataController extends Controller
         }
 
         $department->update($validated);
-
+        AlertController::flushCache();
         return redirect()->back()->with('success', 'อัปเดตภาควิชาเรียบร้อยแล้ว');
     }
 
@@ -266,6 +269,7 @@ class MasterDataController extends Controller
             ]);
         }
 
+        AlertController::flushCache();
         return redirect()->back()->with('success', 'อัปเดตข้อมูลอาจารย์เรียบร้อยแล้ว');
     }
 
