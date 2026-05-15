@@ -102,19 +102,20 @@
         // Location Types
         showLocTypeModal: false,
         editLocTypeMode: false,
-        currentLocType: { id: '', name: '', rooms_count: 0 },
+        currentLocType: { id: '', name: '', requires_capacity: true, rooms_count: 0 },
         openAddLocType() {
             this.editLocTypeMode = false;
-            this.currentLocType = { id: '', name: '', rooms_count: 0 };
+            this.currentLocType = { id: '', name: '', requires_capacity: true, rooms_count: 0 };
             this.showLocTypeModal = true;
         },
         openEditLocType(type) {
             this.editLocTypeMode = true;
-            this.currentLocType = { id: type.id, name: type.name, rooms_count: type.rooms_count };
+            this.currentLocType = { id: type.id, name: type.name, requires_capacity: type.requires_capacity, rooms_count: type.rooms_count };
             this.showLocTypeModal = true;
         },
 
         // Rooms
+        locTypeMap: {{ Js::from($locationTypes->mapWithKeys(fn($t) => [$t->id => (bool) $t->requires_capacity])) }},
         showRoomModal: false,
         showImportRoomModal: false,
         showImportCourseModal: false,
@@ -487,28 +488,6 @@
                                     <td style="color: var(--fg-2); font-size: 13px;">
                                         {{ $instructor->instructorProfile->department->name ?? '-' }}
                                     </td>
-                                    <td style="text-align: right; color: var(--fg-3); font-style: italic;">
-                                        -
-                                    </td>
-                                    <td style="text-align: right; padding-right: 24px;">
-                                        @if($instructor->instructorProfile && $instructor->instructorProfile->teaching_pct)
-                                            @php
-                                                $isGov = ($instructor->instructorProfile->employment_type === 'ข้าราชการ');
-                                                $teachingWeeks = \App\Models\SystemSetting::get('teaching_load_weeks', 39);
-                                                $hoursPerWeek = \App\Models\SystemSetting::get('teaching_quota_hours_per_week', 35);
-                                                $base = $isGov ? ($teachingWeeks * $hoursPerWeek / 2) : ($teachingWeeks * $hoursPerWeek);
-                                                $period = $isGov ? '6 เดือน' : 'ปี';
-                                                $quota = ($base * $instructor->instructorProfile->teaching_pct) / 100;
-                                            @endphp
-                                            <div style="font-weight: 700; color: var(--brand-navy); font-size: 14px;">
-                                                {{ number_format($quota, 1) }}
-                                            </div>
-                                            <div style="font-size: 11px; color: var(--fg-3);">ชั่วโมงทำการ / {{ $period }}</div>
-                                        @else
-                                            <span style="color: var(--fg-3); font-style: italic;">- ไม่ระบุ -</span>
-                                        @endif
-                                    </td>
-
                                     @if($isAdmin)
                                     <td style="text-align: center;">
                                         <button type="button" class="action-btn" title="แก้ไขข้อมูลอาจารย์"
@@ -788,7 +767,7 @@
                                 {{-- Edit --}}
                                 <div @click.stop style="flex-shrink: 0;">
                                     <button class="action-btn" title="แก้ไขประเภท"
-                                        @click.stop="openEditLocType({{ Js::from(['id' => $type->id, 'name' => $type->name, 'rooms_count' => $type->rooms_count]) }})">
+                                        @click.stop="openEditLocType({{ Js::from(['id' => $type->id, 'name' => $type->name, 'requires_capacity' => $type->requires_capacity, 'rooms_count' => $type->rooms_count]) }})">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -1440,6 +1419,16 @@
                                 <input type="text" name="name" x-model="currentLocType.name" required
                                     placeholder="เช่น ห้องบรรยาย, หอผู้ป่วย">
                             </div>
+                            <div style="display: flex; align-items: flex-start; gap: 12px; padding: 14px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 4px;">
+                                <input type="hidden" name="requires_capacity" value="0">
+                                <input type="checkbox" name="requires_capacity" value="1" id="requires_capacity_check"
+                                    x-model="currentLocType.requires_capacity"
+                                    style="width: 16px; height: 16px; margin-top: 2px; flex-shrink: 0; cursor: pointer; accent-color: var(--brand-navy);">
+                                <div>
+                                    <label for="requires_capacity_check" style="font-weight: 600; cursor: pointer; display: block; margin-bottom: 2px;">ต้องระบุความจุ (จำนวนที่นั่ง)</label>
+                                    <div style="font-size: 12px; color: var(--fg-3);">ปิดสำหรับสถานที่ที่ไม่มีที่นั่งชัดเจน เช่น ชุมชน, สถานที่ภาคสนาม</div>
+                                </div>
+                            </div>
                         </div>
                         <div class="modal-foot" style="display: flex; justify-content: space-between;">
                             <div>
@@ -1505,9 +1494,14 @@
                                         placeholder="เช่น อาคาร 1">
                                 </div>
                                 <div class="form-group">
-                                    <label>ความจุ (คน)</label>
-                                    <input type="number" name="capacity" x-model="currentRoom.capacity"
-                                        min="0">
+                                    <template x-if="!(locTypeMap[currentRoom.location_type_id] ?? true)">
+                                        <label>ความจุ (คน) <span style="color: var(--fg-3); font-weight: 400;">— ไม่บังคับ</span></label>
+                                    </template>
+                                    <template x-if="(locTypeMap[currentRoom.location_type_id] ?? true)">
+                                        <label>ความจุ (คน)</label>
+                                    </template>
+                                    <input type="number" name="capacity" x-model="currentRoom.capacity" min="0"
+                                        :required="(locTypeMap[currentRoom.location_type_id] ?? true)">
                                 </div>
                             </div>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">

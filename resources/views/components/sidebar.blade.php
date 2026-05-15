@@ -242,6 +242,11 @@
             </a>
 
         @elseif($activeRole === 'admin')
+            @php
+                $alertSummary = \App\Http\Controllers\Admin\AlertController::getSummary();
+                $alertCount   = $alertSummary['total'];
+                $alertCritical = $alertSummary['critical'];
+            @endphp
             <div class="sb-sec">ระบบ</div>
             <a href="{{ route('admin.dashboard') }}" class="nv {{ Request::routeIs('admin.dashboard') ? 'on' : '' }}">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -270,6 +275,18 @@
                     <path d="M2 12h10"></path>
                 </svg>
                 ข้อมูลหลัก
+            </a>
+            <a href="{{ route('admin.alerts') }}" class="nv {{ Request::routeIs('admin.alerts') ? 'on' : '' }}">
+                <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <span>แจ้งเตือน</span>
+                @if($alertCritical > 0)
+                    <span class="nv-bd nv-bd-red">{{ $alertCritical }} critical</span>
+                @elseif($alertCount > 0)
+                    <span class="nv-bd nv-bd-soft" style="background: var(--status-warning); color: #fff;">{{ $alertCount }}</span>
+                @endif
             </a>
             <a href="{{ route('admin.settings') }}" class="nv {{ Request::routeIs('admin.settings') ? 'on' : '' }}">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

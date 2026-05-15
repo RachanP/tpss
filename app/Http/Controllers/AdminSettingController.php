@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-
 use App\Models\AcademicYear;
 use App\Models\SystemSetting;
+use App\Http\Controllers\Admin\AlertController;
 
 class AdminSettingController extends Controller
 {
@@ -20,14 +20,10 @@ class AdminSettingController extends Controller
         $workloadQuota = $workloadWeeks * $workloadHoursPerWeek;
         $teachingQuota = $teachingWeeks * $workloadHoursPerWeek;
 
-        if (empty($paCriteria)) {
-            $paCriteria = [
-                'อาจารย์' => ['t' => '20-70%', 'r' => '20-70%', 's' => '5-20%', 'c' => '5-15%', 'o' => '0-20%'],
-                'ผู้ช่วยอาจารย์' => ['t' => '≤ 70%', 'r' => '15-20%', 's' => '5-20%', 'c' => '5-20%', 'o' => '0-20%'],
-                'ผู้ช่วยอาจารย์_ปตรี' => ['t' => '30-60%', 'r' => '0%', 's' => '10-30%', 'c' => '10-20%', 'o' => '0-30%'],
-                'ผู้ช่วยอาจารย์_คลินิก' => ['t' => '≤ 10%', 'r' => '0-5%', 's' => '70-80%', 'c' => '0-5%', 'o' => '0-10%'],
-                'ผู้ช่วยอาจารย์_ปฏิบัติ' => ['t' => '≤ 70%', 'r' => '0%', 's' => '5-20%', 'c' => '5-20%', 'o' => '0-20%'],
-            ];
+        $firstGroup = !empty($paCriteria) ? reset($paCriteria) : null;
+        $firstField = $firstGroup ? reset($firstGroup) : null;
+        if (empty($paCriteria) || !is_array($firstField)) {
+            $paCriteria = self::defaultPaCriteria();
         }
 
         $isAdmin     = true;
@@ -73,7 +69,7 @@ class AdminSettingController extends Controller
         }
 
         AcademicYear::create($validated);
-
+        AlertController::flushCache();
         return redirect()->route($this->settingsRoute(), ['tab' => 'academic'])->with('success', 'เพิ่มปีการศึกษาเรียบร้อยแล้ว');
     }
 
@@ -120,7 +116,7 @@ class AdminSettingController extends Controller
         }
 
         $year->update($validated);
-
+        AlertController::flushCache();
         return redirect()->route($this->settingsRoute(), ['tab' => 'academic'])->with('success', 'อัปเดตปีการศึกษาเรียบร้อยแล้ว');
     }
 
@@ -132,21 +128,51 @@ class AdminSettingController extends Controller
     public function updateConstants(Request $request)
     {
         $request->validate([
-            'teaching_quota_weeks' => 'required|numeric|min:1',
-            'teaching_load_weeks' => 'required|numeric|min:1',
+            'teaching_quota_weeks'          => 'required|numeric|min:1',
+            'teaching_load_weeks'           => 'required|numeric|min:1',
             'teaching_quota_hours_per_week' => 'required|numeric|min:1',
-            'pa_criteria' => 'required|array'
+            'pa_criteria'                   => 'required|array',
+            'pa_criteria.*.*.min'           => 'required|integer|min:0|max:100',
+            'pa_criteria.*.*.max'           => 'required|integer|min:0|max:100',
         ]);
 
-        // Calculate total hours
+        foreach ($request->pa_criteria as $rank => $fields) {
+            foreach ($fields as $field => $range) {
+                if ((int)$range['min'] > (int)$range['max']) {
+                    return back()->withErrors(['pa_criteria' => "เกณฑ์ {$rank} ด้าน {$field}: ค่าต่ำสุด ({$range['min']}) ต้องไม่มากกว่าค่าสูงสุด ({$range['max']})"]);
+                }
+            }
+        }
+
         $totalHours = $request->teaching_quota_weeks * $request->teaching_quota_hours_per_week;
 
         SystemSetting::set('teaching_quota_weeks', $request->teaching_quota_weeks);
         SystemSetting::set('teaching_load_weeks', $request->teaching_load_weeks);
         SystemSetting::set('teaching_quota_hours_per_week', $request->teaching_quota_hours_per_week);
         SystemSetting::set('teaching_quota_hours', $totalHours);
-        SystemSetting::set('pa_criteria_config', json_encode($request->pa_criteria));
 
+        $criteria = [];
+        foreach ($request->pa_criteria as $rank => $fields) {
+            foreach ($fields as $field => $range) {
+                $criteria[$rank][$field] = [
+                    'min' => (int) $range['min'],
+                    'max' => (int) $range['max'],
+                ];
+            }
+        }
+        SystemSetting::set('pa_criteria_config', json_encode($criteria));
+        AlertController::flushCache();
         return redirect()->route('admin.settings', ['tab' => 'pa'])->with('success', 'บันทึกค่าคงที่และเกณฑ์ PA เรียบร้อยแล้ว');
+    }
+
+    public static function defaultPaCriteria(): array
+    {
+        return [
+            'อาจารย์'               => ['t' => ['min' => 20, 'max' => 70], 'r' => ['min' => 20, 'max' => 70], 's' => ['min' => 5,  'max' => 20], 'c' => ['min' => 5, 'max' => 15], 'o' => ['min' => 0, 'max' => 20]],
+            'ผู้ช่วยอาจารย์'        => ['t' => ['min' => 0,  'max' => 70], 'r' => ['min' => 15, 'max' => 20], 's' => ['min' => 5,  'max' => 20], 'c' => ['min' => 5, 'max' => 20], 'o' => ['min' => 0, 'max' => 20]],
+            'ผู้ช่วยอาจารย์_ปตรี'   => ['t' => ['min' => 30, 'max' => 60], 'r' => ['min' => 0,  'max' => 0],  's' => ['min' => 10, 'max' => 30], 'c' => ['min' => 10,'max' => 20], 'o' => ['min' => 0, 'max' => 30]],
+            'ผู้ช่วยอาจารย์_คลินิก' => ['t' => ['min' => 0,  'max' => 10], 'r' => ['min' => 0,  'max' => 5],  's' => ['min' => 70, 'max' => 80], 'c' => ['min' => 0, 'max' => 5],  'o' => ['min' => 0, 'max' => 10]],
+            'ผู้ช่วยอาจารย์_ปฏิบัติ'=> ['t' => ['min' => 0,  'max' => 70], 'r' => ['min' => 0,  'max' => 0],  's' => ['min' => 5,  'max' => 20], 'c' => ['min' => 5, 'max' => 20], 'o' => ['min' => 0, 'max' => 20]],
+        ];
     }
 }

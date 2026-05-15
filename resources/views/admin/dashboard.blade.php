@@ -11,6 +11,7 @@
             <div style="color: var(--fg-3);">แสดงข้อมูลสรุปสถานะการทำงานและภาระงานสอนของอาจารย์ทั้งหมด</div>
         </div>
 
+        @include('shared.dashboard.master_data_alerts')
         @include('shared.dashboard.instructors_workload')
     </div>
 </x-app-layout>

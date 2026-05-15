@@ -225,114 +225,100 @@
                 @csrf
                 <div class="settings-grid">
 
-                    <div style="display: flex; flex-direction: column; gap: 24px;">
-                        <div class="card">
-                            <div class="card-hdr">
-                                <div class="card-ttl">ค่าคงที่ภาระงานประจำปี</div>
+                    <div class="card">
+                        <div class="card-hdr">
+                            <div class="card-ttl">ค่าคงที่ภาระงานประจำปี</div>
+                        </div>
+
+                        {{-- Input rows --}}
+                        <div style="border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 12px 20px;">
+                            <div>
+                                <div style="font-size: 13px; font-weight: 600; color: var(--fg-1);">สัปดาห์ทำงานรวม / ปี</div>
+                                <div style="font-size: 11px; color: var(--fg-3); margin-top: 1px;">ใช้คำนวณปฏิบัติงานรวม</div>
                             </div>
-                            <div class="card-body" style="display: flex; flex-direction: column; align-items: center; gap: 20px;">
-                                <div class="stats-grid">
-                                    <div class="form-group" style="display: flex; flex-direction: column; align-items: center;">
-                                        <label style="text-align: center; font-size: 11px;">สัปดาห์ทำงานรวม/ปี</label>
-                                        <input type="number" name="teaching_quota_weeks" x-model.number="workloadWeeks"
-                                            min="1" required
-                                            style="font-weight: 700; text-align: center; width: 80px;">
-                                    </div>
-                                    <div class="form-group" style="display: flex; flex-direction: column; align-items: center;">
-                                        <label style="text-align: center; font-size: 11px;">สัปดาห์งานสอน/ปี</label>
-                                        <input type="number" name="teaching_load_weeks" x-model.number="teachingWeeks"
-                                            min="1" required
-                                            style="font-weight: 700; text-align: center; width: 80px;">
-                                    </div>
-                                    <div class="form-group" style="display: flex; flex-direction: column; align-items: center;">
-                                        <label style="text-align: center; font-size: 11px;">ชั่วโมงทำงาน/สัปดาห์</label>
-                                        <input type="number" name="teaching_quota_hours_per_week"
-                                            x-model.number="workloadHoursPerWeek" min="1" required
-                                            style="font-weight: 700; text-align: center; width: 80px;">
-                                    </div>
-                                </div>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%;">
-                                    <div style="padding: 16px 12px; background: var(--bg-2); border-radius: 12px; text-align: center; border: 1px solid var(--border); display: flex; flex-direction: column; justify-content: center; min-height: 80px;">
-                                        <div style="font-size: 11px; font-weight: 600; color: var(--fg-3); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">ปฏิบัติงานรวม</div>
-                                        <div style="font-size: 24px; font-weight: 800; color: var(--brand-navy); line-height: 1; display: flex; align-items: baseline; justify-content: center; gap: 4px;">
-                                            <span x-text="totalQuota"></span>
-                                            <span style="font-size: 13px; font-weight: 600; color: var(--fg-3);">ชม./ปี</span>
-                                        </div>
-                                    </div>
-                                    <div style="padding: 16px 12px; background: var(--brand-navy); border-radius: 12px; text-align: center; border: 1px solid var(--brand-navy); display: flex; flex-direction: column; justify-content: center; min-height: 80px; box-shadow: 0 4px 12px rgba(0, 35, 71, 0.15);">
-                                        <div style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.7); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">ฐานงานสอน (PA)</div>
-                                        <div style="font-size: 24px; font-weight: 800; color: white; line-height: 1; display: flex; align-items: baseline; justify-content: center; gap: 4px;">
-                                            <span x-text="teachingQuota"></span>
-                                            <span style="font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.6);">ชม./ปี</span>
-                                        </div>
-                                    </div>
-                                </div>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <input type="number" name="teaching_quota_weeks" x-model.number="workloadWeeks" min="1" required style="width: 72px; text-align: center; font-weight: 700;">
+                                <span style="font-size: 12px; color: var(--fg-3); width: 100px;">สัปดาห์</span>
+                            </div>
+                        </div>
+                        <div style="border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 12px 20px;">
+                            <div>
+                                <div style="font-size: 13px; font-weight: 600; color: var(--fg-1);">สัปดาห์งานสอน / ปี</div>
+                                <div style="font-size: 11px; color: var(--fg-3); margin-top: 1px;">ใช้คำนวณฐานงานสอน (PA)</div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <input type="number" name="teaching_load_weeks" x-model.number="teachingWeeks" min="1" required style="width: 72px; text-align: center; font-weight: 700;">
+                                <span style="font-size: 12px; color: var(--fg-3); width: 100px;">สัปดาห์</span>
+                            </div>
+                        </div>
+                        <div style="border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 12px 20px;">
+                            <div>
+                                <div style="font-size: 13px; font-weight: 600; color: var(--fg-1);">ชั่วโมงทำงาน / สัปดาห์</div>
+                                <div style="font-size: 11px; color: var(--fg-3); margin-top: 1px;">ใช้กับทั้งสองสูตรข้างต้น</div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <input type="number" name="teaching_quota_hours_per_week" x-model.number="workloadHoursPerWeek" min="1" required style="width: 72px; text-align: center; font-weight: 700;">
+                                <span style="font-size: 12px; color: var(--fg-3); width: 100px;">ชั่วโมง/สัปดาห์</span>
                             </div>
                         </div>
 
-                        <div style="padding: 16px; background: var(--status-success-bg); border-radius: 12px; display: flex; gap: 12px;">
-                            <div style="color: var(--status-success-fg);"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                    <line x1="12" y1="16" x2="12" y2="12"></line>
-                                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                                </svg></div>
-                            <div style="font-size: 13px; color: var(--fg-1); line-height: 1.5;">
-                                <strong style="color: var(--status-success-fg);">คำนวณอัตโนมัติ</strong><br>
-                                ข้อมูลเหล่านี้จะถูกนำไปใช้อ้างอิงในการคำนวณสัดส่วนภาระงาน (Workload) ของอาจารย์ทั้งหมด
-                            </div>
+                        {{-- Calculated results --}}
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; border-bottom: 1px solid var(--border); background: var(--bg-2);">
+                            <span style="font-size: 12px; color: var(--fg-3);">ปฏิบัติงานรวม</span>
+                            <span style="font-size: 15px; font-weight: 700; color: var(--fg-1);" x-text="totalQuota + ' ชั่วโมง/ปี'"></span>
+                        </div>
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; background: var(--brand-navy);">
+                            <span style="font-size: 12px; color: rgba(255,255,255,0.7);">เกณฑ์ภาระงานสอน</span>
+                            <span style="font-size: 15px; font-weight: 700; color: #fff;" x-text="teachingQuota + ' ชั่วโมง/ปี'"></span>
                         </div>
                     </div>
 
                     <div class="card">
-                        <div class="settings-hdr">
+                        <div class="card-hdr">
                             <div class="card-ttl">สัดส่วนเกณฑ์ PA ตามตำแหน่งทางวิชาการ</div>
-                            <div class="hdr-helper">
-                                <div class="copy-box">
-                                    <span style="font-size: 11px; color: var(--fg-3); margin-right: 4px;">คลิกเพื่อก๊อปปี้:</span>
-                                    <div style="display: flex; gap: 4px;">
-                                        @foreach(['≤', '≥', '-', '%'] as $sym)
-                                            <button type="button"
-                                                onclick="navigator.clipboard.writeText('{{ $sym }}')"
-                                                class="btn-ghost"
-                                                style="padding: 2px 6px; font-size: 13px; font-weight: 700; min-width: 28px;"
-                                                title="คลิกเพื่อคัดลอก {{ $sym }}">
-                                                {{ $sym }}
-                                            </button>
-                                        @endforeach
-                                    </div>
-                                </div>
-                                <div style="font-size: 12px; color: var(--fg-3);">หน่วย: เปอร์เซ็นต์ (%)</div>
-                            </div>
+                            <div style="font-size: 12px; color: var(--fg-3);">ระบุช่วง ต่ำสุด – สูงสุด (%)</div>
                         </div>
                         <div class="table-responsive">
                             <table>
                                 <thead>
                                     <tr>
-                                        <th style="width: 25%;">ตำแหน่ง / ประเภท</th>
-                                        <th style="text-align: center;">สอน</th>
-                                        <th style="text-align: center;">วิจัย</th>
-                                        <th style="text-align: center;">บริการฯ</th>
-                                        <th style="text-align: center;">ศิลปะฯ</th>
-                                        <th style="text-align: center;">มอบหมาย</th>
+                                        <th>ตำแหน่ง / ประเภท</th>
+                                        @foreach(['สอน','วิจัย','บริการฯ','ศิลปะฯ','มอบหมาย'] as $col)
+                                        <th style="text-align: center;">{{ $col }}</th>
+                                        @endforeach
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach($paCriteria as $rank => $ranges)
-                                        <tr>
-                                            <td style="font-weight: 600; color: var(--fg-1);">
-                                                {{ str_replace('_', ' ', $rank) }}
-                                            </td>
-                                            <td style="padding: 8px;"><input type="text" name="pa_criteria[{{ $rank }}][t]" value="{{ $ranges['t'] }}" class="pa-input"></td>
-                                            <td style="padding: 8px;"><input type="text" name="pa_criteria[{{ $rank }}][r]" value="{{ $ranges['r'] }}" class="pa-input"></td>
-                                            <td style="padding: 8px;"><input type="text" name="pa_criteria[{{ $rank }}][s]" value="{{ $ranges['s'] }}" class="pa-input"></td>
-                                            <td style="padding: 8px;"><input type="text" name="pa_criteria[{{ $rank }}][c]" value="{{ $ranges['c'] }}" class="pa-input"></td>
-                                            <td style="padding: 8px;"><input type="text" name="pa_criteria[{{ $rank }}][o]" value="{{ $ranges['o'] }}" class="pa-input"></td>
-                                        </tr>
+                                    <tr>
+                                        <td style="font-weight: 600; color: var(--fg-1); white-space: nowrap;">{{ str_replace('_', ' ', $rank) }}</td>
+                                        @foreach(['t','r','s','c','o'] as $f)
+                                        @php $range = $ranges[$f] ?? ['min'=>0,'max'=>100]; @endphp
+                                        <td style="padding: 6px 8px;">
+                                            <div style="display: flex; flex-direction: column; gap: 4px; align-items: center;">
+                                                <div style="display: flex; align-items: center; gap: 4px;">
+                                                    <span style="font-size: 10px; color: var(--fg-3); width: 22px;">min</span>
+                                                    <input type="number" name="pa_criteria[{{ $rank }}][{{ $f }}][min]"
+                                                           value="{{ $range['min'] }}" min="0" max="100"
+                                                           class="pa-input" style="width: 52px; text-align: center;">
+                                                    <span style="font-size: 11px; color: var(--fg-3);">%</span>
+                                                </div>
+                                                <div style="display: flex; align-items: center; gap: 4px;">
+                                                    <span style="font-size: 10px; color: var(--fg-3); width: 22px;">max</span>
+                                                    <input type="number" name="pa_criteria[{{ $rank }}][{{ $f }}][max]"
+                                                           value="{{ $range['max'] }}" min="0" max="100"
+                                                           class="pa-input" style="width: 52px; text-align: center;">
+                                                    <span style="font-size: 11px; color: var(--fg-3);">%</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        @endforeach
+                                    </tr>
                                     @endforeach
                                 </tbody>
                             </table>
                         </div>
-                        <div style="padding: 20px; border-top: 1px solid var(--border); background: var(--bg-1); text-align: right;">
+                        <div style="padding: 16px 20px; border-top: 1px solid var(--border); background: var(--bg-1); text-align: right;">
                             <button type="submit" class="btn btn-primary">
                                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
                                     <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>

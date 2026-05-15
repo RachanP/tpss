@@ -34,71 +34,34 @@ class InstructorProfile extends Model
 
     public function getProfileWarnings(array $paCriteria): array
     {
-        $warnings = [];
+        if (empty($this->title)) return [];
 
-        if (empty($this->title)) {
-            return $warnings;
-        }
-
-        $title = $this->title;
-        $degree = $this->academic_degree;
-        $hiredAt = $this->hired_at;
-        $isEnglishPassed = $this->is_english_passed;
-
-        $isNote1 = ($title === 'ผู้ช่วยอาจารย์' && $degree === 'ปริญญาเอก' && !empty($hiredAt) && strtotime($hiredAt) < strtotime('2016-10-01'));
-        
-        $useInstructorRules = (
-            $title === 'อาจารย์' || 
-            $title === 'ผู้ช่วยศาสตราจารย์' || 
-            $title === 'รองศาสตราจารย์' || 
-            $title === 'ศาสตราจารย์' || 
-            $isNote1 ||
-            ($title === 'ผู้ช่วยอาจารย์' && $degree === 'ปริญญาเอก' && $isEnglishPassed)
+        $group = \App\Http\Controllers\Admin\AlertController::paGroup(
+            $this->title,
+            $this->academic_degree ?? ''
         );
+        $rules = $paCriteria[$group] ?? null;
+        if (!$rules) return [];
 
-        $rules = ['t' => '-', 'r' => '-', 's' => '-', 'c' => '-', 'o' => '-'];
-        
-        if ($title === 'ผู้ช่วยอาจารย์ (คลินิก)') {
-            $rules = $paCriteria['ผู้ช่วยอาจารย์_คลินิก'] ?? $rules;
-        } else if ($title === 'ผู้ช่วยอาจารย์ (สอนภาคปฏิบัติ)') {
-            $rules = $paCriteria['ผู้ช่วยอาจารย์_ปฏิบัติ'] ?? $rules;
-        } else if ($title === 'ผู้ช่วยอาจารย์' && $degree === 'ปริญญาตรี') {
-            $rules = $paCriteria['ผู้ช่วยอาจารย์_ปตรี'] ?? $rules;
-        } else if ($useInstructorRules) {
-            $rules = $paCriteria['อาจารย์'] ?? $rules;
-        } else if ($title === 'ผู้ช่วยอาจารย์') {
-            $rules = $paCriteria['ผู้ช่วยอาจารย์'] ?? $rules;
+        $fields = [
+            't' => ['value' => $this->teaching_pct, 'label' => 'สอน'],
+            'r' => ['value' => $this->research_pct,  'label' => 'วิจัย'],
+            's' => ['value' => $this->service_pct,   'label' => 'บริการวิชาการ'],
+            'c' => ['value' => $this->culture_pct,   'label' => 'ศิลปวัฒนธรรม'],
+            'o' => ['value' => $this->other_pct,     'label' => 'อื่นๆ'],
+        ];
+
+        $violations = [];
+        foreach ($fields as $key => $field) {
+            $range = $rules[$key] ?? null;
+            if (!is_array($range)) continue;
+            $val = (int) $field['value'];
+            if ($val < $range['min'] || $val > $range['max']) {
+                $violations[] = $field['label'];
+            }
         }
 
-        $isOutOfRange = function($value, $rule) {
-            if (!$rule || $rule === '-') return false;
-            $val = (int) $value;
-            
-            if (str_contains($rule, '≤')) {
-                $max = (int) trim(str_replace('≤', '', $rule));
-                return $val > $max;
-            }
-            
-            if (str_contains($rule, '-')) {
-                $parts = explode('-', $rule);
-                $min = (int) ($parts[0] ?? 0);
-                $max = (int) ($parts[1] ?? 0);
-                return $val < $min || $val > $max;
-            }
-            return false;
-        };
-
-        $paViolations = [];
-        if ($isOutOfRange($this->teaching_pct, $rules['t'] ?? '-')) $paViolations[] = 'สอน';
-        if ($isOutOfRange($this->research_pct, $rules['r'] ?? '-')) $paViolations[] = 'วิจัย';
-        if ($isOutOfRange($this->service_pct, $rules['s'] ?? '-')) $paViolations[] = 'บริการวิชาการ';
-        if ($isOutOfRange($this->culture_pct, $rules['c'] ?? '-')) $paViolations[] = 'ศิลปวัฒนธรรม';
-        if ($isOutOfRange($this->other_pct, $rules['o'] ?? '-')) $paViolations[] = 'อื่นๆ';
-
-        if (!empty($paViolations)) {
-            $warnings[] = 'สัดส่วนภาระงานผิดเกณฑ์ (' . implode(', ', $paViolations) . ')';
-        }
-
-        return $warnings;
+        if (empty($violations)) return [];
+        return ['สัดส่วนภาระงานผิดเกณฑ์ (' . implode(', ', $violations) . ')'];
     }
 }

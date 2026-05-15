@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Admin\AlertController;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Models\UserRole;
@@ -31,26 +32,31 @@ class DashboardController extends Controller
 
     public function admin()
     {
-        $instructors = User::whereHas('roles', function($q) {
-            $q->where('role', 'instructor');
-        })->with(['instructorProfile.department'])->get();
+        ['instructors' => $instructors, 'teachingWeeks' => $teachingWeeks, 'hoursPerWeek' => $hoursPerWeek]
+            = $this->instructorWorkloadData();
 
-        $teachingWeeks = \App\Models\SystemSetting::get('teaching_load_weeks', 39);
-        $hoursPerWeek = \App\Models\SystemSetting::get('teaching_quota_hours_per_week', 35);
+        $criticals = AlertController::getCriticals();
+        $alerts    = AlertController::getSummary();
 
-        return view('admin.dashboard', compact('instructors', 'teachingWeeks', 'hoursPerWeek'));
+        return view('admin.dashboard', compact('instructors', 'teachingWeeks', 'hoursPerWeek', 'alerts', 'criticals'));
     }
 
     public function staff()
     {
-        $instructors = User::whereHas('roles', function($q) {
-            $q->where('role', 'instructor');
-        })->with(['instructorProfile.department'])->get();
-
-        $teachingWeeks = \App\Models\SystemSetting::get('teaching_load_weeks', 39);
-        $hoursPerWeek = \App\Models\SystemSetting::get('teaching_quota_hours_per_week', 35);
+        ['instructors' => $instructors, 'teachingWeeks' => $teachingWeeks, 'hoursPerWeek' => $hoursPerWeek]
+            = $this->instructorWorkloadData();
 
         return view('staff.dashboard', compact('instructors', 'teachingWeeks', 'hoursPerWeek'));
+    }
+
+    private function instructorWorkloadData(): array
+    {
+        return [
+            'instructors'   => User::whereHas('roles', fn($q) => $q->where('role', 'instructor'))
+                                   ->with(['instructorProfile.department'])->get(),
+            'teachingWeeks' => SystemSetting::get('teaching_load_weeks', 39),
+            'hoursPerWeek'  => SystemSetting::get('teaching_quota_hours_per_week', 35),
+        ];
     }
 
     public function maker()

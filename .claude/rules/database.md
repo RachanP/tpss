@@ -75,6 +75,34 @@ course_offerings
 - `add_assigned_staff_to_courses_table` — FK `assigned_staff_id` → users
 - `add_capacity_to_courses_table` — `capacity` INT
 - `refactor_student_groups_to_course_offering` — FK จาก curriculum+year → course_offering_id
+- `create_course_staff_table` — many-to-many `courses` ↔ `users` (แทน `assigned_staff_id`)
+- `drop_assigned_staff_from_courses_table` — ลบ FK เดิม
+- `add_employee_id_to_users_table` — ย้าย `employee_id` มาอยู่ใน `users` (ออกจาก `instructor_profiles`)
+- `add_requires_capacity_to_location_types_table` — `boolean requires_capacity default true` — ห้องในประเภทที่ไม่ต้องการความจุจะไม่โดน alert
+
+## PA Criteria Config
+
+เก็บใน `system_settings` key `pa_criteria_config` เป็น JSON:
+
+```json
+{
+  "อาจารย์": {
+    "t": {"min": 20, "max": 70},
+    "r": {"min": 20, "max": 70},
+    "s": {"min": 5,  "max": 20},
+    "c": {"min": 5,  "max": 15},
+    "o": {"min": 0,  "max": 20}
+  },
+  "ผู้ช่วยอาจารย์":        { ... },
+  "ผู้ช่วยอาจารย์_ปตรี":   { ... },
+  "ผู้ช่วยอาจารย์_คลินิก": { ... },
+  "ผู้ช่วยอาจารย์_ปฏิบัติ":{ ... }
+}
+```
+
+- keys `t/r/s/c/o` = สอน/วิจัย/บริการฯ/ศิลปะฯ/มอบหมาย
+- **ห้ามใช้ string format เดิม** (`"20-70%"`) — `AlertController::getPaViolations()` จะ error
+- `AdminSettingController::defaultPaCriteria()` คืนค่า default ถ้า DB ว่างหรือ format เก่า
 
 **Phase 2 tables (เตรียมไว้แล้ว):** `course_offering_approvals`, `schedule_conflicts`
 ER Diagram: `mock/er_v1.jpg`

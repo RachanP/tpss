@@ -1,11 +1,11 @@
-# Sprint Status — ณ 14 พ.ค. 2569
+# Sprint Status — ณ 15 พ.ค. 2569
 
 ## Phase Overview
 
 | Phase | ชื่อ | สถานะ |
 |-------|------|-------|
 | Phase 1–3 | Initiation → Design | ✅ เสร็จ |
-| Phase 4–5 | Development | 🟢 Sprint 1+2 เสร็จ, Sprint 3 เริ่มถัดไป |
+| Phase 4–5 | Development | 🟢 Sprint 1+2 เสร็จ, Sprint 3 กำลังเตรียม |
 | Phase 5 | Testing | 🟡 Internal Testing กำลังดำเนินการ |
 | Phase 6–7 | Deployment → Closure | ยังไม่เริ่ม (4–7 มิ.ย. 2569) |
 
@@ -29,6 +29,14 @@
 - Lock icon บน tab ที่ Staff ดูอย่างเดียว
 - Accordion drill-down: dept→อาจารย์, curriculum→วิชา, location_type→ห้อง
 - Student Groups ย้ายออกจาก M1 → ไปสร้างใน M2 ตอน confirm offering
+- `requires_capacity` boolean บน `location_types` — ห้องในประเภทที่ไม่ต้องการความจุ (เช่น ชุมชน) ไม่โดนแจ้งเตือน
+- Admin Dashboard + role-based dashboards (executive, course_head, instructor, staff)
+- Alerts system: `AlertController` + `/admin/alerts` page + dashboard widget
+  - Critical: no active year, no dept, no curriculum, no activity_type, no location_type, PA violations
+  - Warning: dept ขาด head/secretary, อาจารย์ขาดข้อมูล, ห้องขาด capacity, วิชาขาด coordinator/staff
+  - Sidebar badge: แดง (critical), เหลือง (warning only)
+- PA criteria schema เปลี่ยนจาก string (`"20-70%"`) → `{min: int, max: int}` ต่อแต่ละด้าน
+- Settings tab PA: inputs คู่ min–max ต่อ field แทน text input เดิม
 
 ## ข้อค้นพบสำคัญสำหรับ M3 (Schedule Management)
 

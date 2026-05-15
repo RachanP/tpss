@@ -93,12 +93,14 @@
                 isOutOfRange(value, rule) {
                     if (!rule || rule === '-') return false;
                     const val = parseInt(value) || 0;
-                    
+
+                    if (typeof rule === 'object') {
+                        return val < (rule.min ?? 0) || val > (rule.max ?? 100);
+                    }
                     if (rule.includes('≤')) {
                         const max = parseInt(rule.replace('≤', '').trim()) || 0;
                         return val > max;
                     }
-                    
                     if (rule.includes('-')) {
                         const parts = rule.split('-');
                         const min = parseInt(parts[0]) || 0;
@@ -622,9 +624,13 @@
                                         placeholder="email@mahidol.ac.th">
                                 </div>
                                 <div class="form-group" style="flex: 0 0 160px;">
-                                    <label>รหัสพนักงาน</label>
+                                    <label>
+                                        รหัสพนักงาน
+                                        <span x-show="currentUser.roles.includes('instructor')" style="color: var(--status-conflict-fg);">*</span>
+                                    </label>
                                     <input type="text" name="employee_id" x-model="currentUser.employee_id"
-                                        placeholder="เช่น 52123">
+                                        placeholder="เช่น 52123"
+                                        :required="currentUser.roles.includes('instructor')">
                                 </div>
                             </div>
 
