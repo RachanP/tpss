@@ -28,7 +28,7 @@ class MasterDataController extends Controller
             ->get();
 
         // Active users for head/secretary dropdown
-        $users = User::with('instructorProfile')->where('is_active', true)->orderBy('name')->get();
+        $users = User::with(['instructorProfile', 'roles'])->where('is_active', true)->orderBy('name')->get();
 
         // Location Types
         $locationTypes = LocationType::withCount('rooms')->with('rooms')->get();
@@ -207,6 +207,17 @@ class MasterDataController extends Controller
         $user = User::findOrFail($id);
         $profile = $user->instructorProfile;
 
+        $title  = $request->input('title', '');
+        $degree = $request->input('academic_degree', '');
+
+        $paRules = match(true) {
+            $title === 'ผู้ช่วยอาจารย์ (คลินิก)'                          => ['teaching'=>[0,10],  'research'=>[0,5],   'service'=>[70,80], 'culture'=>[0,15], 'other'=>[0,20]],
+            $title === 'ผู้ช่วยอาจารย์ (สอนภาคปฏิบัติ)'                   => ['teaching'=>[0,70],  'research'=>[0,0],   'service'=>[5,20],  'culture'=>[0,15], 'other'=>[0,20]],
+            $title === 'ผู้ช่วยอาจารย์' && $degree === 'ปริญญาตรี'         => ['teaching'=>[30,60], 'research'=>[0,0],   'service'=>[10,30], 'culture'=>[0,15], 'other'=>[0,20]],
+            str_contains($title, 'ผู้ช่วยอาจารย์')                         => ['teaching'=>[0,70],  'research'=>[15,20], 'service'=>[5,20],  'culture'=>[0,15], 'other'=>[0,20]],
+            default                                                         => ['teaching'=>[20,70], 'research'=>[20,70], 'service'=>[5,20],  'culture'=>[5,15], 'other'=>[0,20]],
+        };
+
         $request->validate([
             'name'            => 'required|string|max:255',
             'prefix'          => 'required|string|max:50',
@@ -215,8 +226,20 @@ class MasterDataController extends Controller
             'title'           => 'required|string|max:100',
             'academic_degree' => 'required|string|max:100',
             'employment_type' => 'required|string|max:100',
-            'teaching_pct'    => 'required|integer|min:0|max:100',
+            'hired_at'        => 'nullable|date',
+            'teaching_pct'    => "required|integer|min:{$paRules['teaching'][0]}|max:{$paRules['teaching'][1]}",
+            'research_pct'    => "required|integer|min:{$paRules['research'][0]}|max:{$paRules['research'][1]}",
+            'service_pct'     => "required|integer|min:{$paRules['service'][0]}|max:{$paRules['service'][1]}",
+            'culture_pct'     => "required|integer|min:{$paRules['culture'][0]}|max:{$paRules['culture'][1]}",
+            'other_pct'       => "required|integer|min:{$paRules['other'][0]}|max:{$paRules['other'][1]}",
         ]);
+
+        $total = $request->integer('teaching_pct') + $request->integer('research_pct')
+               + $request->integer('service_pct')  + $request->integer('culture_pct')
+               + $request->integer('other_pct');
+        if ($total !== 100) {
+            return redirect()->back()->withErrors(['teaching_pct' => "สัดส่วนรวมทั้งหมดต้องเท่ากับ 100% (ปัจจุบัน: {$total}%)"])->withInput();
+        }
 
         // Update user name, prefix, and employee_id
         $user->update(['name' => $request->name, 'prefix' => $request->prefix, 'employee_id' => $request->employee_id ?: null]);
@@ -234,7 +257,12 @@ class MasterDataController extends Controller
                 'academic_degree' => $request->academic_degree,
                 'department_id'   => $request->department_id,
                 'employment_type' => $request->employment_type,
+                'hired_at'        => $request->hired_at ?: null,
                 'teaching_pct'    => $request->teaching_pct,
+                'research_pct'    => $request->research_pct,
+                'service_pct'     => $request->service_pct,
+                'culture_pct'     => $request->culture_pct,
+                'other_pct'       => $request->other_pct,
             ]);
         }
 
@@ -323,7 +351,7 @@ class MasterDataController extends Controller
     public function storeCurriculum(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:curriculums,name',
             'effective_year' => 'required|integer',
             'is_active' => 'required|boolean'
         ]);
@@ -336,7 +364,7 @@ class MasterDataController extends Controller
     public function updateCurriculum(Request $request, Curriculum $curriculum)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:curriculums,name,' . $curriculum->id,
             'effective_year' => 'required|integer',
             'is_active' => 'required|boolean'
         ]);
@@ -348,37 +376,26 @@ class MasterDataController extends Controller
 
     public function cloneCurriculum(Request $request, Curriculum $curriculum)
     {
-        // Business Rule: Can only clone inactive curriculums
-        if ($curriculum->is_active) {
-            return redirect()->back()->with('error', 'ไม่สามารถคัดลอกหลักสูตรที่กำลังเปิดใช้งานอยู่ได้ กรุณาปิดการใช้งานหลักสูตรต้นฉบับก่อน');
-        }
-
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:curriculums,name',
             'effective_year' => 'required|integer'
         ]);
 
-        // Create new curriculum
         $newCurriculum = Curriculum::create([
             'name' => $validated['name'],
             'effective_year' => $validated['effective_year'],
-            'is_active' => true // Default to active
+            'is_active' => false,
         ]);
 
-        // Clone all courses
         $courses = $curriculum->courses;
         foreach ($courses as $course) {
             $newCourse = $course->replicate();
             $newCourse->curriculum_id = $newCurriculum->id;
-            
-            // Database uses composite unique key ['course_code', 'curriculum_id']
-            // So we can safely keep the exact same course_code.
-            // head_instructor_id is copied automatically via replicate()
-            
+            $newCourse->status = 'inactive';
             $newCourse->save();
         }
 
-        return $this->redirectToMasterData('curriculums')->with('success', 'คัดลอกหลักสูตรและรายวิชาทั้งหมดเรียบร้อยแล้ว (' . $courses->count() . ' วิชา)');
+        return $this->redirectToMasterData('curriculums')->with('success', 'คัดลอกหลักสูตรเรียบร้อยแล้ว (' . $courses->count() . ' วิชา) — สถานะทั้งหมดตั้งเป็นปิดใช้งาน กรุณาเปิดใช้งานด้วยตนเอง');
     }
 
     public function destroyDepartment(Department $department)

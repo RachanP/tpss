@@ -78,8 +78,17 @@
                            (this.instructorProfile.culture_pct || 0) + 
                            (this.instructorProfile.other_pct || 0);
                 },
+                get showProfileSection() {
+                    return this.currentUser.roles.includes('instructor')
+                        || this.currentUser.roles.includes('course_head')
+                        || this.currentUser.roles.includes('executive');
+                },
                 get hasInstructor() {
                     return this.currentUser.roles.includes('instructor');
+                },
+                get needsDept() {
+                    return this.currentUser.roles.includes('instructor')
+                        || this.currentUser.roles.includes('course_head');
                 },
                 isOutOfRange(value, rule) {
                     if (!rule || rule === '-') return false;
@@ -178,14 +187,14 @@
                 },
                 confirmSave(e) {
                     this.errorMsg = '';
-                    if (this.hasInstructor) {
-                        const outOfRange = 
+                    if (this.hasInstructor) { // PA validation only applies to instructor role
+                        const outOfRange =
                             this.isOutOfRange(this.instructorProfile.teaching_pct, this.paRules.t) ||
                             this.isOutOfRange(this.instructorProfile.research_pct, this.paRules.r) ||
                             this.isOutOfRange(this.instructorProfile.service_pct, this.paRules.s) ||
                             this.isOutOfRange(this.instructorProfile.culture_pct, this.paRules.c) ||
                             this.isOutOfRange(this.instructorProfile.other_pct, this.paRules.o);
-                            
+
                         if (outOfRange) {
                             this.errorMsg = `กรุณาระบุสัดส่วนภาระงานแต่ละด้านให้อยู่ในช่วงที่กำหนดตามเกณฑ์ตำแหน่ง`;
                             const modalBody = document.querySelector('.modal-body');
@@ -193,7 +202,7 @@
                             e.preventDefault();
                             return false;
                         }
-                        
+
                         if (this.paTotal !== 100) {
                             this.errorMsg = `สัดส่วนภาระงานรวมต้องเท่ากับ 100% (ปัจจุบันรวมได้ ${this.paTotal}%)`;
                             const modalBody = document.querySelector('.modal-body');
@@ -347,7 +356,7 @@
                                 <td>
                                     <div style="display: flex; align-items: center; gap: 12px;">
                                         @php
-                                            $primaryRole = $user->roles->first()?->role ?? 'staff';
+                                            $primaryRole = ($user->roles->firstWhere('is_primary', true) ?? $user->roles->first())?->role ?? 'staff';
                                             $roleTheme = [
                                                 'admin' => ['bg' => 'oklch(95% 0.02 240)', 'fg' => 'oklch(35% 0.10 240)', 'icon' => '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>'],
                                                 'staff' => ['bg' => 'oklch(96% 0.02 200)', 'fg' => 'oklch(45% 0.10 200)', 'icon' => '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'],
@@ -694,8 +703,8 @@
                                 </select>
                             </div>
 
-                            <!-- Instructor Profile Section (shown when instructor role is selected) -->
-                            <template x-if="hasInstructor">
+                            <!-- Profile Section: instructor / course_head / executive -->
+                            <template x-if="showProfileSection">
                                 <div style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 20px;">
                                     <div style="font-weight: 700; color: var(--fg-1); font-size: 14px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
                                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
@@ -704,7 +713,7 @@
                                             <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
                                             <path d="M6 12v5c3 3 9 3 12 0v-5" />
                                         </svg>
-                                        ข้อมูลโปรไฟล์อาจารย์ผู้สอน
+                                        ข้อมูลโปรไฟล์คณาจารย์
                                     </div>
 
                                     <div class="form-row">
@@ -722,10 +731,12 @@
                                                 <option value="ผู้ช่วยอาจารย์ (สอนภาคปฏิบัติ)">ผู้ช่วยอาจารย์ (สอนภาคปฏิบัติ)</option>
                                             </select>
                                         </div>
-                                        <div class="form-group">
-                                            <label>ภาควิชา / หน่วยงาน <span style="color: #ef4444;">*</span></label>
+                                        <!-- ภาควิชา: แสดงเฉพาะ instructor และ course_head -->
+                                        <div class="form-group" x-show="needsDept">
+                                            <label>ภาควิชา / หน่วยงาน <span style="color: #ef4444;" x-show="needsDept">*</span></label>
                                             <select name="instructor_department_id"
-                                                x-model="instructorProfile.department_id" required>
+                                                x-model="instructorProfile.department_id"
+                                                :required="needsDept">
                                                 <option value="">-- เลือกภาควิชา --</option>
                                                 @foreach($departments as $dept)
                                                     <option value="{{ $dept->id }}">{{ $dept->name }}</option>
@@ -734,7 +745,19 @@
                                         </div>
                                     </div>
 
+                                    <!-- วุฒิการศึกษา: แสดงสำหรับทุก role ที่มี profile -->
                                     <div class="form-group" style="margin-bottom: 20px;">
+                                        <label style="font-weight: 700;">วุฒิการศึกษาสูงสุด <span style="color: #ef4444;">*</span></label>
+                                        <select name="instructor_academic_degree" x-model="instructorProfile.academic_degree" required>
+                                            <option value="" disabled>-- เลือกวุฒิการศึกษา --</option>
+                                            <option value="ปริญญาเอก">ปริญญาเอก</option>
+                                            <option value="ปริญญาโท">ปริญญาโท</option>
+                                            <option value="ปริญญาตรี">ปริญญาตรี</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- ตำแหน่งบริหารในภาควิชา: เฉพาะ instructor/course_head -->
+                                    <div class="form-group" style="margin-bottom: 20px;" x-show="needsDept">
                                         <label>ตำแหน่งบริหารในภาควิชา <span style="font-weight: normal; color: var(--fg-3); font-size: 0.9em;">(ไม่บังคับ)</span></label>
                                         <select name="instructor_department_position" x-model="instructorProfile.department_position">
                                             <option value="">-- ไม่มีตำแหน่งบริหาร --</option>
@@ -758,7 +781,8 @@
                                         <p style="font-size: 11px; color: var(--fg-3); margin-top: 4px;">* เมื่อเลือกตำแหน่ง ระบบจะอัปเดตข้อมูลในภาควิชาที่เลือกด้านบนให้อัตโนมัติ</p>
                                     </div>
 
-                                    <div style="margin-top: 16px; margin-bottom: 24px;">
+                                    <!-- Employment + PA: เฉพาะ instructor role เท่านั้น -->
+                                    <div style="margin-top: 16px; margin-bottom: 24px;" x-show="hasInstructor">
                                         <div style="font-weight: 700; color: var(--fg-1); font-size: 13px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
                                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--fg-3);">
                                                 <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
@@ -768,27 +792,20 @@
                                         <div class="form-row">
                                             <div class="form-group">
                                                 <label>ประเภทการจ้างงาน <span style="color: #ef4444;">*</span></label>
-                                                <select name="instructor_employment_type" x-model="instructorProfile.employment_type" required>
+                                                <select name="instructor_employment_type" x-model="instructorProfile.employment_type" :required="hasInstructor">
                                                     <option value="พนักงานมหาวิทยาลัย">พนักงานมหาวิทยาลัย</option>
                                                     <option value="ข้าราชการ">ข้าราชการ</option>
                                                 </select>
                                             </div>
                                             <div class="form-group">
                                                 <label>วันที่บรรจุเข้าทำงาน <span style="color: #ef4444;">*</span></label>
-                                                <input type="date" name="instructor_hired_at" x-model="instructorProfile.hired_at" required>
+                                                <input type="date" name="instructor_hired_at" x-model="instructorProfile.hired_at" :required="hasInstructor">
                                             </div>
                                         </div>
-                                        <div class="form-group" style="margin-top: 12px;" x-show='instructorProfile.title !== ""'>
-                                            <label style="color: var(--status-success-fg); font-weight: 700;">วุฒิการศึกษาสูงสุด <span style="color: #ef4444;">*</span></label>
-                                            <select name="instructor_academic_degree" x-model="instructorProfile.academic_degree" required>
-                                                <option value="" disabled>-- เลือกวุฒิการศึกษา --</option>
-                                                <option value="ปริญญาเอก">ปริญญาเอก</option>
-                                                <option value="ปริญญาโท">ปริญญาโท</option>
-                                                <option value="ปริญญาตรี">ปริญญาตรี</option>
-                                            </select>
-                                            <div style="font-size: 11px; color: var(--fg-3); margin-top: 4px;" x-show='instructorProfile.academic_degree === "ปริญญาเอก" && instructorProfile.hired_at && new Date(instructorProfile.hired_at) < new Date("2016-10-01")'>
-                                                ✨ เข้าเงื่อนไขหมายเหตุ 1: บรรจุก่อน 2559 และจบ ป.เอก ให้ใช้เกณฑ์ "อาจารย์"
-                                            </div>
+                                        <div x-show='instructorProfile.academic_degree === "ปริญญาเอก" && instructorProfile.hired_at && new Date(instructorProfile.hired_at) < new Date("2016-10-01")'
+                                            style="font-size: 11px; color: var(--fg-3); margin-top: 4px; padding: 6px 10px; background: var(--bg-2); border-radius: 6px;">
+                                            เข้าเงื่อนไขหมายเหตุ 1: บรรจุก่อน 2559 และจบ ป.เอก ให้ใช้เกณฑ์ "อาจารย์"
+                                        </div>
 
                                             <!-- English Proficiency (Note 2) - Clean Rounded Buttons No Background -->
                                             <div style="margin-top: 15px;" 
@@ -826,7 +843,7 @@
                                             </div>
                                         </div>
 
-                                    <div
+                                    <div x-show="hasInstructor"
                                         style="background: var(--bg-1); border-radius: 12px; padding: 20px; border: 1px solid var(--border); margin-top: 8px;">
                                         <div
                                             style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
@@ -848,9 +865,9 @@
                                                     1. ด้านการสอน (<span x-text="paRules.t"></span>) <span style="color: #ef4444;">*</span>
                                                 </label>
                                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                                    <input type="number" name="instructor_teaching_pct" x-model.number="instructorProfile.teaching_pct" 
+                                                    <input type="number" name="instructor_teaching_pct" x-model.number="instructorProfile.teaching_pct"
                                                         :style='isOutOfRange(instructorProfile.teaching_pct, paRules.t) ? "border-color: var(--status-conflict-fg); background: oklch(97% 0.02 20); color: var(--status-conflict-fg)" : ""'
-                                                        style="font-weight: 700;" required>
+                                                        style="font-weight: 700;" :required="hasInstructor">
                                                     <span style="font-size: 13px; color: var(--fg-3); width: 20px;">%</span>
                                                 </div>
                                             </div>
@@ -859,9 +876,9 @@
                                                     2. ด้านวิจัย (<span x-text="paRules.r"></span>) <span style="color: #ef4444;">*</span>
                                                 </label>
                                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                                    <input type="number" name="instructor_research_pct" x-model.number="instructorProfile.research_pct" 
+                                                    <input type="number" name="instructor_research_pct" x-model.number="instructorProfile.research_pct"
                                                         :style='isOutOfRange(instructorProfile.research_pct, paRules.r) ? "border-color: var(--status-conflict-fg); background: oklch(97% 0.02 20); color: var(--status-conflict-fg)" : ""'
-                                                        style="font-weight: 700;" required>
+                                                        style="font-weight: 700;" :required="hasInstructor">
                                                     <span style="font-size: 13px; color: var(--fg-3); width: 20px;">%</span>
                                                 </div>
                                             </div>
@@ -870,9 +887,9 @@
                                                     3. บริการวิชาการ (<span x-text="paRules.s"></span>) <span style="color: #ef4444;">*</span>
                                                 </label>
                                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                                    <input type="number" name="instructor_service_pct" x-model.number="instructorProfile.service_pct" 
+                                                    <input type="number" name="instructor_service_pct" x-model.number="instructorProfile.service_pct"
                                                         :style='isOutOfRange(instructorProfile.service_pct, paRules.s) ? "border-color: var(--status-conflict-fg); background: oklch(97% 0.02 20); color: var(--status-conflict-fg)" : ""'
-                                                        style="font-weight: 700;" required>
+                                                        style="font-weight: 700;" :required="hasInstructor">
                                                     <span style="font-size: 13px; color: var(--fg-3); width: 20px;">%</span>
                                                 </div>
                                             </div>
@@ -881,9 +898,9 @@
                                                     4. ศิลปวัฒนธรรม (<span x-text="paRules.c"></span>) <span style="color: #ef4444;">*</span>
                                                 </label>
                                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                                    <input type="number" name="instructor_culture_pct" x-model.number="instructorProfile.culture_pct" 
+                                                    <input type="number" name="instructor_culture_pct" x-model.number="instructorProfile.culture_pct"
                                                         :style='isOutOfRange(instructorProfile.culture_pct, paRules.c) ? "border-color: var(--status-conflict-fg); background: oklch(97% 0.02 20); color: var(--status-conflict-fg)" : ""'
-                                                        style="font-weight: 700;" required>
+                                                        style="font-weight: 700;" :required="hasInstructor">
                                                     <span style="font-size: 13px; color: var(--fg-3); width: 20px;">%</span>
                                                 </div>
                                             </div>
@@ -892,9 +909,9 @@
                                                     5. งานอื่นๆ มอบหมาย (<span x-text="paRules.o"></span>) <span style="color: #ef4444;">*</span>
                                                 </label>
                                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                                    <input type="number" name="instructor_other_pct" x-model.number="instructorProfile.other_pct" 
+                                                    <input type="number" name="instructor_other_pct" x-model.number="instructorProfile.other_pct"
                                                     :style='isOutOfRange(instructorProfile.other_pct, paRules.o) ? "border-color: var(--status-conflict-fg); background: oklch(97% 0.02 20); color: var(--status-conflict-fg)" : ""'
-                                                    style="font-weight: 700;" required>
+                                                    style="font-weight: 700;" :required="hasInstructor">
                                                     <span style="font-size: 13px; color: var(--fg-3); width: 20px;">%</span>
                                                 </div>
                                             </div>

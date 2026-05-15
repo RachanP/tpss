@@ -8,22 +8,26 @@
             id: '',
             name: '',
             head_user_id: '',
-            secretary_user_id: ''
+            secretary_user_id: '',
+            head_active: true,
+            secretary_active: true,
         },
         openAddDept() {
             this.editDeptMode = false;
-            this.currentDept = { id: '', name: '', head_user_id: '', secretary_user_id: '' };
+            this.currentDept = { id: '', name: '', head_user_id: '', secretary_user_id: '', head_active: true, secretary_active: true };
             this.headSearch = '';
             this.secretarySearch = '';
             this.showDeptModal = true;
         },
         openEditDept(dept) {
             this.editDeptMode = true;
-            this.currentDept = { 
-                id: dept.id, 
-                name: dept.name, 
-                head_user_id: dept.head_user_id || '', 
-                secretary_user_id: dept.secretary_user_id || '' 
+            this.currentDept = {
+                id: dept.id,
+                name: dept.name,
+                head_user_id: dept.head_user_id || '',
+                secretary_user_id: dept.secretary_user_id || '',
+                head_active: dept.head_active ?? true,
+                secretary_active: dept.secretary_active ?? true,
             };
             this.headSearch = dept.head ? dept.head.formatted_name : '';
             this.secretarySearch = dept.secretary ? dept.secretary.formatted_name : '';
@@ -39,7 +43,12 @@
             academic_degree: '',
             department_id: '',
             employment_type: '',
-            teaching_pct: 0
+            hired_at: '',
+            teaching_pct: 0,
+            research_pct: 0,
+            service_pct: 0,
+            culture_pct: 0,
+            other_pct: 0,
         },
         openEditInstructor(instructor) {
             this.currentInstructor = {
@@ -51,15 +60,26 @@
                 academic_degree: instructor.instructor_profile?.academic_degree || '',
                 department_id: instructor.instructor_profile?.department_id || '',
                 employment_type: instructor.instructor_profile?.employment_type || '',
-                teaching_pct: instructor.instructor_profile?.teaching_pct || 0
+                hired_at: instructor.instructor_profile?.hired_at || '',
+                teaching_pct: instructor.instructor_profile?.teaching_pct ?? 0,
+                research_pct: instructor.instructor_profile?.research_pct ?? 0,
+                service_pct:  instructor.instructor_profile?.service_pct  ?? 0,
+                culture_pct:  instructor.instructor_profile?.culture_pct  ?? 0,
+                other_pct:    instructor.instructor_profile?.other_pct    ?? 0,
             };
             this.showInstructorModal = true;
         },
-        departmentsData: {{ Js::from($departments->map(fn($d) => ['id' => $d->id, 'name' => $d->name, 'head_user_id' => $d->head_user_id, 'secretary_user_id' => $d->secretary_user_id])) }},
+        departmentsData: {{ Js::from($departments->map(fn($d) => ['id' => $d->id, 'name' => $d->name, 'head_user_id' => $d->head_user_id, 'secretary_user_id' => $d->secretary_user_id, 'head_active' => $d->head?->is_active ?? true, 'secretary_active' => $d->secretary?->is_active ?? true, 'instructor_ids' => $d->instructorProfiles->pluck('user_id')->values()])) }},
         headSearch: '',
         secretarySearch: '',
         showHeadDropdown: false,
         showSecretaryDropdown: false,
+        get deptInstructorUsers() {
+            if (!this.currentDept.id) return [];
+            var dept = this.departmentsData.find(d => String(d.id) === String(this.currentDept.id));
+            if (!dept || !dept.instructor_ids || dept.instructor_ids.length === 0) return [];
+            return this.usersList.filter(u => dept.instructor_ids.includes(u.id));
+        },
         selectHead(user) {
             this.currentDept.head_user_id = user.id;
             this.headSearch = user.name;
@@ -210,7 +230,7 @@
         },
         openEditCurriculum(curr) {
             this.editCurriculumMode = true;
-            this.currentCurriculum = { ...curr };
+            this.currentCurriculum = { ...curr, is_active: curr.is_active ? '1' : '0' };
             this.showCurriculumModal = true;
         },
 
@@ -225,7 +245,16 @@
             this.showCloneCurriculumModal = true;
         },
 
-        usersList: {{ Js::from($users->map(fn($u) => ['id' => $u->id, 'name' => $u->formatted_name, 'formatted_name' => $u->formatted_name])) }},
+        usersList: {{ Js::from($users->map(fn($u) => ['id' => $u->id, 'name' => $u->formatted_name, 'formatted_name' => $u->formatted_name, 'roles' => $u->roles->pluck('role')->values(), 'department_id' => $u->instructorProfile?->department_id])) }},
+
+        get courseHeadList() {
+            var deptId = this.currentCourse.department_id ? String(this.currentCourse.department_id) : null;
+            return this.usersList.filter(function(u) {
+                if (!u.roles || !u.roles.includes('course_head')) return false;
+                if (deptId) return u.department_id && String(u.department_id) === deptId;
+                return true;
+            });
+        },
 
         confirmDeptSave(e) {
             var form     = e.target;
@@ -240,10 +269,16 @@
                 function(d) { return String(d.secretary_user_id) === secId && String(d.id) !== deptId; }
             ) : null;
 
-            if (!headConflict && !secConflict) return;
+            var samePersonWarn = headId && secId && headId === secId;
+
+            if (!headConflict && !secConflict && !samePersonWarn) return;
             e.preventDefault();
 
             var lines = [];
+            if (samePersonWarn) {
+                var spName = (this.usersList.find(function(u) { return String(u.id) === headId; }) || {}).name || 'บุคคลนี้';
+                lines.push(spName + ' ถูกเลือกเป็นทั้งหัวหน้าและเลขานุการภาควิชาเดียวกัน');
+            }
             if (headConflict) {
                 var hName = (this.usersList.find(function(u) { return String(u.id) === headId; }) || {}).name || 'บุคคลนี้';
                 lines.push(hName + ' เป็นหัวหน้าภาควิชา ' + headConflict.name + ' อยู่แล้ว');
@@ -252,28 +287,51 @@
                 var sName = (this.usersList.find(function(u) { return String(u.id) === secId; }) || {}).name || 'บุคคลนี้';
                 lines.push(sName + ' เป็นเลขานุการภาควิชา ' + secConflict.name + ' อยู่แล้ว');
             }
-            tpssDeptConflictWarn(form, lines);
+            var warnOpts = (!headConflict && !secConflict && samePersonWarn)
+                ? { title: 'บุคคลเดียวกันในทั้งสองตำแหน่ง', note: 'ยืนยันเพื่อบันทึกต่อ หรือกลับไปเลือกใหม่' }
+                : {};
+            tpssDeptConflictWarn(form, lines, warnOpts);
         },
-        getInstructorTeachingRule() {
+        getInstructorPARules() {
             const title  = this.currentInstructor.title;
             const degree = this.currentInstructor.academic_degree;
-            if (title === 'ผู้ช่วยอาจารย์ (คลินิก)')       return { label: '≤ 10%',   max: 10,  min: 0  };
-            if (title === 'ผู้ช่วยอาจารย์ (สอนภาคปฏิบัติ)') return { label: '≤ 70%',   max: 70,  min: 0  };
-            if (title === 'ผู้ช่วยอาจารย์' && degree === 'ปริญญาตรี') return { label: '30–60%', max: 60,  min: 30 };
-            if (title === 'ผู้ช่วยอาจารย์')                 return { label: '≤ 70%',   max: 70,  min: 0  };
-            return { label: '20–70%', max: 70, min: 20 };
+            const isClinical   = title === 'ผู้ช่วยอาจารย์ (คลินิก)';
+            const isPracticum  = title === 'ผู้ช่วยอาจารย์ (สอนภาคปฏิบัติ)';
+            const isAssistBach = title === 'ผู้ช่วยอาจารย์' && degree === 'ปริญญาตรี';
+            const isAssist     = title === 'ผู้ช่วยอาจารย์';
+            if (isClinical)   return { teaching:{min:0,max:10,label:'≤ 10%'},   research:{min:0,max:5,label:'0–5%'},   service:{min:70,max:80,label:'70–80%'}, culture:{min:0,max:15,label:'0–15%'}, other:{min:0,max:20,label:'0–20%'} };
+            if (isPracticum)  return { teaching:{min:0,max:70,label:'≤ 70%'},   research:{min:0,max:0,label:'0%'},     service:{min:5,max:20,label:'5–20%'},   culture:{min:0,max:15,label:'0–15%'}, other:{min:0,max:20,label:'0–20%'} };
+            if (isAssistBach) return { teaching:{min:30,max:60,label:'30–60%'}, research:{min:0,max:0,label:'0%'},     service:{min:10,max:30,label:'10–30%'}, culture:{min:0,max:15,label:'0–15%'}, other:{min:0,max:20,label:'0–20%'} };
+            if (isAssist)     return { teaching:{min:0,max:70,label:'≤ 70%'},   research:{min:15,max:20,label:'15–20%'},service:{min:5,max:20,label:'5–20%'},  culture:{min:0,max:15,label:'0–15%'}, other:{min:0,max:20,label:'0–20%'} };
+            return             { teaching:{min:20,max:70,label:'20–70%'},        research:{min:20,max:70,label:'20–70%'},service:{min:5,max:20,label:'5–20%'},  culture:{min:5,max:15,label:'5–15%'}, other:{min:0,max:20,label:'0–20%'} };
+        },
+        get paTotal() {
+            return (parseInt(this.currentInstructor.teaching_pct)||0)
+                 + (parseInt(this.currentInstructor.research_pct)||0)
+                 + (parseInt(this.currentInstructor.service_pct)||0)
+                 + (parseInt(this.currentInstructor.culture_pct)||0)
+                 + (parseInt(this.currentInstructor.other_pct)||0);
         },
         confirmInstructorSave(e) {
-            const rule = this.getInstructorTeachingRule();
-            const pct  = parseInt(this.currentInstructor.teaching_pct) || 0;
-            if (pct < rule.min || pct > rule.max) {
+            const rules = this.getInstructorPARules();
+            const fields = [
+                { key: 'teaching_pct', label: 'ด้านการสอน',       rule: rules.teaching },
+                { key: 'research_pct', label: 'ด้านวิจัย',         rule: rules.research },
+                { key: 'service_pct',  label: 'บริการวิชาการ',      rule: rules.service  },
+                { key: 'culture_pct',  label: 'ศิลปวัฒนธรรม',      rule: rules.culture  },
+                { key: 'other_pct',    label: 'งานอื่นๆ มอบหมาย',   rule: rules.other    },
+            ];
+            for (const f of fields) {
+                const val = parseInt(this.currentInstructor[f.key]) || 0;
+                if (val < f.rule.min || val > f.rule.max) {
+                    e.preventDefault();
+                    tpssToast(f.label + ' ' + val + '% ไม่อยู่ในเกณฑ์ (' + f.rule.label + ')', 'error');
+                    return;
+                }
+            }
+            if (this.paTotal !== 100) {
                 e.preventDefault();
-                tpssToast(
-                    'สัดส่วนงานสอน ' + pct + '% ไม่อยู่ในเกณฑ์ที่กำหนด ('
-                    + rule.label + ') สำหรับตำแหน่ง ' + (this.currentInstructor.title || 'ที่เลือก'),
-                    'error'
-                );
-                return;
+                tpssToast('สัดส่วนรวมทั้งหมดต้องเท่ากับ 100% (ปัจจุบัน: ' + this.paTotal + '%)', 'error');
             }
         },
         // Activity Types
@@ -525,8 +583,26 @@
                                 <div style="flex: 1; min-width: 0;">
                                     <div style="font-weight: 600; font-size: 14px; color: var(--fg-1);">{{ $dept->name }}</div>
                                     <div style="margin-top: 3px; font-size: 12px; color: var(--fg-3); display: flex; gap: 16px; flex-wrap: wrap;">
-                                        <span>หัวหน้า: {{ $dept->head->name ?? '-' }}</span>
-                                        <span>เลขานุการ: {{ $dept->secretary->name ?? '-' }}</span>
+                                        <span>หัวหน้า:
+                                            @if($dept->head)
+                                                {{ $dept->head->formatted_name }}
+                                                @if(!$dept->head->is_active)
+                                                    <span style="display:inline-block;margin-left:4px;padding:1px 6px;font-size:10px;border-radius:4px;background:oklch(95% 0.04 25);color:oklch(45% 0.15 25);font-weight:600;">ถูกระงับ</span>
+                                                @endif
+                                            @else
+                                                -
+                                            @endif
+                                        </span>
+                                        <span>เลขานุการ:
+                                            @if($dept->secretary)
+                                                {{ $dept->secretary->formatted_name }}
+                                                @if(!$dept->secretary->is_active)
+                                                    <span style="display:inline-block;margin-left:4px;padding:1px 6px;font-size:10px;border-radius:4px;background:oklch(95% 0.04 25);color:oklch(45% 0.15 25);font-weight:600;">ถูกระงับ</span>
+                                                @endif
+                                            @else
+                                                -
+                                            @endif
+                                        </span>
                                     </div>
                                 </div>
 
@@ -579,16 +655,21 @@
                                                     $pDegree = $profile->academic_degree ?? '';
                                                     $pName   = $profile->user->name ?? '-';
                                                     $isDr    = $pDegree === 'ปริญญาเอก';
-                                                    $abbr    = match($pTitle) {
-                                                        'ศาสตราจารย์'         => 'ศ.',
-                                                        'รองศาสตราจารย์'      => 'รศ.',
-                                                        'ผู้ช่วยศาสตราจารย์'  => 'ผศ.',
-                                                        'อาจารย์'             => 'อ.',
-                                                        default               => null,
+                                                    $isAssistant = str_contains($pTitle, 'ผู้ช่วยอาจารย์');
+                                                    $abbr = match(true) {
+                                                        str_contains($pTitle, 'ศาสตราจารย์') && str_contains($pTitle, 'รอง') => 'รศ.',
+                                                        str_contains($pTitle, 'ศาสตราจารย์') && str_contains($pTitle, 'ผู้ช่วย') => 'ผศ.',
+                                                        str_contains($pTitle, 'ศาสตราจารย์') => 'ศ.',
+                                                        $pTitle === 'อาจารย์' => 'อ.',
+                                                        default => null,
                                                     };
-                                                    $displayName = $abbr
-                                                        ? $abbr . ($isDr ? 'ดร.' : '') . $pName
-                                                        : ($profile->user->prefix ?? '') . $pName;
+                                                    if ($isAssistant) {
+                                                        $displayName = ($isDr ? 'ดร.' : ($profile->user->prefix ?? '')) . $pName;
+                                                    } elseif ($abbr) {
+                                                        $displayName = $abbr . ($isDr ? 'ดร.' : '') . $pName;
+                                                    } else {
+                                                        $displayName = ($profile->user->prefix ?? '') . $pName;
+                                                    }
                                                 @endphp
                                                 <tr style="border-top: 1px solid var(--border); transition: background 0.1s;"
                                                     onmouseover="this.style.background='var(--bg-2)'" onmouseout="this.style.background=''">
@@ -947,7 +1028,7 @@
                                 <div style="flex: 1; min-width: 0;">
                                     <div style="font-weight: 600; font-size: 14px; color: var(--fg-1);">{{ $curr->name }}</div>
                                     <div style="margin-top: 3px; font-size: 12px; color: var(--fg-3);">
-                                        ปีที่เริ่มใช้: {{ $curr->effective_year ? $curr->effective_year + 543 : '-' }}
+                                        ปีที่เริ่มใช้: {{ $curr->effective_year ?? '-' }}
                                     </div>
                                 </div>
 
@@ -976,14 +1057,12 @@
                                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                                         </svg>
                                     </button>
-                                    @if(!$curr->is_active)
                                     <button class="action-btn" title="คัดลอกหลักสูตรและรายวิชา" @click.stop="openCloneCurriculum({{ Js::from($curr) }})" style="color: var(--brand-navy);">
                                         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                                             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                                         </svg>
                                     </button>
-                                    @endif
                                 </div>
                                 @endif
 
@@ -1058,10 +1137,10 @@
                     </div>
                     <form
                         :action="editDeptMode ? '{{ url('admin/master-data/departments') }}/' + currentDept.id : '{{ route('admin.departments.store') }}'"
-                        method="POST" @submit="confirmDeptSave($event)">
+                        method="POST" @submit="confirmDeptSave($event)" style="overflow: visible;">
                         @csrf
                         <input type="hidden" name="_method" value="PUT" :disabled="!editDeptMode">
-                        <div class="modal-body">
+                        <div class="modal-body" style="overflow: visible;">
                             <div class="form-group" style="margin-bottom: 20px;">
                                 <label>ชื่อภาควิชา <span style="color: var(--status-conflict-fg)">*</span></label>
                                 <input type="text" name="name" x-model="currentDept.name" required
@@ -1070,18 +1149,22 @@
                             <div class="form-row">
                                 <div class="form-group" style="position: relative;">
                                     <label>หัวหน้าภาควิชา</label>
+                                    <template x-if="editDeptMode && deptInstructorUsers.length === 0">
+                                        <p style="font-size:12px;color:var(--fg-3);margin:4px 0 8px;">ยังไม่มีอาจารย์ในภาควิชานี้</p>
+                                    </template>
                                     <div style="position: relative; display: flex; gap: 6px; align-items: flex-start;">
                                         <div style="flex: 1; position: relative;">
                                             <input type="text" x-model="headSearch" @input="showHeadDropdown = true"
                                                 @focus="showHeadDropdown = true" @click.away="showHeadDropdown = false"
+                                                :disabled="editDeptMode && deptInstructorUsers.length === 0"
                                                 placeholder="พิมพ์ชื่อเพื่อค้นหา..." autocomplete="off">
-                                            <div class="search-results" x-show="showHeadDropdown && headSearch" x-cloak>
+                                            <div class="search-results" x-show="showHeadDropdown" x-cloak>
                                                 <template
-                                                    x-for="user in usersList.filter(u => u.name.toLowerCase().includes(headSearch.toLowerCase()))"
+                                                    x-for="user in deptInstructorUsers.filter(u => u.name.toLowerCase().includes(headSearch.toLowerCase()))"
                                                     :key="user.id">
                                                     <div class="search-item" @click="selectHead(user)" x-text="user.name"></div>
                                                 </template>
-                                                <div x-show="usersList.filter(u => u.name.toLowerCase().includes(headSearch.toLowerCase())).length === 0"
+                                                <div x-show="deptInstructorUsers.filter(u => u.name.toLowerCase().includes(headSearch.toLowerCase())).length === 0"
                                                     class="search-item-empty">ไม่พบข้อมูล</div>
                                             </div>
                                         </div>
@@ -1092,6 +1175,12 @@
                                         </button>
                                     </div>
                                     <input type="hidden" name="head_user_id" x-model="currentDept.head_user_id">
+                                    <div x-show="currentDept.head_user_id && !currentDept.head_active"
+                                        x-cloak
+                                        style="margin-top:6px;display:flex;align-items:center;gap:6px;font-size:12px;color:oklch(45% 0.15 25);">
+                                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                        บัญชีผู้ใช้งานนี้ถูกระงับการใช้งานอยู่
+                                    </div>
                                 </div>
                                 <div class="form-group" style="position: relative;">
                                     <label>เลขานุการภาควิชา</label>
@@ -1100,14 +1189,15 @@
                                             <input type="text" x-model="secretarySearch"
                                                 @input="showSecretaryDropdown = true" @focus="showSecretaryDropdown = true"
                                                 @click.away="showSecretaryDropdown = false"
+                                                :disabled="editDeptMode && deptInstructorUsers.length === 0"
                                                 placeholder="พิมพ์ชื่อเพื่อค้นหา..." autocomplete="off">
-                                            <div class="search-results" x-show="showSecretaryDropdown && secretarySearch" x-cloak>
+                                            <div class="search-results" x-show="showSecretaryDropdown" x-cloak>
                                                 <template
-                                                    x-for="user in usersList.filter(u => u.name.toLowerCase().includes(secretarySearch.toLowerCase()))"
+                                                    x-for="user in deptInstructorUsers.filter(u => u.name.toLowerCase().includes(secretarySearch.toLowerCase()))"
                                                     :key="user.id">
                                                     <div class="search-item" @click="selectSecretary(user)" x-text="user.name"></div>
                                                 </template>
-                                                <div x-show="usersList.filter(u => u.name.toLowerCase().includes(secretarySearch.toLowerCase())).length === 0"
+                                                <div x-show="deptInstructorUsers.filter(u => u.name.toLowerCase().includes(secretarySearch.toLowerCase())).length === 0"
                                                     class="search-item-empty">ไม่พบข้อมูล</div>
                                             </div>
                                         </div>
@@ -1118,6 +1208,18 @@
                                         </button>
                                     </div>
                                     <input type="hidden" name="secretary_user_id" x-model="currentDept.secretary_user_id">
+                                    <div x-show="currentDept.secretary_user_id && !currentDept.secretary_active"
+                                        x-cloak
+                                        style="margin-top:6px;display:flex;align-items:center;gap:6px;font-size:12px;color:oklch(45% 0.15 25);">
+                                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                        บัญชีผู้ใช้งานนี้ถูกระงับการใช้งานอยู่
+                                    </div>
+                                    <div x-show="currentDept.head_user_id && currentDept.secretary_user_id && String(currentDept.head_user_id) === String(currentDept.secretary_user_id)"
+                                        x-cloak
+                                        style="margin-top: 6px; display: flex; align-items: center; gap: 6px; font-size: 12px; color: oklch(55% 0.15 60);">
+                                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                        บุคคลนี้ถูกเลือกเป็นหัวหน้าภาควิชาด้วย
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1228,10 +1330,78 @@
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label>สัดส่วนงานสอน (%) <span style="color:var(--status-conflict-fg)">*</span></label>
-                                    <input type="number" name="teaching_pct"
-                                        x-model.number="currentInstructor.teaching_pct" min="0" max="100" required>
+                                    <label>วันบรรจุ
+                                        <span style="font-weight:400;color:var(--fg-3);font-size:11px;margin-left:4px;">(ค.ศ.)</span>
+                                    </label>
+                                    <input type="date" name="hired_at" x-model="currentInstructor.hired_at">
                                 </div>
+                            </div>
+                            {{-- PA Ratio Section --}}
+                            <div style="margin-top:20px;padding:16px;background:var(--bg-2);border-radius:var(--r-lg);border:1px solid var(--border);">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                                    <span style="font-size:13px;font-weight:700;color:var(--fg-1);font-family:var(--font-display);">สัดส่วนการะงาน</span>
+                                    <span :style="paTotal === 100 ? 'color:oklch(45% 0.15 150);font-weight:700;font-size:14px;' : 'color:var(--status-conflict-fg);font-weight:700;font-size:14px;'"
+                                        x-text="paTotal + '%'"></span>
+                                </div>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                    <div class="form-group" style="margin:0;">
+                                        <label style="font-size:12px;">1. ด้านการสอน <span style="color:var(--status-conflict-fg)">*</span>
+                                            <span x-text="'(' + getInstructorPARules().teaching.label + ')'" style="font-weight:400;color:var(--fg-3);"></span>
+                                        </label>
+                                        <div style="display:flex;align-items:center;gap:4px;">
+                                            <input type="number" name="teaching_pct" x-model.number="currentInstructor.teaching_pct"
+                                                :min="getInstructorPARules().teaching.min" :max="getInstructorPARules().teaching.max" required style="flex:1;">
+                                            <span style="color:var(--fg-3);font-size:13px;">%</span>
+                                        </div>
+                                    </div>
+                                    <div class="form-group" style="margin:0;">
+                                        <label style="font-size:12px;">2. ด้านวิจัย <span style="color:var(--status-conflict-fg)">*</span>
+                                            <span x-text="'(' + getInstructorPARules().research.label + ')'" style="font-weight:400;color:var(--fg-3);"></span>
+                                        </label>
+                                        <div style="display:flex;align-items:center;gap:4px;">
+                                            <input type="number" name="research_pct" x-model.number="currentInstructor.research_pct"
+                                                :min="getInstructorPARules().research.min" :max="getInstructorPARules().research.max" required style="flex:1;">
+                                            <span style="color:var(--fg-3);font-size:13px;">%</span>
+                                        </div>
+                                    </div>
+                                    <div class="form-group" style="margin:0;">
+                                        <label style="font-size:12px;">3. บริการวิชาการ <span style="color:var(--status-conflict-fg)">*</span>
+                                            <span x-text="'(' + getInstructorPARules().service.label + ')'" style="font-weight:400;color:var(--fg-3);"></span>
+                                        </label>
+                                        <div style="display:flex;align-items:center;gap:4px;">
+                                            <input type="number" name="service_pct" x-model.number="currentInstructor.service_pct"
+                                                :min="getInstructorPARules().service.min" :max="getInstructorPARules().service.max" required style="flex:1;">
+                                            <span style="color:var(--fg-3);font-size:13px;">%</span>
+                                        </div>
+                                    </div>
+                                    <div class="form-group" style="margin:0;">
+                                        <label style="font-size:12px;">4. ศิลปวัฒนธรรม <span style="color:var(--status-conflict-fg)">*</span>
+                                            <span x-text="'(' + getInstructorPARules().culture.label + ')'" style="font-weight:400;color:var(--fg-3);"></span>
+                                        </label>
+                                        <div style="display:flex;align-items:center;gap:4px;">
+                                            <input type="number" name="culture_pct" x-model.number="currentInstructor.culture_pct"
+                                                :min="getInstructorPARules().culture.min" :max="getInstructorPARules().culture.max" required style="flex:1;">
+                                            <span style="color:var(--fg-3);font-size:13px;">%</span>
+                                        </div>
+                                    </div>
+                                    <div class="form-group" style="margin:0;grid-column:span 2;">
+                                        <label style="font-size:12px;">5. งานอื่นๆ มอบหมาย <span style="color:var(--status-conflict-fg)">*</span>
+                                            <span x-text="'(' + getInstructorPARules().other.label + ')'" style="font-weight:400;color:var(--fg-3);"></span>
+                                        </label>
+                                        <div style="display:flex;align-items:center;gap:4px;">
+                                            <input type="number" name="other_pct" x-model.number="currentInstructor.other_pct"
+                                                :min="getInstructorPARules().other.min" :max="getInstructorPARules().other.max" required style="max-width:120px;">
+                                            <span style="color:var(--fg-3);font-size:13px;">%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div x-show="paTotal !== 100" x-cloak
+                                    style="margin-top:10px;font-size:12px;color:var(--status-conflict-fg);display:flex;align-items:center;gap:5px;">
+                                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                    สัดส่วนรวมต้องเท่ากับ 100% (ขาด/เกิน <span x-text="100 - paTotal"></span>%)
+                                </div>
+                            </div>
+                            <div style="display:none;">{{-- placeholder to close the grid that was opened above --}}
                             </div>
                         </div>
                         <div class="modal-foot">
@@ -1485,19 +1655,16 @@
                                         @input="showCourseHeadDropdown = true"
                                         @focus="showCourseHeadDropdown = true"
                                         @click.away="showCourseHeadDropdown = false"
-                                        placeholder="พิมพ์ชื่อเพื่อค้นหา..."
-                                        style="padding-right:32px;">
-                                    <button type="button"
-                                        @click="showCourseHeadDropdown = !showCourseHeadDropdown"
-                                        style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:2px;color:var(--fg-3);">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
-                                    </button>
+                                        placeholder="พิมพ์ชื่อเพื่อค้นหา...">
                                     <div class="search-results" x-show="showCourseHeadDropdown" x-cloak style="max-height:180px;overflow-y:auto;z-index:9999;">
-                                        <template x-for="user in usersList.filter(u => (u.formatted_name||u.name).toLowerCase().includes(courseHeadSearch.toLowerCase()))" :key="user.id">
+                                        <template x-for="user in courseHeadList.filter(u => (u.formatted_name||u.name).toLowerCase().includes(courseHeadSearch.toLowerCase()))" :key="user.id">
                                             <div class="search-item" @click="selectCourseHead(user)" x-text="user.formatted_name || user.name"></div>
                                         </template>
-                                        <div x-show="usersList.filter(u => (u.formatted_name||u.name).toLowerCase().includes(courseHeadSearch.toLowerCase())).length === 0"
-                                            style="padding:8px 12px;color:var(--fg-4);font-size:12px;">ไม่พบผู้ใช้</div>
+                                        <div x-show="courseHeadList.filter(u => (u.formatted_name||u.name).toLowerCase().includes(courseHeadSearch.toLowerCase())).length === 0"
+                                            style="padding:8px 12px;color:var(--fg-4);font-size:12px;">
+                                            <span x-show="courseHeadList.length === 0">ไม่มีผู้ใช้ที่มี role หัวหน้าวิชา<span x-show="currentCourse.department_id">ในภาควิชานี้</span></span>
+                                            <span x-show="courseHeadList.length > 0">ไม่พบชื่อที่ค้นหา</span>
+                                        </div>
                                     </div>
                                 </div>
                                 <input type="hidden" name="head_instructor_id" x-model="currentCourse.head_instructor_id">
@@ -1693,7 +1860,7 @@
                                 <div class="form-group">
                                     <label>สถานะ</label>
                                     <select name="is_active" x-model="currentCurriculum.is_active">
-                                        <option value="1">เปิดใช้งาน</option>
+                                        <option value="1">กำลังใช้งาน</option>
                                         <option value="0">ปิดใช้งาน</option>
                                     </select>
                                 </div>
@@ -1878,7 +2045,10 @@
                     </div>
                     <div style="padding: 16px 24px; background: #ebf8ff; border-bottom: 1px solid #bee3f8; font-size: 13px; color: #2b6cb0;">
                         <span style="font-weight: 700;">ต้นฉบับ:</span> <span x-text="cloneSourceCurriculum?.name"></span>
-                        <div style="margin-top: 4px;">ระบบจะทำการก๊อปปี้ (Duplicate) รายวิชาทั้งหมดจากหลักสูตรนี้ ไปสร้างเป็นข้อมูลชุดใหม่ 100% โดยรักษารหัสวิชาเดิมไว้ทั้งหมด (ระบบรองรับรหัสวิชาซ้ำข้ามหลักสูตรได้)</div>
+                        <div style="margin-top: 4px;">ระบบจะคัดลอกรายวิชาทั้งหมดจากหลักสูตรนี้ไปสร้างเป็นข้อมูลชุดใหม่ โดยรักษารหัสวิชาเดิมไว้</div>
+                        <div style="margin-top: 6px; padding: 6px 10px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; color: #856404; font-size: 12px;">
+                            หลักสูตรและรายวิชาที่คัดลอกจะถูกตั้งเป็น <strong>ปิดใช้งาน</strong> ทั้งหมด — กรุณาเปิดใช้งานด้วยตนเองหลังจากตรวจสอบข้อมูลแล้ว
+                        </div>
                     </div>
                     <form :action="cloneSourceCurriculum ? '{{ url('admin/master-data/curriculums') }}/' + cloneSourceCurriculum.id + '/clone' : '#'" method="POST">
                         @csrf
@@ -2088,7 +2258,10 @@
     <script>
         const staffUsers = {{ Js::from($staffUsers->map(fn($u) => ['id' => $u->id, 'name' => $u->formatted_name, 'formatted_name' => $u->formatted_name])) }};
 
-        function tpssDeptConflictWarn(form, lines) {
+        function tpssDeptConflictWarn(form, lines, opts) {
+            opts = opts || {};
+            var title = opts.title || 'ตำแหน่งซ้ำกับภาควิชาอื่น';
+            var note  = opts.note  || 'หากดำเนินการต่อ ระบบจะย้ายตำแหน่งออกจากภาควิชาเดิมให้อัตโนมัติ';
             var lineHtml = lines.map(function(l) { return '<li style="margin-bottom:4px;">' + l + '</li>'; }).join('');
             var innerHtml = '<div style="text-align:center;">'
                 + '<div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#fffbeb,#fef3c7);'
@@ -2098,12 +2271,12 @@
                 + ' stroke-linecap="round" stroke-linejoin="round">'
                 + '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>'
                 + '<line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>'
-                + '<div style="font-family:Kanit,sans-serif;font-size:19px;font-weight:700;color:#0f172a;">ตำแหน่งซ้ำกับภาควิชาอื่น</div>'
+                + '<div style="font-family:Kanit,sans-serif;font-size:19px;font-weight:700;color:#0f172a;">' + title + '</div>'
                 + '<div style="font-size:13px;color:#94a3b8;margin-top:4px;">กรุณาตรวจสอบก่อนดำเนินการ</div>'
                 + '<div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:10px;padding:14px 16px;margin-top:14px;text-align:left;">'
                 + '<ul style="margin:0;padding-left:18px;font-size:13px;color:#92400e;line-height:1.8;">' + lineHtml + '</ul>'
                 + '<div style="font-size:12px;color:#b45309;margin-top:8px;padding-top:8px;border-top:1px solid #fde68a;">'
-                + 'หากดำเนินการต่อ ระบบจะย้ายตำแหน่งออกจากภาควิชาเดิมให้อัตโนมัติ'
+                + note
                 + '</div></div></div>';
 
             Swal.fire({

@@ -21,7 +21,10 @@ class CourseSeeder extends Seeder
         $deptMental = Department::where('name', 'LIKE', '%สุขภาพจิต%')->first();
         $deptFoundation = Department::where('name', 'LIKE', '%รากฐาน%')->first();
 
-        $instructor = User::where('username', 'rachan_p')->first() ?? User::first();
+        // course_head for dept 1 (รากฐาน): somsak_t
+        // course_head for dept 3 (สุขภาพจิต): pronpimon
+        $headFoundation = User::where('username', 'somsak_t')->first();
+        $headMental = User::where('username', 'pronpimon')->first();
 
         $courses = [
             [
@@ -39,7 +42,7 @@ class CourseSeeder extends Seeder
                 'capacity' => 252,
                 'color_code' => '#3b82f6',
                 'department_id' => $deptFoundation->id ?? 1,
-                'head_instructor_id' => $instructor->id,
+                'head_instructor_id' => $headFoundation?->id,
                 'status' => 'active',
             ],
             [
@@ -57,7 +60,7 @@ class CourseSeeder extends Seeder
                 'capacity' => 240,
                 'color_code' => '#10b981',
                 'department_id' => $deptFoundation->id ?? 1,
-                'head_instructor_id' => $instructor->id,
+                'head_instructor_id' => $headFoundation?->id,
                 'status' => 'active',
             ],
             [
@@ -75,7 +78,7 @@ class CourseSeeder extends Seeder
                 'capacity' => 240,
                 'color_code' => '#8b5cf6',
                 'department_id' => $deptMental->id ?? 3,
-                'head_instructor_id' => $instructor->id,
+                'head_instructor_id' => $headMental?->id,
                 'status' => 'active',
             ],
             [
@@ -93,7 +96,7 @@ class CourseSeeder extends Seeder
                 'capacity' => 240,
                 'color_code' => '#f59e0b',
                 'department_id' => $deptFoundation->id ?? 1,
-                'head_instructor_id' => $instructor->id,
+                'head_instructor_id' => $headFoundation?->id,
                 'status' => 'active',
             ],
         ];

@@ -15,9 +15,10 @@ class DatabaseSeeder extends Seeder
             CurriculumSeeder::class,
             LocationTypeSeeder::class,
             SystemSettingSeeder::class,
-            DepartmentSeeder::class,
             AcademicYearSeeder::class,
-            UserSeeder::class,
+            DepartmentSeeder::class,   // pass 1: create departments (head/secretary skipped, users don't exist yet)
+            UserSeeder::class,         // create users + instructor_profiles (needs departments FK)
+            DepartmentSeeder::class,   // pass 2: assign head/secretary now that users exist
             RoomSeeder::class,
             CourseSeeder::class,
             ActivityTypeSeeder::class,
