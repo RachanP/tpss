@@ -19,61 +19,58 @@
         </div>
 
         {{-- ══ DISMISS MODAL ══════════════════════════════════════════ --}}
-        <div x-show="showDismissModal" x-cloak
-             style="position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 24px;">
-            <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.45);" @click="showDismissModal = false"></div>
-            <div style="position: relative; background: var(--bg-0); border: 1px solid var(--border); border-radius: 4px; width: 100%; max-width: 480px; box-shadow: 0 8px 32px rgba(0,0,0,0.18);">
-                {{-- Modal header --}}
-                <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border);">
-                    <div style="font-size: 15px; font-weight: 700; color: var(--fg-1); font-family: var(--font-display);">ตั้งค่าการแจ้งเตือน Warning</div>
-                    <button type="button" @click="showDismissModal = false" class="btn-ghost" style="padding: 4px;">
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    </button>
-                </div>
+        <template x-if="showDismissModal">
+            <div class="overlay" @click.self="showDismissModal = false">
+                <div class="modal-center" style="max-width: 480px;">
+                    <div class="modal-hdr">
+                        <div class="modal-ttl" style="font-family: var(--font-display);">ตั้งค่าการแจ้งเตือน Warning</div>
+                        <button type="button" class="modal-cls" @click="showDismissModal = false">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </button>
+                    </div>
 
-                {{-- Modal body --}}
-                <form action="{{ route('admin.alerts.dismissed') }}" method="POST">
-                    @csrf
-                    <div style="padding: 8px 0;">
-                        <div style="padding: 8px 20px 10px; font-size: 11px; color: var(--fg-3); line-height: 1.5;">
-                            Warning ที่ปิดจะไม่นับใน badge บน sidebar — แต่ยังแสดงบนหน้านี้ในสถานะ <span style="color: var(--fg-3); font-style: italic;">ปิดแจ้งเตือน</span><br>
-                            Critical ไม่สามารถปิดได้
-                        </div>
-                        @php
-                            $allWarnings = [
-                                ['key' => 'departments',  'label' => 'ภาควิชา',              'sub' => 'ขาดหัวหน้าภาค / เลขานุการ'],
-                                ['key' => 'instructors',  'label' => 'อาจารย์',               'sub' => 'ข้อมูลบุคลากรไม่ครบ'],
-                                ['key' => 'rooms',        'label' => 'ห้อง / สถานที่',        'sub' => 'ขาด capacity หรือชื่อห้อง'],
-                                ['key' => 'courses',      'label' => 'ผู้ประสานงานวิชา',      'sub' => 'วิชาที่ยังไม่มีผู้ประสานงาน'],
-                                ['key' => 'course_staff', 'label' => 'เจ้าหน้าที่ดูแลวิชา',  'sub' => 'วิชาที่ยังไม่มีเจ้าหน้าที่'],
-                            ];
-                        @endphp
-                        @foreach($allWarnings as $w)
-                        @php $isDismissed = in_array($w['key'], $dismissedWarnings); @endphp
-                        <label style="display: flex; align-items: center; gap: 14px; padding: 11px 20px; cursor: pointer; border-bottom: 1px solid var(--border); {{ $isDismissed ? 'opacity: 0.6;' : '' }}"
-                               onmouseover="this.style.background='var(--bg-2)'" onmouseout="this.style.background=''">
-                            <input type="checkbox" name="dismissed[]" value="{{ $w['key'] }}"
-                                   {{ $isDismissed ? 'checked' : '' }}
-                                   style="width: 16px; height: 16px; flex-shrink: 0; accent-color: var(--brand-navy); cursor: pointer;">
-                            <div style="flex: 1; min-width: 0;">
-                                <div style="font-size: 13px; font-weight: 600; color: var(--fg-1);">{{ $w['label'] }}</div>
-                                <div style="font-size: 11px; color: var(--fg-3); margin-top: 1px;">{{ $w['sub'] }}</div>
+                    <form action="{{ route('admin.alerts.dismissed') }}" method="POST" style="display: flex; flex-direction: column; min-height: 0;">
+                        @csrf
+                        <div class="modal-body" style="padding: 0;">
+                            <div style="padding: 10px 20px 8px; font-size: 11px; color: var(--fg-3); line-height: 1.6; border-bottom: 1px solid var(--border);">
+                                Warning ที่ปิดจะไม่นับใน badge บน sidebar — แต่ยังแสดงบนหน้านี้ในสถานะ <em>ปิดแจ้งเตือน</em><br>
+                                Critical ไม่สามารถปิดได้
                             </div>
-                            @if($isDismissed)
-                                <span style="font-size: 10px; color: var(--fg-3); background: var(--bg-2); border: 1px solid var(--border); padding: 1px 7px; border-radius: 10px; white-space: nowrap;">ปิดอยู่</span>
-                            @endif
-                        </label>
-                        @endforeach
-                    </div>
-
-                    {{-- Modal footer --}}
-                    <div style="display: flex; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--border); background: var(--bg-1);">
-                        <button type="button" @click="showDismissModal = false" class="btn btn-ghost">ยกเลิก</button>
-                        <button type="submit" class="btn btn-primary">บันทึก</button>
-                    </div>
-                </form>
+                            @php
+                                $allWarnings = [
+                                    ['key' => 'departments',  'label' => 'ภาควิชา',             'sub' => 'ขาดหัวหน้าภาค / เลขานุการ'],
+                                    ['key' => 'instructors',  'label' => 'อาจารย์',              'sub' => 'ข้อมูลบุคลากรไม่ครบ'],
+                                    ['key' => 'rooms',        'label' => 'ห้อง / สถานที่',       'sub' => 'ขาด capacity หรือชื่อห้อง'],
+                                    ['key' => 'courses',      'label' => 'ผู้ประสานงานวิชา',     'sub' => 'วิชาที่ยังไม่มีผู้ประสานงาน'],
+                                    ['key' => 'course_staff', 'label' => 'เจ้าหน้าที่ดูแลวิชา', 'sub' => 'วิชาที่ยังไม่มีเจ้าหน้าที่'],
+                                ];
+                            @endphp
+                            @foreach($allWarnings as $w)
+                            @php $isDismissed = in_array($w['key'], $dismissedWarnings); @endphp
+                            <label style="display: flex; align-items: center; gap: 14px; padding: 11px 20px; cursor: pointer; border-bottom: 1px solid var(--border); background: {{ $isDismissed ? 'var(--bg-2)' : 'transparent' }};">
+                                <input type="checkbox" name="dismissed[]" value="{{ $w['key'] }}"
+                                       {{ $isDismissed ? 'checked' : '' }}
+                                       style="width: 16px; height: 16px; flex-shrink: 0; accent-color: var(--brand-navy); cursor: pointer;">
+                                <div style="flex: 1; min-width: 0; {{ $isDismissed ? 'opacity: 0.55;' : '' }}">
+                                    <div style="font-size: 13px; font-weight: 600; color: var(--fg-1);">{{ $w['label'] }}</div>
+                                    <div style="font-size: 11px; color: var(--fg-3); margin-top: 1px;">{{ $w['sub'] }}</div>
+                                </div>
+                                @if($isDismissed)
+                                    <span style="font-size: 10px; color: var(--fg-3); background: var(--bg-1); border: 1px solid var(--border); padding: 2px 8px; border-radius: 10px; white-space: nowrap;">ปิดอยู่</span>
+                                @endif
+                            </label>
+                            @endforeach
+                        </div>
+                        <div class="modal-foot">
+                            <button type="button" @click="showDismissModal = false" class="btn btn-ghost">ยกเลิก</button>
+                            <button type="submit" class="btn btn-primary">บันทึก</button>
+                        </div>
+                    </form>
+                </div>
             </div>
-        </div>
+        </template>
 
         {{-- ══ CRITICAL ══════════════════════════════════════════════ --}}
         @if(count($criticals) > 0)
