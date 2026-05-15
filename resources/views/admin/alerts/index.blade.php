@@ -1,10 +1,78 @@
 <x-app-layout title="แจ้งเตือน Master Data">
-    <div style="padding: 2rem;">
+    <div style="padding: 2rem;" x-data="{ showDismissModal: false }">
 
         {{-- Header --}}
-        <div style="margin-bottom: 1.5rem;">
-            <div style="font-size: 1.35rem; font-weight: 700; color: var(--fg-1); font-family: var(--font-display); margin-bottom: 4px;">ความพร้อม Master Data</div>
-            <div style="color: var(--fg-3); font-size: 13px;">ตรวจสอบข้อมูลที่ขาดหายก่อนเริ่มจัดตารางสอน — คลิกที่รายการเพื่อดูรายละเอียด</div>
+        <div style="margin-bottom: 1.5rem; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;">
+            <div>
+                <div style="font-size: 1.35rem; font-weight: 700; color: var(--fg-1); font-family: var(--font-display); margin-bottom: 4px;">ความพร้อม Master Data</div>
+                <div style="color: var(--fg-3); font-size: 13px;">ตรวจสอบข้อมูลที่ขาดหายก่อนเริ่มจัดตารางสอน — คลิกที่รายการเพื่อดูรายละเอียด</div>
+            </div>
+            <button type="button" @click="showDismissModal = true" class="btn btn-ghost" style="white-space: nowrap; flex-shrink: 0;">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                    <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+                ตั้งค่าการแจ้งเตือน
+                @if(count($dismissedWarnings) > 0)
+                    <span style="margin-left: 6px; background: var(--fg-3); color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 10px;">{{ count($dismissedWarnings) }} ปิดอยู่</span>
+                @endif
+            </button>
+        </div>
+
+        {{-- ══ DISMISS MODAL ══════════════════════════════════════════ --}}
+        <div x-show="showDismissModal" x-cloak
+             style="position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 24px;">
+            <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.45);" @click="showDismissModal = false"></div>
+            <div style="position: relative; background: var(--bg-0); border: 1px solid var(--border); border-radius: 4px; width: 100%; max-width: 480px; box-shadow: 0 8px 32px rgba(0,0,0,0.18);">
+                {{-- Modal header --}}
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border);">
+                    <div style="font-size: 15px; font-weight: 700; color: var(--fg-1); font-family: var(--font-display);">ตั้งค่าการแจ้งเตือน Warning</div>
+                    <button type="button" @click="showDismissModal = false" class="btn-ghost" style="padding: 4px;">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+
+                {{-- Modal body --}}
+                <form action="{{ route('admin.alerts.dismissed') }}" method="POST">
+                    @csrf
+                    <div style="padding: 8px 0;">
+                        <div style="padding: 8px 20px 10px; font-size: 11px; color: var(--fg-3); line-height: 1.5;">
+                            Warning ที่ปิดจะไม่นับใน badge บน sidebar — แต่ยังแสดงบนหน้านี้ในสถานะ <span style="color: var(--fg-3); font-style: italic;">ปิดแจ้งเตือน</span><br>
+                            Critical ไม่สามารถปิดได้
+                        </div>
+                        @php
+                            $allWarnings = [
+                                ['key' => 'departments',  'label' => 'ภาควิชา',              'sub' => 'ขาดหัวหน้าภาค / เลขานุการ'],
+                                ['key' => 'instructors',  'label' => 'อาจารย์',               'sub' => 'ข้อมูลบุคลากรไม่ครบ'],
+                                ['key' => 'rooms',        'label' => 'ห้อง / สถานที่',        'sub' => 'ขาด capacity หรือชื่อห้อง'],
+                                ['key' => 'courses',      'label' => 'ผู้ประสานงานวิชา',      'sub' => 'วิชาที่ยังไม่มีผู้ประสานงาน'],
+                                ['key' => 'course_staff', 'label' => 'เจ้าหน้าที่ดูแลวิชา',  'sub' => 'วิชาที่ยังไม่มีเจ้าหน้าที่'],
+                            ];
+                        @endphp
+                        @foreach($allWarnings as $w)
+                        @php $isDismissed = in_array($w['key'], $dismissedWarnings); @endphp
+                        <label style="display: flex; align-items: center; gap: 14px; padding: 11px 20px; cursor: pointer; border-bottom: 1px solid var(--border); {{ $isDismissed ? 'opacity: 0.6;' : '' }}"
+                               onmouseover="this.style.background='var(--bg-2)'" onmouseout="this.style.background=''">
+                            <input type="checkbox" name="dismissed[]" value="{{ $w['key'] }}"
+                                   {{ $isDismissed ? 'checked' : '' }}
+                                   style="width: 16px; height: 16px; flex-shrink: 0; accent-color: var(--brand-navy); cursor: pointer;">
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="font-size: 13px; font-weight: 600; color: var(--fg-1);">{{ $w['label'] }}</div>
+                                <div style="font-size: 11px; color: var(--fg-3); margin-top: 1px;">{{ $w['sub'] }}</div>
+                            </div>
+                            @if($isDismissed)
+                                <span style="font-size: 10px; color: var(--fg-3); background: var(--bg-2); border: 1px solid var(--border); padding: 1px 7px; border-radius: 10px; white-space: nowrap;">ปิดอยู่</span>
+                            @endif
+                        </label>
+                        @endforeach
+                    </div>
+
+                    {{-- Modal footer --}}
+                    <div style="display: flex; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--border); background: var(--bg-1);">
+                        <button type="button" @click="showDismissModal = false" class="btn btn-ghost">ยกเลิก</button>
+                        <button type="submit" class="btn btn-primary">บันทึก</button>
+                    </div>
+                </form>
+            </div>
         </div>
 
         {{-- ══ CRITICAL ══════════════════════════════════════════════ --}}
@@ -135,7 +203,10 @@
                 ],
             ];
             $warningSections = collect($warningSections)->filter(fn($s) => $s['count'] > 0)->values()->all();
-            $totalWarnings = collect($warningSections)->sum('count');
+            $totalWarnings        = collect($warningSections)->sum('count');
+            $activeSections       = collect($warningSections)->filter(fn($s) => !in_array($s['key'], $dismissedWarnings))->values()->all();
+            $dismissedSections    = collect($warningSections)->filter(fn($s) =>  in_array($s['key'], $dismissedWarnings))->values()->all();
+            $activeWarningCount   = collect($activeSections)->sum('count');
         @endphp
 
         @if($totalWarnings > 0)
@@ -145,23 +216,27 @@
                 <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
             </svg>
             <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--status-warning-fg);">Warning — ข้อมูลไม่ครบถ้วน</span>
-            <span style="font-size: 11px; background: var(--status-warning); color: #fff; padding: 1px 7px; border-radius: 10px; font-weight: 700;">{{ $totalWarnings }}</span>
+            @if($activeWarningCount > 0)
+                <span style="font-size: 11px; background: var(--status-warning); color: #fff; padding: 1px 7px; border-radius: 10px; font-weight: 700;">{{ $activeWarningCount }}</span>
+            @endif
+            @if(count($dismissedSections) > 0)
+                <span style="font-size: 11px; background: var(--bg-2); color: var(--fg-3); border: 1px solid var(--border); padding: 1px 7px; border-radius: 10px;">ปิดแจ้งเตือน {{ count($dismissedSections) }} หมวด</span>
+            @endif
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start;">
-            @foreach($warningSections as $sec)
+        {{-- Active warnings --}}
+        @if(count($activeSections) > 0)
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; margin-bottom: 12px;">
+            @foreach($activeSections as $sec)
             @php $hasIssue = $sec['count'] > 0; @endphp
 
-            <div class="card" x-data="{ open: false }"
-                 style="{{ $hasIssue ? 'border-left: 3px solid var(--status-warning);' : 'opacity: 0.55;' }}">
+            <div class="card" x-data="{ open: false }" style="border-left: 3px solid var(--status-warning);">
 
                 {{-- Card header --}}
-                <div class="card-hdr"
-                     @click="{{ $hasIssue ? 'open = !open' : '' }}"
-                     style="{{ $hasIssue ? 'cursor: pointer;' : '' }}">
+                <div class="card-hdr" @click="open = !open" style="cursor: pointer;">
                     <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
-                             style="color: {{ $hasIssue ? 'var(--status-warning-fg)' : 'var(--status-success-fg)' }}; flex-shrink: 0;">
+                             style="color: var(--status-warning-fg); flex-shrink: 0;">
                             {!! $sec['icon'] !!}
                         </svg>
                         <div style="min-width: 0;">
@@ -170,16 +245,12 @@
                         </div>
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
-                        @if($hasIssue)
-                            <span class="pill p-warning">{{ $sec['count'] }} {{ $sec['unit'] }}</span>
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"
-                                 style="color: var(--fg-3); transition: transform 200ms;"
-                                 :style="open ? 'transform: rotate(180deg)' : ''">
-                                <polyline points="6 9 12 15 18 9"/>
-                            </svg>
-                        @else
-                            <span class="pill p-success">ครบถ้วน</span>
-                        @endif
+                        <span class="pill p-warning">{{ $sec['count'] }} {{ $sec['unit'] }}</span>
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"
+                             style="color: var(--fg-3); transition: transform 200ms;"
+                             :style="open ? 'transform: rotate(180deg)' : ''">
+                            <polyline points="6 9 12 15 18 9"/>
+                        </svg>
                     </div>
                 </div>
 
@@ -271,6 +342,31 @@
             </div>
             @endforeach
         </div>
+        @endif
+
+        {{-- Dismissed sections --}}
+        @if(count($dismissedSections) > 0)
+        <div style="margin-top: 4px;">
+            <div style="font-size: 11px; font-weight: 600; color: var(--fg-3); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 8px;">ปิดแจ้งเตือนอยู่</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                @foreach($dismissedSections as $sec)
+                <div class="card" style="opacity: 0.5; border-left: 3px solid var(--border);">
+                    <div class="card-hdr">
+                        <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--fg-3); flex-shrink: 0;">{!! $sec['icon'] !!}</svg>
+                            <div style="min-width: 0;">
+                                <div class="card-ttl" style="color: var(--fg-3);">{{ $sec['title'] }}</div>
+                                <div style="font-size: 11px; color: var(--fg-3); margin-top: 1px;">{{ $sec['sub'] }}</div>
+                            </div>
+                        </div>
+                        <span style="font-size: 10px; color: var(--fg-3); background: var(--bg-2); border: 1px solid var(--border); padding: 2px 8px; border-radius: 10px; white-space: nowrap;">ปิดแจ้งเตือน</span>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+        @endif
+
         @else
         <div style="display: flex; align-items: center; gap: 10px; padding: 11px 16px; background: color-mix(in oklch, var(--status-success) 6%, white); border: 1px solid color-mix(in oklch, var(--status-success) 25%, white); border-radius: 4px;">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" style="color: var(--status-success-fg);"><polyline points="20 6 9 17 4 12"/></svg>

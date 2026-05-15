@@ -13,6 +13,7 @@ use App\Models\LocationType;
 use App\Models\Room;
 use App\Models\SystemSetting;
 use App\Models\User;
+use Illuminate\Http\Request;
 
 class AlertController extends Controller
 {
@@ -62,6 +63,8 @@ class AlertController extends Controller
         $coursesWithoutStaff = Course::doesntHave('assignedStaff')
             ->with(['curriculum', 'department'])->get();
 
+        $dismissedWarnings = self::getDismissedWarnings();
+
         return view('admin.alerts.index', compact(
             'criticals',
             'paViolations',
@@ -70,7 +73,22 @@ class AlertController extends Controller
             'roomsWithIssues',
             'coursesWithoutCoordinator',
             'coursesWithoutStaff',
+            'dismissedWarnings',
         ));
+    }
+
+    public function updateDismissed(Request $request)
+    {
+        $valid = ['departments', 'instructors', 'rooms', 'courses', 'course_staff'];
+        $dismissed = array_values(array_intersect($request->input('dismissed', []), $valid));
+        SystemSetting::set('dismissed_warnings', json_encode($dismissed));
+        self::flushCache();
+        return redirect()->route('admin.alerts')->with('success', 'บันทึกการตั้งค่าแจ้งเตือนเรียบร้อยแล้ว');
+    }
+
+    public static function getDismissedWarnings(): array
+    {
+        return json_decode(SystemSetting::get('dismissed_warnings', '[]'), true) ?? [];
     }
 
     public static function getCriticals(): array
@@ -138,18 +156,22 @@ class AlertController extends Controller
             $courseCount      = Course::whereNull('head_instructor_id')->count();
             $courseStaffCount = Course::doesntHave('assignedStaff')->count();
 
-            $warningCount = $deptCount + $instructorCount + $roomCount + $courseCount + $courseStaffCount;
-
-            return [
-                'critical'      => $criticalCount,
-                'warnings'      => $warningCount,
-                'departments'   => $deptCount,
-                'instructors'   => $instructorCount,
-                'rooms'         => $roomCount,
-                'courses'       => $courseCount,
-                'course_staff'  => $courseStaffCount,
-                'total'         => $criticalCount + $warningCount,
+            $dismissed = self::getDismissedWarnings();
+            $counts = [
+                'departments'  => in_array('departments',  $dismissed) ? 0 : $deptCount,
+                'instructors'  => in_array('instructors',  $dismissed) ? 0 : $instructorCount,
+                'rooms'        => in_array('rooms',        $dismissed) ? 0 : $roomCount,
+                'courses'      => in_array('courses',      $dismissed) ? 0 : $courseCount,
+                'course_staff' => in_array('course_staff', $dismissed) ? 0 : $courseStaffCount,
             ];
+            $warningCount = array_sum($counts);
+
+            return array_merge($counts, [
+                'critical'  => $criticalCount,
+                'warnings'  => $warningCount,
+                'total'     => $criticalCount + $warningCount,
+                'dismissed' => $dismissed,
+            ]);
         });
     }
 

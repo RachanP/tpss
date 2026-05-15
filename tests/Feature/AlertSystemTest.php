@@ -338,6 +338,83 @@ class AlertSystemTest extends TestCase
         $this->assertEquals(0, $summary['rooms']);
     }
 
+    // ══ Dismissed warnings ═══════════════════════════════════════════
+
+    public function test_dismissed_warnings_excluded_from_summary_count(): void
+    {
+        $lt = LocationType::create(['name' => 'ห้องบรรยาย', 'requires_capacity' => true]);
+        Room::create(['room_code' => 'R01', 'room_name' => 'ห้อง 1', 'location_type_id' => $lt->id, 'status' => 'active', 'capacity' => 0]);
+
+        SystemSetting::set('dismissed_warnings', json_encode(['rooms']));
+        AlertController::flushCache();
+        $summary = AlertController::getSummary();
+
+        $this->assertEquals(0, $summary['rooms']);
+    }
+
+    public function test_non_dismissed_warnings_still_counted(): void
+    {
+        $lt = LocationType::create(['name' => 'ห้องบรรยาย', 'requires_capacity' => true]);
+        Room::create(['room_code' => 'R01', 'room_name' => 'ห้อง 1', 'location_type_id' => $lt->id, 'status' => 'active', 'capacity' => 0]);
+        Department::create(['name' => 'ภาควิชาไม่มีหัวหน้า']);
+
+        SystemSetting::set('dismissed_warnings', json_encode(['rooms']));
+        AlertController::flushCache();
+        $summary = AlertController::getSummary();
+
+        $this->assertEquals(0, $summary['rooms']);
+        $this->assertGreaterThan(0, $summary['departments']);
+    }
+
+    public function test_update_dismissed_saves_to_system_settings(): void
+    {
+        $this->seedMinimalCriticals();
+        $admin = $this->makeUser('admin');
+
+        $this->actingAs($admin)
+            ->withSession(['active_role' => 'admin'])
+            ->post(route('admin.alerts.dismissed'), ['dismissed' => ['rooms', 'course_staff']]);
+
+        $saved = json_decode(SystemSetting::get('dismissed_warnings', '[]'), true);
+        $this->assertContains('rooms', $saved);
+        $this->assertContains('course_staff', $saved);
+    }
+
+    public function test_update_dismissed_rejects_invalid_keys(): void
+    {
+        $this->seedMinimalCriticals();
+        $admin = $this->makeUser('admin');
+
+        $this->actingAs($admin)
+            ->withSession(['active_role' => 'admin'])
+            ->post(route('admin.alerts.dismissed'), ['dismissed' => ['rooms', 'no_active_year', 'fake_key']]);
+
+        $saved = json_decode(SystemSetting::get('dismissed_warnings', '[]'), true);
+        $this->assertContains('rooms', $saved);
+        $this->assertNotContains('no_active_year', $saved);
+        $this->assertNotContains('fake_key', $saved);
+    }
+
+    public function test_update_dismissed_flushes_cache(): void
+    {
+        $this->seedMinimalCriticals();
+        $admin = $this->makeUser('admin');
+
+        AlertController::getSummary();
+        $this->assertTrue(Cache::has('tpss_alert_summary'));
+
+        $this->actingAs($admin)
+            ->withSession(['active_role' => 'admin'])
+            ->post(route('admin.alerts.dismissed'), ['dismissed' => ['rooms']]);
+
+        $this->assertFalse(Cache::has('tpss_alert_summary'));
+    }
+
+    public function test_get_dismissed_warnings_returns_empty_array_by_default(): void
+    {
+        $this->assertSame([], AlertController::getDismissedWarnings());
+    }
+
     // ══ Alerts page view ═════════════════════════════════════════════
 
     public function test_alerts_page_shows_all_critical_sections(): void
