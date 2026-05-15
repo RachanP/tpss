@@ -489,7 +489,7 @@ class MasterDataController extends Controller
 
     public function importRooms(Request $request)
     {
-        $request->validate(['csv_file' => 'required|file|mimes:csv,txt|max:5120']);
+        $request->validate(['csv_file' => 'required|file|extensions:csv,txt|max:5120']);
 
         $file   = $request->file('csv_file');
         $handle = $this->openCsvHandle($file);
@@ -582,7 +582,7 @@ class MasterDataController extends Controller
 
     public function importCourses(Request $request)
     {
-        $request->validate(['csv_file' => 'required|file|mimes:csv,txt|max:5120']);
+        $request->validate(['csv_file' => 'required|file|extensions:csv,txt|max:5120']);
 
         $file   = $request->file('csv_file');
         $handle = $this->openCsvHandle($file);
