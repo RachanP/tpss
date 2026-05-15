@@ -32,12 +32,8 @@ class DashboardController extends Controller
 
     public function admin()
     {
-        $instructors = User::whereHas('roles', function($q) {
-            $q->where('role', 'instructor');
-        })->with(['instructorProfile.department'])->get();
-
-        $teachingWeeks = \App\Models\SystemSetting::get('teaching_load_weeks', 39);
-        $hoursPerWeek = \App\Models\SystemSetting::get('teaching_quota_hours_per_week', 35);
+        ['instructors' => $instructors, 'teachingWeeks' => $teachingWeeks, 'hoursPerWeek' => $hoursPerWeek]
+            = $this->instructorWorkloadData();
 
         $criticals = AlertController::getCriticals();
         $alerts    = AlertController::getSummary();
@@ -47,14 +43,20 @@ class DashboardController extends Controller
 
     public function staff()
     {
-        $instructors = User::whereHas('roles', function($q) {
-            $q->where('role', 'instructor');
-        })->with(['instructorProfile.department'])->get();
-
-        $teachingWeeks = \App\Models\SystemSetting::get('teaching_load_weeks', 39);
-        $hoursPerWeek = \App\Models\SystemSetting::get('teaching_quota_hours_per_week', 35);
+        ['instructors' => $instructors, 'teachingWeeks' => $teachingWeeks, 'hoursPerWeek' => $hoursPerWeek]
+            = $this->instructorWorkloadData();
 
         return view('staff.dashboard', compact('instructors', 'teachingWeeks', 'hoursPerWeek'));
+    }
+
+    private function instructorWorkloadData(): array
+    {
+        return [
+            'instructors'   => User::whereHas('roles', fn($q) => $q->where('role', 'instructor'))
+                                   ->with(['instructorProfile.department'])->get(),
+            'teachingWeeks' => SystemSetting::get('teaching_load_weeks', 39),
+            'hoursPerWeek'  => SystemSetting::get('teaching_quota_hours_per_week', 35),
+        ];
     }
 
     public function maker()
