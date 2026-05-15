@@ -1494,16 +1494,16 @@
                                 </div>
                                 <div class="form-group">
                                     @php
-                                        $locTypeMap = $locationTypes->mapWithKeys(fn($t) => [$t->id => $t->requires_capacity])->toJson();
+                                        $locTypeMap = Js::from($locationTypes->mapWithKeys(fn($t) => [$t->id => (bool) $t->requires_capacity]));
                                     @endphp
-                                    <template x-if="!({!! $locTypeMap !!}[currentRoom.location_type_id] ?? true)">
+                                    <template x-if="!({{ $locTypeMap }}[currentRoom.location_type_id] ?? true)">
                                         <label>ความจุ (คน) <span style="color: var(--fg-3); font-weight: 400;">— ไม่บังคับ</span></label>
                                     </template>
-                                    <template x-if="({!! $locTypeMap !!}[currentRoom.location_type_id] ?? true)">
+                                    <template x-if="({{ $locTypeMap }}[currentRoom.location_type_id] ?? true)">
                                         <label>ความจุ (คน)</label>
                                     </template>
                                     <input type="number" name="capacity" x-model="currentRoom.capacity" min="0"
-                                        :required="({!! $locTypeMap !!}[currentRoom.location_type_id] ?? true)">
+                                        :required="({{ $locTypeMap }}[currentRoom.location_type_id] ?? true)">
                                 </div>
                             </div>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">

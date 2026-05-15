@@ -90,7 +90,7 @@ class AlertController extends Controller
             $criticals[] = [
                 'key'     => 'pa_violations',
                 'label'   => 'สัดส่วน PA ไม่อยู่ในเกณฑ์ (' . count($paViolations) . ' ท่าน)',
-                'link'    => '#pa-violations',
+                'link'    => route('admin.alerts') . '#pa-violations',
                 'linkTxt' => 'ดูรายละเอียด',
             ];
         }
@@ -143,6 +143,9 @@ class AlertController extends Controller
 
     public static function getPaViolations(): array
     {
+        static $cache = null;
+        if ($cache !== null) return $cache;
+
         $criteria = json_decode(SystemSetting::get('pa_criteria_config', '{}'), true);
         $firstGroup = !empty($criteria) ? reset($criteria) : null;
         $firstField = $firstGroup ? reset($firstGroup) : null;
@@ -190,7 +193,7 @@ class AlertController extends Controller
                 }
             });
 
-        return $violations;
+        return $cache = $violations;
     }
 
     private static function paGroup(string $title, string $degree): string

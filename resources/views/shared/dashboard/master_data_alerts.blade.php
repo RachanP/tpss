@@ -58,10 +58,8 @@
         @if($hasWarning)
         @php
             $warningItems = [
-                ['count' => $alerts['departments'], 'label' => 'ภาควิชา', 'unit' => 'ภาควิชา'],
-                ['count' => $alerts['instructors'], 'label' => 'อาจารย์', 'unit' => 'ท่าน'],
-                ['count' => $alerts['rooms'],       'label' => 'ห้อง / สถานที่', 'unit' => 'รายการ'],
-                ['count' => $alerts['courses'],      'label' => 'ผู้ประสานงานวิชา',  'unit' => 'วิชา'],
+                ['count' => $alerts['departments'],  'label' => 'ภาควิชา',              'unit' => 'ภาควิชา'],
+                ['count' => $alerts['rooms'],        'label' => 'ห้อง / สถานที่',        'unit' => 'รายการ'],
                 ['count' => $alerts['course_staff'], 'label' => 'เจ้าหน้าที่ดูแลวิชา', 'unit' => 'วิชา'],
             ];
         @endphp
