@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\CourseHead\CourseOfferingController;
+use App\Http\Controllers\CourseHead\ScheduleController;
 use Illuminate\Support\Facades\Route;
 
 // ── Root redirect ──────────────────────────────────────────────────
@@ -38,6 +39,9 @@ Route::middleware(['auth', 'no-back'])->group(function () {
             Route::get('/{courseOffering}', [CourseOfferingController::class, 'show'])->name('show');
             Route::put('/{courseOffering}', [CourseOfferingController::class, 'update'])->name('update');
             Route::patch('/{courseOffering}/archive', [CourseOfferingController::class, 'archive'])->name('archive');
+            Route::get('/{courseOffering}/schedules', [ScheduleController::class, 'index'])->name('schedules.index');
+            Route::get('/{courseOffering}/schedules/create', [ScheduleController::class, 'create'])->name('schedules.create');
+            Route::post('/{courseOffering}/schedules', [ScheduleController::class, 'store'])->name('schedules.store');
             Route::post('/{courseOffering}/instructors', [CourseOfferingController::class, 'storeInstructor'])->name('instructors.store');
             Route::delete('/{courseOffering}/instructors/{user}', [CourseOfferingController::class, 'destroyInstructor'])->name('instructors.destroy');
             Route::post('/{courseOffering}/student-groups', [CourseOfferingController::class, 'storeStudentGroup'])->name('student_groups.store');

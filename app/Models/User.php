@@ -67,6 +67,12 @@ class User extends Authenticatable
             ->withPivot('role_in_course');
     }
 
+    public function schedules(): BelongsToMany
+    {
+        return $this->belongsToMany(Schedule::class, 'schedule_instructors')
+            ->withPivot('is_lead');
+    }
+
     public function headOfDepartments()
     {
         return $this->hasMany(Department::class, 'head_user_id');

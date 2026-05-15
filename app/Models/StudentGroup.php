@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class StudentGroup extends Model
 {
@@ -17,5 +18,10 @@ class StudentGroup extends Model
     public function courseOffering(): BelongsTo
     {
         return $this->belongsTo(CourseOffering::class);
+    }
+
+    public function schedules(): BelongsToMany
+    {
+        return $this->belongsToMany(Schedule::class, 'schedule_student_groups');
     }
 }

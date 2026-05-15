@@ -71,4 +71,9 @@ class CourseOffering extends Model
         return $this->belongsToMany(User::class, 'course_offering_instructors')
             ->withPivot('role_in_course');
     }
+
+    public function schedules(): HasMany
+    {
+        return $this->hasMany(Schedule::class);
+    }
 }

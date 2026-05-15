@@ -21,6 +21,7 @@
             </p>
         </div>
         <div class="card-actions">
+            <a class="btn btn-secondary" href="{{ route('maker.course_offerings.schedules.index', $courseOffering) }}">จัดตารางสอน</a>
             <span class="badge {{ $courseOffering->status === 'archived' ? 'badge-gray' : 'badge-ok' }}">
                 {{ $courseOffering->status === 'archived' ? 'เก็บเข้าคลัง' : 'ใช้งาน' }}
             </span>
