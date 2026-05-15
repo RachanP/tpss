@@ -1,11 +1,11 @@
-# Sprint Status — ณ 15 พ.ค. 2569
+# Sprint Status — ณ 16 พ.ค. 2569
 
 ## Phase Overview
 
 | Phase | ชื่อ | สถานะ |
 |-------|------|-------|
 | Phase 1–3 | Initiation → Design | ✅ เสร็จ |
-| Phase 4–5 | Development | 🟢 Sprint 1+2 เสร็จ, Sprint 3 กำลังเตรียม |
+| Phase 4–5 | Development | 🟢 Sprint 1+2+M7 เสร็จ merge แล้ว, Sprint 3 (M2) กำลังดำเนินการ |
 | Phase 5 | Testing | 🟡 Internal Testing กำลังดำเนินการ |
 | Phase 6–7 | Deployment → Closure | ยังไม่เริ่ม (4–7 มิ.ย. 2569) |
 
@@ -15,11 +15,11 @@
 |--------|--------|--------|-------|
 | Sprint 1 | 11–12 พ.ค. | M10 Login/RBAC | ✅ 100% |
 | Sprint 2 | 12–15 พ.ค. | M1 Master Data | ✅ 100% |
-| **Sprint 3** | **18–19 พ.ค.** | **M2 Course Management** | **🔜 เริ่มถัดไป** |
+| **Sprint 3** | **18–19 พ.ค.** | **M2 Course Management** | **🟡 กำลังดำเนินการ (branch: 2-m2-Course-Management)** |
 | Sprint 4 | 20–22 พ.ค. | M3 Schedule Management | — |
 | Sprint 5 | 21–26 พ.ค. | M4 Conflict Checking | — |
 | Sprint 6 | 22–26 พ.ค. | M8 Views & Calendar | — |
-| Sprint 7 | 20–27 พ.ค. | M7 Search & Filter | — |
+| Sprint 7 | 20–27 พ.ค. | M7 Search & Filter | ✅ merge เข้า sprint แล้ว (16 พ.ค.) |
 
 ## Sprint 2 (M1) — สิ่งที่เสร็จแล้ว
 
@@ -65,12 +65,17 @@
 - บันทึกผลใน System Test Checklist
 - เอกสาร (SRS / User Manual) อัปเดตแล้ว (ถ้าเกี่ยวข้อง)
 
+## Known Bugs / Hotfixes (16 พ.ค.)
+
+- `AdminUserController:32` — `reset(reset($x))` ส่ง value แทน reference → แก้แล้ว (afa38ae)
+- pattern ถูกต้อง: ต้องใช้ตัวแปรกลาง `$firstGroup = reset($x); $firstField = reset($firstGroup);`
+
 ## Git Branching
 
 ```
 main ← production-ready
-  └── develop ← integration
-        ├── sprint/1-m10-login     ✅
-        ├── sprint/2-m1-master-data ✅
-        └── sprint/3-m2-course-management  ← เริ่มถัดไป
+  └── sprint ← integration (ใช้แทน develop)
+        ├── feature/admin-dashboard-alerts  ✅ merge แล้ว
+        ├── 7-m7-search_and_filter          ✅ merge แล้ว
+        └── 2-m2-Course-Management          🟡 กำลังดำเนินการ
 ```
