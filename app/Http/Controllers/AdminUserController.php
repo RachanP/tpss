@@ -29,14 +29,9 @@ class AdminUserController extends Controller
         $departments = Department::with(['head', 'secretary'])->orderBy('name')->get();
         
         $paCriteria = json_decode(SystemSetting::get('pa_criteria_config', '{}'), true);
-        if (empty($paCriteria)) {
-            $paCriteria = [
-                'อาจารย์' => ['t' => '20-70%', 'r' => '20-70%', 's' => '5-20%', 'c' => '5-15%', 'o' => '0-20%'],
-                'ผู้ช่วยอาจารย์' => ['t' => '≤ 70%', 'r' => '15-20%', 's' => '5-20%', 'c' => '5-20%', 'o' => '0-20%'],
-                'ผู้ช่วยอาจารย์_ปตรี' => ['t' => '30-60%', 'r' => '0%', 's' => '10-30%', 'c' => '10-20%', 'o' => '0-30%'],
-                'ผู้ช่วยอาจารย์_คลินิก' => ['t' => '≤ 10%', 'r' => '0-5%', 's' => '70-80%', 'c' => '0-5%', 'o' => '0-10%'],
-                'ผู้ช่วยอาจารย์_ปฏิบัติ' => ['t' => '≤ 70%', 'r' => '0%', 's' => '5-20%', 'c' => '5-20%', 'o' => '0-20%'],
-            ];
+        $firstField = !empty($paCriteria) ? reset(reset($paCriteria)) : null;
+        if (empty($paCriteria) || !is_array($firstField)) {
+            $paCriteria = \App\Http\Controllers\AdminSettingController::defaultPaCriteria();
         }
 
         $systemSettings = [
@@ -162,6 +157,7 @@ class AdminUserController extends Controller
             }
         });
 
+        \App\Http\Controllers\Admin\AlertController::flushCache();
         return redirect()->route('admin.users')->with('success', 'เพิ่มผู้ใช้เรียบร้อยแล้ว');
     }
 
@@ -285,6 +281,7 @@ class AdminUserController extends Controller
             }
         });
 
+        \App\Http\Controllers\Admin\AlertController::flushCache();
         return redirect()->route('admin.users')->with('success', 'อัปเดตข้อมูลผู้ใช้เรียบร้อยแล้ว');
     }
 

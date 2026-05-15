@@ -39,8 +39,8 @@ class DashboardController extends Controller
         $teachingWeeks = \App\Models\SystemSetting::get('teaching_load_weeks', 39);
         $hoursPerWeek = \App\Models\SystemSetting::get('teaching_quota_hours_per_week', 35);
 
-        $alerts    = AlertController::getSummary();
         $criticals = AlertController::getCriticals();
+        $alerts    = AlertController::getSummary();
 
         return view('admin.dashboard', compact('instructors', 'teachingWeeks', 'hoursPerWeek', 'alerts', 'criticals'));
     }

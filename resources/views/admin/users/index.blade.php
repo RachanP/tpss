@@ -93,12 +93,14 @@
                 isOutOfRange(value, rule) {
                     if (!rule || rule === '-') return false;
                     const val = parseInt(value) || 0;
-                    
+
+                    if (typeof rule === 'object') {
+                        return val < (rule.min ?? 0) || val > (rule.max ?? 100);
+                    }
                     if (rule.includes('≤')) {
                         const max = parseInt(rule.replace('≤', '').trim()) || 0;
                         return val > max;
                     }
-                    
                     if (rule.includes('-')) {
                         const parts = rule.split('-');
                         const min = parseInt(parts[0]) || 0;
