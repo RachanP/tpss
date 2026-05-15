@@ -359,10 +359,7 @@
             gap: 24px;
             align-items: start;
         }
-        
-        .settings-grid > div {
-            min-width: 0; /* Prevent grid items from stretching the viewport */
-        }
+        .settings-grid > div { min-width: 0; }
 
         .stats-grid {
             display: grid;
@@ -380,13 +377,11 @@
             background: var(--surface);
             gap: 16px;
         }
-
         .hdr-helper {
             display: flex;
             align-items: center;
             gap: 12px;
         }
-
         .copy-box {
             display: flex;
             align-items: center;
@@ -398,9 +393,7 @@
         }
 
         @media (max-width: 1024px) {
-            .settings-grid {
-                grid-template-columns: 1fr;
-            }
+            .settings-grid { grid-template-columns: 1fr; }
             .settings-hdr {
                 flex-direction: column;
                 align-items: flex-start;
@@ -413,9 +406,7 @@
         }
 
         @media (max-width: 640px) {
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
+            .stats-grid { grid-template-columns: 1fr; }
             .tabs-container {
                 justify-content: flex-start !important;
                 width: 100%;

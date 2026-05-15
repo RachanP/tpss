@@ -457,8 +457,6 @@
                                 <th>ชื่อ-นามสกุล</th>
                                 <th>ตำแหน่งทางวิชาการ</th>
                                 <th>ภาควิชา</th>
-                                <th style="text-align: right;">ชั่วโมงสอนสะสม</th>
-                                <th style="text-align: right; padding-right: 24px;">เกณฑ์ภาระงานสอน</th>
                                 @if($isAdmin)<th style="text-align: center;">จัดการ</th>@endif
                             </tr>
                         </thead>

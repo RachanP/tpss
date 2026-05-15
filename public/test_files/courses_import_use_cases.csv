@@ -1,0 +1,11 @@
+﻿course_code,name_th,name_en,curriculum_name,department_name,head_instructor_employee_id,course_type,credits,lecture_hours,lab_hours,self_study_hours,capacity,default_year_level,default_semester,requires_practicum_rotation,color_code,status
+NSQA 901,UC-C01 รายวิชาทดสอบถูกต้อง,UC C01 Valid Course,หลักสูตรพยาบาลศาสตรบัณฑิต 2565,ภาควิชาการพยาบาลรากฐาน,MU002,theory,2,2,0,4,120,1,1,0,#3B82F6,active
+NSBS 111,UC-C02 Duplicate Existing Same Curriculum,Duplicate Existing Same Curriculum,หลักสูตรพยาบาลศาสตรบัณฑิต 2565,ภาควิชาการพยาบาลรากฐาน,MU002,theory,2,2,0,4,120,1,1,0,#EF4444,active
+NSQA 902,UC-C03A Duplicate In File,Duplicate In File A,หลักสูตรพยาบาลศาสตรบัณฑิต 2565,ภาควิชาการพยาบาลรากฐาน,MU002,theory,2,2,0,4,100,1,1,0,#10B981,active
+NSQA 902,UC-C03B Duplicate In File Same Curriculum,Duplicate In File B,หลักสูตรพยาบาลศาสตรบัณฑิต 2565,ภาควิชาการพยาบาลรากฐาน,MU002,theory,2,2,0,4,100,1,1,0,#10B981,active
+NSQA 904,UC-C04 Invalid Course Type,Invalid Course Type,หลักสูตรพยาบาลศาสตรบัณฑิต 2565,ภาควิชาการพยาบาลรากฐาน,MU002,clinical,2,2,0,4,100,1,1,0,#6B7280,active
+NSQA 905,UC-C05 Invalid Numeric,Invalid Numeric,หลักสูตรพยาบาลศาสตรบัณฑิต 2565,ภาควิชาการพยาบาลรากฐาน,MU002,theory,abc,2,0,4,not_number,1,1,0,#6B7280,active
+NSQA 906,UC-C06 Unknown Head Instructor,Unknown Head Instructor,หลักสูตรพยาบาลศาสตรบัณฑิต 2565,ภาควิชาการพยาบาลรากฐาน,MU99999,theory,2,2,0,4,100,1,1,0,#6B7280,active
+NSQA 907,UC-C07 Unknown Curriculum,Unknown Curriculum,หลักสูตรที่ไม่มีจริง,ภาควิชาการพยาบาลรากฐาน,MU002,theory,2,2,0,4,100,1,1,0,#6B7280,active
+,UC-C08 Missing Course Code,Missing Course Code,หลักสูตรพยาบาลศาสตรบัณฑิต 2565,ภาควิชาการพยาบาลรากฐาน,MU002,theory,2,2,0,4,100,1,1,0,#6B7280,active
+NSQA 909,UC-C09 Malformed Too Few Columns,Malformed Course,หลักสูตรพยาบาลศาสตรบัณฑิต 2565

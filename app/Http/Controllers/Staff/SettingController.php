@@ -12,7 +12,6 @@ class SettingController extends AdminSettingController
     {
         $academicYears = AcademicYear::orderBy('name', 'desc')->orderBy('semester', 'asc')->get();
 
-        // PA data still needed so the shared view compiles without errors
         $paCriteria           = [];
         $workloadWeeks        = SystemSetting::get('teaching_quota_weeks', 46);
         $teachingWeeks        = SystemSetting::get('teaching_load_weeks', 39);

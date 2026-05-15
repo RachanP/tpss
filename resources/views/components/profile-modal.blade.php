@@ -1,14 +1,11 @@
 <div x-data="{
-    open: {{ $errors->has('current_password') || $errors->has('new_password') ? 'true' : 'false' }},
-    currentPassword: '',
+    open: {{ $errors->has('new_password') ? 'true' : 'false' }},
     newPassword: '',
     newPasswordConfirmation: '',
-    showCurrent: false,
     showNew: false,
     showConfirm: false,
     close() {
         this.open = false;
-        this.currentPassword = '';
         this.newPassword = '';
         this.newPasswordConfirmation = '';
     }
@@ -54,20 +51,6 @@
                     <div style="font-size: 15px; font-weight: 700; color: var(--fg-1); margin-bottom: 16px;">เปลี่ยนรหัสผ่าน</div>
 
                     <div class="form-group" style="margin-bottom: 16px;">
-                        <label>รหัสผ่านปัจจุบัน <span style="color: var(--status-conflict-fg);">*</span></label>
-                        <div style="position: relative;">
-                            <input :type="showCurrent ? 'text' : 'password'" name="current_password" x-model="currentPassword" required class="input" style="width: 100%; padding-right: 40px;">
-                            <button type="button" @click="showCurrent = !showCurrent" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--fg-3);">
-                                <svg x-show="!showCurrent" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                                <svg x-show="showCurrent" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" x-cloak><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a2 2 0 1 1-2.83-2.83M1 1l22 22"/></svg>
-                            </button>
-                        </div>
-                        @error('current_password')
-                            <div style="color: var(--status-conflict-fg); font-size: 12px; margin-top: 4px; font-weight: 600;">{{ $message }}</div>
-                        @enderror
-                    </div>
-
-                    <div class="form-group" style="margin-bottom: 16px;">
                         <label>รหัสผ่านใหม่ <span style="color: var(--status-conflict-fg);">*</span></label>
                         <div style="position: relative;">
                             <input :type="showNew ? 'text' : 'password'" name="new_password" x-model="newPassword" required minlength="8" class="input" style="width: 100%; padding-right: 40px;">
@@ -94,7 +77,7 @@
 
                     <div style="display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--border); padding-top: 20px;">
                         <button type="button" class="btn btn-ghost" @click="close">ยกเลิก</button>
-                        <button type="submit" class="btn btn-primary" :disabled="!currentPassword || !newPassword || !newPasswordConfirmation || newPassword !== newPasswordConfirmation" :style="(!currentPassword || !newPassword || !newPasswordConfirmation || newPassword !== newPasswordConfirmation) ? 'opacity: 0.5; cursor: not-allowed;' : ''">
+                        <button type="submit" class="btn btn-primary" :disabled="!newPassword || !newPasswordConfirmation || newPassword !== newPasswordConfirmation" :style="(!newPassword || !newPasswordConfirmation || newPassword !== newPasswordConfirmation) ? 'opacity: 0.5; cursor: not-allowed;' : ''">
                             บันทึกรหัสผ่านใหม่
                         </button>
                     </div>

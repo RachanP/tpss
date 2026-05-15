@@ -13,14 +13,13 @@ class AdminSettingController extends Controller
     {
         $academicYears = AcademicYear::orderBy('name', 'desc')->orderBy('semester', 'desc')->get();
         $paCriteria = json_decode(SystemSetting::get('pa_criteria_config', '{}'), true);
-        
+
         $workloadWeeks = SystemSetting::get('teaching_quota_weeks', 46);
         $teachingWeeks = SystemSetting::get('teaching_load_weeks', 39);
         $workloadHoursPerWeek = SystemSetting::get('teaching_quota_hours_per_week', 35);
-        $workloadQuota = SystemSetting::get('teaching_quota_hours', 1610);
+        $workloadQuota = $workloadWeeks * $workloadHoursPerWeek;
         $teachingQuota = $teachingWeeks * $workloadHoursPerWeek;
-        
-        // Default PA if not set
+
         if (empty($paCriteria)) {
             $paCriteria = [
                 'อาจารย์' => ['t' => '20-70%', 'r' => '20-70%', 's' => '5-20%', 'c' => '5-15%', 'o' => '0-20%'],

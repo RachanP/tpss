@@ -1,0 +1,2 @@
+﻿name_th,name_en,curriculum_name,department_name,head_instructor_employee_id,course_type,credits,lecture_hours,lab_hours,self_study_hours,capacity,default_year_level,default_semester,requires_practicum_rotation,color_code,status
+UC-CH01 Missing Course Code Header,Missing Course Code Header,หลักสูตรพยาบาลศาสตรบัณฑิต 2565,ภาควิชาการพยาบาลรากฐาน,MU002,theory,2,2,0,4,100,1,1,0,#6B7280,active

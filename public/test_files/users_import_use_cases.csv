@@ -1,0 +1,11 @@
+﻿prefix,name,email,username,password,roles,primary_role,employee_id,title,academic_degree,department_name,employment_type,teaching_pct,hired_date
+นางสาว,UC-U01 Valid Instructor,uc_u01@mahidol.ac.th,uc_u01,Ns@12345,instructor,instructor,MU900,อาจารย์,doctoral,การพยาบาลรากฐาน,full_time,60,1/1/2024
+นาย,UC-U02 Duplicate Existing User,rachan@mahidol.ac.th,rachan_p,Ns@12345,staff,staff,MU001,,,การพยาบาลรากฐาน,full_time,,1/1/2024
+นาง,UC-U03 Primary Role Not In Roles,uc_u03@mahidol.ac.th,uc_u03,Ns@12345,staff,admin,MU903,,,การพยาบาลรากฐาน,full_time,,1/1/2024
+นาย,UC-U04 Invalid Role Student,uc_u04@mahidol.ac.th,uc_u04,Ns@12345,student,student,MU904,,,การพยาบาลรากฐาน,full_time,,1/1/2024
+นางสาว,UC-U05 Instructor Missing Profile,uc_u05@mahidol.ac.th,uc_u05,Ns@12345,instructor,instructor,MU905,,,การพยาบาลรากฐาน,,,
+นาย,UC-U06 Staff With Profile Fields,uc_u06@mahidol.ac.th,uc_u06,Ns@12345,staff,staff,MU906,อาจารย์,doctoral,การพยาบาลรากฐาน,full_time,70,1/1/2024
+นาง,UC-U07 Unknown Department,uc_u07@mahidol.ac.th,uc_u07,Ns@12345,instructor,instructor,MU907,อาจารย์,doctoral,ภาควิชาที่ไม่มีจริง,full_time,60,1/1/2024
+นาย,UC-U08 Invalid Email,not-an-email,uc_u08,Ns@12345,staff,staff,MU908,,,การพยาบาลรากฐาน,full_time,,1/1/2024
+นาย,UC-U09 Weak Password,uc_u09@mahidol.ac.th,uc_u09,123,staff,staff,MU909,,,การพยาบาลรากฐาน,full_time,,1/1/2024
+นาย,UC-U10 Malformed Too Few Columns,uc_u10@mahidol.ac.th,uc_u10,Ns@12345,staff

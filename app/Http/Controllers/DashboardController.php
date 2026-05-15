@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\SystemSetting;
+use App\Models\User;
 use App\Models\UserRole;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -29,27 +31,54 @@ class DashboardController extends Controller
 
     public function admin()
     {
-        return view('dashboard.admin', ['title' => 'Dashboard — ผู้ดูแลระบบ']);
+        $instructors = User::whereHas('roles', function($q) {
+            $q->where('role', 'instructor');
+        })->with(['instructorProfile.department'])->get();
+
+        $teachingWeeks = \App\Models\SystemSetting::get('teaching_load_weeks', 39);
+        $hoursPerWeek = \App\Models\SystemSetting::get('teaching_quota_hours_per_week', 35);
+
+        return view('admin.dashboard', compact('instructors', 'teachingWeeks', 'hoursPerWeek'));
     }
 
     public function staff()
     {
-        return view('dashboard.staff', ['title' => 'ภาพรวม — เจ้าหน้าที่']);
+        $instructors = User::whereHas('roles', function($q) {
+            $q->where('role', 'instructor');
+        })->with(['instructorProfile.department'])->get();
+
+        $teachingWeeks = \App\Models\SystemSetting::get('teaching_load_weeks', 39);
+        $hoursPerWeek = \App\Models\SystemSetting::get('teaching_quota_hours_per_week', 35);
+
+        return view('staff.dashboard', compact('instructors', 'teachingWeeks', 'hoursPerWeek'));
     }
 
     public function maker()
     {
-        return view('dashboard.maker', ['title' => 'ภาพรวม — หัวหน้าวิชา']);
+        return view('course_head.dashboard');
     }
 
     public function approver()
     {
-        return view('dashboard.approver', ['title' => 'รออนุมัติ — ผู้บริหาร']);
+        return view('executive.dashboard');
     }
 
     public function lecturer()
     {
-        return view('dashboard.lecturer', ['title' => 'ตารางสอน — อาจารย์']);
+        $user = Auth::user()->load('instructorProfile');
+        $quota = null;
+        $period = null;
+
+        if ($user->instructorProfile && $user->instructorProfile->teaching_pct) {
+            $isGov = ($user->instructorProfile->employment_type === 'ข้าราชการ');
+            $teachingWeeks = \App\Models\SystemSetting::get('teaching_load_weeks', 39);
+            $hoursPerWeek = \App\Models\SystemSetting::get('teaching_quota_hours_per_week', 35);
+            $base = $isGov ? ($teachingWeeks * $hoursPerWeek / 2) : ($teachingWeeks * $hoursPerWeek);
+            $period = $isGov ? '6 เดือน' : 'ปี';
+            $quota = ($base * $user->instructorProfile->teaching_pct) / 100;
+        }
+
+        return view('instructor.dashboard', compact('user', 'quota', 'period'));
     }
 
     /**
