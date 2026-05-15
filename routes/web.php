@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\AdminUserController;
+use App\Http\Controllers\CourseHead\CourseOfferingController;
 use Illuminate\Support\Facades\Route;
 
 // ── Root redirect ──────────────────────────────────────────────────
@@ -28,6 +29,23 @@ Route::middleware(['auth', 'no-back'])->group(function () {
     Route::get('/maker/dashboard',    [DashboardController::class, 'maker'])   ->name('maker.dashboard')   ->middleware('\App\Http\Middleware\CheckRole:course_head');
     Route::get('/approver/dashboard', [DashboardController::class, 'approver'])->name('approver.dashboard')->middleware('\App\Http\Middleware\CheckRole:executive');
     Route::get('/lecturer/dashboard', [DashboardController::class, 'lecturer'])->name('lecturer.dashboard')->middleware('\App\Http\Middleware\CheckRole:instructor');
+
+    Route::middleware(['\App\Http\Middleware\CheckRole:course_head'])
+        ->prefix('maker/course-offerings')
+        ->name('maker.course_offerings.')
+        ->group(function () {
+            Route::get('/', [CourseOfferingController::class, 'index'])->name('index');
+            Route::get('/{courseOffering}', [CourseOfferingController::class, 'show'])->name('show');
+            Route::put('/{courseOffering}', [CourseOfferingController::class, 'update'])->name('update');
+            Route::patch('/{courseOffering}/archive', [CourseOfferingController::class, 'archive'])->name('archive');
+            Route::post('/{courseOffering}/instructors', [CourseOfferingController::class, 'storeInstructor'])->name('instructors.store');
+            Route::delete('/{courseOffering}/instructors/{user}', [CourseOfferingController::class, 'destroyInstructor'])->name('instructors.destroy');
+            Route::post('/{courseOffering}/student-groups', [CourseOfferingController::class, 'storeStudentGroup'])->name('student_groups.store');
+            Route::put('/{courseOffering}/student-groups/{studentGroup}', [CourseOfferingController::class, 'updateStudentGroup'])->name('student_groups.update');
+            Route::delete('/{courseOffering}/student-groups/{studentGroup}', [CourseOfferingController::class, 'destroyStudentGroup'])->name('student_groups.destroy');
+            Route::post('/{courseOffering}/prerequisites', [CourseOfferingController::class, 'storePrerequisite'])->name('prerequisites.store');
+            Route::delete('/{courseOffering}/prerequisites/{course}', [CourseOfferingController::class, 'destroyPrerequisite'])->name('prerequisites.destroy');
+        });
 
     // Admin User Management
     // ── Admin only ─────────────────────────────────────────────────────
@@ -94,4 +112,3 @@ Route::middleware(['auth', 'no-back'])->group(function () {
     // Profile Management
     Route::put('/profile/password', [AuthController::class, 'updatePassword'])->name('profile.password.update');
 });
-
