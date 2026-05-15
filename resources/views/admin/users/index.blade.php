@@ -7,7 +7,22 @@
                 showImportModal: false,
                 editMode: {{ old('editing_user_id') ? 'true' : 'false' }},
                 errorMsg: '',
-                search: '',
+                filters: {
+                    keyword: '',
+                    role: '',
+                    status: '',
+                    department_id: '',
+                    position: '',
+                },
+                normalizeSearch(value) {
+                    return String(value || '').toLowerCase().replace(/[\s\-_./]+/g, '');
+                },
+                includesText(value, keyword) {
+                    if (!keyword) return true;
+                    const source = String(value || '').toLowerCase();
+                    const query = String(keyword || '').toLowerCase();
+                    return source.includes(query) || this.normalizeSearch(source).includes(this.normalizeSearch(query));
+                },
                 teachingTotalHours: {{ \App\Models\SystemSetting::get('teaching_load_weeks', 39) * \App\Models\SystemSetting::get('teaching_quota_hours_per_week', 35) }}, 
                 currentUser: {
                     id: '',
@@ -314,14 +329,6 @@
             <div class="card-hdr">
                 <div class="card-ttl">รายชื่อผู้ใช้งานระบบ</div>
                 <div class="card-actions">
-                    <div class="search-box">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                            stroke-linecap="round">
-                            <circle cx="11" cy="11" r="8" />
-                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                        </svg>
-                        <input type="text" placeholder="ค้นหาชื่อ หรือรหัส..." x-model="search">
-                    </div>
                     <button class="btn btn-secondary" @click="showImportModal = true">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -341,6 +348,41 @@
                     </button>
                 </div>
             </div>
+            <div class="users-filter-bar">
+                <div class="users-filter-search">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round">
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                    <input type="text" placeholder="ค้นหาชื่อ ชื่อผู้ใช้ อีเมล รหัสพนักงาน หรือภาควิชา" x-model="filters.keyword">
+                </div>
+                <select class="users-filter-select" x-model="filters.role">
+                    <option value="">ทุกบทบาท</option>
+                    <option value="admin">ผู้ดูแลระบบ</option>
+                    <option value="staff">เจ้าหน้าที่</option>
+                    <option value="course_head">หัวหน้าวิชา</option>
+                    <option value="executive">ผู้บริหาร</option>
+                    <option value="instructor">อาจารย์ผู้สอน</option>
+                </select>
+                <select class="users-filter-select" x-model="filters.status">
+                    <option value="">ทุกสถานะ</option>
+                    <option value="active">กำลังใช้งาน</option>
+                    <option value="inactive">ระงับการใช้งาน</option>
+                </select>
+                <select class="users-filter-select" x-model="filters.department_id">
+                    <option value="">ทุกภาควิชา</option>
+                    @foreach($departments as $dept)
+                        <option value="{{ $dept->id }}">{{ $dept->name }}</option>
+                    @endforeach
+                </select>
+                <select class="users-filter-select" x-model="filters.position">
+                    <option value="">ทุกตำแหน่งภาควิชา</option>
+                    <option value="head">หัวหน้าภาควิชา</option>
+                    <option value="secretary">เลขานุการภาควิชา</option>
+                    <option value="none">ไม่มีตำแหน่ง</option>
+                </select>
+            </div>
             <div class="table-responsive">
                 <table>
                     <thead>
@@ -354,7 +396,43 @@
                     </thead>
                     <tbody>
                         @foreach($users as $user)
-                            <tr x-show="search === '' || '{{ strtolower($user->name . ' ' . $user->username . ' ' . ($user->instructorProfile?->employee_id ?? '')) }}'.includes(search.toLowerCase())">
+                            @php
+                                $roleNames = [
+                                    'admin' => 'ผู้ดูแลระบบ',
+                                    'staff' => 'เจ้าหน้าที่',
+                                    'course_head' => 'หัวหน้าวิชา',
+                                    'executive' => 'ผู้บริหาร',
+                                    'instructor' => 'อาจารย์ผู้สอน',
+                                ];
+                                $roleValues = $user->roles->pluck('role')->values();
+                                $roleLabelsForSearch = $roleValues->map(fn($role) => $roleNames[$role] ?? $role)->join(' ');
+                                $departmentNamesForSearch = collect([
+                                    $user->instructorProfile?->department?->name,
+                                    ...$user->headOfDepartments->pluck('name')->all(),
+                                    ...$user->secretaryOfDepartments->pluck('name')->all(),
+                                ])->filter()->unique()->join(' ');
+                                $departmentIds = collect([
+                                    $user->instructorProfile?->department_id,
+                                    ...$user->headOfDepartments->pluck('id')->all(),
+                                    ...$user->secretaryOfDepartments->pluck('id')->all(),
+                                ])->filter()->unique()->join(' ');
+                                $positionValues = collect([
+                                    $user->headOfDepartments->isNotEmpty() ? 'head' : null,
+                                    $user->secretaryOfDepartments->isNotEmpty() ? 'secretary' : null,
+                                ])->filter()->join(' ');
+                                $statusValue = $user->is_active ? 'active' : 'inactive';
+                            @endphp
+                            <tr
+                                data-search="{{ Str::lower($user->name . ' ' . $user->username . ' ' . $user->email . ' ' . ($user->employee_id ?? '') . ' ' . ($user->prefix ?? '') . ' ' . $roleValues->join(' ') . ' ' . $roleLabelsForSearch . ' ' . $departmentNamesForSearch . ' ' . ($user->instructorProfile->title ?? '') . ' ' . ($user->instructorProfile->academic_degree ?? '') . ' ' . ($user->instructorProfile->employment_type ?? '') . ' ' . ($user->is_active ? 'กำลังใช้งาน active' : 'ระงับการใช้งาน inactive')) }}"
+                                data-roles="{{ $roleValues->join(' ') }}"
+                                data-status="{{ $statusValue }}"
+                                data-department-ids="{{ $departmentIds }}"
+                                data-position="{{ $positionValues }}"
+                                x-show="includesText($el.dataset.search, filters.keyword)
+                                    && (filters.role === '' || ($el.dataset.roles || '').split(' ').includes(filters.role))
+                                    && (filters.status === '' || $el.dataset.status === filters.status)
+                                    && (filters.department_id === '' || ($el.dataset.departmentIds || '').split(' ').includes(filters.department_id))
+                                    && (filters.position === '' || (filters.position === 'none' ? !$el.dataset.position : ($el.dataset.position || '').split(' ').includes(filters.position)))">
                                 <td>
                                     <div style="display: flex; align-items: center; gap: 12px;">
                                         @php
@@ -520,6 +598,12 @@
                                 </td>
                             </tr>
                         @endforeach
+                        <tr x-show="(filters.keyword || filters.role || filters.status || filters.department_id || filters.position)
+                            && !Array.from($el.parentNode.children).some(tr => tr !== $el && tr.style.display !== 'none')">
+                            <td colspan="5" style="text-align: center; padding: 40px; color: var(--fg-3);">
+                                ไม่พบผู้ใช้งานตามเงื่อนไขที่ค้นหา
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -1006,6 +1090,104 @@
             </div>
         </template>
     </div>
+
+    <style>
+        .users-filter-bar {
+            display: grid;
+            grid-template-columns: minmax(420px, 1.8fr) repeat(4, minmax(150px, .85fr));
+            grid-auto-rows: 40px;
+            gap: 10px;
+            align-items: center;
+            padding: 12px 20px;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            background: oklch(98% 0.006 220);
+        }
+
+        .users-filter-search {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            height: 40px;
+            min-width: 0;
+            box-sizing: border-box;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: oklch(100% 0.004 220);
+            padding: 0 12px;
+            transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
+        }
+
+        .users-filter-search:focus-within {
+            border-color: var(--brand-navy);
+            background: var(--surface);
+            box-shadow: 0 0 0 3px oklch(92% 0.025 250);
+        }
+
+        .users-filter-search svg {
+            width: 15px;
+            height: 15px;
+            flex-shrink: 0;
+            color: var(--fg-3);
+        }
+
+        .users-filter-search input {
+            width: 100%;
+            height: 100%;
+            min-width: 0;
+            border: 0;
+            outline: 0;
+            background: transparent;
+            color: var(--fg-1);
+            font: inherit;
+            font-size: 13px;
+        }
+
+        .users-filter-select {
+            width: 100%;
+            min-width: 0;
+            height: 40px;
+            box-sizing: border-box;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: oklch(100% 0.004 220);
+            color: var(--fg-2);
+            font-size: 13px;
+            line-height: 1.4;
+            padding: 7px 34px 7px 12px;
+            transition: border-color 150ms ease, box-shadow 150ms ease;
+        }
+
+        .users-filter-select:focus {
+            outline: 0;
+            border-color: var(--brand-navy);
+            box-shadow: 0 0 0 3px oklch(92% 0.025 250);
+        }
+
+        @media (max-width: 1280px) {
+            .users-filter-bar {
+                grid-template-columns: minmax(360px, 1.4fr) repeat(2, minmax(150px, .8fr));
+            }
+
+            .users-filter-search {
+                grid-column: span 1;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .users-filter-bar {
+                display: flex;
+                flex-wrap: wrap;
+                padding: 12px;
+            }
+
+            .users-filter-search,
+            .users-filter-select {
+                flex: 1 1 100%;
+                width: 100%;
+            }
+        }
+    </style>
 
     @if(session('import_errors'))
     <div style="position: fixed; bottom: 20px; right: 20px; max-width: 420px; background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12); z-index: 9999; overflow: hidden;"

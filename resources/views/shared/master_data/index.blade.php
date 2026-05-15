@@ -1,7 +1,23 @@
 <x-app-layout title="ข้อมูลหลักระบบ">
     <div x-data="{
         activeTab: new URLSearchParams(window.location.search).get('tab') || 'instructors',
-        searchQuery: '',
+        filters: {
+            instructors: { keyword: '', department_id: '' },
+            departments: { keyword: '' },
+            location_types: { keyword: '', location_type_id: '', status: '' },
+            courses: { keyword: '', department_id: '', curriculum_id: '', course_type: '', year_level: '', status: '' },
+            curriculums: { keyword: '', is_active: '' },
+            activity_types: { keyword: '', category: '' },
+        },
+        normalizeSearch(value) {
+            return String(value || '').toLowerCase().replace(/[\s\-_./]+/g, '');
+        },
+        includesText(value, keyword) {
+            if (!keyword) return true;
+            const source = String(value || '').toLowerCase();
+            const query = String(keyword || '').toLowerCase();
+            return source.includes(query) || this.normalizeSearch(source).includes(this.normalizeSearch(query));
+        },
         showDeptModal: false,
         editDeptMode: false,
         currentDept: {
@@ -439,16 +455,22 @@
             <div class="card">
                 <div class="card-hdr">
                     <div class="card-ttl">ข้อมูลอาจารย์ผู้สอน</div>
-                    <div class="card-actions">
-                        <div class="search-box">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                stroke-linecap="round">
-                                <circle cx="11" cy="11" r="8" />
-                                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                            </svg>
-                            <input type="text" x-model="searchQuery" placeholder="ค้นหาชื่ออาจารย์...">
-                        </div>
+                </div>
+                <div class="m7-filter-bar">
+                    <div class="m7-filter-search">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                        <input type="text" x-model="filters.instructors.keyword" placeholder="ค้นหาชื่อ รหัส วุฒิ ประเภท หรือภาระสอน">
                     </div>
+                    <select class="m7-filter-select" x-model="filters.instructors.department_id">
+                        <option value="">ทุกภาควิชา</option>
+                        @foreach($departments as $dept)
+                            <option value="{{ $dept->id }}">{{ $dept->name }}</option>
+                        @endforeach
+                    </select>
                 </div>
                 <div class="table-responsive">
                     <table>
@@ -464,7 +486,9 @@
                         <tbody>
                             @foreach($instructors as $instructor)
                                 <tr
-                                    x-show="!searchQuery || '{{ $instructor->formatted_name }}'.toLowerCase().includes(searchQuery.toLowerCase())">
+                                    data-search="{{ Str::lower($instructor->formatted_name . ' ' . ($instructor->employee_id ?? '') . ' ' . ($instructor->email ?? '') . ' ' . ($instructor->instructorProfile->title ?? '') . ' ' . ($instructor->instructorProfile->academic_degree ?? '') . ' ' . ($instructor->instructorProfile->employment_type ?? '') . ' ' . ($instructor->instructorProfile->department->name ?? '') . ' ' . ($instructor->instructorProfile->teaching_pct ?? '') . ' ' . ($instructor->instructorProfile->research_pct ?? '') . ' ' . ($instructor->instructorProfile->service_pct ?? '') . ' ' . ($instructor->instructorProfile->culture_pct ?? '') . ' ' . ($instructor->instructorProfile->other_pct ?? '') . ' ' . ($instructor->instructorProfile->teaching_quota ?? '')) }}"
+                                    data-department-id="{{ $instructor->instructorProfile->department_id ?? '' }}"
+                                    x-show="includesText($el.dataset.search, filters.instructors.keyword) && (filters.instructors.department_id === '' || $el.dataset.departmentId == filters.instructors.department_id)">
                                     <td style="font-weight: 600; color: var(--fg-2);">
                                         {{ $instructor->employee_id ?? '-' }}
                                     </td>
@@ -503,7 +527,7 @@
                                 </tr>
                             @endforeach
                             <tr
-                                x-show="searchQuery && !Array.from($el.parentNode.children).some(tr => tr.style.display !== 'none' && tr !== $el)">
+                                x-show="(filters.instructors.keyword || filters.instructors.department_id) && !Array.from($el.parentNode.children).some(tr => tr.style.display !== 'none' && tr !== $el)">
                                 <td colspan="8" style="text-align: center; padding: 40px; color: var(--fg-3);">
                                     ไม่พบข้อมูลอาจารย์ที่ค้นหา</td>
                             </tr>
@@ -536,9 +560,22 @@
                     @endif
                 </div>
 
+                <div class="m7-filter-bar">
+                    <div class="m7-filter-search">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                        <input type="text" x-model="filters.departments.keyword" placeholder="ค้นหาภาควิชา หัวหน้า เลขานุการ หรือจำนวนอาจารย์">
+                    </div>
+                </div>
+
                 <div x-data="{ expandedDept: null }" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 8px;">
                     @forelse($departments as $dept)
-                        <div style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+                        <div
+                            data-search="{{ Str::lower($dept->name . ' ' . ($dept->head->formatted_name ?? '') . ' ' . ($dept->secretary->formatted_name ?? '') . ' ' . $dept->instructors_count . ' คน') }}"
+                            x-show="includesText($el.dataset.search, filters.departments.keyword)"
+                            style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
 
                             {{-- Header --}}
                             <div @click="expandedDept = expandedDept === {{ $dept->id }} ? null : {{ $dept->id }}"
@@ -703,6 +740,27 @@
                         </button>
                     </div>
                 </div>
+                <div class="m7-filter-bar">
+                    <div class="m7-filter-search">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                        <input type="text" x-model="filters.location_types.keyword" placeholder="ค้นหารหัส ห้อง อาคาร ความจุ อุปกรณ์ หรือสถานะ">
+                    </div>
+                    <select class="m7-filter-select" x-model="filters.location_types.location_type_id">
+                        <option value="">ทุกประเภทสถานที่</option>
+                        @foreach($locationTypes as $type)
+                            <option value="{{ $type->id }}">{{ $type->name }}</option>
+                        @endforeach
+                    </select>
+                    <select class="m7-filter-select" x-model="filters.location_types.status">
+                        <option value="">ทุกสถานะ</option>
+                        <option value="active">ใช้งาน</option>
+                        <option value="maintenance">ซ่อมบำรุง</option>
+                        <option value="inactive">ปิดใช้งาน</option>
+                    </select>
+                </div>
                 <div x-data="{ expandedType: null }" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 8px;">
                     @forelse($locationTypes as $type)
                         @php
@@ -713,7 +771,11 @@
                         @endphp
 
                         {{-- Card wrapper --}}
-                        <div style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+                        <div
+                            data-location-type-id="{{ $type->id }}"
+                            data-search="{{ Str::lower($type->name . ' ' . $type->rooms_count . ' แห่ง ' . $activeCount . ' ใช้งาน ' . $maintenanceCount . ' ซ่อมบำรุง ' . $inactiveCount . ' ปิดใช้งาน ' . $type->rooms->pluck('room_code')->join(' ') . ' ' . $type->rooms->pluck('room_name')->join(' ') . ' ' . $type->rooms->pluck('building')->join(' ') . ' ' . $type->rooms->pluck('capacity')->join(' ')) }}"
+                            x-show="(filters.location_types.location_type_id === '' || $el.dataset.locationTypeId == filters.location_types.location_type_id) && includesText($el.dataset.search, filters.location_types.keyword)"
+                            style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
 
                             {{-- Header row --}}
                             <div @click="expandedType = expandedType === {{ $type->id }} ? null : {{ $type->id }}"
@@ -800,7 +862,11 @@
                                         <tbody>
                                             @foreach($type->rooms->sortBy('room_name') as $room)
                                                 @php $statusMap = ['active' => ['ใช้งาน', '#059669', '#d1fae5'], 'inactive' => ['ปิดใช้งาน', '#6b7280', '#f3f4f6'], 'maintenance' => ['ซ่อมบำรุง', '#d97706', '#fef3c7']]; $s = $statusMap[$room->status] ?? $statusMap['active']; @endphp
-                                                <tr style="border-top: 1px solid var(--border); transition: background 0.1s;"
+                                                <tr
+                                                    data-search="{{ Str::lower(($room->room_code ?? '') . ' ' . $room->room_name . ' ' . ($room->building ?? '') . ' ' . ($room->capacity ?? '') . ' คน ' . ($room->address ?? '') . ' ' . (is_array($room->equipment_type) ? implode(' ', $room->equipment_type) : ($room->equipment_type ?? '')) . ' ' . $room->status . ' ' . ($s[0] ?? '')) }}"
+                                                    data-status="{{ $room->status }}"
+                                                    x-show="(filters.location_types.status === '' || $el.dataset.status == filters.location_types.status) && includesText($el.dataset.search, filters.location_types.keyword)"
+                                                    style="border-top: 1px solid var(--border); transition: background 0.1s;"
                                                     onmouseover="this.style.background='var(--bg-2)'" onmouseout="this.style.background=''">
                                                     <td style="padding: 11px 16px 11px 56px; font-size: 12px; color: var(--fg-3); font-family: var(--font-mono, monospace);">{{ $room->room_code ?: '—' }}</td>
                                                     <td style="padding: 11px 16px; font-size: 13px; font-weight: 600; color: var(--fg-1);">{{ $room->room_name }}</td>
@@ -857,14 +923,6 @@
                 <div class="card-hdr">
                     <div class="card-ttl">คลังรายวิชา</div>
                     <div class="card-actions">
-                        <div class="search-box" style="width: 240px;">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                stroke-linecap="round">
-                                <circle cx="11" cy="11" r="8" />
-                                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                            </svg>
-                            <input type="text" x-model="searchQuery" placeholder="รหัส หรือ ชื่อวิชา...">
-                        </div>
                         <button class="btn btn-secondary" @click="showImportCourseModal = true">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -884,6 +942,46 @@
                         </button>
                     </div>
                 </div>
+                <div class="m7-filter-bar is-course">
+                    <div class="m7-filter-search">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                        <input type="text" x-model="filters.courses.keyword" placeholder="ค้นหารหัส ชื่อวิชา เครดิต ชั่วโมง ปี ภาค หรือความจุ">
+                    </div>
+                    <select class="m7-filter-select" x-model="filters.courses.department_id">
+                        <option value="">ทุกภาควิชา</option>
+                        @foreach($departments as $dept)
+                            <option value="{{ $dept->id }}">{{ $dept->name }}</option>
+                        @endforeach
+                    </select>
+                    <select class="m7-filter-select" x-model="filters.courses.curriculum_id">
+                        <option value="">ทุกหลักสูตร</option>
+                        @foreach($curriculums as $curr)
+                            <option value="{{ $curr->id }}">{{ $curr->name }}</option>
+                        @endforeach
+                    </select>
+                    <select class="m7-filter-select" x-model="filters.courses.course_type">
+                        <option value="">ทุกประเภทวิชา</option>
+                        <option value="theory">ทฤษฎี</option>
+                        <option value="practicum">ปฏิบัติ</option>
+                        <option value="theory_practicum">ทฤษฎีและปฏิบัติ</option>
+                    </select>
+                    <select class="m7-filter-select is-narrow" x-model="filters.courses.year_level">
+                        <option value="">ทุกชั้นปี</option>
+                        <option value="1">ปี 1</option>
+                        <option value="2">ปี 2</option>
+                        <option value="3">ปี 3</option>
+                        <option value="4">ปี 4</option>
+                    </select>
+                    <select class="m7-filter-select is-narrow" x-model="filters.courses.status">
+                        <option value="">ทุกสถานะ</option>
+                        <option value="active">เปิดสอน</option>
+                        <option value="inactive">ปิดสอน</option>
+                    </select>
+                </div>
                 <div class="table-responsive">
                     <table class="high-density">
                         <thead>
@@ -899,7 +997,14 @@
                         </thead>
                         <tbody>
                             @forelse($courses as $course)
-                                <tr x-show="!searchQuery || '{{ $course->course_code }} {{ $course->name_th }} {{ $course->name_en }}'.toLowerCase().includes(searchQuery.toLowerCase())"
+                                <tr
+                                    data-search="{{ Str::lower($course->course_code . ' ' . $course->name_th . ' ' . ($course->name_en ?? '') . ' ' . ($course->headInstructor->formatted_name ?? '') . ' ' . ($course->department->name ?? '') . ' ' . ($course->curriculum->name ?? '') . ' ' . ($course->credits ?? '') . ' หน่วยกิต ' . ($course->lecture_hours ?? 0) . '-' . ($course->lab_hours ?? 0) . '-' . ($course->self_study_hours ?? 0) . ' ' . ($course->default_year_level ?? '') . ' ปี ' . ($course->default_semester ?? '') . ' ภาค ' . ($course->capacity ?? '') . ' คน ' . ($course->course_type ?? '') . ' ' . ($course->academic_level ?? '') . ' ' . ($course->status ?? '') . ' ' . ($course->status === 'active' ? 'เปิดสอน' : 'ปิดสอน')) }}"
+                                    data-department-id="{{ $course->department_id ?? '' }}"
+                                    data-curriculum-id="{{ $course->curriculum_id ?? '' }}"
+                                    data-course-type="{{ $course->course_type ?? '' }}"
+                                    data-year-level="{{ $course->default_year_level ?? '' }}"
+                                    data-status="{{ $course->status ?? '' }}"
+                                    x-show="includesText($el.dataset.search, filters.courses.keyword) && (filters.courses.department_id === '' || $el.dataset.departmentId == filters.courses.department_id) && (filters.courses.curriculum_id === '' || $el.dataset.curriculumId == filters.courses.curriculum_id) && (filters.courses.course_type === '' || $el.dataset.courseType == filters.courses.course_type) && (filters.courses.year_level === '' || $el.dataset.yearLevel == filters.courses.year_level) && (filters.courses.status === '' || $el.dataset.status == filters.courses.status)"
                                     style="{{ $course->status === 'inactive' ? 'opacity: 0.45; filter: grayscale(1); background: #fafafa;' : '' }}">
                                     <td style="vertical-align: middle;">
                                         <div style="display: flex; align-items: center; gap: 8px;">
@@ -981,9 +1086,28 @@
                     @endif
                 </div>
 
+                <div class="m7-filter-bar">
+                    <div class="m7-filter-search">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                        <input type="text" x-model="filters.curriculums.keyword" placeholder="ค้นหาหลักสูตร ปี รหัสวิชา หน่วยกิต หรือสถานะ">
+                    </div>
+                    <select class="m7-filter-select is-narrow" x-model="filters.curriculums.is_active">
+                        <option value="">ทุกสถานะ</option>
+                        <option value="1">กำลังใช้งาน</option>
+                        <option value="0">ปิดใช้งาน</option>
+                    </select>
+                </div>
+
                 <div x-data="{ expandedCurriculum: null }" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 8px;">
                     @forelse($curriculums as $curr)
-                        <div style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+                        <div
+                            data-search="{{ Str::lower($curr->name . ' ' . ($curr->effective_year ?? '') . ' ' . ($curr->is_active ? 'กำลังใช้งาน active' : 'ปิดใช้งาน inactive') . ' ' . $curr->courses_count . ' วิชา ' . $curr->courses->pluck('course_code')->join(' ') . ' ' . $curr->courses->pluck('name_th')->join(' ') . ' ' . $curr->courses->pluck('name_en')->join(' ') . ' ' . $curr->courses->pluck('credits')->join(' ') . ' ' . $curr->courses->pluck('default_year_level')->join(' ') . ' ' . $curr->courses->pluck('default_semester')->join(' ')) }}"
+                            data-is-active="{{ $curr->is_active ? '1' : '0' }}"
+                            x-show="includesText($el.dataset.search, filters.curriculums.keyword) && (filters.curriculums.is_active === '' || $el.dataset.isActive == filters.curriculums.is_active)"
+                            style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
 
                             {{-- Header --}}
                             <div @click="expandedCurriculum = expandedCurriculum === {{ $curr->id }} ? null : {{ $curr->id }}"
@@ -1894,6 +2018,22 @@
                     </div>
                     @endif
                 </div>
+                <div class="m7-filter-bar">
+                    <div class="m7-filter-search">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                        <input type="text" x-model="filters.activity_types.keyword" placeholder="ค้นหาชื่อ หมวดหมู่ หรือรหัสสี">
+                    </div>
+                    <select class="m7-filter-select" x-model="filters.activity_types.category">
+                        <option value="">ทุกหมวดหมู่</option>
+                        <option value="lecture">บรรยาย</option>
+                        <option value="practicum">ปฏิบัติ</option>
+                        <option value="thesis">วิทยานิพนธ์</option>
+                        <option value="other">อื่นๆ</option>
+                    </select>
+                </div>
                 <div class="table-responsive">
                     <table>
                         <thead>
@@ -1906,15 +2046,18 @@
                         </thead>
                         <tbody>
                             @forelse($activityTypes as $at)
-                                <tr>
+                                @php
+                                    $catLabel = ['lecture' => 'บรรยาย', 'practicum' => 'ปฏิบัติ', 'thesis' => 'วิทยานิพนธ์', 'other' => 'อื่นๆ'];
+                                @endphp
+                                <tr
+                                    data-search="{{ Str::lower($at->name . ' ' . $at->category . ' ' . ($catLabel[$at->category] ?? '') . ' ' . ($at->color_code ?? '')) }}"
+                                    data-category="{{ $at->category }}"
+                                    x-show="includesText($el.dataset.search, filters.activity_types.keyword) && (filters.activity_types.category === '' || $el.dataset.category == filters.activity_types.category)">
                                     <td>
                                         <span style="display: inline-block; width: 20px; height: 20px; border-radius: 4px; background: {{ $at->color_code }}; border: 1px solid var(--border);"></span>
                                     </td>
                                     <td style="font-weight: 600; color: var(--fg-1);">{{ $at->name }}</td>
                                     <td>
-                                        @php
-                                            $catLabel = ['lecture' => 'บรรยาย', 'practicum' => 'ปฏิบัติ', 'thesis' => 'วิทยานิพนธ์', 'other' => 'อื่นๆ'];
-                                        @endphp
                                         <span class="pill pill-neutral">{{ $catLabel[$at->category] ?? $at->category }}</span>
                                     </td>
                                     @if($isAdmin)
@@ -2210,6 +2353,130 @@
 
         .btn-ghost:hover {
             background: var(--bg-3);
+        }
+
+        .m7-filter-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            padding: 12px 20px;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            background: oklch(98% 0.006 220);
+        }
+
+        .m7-filter-search {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            flex: 1 1 420px;
+            min-width: 320px;
+            max-width: 680px;
+            height: 40px;
+            box-sizing: border-box;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: oklch(100% 0.004 220);
+            padding: 0 12px;
+            transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
+        }
+
+        .m7-filter-search:focus-within {
+            border-color: var(--brand-navy);
+            background: var(--surface);
+            box-shadow: 0 0 0 3px oklch(92% 0.025 250);
+        }
+
+        .m7-filter-search svg {
+            width: 15px;
+            height: 15px;
+            flex-shrink: 0;
+            color: var(--fg-3);
+        }
+
+        .m7-filter-search input {
+            width: 100%;
+            height: 100%;
+            min-width: 0;
+            border: 0;
+            outline: 0;
+            background: transparent;
+            color: var(--fg-1);
+            font: inherit;
+            font-size: 13px;
+        }
+
+        .m7-filter-bar.is-course {
+            display: grid;
+            grid-template-columns:
+                minmax(460px, 1.8fr)
+                minmax(150px, .75fr)
+                minmax(170px, .85fr)
+                minmax(150px, .75fr)
+                minmax(112px, .55fr)
+                minmax(120px, .55fr);
+            align-items: center;
+        }
+
+        .m7-filter-bar.is-course .m7-filter-search,
+        .m7-filter-bar.is-course .m7-filter-select,
+        .m7-filter-bar.is-course .m7-filter-select.is-narrow {
+            width: 100%;
+            min-width: 0;
+            max-width: none;
+        }
+
+        .m7-filter-select {
+            height: 40px;
+            box-sizing: border-box;
+            max-width: 240px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: oklch(100% 0.004 220);
+            color: var(--fg-2);
+            font-size: 13px;
+            line-height: 1.4;
+            padding: 7px 34px 7px 12px;
+            transition: border-color 150ms ease, box-shadow 150ms ease;
+        }
+
+        .m7-filter-select:focus {
+            outline: 0;
+            border-color: var(--brand-navy);
+            box-shadow: 0 0 0 3px oklch(92% 0.025 250);
+        }
+
+        .m7-filter-select.is-narrow {
+            max-width: 130px;
+        }
+
+        @media (max-width: 1280px) {
+            .m7-filter-bar.is-course {
+                grid-template-columns: minmax(360px, 1.4fr) repeat(3, minmax(140px, .7fr));
+            }
+
+            .m7-filter-bar.is-course .m7-filter-search {
+                grid-column: span 2;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .m7-filter-bar {
+                padding: 12px;
+            }
+
+            .m7-filter-bar.is-course {
+                display: flex;
+            }
+
+            .m7-filter-search,
+            .m7-filter-select,
+            .m7-filter-select.is-narrow {
+                flex: 1 1 100%;
+                width: 100%;
+                max-width: none;
+            }
         }
 
         .search-results {
