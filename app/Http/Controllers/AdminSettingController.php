@@ -136,6 +136,14 @@ class AdminSettingController extends Controller
             'pa_criteria.*.*.max'           => 'required|integer|min:0|max:100',
         ]);
 
+        foreach ($request->pa_criteria as $rank => $fields) {
+            foreach ($fields as $field => $range) {
+                if ((int)$range['min'] > (int)$range['max']) {
+                    return back()->withErrors(['pa_criteria' => "เกณฑ์ {$rank} ด้าน {$field}: ค่าต่ำสุด ({$range['min']}) ต้องไม่มากกว่าค่าสูงสุด ({$range['max']})"]);
+                }
+            }
+        }
+
         $totalHours = $request->teaching_quota_weeks * $request->teaching_quota_hours_per_week;
 
         SystemSetting::set('teaching_quota_weeks', $request->teaching_quota_weeks);

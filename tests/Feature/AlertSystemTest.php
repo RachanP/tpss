@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Http\Controllers\Admin\AlertController;
+use App\Http\Controllers\AdminSettingController;
 use App\Models\AcademicYear;
 use App\Models\ActivityType;
 use App\Models\Curriculum;
@@ -21,6 +22,12 @@ use Tests\TestCase;
 class AlertSystemTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        AlertController::flushCache();
+    }
 
     // ── Helpers ──────────────────────────────────────────────────────
 
@@ -64,15 +71,7 @@ class AlertSystemTest extends TestCase
 
     private function defaultPaCriteria(): array
     {
-        return [
-            'อาจารย์' => [
-                't' => ['min' => 20, 'max' => 70],
-                'r' => ['min' => 20, 'max' => 70],
-                's' => ['min' => 5,  'max' => 20],
-                'c' => ['min' => 5,  'max' => 15],
-                'o' => ['min' => 0,  'max' => 20],
-            ],
-        ];
+        return AdminSettingController::defaultPaCriteria();
     }
 
     // ══ RBAC ═════════════════════════════════════════════════════════
