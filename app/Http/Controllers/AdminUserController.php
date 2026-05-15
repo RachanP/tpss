@@ -66,7 +66,7 @@ class AdminUserController extends Controller
             'name'         => 'required|string|max:255',
             'email'        => 'required|string|email|max:255|unique:users',
             'password'     => 'required|string|min:8',
-            'employee_id'  => 'nullable|string|max:50|unique:users,employee_id',
+            'employee_id'  => "$reqEmpl|string|max:50|unique:users,employee_id",
             'roles'        => 'required|array|min:1',
             'primary_role' => ['required', 'string', Rule::in($roles)],
             'is_active'    => 'boolean',
@@ -183,7 +183,7 @@ class AdminUserController extends Controller
             'name'         => 'required|string|max:255',
             'email'        => 'required|string|email|max:255|unique:users,email,' . $user->id,
             'password'     => 'nullable|string|min:8',
-            'employee_id'  => 'nullable|string|max:50|unique:users,employee_id,' . $user->id,
+            'employee_id'  => "$reqEmpl|string|max:50|unique:users,employee_id," . $user->id,
             'roles'        => 'required|array|min:1',
             'primary_role' => ['required', 'string', Rule::in($roles)],
             'is_active'    => 'required|boolean',
@@ -380,6 +380,7 @@ class AdminUserController extends Controller
                 if (empty(trim($csv['academic_degree'] ?? ''))) $missingFields[] = 'academic_degree';
                 if ($needsDept && empty(trim($csv['department_name'] ?? ''))) $missingFields[] = 'department_name';
                 if ($isInstructor) {
+                    if (empty(trim($csv['employee_id'] ?? '')))    $missingFields[] = 'employee_id';
                     if (empty(trim($csv['employment_type'] ?? ''))) $missingFields[] = 'employment_type';
                     if (empty(trim($csv['hired_date'] ?? '')))      $missingFields[] = 'hired_date';
                 }

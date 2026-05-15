@@ -1,5 +1,16 @@
 <x-app-layout title="แจ้งเตือน Master Data">
-    <div style="padding: 2rem;" x-data="{ showDismissModal: false }">
+    @php
+        $allWarningDefs = [
+            ['key' => 'departments',  'label' => 'ภาควิชา',             'sub' => 'ขาดหัวหน้าภาค / เลขานุการ',          'count' => $departmentsWithIssues->count()],
+            ['key' => 'rooms',        'label' => 'ห้อง / สถานที่',       'sub' => 'ขาด capacity หรือชื่อห้อง',           'count' => $roomsWithIssues->count()],
+            ['key' => 'course_staff', 'label' => 'รายวิชา', 'sub' => 'วิชาที่ยังไม่มีเจ้าหน้าที่ดูแล', 'count' => $coursesWithoutStaff->count()],
+        ];
+    @endphp
+
+    <div style="padding: 2rem;" x-data="{
+        showDismissModal: false,
+        dismissed: {{ Js::from($dismissedWarnings) }}
+    }">
 
         {{-- Header --}}
         <div style="margin-bottom: 1.5rem; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;">
@@ -12,18 +23,19 @@
                     <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                 </svg>
                 ตั้งค่าการแจ้งเตือน
-                @if(count($dismissedWarnings) > 0)
-                    <span style="margin-left: 6px; background: var(--fg-3); color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 10px;">{{ count($dismissedWarnings) }} ปิดอยู่</span>
-                @endif
+                <span x-show="dismissed.length > 0" style="margin-left: 6px; background: var(--fg-3); color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 10px;" x-text="dismissed.length + ' ปิดอยู่'"></span>
             </button>
         </div>
 
         {{-- ══ DISMISS MODAL ══════════════════════════════════════════ --}}
         <template x-if="showDismissModal">
             <div class="overlay" @click.self="showDismissModal = false">
-                <div class="modal-center" style="max-width: 480px;">
+                <div class="modal-center" style="max-width: 500px;">
                     <div class="modal-hdr">
-                        <div class="modal-ttl" style="font-family: var(--font-display);">ตั้งค่าการแจ้งเตือน Warning</div>
+                        <div>
+                            <div class="modal-ttl" style="font-family: var(--font-display);">ตั้งค่าการแจ้งเตือน</div>
+                            <div style="font-size: 11px; color: var(--fg-3); margin-top: 2px;">เปิด/ปิดการนับ Warning ใน badge — Critical ปิดไม่ได้</div>
+                        </div>
                         <button type="button" class="modal-cls" @click="showDismissModal = false">
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
                                 <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -33,34 +45,49 @@
 
                     <form action="{{ route('admin.alerts.dismissed') }}" method="POST" style="display: flex; flex-direction: column; min-height: 0;">
                         @csrf
+                        {{-- Hidden inputs generated from Alpine state --}}
+                        <template x-for="key in dismissed" :key="key">
+                            <input type="hidden" name="dismissed[]" :value="key">
+                        </template>
+
                         <div class="modal-body" style="padding: 0;">
-                            <div style="padding: 10px 20px 8px; font-size: 11px; color: var(--fg-3); line-height: 1.6; border-bottom: 1px solid var(--border);">
-                                Warning ที่ปิดจะไม่นับใน badge บน sidebar — แต่ยังแสดงบนหน้านี้ในสถานะ <em>ปิดแจ้งเตือน</em><br>
-                                Critical ไม่สามารถปิดได้
-                            </div>
-                            @php
-                                $allWarnings = [
-                                    ['key' => 'departments',  'label' => 'ภาควิชา',             'sub' => 'ขาดหัวหน้าภาค / เลขานุการ'],
-                                    ['key' => 'instructors',  'label' => 'อาจารย์',              'sub' => 'ข้อมูลบุคลากรไม่ครบ'],
-                                    ['key' => 'rooms',        'label' => 'ห้อง / สถานที่',       'sub' => 'ขาด capacity หรือชื่อห้อง'],
-                                    ['key' => 'courses',      'label' => 'ผู้ประสานงานวิชา',     'sub' => 'วิชาที่ยังไม่มีผู้ประสานงาน'],
-                                    ['key' => 'course_staff', 'label' => 'เจ้าหน้าที่ดูแลวิชา', 'sub' => 'วิชาที่ยังไม่มีเจ้าหน้าที่'],
-                                ];
-                            @endphp
-                            @foreach($allWarnings as $w)
-                            @php $isDismissed = in_array($w['key'], $dismissedWarnings); @endphp
-                            <label style="display: flex; align-items: center; gap: 14px; padding: 11px 20px; cursor: pointer; border-bottom: 1px solid var(--border); background: {{ $isDismissed ? 'var(--bg-2)' : 'transparent' }};">
-                                <input type="checkbox" name="dismissed[]" value="{{ $w['key'] }}"
-                                       {{ $isDismissed ? 'checked' : '' }}
-                                       style="width: 16px; height: 16px; flex-shrink: 0; accent-color: var(--brand-navy); cursor: pointer;">
-                                <div style="flex: 1; min-width: 0; {{ $isDismissed ? 'opacity: 0.55;' : '' }}">
-                                    <div style="font-size: 13px; font-weight: 600; color: var(--fg-1);">{{ $w['label'] }}</div>
-                                    <div style="font-size: 11px; color: var(--fg-3); margin-top: 1px;">{{ $w['sub'] }}</div>
+                            @foreach($allWarningDefs as $w)
+                            @php $key = $w['key']; @endphp
+                            <div style="display: flex; align-items: center; gap: 14px; padding: 13px 20px; border-bottom: 1px solid var(--border);"
+                                 :style="{ background: dismissed.includes('{{ $key }}') ? 'var(--bg-2)' : 'transparent' }">
+
+                                {{-- Text info --}}
+                                <div style="flex: 1; min-width: 0;"
+                                     :style="{ opacity: dismissed.includes('{{ $key }}') ? '0.5' : '1' }">
+                                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 3px;">
+                                        <span style="font-size: 11px; color: var(--fg-3);">แจ้งเตือน</span>
+                                        <span style="font-size: 11px; font-weight: 700; background: var(--bg-2); border: 1px solid var(--border); color: var(--fg-1); padding: 1px 8px; border-radius: 4px;">{{ $w['label'] }}</span>
+                                    </div>
+                                    <div style="font-size: 12px; color: var(--fg-2);">
+                                        {{ $w['sub'] }}
+                                        @if($w['count'] > 0)
+                                            <span style="color: var(--status-warning-fg); font-weight: 600;"> — {{ $w['count'] }} รายการ</span>
+                                        @else
+                                            <span style="color: var(--fg-3);"> — ไม่มีปัญหา</span>
+                                        @endif
+                                    </div>
                                 </div>
-                                @if($isDismissed)
-                                    <span style="font-size: 10px; color: var(--fg-3); background: var(--bg-1); border: 1px solid var(--border); padding: 2px 8px; border-radius: 10px; white-space: nowrap;">ปิดอยู่</span>
-                                @endif
-                            </label>
+
+                                {{-- Toggle switch --}}
+                                <div style="width: 44px; height: 26px; border-radius: 13px; flex-shrink: 0; cursor: pointer; position: relative; transition: background 200ms; background: #1b3c73;"
+                                     :style="{ background: dismissed.includes('{{ $key }}') ? '#9ca3af' : '#1b3c73' }"
+                                     @click="dismissed.includes('{{ $key }}') ? dismissed = dismissed.filter(k => k !== '{{ $key }}') : dismissed.push('{{ $key }}')">
+                                    <div style="position: absolute; top: 4px; width: 18px; height: 18px; border-radius: 50%; background: #ffffff; box-shadow: 0 1px 4px rgba(0,0,0,0.35); transition: transform 200ms; transform: translateX(22px);"
+                                         :style="{ transform: dismissed.includes('{{ $key }}') ? 'translateX(4px)' : 'translateX(22px)' }"></div>
+                                </div>
+
+                                {{-- Label --}}
+                                <div style="width: 52px; text-align: right; flex-shrink: 0;">
+                                    <span style="font-size: 11px; font-weight: 600;"
+                                          :style="{ color: dismissed.includes('{{ $key }}') ? '#9ca3af' : '#1b3c73' }"
+                                          x-text="dismissed.includes('{{ $key }}') ? 'ปิดอยู่' : 'เปิดอยู่'"></span>
+                                </div>
+                            </div>
                             @endforeach
                         </div>
                         <div class="modal-foot">
@@ -159,16 +186,6 @@
                     'key'     => 'departments',
                 ],
                 [
-                    'title'   => 'อาจารย์',
-                    'sub'     => 'ข้อมูลบุคลากรไม่ครบ',
-                    'icon'    => '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
-                    'count'   => $instructorsWithIssues->count(),
-                    'unit'    => 'ท่าน',
-                    'link'    => route('admin.master_data') . '?tab=instructors',
-                    'linkTxt' => 'ไปจัดการอาจารย์',
-                    'key'     => 'instructors',
-                ],
-                [
                     'title'   => 'ห้อง / สถานที่',
                     'sub'     => 'ข้อมูลห้องไม่ครบ',
                     'icon'    => '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
@@ -177,16 +194,6 @@
                     'link'    => route('admin.master_data') . '?tab=rooms',
                     'linkTxt' => 'ไปจัดการห้อง',
                     'key'     => 'rooms',
-                ],
-                [
-                    'title'   => 'รายวิชา',
-                    'sub'     => 'ยังไม่มีผู้ประสานงาน',
-                    'icon'    => '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
-                    'count'   => $coursesWithoutCoordinator->count(),
-                    'unit'    => 'วิชา',
-                    'link'    => route('admin.master_data') . '?tab=courses',
-                    'linkTxt' => 'ไปจัดการรายวิชา',
-                    'key'     => 'courses',
                 ],
                 [
                     'title'   => 'รายวิชา',
@@ -274,19 +281,6 @@
                             </tbody>
                         </table>
 
-                        @elseif($sec['key'] === 'instructors')
-                        <table>
-                            <thead><tr><th>ชื่อ-นามสกุล</th><th>ขาด</th></tr></thead>
-                            <tbody>
-                                @foreach($instructorsWithIssues as $item)
-                                <tr>
-                                    <td style="font-weight:600;color:var(--fg-1);">{{ $item['user']->formatted_name }}<div style="font-size:11px;color:var(--fg-3);">{{ $item['user']->instructorProfile->department->name ?? '' }}</div></td>
-                                    <td>@foreach($item['missing'] as $m)<span class="pill p-warning" style="margin-right:3px;margin-bottom:2px;">{{ $m }}</span>@endforeach</td>
-                                </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-
                         @elseif($sec['key'] === 'rooms')
                         <table>
                             <thead><tr><th>ห้อง</th><th>ประเภท</th><th>ขาด</th></tr></thead>
@@ -299,20 +293,6 @@
                                         @if(empty($room->room_name))<span class="pill p-conflict" style="margin-right:3px;">ไม่มีชื่อ</span>@endif
                                         @if(empty($room->capacity)||$room->capacity==0)<span class="pill p-warning">ความจุ 0</span>@endif
                                     </td>
-                                </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-
-                        @elseif($sec['key'] === 'courses')
-                        <table>
-                            <thead><tr><th>รหัส</th><th>ชื่อวิชา</th><th>ขาด</th></tr></thead>
-                            <tbody>
-                                @foreach($coursesWithoutCoordinator as $course)
-                                <tr>
-                                    <td style="font-weight:600;color:var(--fg-2);white-space:nowrap;">{{ $course->course_code }}</td>
-                                    <td style="font-weight:600;color:var(--fg-1);">{{ $course->name_th }}</td>
-                                    <td><span class="pill p-warning">ไม่มีผู้ประสานงาน</span></td>
                                 </tr>
                                 @endforeach
                             </tbody>

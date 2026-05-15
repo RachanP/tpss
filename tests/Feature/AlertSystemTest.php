@@ -165,6 +165,18 @@ class AlertSystemTest extends TestCase
         $this->assertEquals(0, $summary['critical']);
     }
 
+    public function test_get_summary_does_not_have_courses_key(): void
+    {
+        $summary = AlertController::getSummary();
+        $this->assertArrayNotHasKey('courses', $summary);
+    }
+
+    public function test_get_summary_does_not_have_instructors_key(): void
+    {
+        $summary = AlertController::getSummary();
+        $this->assertArrayNotHasKey('instructors', $summary);
+    }
+
     public function test_get_summary_is_cached(): void
     {
         $this->seedMinimalCriticals();
@@ -245,6 +257,17 @@ class AlertSystemTest extends TestCase
         $this->assertNotEmpty($violations);
         $issues = collect($violations[0]['issues']);
         $this->assertTrue($issues->contains(fn($i) => str_contains($i, 'วิจัย')));
+    }
+
+    public function test_sum_violation_does_not_also_report_range_violations(): void
+    {
+        SystemSetting::set('pa_criteria_config', json_encode($this->defaultPaCriteria()));
+        // sum = 95 ≠ 100 AND teaching=90 > max=70, but range check should be skipped
+        $this->makeInstructor(['teaching_pct' => 90, 'research_pct' => 5, 'service_pct' => 0, 'culture_pct' => 0, 'other_pct' => 0]);
+
+        $violations = AlertController::getPaViolations();
+        $this->assertCount(1, $violations[0]['issues']);
+        $this->assertStringContainsString('95%', $violations[0]['issues'][0]);
     }
 
     public function test_instructor_without_profile_is_skipped(): void

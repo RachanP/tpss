@@ -35,30 +35,12 @@ class AlertController extends Controller
                 return ['dept' => $dept, 'missing' => $missing];
             });
 
-        $instructorsWithIssues = User::whereHas('roles', fn($q) => $q->where('role', 'instructor'))
-            ->with(['instructorProfile.department'])
-            ->get()
-            ->map(function ($user) {
-                $profile = $user->instructorProfile;
-                $missing = [];
-                if (empty($user->email))                        $missing[] = 'ไม่มี Email';
-                if (empty($user->employee_id))                  $missing[] = 'ไม่มีรหัสพนักงาน';
-                if (!$profile)                                  $missing[] = 'ไม่มีข้อมูลโปรไฟล์';
-                elseif (empty($profile->title))                 $missing[] = 'ไม่มีตำแหน่งทางวิชาการ';
-                if ($profile && empty($profile->department_id)) $missing[] = 'ไม่ระบุภาควิชา';
-                return $missing ? ['user' => $user, 'missing' => $missing] : null;
-            })
-            ->filter()->values();
-
         $roomsWithIssues = Room::where(function ($q) {
                 $q->whereNull('capacity')->orWhere('capacity', 0)
                   ->orWhereNull('room_name')->orWhere('room_name', '');
             })
             ->whereHas('locationType', fn($q) => $q->where('requires_capacity', true))
             ->with('locationType')->get();
-
-        $coursesWithoutCoordinator = Course::whereNull('head_instructor_id')
-            ->with(['curriculum', 'department'])->get();
 
         $coursesWithoutStaff = Course::doesntHave('assignedStaff')
             ->with(['curriculum', 'department'])->get();
@@ -69,9 +51,7 @@ class AlertController extends Controller
             'criticals',
             'paViolations',
             'departmentsWithIssues',
-            'instructorsWithIssues',
             'roomsWithIssues',
-            'coursesWithoutCoordinator',
             'coursesWithoutStaff',
             'dismissedWarnings',
         ));
@@ -79,7 +59,7 @@ class AlertController extends Controller
 
     public function updateDismissed(Request $request)
     {
-        $valid = ['departments', 'instructors', 'rooms', 'courses', 'course_staff'];
+        $valid = ['departments', 'rooms', 'course_staff'];
         $dismissed = array_values(array_intersect($request->input('dismissed', []), $valid));
         SystemSetting::set('dismissed_warnings', json_encode($dismissed));
         self::flushCache();
@@ -137,31 +117,17 @@ class AlertController extends Controller
                 $q->whereNull('head_user_id')->orWhereNull('secretary_user_id');
             })->count();
 
-            $instructorCount = User::whereHas('roles', fn($q) => $q->where('role', 'instructor'))
-                ->where(function ($q) {
-                    $q->whereNull('email')->orWhere('email', '')
-                      ->orWhereNull('employee_id')->orWhere('employee_id', '')
-                      ->orWhereDoesntHave('instructorProfile')
-                      ->orWhereHas('instructorProfile', fn($pq) =>
-                          $pq->whereNull('title')->orWhere('title', '')->orWhereNull('department_id')
-                      );
-                })
-                ->count();
-
             $roomCount = Room::where(function ($q) {
                 $q->whereNull('capacity')->orWhere('capacity', 0)
                   ->orWhereNull('room_name')->orWhere('room_name', '');
             })->whereHas('locationType', fn($q) => $q->where('requires_capacity', true))->count();
 
-            $courseCount      = Course::whereNull('head_instructor_id')->count();
             $courseStaffCount = Course::doesntHave('assignedStaff')->count();
 
             $dismissed = self::getDismissedWarnings();
             $counts = [
                 'departments'  => in_array('departments',  $dismissed) ? 0 : $deptCount,
-                'instructors'  => in_array('instructors',  $dismissed) ? 0 : $instructorCount,
                 'rooms'        => in_array('rooms',        $dismissed) ? 0 : $roomCount,
-                'courses'      => in_array('courses',      $dismissed) ? 0 : $courseCount,
                 'course_staff' => in_array('course_staff', $dismissed) ? 0 : $courseStaffCount,
             ];
             $warningCount = array_sum($counts);
@@ -204,16 +170,12 @@ class AlertController extends Controller
                 ];
 
                 $issues = [];
+                $group  = self::paGroup($profile->title ?? '', $profile->academic_degree ?? '');
 
-                // sum check
                 $sum = array_sum($pcts);
                 if ($sum !== 100) {
                     $issues[] = 'รวม ' . $sum . '% (ต้องเท่ากับ 100%)';
-                }
-
-                // range check
-                $group = self::paGroup($profile->title ?? '', $profile->academic_degree ?? '');
-                if (isset($criteria[$group])) {
+                } elseif (isset($criteria[$group])) {
                     foreach ($pcts as $f => $val) {
                         $range = $criteria[$group][$f] ?? null;
                         if (!$range) continue;

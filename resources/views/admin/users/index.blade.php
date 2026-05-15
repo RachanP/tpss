@@ -622,9 +622,13 @@
                                         placeholder="email@mahidol.ac.th">
                                 </div>
                                 <div class="form-group" style="flex: 0 0 160px;">
-                                    <label>รหัสพนักงาน</label>
+                                    <label>
+                                        รหัสพนักงาน
+                                        <span x-show="currentUser.roles.includes('instructor')" style="color: var(--status-conflict-fg);">*</span>
+                                    </label>
                                     <input type="text" name="employee_id" x-model="currentUser.employee_id"
-                                        placeholder="เช่น 52123">
+                                        placeholder="เช่น 52123"
+                                        :required="currentUser.roles.includes('instructor')">
                                 </div>
                             </div>
 
