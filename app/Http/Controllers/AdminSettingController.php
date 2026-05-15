@@ -75,8 +75,7 @@ class AdminSettingController extends Controller
 
         AcademicYear::create($validated);
 
-        $settingsRoute = request()->routeIs('staff.*') ? 'staff.settings' : 'admin.settings';
-        return redirect()->route($settingsRoute, ['tab' => 'academic'])->with('success', 'เพิ่มปีการศึกษาเรียบร้อยแล้ว');
+        return redirect()->route($this->settingsRoute(), ['tab' => 'academic'])->with('success', 'เพิ่มปีการศึกษาเรียบร้อยแล้ว');
     }
 
     public function updateYear(Request $request, AcademicYear $year)
@@ -94,8 +93,7 @@ class AdminSettingController extends Controller
         $validated['is_active'] = $request->has('is_active');
 
         if (!$validated['is_active'] && $year->is_active) {
-            $settingsRoute = request()->routeIs('staff.*') ? 'staff.settings' : 'admin.settings';
-            return redirect()->route($settingsRoute, ['tab' => 'academic'])
+            return redirect()->route($this->settingsRoute(), ['tab' => 'academic'])
                 ->with('error', 'ไม่สามารถยกเลิกปีการศึกษาปัจจุบันได้ — ต้องมีปีการศึกษาที่ใช้งานอยู่เสมอ กรุณาตั้งค่าปีการศึกษาอื่นเป็นปัจจุบันก่อน');
         }
 
@@ -124,8 +122,12 @@ class AdminSettingController extends Controller
 
         $year->update($validated);
 
-        $settingsRoute = request()->routeIs('staff.*') ? 'staff.settings' : 'admin.settings';
-        return redirect()->route($settingsRoute, ['tab' => 'academic'])->with('success', 'อัปเดตปีการศึกษาเรียบร้อยแล้ว');
+        return redirect()->route($this->settingsRoute(), ['tab' => 'academic'])->with('success', 'อัปเดตปีการศึกษาเรียบร้อยแล้ว');
+    }
+
+    private function settingsRoute(): string
+    {
+        return request()->routeIs('staff.*') ? 'staff.settings' : 'admin.settings';
     }
 
     public function updateConstants(Request $request)

@@ -9,7 +9,7 @@
         showModal: {{ $errors->hasAny(['name', 'end_date']) ? 'true' : 'false' }},
         editMode: {{ ($errors->hasAny(['name', 'end_date'])) && old('_method') === 'PUT' ? 'true' : 'false' }},
         currentYear: {
-            id: '',
+            id: '{{ old('year_id', '') }}',
             name: '{{ old('name', '') }}',
             semester: '{{ old('semester', '1') }}',
             start_date: '{{ old('start_date', '') }}',
@@ -144,7 +144,7 @@
 
         <!-- Add/Edit Modal (Academic Year) -->
         <template x-if="showModal && activeTab === 'academic'">
-            <div class="overlay" x-cloak>
+            <div class="overlay" x-cloak @keydown.escape.window="showModal = false">
                 <div class="modal-center" x-transition:enter="transition ease-out duration-300"
                     x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
                     <div class="modal-hdr" style="background: var(--bg-2);">
@@ -163,6 +163,9 @@
                         @csrf
                         <template x-if="editMode">
                             <input type="hidden" name="_method" value="PUT">
+                        </template>
+                        <template x-if="editMode">
+                            <input type="hidden" name="year_id" x-model="currentYear.id">
                         </template>
                         <div class="modal-body">
                             <div class="form-row">
