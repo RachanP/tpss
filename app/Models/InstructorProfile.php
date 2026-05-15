@@ -73,12 +73,14 @@ class InstructorProfile extends Model
         $isOutOfRange = function($value, $rule) {
             if (!$rule || $rule === '-') return false;
             $val = (int) $value;
-            
+
+            if (is_array($rule)) {
+                return $val < ($rule['min'] ?? 0) || $val > ($rule['max'] ?? 100);
+            }
             if (str_contains($rule, '≤')) {
                 $max = (int) trim(str_replace('≤', '', $rule));
                 return $val > $max;
             }
-            
             if (str_contains($rule, '-')) {
                 $parts = explode('-', $rule);
                 $min = (int) ($parts[0] ?? 0);

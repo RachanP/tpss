@@ -17,6 +17,8 @@ use Illuminate\Http\Request;
 
 class AlertController extends Controller
 {
+    private static ?array $paCache = null;
+
     public function index()
     {
         $criticals    = self::getCriticals();
@@ -36,10 +38,15 @@ class AlertController extends Controller
             });
 
         $roomsWithIssues = Room::where(function ($q) {
-                $q->whereNull('capacity')->orWhere('capacity', 0)
-                  ->orWhereNull('room_name')->orWhere('room_name', '');
+                $q->where(function ($cap) {
+                    // capacity: เฉพาะ location_type ที่ต้องการ capacity
+                    $cap->whereHas('locationType', fn($q) => $q->where('requires_capacity', true))
+                        ->where(fn($c) => $c->whereNull('capacity')->orWhere('capacity', 0));
+                })->orWhere(function ($name) {
+                    // room_name: บังคับทุก location_type
+                    $name->whereNull('room_name')->orWhere('room_name', '');
+                });
             })
-            ->whereHas('locationType', fn($q) => $q->where('requires_capacity', true))
             ->with('locationType')->get();
 
         $coursesWithoutStaff = Course::doesntHave('assignedStaff')
@@ -83,14 +90,14 @@ class AlertController extends Controller
         if (!ActivityType::exists())
             $criticals[] = ['key' => 'no_activity_type', 'label' => 'ยังไม่มีประเภทกิจกรรมในระบบ',  'link' => route('admin.master_data') . '?tab=activity_types','linkTxt' => 'เพิ่มประเภทกิจกรรม'];
         if (!LocationType::exists())
-            $criticals[] = ['key' => 'no_location_type', 'label' => 'ยังไม่มีประเภทสถานที่ในระบบ',  'link' => route('admin.master_data') . '?tab=rooms',         'linkTxt' => 'เพิ่มประเภทสถานที่'];
+            $criticals[] = ['key' => 'no_location_type', 'label' => 'ยังไม่มีประเภทสถานที่ในระบบ',  'link' => route('admin.master_data') . '?tab=location_types', 'linkTxt' => 'เพิ่มประเภทสถานที่'];
 
         $paViolations = self::getPaViolations();
         if (!empty($paViolations)) {
             $criticals[] = [
                 'key'     => 'pa_violations',
                 'label'   => 'สัดส่วน PA ไม่อยู่ในเกณฑ์ (' . count($paViolations) . ' ท่าน)',
-                'link'    => '#pa-violations',
+                'link'    => route('admin.alerts') . '#pa-violations',
                 'linkTxt' => 'ดูรายละเอียด',
             ];
         }
@@ -100,27 +107,26 @@ class AlertController extends Controller
     public static function flushCache(): void
     {
         cache()->forget('tpss_alert_summary');
+        self::$paCache = null;
     }
 
     public static function getSummary(): array
     {
         return cache()->remember('tpss_alert_summary', 300, function () {
-            $criticalCount = 0;
-            if (!AcademicYear::where('is_active', true)->exists()) $criticalCount++;
-            if (!Curriculum::exists())                             $criticalCount++;
-            if (!Department::exists())                             $criticalCount++;
-            if (!ActivityType::exists())                           $criticalCount++;
-            if (!LocationType::exists())                           $criticalCount++;
-            $criticalCount += count(self::getPaViolations());
+            $criticalCount = count(self::getCriticals());
 
             $deptCount = Department::where(function ($q) {
                 $q->whereNull('head_user_id')->orWhereNull('secretary_user_id');
             })->count();
 
             $roomCount = Room::where(function ($q) {
-                $q->whereNull('capacity')->orWhere('capacity', 0)
-                  ->orWhereNull('room_name')->orWhere('room_name', '');
-            })->whereHas('locationType', fn($q) => $q->where('requires_capacity', true))->count();
+                $q->where(function ($cap) {
+                    $cap->whereHas('locationType', fn($q) => $q->where('requires_capacity', true))
+                        ->where(fn($c) => $c->whereNull('capacity')->orWhere('capacity', 0));
+                })->orWhere(function ($name) {
+                    $name->whereNull('room_name')->orWhere('room_name', '');
+                });
+            })->count();
 
             $courseStaffCount = Course::doesntHave('assignedStaff')->count();
 
@@ -143,6 +149,8 @@ class AlertController extends Controller
 
     public static function getPaViolations(): array
     {
+        if (self::$paCache !== null) return self::$paCache;
+
         $criteria = json_decode(SystemSetting::get('pa_criteria_config', '{}'), true);
         $firstGroup = !empty($criteria) ? reset($criteria) : null;
         $firstField = $firstGroup ? reset($firstGroup) : null;
@@ -155,7 +163,7 @@ class AlertController extends Controller
         $violations = [];
 
         User::whereHas('roles', fn($q) => $q->where('role', 'instructor'))
-            ->with('instructorProfile')
+            ->with('instructorProfile.department')
             ->get()
             ->each(function ($user) use ($criteria, $fieldMap, &$violations) {
                 $profile = $user->instructorProfile;
@@ -190,15 +198,16 @@ class AlertController extends Controller
                 }
             });
 
-        return $violations;
+        return self::$paCache = $violations;
     }
 
-    private static function paGroup(string $title, string $degree): string
+    public static function paGroup(string $title, string $degree): string
     {
-        if (str_contains($title, 'คลินิก'))            return 'ผู้ช่วยอาจารย์_คลินิก';
-        if (str_contains($title, 'สอนภาคปฏิบัติ'))     return 'ผู้ช่วยอาจารย์_ปฏิบัติ';
-        if (str_contains($title, 'ผู้ช่วยอาจารย์')) {
-            if ($degree === 'ปริญญาตรี')               return 'ผู้ช่วยอาจารย์_ปตรี';
+        $isAssistant = str_contains($title, 'ผู้ช่วยอาจารย์');
+        if ($isAssistant && str_contains($title, 'คลินิก'))        return 'ผู้ช่วยอาจารย์_คลินิก';
+        if ($isAssistant && str_contains($title, 'สอนภาคปฏิบัติ')) return 'ผู้ช่วยอาจารย์_ปฏิบัติ';
+        if ($isAssistant) {
+            if ($degree === 'ปริญญาตรี')                           return 'ผู้ช่วยอาจารย์_ปตรี';
             return 'ผู้ช่วยอาจารย์';
         }
         return 'อาจารย์';

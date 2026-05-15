@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Http\Controllers\Admin\AlertController;
+use App\Http\Controllers\AdminSettingController;
 use App\Models\AcademicYear;
 use App\Models\ActivityType;
 use App\Models\Curriculum;
@@ -21,6 +22,12 @@ use Tests\TestCase;
 class AlertSystemTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        AlertController::flushCache();
+    }
 
     // ── Helpers ──────────────────────────────────────────────────────
 
@@ -64,15 +71,7 @@ class AlertSystemTest extends TestCase
 
     private function defaultPaCriteria(): array
     {
-        return [
-            'อาจารย์' => [
-                't' => ['min' => 20, 'max' => 70],
-                'r' => ['min' => 20, 'max' => 70],
-                's' => ['min' => 5,  'max' => 20],
-                'c' => ['min' => 5,  'max' => 15],
-                'o' => ['min' => 0,  'max' => 20],
-            ],
-        ];
+        return AdminSettingController::defaultPaCriteria();
     }
 
     // ══ RBAC ═════════════════════════════════════════════════════════
@@ -305,7 +304,6 @@ class AlertSystemTest extends TestCase
 
     public function test_pa_group_clinical_assistant_uses_correct_criteria(): void
     {
-        $criteria = AlertController::getSummary(); // warm up — not testing this
         SystemSetting::set('pa_criteria_config', json_encode([
             'ผู้ช่วยอาจารย์_คลินิก' => [
                 't' => ['min' => 0,  'max' => 10],
@@ -328,6 +326,34 @@ class AlertSystemTest extends TestCase
 
         $violations = AlertController::getPaViolations();
         $this->assertEmpty($violations);
+    }
+
+    public function test_pa_group_clinical_assistant_violation_when_out_of_range(): void
+    {
+        SystemSetting::set('pa_criteria_config', json_encode([
+            'ผู้ช่วยอาจารย์_คลินิก' => [
+                't' => ['min' => 0,  'max' => 10],
+                'r' => ['min' => 0,  'max' => 5],
+                's' => ['min' => 70, 'max' => 80],
+                'c' => ['min' => 0,  'max' => 5],
+                'o' => ['min' => 0,  'max' => 10],
+            ],
+        ]));
+
+        // teaching_pct=50 > max=10 for คลินิก → violation
+        $this->makeInstructor([
+            'title'        => 'ผู้ช่วยอาจารย์ (คลินิก)',
+            'teaching_pct' => 50,
+            'research_pct' => 0,
+            'service_pct'  => 45,
+            'culture_pct'  => 5,
+            'other_pct'    => 0,
+        ]);
+
+        $violations = AlertController::getPaViolations();
+        $this->assertNotEmpty($violations);
+        $issues = collect($violations[0]['issues']);
+        $this->assertTrue($issues->contains(fn($i) => str_contains($i, 'สอน')));
     }
 
     // ══ requires_capacity ════════════════════════════════════════════
