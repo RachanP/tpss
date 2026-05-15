@@ -213,13 +213,21 @@ class MasterDataController extends Controller
         $title  = $request->input('title', '');
         $degree = $request->input('academic_degree', '');
 
-        $paRules = match(true) {
-            $title === 'ผู้ช่วยอาจารย์ (คลินิก)'                          => ['teaching'=>[0,10],  'research'=>[0,5],   'service'=>[70,80], 'culture'=>[0,15], 'other'=>[0,20]],
-            $title === 'ผู้ช่วยอาจารย์ (สอนภาคปฏิบัติ)'                   => ['teaching'=>[0,70],  'research'=>[0,0],   'service'=>[5,20],  'culture'=>[0,15], 'other'=>[0,20]],
-            $title === 'ผู้ช่วยอาจารย์' && $degree === 'ปริญญาตรี'         => ['teaching'=>[30,60], 'research'=>[0,0],   'service'=>[10,30], 'culture'=>[0,15], 'other'=>[0,20]],
-            str_contains($title, 'ผู้ช่วยอาจารย์')                         => ['teaching'=>[0,70],  'research'=>[15,20], 'service'=>[5,20],  'culture'=>[0,15], 'other'=>[0,20]],
-            default                                                         => ['teaching'=>[20,70], 'research'=>[20,70], 'service'=>[5,20],  'culture'=>[5,15], 'other'=>[0,20]],
-        };
+        $paCriteria = json_decode(\App\Models\SystemSetting::get('pa_criteria_config', '{}'), true);
+        $firstGroup = !empty($paCriteria) ? reset($paCriteria) : null;
+        $firstField = $firstGroup ? reset($firstGroup) : null;
+        if (empty($paCriteria) || !is_array($firstField)) {
+            $paCriteria = \App\Http\Controllers\AdminSettingController::defaultPaCriteria();
+        }
+        $group = AlertController::paGroup($title, $degree);
+        $gc = $paCriteria[$group] ?? $paCriteria['อาจารย์'];
+        $paRules = [
+            'teaching' => [$gc['t']['min'] ?? 0, $gc['t']['max'] ?? 100],
+            'research'  => [$gc['r']['min'] ?? 0, $gc['r']['max'] ?? 100],
+            'service'   => [$gc['s']['min'] ?? 0, $gc['s']['max'] ?? 100],
+            'culture'   => [$gc['c']['min'] ?? 0, $gc['c']['max'] ?? 100],
+            'other'     => [$gc['o']['min'] ?? 0, $gc['o']['max'] ?? 100],
+        ];
 
         $request->validate([
             'name'            => 'required|string|max:255',

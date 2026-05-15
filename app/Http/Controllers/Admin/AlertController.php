@@ -90,7 +90,7 @@ class AlertController extends Controller
         if (!ActivityType::exists())
             $criticals[] = ['key' => 'no_activity_type', 'label' => 'ยังไม่มีประเภทกิจกรรมในระบบ',  'link' => route('admin.master_data') . '?tab=activity_types','linkTxt' => 'เพิ่มประเภทกิจกรรม'];
         if (!LocationType::exists())
-            $criticals[] = ['key' => 'no_location_type', 'label' => 'ยังไม่มีประเภทสถานที่ในระบบ',  'link' => route('admin.master_data') . '?tab=rooms',         'linkTxt' => 'เพิ่มประเภทสถานที่'];
+            $criticals[] = ['key' => 'no_location_type', 'label' => 'ยังไม่มีประเภทสถานที่ในระบบ',  'link' => route('admin.master_data') . '?tab=location_types', 'linkTxt' => 'เพิ่มประเภทสถานที่'];
 
         $paViolations = self::getPaViolations();
         if (!empty($paViolations)) {
@@ -201,7 +201,7 @@ class AlertController extends Controller
         return self::$paCache = $violations;
     }
 
-    private static function paGroup(string $title, string $degree): string
+    public static function paGroup(string $title, string $degree): string
     {
         $isAssistant = str_contains($title, 'ผู้ช่วยอาจารย์');
         if ($isAssistant && str_contains($title, 'คลินิก'))        return 'ผู้ช่วยอาจารย์_คลินิก';

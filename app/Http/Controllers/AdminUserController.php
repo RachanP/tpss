@@ -303,6 +303,7 @@ class AdminUserController extends Controller
                 // user_roles cascades on delete
                 $user->delete();
             });
+            \App\Http\Controllers\Admin\AlertController::flushCache();
             return redirect()->route('admin.users')->with('success', 'ลบผู้ใช้เรียบร้อยแล้ว');
         } catch (\Illuminate\Database\QueryException $e) {
             return redirect()->route('admin.users')->with('error', 'ไม่สามารถลบผู้ใช้นี้ได้ เนื่องจากมีข้อมูลผูกพันอยู่ในระบบ (เช่น เป็นหัวหน้าวิชา หรือมีตารางสอน)');
@@ -484,6 +485,7 @@ class AdminUserController extends Controller
 
         fclose($handle);
 
+        \App\Http\Controllers\Admin\AlertController::flushCache();
         $msg = "นำเข้าสำเร็จ {$successCount} รายการ";
         $redirect = redirect()->route('admin.users')->with('success', $msg);
         
