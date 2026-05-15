@@ -6,15 +6,15 @@
         workloadHoursPerWeek: {{ $workloadHoursPerWeek }},
         get totalQuota() { return this.workloadWeeks * this.workloadHoursPerWeek },
         get teachingQuota() { return this.teachingWeeks * this.workloadHoursPerWeek },
-        showModal: false,
-        editMode: false,
+        showModal: {{ $errors->hasAny(['name', 'end_date']) ? 'true' : 'false' }},
+        editMode: {{ ($errors->hasAny(['name', 'end_date'])) && old('_method') === 'PUT' ? 'true' : 'false' }},
         currentYear: {
             id: '',
-            name: '',
-            semester: '1',
-            start_date: '',
-            end_date: '',
-            is_active: false
+            name: '{{ old('name', '') }}',
+            semester: '{{ old('semester', '1') }}',
+            start_date: '{{ old('start_date', '') }}',
+            end_date: '{{ old('end_date', '') }}',
+            is_active: {{ old('is_active') ? 'true' : 'false' }}
         },
         openAddModal() {
             this.editMode = false;
@@ -169,7 +169,11 @@
                                 <div class="form-group">
                                     <label>ปีการศึกษา (พ.ศ.)</label>
                                     <input type="text" name="name" x-model="currentYear.name" required
-                                        placeholder="เช่น 2569">
+                                        placeholder="เช่น 2569"
+                                        style="{{ $errors->has('name') ? 'border-color: var(--red, #dc2626);' : '' }}">
+                                    @error('name')
+                                        <span style="color: var(--red, #dc2626); font-size: 12px; margin-top: 4px; display: block;">{{ $message }}</span>
+                                    @enderror
                                 </div>
                                 <div class="form-group">
                                     <label>ภาคเรียน</label>
@@ -187,7 +191,11 @@
                                 </div>
                                 <div class="form-group">
                                     <label>วันที่สิ้นสุด</label>
-                                    <input type="date" name="end_date" x-model="currentYear.end_date" required>
+                                    <input type="date" name="end_date" x-model="currentYear.end_date" required
+                                        style="{{ $errors->has('end_date') ? 'border-color: var(--red, #dc2626);' : '' }}">
+                                    @error('end_date')
+                                        <span style="color: var(--red, #dc2626); font-size: 12px; margin-top: 4px; display: block;">{{ $message }}</span>
+                                    @enderror
                                 </div>
                             </div>
                             <div class="form-group" style="margin-top: 16px;">

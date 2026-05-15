@@ -39,10 +39,13 @@ class AdminSettingController extends Controller
     public function storeYear(Request $request)
     {
         $validated = $request->validate([
-            'name'       => 'required|string',
+            'name'       => ['required', 'string', \Illuminate\Validation\Rule::unique('academic_years')->where('semester', $request->integer('semester'))],
             'semester'   => 'required|integer',
             'start_date' => 'required|date',
-            'end_date'   => 'required|date',
+            'end_date'   => 'required|date|after_or_equal:start_date',
+        ], [
+            'name.unique'            => 'ปีการศึกษา ' . $request->input('name') . ' ภาคเรียนที่ ' . $request->input('semester') . ' มีอยู่แล้วในระบบ',
+            'end_date.after_or_equal' => 'วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่มต้น',
         ]);
 
         $validated['is_active'] = $request->has('is_active');
@@ -72,19 +75,29 @@ class AdminSettingController extends Controller
 
         AcademicYear::create($validated);
 
-        return redirect()->back()->with('success', 'เพิ่มปีการศึกษาเรียบร้อยแล้ว');
+        $settingsRoute = request()->routeIs('staff.*') ? 'staff.settings' : 'admin.settings';
+        return redirect()->route($settingsRoute, ['tab' => 'academic'])->with('success', 'เพิ่มปีการศึกษาเรียบร้อยแล้ว');
     }
 
     public function updateYear(Request $request, AcademicYear $year)
     {
         $validated = $request->validate([
-            'name'       => 'required|string',
+            'name'       => ['required', 'string', \Illuminate\Validation\Rule::unique('academic_years')->where('semester', $request->integer('semester'))->ignore($year->id)],
             'semester'   => 'required|integer',
             'start_date' => 'required|date',
-            'end_date'   => 'required|date',
+            'end_date'   => 'required|date|after_or_equal:start_date',
+        ], [
+            'name.unique'            => 'ปีการศึกษา ' . $request->input('name') . ' ภาคเรียนที่ ' . $request->input('semester') . ' มีอยู่แล้วในระบบ',
+            'end_date.after_or_equal' => 'วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่มต้น',
         ]);
 
         $validated['is_active'] = $request->has('is_active');
+
+        if (!$validated['is_active'] && $year->is_active) {
+            $settingsRoute = request()->routeIs('staff.*') ? 'staff.settings' : 'admin.settings';
+            return redirect()->route($settingsRoute, ['tab' => 'academic'])
+                ->with('error', 'ไม่สามารถยกเลิกปีการศึกษาปัจจุบันได้ — ต้องมีปีการศึกษาที่ใช้งานอยู่เสมอ กรุณาตั้งค่าปีการศึกษาอื่นเป็นปัจจุบันก่อน');
+        }
 
         if ($validated['is_active']) {
             AcademicYear::where('id', '!=', $year->id)->where('is_active', true)->update(['is_active' => false]);
@@ -111,7 +124,8 @@ class AdminSettingController extends Controller
 
         $year->update($validated);
 
-        return redirect()->back()->with('success', 'อัปเดตปีการศึกษาเรียบร้อยแล้ว');
+        $settingsRoute = request()->routeIs('staff.*') ? 'staff.settings' : 'admin.settings';
+        return redirect()->route($settingsRoute, ['tab' => 'academic'])->with('success', 'อัปเดตปีการศึกษาเรียบร้อยแล้ว');
     }
 
     public function updateConstants(Request $request)
