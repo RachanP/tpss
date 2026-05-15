@@ -44,9 +44,17 @@ abstract class Controller
 
     protected function combineCsvRow(array $header, array $data, int $row, array &$errors): ?array
     {
-        if (count($data) !== count($header)) {
-            $errors[] = "แถว {$row}: จำนวนคอลัมน์ไม่ตรงกับหัวตาราง";
+        $headerCount = count($header);
+        $dataCount   = count($data);
+
+        if ($dataCount > $headerCount) {
+            $errors[] = "แถว {$row}: จำนวนคอลัมน์ ({$dataCount}) มากกว่าหัวตาราง ({$headerCount})";
             return null;
+        }
+
+        // Google Sheets strips trailing empty cells — pad to match header length
+        if ($dataCount < $headerCount) {
+            $data = array_pad($data, $headerCount, '');
         }
 
         $combined = array_combine($header, $data);

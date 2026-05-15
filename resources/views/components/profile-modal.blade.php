@@ -1,5 +1,5 @@
 <div x-data="{
-    open: false,
+    open: {{ $errors->has('current_password') || $errors->has('new_password') ? 'true' : 'false' }},
     currentPassword: '',
     newPassword: '',
     newPasswordConfirmation: '',
@@ -15,7 +15,7 @@
 }"
 @open-profile-modal.window="open = true">
 
-    <div class="overlay" x-show="open" x-cloak @click.self="close" style="z-index: 9999;">
+    <div class="overlay" x-show="open" x-cloak style="z-index: 9999;">
         <div class="modal-center" x-show="open" x-transition:enter="transition ease-out duration-300"
             x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" style="max-width: 500px;">
             <div class="modal-hdr" style="background: var(--bg-2);">

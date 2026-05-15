@@ -1042,7 +1042,7 @@
 
         <!-- Add/Edit Modal (Department) -->
         <template x-if="showDeptModal">
-            <div class="overlay" x-cloak @click.self="showDeptModal = false">
+            <div class="overlay" x-cloak>
                 <div class="modal-center" x-transition:enter="transition ease-out duration-300"
                     x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
                     <div class="modal-hdr" style="background: var(--bg-2);">
@@ -1143,7 +1143,7 @@
 
         <!-- Edit Instructor Modal -->
         <template x-if="showInstructorModal">
-            <div class="overlay" x-cloak @click.self="showInstructorModal = false">
+            <div class="overlay" x-cloak>
                 <div class="modal-center" style="max-width: 650px;"
                     x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95"
                     x-transition:enter-end="opacity-100 scale-100">
@@ -1246,7 +1246,7 @@
 
         <!-- Add/Edit Modal (Location Type) -->
         <template x-if="showLocTypeModal">
-            <div class="overlay" x-cloak @click.self="showLocTypeModal = false">
+            <div class="overlay" x-cloak>
                 <div class="modal-center" style="max-width: 450px;"
                     x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95"
                     x-transition:enter-end="opacity-100 scale-100">
@@ -1297,7 +1297,7 @@
 
         <!-- Add/Edit Modal (Room) -->
         <template x-if="showRoomModal">
-            <div class="overlay" x-cloak @click.self="showRoomModal = false">
+            <div class="overlay" x-cloak>
                 <div class="modal-center" style="max-width: 600px;"
                     x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95"
                     x-transition:enter-end="opacity-100 scale-100">
@@ -1394,7 +1394,7 @@
 
         <!-- Add/Edit Modal (Course) -->
         <template x-if="showCourseModal">
-            <div class="overlay" x-cloak @click.self="showCourseModal = false">
+            <div class="overlay" x-cloak>
                 <div class="modal-center" style="max-width: 800px;"
                     x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95"
                     x-transition:enter-end="opacity-100 scale-100">
@@ -1661,7 +1661,7 @@
 
         <!-- Add/Edit Modal (Curriculum) -->
         <template x-if="showCurriculumModal">
-            <div class="overlay" x-cloak @click.self="showCurriculumModal = false">
+            <div class="overlay" x-cloak>
                 <div class="modal-center" style="max-width: 450px;"
                     x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95"
                     x-transition:enter-end="opacity-100 scale-100">
@@ -1780,7 +1780,7 @@
 
         <!-- Add/Edit Modal (Activity Type) -->
         <template x-if="showActivityTypeModal">
-            <div class="overlay" x-cloak @click.self="showActivityTypeModal = false">
+            <div class="overlay" x-cloak>
                 <div class="modal-center" style="max-width: 520px;"
                     x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95"
                     x-transition:enter-end="opacity-100 scale-100">
@@ -1863,7 +1863,7 @@
 
         <!-- Clone Curriculum Modal -->
         <template x-if="showCloneCurriculumModal">
-            <div class="overlay" x-cloak @click.self="showCloneCurriculumModal = false">
+            <div class="overlay" x-cloak>
                 <div class="modal-center" x-transition:enter="transition ease-out duration-300"
                     x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
                     <div class="modal-hdr" style="background: var(--bg-2);">
@@ -1903,7 +1903,7 @@
 
         {{-- Import Room Modal --}}
         <template x-if="showImportRoomModal">
-            <div class="overlay" x-cloak @click.self="showImportRoomModal = false">
+            <div class="overlay" x-cloak>
                 <div class="modal-center" style="max-width: 480px;"
                     x-transition:enter="transition ease-out duration-200"
                     x-transition:enter-start="opacity-0 scale-95"
@@ -1968,7 +1968,7 @@
 
         {{-- Import Course Modal --}}
         <template x-if="showImportCourseModal">
-            <div class="overlay" x-cloak @click.self="showImportCourseModal = false">
+            <div class="overlay" x-cloak>
                 <div class="modal-center" style="max-width: 480px;"
                     x-transition:enter="transition ease-out duration-200"
                     x-transition:enter-start="opacity-0 scale-95"

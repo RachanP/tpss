@@ -2,9 +2,10 @@
     <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('userManagement', () => ({
-                showModal: false,
+                showModal: {{ $errors->hasAny(['username','email','employee_id','password','name','roles','primary_role','instructor_title','instructor_department_id','instructor_employment_type','instructor_hired_at','instructor_academic_degree','instructor_teaching_pct']) ? 'true' : 'false' }},
+                hasServerError: {{ $errors->any() ? 'true' : 'false' }},
                 showImportModal: false,
-                editMode: false,
+                editMode: {{ old('editing_user_id') ? 'true' : 'false' }},
                 errorMsg: '',
                 search: '',
                 teachingTotalHours: {{ \App\Models\SystemSetting::get('teaching_load_weeks', 39) * \App\Models\SystemSetting::get('teaching_quota_hours_per_week', 35) }}, 
@@ -104,6 +105,7 @@
                 openAddModal() {
                     this.editMode = false;
                     this.errorMsg = '';
+                    this.hasServerError = false;
                     this.currentUser = { id: '', username: '', prefix: '', name: '', email: '', password: '', employee_id: '', roles: ['staff'], primary_role: 'staff', is_active: 1 };
                     this.instructorProfile = { title: '', department_id: '', employment_type: 'พนักงานมหาวิทยาลัย', hired_at: '', academic_degree: 'ปริญญาโท', is_english_passed: false, teaching_pct: 0, research_pct: 0, service_pct: 0, culture_pct: 0, other_pct: 0, teaching_quota: 0, department_position: '' };
                     this.showModal = true;
@@ -111,6 +113,7 @@
                 openEditModal(user) {
                     this.editMode = true;
                     this.errorMsg = '';
+                    this.hasServerError = false;
                     this.currentUser = {
                         id: user.id,
                         username: user.username,
@@ -265,6 +268,7 @@
                 const targetUser = allUsers.find(u => String(u.id) === '{{ $oldUserId }}')
                 if (targetUser) {
                     openEditModal(targetUser);
+                    hasServerError = true;
                 } else {
                     showModal = true;
                 }
@@ -512,7 +516,7 @@
 
         <!-- Add/Edit Modal -->
         <template x-if="showModal">
-            <div class="overlay" x-cloak @click.self="showModal = false">
+            <div class="overlay" x-cloak>
                 <div class="modal-center" x-transition:enter="transition ease-out duration-300"
                     x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
                     <div class="modal-hdr" style="background: var(--bg-2);">
@@ -536,8 +540,26 @@
                         </template>
 
                         <div class="modal-body">
-                            <!-- Custom Alert UI -->
-                            <div x-show="errorMsg" style="margin-bottom: 20px; padding: 12px 16px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; display: flex; align-items: flex-start; gap: 12px;" x-transition x-cloak>
+                            <!-- Server-side validation errors -->
+                            @if($errors->any())
+                            <template x-if="hasServerError">
+                                <div style="margin-bottom: 20px; padding: 12px 16px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; display: flex; align-items: flex-start; gap: 12px;">
+                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                    </svg>
+                                    <div style="flex: 1;">
+                                        <div style="color: #991b1b; font-weight: 700; font-size: 14px; margin-bottom: 4px;">ไม่สามารถบันทึกข้อมูลได้</div>
+                                        @foreach($errors->all() as $error)
+                                            <div style="color: #b91c1c; font-size: 13px;">{{ $error }}</div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </template>
+                            @endif
+                            <!-- Client-side validation errors (Alpine) -->
+                            <div x-show="errorMsg" style="margin-bottom: 20px; padding: 12px 16px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; display: flex; align-items: flex-start; gap: 12px;" x-transition>
                                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;">
                                     <circle cx="12" cy="12" r="10"></circle>
                                     <line x1="12" y1="8" x2="12" y2="12"></line>
@@ -896,7 +918,7 @@
 
         <!-- Import CSV Modal -->
         <template x-if="showImportModal">
-            <div class="overlay" x-cloak @click.self="showImportModal = false">
+            <div class="overlay" x-cloak>
                 <div class="modal-center" style="max-width: 480px;"
                     x-transition:enter="transition ease-out duration-200"
                     x-transition:enter-start="opacity-0 scale-95"

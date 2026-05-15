@@ -144,7 +144,7 @@
 
         <!-- Add/Edit Modal (Academic Year) -->
         <template x-if="showModal && activeTab === 'academic'">
-            <div class="overlay" x-cloak @click.self="showModal = false">
+            <div class="overlay" x-cloak>
                 <div class="modal-center" x-transition:enter="transition ease-out duration-300"
                     x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
                     <div class="modal-hdr" style="background: var(--bg-2);">

@@ -77,6 +77,17 @@ class AdminUserController extends Controller
             'instructor_teaching_quota' => 'nullable|integer|min:0',
             'instructor_is_english_passed' => 'nullable|boolean',
             'instructor_department_position' => 'nullable|string|in:head,secretary',
+        ], [
+            'username.required'   => 'กรุณากรอกชื่อผู้ใช้งาน',
+            'username.unique'     => 'ชื่อผู้ใช้งานนี้มีอยู่ในระบบแล้ว กรุณาใช้ชื่ออื่น',
+            'name.required'       => 'กรุณากรอกชื่อ-นามสกุล',
+            'email.required'      => 'กรุณากรอกอีเมล',
+            'email.email'         => 'รูปแบบอีเมลไม่ถูกต้อง',
+            'email.unique'        => 'อีเมลนี้มีอยู่ในระบบแล้ว กรุณาใช้อีเมลอื่น',
+            'password.required'   => 'กรุณากรอกรหัสผ่าน',
+            'password.min'        => 'รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร',
+            'employee_id.unique'  => 'รหัสพนักงานนี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบข้อมูล',
+            'roles.required'      => 'กรุณาเลือกสิทธิ์อย่างน้อย 1 บทบาท',
         ]);
 
         if ($reqInstructor === 'required') {
@@ -171,6 +182,16 @@ class AdminUserController extends Controller
             'instructor_teaching_quota' => 'nullable|integer|min:0',
             'instructor_is_english_passed' => 'nullable|boolean',
             'instructor_department_position' => 'nullable|string|in:head,secretary',
+        ], [
+            'username.required'   => 'กรุณากรอกชื่อผู้ใช้งาน',
+            'username.unique'     => 'ชื่อผู้ใช้งานนี้มีอยู่ในระบบแล้ว กรุณาใช้ชื่ออื่น',
+            'name.required'       => 'กรุณากรอกชื่อ-นามสกุล',
+            'email.required'      => 'กรุณากรอกอีเมล',
+            'email.email'         => 'รูปแบบอีเมลไม่ถูกต้อง',
+            'email.unique'        => 'อีเมลนี้มีอยู่ในระบบแล้ว กรุณาใช้อีเมลอื่น',
+            'password.min'        => 'รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร',
+            'employee_id.unique'  => 'รหัสพนักงานนี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบข้อมูล',
+            'roles.required'      => 'กรุณาเลือกสิทธิ์อย่างน้อย 1 บทบาท',
         ]);
 
         if ($reqInstructor === 'required') {
