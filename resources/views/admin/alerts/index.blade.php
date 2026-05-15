@@ -114,7 +114,7 @@
                 <div style="display: flex; align-items: center; gap: 14px; padding: 13px 18px; background: color-mix(in oklch, var(--status-conflict) 5%, white); {{ !$loop->last ? 'border-bottom: 1px solid color-mix(in oklch, var(--status-conflict) 18%, white);' : '' }}">
                     <div style="width: 6px; height: 6px; border-radius: 50%; background: var(--status-conflict); flex-shrink: 0;"></div>
                     <span style="flex: 1; font-size: 13px; font-weight: 600; color: var(--status-conflict-fg);">{{ $c['label'] }}</span>
-                    <a href="{{ $c['link'] }}" style="font-size: 12px; color: var(--brand-navy); text-decoration: none; font-weight: 600; white-space: nowrap;">{{ $c['linkTxt'] }} →</a>
+                    <a href="{{ $c['link'] }}" class="btn btn-primary" style="font-size: 12px; white-space: nowrap; padding: 5px 12px;">{{ $c['linkTxt'] }}</a>
                 </div>
                 @endforeach
             </div>
@@ -161,7 +161,7 @@
                                     @endforeach
                                 </td>
                                 <td style="text-align: right; white-space: nowrap;">
-                                    <a href="{{ route('admin.master_data') }}?tab=instructors" style="font-size: 12px; color: var(--brand-navy); text-decoration: none; font-weight: 600;">แก้ไข →</a>
+                                    <a href="{{ route('admin.master_data') }}?tab=instructors" class="btn btn-ghost" style="font-size: 12px; padding: 4px 10px;">แก้ไข</a>
                                 </td>
                             </tr>
                             @endforeach
@@ -263,8 +263,11 @@
                 <div x-show="open" x-collapse style="border-top: 1px solid var(--border);">
 
                     {{-- Link to manage --}}
-                    <div style="padding: 8px 16px; background: var(--bg-2); border-bottom: 1px solid var(--border);">
-                        <a href="{{ $sec['link'] }}" style="font-size: 12px; color: var(--brand-navy); text-decoration: none; font-weight: 600;">{{ $sec['linkTxt'] }} →</a>
+                    <div style="padding: 10px 16px; background: var(--bg-2); border-bottom: 1px solid var(--border);">
+                        <a href="{{ $sec['link'] }}" class="btn btn-primary" style="font-size: 12px; width: 100%; justify-content: center;">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 5px;"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                            {{ $sec['linkTxt'] }}
+                        </a>
                     </div>
 
                     <div class="table-responsive" style="margin: 0; max-height: 260px; overflow-y: auto;">
