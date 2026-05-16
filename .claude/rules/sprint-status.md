@@ -42,18 +42,22 @@
 - **UserSeeder**: ราชันย์ (admin_01) เพิ่ม role `course_head`
 - **CourseSeeder**: ราชันย์ → NSBS 111, NSBS 212 / พรภิมล → NSBS 213, NSBS 221
 - **ลบ** `DevM2VisualVerificationSeeder` และ test — base seeder ครบแล้ว
-- Migration `refactor_course_offering_status_to_scheduling_window` — เพิ่ม locked/open (**จะ rollback** แล้วทำ `academic_years.phase` แทน)
+- Migration `refactor_course_offering_status_to_scheduling_window` — สร้างไว้แล้วแต่ถูกแทนที่ด้วย migration ใหม่ 2 ตัว
 - ScheduleController (M3 foundation): index, create, store — เพื่อนทำไว้แล้ว
+
+## Sprint 3 (M2) — งานที่เสร็จเพิ่ม (16 พ.ค. session 2)
+
+- ✅ Rollback migration locked/open → migration `add_phase_to_academic_years_table` + `drop_status_from_course_offerings_table`
+- ✅ `AdminSettingController::openSchedulingWindow` / `closeSchedulingWindow` — ใช้ phase, auto-create offerings, DB::transaction
+- ✅ Settings tab "ช่วงจัดตาราง" — phase badge + open/close buttons (admin-only)
+- ✅ CourseHead index view — phase badge column, ไม่มี archive toggle
+- ✅ CourseHead show view — phase lock banner, read-only mode เมื่อ preparation, ลบ archive section
+- ✅ ScheduleController guard — `?->phase !== 'scheduling'` ทั้ง create และ store
+- ✅ Tests: `SchedulingPhaseTest` (13 tests), fix stale helpers ใน CourseOfferingManagementTest + ScheduleManagementTest
 
 ## Sprint 3 (M2) — งานที่ยังค้าง
 
-- [ ] Rollback migration locked/open → ทำ migration `add_phase_to_academic_years_table` แทน
-- [ ] `AdminSettingController::openSchedulingWindow` / `closeSchedulingWindow` — ปรับให้ใช้ phase แทน bulk status
-- [ ] Settings tab "ช่วงจัดตาราง" (admin only) — แสดงสถานะ phase ต่อ academic year + ปุ่มเปลี่ยน phase
-- [ ] CourseHead index view — แสดง phase ของ academic year, disable ปุ่มจัดตารางถ้า phase = preparation
-- [ ] CourseHead show view — ลบ archive section, แสดง phase status
-- [ ] ScheduleController guard — ห้ามสร้าง schedule ถ้า `academic_year.phase != 'scheduling'`
-- [ ] Course offering index: แสดง capacity จาก `courses.capacity` แทน total_student_count
+- [ ] Course offering index: แสดง capacity จาก `courses.capacity` แทน total_student_count (minor UI)
 
 ## Design Decisions (ตกลงแล้ว 16 พ.ค.)
 
