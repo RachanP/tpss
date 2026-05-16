@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Course extends Model
 {
@@ -58,5 +59,30 @@ class Course extends Model
     public function assignedStaff(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'course_staff');
+    }
+
+    public function courseOfferings(): HasMany
+    {
+        return $this->hasMany(CourseOffering::class);
+    }
+
+    public function prerequisites(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Course::class,
+            'course_prerequisites',
+            'course_id',
+            'prerequisite_course_id'
+        );
+    }
+
+    public function requiredBy(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Course::class,
+            'course_prerequisites',
+            'prerequisite_course_id',
+            'course_id'
+        );
     }
 }

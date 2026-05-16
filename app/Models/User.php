@@ -7,6 +7,8 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -52,6 +54,23 @@ class User extends Authenticatable
     public function instructorProfile()
     {
         return $this->hasOne(InstructorProfile::class);
+    }
+
+    public function coordinatedCourseOfferings(): HasMany
+    {
+        return $this->hasMany(CourseOffering::class, 'coordinator_id');
+    }
+
+    public function courseOfferingAssignments(): BelongsToMany
+    {
+        return $this->belongsToMany(CourseOffering::class, 'course_offering_instructors')
+            ->withPivot('role_in_course');
+    }
+
+    public function schedules(): BelongsToMany
+    {
+        return $this->belongsToMany(Schedule::class, 'schedule_instructors')
+            ->withPivot('is_lead');
     }
 
     public function headOfDepartments()
