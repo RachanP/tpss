@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\AcademicYear;
+use App\Models\Course;
+use App\Models\CourseOffering;
 use App\Models\SystemSetting;
 use App\Http\Controllers\Admin\AlertController;
 
@@ -136,11 +138,34 @@ class AdminSettingController extends Controller
                 ->with('error', "ปีการศึกษา {$year->name} ภาค {$year->semester} เผยแพร่แล้ว ไม่สามารถย้อนกลับได้");
         }
 
+        // Auto-create offerings for all active courses matching this semester
+        $courses = Course::where('status', 'active')
+            ->where('default_semester', $year->semester)
+            ->whereNotNull('head_instructor_id')
+            ->get();
+
+        $created = 0;
+        foreach ($courses as $course) {
+            $exists = CourseOffering::where('course_id', $course->id)
+                ->where('academic_year_id', $year->id)
+                ->exists();
+
+            if (!$exists) {
+                CourseOffering::create([
+                    'course_id'       => $course->id,
+                    'academic_year_id'=> $year->id,
+                    'coordinator_id'  => $course->head_instructor_id,
+                    'approval_status' => 'draft',
+                ]);
+                $created++;
+            }
+        }
+
         $year->update(['phase' => 'scheduling']);
 
         return redirect()
             ->route('admin.settings', ['tab' => 'scheduling'])
-            ->with('success', "เปิดช่วงจัดตารางสำหรับปีการศึกษา {$year->name} ภาค {$year->semester} แล้ว — หัวหน้าวิชาทุกท่านสามารถจัดตารางได้");
+            ->with('success', "เปิดช่วงจัดตารางสำหรับปีการศึกษา {$year->name} ภาค {$year->semester} แล้ว — สร้าง {$created} รายวิชาใหม่ หัวหน้าวิชาทุกท่านสามารถจัดตารางได้");
     }
 
     public function closeSchedulingWindow(AcademicYear $year)
