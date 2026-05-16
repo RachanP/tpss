@@ -8,6 +8,7 @@ use App\Models\Course;
 use App\Models\CourseOffering;
 use App\Models\SystemSetting;
 use App\Http\Controllers\Admin\AlertController;
+use Illuminate\Support\Facades\DB;
 
 class AdminSettingController extends Controller
 {
@@ -145,27 +146,32 @@ class AdminSettingController extends Controller
             ->get();
 
         $created = 0;
-        foreach ($courses as $course) {
-            $exists = CourseOffering::where('course_id', $course->id)
-                ->where('academic_year_id', $year->id)
-                ->exists();
+        DB::transaction(function () use ($courses, $year, &$created) {
+            foreach ($courses as $course) {
+                $exists = CourseOffering::where('course_id', $course->id)
+                    ->where('academic_year_id', $year->id)
+                    ->exists();
 
-            if (!$exists) {
-                CourseOffering::create([
-                    'course_id'       => $course->id,
-                    'academic_year_id'=> $year->id,
-                    'coordinator_id'  => $course->head_instructor_id,
-                    'approval_status' => 'draft',
-                ]);
-                $created++;
+                if (!$exists) {
+                    CourseOffering::create([
+                        'course_id'       => $course->id,
+                        'academic_year_id'=> $year->id,
+                        'coordinator_id'  => $course->head_instructor_id,
+                        'approval_status' => 'draft',
+                    ]);
+                    $created++;
+                }
             }
-        }
 
-        $year->update(['phase' => 'scheduling']);
+            $year->update(['phase' => 'scheduling']);
+        });
+
+        $total = CourseOffering::where('academic_year_id', $year->id)->count();
+        $newMsg = $created > 0 ? "สร้างใหม่ {$created} รายวิชา" : "ไม่มีรายวิชาใหม่";
 
         return redirect()
             ->route('admin.settings', ['tab' => 'scheduling'])
-            ->with('success', "เปิดช่วงจัดตารางสำหรับปีการศึกษา {$year->name} ภาค {$year->semester} แล้ว — สร้าง {$created} รายวิชาใหม่ หัวหน้าวิชาทุกท่านสามารถจัดตารางได้");
+            ->with('success', "เปิดช่วงจัดตารางสำหรับปีการศึกษา {$year->name} ภาค {$year->semester} แล้ว — {$newMsg} รวม {$total} รายวิชาพร้อมจัดตาราง");
     }
 
     public function closeSchedulingWindow(AcademicYear $year)

@@ -71,10 +71,10 @@ class ScheduleManagementTest extends TestCase
             ->assertSee($group->group_code);
     }
 
-    public function test_archived_offering_cannot_open_create_or_store_schedule(): void
+    public function test_preparation_phase_blocks_create_and_store_schedule(): void
     {
         $head = $this->makeUser('course_head');
-        $offering = $this->makeOffering($head, ['status' => 'archived']);
+        $offering = $this->makeOffering($head, ['phase' => 'preparation']);
         $instructor = $this->makeUser('instructor');
         $group = $this->makeStudentGroup($offering, 'A1', 20);
         $activityType = $this->activityType();
@@ -264,10 +264,9 @@ class ScheduleManagementTest extends TestCase
 
         return CourseOffering::create([
             'course_id' => $course->id,
-            'academic_year_id' => $this->academicYear($number)->id,
+            'academic_year_id' => $this->academicYear($number, $overrides['phase'] ?? 'scheduling')->id,
             'coordinator_id' => $coordinator->id,
             'approval_status' => 'draft',
-            'status' => $overrides['status'] ?? 'active',
             'total_student_count' => $overrides['total_student_count'] ?? 60,
             'planned_lecture_hours' => 2,
             'planned_lab_hours' => 1,
@@ -360,7 +359,7 @@ class ScheduleManagementTest extends TestCase
         ]);
     }
 
-    private function academicYear(int $number): AcademicYear
+    private function academicYear(int $number, string $phase = 'scheduling'): AcademicYear
     {
         return AcademicYear::create([
             'name' => "2569-SCH-{$number}",
@@ -368,6 +367,7 @@ class ScheduleManagementTest extends TestCase
             'start_date' => '2026-08-01',
             'end_date' => '2026-12-31',
             'is_active' => true,
+            'phase' => $phase,
         ]);
     }
 }

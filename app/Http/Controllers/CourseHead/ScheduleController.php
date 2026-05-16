@@ -39,7 +39,7 @@ class ScheduleController extends Controller
         $this->authorizeCourseHeadOffering($courseOffering);
         $courseOffering->load('academicYear');
 
-        if ($courseOffering->academicYear->phase !== 'scheduling') {
+        if ($courseOffering->academicYear?->phase !== 'scheduling') {
             return redirect()
                 ->route('maker.course_offerings.schedules.index', $courseOffering)
                 ->withErrors(['schedule' => 'ยังไม่เปิดช่วงจัดตาราง — Admin ต้องเปิดช่วงจัดตารางก่อน']);
@@ -53,7 +53,7 @@ class ScheduleController extends Controller
         $this->authorizeCourseHeadOffering($courseOffering);
         $courseOffering->load('academicYear');
 
-        if ($courseOffering->academicYear->phase !== 'scheduling') {
+        if ($courseOffering->academicYear?->phase !== 'scheduling') {
             return redirect()
                 ->route('maker.course_offerings.schedules.index', $courseOffering)
                 ->withErrors(['schedule' => 'ยังไม่เปิดช่วงจัดตาราง — Admin ต้องเปิดช่วงจัดตารางก่อน']);

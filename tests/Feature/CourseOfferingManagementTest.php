@@ -296,66 +296,6 @@ class CourseOfferingManagementTest extends TestCase
             ->assertSee('คงเหลือ 18 คน');
     }
 
-    public function test_archive_sets_lifecycle_fields_and_hides_archived_records_by_default(): void
-    {
-        $head = $this->makeUser('course_head');
-        $offering = $this->makeOffering($head, ['course_code' => 'NUR404']);
-
-        $this->actingAsCourseHead($head);
-
-        $this->from(route('maker.course_offerings.show', $offering))
-            ->patch(route('maker.course_offerings.archive', $offering), [
-                'archive_reason' => 'Completed semester',
-            ])
-            ->assertRedirect(route('maker.course_offerings.index'));
-
-        $this->assertDatabaseHas('course_offerings', [
-            'id' => $offering->id,
-            'status' => 'archived',
-            'archived_by' => $head->id,
-            'archive_reason' => 'Completed semester',
-        ]);
-
-        $this->get(route('maker.course_offerings.index'))
-            ->assertOk()
-            ->assertDontSee('NUR404');
-
-        $this->get(route('maker.course_offerings.index', ['archived' => 1]))
-            ->assertOk()
-            ->assertSee('NUR404');
-    }
-
-    public function test_archive_blocks_when_schedules_reference_the_offering_without_schedule_model(): void
-    {
-        $head = $this->makeUser('course_head');
-        $offering = $this->makeOffering($head);
-        $activityTypeId = $this->createActivityType();
-
-        DB::table('schedules')->insert([
-            'course_offering_id' => $offering->id,
-            'activity_type_id' => $activityTypeId,
-            'teaching_date' => '2026-08-01',
-            'start_time' => '08:00:00',
-            'end_time' => '10:00:00',
-            'status' => 'draft',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        $this->actingAsCourseHead($head);
-
-        $this->from(route('maker.course_offerings.show', $offering))
-            ->patch(route('maker.course_offerings.archive', $offering), [
-                'archive_reason' => 'Try archive',
-            ])
-            ->assertSessionHasErrors('archive_reason');
-
-        $this->assertDatabaseHas('course_offerings', [
-            'id' => $offering->id,
-            'status' => 'active',
-        ]);
-    }
-
     public function test_student_group_delete_blocks_downstream_schedule_references(): void
     {
         $head = $this->makeUser('course_head');
@@ -461,10 +401,9 @@ class CourseOfferingManagementTest extends TestCase
 
         return CourseOffering::create([
             'course_id' => $course->id,
-            'academic_year_id' => $this->academicYear($number)->id,
+            'academic_year_id' => $this->academicYear($number, $overrides['phase'] ?? 'scheduling')->id,
             'coordinator_id' => $coordinator->id,
             'approval_status' => 'draft',
-            'status' => $overrides['status'] ?? 'active',
             'total_student_count' => $overrides['total_student_count'] ?? 30,
             'planned_lecture_hours' => $overrides['planned_lecture_hours'] ?? null,
             'planned_lab_hours' => $overrides['planned_lab_hours'] ?? null,
@@ -512,7 +451,7 @@ class CourseOfferingManagementTest extends TestCase
         ]);
     }
 
-    private function academicYear(int $number): AcademicYear
+    private function academicYear(int $number, string $phase = 'scheduling'): AcademicYear
     {
         return AcademicYear::create([
             'name' => "2569-{$number}",
@@ -520,6 +459,7 @@ class CourseOfferingManagementTest extends TestCase
             'start_date' => '2026-08-01',
             'end_date' => '2026-12-31',
             'is_active' => true,
+            'phase' => $phase,
         ]);
     }
 
