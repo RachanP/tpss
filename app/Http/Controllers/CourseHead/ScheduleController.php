@@ -37,11 +37,12 @@ class ScheduleController extends Controller
     public function create(CourseOffering $courseOffering): View|RedirectResponse
     {
         $this->authorizeCourseHeadOffering($courseOffering);
+        $courseOffering->load('academicYear');
 
-        if ($this->isArchived($courseOffering)) {
+        if ($courseOffering->academicYear->phase !== 'scheduling') {
             return redirect()
                 ->route('maker.course_offerings.schedules.index', $courseOffering)
-                ->withErrors(['schedule' => 'รายวิชานี้ถูกเก็บเข้าคลังแล้ว ไม่สามารถเพิ่มรายการสอนได้']);
+                ->withErrors(['schedule' => 'ยังไม่เปิดช่วงจัดตาราง — Admin ต้องเปิดช่วงจัดตารางก่อน']);
         }
 
         return view('course_head.schedules.create', $this->formData($courseOffering));
@@ -50,11 +51,12 @@ class ScheduleController extends Controller
     public function store(Request $request, CourseOffering $courseOffering): RedirectResponse
     {
         $this->authorizeCourseHeadOffering($courseOffering);
+        $courseOffering->load('academicYear');
 
-        if ($this->isArchived($courseOffering)) {
+        if ($courseOffering->academicYear->phase !== 'scheduling') {
             return redirect()
                 ->route('maker.course_offerings.schedules.index', $courseOffering)
-                ->withErrors(['schedule' => 'รายวิชานี้ถูกเก็บเข้าคลังแล้ว ไม่สามารถเพิ่มรายการสอนได้']);
+                ->withErrors(['schedule' => 'ยังไม่เปิดช่วงจัดตาราง — Admin ต้องเปิดช่วงจัดตารางก่อน']);
         }
 
         $validated = $request->validate([
@@ -127,11 +129,6 @@ class ScheduleController extends Controller
     private function authorizeCourseHeadOffering(CourseOffering $courseOffering): void
     {
         abort_unless((int) $courseOffering->coordinator_id === (int) Auth::id(), 403);
-    }
-
-    private function isArchived(CourseOffering $courseOffering): bool
-    {
-        return $courseOffering->status === 'archived';
     }
 
     private function formData(CourseOffering $courseOffering): array

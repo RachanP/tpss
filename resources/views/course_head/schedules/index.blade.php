@@ -20,12 +20,15 @@
             </p>
         </div>
         <div class="card-actions">
-            @if($courseOffering->status !== 'archived')
+            @php $phase = $courseOffering->academicYear?->phase ?? 'preparation'; @endphp
+            @if($phase === 'scheduling')
                 <a class="btn btn-primary" href="{{ route('maker.course_offerings.schedules.create', $courseOffering) }}">เพิ่มรายการสอน</a>
+                <span class="badge" style="background:oklch(90% 0.1 145);color:oklch(30% 0.15 145);border:1px solid oklch(70% 0.15 145);">เปิดจัดตาราง</span>
+            @elseif($phase === 'published')
+                <span class="badge badge-primary">เผยแพร่แล้ว</span>
+            @else
+                <span class="badge badge-gray" title="Admin ต้องเปิดช่วงจัดตารางก่อน">ยังไม่เปิดจัดตาราง</span>
             @endif
-            <span class="badge {{ $courseOffering->status === 'archived' ? 'badge-gray' : 'badge-ok' }}">
-                {{ $courseOffering->status === 'archived' ? 'เก็บเข้าคลัง' : 'ใช้งาน' }}
-            </span>
         </div>
     </div>
 

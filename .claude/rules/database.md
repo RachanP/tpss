@@ -6,10 +6,13 @@
 // user_roles.role  — users ไม่มี role column, query จาก user_roles เสมอ
 ['admin', 'staff', 'course_head', 'executive', 'instructor']
 
+// academic_years.phase  (สถานะระดับระบบ — Admin ควบคุม)
+['preparation', 'scheduling', 'published']
+
 // schedules.status  (slot ระดับกิจกรรม)
 ['draft', 'pending_approval', 'approved', 'revised']
 
-// course_offerings.approval_status  (ระดับรายวิชาต่อปี)
+// course_offerings.approval_status  (ระดับรายวิชาต่อปี — Course Head + Executive)
 ['draft', 'pending', 'published', 'rejected']
 
 // course_offerings.course_type
@@ -37,6 +40,22 @@
 // schedule_conflicts.warning_type  (บันทึกได้แต่ต้องแก้)
 ['quota_exceeded', 'capacity_exceeded', 'missing_info', 'no_schedule', 'outside_availability']
 ```
+
+## Two-Layer Status System (ตกลงแล้ว 16 พ.ค.)
+
+```
+ชั้น 1 — ระดับระบบ (academic_years.phase):
+  preparation → scheduling → published
+  Admin เปิด/ปิดผ่าน Settings tab "ช่วงจัดตาราง"
+  เปิดทั้งภาคเรียนพร้อมกัน — ไม่ใช่ทีละวิชา
+
+ชั้น 2 — ระดับรายวิชา (course_offerings.approval_status):
+  draft → pending → published / rejected
+  Course Head ส่ง → Executive อนุมัติ
+```
+
+- `course_offerings.status` (locked/open) **ถูกยกเลิก** — ใช้ `academic_years.phase` แทน
+- Guard: ห้ามสร้าง schedule ถ้า `academic_year.phase != 'scheduling'`
 
 ## Schedule Status — State Machine
 
@@ -68,6 +87,12 @@ course_offerings
 
 - Conflict checking เช็คแค่ **room + instructor** ไม่เช็ค student overlap ข้ามวิชา
 - TPSS ไม่ track รายคน — กลุ่มคือ slot ที่มี capacity
+
+## Seeder Pattern (สำคัญ)
+
+- `CourseOfferingSeeder` ดึง `coordinator_id` จาก **`courses.head_instructor_id`** เสมอ — ห้ามหยิบ course_head คนแรกในระบบ
+- `CourseSeeder` กำหนด `head_instructor_id` ต่อวิชาตาม mapping: ราชันย์ → NSBS 111/212, พรภิมล → NSBS 213/221
+- `DevM2VisualVerificationSeeder` ถูกลบแล้ว — base seeder ครบ ไม่ต้องใช้ seeder แยก
 
 ## Migrations Sprint 2 (ต้อง run ถ้ายังไม่ได้รัน)
 

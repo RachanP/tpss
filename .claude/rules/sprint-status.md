@@ -32,11 +32,60 @@
 - `requires_capacity` boolean บน `location_types` — ห้องในประเภทที่ไม่ต้องการความจุ (เช่น ชุมชน) ไม่โดนแจ้งเตือน
 - Admin Dashboard + role-based dashboards (executive, course_head, instructor, staff)
 - Alerts system: `AlertController` + `/admin/alerts` page + dashboard widget
-  - Critical: no active year, no dept, no curriculum, no activity_type, no location_type, PA violations
-  - Warning: dept ขาด head/secretary, อาจารย์ขาดข้อมูล, ห้องขาด capacity, วิชาขาด coordinator/staff
-  - Sidebar badge: แดง (critical), เหลือง (warning only)
-- PA criteria schema เปลี่ยนจาก string (`"20-70%"`) → `{min: int, max: int}` ต่อแต่ละด้าน
-- Settings tab PA: inputs คู่ min–max ต่อ field แทน text input เดิม
+- PA criteria schema เปลี่ยนจาก string → `{min: int, max: int}` ต่อแต่ละด้าน
+
+## Sprint 3 (M2) — สิ่งที่ทำแล้ว (16 พ.ค.)
+
+- `CourseOfferingController` (CourseHead) — ครบทุก action: update, storeInstructor, destroyInstructor, storeStudentGroup, updateStudentGroup, destroyStudentGroup, storePrerequisite, destroyPrerequisite
+- **ลบ** `archive` action ออกจาก course_head — course head ไม่มีสิทธิ์ archive
+- **Seeder fix**: `coordinator_id` ใน `CourseOfferingSeeder` ดึงจาก `courses.head_instructor_id` แทนหยิบ course_head คนแรก
+- **UserSeeder**: ราชันย์ (admin_01) เพิ่ม role `course_head`
+- **CourseSeeder**: ราชันย์ → NSBS 111, NSBS 212 / พรภิมล → NSBS 213, NSBS 221
+- **ลบ** `DevM2VisualVerificationSeeder` และ test — base seeder ครบแล้ว
+- Migration `refactor_course_offering_status_to_scheduling_window` — เพิ่ม locked/open (**จะ rollback** แล้วทำ `academic_years.phase` แทน)
+- ScheduleController (M3 foundation): index, create, store — เพื่อนทำไว้แล้ว
+
+## Sprint 3 (M2) — งานที่ยังค้าง
+
+- [ ] Rollback migration locked/open → ทำ migration `add_phase_to_academic_years_table` แทน
+- [ ] `AdminSettingController::openSchedulingWindow` / `closeSchedulingWindow` — ปรับให้ใช้ phase แทน bulk status
+- [ ] Settings tab "ช่วงจัดตาราง" (admin only) — แสดงสถานะ phase ต่อ academic year + ปุ่มเปลี่ยน phase
+- [ ] CourseHead index view — แสดง phase ของ academic year, disable ปุ่มจัดตารางถ้า phase = preparation
+- [ ] CourseHead show view — ลบ archive section, แสดง phase status
+- [ ] ScheduleController guard — ห้ามสร้าง schedule ถ้า `academic_year.phase != 'scheduling'`
+- [ ] Course offering index: แสดง capacity จาก `courses.capacity` แทน total_student_count
+
+## Design Decisions (ตกลงแล้ว 16 พ.ค.)
+
+### Two-Layer Status System
+- **ชั้น 1 — ระดับระบบ**: `academic_years.phase` (Admin ควบคุม)
+  - `preparation` → เตรียมข้อมูล ห้าม course head จัดตาราง
+  - `scheduling` → Admin เปิด ทุกวิชาในภาคนั้นจัดได้พร้อมกัน (fairness)
+  - `published` → Executive อนุมัติครบ เผยแพร่แล้ว
+- **ชั้น 2 — ระดับรายวิชา**: `course_offerings.approval_status` (Course Head + Executive)
+  - `draft → pending → published / rejected`
+
+### Scheduling Window
+- Admin เปิด/ปิดผ่าน **Settings tab "ช่วงจัดตาราง"** (admin-only tab เหมือน PA)
+- เปิด **ทั้งภาคเรียน** พร้อมกัน — ไม่ใช่ทีละวิชา (เพื่อความยุติธรรม ไม่มีใครได้เปรียบ)
+- Email notification ตอนเปิด = **Phase 2** (future work)
+
+### role_in_course คงไว้
+- มีใน requirement จริง (เอกสารอาจารย์ข้อ 7: หัวหน้าวิชา, เลขานุการ, อาจารย์ประจำกลุ่ม, preceptor)
+- Phase 1: UI hardcode `instructor` ไปก่อน ไม่มี dropdown
+- Phase 2: ใช้สำหรับ M6 Workload และ report แยกประเภทบทบาท
+
+## คำถามที่รอคำตอบจากลูกค้า (pending)
+
+1. **เลขานุการวิชา** — จัดการใน M1 (ระดับวิชา) หรือ M2 (ระดับปีการศึกษา)?
+
+## คำถามที่ได้คำตอบแล้ว
+
+| คำถาม | คำตอบ |
+|-------|-------|
+| ผู้ประสานรายวิชา = course_head role เดียวกับหัวหน้าวิชาไหม? | ใช่ — role เดียวกัน |
+| ใครกด "ยืนยันเปิด" ให้จัดตาราง? | **Admin** ผ่าน Settings tab "ช่วงจัดตาราง" |
+| Course Head รู้ว่าวิชาถูกเปิดให้จัดตารางยังไง? | Phase 2 — email notification (Gmail) |
 
 ## ข้อค้นพบสำคัญสำหรับ M3 (Schedule Management)
 
@@ -48,13 +97,7 @@
 4. **Nested Groups** — ปี 3-4 แบ่ง A→A1/A2, B→B1/B2
 5. **หลายอาจารย์ต่อกิจกรรม** — `schedule_instructors` pivot รองรับได้ ✅
 6. **M2 ต้องเสร็จก่อน M3** — ทุก slot ต้อง FK → `course_offering_id` + `student_group_id`
-
-## คำถามที่รอคำตอบจากลูกค้า (pending)
-
-1. **ผู้ประสานรายวิชา** = login ด้วย `course_head` role เดียวกับหัวหน้าวิชาหรือเปล่า?
-2. **เลขานุการวิชา** — จัดการใน M1 (ระดับวิชา) หรือ M2 (ระดับปีการศึกษา)?
-3. **Course Offering** — ใครกด "ยืนยันเปิด" ได้ (Staff เท่านั้น หรือ Course Head ด้วย)?
-4. **Notification** — Course Head รู้ว่าวิชาตัวเองถูกยืนยันเปิดยังไง?
+7. **Guard**: ห้ามสร้าง schedule ถ้า `academic_year.phase != 'scheduling'`
 
 ## Definition of Done
 
@@ -68,7 +111,6 @@
 ## Known Bugs / Hotfixes (16 พ.ค.)
 
 - `AdminUserController:32` — `reset(reset($x))` ส่ง value แทน reference → แก้แล้ว (afa38ae)
-- pattern ถูกต้อง: ต้องใช้ตัวแปรกลาง `$firstGroup = reset($x); $firstField = reset($firstGroup);`
 
 ## Git Branching
 

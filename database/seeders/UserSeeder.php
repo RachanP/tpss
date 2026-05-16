@@ -23,8 +23,9 @@ class UserSeeder extends Seeder
                 'email'       => 'rachan@mahidol.edu',
                 'is_active'   => true,
                 'roles' => [
-                    ['role' => 'admin',      'is_primary' => true],
-                    ['role' => 'instructor', 'is_primary' => false],
+                    ['role' => 'admin',        'is_primary' => true],
+                    ['role' => 'instructor',   'is_primary' => false],
+                    ['role' => 'course_head',  'is_primary' => false],
                 ],
                 // ผู้ช่วยอาจารย์ + ป.โท: สอน ≤70%, วิจัย 15-20%, บริการ 5-20%, ศิลปะ 0-15%, อื่นๆ 0-20%
                 'profile' => [

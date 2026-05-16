@@ -21,10 +21,9 @@ class CourseSeeder extends Seeder
         $deptMental = Department::where('name', 'LIKE', '%สุขภาพจิต%')->first();
         $deptFoundation = Department::where('name', 'LIKE', '%รากฐาน%')->first();
 
-        // course_head for dept 1 (รากฐาน): somsak_t
-        // course_head for dept 3 (สุขภาพจิต): pronpimon
-        $headFoundation = User::where('username', 'somsak_t')->first();
-        $headMental = User::where('username', 'pronpimon')->first();
+        // หัวหน้าวิชา: ราชันย์ (NSBS 111, NSBS 212), พรภิมล (NSBS 213, NSBS 221)
+        $headRachan   = User::where('username', 'admin_01')->first();
+        $headPronpimon = User::where('username', 'pronpimon')->first();
 
         $courses = [
             [
@@ -42,7 +41,7 @@ class CourseSeeder extends Seeder
                 'capacity' => 252,
                 'color_code' => '#3b82f6',
                 'department_id' => $deptFoundation->id ?? 1,
-                'head_instructor_id' => $headFoundation?->id,
+                'head_instructor_id' => $headRachan?->id,
                 'status' => 'active',
             ],
             [
@@ -60,7 +59,7 @@ class CourseSeeder extends Seeder
                 'capacity' => 240,
                 'color_code' => '#10b981',
                 'department_id' => $deptFoundation->id ?? 1,
-                'head_instructor_id' => $headFoundation?->id,
+                'head_instructor_id' => $headRachan?->id,
                 'status' => 'active',
             ],
             [
@@ -78,7 +77,7 @@ class CourseSeeder extends Seeder
                 'capacity' => 240,
                 'color_code' => '#8b5cf6',
                 'department_id' => $deptMental->id ?? 3,
-                'head_instructor_id' => $headMental?->id,
+                'head_instructor_id' => $headPronpimon?->id,
                 'status' => 'active',
             ],
             [
@@ -96,7 +95,7 @@ class CourseSeeder extends Seeder
                 'capacity' => 240,
                 'color_code' => '#f59e0b',
                 'department_id' => $deptFoundation->id ?? 1,
-                'head_instructor_id' => $headFoundation?->id,
+                'head_instructor_id' => $headPronpimon?->id,
                 'status' => 'active',
             ],
         ];

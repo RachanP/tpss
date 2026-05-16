@@ -39,7 +39,6 @@ Route::middleware(['auth', 'no-back'])->group(function () {
             Route::get('/', [CourseOfferingController::class, 'index'])->name('index');
             Route::get('/{courseOffering}', [CourseOfferingController::class, 'show'])->name('show');
             Route::put('/{courseOffering}', [CourseOfferingController::class, 'update'])->name('update');
-            Route::patch('/{courseOffering}/archive', [CourseOfferingController::class, 'archive'])->name('archive');
             Route::get('/{courseOffering}/schedules', [ScheduleController::class, 'index'])->name('schedules.index');
             Route::get('/{courseOffering}/schedules/create', [ScheduleController::class, 'create'])->name('schedules.create');
             Route::post('/{courseOffering}/schedules', [ScheduleController::class, 'store'])->name('schedules.store');
@@ -65,6 +64,8 @@ Route::middleware(['auth', 'no-back'])->group(function () {
         Route::post('/admin/settings/academic-years', 'App\Http\Controllers\AdminSettingController@storeYear')->name('admin.settings.years.store');
         Route::put('/admin/settings/academic-years/{year}', 'App\Http\Controllers\AdminSettingController@updateYear')->name('admin.settings.years.update');
         Route::post('/admin/settings/update-constants', 'App\Http\Controllers\AdminSettingController@updateConstants')->name('admin.settings.constants.update');
+        Route::patch('/admin/settings/scheduling/{year}/open', 'App\Http\Controllers\AdminSettingController@openSchedulingWindow')->name('admin.settings.scheduling.open');
+        Route::patch('/admin/settings/scheduling/{year}/close', 'App\Http\Controllers\AdminSettingController@closeSchedulingWindow')->name('admin.settings.scheduling.close');
 
         Route::get('/admin/master-data', 'App\Http\Controllers\Admin\MasterDataController@index')->name('admin.master_data');
         Route::get('/admin/alerts', [AlertController::class, 'index'])->name('admin.alerts');

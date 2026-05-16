@@ -51,6 +51,16 @@
                     </svg>
                     ปีการศึกษา
                 </button>
+                <button type="button" @click="activeTab = 'scheduling'"
+                    :class="activeTab === 'scheduling' ? 'btn-primary' : 'btn btn-ghost'"
+                    style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+                        style="margin-right: 6px;">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    ช่วงจัดตาราง
+                </button>
                 <button type="button" @click="activeTab = 'pa'"
                     :class="activeTab === 'pa' ? 'btn-primary' : 'btn btn-ghost'"
                     style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
@@ -219,6 +229,95 @@
         </template>
 
         @if($isAdmin)
+        <!-- Tab: ช่วงจัดตาราง -->
+        <div x-show="activeTab === 'scheduling'" x-cloak>
+            @if(session('success') && request('tab') === 'scheduling')
+                <div style="background: oklch(95% 0.05 145); border: 1px solid oklch(70% 0.15 145); color: oklch(35% 0.12 145); padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; font-size: 14px;">
+                    {{ session('success') }}
+                </div>
+            @endif
+            @if(session('error') && request('tab') === 'scheduling')
+                <div style="background: oklch(95% 0.05 25); border: 1px solid oklch(70% 0.15 25); color: oklch(35% 0.12 25); padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; font-size: 14px;">
+                    {{ session('error') }}
+                </div>
+            @endif
+
+            <div class="card">
+                <div class="card-hdr">
+                    <div class="card-ttl">สถานะช่วงจัดตาราง ตามปีการศึกษา</div>
+                    <div style="font-size: 12px; color: var(--fg-3);">Admin เปิด/ปิด — หัวหน้าวิชาทุกท่านจัดตารางได้พร้อมกัน</div>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ปีการศึกษา</th>
+                                <th>ภาคเรียน</th>
+                                <th>สถานะระบบ</th>
+                                <th style="text-align: center;">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($schedulingSummary as $year)
+                                <tr>
+                                    <td style="font-weight: 600; color: var(--fg-1);">{{ $year->name }}</td>
+                                    <td>ภาคเรียนที่ {{ $year->semester }}</td>
+                                    <td>
+                                        @if($year->phase === 'scheduling')
+                                            <span class="badge" style="background: oklch(90% 0.1 145); color: oklch(30% 0.15 145); border: 1px solid oklch(70% 0.15 145);">
+                                                <span style="width: 6px; height: 6px; border-radius: 50%; background: oklch(50% 0.2 145); margin-right: 6px; display: inline-block;"></span>
+                                                เปิดช่วงจัดตาราง
+                                            </span>
+                                        @elseif($year->phase === 'published')
+                                            <span class="badge badge-primary">เผยแพร่แล้ว</span>
+                                        @else
+                                            <span class="badge badge-gray">เตรียมข้อมูล</span>
+                                        @endif
+                                    </td>
+                                    <td style="text-align: center;">
+                                        <div style="display: flex; gap: 6px; justify-content: center;">
+                                            @if($year->phase === 'preparation')
+                                                @if($year->is_active)
+                                                    <form method="POST" action="{{ route('admin.settings.scheduling.open', $year) }}">
+                                                        @csrf
+                                                        @method('PATCH')
+                                                        <button type="submit" class="btn btn-primary" style="font-size: 13px; padding: 6px 14px;">
+                                                            เปิดช่วงจัดตาราง
+                                                        </button>
+                                                    </form>
+                                                @else
+                                                    <button type="button" class="btn btn-ghost" disabled style="font-size: 13px; padding: 6px 14px; opacity: 0.4; cursor: not-allowed;" title="เปิดได้เฉพาะปีการศึกษาปัจจุบัน">
+                                                        เปิดช่วงจัดตาราง
+                                                    </button>
+                                                @endif
+                                            @elseif($year->phase === 'scheduling')
+                                                <form method="POST" action="{{ route('admin.settings.scheduling.close', $year) }}">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <button type="submit" class="btn btn-ghost" style="font-size: 13px; padding: 6px 14px; border: 1px solid var(--border);"
+                                                        onclick="return confirm('ปิดช่วงจัดตารางสำหรับปีการศึกษา {{ $year->name }} ภาค {{ $year->semester }}?')">
+                                                        ปิดช่วงจัดตาราง
+                                                    </button>
+                                                </form>
+                                            @else
+                                                <span style="font-size: 12px; color: var(--fg-3);">—</span>
+                                            @endif
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="4" style="text-align: center; padding: 40px; color: var(--fg-3);">
+                                        ยังไม่มีปีการศึกษา — เพิ่มในแท็บปีการศึกษาก่อน
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <!-- Tab: PA Rules -->
         <div x-show="activeTab === 'pa'" x-cloak>
             <form action="{{ route('admin.settings.constants.update') }}" method="POST">

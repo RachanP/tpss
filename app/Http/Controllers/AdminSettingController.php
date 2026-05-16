@@ -26,9 +26,11 @@ class AdminSettingController extends Controller
             $paCriteria = self::defaultPaCriteria();
         }
 
+        $schedulingSummary = AcademicYear::orderBy('name', 'desc')->orderBy('semester', 'desc')->get();
+
         $isAdmin     = true;
         $routePrefix = 'admin';
-        return view('admin.settings', compact('academicYears', 'paCriteria', 'workloadQuota', 'teachingQuota', 'workloadWeeks', 'teachingWeeks', 'workloadHoursPerWeek', 'isAdmin', 'routePrefix'));
+        return view('admin.settings', compact('academicYears', 'paCriteria', 'workloadQuota', 'teachingQuota', 'workloadWeeks', 'teachingWeeks', 'workloadHoursPerWeek', 'isAdmin', 'routePrefix', 'schedulingSummary'));
     }
 
     public function storeYear(Request $request)
@@ -118,6 +120,48 @@ class AdminSettingController extends Controller
         $year->update($validated);
         AlertController::flushCache();
         return redirect()->route($this->settingsRoute(), ['tab' => 'academic'])->with('success', 'อัปเดตปีการศึกษาเรียบร้อยแล้ว');
+    }
+
+    public function openSchedulingWindow(AcademicYear $year)
+    {
+        if (!$year->is_active) {
+            return redirect()
+                ->route('admin.settings', ['tab' => 'scheduling'])
+                ->with('error', "เปิดช่วงจัดตารางได้เฉพาะปีการศึกษาปัจจุบัน ({$year->name} ภาค {$year->semester} ไม่ใช่ปีปัจจุบัน)");
+        }
+
+        if ($year->phase === 'published') {
+            return redirect()
+                ->route('admin.settings', ['tab' => 'scheduling'])
+                ->with('error', "ปีการศึกษา {$year->name} ภาค {$year->semester} เผยแพร่แล้ว ไม่สามารถย้อนกลับได้");
+        }
+
+        $year->update(['phase' => 'scheduling']);
+
+        return redirect()
+            ->route('admin.settings', ['tab' => 'scheduling'])
+            ->with('success', "เปิดช่วงจัดตารางสำหรับปีการศึกษา {$year->name} ภาค {$year->semester} แล้ว — หัวหน้าวิชาทุกท่านสามารถจัดตารางได้");
+    }
+
+    public function closeSchedulingWindow(AcademicYear $year)
+    {
+        if (!$year->is_active) {
+            return redirect()
+                ->route('admin.settings', ['tab' => 'scheduling'])
+                ->with('error', "ปิดช่วงจัดตารางได้เฉพาะปีการศึกษาปัจจุบัน");
+        }
+
+        if ($year->phase !== 'scheduling') {
+            return redirect()
+                ->route('admin.settings', ['tab' => 'scheduling'])
+                ->with('error', "ปีการศึกษา {$year->name} ภาค {$year->semester} ไม่ได้อยู่ในช่วงจัดตาราง");
+        }
+
+        $year->update(['phase' => 'preparation']);
+
+        return redirect()
+            ->route('admin.settings', ['tab' => 'scheduling'])
+            ->with('success', "ปิดช่วงจัดตารางสำหรับปีการศึกษา {$year->name} ภาค {$year->semester} แล้ว");
     }
 
     private function settingsRoute(): string

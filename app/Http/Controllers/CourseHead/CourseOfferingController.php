@@ -17,28 +17,17 @@ use Illuminate\View\View;
 
 class CourseOfferingController extends Controller
 {
-    public function index(Request $request): View
+    public function index(): View
     {
-        $showArchived = $request->boolean('archived');
-
         $offerings = CourseOffering::query()
             ->with(['course.curriculum', 'course.department', 'academicYear'])
             ->withCount(['studentGroups', 'instructorPool'])
-            ->withSum('studentGroups', 'student_count')
             ->where('coordinator_id', Auth::id())
-            ->when(
-                $showArchived,
-                fn ($query) => $query->where('status', 'archived'),
-                fn ($query) => $query->where(function ($statusQuery) {
-                    $statusQuery->whereNull('status')->orWhere('status', 'active');
-                })
-            )
             ->latest('updated_at')
             ->get();
 
         return view('course_head.course_offerings.index', [
             'offerings' => $offerings,
-            'showArchived' => $showArchived,
         ]);
     }
 
@@ -52,7 +41,6 @@ class CourseOfferingController extends Controller
             'course.prerequisites',
             'academicYear',
             'coordinator',
-            'archivedBy',
             'studentGroups' => fn ($query) => $query->orderBy('group_code'),
             'instructorPool.instructorProfile.department',
         ]);
@@ -80,6 +68,7 @@ class CourseOfferingController extends Controller
     public function update(Request $request, CourseOffering $courseOffering): RedirectResponse
     {
         $this->authorizeCourseHeadOffering($courseOffering);
+        if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
 
         $validated = $request->validate([
             'total_student_count' => ['required', 'integer', 'min:1', 'max:9999'],
@@ -103,6 +92,7 @@ class CourseOfferingController extends Controller
     public function storeInstructor(Request $request, CourseOffering $courseOffering): RedirectResponse
     {
         $this->authorizeCourseHeadOffering($courseOffering);
+        if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
 
         $validated = $request->validate([
             'user_id' => ['required', 'integer', 'exists:users,id'],
@@ -132,6 +122,7 @@ class CourseOfferingController extends Controller
     public function destroyInstructor(CourseOffering $courseOffering, User $user): RedirectResponse
     {
         $this->authorizeCourseHeadOffering($courseOffering);
+        if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
 
         if ((int) $courseOffering->coordinator_id === (int) $user->id) {
             return back()->withErrors([
@@ -147,6 +138,7 @@ class CourseOfferingController extends Controller
     public function storeStudentGroup(Request $request, CourseOffering $courseOffering): RedirectResponse
     {
         $this->authorizeCourseHeadOffering($courseOffering);
+        if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
 
         $validated = $request->validate([
             'group_code' => [
@@ -175,6 +167,7 @@ class CourseOfferingController extends Controller
         StudentGroup $studentGroup
     ): RedirectResponse {
         $this->authorizeCourseHeadOffering($courseOffering);
+        if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
         $this->assertStudentGroupBelongsToOffering($courseOffering, $studentGroup);
 
         $validated = $request->validate([
@@ -206,6 +199,7 @@ class CourseOfferingController extends Controller
     public function destroyStudentGroup(CourseOffering $courseOffering, StudentGroup $studentGroup): RedirectResponse
     {
         $this->authorizeCourseHeadOffering($courseOffering);
+        if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
         $this->assertStudentGroupBelongsToOffering($courseOffering, $studentGroup);
 
         if (Schema::hasTable('schedule_student_groups') &&
@@ -231,6 +225,7 @@ class CourseOfferingController extends Controller
     public function storePrerequisite(Request $request, CourseOffering $courseOffering): RedirectResponse
     {
         $this->authorizeCourseHeadOffering($courseOffering);
+        if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
 
         $validated = $request->validate([
             'prerequisite_course_id' => ['required', 'integer', 'exists:courses,id'],
@@ -265,6 +260,7 @@ class CourseOfferingController extends Controller
     public function destroyPrerequisite(CourseOffering $courseOffering, Course $course): RedirectResponse
     {
         $this->authorizeCourseHeadOffering($courseOffering);
+        if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
 
         $offeringCourse = $courseOffering->course;
 
@@ -279,37 +275,20 @@ class CourseOfferingController extends Controller
         return back()->with('success', 'ลบรายวิชาที่ต้องเรียนมาก่อนเรียบร้อยแล้ว');
     }
 
-    public function archive(Request $request, CourseOffering $courseOffering): RedirectResponse
-    {
-        $this->authorizeCourseHeadOffering($courseOffering);
-
-        $validated = $request->validate([
-            'archive_reason' => ['nullable', 'string', 'max:2000'],
-        ]);
-
-        if (Schema::hasTable('schedules') &&
-            Schema::hasColumn('schedules', 'course_offering_id') &&
-            DB::table('schedules')->where('course_offering_id', $courseOffering->id)->exists()) {
-            return back()->withErrors([
-                'archive_reason' => 'รายวิชานี้มีตารางสอนแล้ว จึงยังไม่สามารถเก็บเข้าคลังได้จนกว่าจะกำหนดนโยบายการจัดการตารางสอนที่เกี่ยวข้อง',
-            ]);
-        }
-
-        $courseOffering->update([
-            'status' => 'archived',
-            'archived_at' => now(),
-            'archived_by' => Auth::id(),
-            'archive_reason' => $validated['archive_reason'] ?? null,
-        ]);
-
-        return redirect()
-            ->route('maker.course_offerings.index')
-            ->with('success', 'เก็บรายวิชาเข้าคลังเรียบร้อยแล้ว');
-    }
-
     private function authorizeCourseHeadOffering(CourseOffering $courseOffering): void
     {
         abort_unless((int) $courseOffering->coordinator_id === (int) Auth::id(), 403);
+    }
+
+    private function requireSchedulingPhase(CourseOffering $courseOffering): ?RedirectResponse
+    {
+        $courseOffering->loadMissing('academicYear');
+        if ($courseOffering->academicYear?->phase !== 'scheduling') {
+            return redirect()
+                ->route('maker.course_offerings.show', $courseOffering)
+                ->with('error', 'ยังไม่เปิดช่วงจัดตาราง — Admin ต้องเปิดช่วงจัดตารางก่อนจึงจะแก้ไขข้อมูลรายวิชาได้');
+        }
+        return null;
     }
 
     private function assertStudentGroupBelongsToOffering(CourseOffering $courseOffering, StudentGroup $studentGroup): void

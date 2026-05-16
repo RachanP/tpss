@@ -18,15 +18,6 @@ class CourseOfferingSeeder extends Seeder
             return;
         }
 
-        $coordinator = User::whereHas('roles', fn($q) => $q->where('role', 'course_head'))->first()
-            ?? User::whereHas('roles', fn($q) => $q->where('role', 'admin'))->first()
-            ?? User::first();
-
-        if (!$coordinator) {
-            $this->command->warn('ไม่พบผู้ใช้งาน — ข้ามการ seed course offerings');
-            return;
-        }
-
         $courseCodes = ['NSBS 111', 'NSBS 212', 'NSBS 213', 'NSBS 221'];
 
         $count = 0;
@@ -34,10 +25,15 @@ class CourseOfferingSeeder extends Seeder
             $course = Course::where('course_code', $code)->first();
             if (!$course) continue;
 
+            if (!$course->head_instructor_id) {
+                $this->command->warn("ข้าม {$code}: ยังไม่ได้กำหนดหัวหน้าวิชา (head_instructor_id = null)");
+                continue;
+            }
+
             CourseOffering::firstOrCreate(
                 ['course_id' => $course->id, 'academic_year_id' => $year->id],
                 [
-                    'coordinator_id'  => $coordinator->id,
+                    'coordinator_id'  => $course->head_instructor_id,
                     'approval_status' => 'draft',
                 ]
             );

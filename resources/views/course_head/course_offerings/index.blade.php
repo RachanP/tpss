@@ -1,18 +1,14 @@
 @php
-    $statusLabels = [
-        'active' => 'ใช้งาน',
-        'archived' => 'เก็บเข้าคลัง',
-        'draft' => 'แบบร่าง',
-        'pending' => 'รออนุมัติ',
-        'approved' => 'อนุมัติแล้ว',
-        'rejected' => 'ตีกลับ',
+    $approvalLabels = [
+        'draft'     => ['label' => 'แบบร่าง',    'badge' => 'badge-gray'],
+        'pending'   => ['label' => 'รออนุมัติ',  'badge' => 'badge-warn'],
+        'published' => ['label' => 'เผยแพร่แล้ว','badge' => 'badge-ok'],
+        'rejected'  => ['label' => 'ตีกลับ',     'badge' => 'badge-error'],
     ];
     $courseTypeLabels = [
-        'theory' => 'ทฤษฎี',
-        'practicum' => 'ปฏิบัติ/ฝึกปฏิบัติ',
+        'theory'           => 'ทฤษฎี',
+        'practicum'        => 'ปฏิบัติ/ฝึกปฏิบัติ',
         'theory_practicum' => 'ทฤษฎีและปฏิบัติ',
-        'lab' => 'ปฏิบัติการ',
-        'other' => 'อื่น ๆ',
     ];
 @endphp
 
@@ -23,14 +19,10 @@
             <h1 class="h1" style="margin:4px 0 6px;">จัดการรายวิชาที่รับผิดชอบ</h1>
             <p class="body-sm" style="margin:0;">แสดงเฉพาะรายวิชาที่กำหนดให้คุณเป็นหัวหน้าวิชาในภาคการศึกษานั้น</p>
         </div>
-        <div class="card-actions">
-            <a class="btn {{ $showArchived ? 'btn-ghost' : 'btn-primary' }}" href="{{ route('maker.course_offerings.index') }}">ใช้งาน</a>
-            <a class="btn {{ $showArchived ? 'btn-primary' : 'btn-ghost' }}" href="{{ route('maker.course_offerings.index', ['archived' => 1]) }}">คลัง</a>
-        </div>
     </div>
 
     @if($errors->any())
-        <div class="card" style="border-color:var(--status-conflict-border);background:var(--status-conflict-bg);">
+        <div class="card" style="border-color:var(--status-conflict-border);background:var(--status-conflict-bg);margin-bottom:16px;">
             <div style="padding:14px 18px;color:var(--status-conflict-fg);font-weight:600;">
                 {{ $errors->first() }}
             </div>
@@ -40,7 +32,7 @@
     <div class="card">
         <div class="card-hdr">
             <div>
-                <div class="card-ttl">{{ $showArchived ? 'รายวิชาในคลัง' : 'รายวิชาที่เปิดใช้งาน' }}</div>
+                <div class="card-ttl">รายวิชาที่รับผิดชอบ</div>
                 <div class="caption" style="margin-top:4px;">{{ $offerings->count() }} รายการ</div>
             </div>
         </div>
@@ -50,23 +42,25 @@
                 <thead>
                     <tr>
                         <th>รายวิชา</th>
-                        <th>หลักสูตร / ภาคเรียน</th>
-                        <th>นักศึกษา</th>
-                        <th>ผู้สอน</th>
+                        <th>หลักสูตร / ปีการศึกษา</th>
+                        <th>กลุ่มนักศึกษา</th>
                         <th>ชั่วโมงแผน</th>
-                        <th>สถานะ</th>
+                        <th>สถานะการจัดตาราง</th>
+                        <th>สถานะรายวิชา</th>
                         <th></th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($offerings as $offering)
                         @php
-                            $course = $offering->course;
-                            $academicYear = $offering->academicYear;
-                            $lectureHours = $offering->planned_lecture_hours ?? $course?->lecture_hours ?? 0;
-                            $labHours = $offering->planned_lab_hours ?? $course?->lab_hours ?? 0;
+                            $course      = $offering->course;
+                            $year        = $offering->academicYear;
+                            $phase       = $year?->phase ?? 'preparation';
+                            $approval    = $offering->approval_status ?? 'draft';
+                            $approvalMeta = $approvalLabels[$approval] ?? ['label' => $approval, 'badge' => 'badge-gray'];
+                            $lectureHours  = $offering->planned_lecture_hours ?? $course?->lecture_hours ?? 0;
+                            $labHours      = $offering->planned_lab_hours ?? $course?->lab_hours ?? 0;
                             $practicumHours = $offering->planned_practicum_hours ?? 0;
-                            $studentTotal = $offering->student_groups_sum_student_count ?? 0;
                         @endphp
                         <tr>
                             <td>
@@ -79,25 +73,31 @@
                             <td>
                                 <div class="body-sm">{{ $course?->curriculum?->name ?? '-' }}</div>
                                 <div class="caption" style="margin-top:4px;">
-                                    {{ $academicYear?->name ?? '-' }} / เทอม {{ $academicYear?->semester ?? '-' }}
+                                    {{ $year?->name ?? '-' }} / เทอม {{ $year?->semester ?? '-' }}
                                 </div>
                             </td>
                             <td>
-                                <div style="font-weight:700;">{{ $studentTotal }} / {{ $offering->total_student_count ?? '-' }}</div>
-                                <div class="caption" style="margin-top:4px;">{{ $offering->student_groups_count }} กลุ่ม</div>
-                            </td>
-                            <td>
-                                <span class="badge badge-gray">{{ $offering->instructor_pool_count }} คน</span>
+                                <div style="font-weight:700;">{{ $offering->student_groups_count }} กลุ่ม</div>
+                                <div class="caption" style="margin-top:4px;">รับได้ {{ $course?->capacity ?? '-' }} คน</div>
                             </td>
                             <td>
                                 <div class="body-sm">บรรยาย {{ $lectureHours }} · ปฏิบัติ {{ $labHours }}</div>
                                 <div class="caption" style="margin-top:4px;">ฝึกปฏิบัติ {{ $practicumHours }} · {{ $offering->teaching_weeks ?? '-' }} สัปดาห์</div>
                             </td>
                             <td>
-                                <span class="badge {{ $offering->status === 'archived' ? 'badge-gray' : 'badge-ok' }}">{{ $statusLabels[$offering->status ?? 'active'] ?? $offering->status ?? 'ใช้งาน' }}</span>
+                                @if($phase === 'scheduling')
+                                    <span class="badge" style="background:oklch(90% 0.1 145);color:oklch(30% 0.15 145);border:1px solid oklch(70% 0.15 145);">เปิดจัดตาราง</span>
+                                @elseif($phase === 'published')
+                                    <span class="badge badge-primary">เผยแพร่แล้ว</span>
+                                @else
+                                    <span class="badge badge-gray">ยังไม่เปิด</span>
+                                @endif
                                 @if($offering->requires_practicum_rotation)
                                     <span class="badge badge-warn" style="margin-left:6px;">ฝึกปฏิบัติ</span>
                                 @endif
+                            </td>
+                            <td>
+                                <span class="badge {{ $approvalMeta['badge'] }}">{{ $approvalMeta['label'] }}</span>
                             </td>
                             <td style="text-align:right;">
                                 <a class="btn btn-secondary" href="{{ route('maker.course_offerings.show', $offering) }}">เปิดรายละเอียด</a>
@@ -106,7 +106,7 @@
                     @empty
                         <tr>
                             <td colspan="7" style="text-align:center;padding:34px 20px;color:var(--fg-3);">
-                                ไม่พบรายวิชาในมุมมองนี้
+                                ไม่พบรายวิชาที่รับผิดชอบ
                             </td>
                         </tr>
                     @endforelse

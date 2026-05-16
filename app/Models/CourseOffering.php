@@ -18,7 +18,6 @@ class CourseOffering extends Model
         'coordinator_id',
         'approval_status',
         'rejection_reason',
-        'status',
         'total_student_count',
         'planned_lecture_hours',
         'planned_lab_hours',
@@ -26,9 +25,6 @@ class CourseOffering extends Model
         'teaching_weeks',
         'requires_practicum_rotation',
         'practicum_note',
-        'archived_at',
-        'archived_by',
-        'archive_reason',
     ];
 
     protected $casts = [
@@ -38,7 +34,6 @@ class CourseOffering extends Model
         'planned_practicum_hours' => 'integer',
         'teaching_weeks' => 'integer',
         'requires_practicum_rotation' => 'boolean',
-        'archived_at' => 'datetime',
     ];
 
     public function course(): BelongsTo
@@ -54,11 +49,6 @@ class CourseOffering extends Model
     public function coordinator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'coordinator_id');
-    }
-
-    public function archivedBy(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'archived_by');
     }
 
     public function studentGroups(): HasMany
