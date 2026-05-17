@@ -5,7 +5,7 @@
             instructors: { keyword: '', department_id: '' },
             departments: { keyword: '' },
             location_types: { keyword: '', location_type_id: '', status: '' },
-            courses: { keyword: '', department_id: '', curriculum_id: '', course_type: '', year_level: '', status: '' },
+            courses: { keyword: '', department_id: '', curriculum_id: '', year_level: '', status: '' },
             curriculums: { keyword: '', is_active: '' },
             activity_types: { keyword: '', category: '' },
         },
@@ -179,7 +179,6 @@
             curriculum_id: '',
             department_id: '',
             head_instructor_id: '',
-            course_type: 'theory',
             academic_level: 'undergraduate',
             default_year_level: '',
             default_semester: '',
@@ -199,7 +198,7 @@
         showStaffDropdown: false,
         openAddCourse() {
             this.editCourseMode = false;
-            this.currentCourse = { id: '', course_code: '', name_th: '', name_en: '', curriculum_id: '', department_id: '', head_instructor_id: '', course_type: 'theory', academic_level: 'undergraduate', default_year_level: '', default_semester: '', credits: '', lecture_hours: 0, lab_hours: 0, self_study_hours: 0, capacity: '', color_code: '#3b82f6', status: 'active', requires_practicum_rotation: '0' };
+            this.currentCourse = { id: '', course_code: '', name_th: '', name_en: '', curriculum_id: '', department_id: '', head_instructor_id: '', academic_level: 'undergraduate', default_year_level: '', default_semester: '', credits: '', lecture_hours: 0, lab_hours: 0, self_study_hours: 0, capacity: '', color_code: '#3b82f6', status: 'active', requires_practicum_rotation: '0' };
             this.courseHeadSearch = '';
             this.selectedStaff = [];
             this.staffSearch = '';
@@ -963,12 +962,6 @@
                             <option value="{{ $curr->id }}">{{ $curr->name }}</option>
                         @endforeach
                     </select>
-                    <select class="m7-filter-select" x-model="filters.courses.course_type">
-                        <option value="">ทุกประเภทวิชา</option>
-                        <option value="theory">ทฤษฎี</option>
-                        <option value="practicum">ปฏิบัติ</option>
-                        <option value="theory_practicum">ทฤษฎีและปฏิบัติ</option>
-                    </select>
                     <select class="m7-filter-select is-narrow" x-model="filters.courses.year_level">
                         <option value="">ทุกชั้นปี</option>
                         <option value="1">ปี 1</option>
@@ -998,13 +991,12 @@
                         <tbody>
                             @forelse($courses as $course)
                                 <tr
-                                    data-search="{{ Str::lower($course->course_code . ' ' . $course->name_th . ' ' . ($course->name_en ?? '') . ' ' . ($course->headInstructor->formatted_name ?? '') . ' ' . ($course->department->name ?? '') . ' ' . ($course->curriculum->name ?? '') . ' ' . ($course->credits ?? '') . ' หน่วยกิต ' . ($course->lecture_hours ?? 0) . '-' . ($course->lab_hours ?? 0) . '-' . ($course->self_study_hours ?? 0) . ' ' . ($course->default_year_level ?? '') . ' ปี ' . ($course->default_semester ?? '') . ' ภาค ' . ($course->capacity ?? '') . ' คน ' . ($course->course_type ?? '') . ' ' . ($course->academic_level ?? '') . ' ' . ($course->status ?? '') . ' ' . ($course->status === 'active' ? 'เปิดสอน' : 'ปิดสอน')) }}"
+                                    data-search="{{ Str::lower($course->course_code . ' ' . $course->name_th . ' ' . ($course->name_en ?? '') . ' ' . ($course->headInstructor->formatted_name ?? '') . ' ' . ($course->department->name ?? '') . ' ' . ($course->curriculum->name ?? '') . ' ' . ($course->credits ?? '') . ' หน่วยกิต ' . ($course->lecture_hours ?? 0) . '-' . ($course->lab_hours ?? 0) . '-' . ($course->self_study_hours ?? 0) . ' ' . ($course->default_year_level ?? '') . ' ปี ' . ($course->default_semester ?? '') . ' ภาค ' . ($course->capacity ?? '') . ' คน ' . ($course->academic_level ?? '') . ' ' . ($course->status ?? '') . ' ' . ($course->status === 'active' ? 'เปิดสอน' : 'ปิดสอน')) }}"
                                     data-department-id="{{ $course->department_id ?? '' }}"
                                     data-curriculum-id="{{ $course->curriculum_id ?? '' }}"
-                                    data-course-type="{{ $course->course_type ?? '' }}"
                                     data-year-level="{{ $course->default_year_level ?? '' }}"
                                     data-status="{{ $course->status ?? '' }}"
-                                    x-show="includesText($el.dataset.search, filters.courses.keyword) && (filters.courses.department_id === '' || $el.dataset.departmentId == filters.courses.department_id) && (filters.courses.curriculum_id === '' || $el.dataset.curriculumId == filters.courses.curriculum_id) && (filters.courses.course_type === '' || $el.dataset.courseType == filters.courses.course_type) && (filters.courses.year_level === '' || $el.dataset.yearLevel == filters.courses.year_level) && (filters.courses.status === '' || $el.dataset.status == filters.courses.status)"
+                                    x-show="includesText($el.dataset.search, filters.courses.keyword) && (filters.courses.department_id === '' || $el.dataset.departmentId == filters.courses.department_id) && (filters.courses.curriculum_id === '' || $el.dataset.curriculumId == filters.courses.curriculum_id) && (filters.courses.year_level === '' || $el.dataset.yearLevel == filters.courses.year_level) && (filters.courses.status === '' || $el.dataset.status == filters.courses.status)"
                                     style="{{ $course->status === 'inactive' ? 'opacity: 0.45; filter: grayscale(1); background: #fafafa;' : '' }}">
                                     <td style="vertical-align: middle;">
                                         <div style="display: flex; align-items: center; gap: 8px;">
@@ -1742,14 +1734,6 @@
                             </div>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
                                 <div class="form-group" style="margin-bottom:0;">
-                                    <label>ประเภทวิชา <span style="color:var(--status-conflict-fg)">*</span></label>
-                                    <select name="course_type" x-model="currentCourse.course_type" required>
-                                        <option value="theory">ภาคทฤษฎี</option>
-                                        <option value="practicum">ภาคปฏิบัติ</option>
-                                        <option value="theory_practicum">ทฤษฎี + ปฏิบัติ</option>
-                                    </select>
-                                </div>
-                                <div class="form-group" style="margin-bottom:0;">
                                     <label>ระดับการศึกษา</label>
                                     <select name="academic_level" x-model="currentCourse.academic_level">
                                         <option value="undergraduate">ปริญญาตรี</option>
@@ -1905,21 +1889,13 @@
                                 <input type="number" name="capacity" x-model="currentCourse.capacity" min="1" placeholder="เช่น 240" required onwheel="this.blur()">
                             </div>
 
-                            {{-- Practicum Rotation: theory → hidden input 0, practicum/theory_practicum → select required --}}
-                            <template x-if="currentCourse.course_type === 'theory'">
-                                <input type="hidden" name="requires_practicum_rotation" value="0">
-                            </template>
-                            <template x-if="currentCourse.course_type !== 'theory'">
-                                <div class="form-group" style="margin-bottom:0;">
-                                    <label>การวนกลุ่มนักศึกษาระหว่างแหล่งฝึก (Rotation) <span style="color:var(--status-conflict-fg)">*</span></label>
-                                    <select name="requires_practicum_rotation" x-model="currentCourse.requires_practicum_rotation" required>
-                                        <option value="">-- กรุณาเลือก --</option>
-                                        <option value="1">ใช่ — ทุกกลุ่มต้องหมุนเวียนครบทุกแหล่งฝึก</option>
-                                        <option value="0">ไม่ใช่ — แต่ละกลุ่มอยู่แหล่งฝึกตายตัว</option>
-                                    </select>
-                                    <div style="font-size:11px;color:var(--fg-3);margin-top:4px;">นักศึกษาทุกกลุ่มต้องผ่านทุกแหล่งฝึกให้ครบเท่ากัน แต่เวลาต่างกัน</div>
-                                </div>
-                            </template>
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label>การวนกลุ่มนักศึกษาระหว่างแหล่งฝึก (Rotation)</label>
+                                <select name="requires_practicum_rotation" x-model="currentCourse.requires_practicum_rotation">
+                                    <option value="0">ไม่มีการหมุนเวียนแหล่งฝึก</option>
+                                    <option value="1">มีการหมุนเวียนแหล่งฝึก</option>
+                                </select>
+                            </div>
 
                         </div>
                         <div class="modal-foot" style="display: flex; justify-content: space-between;">

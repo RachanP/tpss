@@ -5,11 +5,6 @@
         'published' => ['label' => 'เผยแพร่แล้ว','badge' => 'badge-ok'],
         'rejected'  => ['label' => 'ตีกลับ',     'badge' => 'badge-error'],
     ];
-    $courseTypeLabels = [
-        'theory'           => 'ทฤษฎี',
-        'practicum'        => 'ปฏิบัติ/ฝึกปฏิบัติ',
-        'theory_practicum' => 'ทฤษฎีและปฏิบัติ',
-    ];
 @endphp
 
 <x-app-layout title="จัดการรายวิชา">
@@ -66,9 +61,7 @@
                             <td>
                                 <div style="font-weight:700;color:var(--fg-1);">{{ $course?->course_code ?? '-' }}</div>
                                 <div class="body-sm" style="margin-top:3px;">{{ $course?->name_th ?? $course?->name_en ?? '-' }}</div>
-                                <div class="caption" style="margin-top:5px;">
-                                    {{ $course?->credits ?? '-' }} หน่วยกิต · {{ $courseTypeLabels[$course?->course_type] ?? '-' }}
-                                </div>
+                                <div class="caption" style="margin-top:5px;">{{ $course?->credits ?? '-' }} หน่วยกิต</div>
                             </td>
                             <td>
                                 <div class="body-sm">{{ $course?->curriculum?->name ?? '-' }}</div>

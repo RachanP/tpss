@@ -296,7 +296,6 @@ class MasterDataController extends Controller
             'head_instructor_id'          => 'required|exists:users,id',
             'staff_ids'                   => 'nullable|array',
             'staff_ids.*'                 => 'exists:users,id',
-            'course_type'                 => 'required|in:theory,practicum,theory_practicum',
             'academic_level'              => 'nullable|in:undergraduate,graduate',
             'default_year_level'          => 'required|integer|min:1|max:4',
             'default_semester'            => 'required|integer|min:1|max:3',
@@ -336,7 +335,6 @@ class MasterDataController extends Controller
             'head_instructor_id'          => 'required|exists:users,id',
             'staff_ids'                   => 'nullable|array',
             'staff_ids.*'                 => 'exists:users,id',
-            'course_type'                 => 'required|in:theory,practicum,theory_practicum',
             'academic_level'              => 'nullable|in:undergraduate,graduate',
             'default_year_level'          => 'required|integer|min:1|max:4',
             'default_semester'            => 'required|integer|min:1|max:3',
@@ -630,15 +628,8 @@ class MasterDataController extends Controller
             $currName   = trim($csv['curriculum_name'] ?? '');
             $credits    = trim($csv['credits'] ?? '');
             $headEmpId  = trim($csv['head_instructor_employee_id'] ?? '');
-            $courseType = trim($csv['course_type'] ?? '');
-
-            if (!$code || !$nameTh || !$currName || $credits === '' || !$headEmpId || !$courseType) {
-                $errors[] = "แถว {$row}: ข้อมูลบังคับไม่ครบ (course_code, name_th, curriculum_name, credits, head_instructor_employee_id, course_type)";
-                continue;
-            }
-
-            if (!in_array($courseType, ['theory', 'practicum', 'theory_practicum'])) {
-                $errors[] = "แถว {$row}: course_type ต้องเป็น theory, practicum หรือ theory_practicum";
+            if (!$code || !$nameTh || !$currName || $credits === '' || !$headEmpId) {
+                $errors[] = "แถว {$row}: ข้อมูลบังคับไม่ครบ (course_code, name_th, curriculum_name, credits, head_instructor_employee_id)";
                 continue;
             }
 
@@ -706,7 +697,6 @@ class MasterDataController extends Controller
                         'name_en'                     => trim($csv['name_en'] ?? '') ?: null,
                         'department_id'               => $deptId,
                         'head_instructor_id'          => $headId,
-                        'course_type'                 => $courseType,
                         'credits'                     => (int)$credits,
                         'lecture_hours'               => $lecture,
                         'lab_hours'                   => $lab,

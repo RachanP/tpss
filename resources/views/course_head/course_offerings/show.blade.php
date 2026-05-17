@@ -1,15 +1,12 @@
 @php
-    $course        = $courseOffering->course;
-    $academicYear  = $courseOffering->academicYear;
-    $canEdit       = $academicYear?->phase === 'scheduling';
-    $lectureFallback  = $courseOffering->planned_lecture_hours === null;
-    $labFallback      = $courseOffering->planned_lab_hours === null;
-    $lectureHours     = $courseOffering->planned_lecture_hours ?? $course?->lecture_hours ?? 0;
-    $labHours         = $courseOffering->planned_lab_hours ?? $course?->lab_hours ?? 0;
-    $practicumHours   = $courseOffering->planned_practicum_hours ?? 0;
+    $course           = $courseOffering->course;
+    $academicYear     = $courseOffering->academicYear;
+    $canEdit          = $academicYear?->phase === 'scheduling';
+    $lectureHours     = $course?->lecture_hours ?? 0;
+    $labHours         = $course?->lab_hours ?? 0;
     $studentTotal     = $courseOffering->studentGroups->sum('student_count');
-    $studentLimit     = $courseOffering->total_student_count ?? 0;
-    $studentRemaining = max(0, $studentLimit - $studentTotal);
+    $courseCapacity   = $course?->capacity ?? 0;
+    $ungrouped        = max(0, $courseCapacity - $studentTotal);
 @endphp
 
 <x-app-layout title="รายละเอียดรายวิชา">
@@ -22,7 +19,6 @@
             </p>
         </div>
         <div class="card-actions">
-            <a class="btn btn-secondary" href="{{ route('maker.course_offerings.schedules.index', $courseOffering) }}">จัดตารางสอน</a>
             @php $phase = $courseOffering->academicYear?->phase ?? 'preparation'; @endphp
             @if($phase === 'scheduling')
                 <span class="badge" style="background:oklch(90% 0.1 145);color:oklch(30% 0.15 145);border:1px solid oklch(70% 0.15 145);">เปิดจัดตาราง</span>
@@ -63,12 +59,12 @@
 
     <div class="stats-grid">
         <div class="st-card">
-            <div class="st-val">{{ $studentTotal }} / {{ $courseOffering->total_student_count ?? '-' }}</div>
-            <div class="st-lbl">นักศึกษาใช้แล้ว / ทั้งหมด</div>
+            <div class="st-val">{{ $courseCapacity ?: '-' }}</div>
+            <div class="st-lbl">จำนวนที่เปิดรับ</div>
         </div>
         <div class="st-card">
-            <div class="st-val">{{ $studentRemaining }}</div>
-            <div class="st-lbl">นักศึกษาคงเหลือ</div>
+            <div class="st-val">{{ $studentTotal }}</div>
+            <div class="st-lbl">จัดกลุ่มแล้ว</div>
         </div>
         <div class="st-card">
             <div class="st-val">{{ $courseOffering->studentGroups->count() }}</div>
@@ -79,81 +75,78 @@
             <div class="st-lbl">ผู้สอนในรายวิชา</div>
         </div>
         <div class="st-card">
-            <div class="st-val">{{ $lectureHours }}/{{ $labHours }}/{{ $practicumHours }}</div>
-            <div class="st-lbl">บรรยาย / ปฏิบัติ / ฝึกปฏิบัติ</div>
+            <div class="st-val">{{ $lectureHours }} / {{ $labHours }}</div>
+            <div class="st-lbl">ชม.บรรยาย / ชม.ปฏิบัติ</div>
         </div>
     </div>
 
     <div class="card">
         <div class="card-hdr">
             <div>
-                <div class="card-ttl">ภาพรวมรายวิชา</div>
-                <div class="caption" style="margin-top:4px;">ข้อมูลภาคการศึกษานี้ใช้แทนค่าเริ่มต้นจากข้อมูลรายวิชาหลักเมื่อมีการระบุไว้</div>
+                <div class="card-ttl">ข้อมูลรายวิชา</div>
+                <div class="caption" style="margin-top:4px;">ข้อมูลจากรายวิชาหลักและการตั้งค่าระบบ</div>
             </div>
         </div>
         <div style="padding:20px;">
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:20px;margin-bottom:20px;">
+                <div>
+                    <div class="caption">ภาควิชา</div>
+                    <div style="font-weight:600;margin-top:4px;">{{ $course?->department?->name ?? '-' }}</div>
+                </div>
+                <div>
+                    <div class="caption">หน่วยกิต</div>
+                    <div style="font-weight:600;margin-top:4px;">{{ $course?->credits ?? '-' }} หน่วยกิต</div>
+                </div>
+                <div>
+                    <div class="caption">ชั้นปี</div>
+                    <div style="font-weight:600;margin-top:4px;">ปี {{ $course?->default_year_level ?? '-' }}</div>
+                </div>
+                <div>
+                    <div class="caption">จำนวนที่เปิดรับ</div>
+                    <div style="font-weight:600;margin-top:4px;">{{ $courseCapacity ?: '-' }} คน</div>
+                </div>
+                <div>
+                    <div class="caption">จำนวนสัปดาห์สอน</div>
+                    <div style="font-weight:600;margin-top:4px;">{{ $teachingWeeks }} สัปดาห์ <span class="caption">(ค่าตั้งระบบ)</span></div>
+                </div>
+                <div>
+                    <div class="caption">ชั่วโมงบรรยาย</div>
+                    <div style="font-weight:600;margin-top:4px;">{{ $lectureHours }} ชั่วโมง</div>
+                </div>
+                <div>
+                    <div class="caption">ชั่วโมงปฏิบัติการ</div>
+                    <div style="font-weight:600;margin-top:4px;">{{ $labHours }} ชั่วโมง</div>
+                </div>
+            </div>
+
             @if($canEdit)
-            <form method="POST" action="{{ route('maker.course_offerings.update', $courseOffering) }}">
+            <form method="POST" action="{{ route('maker.course_offerings.update', $courseOffering) }}" style="border-top:1px solid var(--border-1);padding-top:20px;">
                 @csrf
                 @method('PUT')
-
                 <div class="form-row">
-                    <div class="form-group">
-                        <label>จำนวนนักศึกษารวม</label>
-                        <input type="number" name="total_student_count" min="1" value="{{ old('total_student_count', $courseOffering->total_student_count) }}" required>
-                    </div>
-                    <div class="form-group">
-                        <label>จำนวนสัปดาห์สอน</label>
-                        <input type="number" name="teaching_weeks" min="1" max="52" value="{{ old('teaching_weeks', $courseOffering->teaching_weeks) }}">
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>ชั่วโมงบรรยายตามแผน</label>
-                        <input type="number" name="planned_lecture_hours" min="0" value="{{ old('planned_lecture_hours', $courseOffering->planned_lecture_hours) }}" placeholder="{{ $course?->lecture_hours ?? 0 }}">
-                        <div class="caption" style="margin-top:6px;">แสดงผล: {{ $lectureHours }} @if($lectureFallback)(ค่าเริ่มต้นจากรายวิชา)@endif</div>
-                    </div>
-                    <div class="form-group">
-                        <label>ชั่วโมงปฏิบัติการตามแผน</label>
-                        <input type="number" name="planned_lab_hours" min="0" value="{{ old('planned_lab_hours', $courseOffering->planned_lab_hours) }}" placeholder="{{ $course?->lab_hours ?? 0 }}">
-                        <div class="caption" style="margin-top:6px;">แสดงผล: {{ $labHours }} @if($labFallback)(ค่าเริ่มต้นจากรายวิชา)@endif</div>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>ชั่วโมงฝึกปฏิบัติตามแผน</label>
-                        <input type="number" name="planned_practicum_hours" min="0" value="{{ old('planned_practicum_hours', $courseOffering->planned_practicum_hours) }}">
-                    </div>
                     <div class="form-group">
                         <label>การจัดรอบฝึกปฏิบัติ</label>
                         <select name="requires_practicum_rotation">
-                            <option value="0" @selected(! old('requires_practicum_rotation', $courseOffering->requires_practicum_rotation))>ไม่มีการหมุนเวียนแหล่งฝึก</option>
-                            <option value="1" @selected(old('requires_practicum_rotation', $courseOffering->requires_practicum_rotation))>มีการหมุนเวียนแหล่งฝึก</option>
+                            <option value="0" @selected(! $courseOffering->requires_practicum_rotation)>ไม่มีการหมุนเวียนแหล่งฝึก</option>
+                            <option value="1" @selected($courseOffering->requires_practicum_rotation)>มีการหมุนเวียนแหล่งฝึก</option>
                         </select>
                     </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group full">
-                        <label>หมายเหตุการฝึกปฏิบัติ / เงื่อนไขรายวิชา</label>
-                        <textarea name="practicum_note" rows="3">{{ old('practicum_note', $courseOffering->practicum_note) }}</textarea>
+                    <div class="form-group" style="display:flex;align-items:flex-end;">
+                        <button type="submit" class="btn btn-primary">บันทึก</button>
                     </div>
-                </div>
-
-                <div style="display:flex;justify-content:flex-end;">
-                    <button class="btn btn-primary" type="submit">บันทึกข้อมูลรายวิชา</button>
                 </div>
             </form>
             @else
-            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;">
-                <div><div class="caption">จำนวนนักศึกษารวม</div><div style="font-weight:600;margin-top:4px;">{{ $courseOffering->total_student_count ?? '-' }} คน</div></div>
-                <div><div class="caption">จำนวนสัปดาห์สอน</div><div style="font-weight:600;margin-top:4px;">{{ $courseOffering->teaching_weeks ?? '-' }} สัปดาห์</div></div>
-                <div><div class="caption">ชั่วโมงบรรยาย / ปฏิบัติ / ฝึกปฏิบัติ</div><div style="font-weight:600;margin-top:4px;">{{ $lectureHours }} / {{ $labHours }} / {{ $practicumHours }}</div></div>
-                <div><div class="caption">การจัดรอบฝึกปฏิบัติ</div><div style="font-weight:600;margin-top:4px;">{{ $courseOffering->requires_practicum_rotation ? 'มีการหมุนเวียนแหล่งฝึก' : 'ไม่มีการหมุนเวียนแหล่งฝึก' }}</div></div>
+            <div style="border-top:1px solid var(--border-1);padding-top:20px;display:grid;grid-template-columns:repeat(2,1fr);gap:16px;">
+                <div>
+                    <div class="caption">การจัดรอบฝึกปฏิบัติ</div>
+                    <div style="font-weight:600;margin-top:4px;">{{ $courseOffering->requires_practicum_rotation ? 'มีการหมุนเวียนแหล่งฝึก' : 'ไม่มีการหมุนเวียนแหล่งฝึก' }}</div>
+                </div>
                 @if($courseOffering->practicum_note)
-                <div style="grid-column:span 2;"><div class="caption">หมายเหตุ</div><div style="margin-top:4px;">{{ $courseOffering->practicum_note }}</div></div>
+                <div>
+                    <div class="caption">หมายเหตุการฝึกปฏิบัติ</div>
+                    <div style="margin-top:4px;">{{ $courseOffering->practicum_note }}</div>
+                </div>
                 @endif
             </div>
             @endif
@@ -223,7 +216,7 @@
         <div class="card-hdr">
             <div>
                 <div class="card-ttl">กลุ่มนักศึกษา</div>
-                <div class="caption" style="margin-top:4px;">ทั้งหมด {{ $studentLimit ?: '-' }} คน · จัดกลุ่มแล้ว {{ $studentTotal }} คน · คงเหลือ {{ $studentRemaining }} คน</div>
+                <div class="caption" style="margin-top:4px;">เปิดรับ {{ $courseCapacity ?: '-' }} คน · จัดกลุ่มแล้ว {{ $studentTotal }} คน · ยังไม่ได้จัดกลุ่ม {{ $ungrouped }} คน</div>
             </div>
         </div>
         <div style="padding:20px;">

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\CourseOffering;
 use App\Models\StudentGroup;
+use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -62,6 +63,7 @@ class CourseOfferingController extends Controller
             'courseOffering' => $courseOffering,
             'availableInstructors' => $availableInstructors,
             'availablePrerequisiteCourses' => $availablePrerequisiteCourses,
+            'teachingWeeks' => (int) SystemSetting::get('teaching_load_weeks', 39),
         ]);
     }
 
@@ -70,19 +72,13 @@ class CourseOfferingController extends Controller
         $this->authorizeCourseHeadOffering($courseOffering);
         if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
 
-        $validated = $request->validate([
-            'total_student_count' => ['required', 'integer', 'min:1', 'max:9999'],
-            'planned_lecture_hours' => ['nullable', 'integer', 'min:0', 'max:9999'],
-            'planned_lab_hours' => ['nullable', 'integer', 'min:0', 'max:9999'],
-            'planned_practicum_hours' => ['nullable', 'integer', 'min:0', 'max:9999'],
-            'teaching_weeks' => ['nullable', 'integer', 'min:1', 'max:52'],
+        $request->validate([
             'requires_practicum_rotation' => ['nullable', 'boolean'],
-            'practicum_note' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        $validated['requires_practicum_rotation'] = $request->boolean('requires_practicum_rotation');
-
-        $courseOffering->update($validated);
+        $courseOffering->update([
+            'requires_practicum_rotation' => $request->boolean('requires_practicum_rotation'),
+        ]);
 
         return redirect()
             ->route('maker.course_offerings.show', $courseOffering)
