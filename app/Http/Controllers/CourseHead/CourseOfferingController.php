@@ -8,6 +8,7 @@ use App\Models\CourseOffering;
 use App\Models\StudentGroup;
 use App\Models\SystemSetting;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -56,6 +57,7 @@ class CourseOfferingController extends Controller
             ->with('instructorProfile.department')
             ->where('is_active', true)
             ->whereHas('instructorProfile')
+            ->whereHas('roles', fn ($q) => $q->whereIn('role', ['instructor', 'course_head']))
             ->orderBy('name')
             ->get();
 
@@ -81,11 +83,11 @@ class CourseOfferingController extends Controller
         ]);
 
         return redirect()
-            ->route('maker.course_offerings.show', $courseOffering)
+            ->to(route('maker.course_offerings.show', $courseOffering) . '#course-info')
             ->with('success', 'บันทึกข้อมูลรายวิชาเรียบร้อยแล้ว');
     }
 
-    public function storeInstructor(Request $request, CourseOffering $courseOffering): RedirectResponse
+    public function storeInstructor(Request $request, CourseOffering $courseOffering): RedirectResponse|JsonResponse
     {
         $this->authorizeCourseHeadOffering($courseOffering);
         if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
@@ -94,39 +96,52 @@ class CourseOfferingController extends Controller
             'user_id' => ['required', 'integer', 'exists:users,id'],
         ]);
 
-        $user = User::with('instructorProfile')->find($validated['user_id']);
+        $user = User::with('instructorProfile.department')->find($validated['user_id']);
 
         if (! $user || ! $user->is_active || ! $user->instructorProfile) {
-            return back()
-                ->withErrors(['user_id' => 'เลือกได้เฉพาะอาจารย์ที่ยังใช้งานอยู่และมีข้อมูลโปรไฟล์อาจารย์'])
-                ->withInput();
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'เลือกได้เฉพาะอาจารย์ที่ยังใช้งานอยู่และมีข้อมูลโปรไฟล์อาจารย์'], 422);
+            }
+            return back()->withErrors(['user_id' => 'เลือกได้เฉพาะอาจารย์ที่ยังใช้งานอยู่และมีข้อมูลโปรไฟล์อาจารย์'])->withInput();
         }
 
         if ($courseOffering->instructorPool()->where('users.id', $user->id)->exists()) {
-            return back()
-                ->withErrors(['user_id' => 'อาจารย์คนนี้อยู่ในชุดผู้สอนของรายวิชานี้แล้ว'])
-                ->withInput();
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'อาจารย์คนนี้อยู่ในชุดผู้สอนของรายวิชานี้แล้ว'], 422);
+            }
+            return back()->withErrors(['user_id' => 'อาจารย์คนนี้อยู่ในชุดผู้สอนของรายวิชานี้แล้ว'])->withInput();
         }
 
-        $courseOffering->instructorPool()->attach($user->id, [
-            'role_in_course' => 'instructor',
-        ]);
+        $courseOffering->instructorPool()->attach($user->id, ['role_in_course' => 'instructor']);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'id'         => $user->id,
+                'name'       => $user->formatted_name,
+                'department' => $user->instructorProfile?->department?->name ?? '-',
+            ]);
+        }
 
         return back()->with('success', 'เพิ่มอาจารย์ในรายวิชาเรียบร้อยแล้ว');
     }
 
-    public function destroyInstructor(CourseOffering $courseOffering, User $user): RedirectResponse
+    public function destroyInstructor(Request $request, CourseOffering $courseOffering, User $user): RedirectResponse|JsonResponse
     {
         $this->authorizeCourseHeadOffering($courseOffering);
         if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
 
         if ((int) $courseOffering->coordinator_id === (int) $user->id) {
-            return back()->withErrors([
-                'instructor_pool' => 'ไม่สามารถนำหัวหน้าวิชาหลักออกจากชุดผู้สอนได้ กรุณาเปลี่ยนหัวหน้าวิชาผ่านหน้าตั้งค่ารายวิชาแยกต่างหาก',
-            ]);
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'ไม่สามารถนำหัวหน้าวิชาหลักออกจากชุดผู้สอนได้'], 422);
+            }
+            return back()->withErrors(['instructor_pool' => 'ไม่สามารถนำหัวหน้าวิชาหลักออกจากชุดผู้สอนได้']);
         }
 
         $courseOffering->instructorPool()->detach($user->id);
+
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true]);
+        }
 
         return back()->with('success', 'ลบอาจารย์ออกจากชุดผู้สอนเรียบร้อยแล้ว');
     }
