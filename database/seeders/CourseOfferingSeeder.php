@@ -25,13 +25,15 @@ class CourseOfferingSeeder extends Seeder
 
         $created = 0;
         foreach ($courses as $course) {
-            CourseOffering::firstOrCreate(
+            $offering = CourseOffering::firstOrCreate(
                 ['course_id' => $course->id, 'academic_year_id' => $year->id],
                 [
                     'coordinator_id'  => $course->head_instructor_id,
                     'approval_status' => 'draft',
                 ]
             );
+            $offering->attachCoordinator();
+            $offering->copyInstructorPoolFromCourse();
             $created++;
         }
 

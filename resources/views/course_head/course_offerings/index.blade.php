@@ -70,7 +70,13 @@
                                 </div>
                             </td>
                             <td>
-                                <div style="font-weight:700;">{{ $offering->student_groups_count }} กลุ่ม</div>
+                                <div style="font-weight:700;">
+                                    @if($offering->student_groups_count > 0)
+                                        {{ $offering->student_groups_count }} กลุ่ม
+                                    @else
+                                        ยังไม่ได้จัดกลุ่ม
+                                    @endif
+                                </div>
                                 <div class="caption" style="margin-top:4px;">รับได้ {{ $course?->capacity ?? '-' }} คน</div>
                             </td>
                             <td>

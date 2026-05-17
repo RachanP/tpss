@@ -96,12 +96,19 @@ class CourseSeeder extends Seeder
             ],
         ];
 
+        $staff01 = User::where('username', 'staff_01')->first();
+
         foreach ($courses as $courseData) {
             $courseData['curriculum_id'] = $curriculum->id;
-            Course::updateOrCreate(
+            $course = Course::updateOrCreate(
                 ['course_code' => $courseData['course_code'], 'curriculum_id' => $curriculum->id],
                 $courseData
             );
+
+            // Assign staff_01 เป็นเจ้าหน้าที่ให้ทุกวิชา
+            if ($staff01) {
+                $course->assignedStaff()->syncWithoutDetaching([$staff01->id]);
+            }
         }
     }
 }

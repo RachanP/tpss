@@ -59,7 +59,41 @@ class CourseOffering extends Model
     public function instructorPool(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'course_offering_instructors')
-            ->withPivot('role_in_course');
+            ->withPivot('role_in_course', 'course_role_id');
+    }
+
+    public function attachCoordinator(): void
+    {
+        if (!$this->coordinator_id) return;
+        if ($this->instructorPool()->where('users.id', $this->coordinator_id)->exists()) return;
+
+        $coordinatorRole = \App\Models\CourseRole::where('name_th', 'หัวหน้าวิชา')->first();
+        $this->instructorPool()->attach($this->coordinator_id, [
+            'role_in_course' => 'coordinator',
+            'course_role_id' => $coordinatorRole?->id,
+        ]);
+    }
+
+    public function copyInstructorPoolFromCourse(): void
+    {
+        $course = $this->course ?? $this->course()->first();
+        if (!$course) return;
+
+        $sourcePool = $course->instructors()->get();
+        $existing = $this->instructorPool()->pluck('users.id')->all();
+
+        $payload = [];
+        foreach ($sourcePool as $instructor) {
+            if (in_array($instructor->id, $existing, true)) continue;
+            $payload[$instructor->id] = [
+                'role_in_course' => 'instructor',
+                'course_role_id' => $instructor->pivot->course_role_id,
+            ];
+        }
+
+        if (!empty($payload)) {
+            $this->instructorPool()->attach($payload);
+        }
     }
 
     public function schedules(): HasMany

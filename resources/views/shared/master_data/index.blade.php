@@ -365,6 +365,21 @@
             this.showActivityTypeModal = true;
         },
 
+        // Course Roles
+        showCourseRoleModal: false,
+        editCourseRoleMode: false,
+        currentCourseRole: { id: '', name_th: '' },
+        openAddCourseRole() {
+            this.editCourseRoleMode = false;
+            this.currentCourseRole = { id: '', name_th: '' };
+            this.showCourseRoleModal = true;
+        },
+        openEditCourseRole(r) {
+            this.editCourseRoleMode = true;
+            this.currentCourseRole = { ...r };
+            this.showCourseRoleModal = true;
+        },
+
         confirmDelete(formId, itemLabel, warnText) {
             window.tpssConfirmDelete(formId, itemLabel, warnText);
         }
@@ -444,6 +459,18 @@
                         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                     </svg>
                     ประเภทกิจกรรม
+                    @if(!$isAdmin)@include('shared.master_data._lock_icon')@endif
+                </button>
+
+                {{-- 9. บทบาทอาจารย์ในวิชา --}}
+                <button type="button" @click="activeTab = 'course_roles'"
+                    :class="activeTab === 'course_roles' ? 'btn-primary' : 'btn btn-ghost'"
+                    style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    บทบาทในวิชา
                     @if(!$isAdmin)@include('shared.master_data._lock_icon')@endif
                 </button>
             </div>
@@ -1742,66 +1769,12 @@
                                 </div>
                             </div>
 
-                            {{-- Divider: ผู้รับผิดชอบ --}}
-                            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-                                <span style="font-size:11px;font-weight:700;color:var(--fg-3);text-transform:uppercase;letter-spacing:.6px;white-space:nowrap;">ผู้รับผิดชอบ</span>
-                                <div style="flex:1;height:1px;background:var(--border);"></div>
-                            </div>
-                            {{-- หัวหน้าวิชา: combobox (full row) --}}
-                            <div class="form-group" style="position:relative;margin-bottom:16px;">
-                                <label>หัวหน้าวิชา / ผู้ประสานรายวิชา <span style="color:var(--status-conflict-fg)">*</span></label>
-                                <div style="position:relative;">
-                                    <input type="text" x-model="courseHeadSearch"
-                                        @input="showCourseHeadDropdown = true"
-                                        @focus="showCourseHeadDropdown = true"
-                                        @click.away="showCourseHeadDropdown = false"
-                                        placeholder="พิมพ์ชื่อเพื่อค้นหา...">
-                                    <div class="search-results" x-show="showCourseHeadDropdown" x-cloak style="max-height:180px;overflow-y:auto;z-index:9999;">
-                                        <template x-for="user in courseHeadList.filter(u => (u.formatted_name||u.name).toLowerCase().includes(courseHeadSearch.toLowerCase()))" :key="user.id">
-                                            <div class="search-item" @click="selectCourseHead(user)" x-text="user.formatted_name || user.name"></div>
-                                        </template>
-                                        <div x-show="courseHeadList.filter(u => (u.formatted_name||u.name).toLowerCase().includes(courseHeadSearch.toLowerCase())).length === 0"
-                                            style="padding:8px 12px;color:var(--fg-4);font-size:12px;">
-                                            <span x-show="courseHeadList.length === 0">ไม่มีผู้ใช้ที่มี role หัวหน้าวิชา<span x-show="currentCourse.department_id">ในภาควิชานี้</span></span>
-                                            <span x-show="courseHeadList.length > 0">ไม่พบชื่อที่ค้นหา</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <input type="hidden" name="head_instructor_id" x-model="currentCourse.head_instructor_id">
-                            </div>
-
-                            {{-- เจ้าหน้าที่: multi-select chips (full row, dropdown ไม่บัง) --}}
-                            <div class="form-group" style="margin-bottom:20px;position:relative;">
-                                <label>เจ้าหน้าที่ผู้ดูแลวิชา <span style="font-weight:400;color:var(--fg-4);font-size:11px;">(เลือกได้หลายคน)</span></label>
-                                <template x-for="s in selectedStaff" :key="s.id">
-                                    <input type="hidden" name="staff_ids[]" :value="s.id">
-                                </template>
-                                {{-- chips --}}
-                                <div x-show="selectedStaff.length > 0"
-                                    style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;max-height:72px;overflow-y:auto;padding:2px 0;">
-                                    <template x-for="s in selectedStaff" :key="s.id">
-                                        <span style="display:inline-flex;align-items:center;gap:4px;background:var(--brand-navy);color:#fff;font-size:11px;padding:3px 10px;border-radius:99px;white-space:nowrap;">
-                                            <span x-text="s.name"></span>
-                                            <button type="button" @click="removeStaff(s.id)"
-                                                style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,0.7);padding:0;line-height:1;font-size:15px;margin-left:2px;">&times;</button>
-                                        </span>
-                                    </template>
-                                </div>
-                                {{-- search input + dropdown --}}
-                                <div style="position:relative;">
-                                    <input type="text" x-model="staffSearch"
-                                        @input="showStaffDropdown = true"
-                                        @focus="showStaffDropdown = true"
-                                        @click.away="showStaffDropdown = false"
-                                        placeholder="พิมพ์ชื่อเพื่อเพิ่มเจ้าหน้าที่...">
-                                    <div x-show="showStaffDropdown" x-cloak
-                                        style="position:absolute;top:100%;left:0;right:0;background:var(--bg-1,#fff);border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:9999;max-height:160px;overflow-y:auto;margin-top:2px;">
-                                        <template x-for="u in filteredStaffList()" :key="u.id">
-                                            <div class="search-item" @click="addStaff(u)" x-text="u.formatted_name || u.name"></div>
-                                        </template>
-                                        <div x-show="filteredStaffList().length === 0"
-                                            style="padding:8px 12px;color:var(--fg-4);font-size:12px;">ไม่พบเจ้าหน้าที่</div>
-                                    </div>
+                            {{-- Note: ผู้รับผิดชอบย้ายไปหน้า "ตั้งค่าผู้รับผิดชอบรายวิชา" --}}
+                            <div x-show="editCourseMode" style="background:var(--surface-1);border:1px solid var(--border);border-radius:6px;padding:12px 14px;margin-bottom:20px;font-size:13px;color:var(--fg-2);display:flex;align-items:flex-start;gap:10px;">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:1px;color:var(--brand-navy);"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                                <div>
+                                    <div style="font-weight:600;margin-bottom:2px;">การกำหนดหัวหน้าวิชา / เจ้าหน้าที่ / อาจารย์ผู้สอน</div>
+                                    <div>ย้ายไปจัดการที่หน้า <a :href="'{{ route($routePrefix . '.course_pool.show', '__ID__') }}'.replace('__ID__', currentCourse.id)" style="color:var(--brand-navy);font-weight:600;">ตั้งค่าผู้รับผิดชอบรายวิชา</a></div>
                                 </div>
                             </div>
 
@@ -2132,6 +2105,99 @@
                         </div>
                     </form>
                     <form id="deleteActivityTypeForm" :action="'{{ url('admin/master-data/activity-types') }}/' + currentActivityType.id" method="POST" style="display: none;">
+                        @csrf
+                        @method('DELETE')
+                    </form>
+                </div>
+            </div>
+        </template>
+
+        {{-- Tab: บทบาทอาจารย์ในวิชา --}}
+        <div x-show="activeTab === 'course_roles'" x-cloak>
+            <div class="card">
+                <div class="card-hdr">
+                    <div class="card-ttl">บทบาทอาจารย์ในวิชา</div>
+                    @if($isAdmin)
+                    <div class="card-actions">
+                        <button type="button" class="btn btn-primary" @click="openAddCourseRole()">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            เพิ่มบทบาท
+                        </button>
+                    </div>
+                    @endif
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ลำดับ</th>
+                                <th>ชื่อบทบาท</th>
+                                @if($isAdmin)<th style="text-align:center;">จัดการ</th>@endif
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($courseRoles as $cr)
+                            <tr>
+                                <td style="color:var(--fg-3);width:60px;">{{ $cr->sort_order }}</td>
+                                <td style="font-weight:600;">{{ $cr->name_th }}</td>
+                                @if($isAdmin)
+                                <td style="text-align:center;">
+                                    <button type="button" class="action-btn" title="แก้ไข"
+                                        @click="openEditCourseRole({{ Js::from(['id' => $cr->id, 'name_th' => $cr->name_th]) }})">
+                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                    </button>
+                                </td>
+                                @endif
+                            </tr>
+                            @empty
+                            <tr>
+                                <td colspan="{{ $isAdmin ? 3 : 2 }}" style="text-align:center;color:var(--fg-3);padding:40px;">ยังไม่มีบทบาทในวิชา</td>
+                            </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: บทบาทในวิชา -->
+        <template x-if="showCourseRoleModal">
+            <div class="overlay" x-cloak>
+                <div class="modal-center" style="max-width:480px;"
+                    x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95"
+                    x-transition:enter-end="opacity-100 scale-100">
+                    <div class="modal-hdr" style="background:var(--bg-2);">
+                        <div class="modal-ttl" style="font-family:var(--font-display);"
+                            x-text="editCourseRoleMode ? 'แก้ไขบทบาทในวิชา' : 'เพิ่มบทบาทในวิชา'"></div>
+                        <button type="button" class="modal-cls" @click="showCourseRoleModal = false">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                    </div>
+                    <form :action="editCourseRoleMode ? '{{ url('admin/master-data/course-roles') }}/' + currentCourseRole.id : '{{ route('admin.course_roles.store') }}'" method="POST">
+                        @csrf
+                        <input type="hidden" name="_method" value="PUT" :disabled="!editCourseRoleMode">
+                        <div class="modal-body">
+                            <div class="form-group" style="margin-bottom:16px;">
+                                <label>ชื่อบทบาท (ภาษาไทย) <span style="color:var(--status-conflict-fg)">*</span></label>
+                                <input type="text" name="name_th" x-model="currentCourseRole.name_th" required placeholder="เช่น หัวหน้าวิชา, อาจารย์ประจำกลุ่ม">
+                            </div>
+                        </div>
+                        <div class="modal-foot" style="display:flex;justify-content:space-between;">
+                            <div>
+                                <button type="button" class="btn btn-ghost" x-show="editCourseRoleMode"
+                                    @click="confirmDelete('deleteCourseRoleForm', currentCourseRole.name_th, 'บทบาทที่มีการใช้งานอยู่จะไม่สามารถลบได้')"
+                                    style="color:var(--status-conflict-fg);">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;display:inline-block;vertical-align:middle;"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                    ลบข้อมูล
+                                </button>
+                            </div>
+                            <div style="display:flex;gap:8px;">
+                                <button type="button" class="btn btn-ghost" @click="showCourseRoleModal = false">ยกเลิก</button>
+                                <button type="submit" class="btn btn-primary">บันทึกข้อมูล</button>
+                            </div>
+                        </div>
+                    </form>
+                    <form id="deleteCourseRoleForm" :action="'{{ url('admin/master-data/course-roles') }}/' + currentCourseRole.id" method="POST" style="display:none;">
                         @csrf
                         @method('DELETE')
                     </form>

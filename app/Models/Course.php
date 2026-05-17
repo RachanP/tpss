@@ -61,6 +61,12 @@ class Course extends Model
         return $this->belongsToMany(User::class, 'course_staff');
     }
 
+    public function instructors(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'course_instructors')
+            ->withPivot('course_role_id');
+    }
+
     public function courseOfferings(): HasMany
     {
         return $this->hasMany(CourseOffering::class);

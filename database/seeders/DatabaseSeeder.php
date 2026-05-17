@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             DepartmentSeeder::class,   // pass 2: assign head/secretary now that users exist
             RoomSeeder::class,
             CourseSeeder::class,
+            CourseRoleSeeder::class,
             ActivityTypeSeeder::class,
             CourseOfferingSeeder::class,
         ]);

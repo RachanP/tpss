@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\DB;
 use App\Models\Department;
 use App\Models\User;
 use App\Models\LocationType;
@@ -10,6 +11,7 @@ use App\Models\Room;
 use App\Models\Course;
 use App\Models\Curriculum;
 use App\Models\ActivityType;
+use App\Models\CourseRole;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -50,6 +52,9 @@ class MasterDataController extends Controller
         // Activity Types
         $activityTypes = ActivityType::orderBy('name')->get();
 
+        // Course Roles
+        $courseRoles = CourseRole::orderBy('sort_order')->get();
+
         // Pre-flight counts for import warnings
         $usersWithEmployeeIdCount = User::whereNotNull('employee_id')->where('employee_id', '!=', '')->count();
 
@@ -66,6 +71,7 @@ class MasterDataController extends Controller
             'courses',
             'curriculums',
             'activityTypes',
+            'courseRoles',
             'staffUsers',
             'isAdmin',
             'routePrefix',
@@ -293,7 +299,7 @@ class MasterDataController extends Controller
             'name_en'                     => 'nullable|string|max:255',
             'curriculum_id'               => 'required|exists:curriculums,id',
             'department_id'               => 'nullable|exists:departments,id',
-            'head_instructor_id'          => 'required|exists:users,id',
+            'head_instructor_id'          => 'nullable|exists:users,id',
             'staff_ids'                   => 'nullable|array',
             'staff_ids.*'                 => 'exists:users,id',
             'academic_level'              => 'nullable|in:undergraduate,graduate',
@@ -332,7 +338,7 @@ class MasterDataController extends Controller
             'name_en'                     => 'nullable|string|max:255',
             'curriculum_id'               => 'required|exists:curriculums,id',
             'department_id'               => 'nullable|exists:departments,id',
-            'head_instructor_id'          => 'required|exists:users,id',
+            'head_instructor_id'          => 'nullable|exists:users,id',
             'staff_ids'                   => 'nullable|array',
             'staff_ids.*'                 => 'exists:users,id',
             'academic_level'              => 'nullable|in:undergraduate,graduate',
@@ -493,6 +499,37 @@ class MasterDataController extends Controller
         } catch (\Illuminate\Database\QueryException $e) {
             return redirect()->back()->with('error', 'ไม่สามารถลบได้เนื่องจากมีกิจกรรมผูกอยู่กับประเภทนี้');
         }
+    }
+
+    public function storeCourseRole(Request $request)
+    {
+        $validated = $request->validate([
+            'name_th' => 'required|string|max:100|unique:course_roles,name_th',
+        ]);
+        $maxOrder = CourseRole::max('sort_order') ?? 0;
+        CourseRole::create(array_merge($validated, ['sort_order' => $maxOrder + 1, 'is_active' => true]));
+        return $this->redirectToMasterData('course_roles')->with('success', 'เพิ่มบทบาทในวิชาเรียบร้อยแล้ว');
+    }
+
+    public function updateCourseRole(Request $request, CourseRole $courseRole)
+    {
+        $validated = $request->validate([
+            'name_th' => 'required|string|max:100|unique:course_roles,name_th,' . $courseRole->id,
+        ]);
+        $courseRole->update($validated);
+        return $this->redirectToMasterData('course_roles')->with('success', 'อัปเดตบทบาทในวิชาเรียบร้อยแล้ว');
+    }
+
+    public function destroyCourseRole(CourseRole $courseRole)
+    {
+        $inUse = DB::table('course_offering_instructors')
+            ->where('course_role_id', $courseRole->id)
+            ->exists();
+        if ($inUse) {
+            return back()->with('error', 'ไม่สามารถลบได้เนื่องจากบทบาทนี้ถูกใช้งานอยู่');
+        }
+        $courseRole->delete();
+        return $this->redirectToMasterData('course_roles')->with('success', 'ลบบทบาทในวิชาเรียบร้อยแล้ว');
     }
 
     // ── CSV Import ────────────────────────────────────────────────────

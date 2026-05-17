@@ -155,10 +155,14 @@
 
     @php
         $poolData = $courseOffering->instructorPool->map(fn($u) => [
-            'id'           => $u->id,
-            'name'         => $u->formatted_name,
-            'department'   => $u->instructorProfile?->department?->name ?? '-',
-            'department_id'=> $u->instructorProfile?->department_id,
+            'id'             => $u->id,
+            'name'           => $u->formatted_name,
+            'department'     => $u->instructorProfile?->department?->name ?? '-',
+            'department_id'  => $u->instructorProfile?->department_id,
+            'is_coordinator' => (int) $u->id === (int) $courseOffering->coordinator_id,
+            'course_role_id' => $u->pivot->course_role_id,
+            'role_name'      => optional($courseRoles->firstWhere('id', $u->pivot->course_role_id))->name_th
+                ?? ($u->pivot->role_in_course === 'coordinator' ? 'หัวหน้าวิชา' : null),
         ]);
         $allInstructors = $availableInstructors->map(fn($u) => [
             'id'           => $u->id,
@@ -166,7 +170,9 @@
             'department'   => $u->instructorProfile?->department?->name ?? '-',
             'department_id'=> $u->instructorProfile?->department_id,
         ]);
+        $courseRolesData = $courseRoles->map(fn($r) => ['id' => $r->id, 'name' => $r->name_th]);
         $storeUrl    = route('maker.course_offerings.instructors.store', $courseOffering);
+        $roleBase    = route('maker.course_offerings.instructors.role', [$courseOffering, '__ID__']);
         $destroyBase = route('maker.course_offerings.instructors.destroy', [$courseOffering, '__ID__']);
         $courseDeptId = $course?->department_id;
     @endphp
@@ -174,6 +180,7 @@
     <div class="card" x-data="{
         pool: {{ $poolData->toJson() }},
         all: {{ $allInstructors->toJson() }},
+        roles: {{ $courseRolesData->toJson() }},
         search: '',
         open: false,
         showAll: false,
@@ -181,9 +188,25 @@
         error: '',
         ddTop: 0, ddLeft: 0, ddWidth: 0,
         storeUrl: '{{ $storeUrl }}',
+        roleBase: '{{ $roleBase }}',
         destroyBase: '{{ $destroyBase }}',
         csrfToken: '{{ csrf_token() }}',
         courseDeptId: {{ $courseDeptId ?? 'null' }},
+        async changeRole(userId, roleId) {
+            this.loading = true; this.error = '';
+            try {
+                const r = await fetch(this.roleBase.replace('__ID__', userId), {
+                    method: 'PATCH', credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': this.csrfToken, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ course_role_id: roleId })
+                });
+                const data = await r.json();
+                if (!r.ok) { this.error = data.message ?? 'เกิดข้อผิดพลาด'; return; }
+                const u = this.pool.find(x => x.id === userId);
+                if (u) { u.course_role_id = data.course_role_id; u.role_name = data.role_name; }
+            } catch { this.error = 'ไม่สามารถเชื่อมต่อได้'; }
+            finally { this.loading = false; }
+        },
         get available() {
             const s = this.search.toLowerCase();
             const inPool = new Set(this.pool.map(u => u.id));
@@ -245,22 +268,6 @@
             @if($canEdit)
             {{-- Combobox --}}
             <div style="position:relative;margin-bottom:20px;">
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;" x-show="courseDeptId">
-                    <span class="caption">แสดง:</span>
-                    <button type="button"
-                        @click="showAll = false; openDropdown()"
-                        :style="!showAll ? 'font-weight:600;color:var(--brand-navy);text-decoration:underline;' : 'color:var(--fg-3);'"
-                        style="background:none;border:none;cursor:pointer;font-size:13px;padding:0;">
-                        เฉพาะภาควิชานี้
-                    </button>
-                    <span class="caption">·</span>
-                    <button type="button"
-                        @click="showAll = true; openDropdown()"
-                        :style="showAll ? 'font-weight:600;color:var(--brand-navy);text-decoration:underline;' : 'color:var(--fg-3);'"
-                        style="background:none;border:none;cursor:pointer;font-size:13px;padding:0;">
-                        อาจารย์ทั้งหมด
-                    </button>
-                </div>
                 <div style="position:relative;">
                     <input
                         x-ref="searchInput"
@@ -284,46 +291,96 @@
                 {{-- Dropdown teleported to body --}}
                 <template x-teleport="body">
                     <div
-                        x-show="open && available.length > 0"
+                        x-show="open"
                         x-cloak
-                        :style="`position:absolute;top:${ddTop}px;left:${ddLeft}px;width:${ddWidth}px;background:#fff;border:1px solid var(--border-1);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.12);z-index:99;max-height:240px;overflow-y:auto;`"
+                        :style="`position:absolute;top:${ddTop}px;left:${ddLeft}px;width:${ddWidth}px;background:#fff;border:1px solid var(--border-1);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.12);z-index:99;`"
                     >
-                        <template x-for="user in available" :key="user.id">
-                            <div
-                                @click="add(user)"
-                                style="padding:10px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border-1);"
-                                @mouseenter="$el.style.background='var(--surface-2)'"
-                                @mouseleave="$el.style.background=''"
-                            >
-                                <div>
-                                    <div style="font-weight:600;font-size:14px;" x-text="user.name"></div>
-                                    <div style="font-size:12px;color:var(--fg-3);" x-text="user.department"></div>
+                        {{-- Filter toggle inside dropdown --}}
+                        <div x-show="courseDeptId" style="display:flex;align-items:center;gap:4px;padding:8px 10px;border-bottom:1px solid var(--border-1);background:var(--surface-1);">
+                            <button type="button"
+                                @click.stop="showAll = false"
+                                :style="!showAll ? 'background:var(--brand-navy);color:#fff;' : 'background:transparent;color:var(--fg-3);'"
+                                style="border:none;cursor:pointer;font-size:12px;padding:3px 10px;border-radius:3px;font-family:var(--font-sans);transition:background 0.1s;">
+                                เฉพาะภาควิชานี้
+                            </button>
+                            <button type="button"
+                                @click.stop="showAll = true"
+                                :style="showAll ? 'background:var(--brand-navy);color:#fff;' : 'background:transparent;color:var(--fg-3);'"
+                                style="border:none;cursor:pointer;font-size:12px;padding:3px 10px;border-radius:3px;font-family:var(--font-sans);transition:background 0.1s;">
+                                อาจารย์ทั้งหมด
+                            </button>
+                        </div>
+                        {{-- Results --}}
+                        <div style="max-height:220px;overflow-y:auto;">
+                            <template x-for="user in available" :key="user.id">
+                                <div
+                                    @click="add(user)"
+                                    style="padding:10px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border-1);"
+                                    @mouseenter="$el.style.background='var(--surface-2)'"
+                                    @mouseleave="$el.style.background=''"
+                                >
+                                    <div>
+                                        <div style="font-weight:600;font-size:14px;" x-text="user.name"></div>
+                                        <div style="font-size:12px;color:var(--fg-3);" x-text="user.department"></div>
+                                    </div>
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.4;flex-shrink:0;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                                 </div>
-                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.4;flex-shrink:0;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                            </div>
-                        </template>
+                            </template>
+                            <div
+                                x-show="search.length > 0 && available.length === 0"
+                                style="padding:12px 14px;font-size:13px;color:var(--fg-3);"
+                            >ไม่พบอาจารย์ที่ตรงกัน</div>
+                        </div>
                     </div>
-                    <div
-                        x-show="open && search.length > 0 && available.length === 0"
-                        x-cloak
-                        :style="`position:absolute;top:${ddTop}px;left:${ddLeft}px;width:${ddWidth}px;background:#fff;border:1px solid var(--border-1);border-radius:6px;padding:12px 14px;font-size:13px;color:var(--fg-3);z-index:99;`"
-                    >ไม่พบอาจารย์ที่ตรงกัน</div>
                 </template>
             </div>
             @endif
 
             {{-- Pills --}}
-            <div style="display:flex;flex-wrap:wrap;gap:8px;" x-show="pool.length > 0">
+            <div style="display:flex;flex-direction:column;gap:6px;" x-show="pool.length > 0">
                 <template x-for="user in pool" :key="user.id">
-                    <div style="display:inline-flex;align-items:center;gap:8px;background:var(--surface-2);border:1px solid var(--border-1);border-radius:6px;padding:6px 12px;font-size:14px;">
-                        <div>
-                            <span style="font-weight:600;" x-text="user.name"></span>
-                            <span style="color:var(--fg-3);font-size:12px;margin-left:6px;" x-text="user.department"></span>
+                    <div style="display:flex;align-items:center;gap:16px;background:#fff;border:1px solid var(--border-1);border-radius:6px;padding:12px 16px;">
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-weight:600;font-size:14px;color:var(--fg-1);" x-text="user.name"></div>
+                            <div style="color:var(--fg-3);font-size:12px;margin-top:2px;" x-text="user.department"></div>
                         </div>
+
+                        {{-- Role selector (coordinator = static badge) --}}
+                        <template x-if="user.is_coordinator">
+                            <div style="flex-shrink:0;width:200px;text-align:center;background:#dcfce7;border:1px solid #86efac;color:#166534;border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:600;line-height:1.2;">หัวหน้าวิชา</div>
+                        </template>
+                        <template x-if="!user.is_coordinator">
+                            <div style="flex-shrink:0;width:200px;">
+                                @if($canEdit)
+                                <select
+                                    @change="changeRole(user.id, $event.target.value ? Number($event.target.value) : null)"
+                                    :style="user.role_name
+                                        ? 'background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;'
+                                        : 'background:#fef3c7;border:1px solid #fde68a;color:#92400e;font-style:italic;'"
+                                    style="width:100%;border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer;line-height:1.2;font-family:inherit;outline:none;">
+                                    <option value="" :selected="!user.course_role_id">— ยังไม่กำหนดบทบาท —</option>
+                                    <template x-for="role in roles" :key="role.id">
+                                        <option :value="role.id" :selected="user.course_role_id === role.id" x-text="role.name"></option>
+                                    </template>
+                                </select>
+                                @else
+                                <div :style="user.role_name
+                                        ? 'background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;'
+                                        : 'background:var(--surface-2);border:1px solid var(--border-1);color:var(--fg-3);font-style:italic;'"
+                                    style="text-align:center;border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:600;line-height:1.2;"
+                                    x-text="user.role_name || 'ยังไม่กำหนดบทบาท'"></div>
+                                @endif
+                            </div>
+                        </template>
+
                         @if($canEdit)
-                        <button type="button" @click="remove(user.id)" style="background:none;border:none;cursor:pointer;padding:0;display:flex;opacity:0.5;line-height:1;" @mouseenter="$el.style.opacity='1'" @mouseleave="$el.style.opacity='0.5'">
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        <button type="button" x-show="!user.is_coordinator" @click="remove(user.id)" title="ลบอาจารย์ออกจากชุดผู้สอน"
+                            style="background:transparent;border:none;cursor:pointer;width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;color:var(--fg-3);border-radius:50%;flex-shrink:0;transition:all 0.15s;"
+                            @mouseenter="$el.style.background='#fee2e2';$el.style.color='#dc2626'"
+                            @mouseleave="$el.style.background='transparent';$el.style.color='var(--fg-3)'">
+                            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                         </button>
+                        <div x-show="user.is_coordinator" style="width:32px;flex-shrink:0;"></div>
                         @endif
                     </div>
                 </template>

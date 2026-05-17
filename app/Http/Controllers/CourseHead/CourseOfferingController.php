@@ -5,6 +5,7 @@ namespace App\Http\Controllers\CourseHead;
 use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\CourseOffering;
+use App\Models\CourseRole;
 use App\Models\StudentGroup;
 use App\Models\SystemSetting;
 use App\Models\User;
@@ -61,10 +62,16 @@ class CourseOfferingController extends Controller
             ->orderBy('name')
             ->get();
 
+        // Roles ที่เลือกได้ในชุดผู้สอน — ซ่อน "หัวหน้าวิชา" (auto-assigned ให้ coordinator)
+        $courseRoles = CourseRole::orderBy('sort_order')
+            ->where('name_th', '!=', 'หัวหน้าวิชา')
+            ->get();
+
         return view('course_head.course_offerings.show', [
             'courseOffering' => $courseOffering,
             'availableInstructors' => $availableInstructors,
             'availablePrerequisiteCourses' => $availablePrerequisiteCourses,
+            'courseRoles' => $courseRoles,
             'teachingWeeks' => (int) SystemSetting::get('teaching_load_weeks', 39),
         ]);
     }
@@ -93,7 +100,8 @@ class CourseOfferingController extends Controller
         if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
 
         $validated = $request->validate([
-            'user_id' => ['required', 'integer', 'exists:users,id'],
+            'user_id'        => ['required', 'integer', 'exists:users,id'],
+            'course_role_id' => ['nullable', 'integer', 'exists:course_roles,id'],
         ]);
 
         $user = User::with('instructorProfile.department')->find($validated['user_id']);
@@ -112,17 +120,58 @@ class CourseOfferingController extends Controller
             return back()->withErrors(['user_id' => 'อาจารย์คนนี้อยู่ในชุดผู้สอนของรายวิชานี้แล้ว'])->withInput();
         }
 
-        $courseOffering->instructorPool()->attach($user->id, ['role_in_course' => 'instructor']);
+        $roleId = $validated['course_role_id'] ?? CourseRole::where('name_th', 'อาจารย์ผู้สอน')->value('id');
+
+        $courseOffering->instructorPool()->attach($user->id, [
+            'role_in_course' => 'instructor',
+            'course_role_id' => $roleId,
+        ]);
 
         if ($request->expectsJson()) {
+            $role = $roleId ? CourseRole::find($roleId) : null;
             return response()->json([
-                'id'         => $user->id,
-                'name'       => $user->formatted_name,
-                'department' => $user->instructorProfile?->department?->name ?? '-',
+                'id'             => $user->id,
+                'name'           => $user->formatted_name,
+                'department'     => $user->instructorProfile?->department?->name ?? '-',
+                'course_role_id' => $roleId,
+                'role_name'      => $role?->name_th,
+                'is_coordinator' => false,
             ]);
         }
 
         return back()->with('success', 'เพิ่มอาจารย์ในรายวิชาเรียบร้อยแล้ว');
+    }
+
+    public function updateInstructorRole(Request $request, CourseOffering $courseOffering, User $user): JsonResponse|RedirectResponse
+    {
+        $this->authorizeCourseHeadOffering($courseOffering);
+        if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
+
+        $validated = $request->validate([
+            'course_role_id' => ['nullable', 'integer', 'exists:course_roles,id'],
+        ]);
+
+        if (! $courseOffering->instructorPool()->where('users.id', $user->id)->exists()) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'อาจารย์คนนี้ไม่อยู่ในชุดผู้สอน'], 422);
+            }
+            return back()->withErrors(['user_id' => 'อาจารย์คนนี้ไม่อยู่ในชุดผู้สอน']);
+        }
+
+        $courseOffering->instructorPool()->updateExistingPivot($user->id, [
+            'course_role_id' => $validated['course_role_id'] ?? null,
+        ]);
+
+        if ($request->expectsJson()) {
+            $role = $validated['course_role_id'] ? CourseRole::find($validated['course_role_id']) : null;
+            return response()->json([
+                'ok'             => true,
+                'course_role_id' => $validated['course_role_id'] ?? null,
+                'role_name'      => $role?->name_th,
+            ]);
+        }
+
+        return back()->with('success', 'อัปเดตบทบาทเรียบร้อยแล้ว');
     }
 
     public function destroyInstructor(Request $request, CourseOffering $courseOffering, User $user): RedirectResponse|JsonResponse

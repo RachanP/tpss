@@ -153,12 +153,14 @@ class AdminSettingController extends Controller
                     ->exists();
 
                 if (!$exists) {
-                    CourseOffering::create([
+                    $offering = CourseOffering::create([
                         'course_id'       => $course->id,
                         'academic_year_id'=> $year->id,
                         'coordinator_id'  => $course->head_instructor_id,
                         'approval_status' => 'draft',
                     ]);
+                    $offering->attachCoordinator();
+                    $offering->copyInstructorPoolFromCourse();
                     $created++;
                 }
             }
