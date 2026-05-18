@@ -99,7 +99,7 @@
                                 <span class="badge {{ $approvalMeta['badge'] }}">{{ $approvalMeta['label'] }}</span>
                             </td>
                             <td style="text-align:right;">
-                                <a class="btn btn-secondary" href="{{ route('maker.course_offerings.show', $offering) }}">เปิดรายละเอียด</a>
+                                <a class="btn btn-secondary" data-testid="course-offering-show-link" href="{{ route('maker.course_offerings.show', $offering) }}">เปิดรายละเอียด</a>
                             </td>
                         </tr>
                     @empty

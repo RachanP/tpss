@@ -866,6 +866,7 @@
             @if($canEdit && $ungrouped > 0)
             <form method="POST"
                 action="{{ route('maker.course_offerings.student_groups.bulk_store', $courseOffering) }}"
+                data-testid="bulk-groups-form"
                 x-data="{
                     prefix: '{{ old('group_prefix', 'A') }}',
                     start: {{ (int) old('start_number', 1) }},
@@ -926,20 +927,20 @@
                         <div class="caption" style="margin-top:3px;">ระบบใช้ยอดนักศึกษาที่ยังไม่ได้จัดกลุ่มจากข้อมูลรายวิชา แล้วช่วยแบ่งหรือให้ปรับรายกลุ่มได้</div>
                     </div>
                     <div class="group-total-pill">ยังไม่ได้จัดกลุ่ม {{ $ungrouped }} คน</div>
-                    <button class="btn btn-primary" type="submit">สร้างกลุ่ม</button>
+                    <button class="btn btn-primary" type="submit" data-testid="bulk-groups-submit">สร้างกลุ่ม</button>
                 </div>
                 <div class="group-builder-fields">
                     <label>
                         <span>รหัสนำหน้า</span>
-                        <input type="text" name="group_prefix" x-model="prefix" required>
+                        <input type="text" name="group_prefix" x-model="prefix" data-testid="bulk-group-prefix" required>
                     </label>
                     <label>
                         <span>เริ่มที่</span>
-                        <input type="number" name="start_number" x-model.number="start" min="0" required>
+                        <input type="number" name="start_number" x-model.number="start" data-testid="bulk-group-start" min="0" required>
                     </label>
                     <label>
                         <span>จำนวนกลุ่ม</span>
-                        <input type="number" name="group_count" x-model.number="count" min="1" max="100" required>
+                        <input type="number" name="group_count" x-model.number="count" data-testid="bulk-group-count" min="1" max="100" required>
                     </label>
                 </div>
                 <div class="group-mode-row">
@@ -972,14 +973,14 @@
             <div class="student-group-list">
                 @forelse($courseOffering->studentGroups as $group)
                     @if($canEdit)
-                    <form method="POST" action="{{ route('maker.course_offerings.student_groups.update', [$courseOffering, $group]) }}" class="student-group-row">
+                    <form method="POST" action="{{ route('maker.course_offerings.student_groups.update', [$courseOffering, $group]) }}" class="student-group-row" data-testid="student-group-row">
                         @csrf
                         @method('PUT')
                         <div class="student-group-code">
                             <span class="student-group-swatch" style="background:{{ $group->color_code ?: '#2563eb' }}"></span>
                             <label>
                                 <span>รหัสกลุ่ม</span>
-                                <input type="text" name="group_code" value="{{ $group->group_code }}" required>
+                                <input type="text" name="group_code" value="{{ $group->group_code }}" data-testid="student-group-code" required>
                             </label>
                         </div>
                         <label class="student-group-count">

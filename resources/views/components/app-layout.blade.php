@@ -139,7 +139,7 @@
             <!-- Topbar -->
             <div class="topbar">
                 <!-- Hamburger Menu -->
-                <button @click="sidebarOpen = !sidebarOpen" class="action-btn" style="display: none; border: none; background: transparent;" :style="{ display: window.innerWidth <= 1024 ? 'flex' : 'none' }">
+                <button @click="sidebarOpen = !sidebarOpen" class="action-btn" data-testid="sidebar-toggle" style="display: none; border: none; background: transparent;" :style="{ display: window.innerWidth <= 1024 ? 'flex' : 'none' }">
                     <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="3" y1="12" x2="21" y2="12"></line>
                         <line x1="3" y1="6" x2="21" y2="6"></line>
