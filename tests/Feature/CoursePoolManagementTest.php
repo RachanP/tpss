@@ -111,6 +111,91 @@ class CoursePoolManagementTest extends TestCase
             ->assertDontSee('/admin/course-pool/' . $course->id, false);
     }
 
+    public function test_course_pool_index_marks_courses_without_head_instructor(): void
+    {
+        $admin = $this->makeUser('admin');
+        $head = $this->makeUser('instructor');
+
+        $this->makeCourse(['course_code' => 'HEAD 101', 'head_instructor_id' => $head->id]);
+        $this->makeCourse(['course_code' => 'HEAD 102', 'head_instructor_id' => null]);
+
+        $this->actingAsRole($admin, 'admin');
+
+        $response = $this->get(route('admin.course_pool.index'))
+            ->assertOk()
+            ->assertSee('HEAD 101')
+            ->assertSee('HEAD 102')
+            ->assertSee('ยังไม่มีหัวหน้าวิชา')
+            ->assertSee('data-head-state="assigned"', false)
+            ->assertSee('data-head-state="missing"', false);
+
+        $this->assertSame(1, substr_count($response->getContent(), 'data-testid="course-pool-missing-head-badge"'));
+    }
+
+    public function test_course_pool_index_shows_current_term_open_and_closed_state(): void
+    {
+        $admin = $this->makeUser('admin');
+        $head = $this->makeUser('instructor');
+        $activeYear = $this->makeYear([
+            'name' => '2569',
+            'semester' => 1,
+            'is_active' => true,
+        ]);
+        $openCourse = $this->makeCourse(['course_code' => 'OPEN 101', 'head_instructor_id' => $head->id]);
+        $closedCourse = $this->makeCourse(['course_code' => 'CLOSED 101', 'head_instructor_id' => $head->id]);
+
+        CourseOffering::create([
+            'course_id' => $openCourse->id,
+            'academic_year_id' => $activeYear->id,
+            'coordinator_id' => $head->id,
+            'approval_status' => 'draft',
+        ]);
+
+        $this->actingAsRole($admin, 'admin');
+
+        $this->get(route('admin.course_pool.index'))
+            ->assertOk()
+            ->assertSee('รอบปัจจุบัน: ปีการศึกษา 2569 / เทอม 1')
+            ->assertSee('OPEN 101')
+            ->assertSee('CLOSED 101')
+            ->assertSee('เปิดสอน')
+            ->assertSee('ปิดสอน')
+            ->assertSee('data-term-state="open"', false)
+            ->assertSee('data-term-state="closed"', false);
+    }
+
+    public function test_course_pool_index_renders_head_and_term_filters(): void
+    {
+        $admin = $this->makeUser('admin');
+        $this->makeCourse(['course_code' => 'FILTER 101']);
+
+        $this->actingAsRole($admin, 'admin');
+
+        $this->get(route('admin.course_pool.index'))
+            ->assertOk()
+            ->assertSee('data-testid="course-pool-head-filter"', false)
+            ->assertSee('data-testid="course-pool-term-filter"', false)
+            ->assertSee('ทั้งหมด')
+            ->assertSee('ยังไม่มีหัวหน้าวิชา')
+            ->assertSee('มีหัวหน้าวิชาแล้ว')
+            ->assertSee('เปิดสอน')
+            ->assertSee('ปิดสอน');
+    }
+
+    public function test_course_pool_index_handles_missing_active_academic_year(): void
+    {
+        $admin = $this->makeUser('admin');
+        $this->makeCourse(['course_code' => 'NOYEAR 101']);
+
+        $this->actingAsRole($admin, 'admin');
+
+        $this->get(route('admin.course_pool.index'))
+            ->assertOk()
+            ->assertSee('ยังไม่ได้ตั้งค่าปีการศึกษาปัจจุบัน')
+            ->assertSee('ไม่ทราบ')
+            ->assertSee('data-term-state="unknown"', false);
+    }
+
     public function test_staff_can_access_course_pool_via_inherited_controller(): void
     {
         $staff  = $this->makeUser('staff');
