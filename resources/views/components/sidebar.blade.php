@@ -97,7 +97,39 @@
     </div>
 
     <!-- Navigation Menus -->
-    <div class="sb-nav">
+    <div
+        class="sb-nav"
+        data-sidebar-scroll
+        data-testid="sidebar-scroll"
+        x-data="{
+            storageKey: 'tpss.sidebar.scrollTop.{{ $activeRole ?: 'default' }}',
+            restoreSidebarScroll() {
+                try {
+                    const saved = window.localStorage.getItem(this.storageKey);
+                    const scrollTop = Number.parseInt(saved, 10);
+
+                    if (Number.isFinite(scrollTop) && scrollTop >= 0) {
+                        this.$el.scrollTop = scrollTop;
+                    }
+                } catch (error) {
+                    // localStorage can be unavailable in private or restricted browser modes.
+                }
+
+                this.$el.style.visibility = 'visible';
+            },
+            saveSidebarScroll() {
+                try {
+                    window.localStorage.setItem(this.storageKey, String(this.$el.scrollTop || 0));
+                } catch (error) {
+                    // Keep navigation working even if storage is blocked.
+                }
+            }
+        }"
+        x-init="restoreSidebarScroll()"
+        @scroll.debounce.100ms="saveSidebarScroll()"
+        @click.capture="saveSidebarScroll()"
+        style="visibility:hidden;"
+    >
 
         @if($activeRole === 'staff')
             <div class="sb-sec">เมนูหลัก</div>
