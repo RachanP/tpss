@@ -16,6 +16,13 @@ use Illuminate\Validation\Rule;
 
 class MasterDataController extends Controller
 {
+    /**
+     * วันที่เริ่มบังคับเกณฑ์ภาษาอังกฤษ สำหรับผู้ช่วยอาจารย์ ป.เอก (ตามเอกสาร PA criteria)
+     * ก่อนวันนี้: ใช้เกณฑ์ "อาจารย์" / ตั้งแต่วันนี้: ต้องผ่านอังกฤษถึงจะใช้เกณฑ์ "อาจารย์"
+     * Sync ค่านี้กับ JS ใน views/admin/users/index.blade.php + views/shared/master_data/index.blade.php
+     */
+    private const PA_ENGLISH_CRITERION_DATE = '2016-10-01';
+
     public function index()
     {
         // View-only for instructors: get users who have 'instructor' role
@@ -145,7 +152,7 @@ class MasterDataController extends Controller
     private function isBeforeEnglishCriterionDate(string $hiredAt): bool
     {
         try {
-            return \Carbon\Carbon::parse($hiredAt)->lt(\Carbon\Carbon::create(2016, 10, 1));
+            return \Carbon\Carbon::parse($hiredAt)->lt(\Carbon\Carbon::parse(self::PA_ENGLISH_CRITERION_DATE));
         } catch (\Exception $e) {
             return false;
         }
@@ -247,6 +254,26 @@ class MasterDataController extends Controller
         $newHeadId = $validated['head_user_id'] ?? null;
         $newSecId  = $validated['secretary_user_id'] ?? null;
         $forceOverride = $request->boolean('force_position_override');
+
+        // Same person picked for both positions → treat as role swap (keep newly-assigned one)
+        if ($newHeadId && $newSecId && (int) $newHeadId === (int) $newSecId) {
+            $previouslyHead = (int) $department->head_user_id === (int) $newHeadId;
+            $previouslySec  = (int) $department->secretary_user_id === (int) $newSecId;
+
+            if ($previouslyHead && !$previouslySec) {
+                // Was head, now also picked as secretary → move to secretary only
+                $newHeadId = null;
+            } elseif ($previouslySec && !$previouslyHead) {
+                // Was secretary, now also picked as head → move to head only
+                $newSecId = null;
+            } else {
+                // Fresh selection in both fields → prefer secretary (latest intent wins)
+                $newHeadId = null;
+            }
+
+            $validated['head_user_id'] = $newHeadId;
+            $validated['secretary_user_id'] = $newSecId;
+        }
 
         // If override confirmed by user, release positions from other depts first
         if ($forceOverride) {
@@ -617,7 +644,7 @@ class MasterDataController extends Controller
         }
     }
 
-    public function destroyCurriculum(Curriculum $curriculum)
+    public function destroyCurriculum(Request $request, Curriculum $curriculum)
     {
         try {
             $courses = $curriculum->courses()->withCount('courseOfferings')->get();
@@ -633,6 +660,20 @@ class MasterDataController extends Controller
             }
 
             $deletedCourseCount = $courses->count();
+
+            // Require explicit cascade confirmation when curriculum still has courses
+            if ($deletedCourseCount > 0 && !$request->boolean('confirm_cascade')) {
+                $sampleCodes = $courses->take(5)->pluck('course_code')->implode(', ');
+                $more = $deletedCourseCount > 5 ? " และอีก " . ($deletedCourseCount - 5) . " วิชา" : '';
+
+                return redirect()->back()
+                    ->with('error', "หลักสูตรนี้มี {$deletedCourseCount} รายวิชา ({$sampleCodes}{$more}) — กรุณายืนยันการลบแบบ cascade")
+                    ->with('cascade_pending', [
+                        'curriculum_id' => $curriculum->id,
+                        'course_count' => $deletedCourseCount,
+                        'sample_codes' => $sampleCodes,
+                    ]);
+            }
 
             DB::transaction(function () use ($curriculum) {
                 $curriculum->courses()->delete();
