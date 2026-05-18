@@ -48,7 +48,7 @@
                                 <span style="color:var(--fg-3);font-size:12px;">คน</span>
                             </td>
                             <td style="text-align:center;">
-                                <a href="{{ route($routePrefix . '.course_pool.show', $course) }}" class="btn btn-ghost" style="padding:4px 12px;font-size:13px;">
+                                <a href="{{ route($routePrefix . '.course_pool.show', $course) }}" class="btn btn-ghost" data-testid="course-pool-show-link" style="padding:4px 12px;font-size:13px;">
                                     {{ $course->has_locked_offering ? 'ดูแม่แบบ' : 'ตั้งค่า' }}
                                 </a>
                                 @if($course->has_locked_offering)

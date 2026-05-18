@@ -338,7 +338,7 @@
                         </svg>
                         นำเข้าจากไฟล์
                     </button>
-                    <button class="btn btn-primary" @click="openAddModal()">
+                    <button class="btn btn-primary" data-testid="users-add-button" @click="openAddModal()">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
                             stroke-width="2.5" stroke-linecap="round">
                             <line x1="12" y1="5" x2="12" y2="19" />
@@ -355,7 +355,7 @@
                         <circle cx="11" cy="11" r="8" />
                         <line x1="21" y1="21" x2="16.65" y2="16.65" />
                     </svg>
-                    <input type="text" placeholder="ค้นหาชื่อ ชื่อผู้ใช้ อีเมล รหัสพนักงาน หรือภาควิชา" x-model="filters.keyword">
+                    <input type="text" data-testid="users-search-input" placeholder="ค้นหาชื่อ ชื่อผู้ใช้ อีเมล รหัสพนักงาน หรือภาควิชา" x-model="filters.keyword">
                 </div>
                 <select class="users-filter-select" x-model="filters.role">
                     <option value="">ทุกบทบาท</option>
@@ -423,6 +423,8 @@
                                 $statusValue = $user->is_active ? 'active' : 'inactive';
                             @endphp
                             <tr
+                                data-testid="users-row"
+                                data-username="{{ $user->username }}"
                                 data-search="{{ Str::lower($user->name . ' ' . $user->username . ' ' . $user->email . ' ' . ($user->employee_id ?? '') . ' ' . ($user->prefix ?? '') . ' ' . $roleValues->join(' ') . ' ' . $roleLabelsForSearch . ' ' . $departmentNamesForSearch . ' ' . ($user->instructorProfile->title ?? '') . ' ' . ($user->instructorProfile->academic_degree ?? '') . ' ' . ($user->instructorProfile->employment_type ?? '') . ' ' . ($user->is_active ? 'กำลังใช้งาน active' : 'ระงับการใช้งาน inactive')) }}"
                                 data-roles="{{ $roleValues->join(' ') }}"
                                 data-status="{{ $statusValue }}"
@@ -573,6 +575,7 @@
                                 <td style="text-align: center;">
                                     <div style="display: flex; gap: 6px; justify-content: center;">
                                         <button class="action-btn" title="แก้ไข"
+                                            data-testid="users-edit-button"
                                             @click='openEditModal({!! json_encode($user->load("instructorProfile")) !!})'>
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                                 stroke-linecap="round" stroke-linejoin="round">
@@ -684,27 +687,27 @@
                                 </div>
                                 <div class="form-group" style="flex: 1;">
                                     <label>ชื่อ-นามสกุล</label>
-                                    <input type="text" name="name" x-model="currentUser.name" placeholder="ชื่อ และ นามสกุล" required>
+                                    <input type="text" name="name" data-testid="user-form-name" x-model="currentUser.name" placeholder="ชื่อ และ นามสกุล" required>
                                 </div>
                             </div>
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>ชื่อผู้ใช้งาน</label>
-                                    <input type="text" name="username" x-model="currentUser.username"
+                                    <input type="text" name="username" data-testid="user-form-username" x-model="currentUser.username"
                                         required
                                         placeholder="เช่น staff_01">
                                 </div>
                                 <div class="form-group">
                                     <label
                                         x-text="editMode ? 'รหัสผ่านใหม่ (เว้นว่างไว้ถ้าไม่เปลี่ยน)' : 'รหัสผ่าน'"></label>
-                                    <input type="password" name="password" :required="!editMode" placeholder="********">
+                                    <input type="password" name="password" data-testid="user-form-password" :required="!editMode" placeholder="********">
                                 </div>
                             </div>
 
                             <div class="form-row">
                                 <div class="form-group" style="flex: 1;">
                                     <label>อีเมล</label>
-                                    <input type="email" name="email" x-model="currentUser.email" required
+                                    <input type="email" name="email" data-testid="user-form-email" x-model="currentUser.email" required
                                         placeholder="email@mahidol.ac.th">
                                 </div>
                                 <div class="form-group" style="flex: 0 0 160px;">
@@ -787,7 +790,7 @@
 
                             <div class="form-group">
                                 <label>สถานะการใช้งาน</label>
-                                <select name="is_active" x-model.number="currentUser.is_active">
+                                <select name="is_active" data-testid="user-form-is-active" x-model.number="currentUser.is_active">
                                     <option value="1">ใช้งานปกติ (Active)</option>
                                     <option value="0">ระงับการใช้งาน (Inactive)</option>
                                 </select>
@@ -1016,7 +1019,7 @@
                         </div>
                         <div class="modal-foot">
                             <button type="button" class="btn btn-ghost" @click="showModal = false">ยกเลิก</button>
-                            <button type="submit" class="btn btn-primary">บันทึกข้อมูล</button>
+                            <button type="submit" data-testid="user-form-submit" class="btn btn-primary">บันทึกข้อมูล</button>
                         </div>
                     </form>
                 </div>

@@ -41,7 +41,7 @@
             <!-- Topbar -->
             <div class="topbar">
                 <!-- Hamburger Menu -->
-                <button @click="sidebarOpen = !sidebarOpen" class="action-btn hamburger-btn" style="border: none; background: transparent;">
+                <button @click="sidebarOpen = !sidebarOpen" class="action-btn hamburger-btn" data-testid="sidebar-toggle" style="border: none; background: transparent;">
                     <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="3" y1="12" x2="21" y2="12"></line>
                         <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -54,7 +54,7 @@
                 <div class="tb-right" style="margin-left: auto;">
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
-                        <button type="submit" class="tb-btn" style="border: none; background: transparent; cursor: pointer; color: var(--fg-2);">
+                        <button type="submit" class="tb-btn" data-testid="topbar-logout" style="border: none; background: transparent; cursor: pointer; color: var(--fg-2);">
                             ออกจากระบบ
                         </button>
                     </form>

@@ -630,13 +630,14 @@
     </div>
     @endif
 
-    <form method="POST" action="{{ route('login') }}" id="login-form" novalidate autocomplete="on">
+    <form method="POST" action="{{ route('login') }}" id="login-form" data-testid="login-form" novalidate autocomplete="on">
       @csrf
 
       <!-- Username field -->
       <div class="field">
         <label class="flbl" for="username">ชื่อผู้ใช้งาน หรือ อีเมล</label>
         <input class="input @error('username') err @enderror" id="username" name="username" type="text"
+               data-testid="login-username"
                autocomplete="username" value="{{ old('username') }}" required>
       </div>
 
@@ -645,6 +646,7 @@
         <label class="flbl" for="password">รหัสผ่าน</label>
         <div class="input-wrap">
           <input class="input @error('password') err @enderror" id="password" name="password" type="password"
+                 data-testid="login-password"
                  autocomplete="current-password" required>
           <button type="button" class="toggle-pw" onclick="togglePw()" aria-label="แสดง/ซ่อนรหัสผ่าน">
             <svg id="eye-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
@@ -657,7 +659,7 @@
       </div>
 
       <!-- Submit button -->
-      <button class="btn btn-primary" id="submit-btn" type="submit">
+      <button class="btn btn-primary" id="submit-btn" type="submit" data-testid="login-submit">
         <div class="spinner" id="spinner"></div>
         <span class="btn-text">เข้าสู่ระบบ</span>
       </button>

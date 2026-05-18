@@ -29,7 +29,7 @@
         </div>
     @endif
     @if($isLocked)
-        <div class="alert" style="margin-bottom:16px;background:oklch(97% 0.045 82);border:1px solid oklch(84% 0.09 82);color:oklch(35% 0.09 72);">
+        <div class="alert" data-testid="course-pool-locked-alert" style="margin-bottom:16px;background:oklch(97% 0.045 82);border:1px solid oklch(84% 0.09 82);color:oklch(35% 0.09 72);">
             แม่แบบผู้รับผิดชอบรายวิชานี้ถูกล็อกแล้ว เพราะมี Course Offering ที่อยู่ในช่วงจัดตารางหรือเผยแพร่แล้ว การแก้รายชื่อผู้สอนให้ทำในหน้า Course Offering ของรอบนั้น
         </div>
     @endif
