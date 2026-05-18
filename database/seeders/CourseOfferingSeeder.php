@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\AcademicYear;
 use App\Models\Course;
 use App\Models\CourseOffering;
+use App\Models\CourseRole;
 use App\Models\SystemSetting;
 use Illuminate\Database\Seeder;
 
@@ -27,6 +28,7 @@ class CourseOfferingSeeder extends Seeder
         $created = 0;
         $synced = 0;
         $teachingWeeks = (int) SystemSetting::get('teaching_load_weeks', 39);
+        $coordinatorRoleId = CourseRole::where('name_th', 'หัวหน้าวิชา')->value('id');
 
         foreach ($courses as $course) {
             $offering = CourseOffering::firstOrNew([
@@ -50,7 +52,7 @@ class CourseOfferingSeeder extends Seeder
                 'practicum_note' => null,
             ]);
             $offering->save();
-            $offering->syncInstructorPoolFromCourseTemplate();
+            $offering->syncInstructorPoolFromCourseTemplate($coordinatorRoleId);
             $synced++;
         }
 

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\CourseRole;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -62,19 +63,19 @@ class CourseOffering extends Model
             ->withPivot('role_in_course', 'course_role_id');
     }
 
-    public function attachCoordinator(): void
+    public function attachCoordinator(?int $coordinatorRoleId = null): void
     {
         if (!$this->coordinator_id) return;
         if ($this->instructorPool()->where('users.id', $this->coordinator_id)->exists()) return;
 
-        $coordinatorRole = \App\Models\CourseRole::where('name_th', 'หัวหน้าวิชา')->first();
+        $coordinatorRoleId ??= CourseRole::where('name_th', 'หัวหน้าวิชา')->value('id');
         $this->instructorPool()->attach($this->coordinator_id, [
             'role_in_course' => 'coordinator',
-            'course_role_id' => $coordinatorRole?->id,
+            'course_role_id' => $coordinatorRoleId,
         ]);
     }
 
-    public function syncInstructorPoolFromCourseTemplate(): void
+    public function syncInstructorPoolFromCourseTemplate(?int $coordinatorRoleId = null): void
     {
         $course = $this->course ?? $this->course()->first();
         if (!$course) return;
@@ -83,7 +84,7 @@ class CourseOffering extends Model
             $this->forceFill(['coordinator_id' => $course->head_instructor_id])->save();
         }
 
-        $coordinatorRoleId = \App\Models\CourseRole::where('name_th', 'หัวหน้าวิชา')->value('id');
+        $coordinatorRoleId ??= CourseRole::where('name_th', 'หัวหน้าวิชา')->value('id');
         $sourcePool = $course->instructors()->get();
         $sourceIds = $sourcePool->pluck('id')->all();
         $templateIds = array_values(array_unique(array_filter([
@@ -97,7 +98,7 @@ class CourseOffering extends Model
             $this->instructorPool()->detach($staleIds);
         }
 
-        $this->attachCoordinator();
+        $this->attachCoordinator($coordinatorRoleId);
 
         if ($this->coordinator_id) {
             $this->instructorPool()->updateExistingPivot($this->coordinator_id, [
@@ -116,11 +117,6 @@ class CourseOffering extends Model
                     'role_in_course' => 'instructor',
                     'course_role_id' => $instructor->pivot->course_role_id,
                 ],
-            ]);
-
-            $this->instructorPool()->updateExistingPivot($instructor->id, [
-                'role_in_course' => 'instructor',
-                'course_role_id' => $instructor->pivot->course_role_id,
             ]);
         }
     }

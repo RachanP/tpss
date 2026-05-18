@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\AcademicYear;
 use App\Models\Course;
 use App\Models\CourseOffering;
+use App\Models\CourseRole;
 use App\Models\SystemSetting;
 use App\Http\Controllers\Admin\AlertController;
 use Illuminate\Support\Facades\DB;
@@ -161,7 +162,10 @@ class AdminSettingController extends Controller
 
         $created = 0;
         $synced = 0;
-        DB::transaction(function () use ($courses, $year, &$created, &$synced) {
+        $teachingWeeks = (int) SystemSetting::get('teaching_load_weeks', 39);
+        $coordinatorRoleId = CourseRole::where('name_th', 'หัวหน้าวิชา')->value('id');
+
+        DB::transaction(function () use ($courses, $year, $teachingWeeks, $coordinatorRoleId, &$created, &$synced) {
             foreach ($courses as $course) {
                 $offering = CourseOffering::firstOrCreate(
                     [
@@ -181,7 +185,6 @@ class AdminSettingController extends Controller
                 }
             }
 
-            $teachingWeeks = (int) SystemSetting::get('teaching_load_weeks', 39);
             $offeringsToSync = CourseOffering::with('course')
                 ->where('academic_year_id', $year->id)
                 ->whereHas('course', fn ($query) => $query
@@ -203,7 +206,7 @@ class AdminSettingController extends Controller
                         'practicum_note' => null,
                     ])->save();
                 }
-                $offering->syncInstructorPoolFromCourseTemplate();
+                $offering->syncInstructorPoolFromCourseTemplate($coordinatorRoleId);
                 $synced++;
             }
 

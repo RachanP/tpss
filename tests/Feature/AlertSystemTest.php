@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AlertController;
 use App\Http\Controllers\AdminSettingController;
 use App\Models\AcademicYear;
 use App\Models\ActivityType;
+use App\Models\Course;
 use App\Models\Curriculum;
 use App\Models\Department;
 use App\Models\InstructorProfile;
@@ -63,10 +64,32 @@ class AlertSystemTest extends TestCase
     private function seedMinimalCriticals(): void
     {
         AcademicYear::create(['name' => '2568', 'semester' => 1, 'start_date' => '2025-08-01', 'end_date' => '2026-01-31', 'is_active' => true]);
-        Department::create(['name' => 'ภาควิชาทดสอบ']);
-        Curriculum::create(['name' => 'หลักสูตรทดสอบ', 'effective_year' => 2568, 'is_active' => true]);
+        $dept = Department::create(['name' => 'ภาควิชาทดสอบ']);
+        $curr = Curriculum::create(['name' => 'หลักสูตรทดสอบ', 'effective_year' => 2568, 'is_active' => true]);
         ActivityType::create(['name' => 'บรรยาย', 'color_code' => '#000000', 'category' => 'lecture']);
         LocationType::create(['name' => 'ห้องบรรยาย', 'requires_capacity' => true]);
+
+        // An active course with a head_instructor clears the M2 hardening criticals
+        // (no_active_course / active_courses_missing_head).
+        $head = $this->makeInstructor();
+        Course::create([
+            'course_code'                 => 'CRT 101',
+            'curriculum_id'               => $curr->id,
+            'department_id'               => $dept->id,
+            'name_th'                     => 'รายวิชาทดสอบ',
+            'name_en'                     => 'Critical Test Course',
+            'course_type'                 => 'theory',
+            'academic_level'              => 'undergraduate',
+            'default_year_level'          => 1,
+            'default_semester'            => 1,
+            'credits'                     => 3,
+            'lecture_hours'               => 3,
+            'lab_hours'                   => 0,
+            'self_study_hours'            => 6,
+            'status'                      => 'active',
+            'requires_practicum_rotation' => false,
+            'head_instructor_id'          => $head->id,
+        ]);
     }
 
     private function defaultPaCriteria(): array

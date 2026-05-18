@@ -50,15 +50,16 @@ class CourseOfferingManagementTest extends TestCase
         $this->get(route('maker.course_offerings.show', $offering))->assertForbidden();
     }
 
-    public function test_detail_renders_core_fields_and_course_hour_fallbacks(): void
+    public function test_detail_renders_core_fields_from_course_master(): void
     {
+        // After M2 overhaul, the show page reads hour fields directly from
+        // courses.lecture_hours / lab_hours (no per-offering override) and
+        // displays them in stat cards + course-info panel.
         $head = $this->makeUser('course_head');
         $offering = $this->makeOffering($head, [
             'course_code' => 'NUR303',
             'lecture_hours' => 3,
             'lab_hours' => 2,
-            'planned_lecture_hours' => null,
-            'planned_lab_hours' => null,
         ]);
 
         $this->actingAsCourseHead($head);
@@ -67,9 +68,9 @@ class CourseOfferingManagementTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('NUR303');
-        $response->assertSee('(ค่าเริ่มต้นจากรายวิชา)');
-        $response->assertSee('3');
-        $response->assertSee('2');
+        $response->assertSee('ข้อมูลรายวิชา');
+        $response->assertSee('ชั่วโมงบรรยาย');
+        $response->assertSee('ชั่วโมงปฏิบัติการ');
     }
 
     public function test_student_group_code_is_unique_within_offering_and_reusable_across_offerings(): void
@@ -200,85 +201,14 @@ class CourseOfferingManagementTest extends TestCase
             ->assertDontSee('พรีเซปเตอร์');
     }
 
-    public function test_prerequisite_can_be_added(): void
+    // Prerequisite tests removed: M2 hardening moved prerequisite management
+    // from per-offering to per-course (Master Data). See MasterDataCourseTest
+    // for coverage of the new flow.
+
+    public function test_student_group_stats_visible_on_show_page(): void
     {
-        $head = $this->makeUser('course_head');
-        $offering = $this->makeOffering($head);
-        $prerequisite = $this->makeCourse(['course_code' => 'PRE101']);
-
-        $this->actingAsCourseHead($head);
-
-        $this->from(route('maker.course_offerings.show', $offering))
-            ->post(route('maker.course_offerings.prerequisites.store', $offering), [
-                'prerequisite_course_id' => $prerequisite->id,
-            ])
-            ->assertSessionHasNoErrors();
-
-        $this->assertDatabaseHas('course_prerequisites', [
-            'course_id' => $offering->course_id,
-            'prerequisite_course_id' => $prerequisite->id,
-        ]);
-    }
-
-    public function test_prerequisite_can_be_removed(): void
-    {
-        $head = $this->makeUser('course_head');
-        $offering = $this->makeOffering($head);
-        $prerequisite = $this->makeCourse(['course_code' => 'PRE102']);
-
-        DB::table('course_prerequisites')->insert([
-            'course_id' => $offering->course_id,
-            'prerequisite_course_id' => $prerequisite->id,
-        ]);
-
-        $this->actingAsCourseHead($head);
-
-        $this->from(route('maker.course_offerings.show', $offering))
-            ->delete(route('maker.course_offerings.prerequisites.destroy', [$offering, $prerequisite]))
-            ->assertSessionHasNoErrors();
-
-        $this->assertDatabaseMissing('course_prerequisites', [
-            'course_id' => $offering->course_id,
-            'prerequisite_course_id' => $prerequisite->id,
-        ]);
-    }
-
-    public function test_self_prerequisite_is_rejected(): void
-    {
-        $head = $this->makeUser('course_head');
-        $offering = $this->makeOffering($head);
-
-        $this->actingAsCourseHead($head);
-
-        $this->from(route('maker.course_offerings.show', $offering))
-            ->post(route('maker.course_offerings.prerequisites.store', $offering), [
-                'prerequisite_course_id' => $offering->course_id,
-            ])
-            ->assertSessionHasErrors('prerequisite_course_id');
-    }
-
-    public function test_duplicate_prerequisite_is_rejected(): void
-    {
-        $head = $this->makeUser('course_head');
-        $offering = $this->makeOffering($head);
-        $prerequisite = $this->makeCourse(['course_code' => 'PRE103']);
-
-        DB::table('course_prerequisites')->insert([
-            'course_id' => $offering->course_id,
-            'prerequisite_course_id' => $prerequisite->id,
-        ]);
-
-        $this->actingAsCourseHead($head);
-
-        $this->from(route('maker.course_offerings.show', $offering))
-            ->post(route('maker.course_offerings.prerequisites.store', $offering), [
-                'prerequisite_course_id' => $prerequisite->id,
-            ])
-            ->assertSessionHasErrors('prerequisite_course_id');
-    }
-
-    public function test_remaining_student_count_is_visible(): void
-    {
+        // The "นักศึกษาคงเหลือ" wording was removed in the show-page overhaul;
+        // current stats card shows the grouped total instead.
         $head = $this->makeUser('course_head');
         $offering = $this->makeOffering($head, ['total_student_count' => 30]);
 
@@ -292,8 +222,8 @@ class CourseOfferingManagementTest extends TestCase
 
         $this->get(route('maker.course_offerings.show', $offering))
             ->assertOk()
-            ->assertSee('นักศึกษาคงเหลือ')
-            ->assertSee('คงเหลือ 18 คน');
+            ->assertSee('จัดกลุ่มแล้ว')
+            ->assertSee('12');
     }
 
     public function test_student_group_delete_blocks_downstream_schedule_references(): void
