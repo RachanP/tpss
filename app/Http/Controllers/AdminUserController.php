@@ -96,9 +96,9 @@ class AdminUserController extends Controller
         if ($isInstructor) {
             $totalPct = (int)$request->instructor_teaching_pct + (int)$request->instructor_research_pct + (int)$request->instructor_service_pct + (int)$request->instructor_culture_pct + (int)$request->instructor_other_pct;
             if ($totalPct !== 100) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
+                return back()->withErrors([
                     'instructor_teaching_pct' => "สัดส่วนภาระงานรวมต้องเท่ากับ 100% (ปัจจุบัน {$totalPct}%)"
-                ]);
+                ])->withInput();
             }
         }
 
@@ -213,9 +213,9 @@ class AdminUserController extends Controller
         if ($isInstructor) {
             $totalPct = (int)$request->instructor_teaching_pct + (int)$request->instructor_research_pct + (int)$request->instructor_service_pct + (int)$request->instructor_culture_pct + (int)$request->instructor_other_pct;
             if ($totalPct !== 100) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
+                return back()->withErrors([
                     'instructor_teaching_pct' => "สัดส่วนภาระงานรวมต้องเท่ากับ 100% (ปัจจุบัน {$totalPct}%)"
-                ]);
+                ])->withInput();
             }
         }
 

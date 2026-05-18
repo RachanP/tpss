@@ -9,6 +9,38 @@
             curriculums: { keyword: '', is_active: '' },
             activity_types: { keyword: '', category: '' },
         },
+        filterStorageKey() {
+            return 'tpss.masterData.filters.' + window.location.pathname;
+        },
+        restoreFilters() {
+            try {
+                const saved = JSON.parse(sessionStorage.getItem(this.filterStorageKey()) || '{}');
+                if (!saved.filters || typeof saved.filters !== 'object') return;
+
+                Object.keys(this.filters).forEach(tab => {
+                    if (!saved.filters[tab] || typeof saved.filters[tab] !== 'object') return;
+                    Object.keys(this.filters[tab]).forEach(key => {
+                        if (Object.prototype.hasOwnProperty.call(saved.filters[tab], key)) {
+                            this.filters[tab][key] = saved.filters[tab][key] ?? '';
+                        }
+                    });
+                });
+            } catch (e) {
+                sessionStorage.removeItem(this.filterStorageKey());
+            }
+        },
+        persistFilters() {
+            try {
+                sessionStorage.setItem(this.filterStorageKey(), JSON.stringify({ filters: this.filters }));
+            } catch (e) {}
+        },
+        registerFilterPersistence($watch) {
+            Object.keys(this.filters).forEach(tab => {
+                Object.keys(this.filters[tab]).forEach(key => {
+                    $watch('filters.' + tab + '.' + key, () => this.persistFilters());
+                });
+            });
+        },
         normalizeSearch(value) {
             return String(value || '').toLowerCase().replace(/[\s\-_./]+/g, '');
         },
@@ -65,6 +97,7 @@
             service_pct: 0,
             culture_pct: 0,
             other_pct: 0,
+            is_english_passed: false,
         },
         openEditInstructor(instructor) {
             this.currentInstructor = {
@@ -82,9 +115,11 @@
                 service_pct:  instructor.instructor_profile?.service_pct  ?? 0,
                 culture_pct:  instructor.instructor_profile?.culture_pct  ?? 0,
                 other_pct:    instructor.instructor_profile?.other_pct    ?? 0,
+                is_english_passed: !!instructor.instructor_profile?.is_english_passed,
             };
             this.showInstructorModal = true;
         },
+        paCriteria: {{ Js::from($paCriteria) }},
         departmentsData: {{ Js::from($departments->map(fn($d) => ['id' => $d->id, 'name' => $d->name, 'head_user_id' => $d->head_user_id, 'secretary_user_id' => $d->secretary_user_id, 'head_active' => $d->head?->is_active ?? true, 'secretary_active' => $d->secretary?->is_active ?? true, 'instructor_ids' => $d->instructorProfiles->pluck('user_id')->values()])) }},
         headSearch: '',
         secretarySearch: '',
@@ -313,15 +348,54 @@
         getInstructorPARules() {
             const title  = this.currentInstructor.title;
             const degree = this.currentInstructor.academic_degree;
-            const isClinical   = title === 'ผู้ช่วยอาจารย์ (คลินิก)';
-            const isPracticum  = title === 'ผู้ช่วยอาจารย์ (สอนภาคปฏิบัติ)';
-            const isAssistBach = title === 'ผู้ช่วยอาจารย์' && degree === 'ปริญญาตรี';
-            const isAssist     = title === 'ผู้ช่วยอาจารย์';
-            if (isClinical)   return { teaching:{min:0,max:10,label:'≤ 10%'},   research:{min:0,max:5,label:'0–5%'},   service:{min:70,max:80,label:'70–80%'}, culture:{min:0,max:15,label:'0–15%'}, other:{min:0,max:20,label:'0–20%'} };
-            if (isPracticum)  return { teaching:{min:0,max:70,label:'≤ 70%'},   research:{min:0,max:0,label:'0%'},     service:{min:5,max:20,label:'5–20%'},   culture:{min:0,max:15,label:'0–15%'}, other:{min:0,max:20,label:'0–20%'} };
-            if (isAssistBach) return { teaching:{min:30,max:60,label:'30–60%'}, research:{min:0,max:0,label:'0%'},     service:{min:10,max:30,label:'10–30%'}, culture:{min:0,max:15,label:'0–15%'}, other:{min:0,max:20,label:'0–20%'} };
-            if (isAssist)     return { teaching:{min:0,max:70,label:'≤ 70%'},   research:{min:15,max:20,label:'15–20%'},service:{min:5,max:20,label:'5–20%'},  culture:{min:0,max:15,label:'0–15%'}, other:{min:0,max:20,label:'0–20%'} };
-            return             { teaching:{min:20,max:70,label:'20–70%'},        research:{min:20,max:70,label:'20–70%'},service:{min:5,max:20,label:'5–20%'},  culture:{min:5,max:15,label:'5–15%'}, other:{min:0,max:20,label:'0–20%'} };
+            const hiredAt = this.currentInstructor.hired_at;
+            const isEnglishPassed = this.currentInstructor.is_english_passed;
+            const isNote1 = title === 'ผู้ช่วยอาจารย์' && degree === 'ปริญญาเอก' && hiredAt && new Date(hiredAt) < new Date('2016-10-01');
+            const useInstructorRules =
+                ['อาจารย์', 'ผู้ช่วยศาสตราจารย์', 'รองศาสตราจารย์', 'ศาสตราจารย์'].includes(title) ||
+                isNote1 ||
+                (title === 'ผู้ช่วยอาจารย์' && degree === 'ปริญญาเอก' && isEnglishPassed);
+
+            let group = 'อาจารย์';
+            if (title === 'ผู้ช่วยอาจารย์ (คลินิก)') {
+                group = 'ผู้ช่วยอาจารย์_คลินิก';
+            } else if (title === 'ผู้ช่วยอาจารย์ (สอนภาคปฏิบัติ)') {
+                group = 'ผู้ช่วยอาจารย์_ปฏิบัติ';
+            } else if (title === 'ผู้ช่วยอาจารย์' && degree === 'ปริญญาตรี') {
+                group = 'ผู้ช่วยอาจารย์_ปตรี';
+            } else if (useInstructorRules) {
+                group = 'อาจารย์';
+            } else if (title === 'ผู้ช่วยอาจารย์') {
+                group = 'ผู้ช่วยอาจารย์';
+            }
+
+            const rules = this.paCriteria[group] || this.paCriteria['อาจารย์'] || {};
+            return {
+                teaching: { ...(rules.t || { min: 0, max: 100 }), label: this.paRuleLabel(rules.t) },
+                research: { ...(rules.r || { min: 0, max: 100 }), label: this.paRuleLabel(rules.r) },
+                service:  { ...(rules.s || { min: 0, max: 100 }), label: this.paRuleLabel(rules.s) },
+                culture:  { ...(rules.c || { min: 0, max: 100 }), label: this.paRuleLabel(rules.c) },
+                other:    { ...(rules.o || { min: 0, max: 100 }), label: this.paRuleLabel(rules.o) },
+            };
+        },
+        paRuleLabel(rule) {
+            if (!rule) return '-';
+            const min = rule.min ?? 0;
+            const max = rule.max ?? 100;
+            if (min === 0 && max === 0) return '0%';
+            if (min === 0) return '<= ' + max + '%';
+            return min + '-' + max + '%';
+        },
+        instructorPctStyle(value, rule) {
+            const val = parseInt(value) || 0;
+            if (!rule || val >= rule.min && val <= rule.max) return '';
+            return 'border-color: var(--status-conflict-fg); background: oklch(97% 0.02 20); color: var(--status-conflict-fg); font-weight: 700;';
+        },
+        showInstructorEnglishCriterion() {
+            return this.currentInstructor.title === 'ผู้ช่วยอาจารย์'
+                && this.currentInstructor.academic_degree === 'ปริญญาเอก'
+                && this.currentInstructor.hired_at
+                && new Date(this.currentInstructor.hired_at) >= new Date('2016-10-01');
         },
         get paTotal() {
             return (parseInt(this.currentInstructor.teaching_pct)||0)
@@ -376,6 +450,55 @@
             activeTab = 'instructors';
             history.replaceState(null, '', '?tab=' + activeTab);
         }
+        restoreFilters();
+        @if($errors->hasAny(['course_code','name_th','name_en','curriculum_id','department_id','head_instructor_id','academic_level','default_year_level','default_semester','credits','lecture_hours','lab_hours','self_study_hours','capacity','color_code','status','requires_practicum_rotation','prerequisite_ids','prerequisite_ids.*']))
+            activeTab = 'courses';
+            editCourseMode = {{ old('course_form_id') ? 'true' : 'false' }};
+            currentCourse = {
+                id: '{{ old('course_form_id', '') }}',
+                course_code: {{ Js::from(old('course_code', '')) }},
+                name_th: {{ Js::from(old('name_th', '')) }},
+                name_en: {{ Js::from(old('name_en', '')) }},
+                curriculum_id: {{ Js::from(old('curriculum_id', '')) }},
+                department_id: {{ Js::from(old('department_id', '')) }},
+                head_instructor_id: {{ Js::from(old('head_instructor_id', '')) }},
+                academic_level: {{ Js::from(old('academic_level', 'undergraduate')) }},
+                default_year_level: {{ Js::from(old('default_year_level', '')) }},
+                default_semester: {{ Js::from(old('default_semester', '')) }},
+                credits: {{ Js::from(old('credits', '')) }},
+                lecture_hours: {{ Js::from(old('lecture_hours', 0)) }},
+                lab_hours: {{ Js::from(old('lab_hours', 0)) }},
+                self_study_hours: {{ Js::from(old('self_study_hours', 0)) }},
+                capacity: {{ Js::from(old('capacity', '')) }},
+                color_code: {{ Js::from(old('color_code', '#3b82f6')) }},
+                status: {{ Js::from(old('status', 'active')) }},
+                requires_practicum_rotation: {{ Js::from(old('requires_practicum_rotation', '0')) }},
+                prerequisite_ids: {{ Js::from(array_map('strval', old('prerequisite_ids', []))) }},
+            };
+            showCourseModal = true;
+        @endif
+        @if(old('curriculum_form') && $errors->hasAny(['name','effective_year','is_active']))
+            activeTab = 'curriculums';
+            editCurriculumMode = {{ old('curriculum_form_id') ? 'true' : 'false' }};
+            currentCurriculum = {
+                id: {{ Js::from(old('curriculum_form_id', '')) }},
+                name: {{ Js::from(old('name', '')) }},
+                effective_year: {{ Js::from(old('effective_year', '')) }},
+                is_active: {{ Js::from(old('is_active', '1')) }},
+            };
+            showCurriculumModal = true;
+        @endif
+        @if(old('clone_curriculum_form') && $errors->hasAny(['name','effective_year']))
+            activeTab = 'curriculums';
+            cloneSourceCurriculum = {
+                id: {{ Js::from(old('clone_curriculum_source_id', '')) }},
+                name: {{ Js::from(old('clone_curriculum_source_name', '')) }},
+            };
+            cloneNewName = {{ Js::from(old('name', '')) }};
+            cloneNewYear = {{ Js::from(old('effective_year', '')) }};
+            showCloneCurriculumModal = true;
+        @endif
+        registerFilterPersistence($watch);
         $watch('activeTab', tab => history.replaceState(null, '', '?tab=' + tab))
     ">
 
@@ -714,6 +837,12 @@
                     @empty
                         <div style="text-align: center; padding: 48px 20px; color: var(--fg-3);">ยังไม่มีข้อมูลภาควิชา</div>
                     @endforelse
+                    <div
+                        x-show="filters.departments.keyword && !Array.from($el.parentNode.children).some(el => el !== $el && el.dataset && el.dataset.search && el.style.display !== 'none')"
+                        x-cloak
+                        style="text-align: center; padding: 40px 20px; color: var(--fg-3);">
+                        ไม่พบข้อมูลที่ค้นหา
+                    </div>
                 </div>
             </div>
         </div>
@@ -781,8 +910,9 @@
                         {{-- Card wrapper --}}
                         <div
                             data-location-type-id="{{ $type->id }}"
+                            data-statuses="{{ $type->rooms->pluck('status')->unique()->join(' ') }}"
                             data-search="{{ Str::lower($type->name . ' ' . $type->rooms_count . ' แห่ง ' . $activeCount . ' ใช้งาน ' . $maintenanceCount . ' ซ่อมบำรุง ' . $inactiveCount . ' ปิดใช้งาน ' . $type->rooms->pluck('room_code')->join(' ') . ' ' . $type->rooms->pluck('room_name')->join(' ') . ' ' . $type->rooms->pluck('building')->join(' ') . ' ' . $type->rooms->pluck('capacity')->join(' ')) }}"
-                            x-show="(filters.location_types.location_type_id === '' || $el.dataset.locationTypeId == filters.location_types.location_type_id) && includesText($el.dataset.search, filters.location_types.keyword)"
+                            x-show="(filters.location_types.location_type_id === '' || $el.dataset.locationTypeId == filters.location_types.location_type_id) && (filters.location_types.status === '' || $el.dataset.statuses.includes(filters.location_types.status)) && includesText($el.dataset.search, filters.location_types.keyword)"
                             style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
 
                             {{-- Header row --}}
@@ -894,6 +1024,11 @@
                                                     </td>
                                                 </tr>
                                             @endforeach
+                                            <tr
+                                                x-show="(filters.location_types.keyword || filters.location_types.status) && !Array.from($el.parentNode.children).some(tr => tr !== $el && tr.style.display !== 'none')"
+                                                x-cloak>
+                                                <td colspan="6" style="text-align: center; padding: 28px; color: var(--fg-3);">ไม่พบข้อมูลที่ค้นหา</td>
+                                            </tr>
                                         </tbody>
                                     </table>
                                 @else
@@ -921,6 +1056,12 @@
                             ยังไม่มีข้อมูลประเภทสถานที่
                         </div>
                     @endforelse
+                    <div
+                        x-show="(filters.location_types.keyword || filters.location_types.location_type_id || filters.location_types.status) && !Array.from($el.parentNode.children).some(el => el !== $el && el.dataset && el.dataset.search && el.style.display !== 'none')"
+                        x-cloak
+                        style="text-align: center; padding: 40px 20px; color: var(--fg-3);">
+                        ไม่พบข้อมูลที่ค้นหา
+                    </div>
                 </div>
             </div>
         </div>
@@ -1064,6 +1205,11 @@
                                     <td colspan="7" style="text-align: center; padding: 40px; color: var(--fg-3);">ยังไม่มีข้อมูลรายวิชา</td>
                                 </tr>
                             @endforelse
+                            <tr
+                                x-show="(filters.courses.keyword || filters.courses.department_id || filters.courses.curriculum_id || filters.courses.year_level || filters.courses.status) && !Array.from($el.parentNode.children).some(tr => tr !== $el && tr.dataset && tr.dataset.search && tr.style.display !== 'none')"
+                                x-cloak>
+                                <td colspan="7" style="text-align: center; padding: 40px; color: var(--fg-3);">ไม่พบข้อมูลที่ค้นหา</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -1217,6 +1363,12 @@
                     @empty
                         <div style="text-align: center; padding: 48px 20px; color: var(--fg-3);">ยังไม่มีข้อมูลหลักสูตร</div>
                     @endforelse
+                    <div
+                        x-show="(filters.curriculums.keyword || filters.curriculums.is_active) && !Array.from($el.parentNode.children).some(el => el !== $el && el.dataset && el.dataset.search && el.style.display !== 'none')"
+                        x-cloak
+                        style="text-align: center; padding: 40px 20px; color: var(--fg-3);">
+                        ไม่พบข้อมูลที่ค้นหา
+                    </div>
                 </div>
             </div>
         </div>
@@ -1438,6 +1590,32 @@
                                     <input type="date" name="hired_at" x-model="currentInstructor.hired_at">
                                 </div>
                             </div>
+                            <div x-show="showInstructorEnglishCriterion()" x-cloak style="margin-top:15px;margin-bottom:4px;">
+                                <label style="font-size:13px;font-weight:700;color:var(--fg-2);margin-bottom:10px;display:block;padding-left:2px;">เกณฑ์ภาษาอังกฤษ</label>
+                                <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+                                    <button type="button"
+                                        @click="currentInstructor.is_english_passed = false"
+                                        style="padding:10px 20px;border-radius:8px;cursor:pointer;transition:all 0.2s;font-size:14px;font-weight:600;appearance:none;outline:none;border:1px solid;display:flex;align-items:center;gap:8px;"
+                                        :style="!currentInstructor.is_english_passed
+                                            ? 'background:#fef2f2;color:#ef4444;border-color:#fca5a5;box-shadow:0 0 0 3px rgba(239,68,68,0.1);'
+                                            : 'background:white;color:var(--fg-3);border-color:var(--border);'">
+                                        <svg x-show="!currentInstructor.is_english_passed" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                        <svg x-show="currentInstructor.is_english_passed" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;"><circle cx="12" cy="12" r="10"></circle></svg>
+                                        ยังไม่ผ่านเกณฑ์
+                                    </button>
+                                    <button type="button"
+                                        @click="currentInstructor.is_english_passed = true"
+                                        style="padding:10px 20px;border-radius:8px;cursor:pointer;transition:all 0.2s;font-size:14px;font-weight:600;appearance:none;outline:none;border:1px solid;display:flex;align-items:center;gap:8px;"
+                                        :style="currentInstructor.is_english_passed
+                                            ? 'background:#f0fdf4;color:#10b981;border-color:#6ee7b7;box-shadow:0 0 0 3px rgba(16,185,129,0.1);'
+                                            : 'background:white;color:var(--fg-3);border-color:var(--border);'">
+                                        <svg x-show="currentInstructor.is_english_passed" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                        <svg x-show="!currentInstructor.is_english_passed" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;"><circle cx="12" cy="12" r="10"></circle></svg>
+                                        ผ่านเกณฑ์แล้ว
+                                    </button>
+                                </div>
+                            </div>
+                            <input type="hidden" name="is_english_passed" :value="currentInstructor.is_english_passed ? 1 : 0">
                             {{-- PA Ratio Section --}}
                             <div style="margin-top:20px;padding:16px;background:var(--bg-2);border-radius:var(--r-lg);border:1px solid var(--border);">
                                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
@@ -1452,6 +1630,7 @@
                                         </label>
                                         <div style="display:flex;align-items:center;gap:4px;">
                                             <input type="number" name="teaching_pct" x-model.number="currentInstructor.teaching_pct"
+                                                :style="instructorPctStyle(currentInstructor.teaching_pct, getInstructorPARules().teaching)"
                                                 :min="getInstructorPARules().teaching.min" :max="getInstructorPARules().teaching.max" required style="flex:1;">
                                             <span style="color:var(--fg-3);font-size:13px;">%</span>
                                         </div>
@@ -1462,6 +1641,7 @@
                                         </label>
                                         <div style="display:flex;align-items:center;gap:4px;">
                                             <input type="number" name="research_pct" x-model.number="currentInstructor.research_pct"
+                                                :style="instructorPctStyle(currentInstructor.research_pct, getInstructorPARules().research)"
                                                 :min="getInstructorPARules().research.min" :max="getInstructorPARules().research.max" required style="flex:1;">
                                             <span style="color:var(--fg-3);font-size:13px;">%</span>
                                         </div>
@@ -1472,6 +1652,7 @@
                                         </label>
                                         <div style="display:flex;align-items:center;gap:4px;">
                                             <input type="number" name="service_pct" x-model.number="currentInstructor.service_pct"
+                                                :style="instructorPctStyle(currentInstructor.service_pct, getInstructorPARules().service)"
                                                 :min="getInstructorPARules().service.min" :max="getInstructorPARules().service.max" required style="flex:1;">
                                             <span style="color:var(--fg-3);font-size:13px;">%</span>
                                         </div>
@@ -1482,6 +1663,7 @@
                                         </label>
                                         <div style="display:flex;align-items:center;gap:4px;">
                                             <input type="number" name="culture_pct" x-model.number="currentInstructor.culture_pct"
+                                                :style="instructorPctStyle(currentInstructor.culture_pct, getInstructorPARules().culture)"
                                                 :min="getInstructorPARules().culture.min" :max="getInstructorPARules().culture.max" required style="flex:1;">
                                             <span style="color:var(--fg-3);font-size:13px;">%</span>
                                         </div>
@@ -1492,6 +1674,7 @@
                                         </label>
                                         <div style="display:flex;align-items:center;gap:4px;">
                                             <input type="number" name="other_pct" x-model.number="currentInstructor.other_pct"
+                                                :style="instructorPctStyle(currentInstructor.other_pct, getInstructorPARules().other)"
                                                 :min="getInstructorPARules().other.min" :max="getInstructorPARules().other.max" required style="max-width:120px;">
                                             <span style="color:var(--fg-3);font-size:13px;">%</span>
                                         </div>
@@ -1700,7 +1883,16 @@
                         method="POST">
                         @csrf
                         <input type="hidden" name="_method" value="PUT" :disabled="!editCourseMode">
+                        <input type="hidden" name="course_form_id" :value="currentCourse.id" :disabled="!editCourseMode">
                         <div class="modal-body" style="display: flex; flex-direction: column; gap: 0;">
+                            @if($errors->hasAny(['course_code','name_th','name_en','curriculum_id','department_id','head_instructor_id','academic_level','default_year_level','default_semester','credits','lecture_hours','lab_hours','self_study_hours','capacity','color_code','status','requires_practicum_rotation','prerequisite_ids','prerequisite_ids.*']))
+                                <div style="margin-bottom:16px;padding:12px 14px;background:oklch(97% 0.02 20);border:1px solid oklch(82% 0.08 25);border-radius:8px;color:var(--status-conflict-fg);font-size:13px;line-height:1.6;">
+                                    <div style="font-weight:700;margin-bottom:4px;">ไม่สามารถบันทึกรายวิชาได้</div>
+                                    @foreach($errors->all() as $error)
+                                        <div>{{ $error }}</div>
+                                    @endforeach
+                                </div>
+                            @endif
 
                             {{-- Section: ข้อมูลพื้นฐาน --}}
                             <div style="display: grid; grid-template-columns: 130px 1fr 1fr; gap: 16px; margin-bottom: 16px;">
@@ -1914,7 +2106,19 @@
                         method="POST">
                         @csrf
                         <input type="hidden" name="_method" value="PUT" :disabled="!editCurriculumMode">
+                        <input type="hidden" name="curriculum_form" value="1">
+                        <input type="hidden" name="curriculum_form_id" :value="currentCurriculum.id" :disabled="!editCurriculumMode">
                         <div class="modal-body">
+                            @if(old('curriculum_form') && $errors->hasAny(['name','effective_year','is_active']))
+                                <div style="margin-bottom:16px;padding:12px 14px;background:oklch(97% 0.02 20);border:1px solid oklch(82% 0.08 25);border-radius:8px;color:var(--status-conflict-fg);font-size:13px;line-height:1.6;">
+                                    <div style="font-weight:700;margin-bottom:4px;">ไม่สามารถบันทึกหลักสูตรได้</div>
+                                    @foreach(['name','effective_year','is_active'] as $field)
+                                        @foreach($errors->get($field) as $error)
+                                            <div>{{ $error }}</div>
+                                        @endforeach
+                                    @endforeach
+                                </div>
+                            @endif
                             <div class="form-group" style="margin-bottom: 20px;">
                                 <label>ชื่อหลักสูตร <span style="color: var(--status-conflict-fg)">*</span></label>
                                 <input type="text" name="name" x-model="currentCurriculum.name" required placeholder="เช่น พยาบาลศาสตรบัณฑิต (2565)">
@@ -1935,7 +2139,7 @@
                         </div>
                         <div class="modal-foot" style="display: flex; justify-content: space-between;">
                             <div>
-                                <button type="button" class="btn btn-ghost" x-show="editCurriculumMode" @click="confirmDelete('deleteCurriculumForm', currentCurriculum.name, 'ต้องลบวิชาในหลักสูตรออกให้หมดก่อน')" style="color: var(--status-conflict-fg);">
+                                <button type="button" class="btn btn-ghost" x-show="editCurriculumMode" @click="confirmDelete('deleteCurriculumForm', currentCurriculum.name, 'ระบบจะลบรายวิชาในหลักสูตรที่ยังไม่ถูกนำไปใช้ในการสอนออกพร้อมกัน')" style="color: var(--status-conflict-fg);">
                                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; display: inline-block; vertical-align: middle;"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg> ลบข้อมูล
                                 </button>
                             </div>
@@ -2025,6 +2229,11 @@
                                     <td colspan="5" style="text-align: center; color: var(--fg-3); padding: 40px;">ยังไม่มีประเภทกิจกรรม</td>
                                 </tr>
                             @endforelse
+                            <tr
+                                x-show="(filters.activity_types.keyword || filters.activity_types.category) && !Array.from($el.parentNode.children).some(tr => tr !== $el && tr.dataset && tr.dataset.search && tr.style.display !== 'none')"
+                                x-cloak>
+                                <td colspan="5" style="text-align: center; color: var(--fg-3); padding: 40px;">ไม่พบข้อมูลที่ค้นหา</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -2138,7 +2347,20 @@
                     </div>
                     <form :action="cloneSourceCurriculum ? '{{ url('admin/master-data/curriculums') }}/' + cloneSourceCurriculum.id + '/clone' : '#'" method="POST">
                         @csrf
+                        <input type="hidden" name="clone_curriculum_form" value="1">
+                        <input type="hidden" name="clone_curriculum_source_id" :value="cloneSourceCurriculum?.id || ''">
+                        <input type="hidden" name="clone_curriculum_source_name" :value="cloneSourceCurriculum?.name || ''">
                         <div class="modal-body">
+                            @if(old('clone_curriculum_form') && $errors->hasAny(['name','effective_year']))
+                                <div style="margin-bottom:16px;padding:12px 14px;background:oklch(97% 0.02 20);border:1px solid oklch(82% 0.08 25);border-radius:8px;color:var(--status-conflict-fg);font-size:13px;line-height:1.6;">
+                                    <div style="font-weight:700;margin-bottom:4px;">ไม่สามารถคัดลอกหลักสูตรได้</div>
+                                    @foreach(['name','effective_year'] as $field)
+                                        @foreach($errors->get($field) as $error)
+                                            <div>{{ $error }}</div>
+                                        @endforeach
+                                    @endforeach
+                                </div>
+                            @endif
                             <div class="form-group" style="margin-bottom: 20px;">
                                 <label>ชื่อหลักสูตรใหม่ <span style="color: var(--status-conflict-fg)">*</span></label>
                                 <input type="text" name="name" x-model="cloneNewName" required>
