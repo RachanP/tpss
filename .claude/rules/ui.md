@@ -74,3 +74,19 @@ mock/production/
 - หลักสูตร → รายวิชา (course_code, name_th/en, credits, year_level, semester)
 - ประเภทสถานที่ → ห้อง (+ ปุ่มแก้ไขแต่ละห้อง)
 - Cascade delete: ลบ location_type → ลบห้องทั้งหมดใน type นั้น (พร้อม warning)
+
+## Dashboard Widget Contract (สำคัญเมื่อทำงานขนาน)
+
+- Dashboard ของแต่ละ role (`views/admin/dashboard.blade.php`, `staff/dashboard.blade.php`, `course_head/dashboard.blade.php`) มี **owner คนเดียว** (ผู้ทำ dashboard polish)
+- ใครจะเพิ่ม widget ใหม่ลง dashboard → ต้องส่งเป็น **partial แยกไฟล์** ใน `views/shared/dashboard/<widget-name>.blade.php`
+- Owner เป็นคนเดียวที่ `@include('shared.dashboard.xxx')` ใน dashboard blade
+- **ห้ามคนอื่นแก้ dashboard.blade.php โดยตรง** — ลด merge conflict ระหว่าง dev หลายคน
+- Precedent ที่มีอยู่: `shared/dashboard/instructors_workload.blade.php`, `master_data_alerts.blade.php`
+
+## Test ID Convention (สำหรับ Playwright E2E)
+
+- ทุก interactive element ที่ E2E จะอ้างถึง ใส่ `data-testid="<page>-<element>"`
+- Format: kebab-case, ขึ้นต้นด้วยชื่อหน้า/feature
+- ตัวอย่าง: `users-add-button`, `user-form-username`, `users-row` (พร้อม `data-username="..."` สำหรับหา row)
+- เพิ่ม testid พร้อมตอน implement feature — อย่ารอคนเขียน test มาขอ
+- รายละเอียดเพิ่ม: `.claude/rules/testing.md`

@@ -16,9 +16,7 @@
 | Sprint 1 | 11–12 พ.ค. | M10 Login/RBAC | ✅ 100% |
 | Sprint 2 | 12–15 พ.ค. | M1 Master Data | ✅ 100% |
 | Sprint 3 | 18–19 พ.ค. | M2 Course Management | ✅ merge เข้า sprint แล้ว (18 พ.ค.) |
-| **Sprint 4** | **20–22 พ.ค.** | **M3 Schedule Management** | **🟡 พร้อมเริ่ม** |
-| Sprint 5 | 21–26 พ.ค. | M4 Conflict Checking | — |
-| Sprint 6 | 22–26 พ.ค. | M8 Views & Calendar | — |
+| **Sprint 4-6** | **20–26 พ.ค.** | **M3 + M4 + M8 → รวมเป็น Schedule Suite** | **🟡 พร้อมเริ่ม (ดู Schedule Suite plan)** |
 | Sprint 7 | 20–27 พ.ค. | M7 Search & Filter | ✅ merge เข้า sprint แล้ว (16 พ.ค.) |
 
 ## Sprint 2 (M1) — สิ่งที่เสร็จแล้ว
@@ -133,10 +131,64 @@
 - บันทึกผลใน System Test Checklist
 - เอกสาร (SRS / User Manual) อัปเดตแล้ว (ถ้าเกี่ยวข้อง)
 
+## Sprint 3 Bug Report — 18 พ.ค. 2569 (bug_sprint2_18_05_69.pdf)
+
+15 bugs จากการ test M1/M2/M10 — แบ่งเป็น 2 branch ขนาน:
+
+### Branch A — `fix/m1-master-data-bugs` (Friend 1)
+1. รหัสวิชาซ้ำในหลักสูตรเดียวกันได้ — ต้อง unique constraint `(curriculum_id, course_code)`
+2. CSV export ภาษาไทยเพี้ยนใน Excel — ต้อง prepend UTF-8 BOM
+3. CSV template ของ courses/rooms ไม่รองรับภาษาไทย + field ใหม่
+4. Empty state "ไม่พบข้อมูล" ไม่ขึ้นทุก tab M1 (ยกเว้น instructor)
+5. เลือก head=secretary คนเดียวกัน → confirm แล้วบันทึกไม่สำเร็จ
+15. หน้าจัดการผู้ใช้: ไม่ขึ้น % PA criteria + ข้อมูลหายเมื่อ validation error (ต้อง `withInput()`)
+
+### Branch B — `fix/m2-ux-bugs` (Friend 2 หรือ defer ไป Phase 2)
+6. URL `/admin/course-pool/1` ใช้ id — ควรใช้รหัสวิชา (`getRouteKeyName`)
+7. รายวิชาในหน้าจัดการของ course head **แสดงซ้ำ** — query JOIN ทำให้แถวซ้ำ
+8. Admin dashboard ไม่เห็นสถานะระบบ + ไม่มี shortcut (UX)
+9. ไม่มี filter "วิชาเปิดสอน vs ปิดสอน" + badge "ยังไม่มีหัวหน้าวิชา" (UX)
+10. Sidebar เด้งขึ้นบนสุดเองหลังกด "ตั้งค่าระบบ" — scroll position หาย
+11. URL `/maker/course-offerings/1` ใช้ id — เหมือนกับ #6 (รวม PR เดียวได้)
+12. เพิ่ม badge "กลุ่มเต็ม" / "เหลือ N คน" ในหน้า course offering list
+13. Layout course offering list table แน่นไป
+14. หน้า course offering detail: layout ทับ + คลิก input ไม่ได้ (z-index/pointer-events)
+
+**กฎก่อนแก้:** Bug #6, #10, #14 ต้อง **merge เข้า sprint ก่อน Sprint 4 เริ่ม** เพราะกระทบ M3 (route binding, sidebar conflict, show page layout)
+
+## Post-Bugfix Parallel Plan (อัปเดต 18 พ.ค.)
+
+หลัง bug fix เสร็จ ทำ 3 งานขนานกัน — แยก page ปลอดภัยถ้าทำตาม [widget contract](.claude/rules/ui.md#dashboard-widget-contract-สำคัญเมื่อทำงานขนาน):
+
+| คน | งาน | ไฟล์หลัก |
+|----|-----|----------|
+| Lead (Rachan) | Dashboard polish ของ admin/staff/course_head + เขียน E2E/Feature test ตามหลัง | `views/{admin,staff,course_head}/dashboard.blade.php` + `views/shared/dashboard/*` |
+| Friend 1 | Audit Log สำหรับ M10/M1/M2 | NEW: `audit-logs/*`, migration, trait/observer |
+| Friend 2 | **Schedule Suite (M3+M4+M8 รวมกัน)** ดูหัวข้อด้านล่าง | `CourseHead/ScheduleController.php` (มี foundation), NEW views `schedules/*` |
+
+**Sidebar slots พร้อมแล้ว** ใน `components/sidebar.blade.php`: "ตารางสอน" (admin/staff/course_head) และ "Audit Logs" (admin) เป็น `href="#"` รอเสียบ route → ไม่ต้องเพิ่ม structure ใหม่
+
+## Schedule Suite — รวม Sprint 4+5+6 (ตกลง 18 พ.ค.)
+
+**เหตุผลที่รวม:** M3 (สร้าง slot) → M4 (conflict check ตอน save) → M8 (calendar view) เป็น feature เดียวจากมุมผู้ใช้ — แยกสปรินต์แล้วทดสอบเร่อ ๆ ใช้งานไม่ได้จริง
+
+| Phase | Scope | ระยะเวลา | คนทำ |
+|-------|-------|---------|------|
+| **A — MVP** | M3 CRUD slots (list view) + M4 conflict check ตอน save + phase guard | 5-7 วัน | Friend 2 |
+| **B — UX สมจริง** | M4 real-time check (debounced AJAX) + warning badges (quota, missing info) | 3-4 วัน | Friend 2 |
+| **C — Calendar** | M8 calendar view (เดือน/สัปดาห์) + click-empty-cell-to-add + filter | 3-4 วัน | **Lead (Rachan)** ช่วยหลัง dashboard เสร็จ |
+
+**กฎสำคัญสำหรับ Lead เข้าไปช่วย:**
+- ต้อง merge dashboard เข้า sprint ให้เสร็จ **100% ก่อน** ค่อยข้ามไปช่วย calendar
+- Phase C ใช้ **Test After Merge** flow (ดู [.claude/rules/testing.md](.claude/rules/testing.md#test-after-merge-flow))
+- Phase C **ไม่ขนานกับ Phase A/B** — Friend 2 หยุดทำงานบน feature branch ก่อน Lead เริ่ม
+
+**ข้อระวัง:** ถ้าลูกค้าอยากเห็น calendar ตั้งแต่ test รอบแรก ต้องสลับ Phase C ขึ้นก่อน Phase B
+
 ## Known Bugs / Hotfixes
 
 - `AdminUserController:32` — `reset(reset($x))` ส่ง value แทน reference → แก้แล้ว (afa38ae)
-- `AdminUserManagementTest::test_admin_can_create_user` — pre-existing test failure ("Call to a member function all() on array") ไม่เกี่ยวกับ M2 — แก้แยกใน sprint อื่น
+- `AdminUserManagementTest::test_admin_can_create_user` — แก้แล้วใน `test/user-management-coverage` (8ecdfb1) เพิ่ม `employee_id` field + ลบ `withSession` chain
 
 ## Git Branching
 
@@ -146,5 +198,8 @@ main ← production-ready
         ├── feature/admin-dashboard-alerts  ✅ merge แล้ว
         ├── 7-m7-search_and_filter          ✅ merge แล้ว
         ├── 3-m2-course_management          ✅ merge แล้ว (18 พ.ค.)
-        └── (next) M3 Schedule Management   🔲 พร้อมเริ่ม
+        ├── test/user-management-coverage   🟡 รอ review/merge (8ecdfb1)
+        ├── fix/m1-master-data-bugs         🔲 Friend 1
+        ├── fix/m2-ux-bugs                  🔲 Friend 2 (urgent: #6, #10, #14)
+        └── (after bugs) M3 Schedule        🔲 พร้อมเริ่มหลัง bug merge
 ```

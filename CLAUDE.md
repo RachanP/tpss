@@ -40,6 +40,7 @@
 | [.claude/rules/sprint-status.md](.claude/rules/sprint-status.md) | Sprint plan, Sprint 2 done, M3 constraints, pending questions, DoD |
 | [.claude/rules/glossary.md](.claude/rules/glossary.md) | ไทย↔code mapping, naming conventions, module IDs |
 | [.claude/rules/architecture.md](.claude/rules/architecture.md) | Workflow, schedule complexity, instructor logic, PA criteria, curriculum arch |
+| [.claude/rules/testing.md](.claude/rules/testing.md) | Feature tests, Playwright E2E setup, workers=1, data-testid convention |
 
 ## Custom Commands (`.claude/commands/`)
 
