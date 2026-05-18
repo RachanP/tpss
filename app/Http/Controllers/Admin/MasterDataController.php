@@ -389,12 +389,15 @@ class MasterDataController extends Controller
 
     private function courseCodeExistsInCurriculum(string $courseCode, int $curriculumId, ?int $ignoreCourseId = null): bool
     {
+        // All course_code values are normalized at write time (normalizeCourseInput) +
+        // existing data normalized via migration 2026_05_18_120000_normalize_course_codes,
+        // so direct indexed lookup is safe.
         $normalized = preg_replace('/\s+/', '', mb_strtoupper(trim($courseCode)));
 
         return Course::query()
             ->where('curriculum_id', $curriculumId)
+            ->where('course_code', $normalized)
             ->when($ignoreCourseId, fn($query) => $query->whereKeyNot($ignoreCourseId))
-            ->whereRaw("REPLACE(UPPER(course_code), ' ', '') = ?", [$normalized])
             ->exists();
     }
 

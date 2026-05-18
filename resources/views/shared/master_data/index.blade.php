@@ -286,6 +286,54 @@
             this.currentCurriculum = { ...curr, is_active: curr.is_active ? '1' : '0' };
             this.showCurriculumModal = true;
         },
+        confirmDeleteCurriculum() {
+            const count = this.currentCurriculum.courses_count || 0;
+            const name = this.currentCurriculum.name;
+            const form = document.getElementById('deleteCurriculumForm');
+
+            if (count === 0) {
+                // No courses — simple confirm
+                this.confirmDelete('deleteCurriculumForm', name, 'ไม่สามารถกู้คืนได้');
+                return;
+            }
+
+            // Has courses — require cascade confirm (2-step)
+            Swal.fire({
+                title: 'ยืนยันการลบหลักสูตรแบบ Cascade',
+                html: '<div style="text-align:left;font-size:14px;line-height:1.6;">'
+                    + '<div style="color:#b91c1c;font-weight:700;margin-bottom:8px;">⚠️ การกระทำนี้ไม่สามารถกู้คืนได้</div>'
+                    + '<div>หลักสูตร <strong>' + name + '</strong> มี <strong>' + count + ' รายวิชา</strong></div>'
+                    + '<div style="color:#6b7280;margin-top:8px;">ระบบจะลบรายวิชาทั้งหมดในหลักสูตรนี้พร้อมกัน '
+                    + '(เฉพาะวิชาที่ยังไม่ถูกนำไปใช้ในข้อมูลการสอน)</div>'
+                    + '</div>',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'ลบหลักสูตรและรายวิชา',
+                cancelButtonText: 'ยกเลิก',
+                reverseButtons: true,
+                focusCancel: true,
+                buttonsStyling: false,
+                customClass: {
+                    popup:         'tpss-delete-popup',
+                    confirmButton: 'tpss-delete-confirm',
+                    cancelButton:  'tpss-delete-cancel',
+                    actions:       'tpss-delete-actions',
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Inject confirm_cascade flag then submit
+                    let cascadeInput = form.querySelector('input[name="confirm_cascade"]');
+                    if (!cascadeInput) {
+                        cascadeInput = document.createElement('input');
+                        cascadeInput.type = 'hidden';
+                        cascadeInput.name = 'confirm_cascade';
+                        form.appendChild(cascadeInput);
+                    }
+                    cascadeInput.value = '1';
+                    form.submit();
+                }
+            });
+        },
 
         showCloneCurriculumModal: false,
         cloneSourceCurriculum: null,
@@ -2139,7 +2187,7 @@
                         </div>
                         <div class="modal-foot" style="display: flex; justify-content: space-between;">
                             <div>
-                                <button type="button" class="btn btn-ghost" x-show="editCurriculumMode" @click="confirmDelete('deleteCurriculumForm', currentCurriculum.name, 'ระบบจะลบรายวิชาในหลักสูตรที่ยังไม่ถูกนำไปใช้ในการสอนออกพร้อมกัน')" style="color: var(--status-conflict-fg);">
+                                <button type="button" class="btn btn-ghost" x-show="editCurriculumMode" @click="confirmDeleteCurriculum()" style="color: var(--status-conflict-fg);">
                                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; display: inline-block; vertical-align: middle;"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg> ลบข้อมูล
                                 </button>
                             </div>
