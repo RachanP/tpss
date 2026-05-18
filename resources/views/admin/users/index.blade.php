@@ -86,6 +86,17 @@
                     }
                     return { t: '-', r: '-', s: '-', c: '-', o: '-' };
                 },
+                paRuleLabel(rule) {
+                    if (!rule || rule === '-') return '-';
+                    if (typeof rule === 'object') {
+                        const min = rule.min ?? 0;
+                        const max = rule.max ?? 100;
+                        if (min === 0 && max === 0) return '0%';
+                        if (min === 0) return '<= ' + max + '%';
+                        return min + '-' + max + '%';
+                    }
+                    return String(rule);
+                },
                 get paTotal() {
                     return (this.instructorProfile.teaching_pct || 0) + 
                            (this.instructorProfile.research_pct || 0) + 
@@ -172,6 +183,40 @@
                     } : { title: '', department_id: '', employment_type: 'พนักงานมหาวิทยาลัย', hired_at: '', academic_degree: '', is_english_passed: false, teaching_pct: 0, research_pct: 0, service_pct: 0, culture_pct: 0, other_pct: 0, teaching_quota: 0, department_position: '' };
                     
                     this.showModal = true;
+                },
+                applyOldInput(oldInput) {
+                    if (!oldInput || Object.keys(oldInput).length === 0) return;
+
+                    this.currentUser = {
+                        ...this.currentUser,
+                        id: oldInput.editing_user_id || this.currentUser.id || '',
+                        username: oldInput.username ?? this.currentUser.username,
+                        prefix: oldInput.prefix ?? this.currentUser.prefix,
+                        name: oldInput.name ?? this.currentUser.name,
+                        email: oldInput.email ?? this.currentUser.email,
+                        password: '',
+                        employee_id: oldInput.employee_id ?? this.currentUser.employee_id,
+                        roles: Array.isArray(oldInput.roles) ? oldInput.roles : this.currentUser.roles,
+                        primary_role: oldInput.primary_role ?? this.currentUser.primary_role,
+                        is_active: oldInput.is_active !== undefined ? Number(oldInput.is_active) : this.currentUser.is_active,
+                    };
+
+                    this.instructorProfile = {
+                        ...this.instructorProfile,
+                        title: oldInput.instructor_title ?? this.instructorProfile.title,
+                        department_id: oldInput.instructor_department_id ?? this.instructorProfile.department_id,
+                        employment_type: oldInput.instructor_employment_type ?? this.instructorProfile.employment_type,
+                        hired_at: oldInput.instructor_hired_at ?? this.instructorProfile.hired_at,
+                        academic_degree: oldInput.instructor_academic_degree ?? this.instructorProfile.academic_degree,
+                        teaching_pct: oldInput.instructor_teaching_pct !== undefined ? Number(oldInput.instructor_teaching_pct) : this.instructorProfile.teaching_pct,
+                        research_pct: oldInput.instructor_research_pct !== undefined ? Number(oldInput.instructor_research_pct) : this.instructorProfile.research_pct,
+                        service_pct: oldInput.instructor_service_pct !== undefined ? Number(oldInput.instructor_service_pct) : this.instructorProfile.service_pct,
+                        culture_pct: oldInput.instructor_culture_pct !== undefined ? Number(oldInput.instructor_culture_pct) : this.instructorProfile.culture_pct,
+                        other_pct: oldInput.instructor_other_pct !== undefined ? Number(oldInput.instructor_other_pct) : this.instructorProfile.other_pct,
+                        teaching_quota: oldInput.instructor_teaching_quota !== undefined ? Number(oldInput.instructor_teaching_quota) : this.instructorProfile.teaching_quota,
+                        is_english_passed: oldInput.instructor_is_english_passed !== undefined ? ['1', 1, true, 'true'].includes(oldInput.instructor_is_english_passed) : this.instructorProfile.is_english_passed,
+                        department_position: oldInput.instructor_department_position ?? this.instructorProfile.department_position,
+                    };
                 },
                 watchTitleChange(title) {
                     // ยกเลิกการบังคับใส่ "ปริญญาเอก" อัตโนมัติ เพื่อให้คงค่าว่างไว้ตาม Template หรือตามที่กรอกจริง
@@ -288,6 +333,7 @@
         $watch('instructorProfile.teaching_pct', value => updateQuota());
         $watch('instructorProfile.title', value => watchTitleChange(value));
         @php $oldUserId = old('editing_user_id'); @endphp
+        @php $oldInput = old(); @endphp
         @if($errors->any() && $oldUserId)
             (function() {
                 const allUsers = {{ Js::from($users) }};
@@ -298,13 +344,11 @@
                 } else {
                     showModal = true;
                 }
-                instructorProfile.department_id = '{{ old('instructor_department_id', '') }}';
-                instructorProfile.department_position = '{{ old('instructor_department_position', '') }}';
+                applyOldInput({{ Js::from($oldInput) }});
             })();
         @elseif($errors->any())
             showModal = true;
-            instructorProfile.department_id = '{{ old('instructor_department_id', '') }}';
-            instructorProfile.department_position = '{{ old('instructor_department_position', '') }}';
+            applyOldInput({{ Js::from($oldInput) }});
         @endif
     ">
 
@@ -955,7 +999,7 @@
                                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                                             <div class="form-group">
                                                 <label style="font-size: 12px; color: var(--fg-2);">
-                                                    1. ด้านการสอน (<span x-text="paRules.t"></span>) <span style="color: #ef4444;">*</span>
+                                                    1. ด้านการสอน (<span x-text="paRuleLabel(paRules.t)"></span>) <span style="color: #ef4444;">*</span>
                                                 </label>
                                                 <div style="display: flex; align-items: center; gap: 8px;">
                                                     <input type="number" name="instructor_teaching_pct" x-model.number="instructorProfile.teaching_pct"
@@ -966,7 +1010,7 @@
                                             </div>
                                             <div class="form-group">
                                                 <label style="font-size: 12px; color: var(--fg-2);">
-                                                    2. ด้านวิจัย (<span x-text="paRules.r"></span>) <span style="color: #ef4444;">*</span>
+                                                    2. ด้านวิจัย (<span x-text="paRuleLabel(paRules.r)"></span>) <span style="color: #ef4444;">*</span>
                                                 </label>
                                                 <div style="display: flex; align-items: center; gap: 8px;">
                                                     <input type="number" name="instructor_research_pct" x-model.number="instructorProfile.research_pct"
@@ -977,7 +1021,7 @@
                                             </div>
                                             <div class="form-group">
                                                 <label style="font-size: 12px; color: var(--fg-2);">
-                                                    3. บริการวิชาการ (<span x-text="paRules.s"></span>) <span style="color: #ef4444;">*</span>
+                                                    3. บริการวิชาการ (<span x-text="paRuleLabel(paRules.s)"></span>) <span style="color: #ef4444;">*</span>
                                                 </label>
                                                 <div style="display: flex; align-items: center; gap: 8px;">
                                                     <input type="number" name="instructor_service_pct" x-model.number="instructorProfile.service_pct"
@@ -988,7 +1032,7 @@
                                             </div>
                                             <div class="form-group">
                                                 <label style="font-size: 12px; color: var(--fg-2);">
-                                                    4. ศิลปวัฒนธรรม (<span x-text="paRules.c"></span>) <span style="color: #ef4444;">*</span>
+                                                    4. ศิลปวัฒนธรรม (<span x-text="paRuleLabel(paRules.c)"></span>) <span style="color: #ef4444;">*</span>
                                                 </label>
                                                 <div style="display: flex; align-items: center; gap: 8px;">
                                                     <input type="number" name="instructor_culture_pct" x-model.number="instructorProfile.culture_pct"
@@ -999,7 +1043,7 @@
                                             </div>
                                             <div class="form-group" style="grid-column: span 2;">
                                                 <label style="font-size: 12px; color: var(--fg-2);">
-                                                    5. งานอื่นๆ มอบหมาย (<span x-text="paRules.o"></span>) <span style="color: #ef4444;">*</span>
+                                                    5. งานอื่นๆ มอบหมาย (<span x-text="paRuleLabel(paRules.o)"></span>) <span style="color: #ef4444;">*</span>
                                                 </label>
                                                 <div style="display: flex; align-items: center; gap: 8px;">
                                                     <input type="number" name="instructor_other_pct" x-model.number="instructorProfile.other_pct"

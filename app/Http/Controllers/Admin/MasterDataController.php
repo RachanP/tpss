@@ -11,6 +11,7 @@ use App\Models\Course;
 use App\Models\Curriculum;
 use App\Models\ActivityType;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class MasterDataController extends Controller
@@ -59,6 +60,13 @@ class MasterDataController extends Controller
         // Pre-flight counts for import warnings
         $usersWithEmployeeIdCount = User::whereNotNull('employee_id')->where('employee_id', '!=', '')->count();
 
+        $paCriteria = json_decode(\App\Models\SystemSetting::get('pa_criteria_config', '{}'), true);
+        $firstGroup = !empty($paCriteria) ? reset($paCriteria) : null;
+        $firstField = $firstGroup ? reset($firstGroup) : null;
+        if (empty($paCriteria) || !is_array($firstField)) {
+            $paCriteria = \App\Http\Controllers\AdminSettingController::defaultPaCriteria();
+        }
+
         $activeRole = session('active_role');
         $isAdmin    = $activeRole === 'admin';
         $routePrefix = $isAdmin ? 'admin' : 'staff';
@@ -75,7 +83,8 @@ class MasterDataController extends Controller
             'staffUsers',
             'isAdmin',
             'routePrefix',
-            'usersWithEmployeeIdCount'
+            'usersWithEmployeeIdCount',
+            'paCriteria'
         ));
     }
 
@@ -88,6 +97,58 @@ class MasterDataController extends Controller
     {
         AlertController::flushCache();
         return redirect()->route($this->masterDataRouteName(), ['tab' => $tab]);
+    }
+
+    private function paCriteriaGroup(string $title, string $degree, ?string $hiredAt = null, bool $isEnglishPassed = false): string
+    {
+        $isNote1 = $title === 'ผู้ช่วยอาจารย์'
+            && $degree === 'ปริญญาเอก'
+            && $hiredAt
+            && $this->isBeforeEnglishCriterionDate($hiredAt);
+
+        $usesInstructorRules = in_array($title, ['อาจารย์', 'ผู้ช่วยศาสตราจารย์', 'รองศาสตราจารย์', 'ศาสตราจารย์'], true)
+            || $isNote1
+            || ($title === 'ผู้ช่วยอาจารย์' && $degree === 'ปริญญาเอก' && $isEnglishPassed);
+
+        if ($title === 'ผู้ช่วยอาจารย์ (คลินิก)') {
+            return 'ผู้ช่วยอาจารย์_คลินิก';
+        }
+
+        if ($title === 'ผู้ช่วยอาจารย์ (สอนภาคปฏิบัติ)') {
+            return 'ผู้ช่วยอาจารย์_ปฏิบัติ';
+        }
+
+        if ($title === 'ผู้ช่วยอาจารย์' && $degree === 'ปริญญาตรี') {
+            return 'ผู้ช่วยอาจารย์_ปตรี';
+        }
+
+        if ($usesInstructorRules) {
+            return 'อาจารย์';
+        }
+
+        if ($title === 'ผู้ช่วยอาจารย์') {
+            return 'ผู้ช่วยอาจารย์';
+        }
+
+        return AlertController::paGroup($title, $degree);
+    }
+
+    private function requiresEnglishCriterion(?string $title, ?string $degree, ?string $hiredAt): bool
+    {
+        if ($title !== 'ผู้ช่วยอาจารย์' || $degree !== 'ปริญญาเอก' || !$hiredAt) {
+            return false;
+        }
+
+        return !$this->isBeforeEnglishCriterionDate($hiredAt);
+    }
+
+    private function isBeforeEnglishCriterionDate(string $hiredAt): bool
+    {
+        try {
+            return \Carbon\Carbon::parse($hiredAt)->lt(\Carbon\Carbon::create(2016, 10, 1));
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 
     public function storeLocationType(Request $request)
@@ -187,11 +248,6 @@ class MasterDataController extends Controller
         $newSecId  = $validated['secretary_user_id'] ?? null;
         $forceOverride = $request->boolean('force_position_override');
 
-        // Block: same person as both head and secretary
-        if ($newHeadId && $newSecId && (int)$newHeadId === (int)$newSecId) {
-            return back()->withErrors(['head_user_id' => 'ผู้เดียวกันไม่สามารถเป็นทั้งหัวหน้าและเลขานุการได้']);
-        }
-
         // If override confirmed by user, release positions from other depts first
         if ($forceOverride) {
             if ($newHeadId) {
@@ -218,6 +274,8 @@ class MasterDataController extends Controller
 
         $title  = $request->input('title', '');
         $degree = $request->input('academic_degree', '');
+        $hiredAt = $request->input('hired_at');
+        $englishPassed = $request->boolean('is_english_passed');
 
         $paCriteria = json_decode(\App\Models\SystemSetting::get('pa_criteria_config', '{}'), true);
         $firstGroup = !empty($paCriteria) ? reset($paCriteria) : null;
@@ -225,7 +283,7 @@ class MasterDataController extends Controller
         if (empty($paCriteria) || !is_array($firstField)) {
             $paCriteria = \App\Http\Controllers\AdminSettingController::defaultPaCriteria();
         }
-        $group = AlertController::paGroup($title, $degree);
+        $group = $this->paCriteriaGroup($title, $degree, $hiredAt, $englishPassed);
         $gc = $paCriteria[$group] ?? $paCriteria['อาจารย์'];
         $paRules = [
             'teaching' => [$gc['t']['min'] ?? 0, $gc['t']['max'] ?? 100],
@@ -244,6 +302,7 @@ class MasterDataController extends Controller
             'academic_degree' => 'required|string|max:100',
             'employment_type' => 'required|string|max:100',
             'hired_at'        => 'nullable|date',
+            'is_english_passed' => 'nullable|boolean',
             'teaching_pct'    => "required|integer|min:{$paRules['teaching'][0]}|max:{$paRules['teaching'][1]}",
             'research_pct'    => "required|integer|min:{$paRules['research'][0]}|max:{$paRules['research'][1]}",
             'service_pct'     => "required|integer|min:{$paRules['service'][0]}|max:{$paRules['service'][1]}",
@@ -275,6 +334,9 @@ class MasterDataController extends Controller
                 'department_id'   => $request->department_id,
                 'employment_type' => $request->employment_type,
                 'hired_at'        => $request->hired_at ?: null,
+                'is_english_passed' => $this->requiresEnglishCriterion($request->title, $request->academic_degree, $request->hired_at)
+                    ? $request->boolean('is_english_passed')
+                    : false,
                 'teaching_pct'    => $request->teaching_pct,
                 'research_pct'    => $request->research_pct,
                 'service_pct'     => $request->service_pct,
@@ -287,8 +349,43 @@ class MasterDataController extends Controller
         return redirect()->back()->with('success', 'อัปเดตข้อมูลอาจารย์เรียบร้อยแล้ว');
     }
 
+    private function normalizeCourseInput(Request $request): void
+    {
+        if (!$request->has('course_code')) {
+            return;
+        }
+
+        $request->merge([
+            'course_code' => preg_replace('/\s+/', '', mb_strtoupper(trim((string) $request->input('course_code')))),
+        ]);
+    }
+
+    private function courseCodeExistsInCurriculum(string $courseCode, int $curriculumId, ?int $ignoreCourseId = null): bool
+    {
+        $normalized = preg_replace('/\s+/', '', mb_strtoupper(trim($courseCode)));
+
+        return Course::query()
+            ->where('curriculum_id', $curriculumId)
+            ->when($ignoreCourseId, fn($query) => $query->whereKeyNot($ignoreCourseId))
+            ->whereRaw("REPLACE(UPPER(course_code), ' ', '') = ?", [$normalized])
+            ->exists();
+    }
+
+    private function normalizeCurriculumInput(Request $request): void
+    {
+        if (!$request->has('name')) {
+            return;
+        }
+
+        $request->merge([
+            'name' => trim((string) $request->input('name')),
+        ]);
+    }
+
     public function storeCourse(Request $request)
     {
+        $this->normalizeCourseInput($request);
+
         $validated = $request->validate([
             'course_code'                 => [
                 'required', 'string', 'max:20',
@@ -315,7 +412,15 @@ class MasterDataController extends Controller
             'requires_practicum_rotation' => 'required|boolean',
             'prerequisite_ids'            => 'nullable|array',
             'prerequisite_ids.*'          => ['integer', 'distinct', 'exists:courses,id'],
+        ], [
+            'course_code.unique' => 'รหัสวิชานี้มีอยู่ในหลักสูตรที่เลือกแล้ว',
         ]);
+
+        if ($this->courseCodeExistsInCurriculum($validated['course_code'], (int) $validated['curriculum_id'])) {
+            return back()
+                ->withErrors(['course_code' => 'รหัสวิชานี้มีอยู่ในหลักสูตรที่เลือกแล้ว'])
+                ->withInput();
+        }
 
         $validated['requires_practicum_rotation'] = $request->boolean('requires_practicum_rotation');
         $staffIds = $validated['staff_ids'] ?? [];
@@ -331,6 +436,8 @@ class MasterDataController extends Controller
 
     public function updateCourse(Request $request, Course $course)
     {
+        $this->normalizeCourseInput($request);
+
         $validated = $request->validate([
             'course_code'                 => [
                 'required', 'string', 'max:20',
@@ -358,7 +465,15 @@ class MasterDataController extends Controller
             'requires_practicum_rotation' => 'required|boolean',
             'prerequisite_ids'            => 'nullable|array',
             'prerequisite_ids.*'          => ['integer', 'distinct', 'exists:courses,id', Rule::notIn([$course->id])],
+        ], [
+            'course_code.unique' => 'รหัสวิชานี้มีอยู่ในหลักสูตรที่เลือกแล้ว',
         ]);
+
+        if ($this->courseCodeExistsInCurriculum($validated['course_code'], (int) $validated['curriculum_id'], $course->id)) {
+            return back()
+                ->withErrors(['course_code' => 'รหัสวิชานี้มีอยู่ในหลักสูตรที่เลือกแล้ว'])
+                ->withInput();
+        }
 
         $validated['requires_practicum_rotation'] = $request->boolean('requires_practicum_rotation');
         $staffIds = $validated['staff_ids'] ?? [];
@@ -374,10 +489,22 @@ class MasterDataController extends Controller
 
     public function storeCurriculum(Request $request)
     {
+        $this->normalizeCurriculumInput($request);
+
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:curriculums,name',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('curriculums', 'name')
+                    ->where(fn($query) => $query->where('effective_year', $request->input('effective_year'))),
+            ],
             'effective_year' => 'required|integer',
             'is_active' => 'required|boolean'
+        ], [
+            'name.unique' => 'มีหลักสูตรนี้ในปีที่เริ่มใช้นี้อยู่ในระบบแล้ว',
+            'name.required' => 'กรุณากรอกชื่อหลักสูตร',
+            'effective_year.required' => 'กรุณากรอกปีที่เริ่มใช้หลักสูตร',
         ]);
 
         Curriculum::create($validated);
@@ -387,10 +514,23 @@ class MasterDataController extends Controller
 
     public function updateCurriculum(Request $request, Curriculum $curriculum)
     {
+        $this->normalizeCurriculumInput($request);
+
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:curriculums,name,' . $curriculum->id,
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('curriculums', 'name')
+                    ->where(fn($query) => $query->where('effective_year', $request->input('effective_year')))
+                    ->ignore($curriculum->id),
+            ],
             'effective_year' => 'required|integer',
             'is_active' => 'required|boolean'
+        ], [
+            'name.unique' => 'มีหลักสูตรนี้ในปีที่เริ่มใช้นี้อยู่ในระบบแล้ว',
+            'name.required' => 'กรุณากรอกชื่อหลักสูตร',
+            'effective_year.required' => 'กรุณากรอกปีที่เริ่มใช้หลักสูตร',
         ]);
 
         $curriculum->update($validated);
@@ -400,9 +540,21 @@ class MasterDataController extends Controller
 
     public function cloneCurriculum(Request $request, Curriculum $curriculum)
     {
+        $this->normalizeCurriculumInput($request);
+
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:curriculums,name',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('curriculums', 'name')
+                    ->where(fn($query) => $query->where('effective_year', $request->input('effective_year'))),
+            ],
             'effective_year' => 'required|integer'
+        ], [
+            'name.unique' => 'มีหลักสูตรนี้ในปีที่เริ่มใช้นี้อยู่ในระบบแล้ว',
+            'name.required' => 'กรุณากรอกชื่อหลักสูตร',
+            'effective_year.required' => 'กรุณากรอกปีที่เริ่มใช้หลักสูตร',
         ]);
 
         $newCurriculum = Curriculum::create([
@@ -468,10 +620,33 @@ class MasterDataController extends Controller
     public function destroyCurriculum(Curriculum $curriculum)
     {
         try {
-            $curriculum->delete();
-            return $this->redirectToMasterData('curriculums')->with('success', 'ลบหลักสูตรเรียบร้อยแล้ว');
+            $courses = $curriculum->courses()->withCount('courseOfferings')->get();
+            $blockedCourses = $courses->filter(fn($course) => $course->course_offerings_count > 0);
+
+            if ($blockedCourses->isNotEmpty()) {
+                $courseList = $blockedCourses
+                    ->take(5)
+                    ->map(fn($course) => $course->course_code)
+                    ->implode(', ');
+
+                return redirect()->back()->with('error', 'ไม่สามารถลบหลักสูตรได้ เนื่องจากมีรายวิชาที่ถูกนำไปใช้ในข้อมูลการสอนแล้ว: ' . $courseList);
+            }
+
+            $deletedCourseCount = $courses->count();
+
+            DB::transaction(function () use ($curriculum) {
+                $curriculum->courses()->delete();
+                $curriculum->delete();
+            });
+
+            $message = 'ลบหลักสูตรเรียบร้อยแล้ว';
+            if ($deletedCourseCount > 0) {
+                $message .= " (ลบรายวิชาในหลักสูตรออก {$deletedCourseCount} วิชา)";
+            }
+
+            return $this->redirectToMasterData('curriculums')->with('success', $message);
         } catch (\Illuminate\Database\QueryException $e) {
-            return redirect()->back()->with('error', 'ไม่สามารถลบได้เนื่องจากมีรายวิชาผูกอยู่ กรุณาลบวิชาในหลักสูตรนี้ออกก่อน');
+            return redirect()->back()->with('error', 'ไม่สามารถลบได้เนื่องจากมีข้อมูลผูกพันอยู่');
         }
     }
 
@@ -683,6 +858,12 @@ class MasterDataController extends Controller
                 continue;
             }
 
+            $courseType = trim($csv['course_type'] ?? '') ?: 'theory';
+            if (!in_array($courseType, ['theory', 'practicum', 'theory_practicum'], true)) {
+                $errors[] = "แถว {$row}: course_type ต้องเป็น theory, practicum หรือ theory_practicum";
+                continue;
+            }
+
             // requires_practicum_rotation บังคับสำหรับ practicum / theory_practicum
             $rotationRaw = trim($csv['requires_practicum_rotation'] ?? '');
             if (in_array($courseType, ['practicum', 'theory_practicum']) && $rotationRaw === '') {
@@ -711,6 +892,7 @@ class MasterDataController extends Controller
                         'name_en'                     => trim($csv['name_en'] ?? '') ?: null,
                         'department_id'               => $deptId,
                         'head_instructor_id'          => $headId,
+                        'course_type'                 => $courseType,
                         'credits'                     => (int)$credits,
                         'lecture_hours'               => $lecture,
                         'lab_hours'                   => $lab,
