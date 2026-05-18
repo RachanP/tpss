@@ -50,6 +50,17 @@ class CourseOfferingManagementTest extends TestCase
         $this->get(route('maker.course_offerings.show', $offering))->assertForbidden();
     }
 
+    public function test_course_offering_routes_remain_numeric_id_based(): void
+    {
+        $head = $this->makeUser('course_head');
+        $offering = $this->makeOffering($head, ['course_code' => 'OFFER101']);
+
+        $url = route('maker.course_offerings.show', $offering);
+
+        $this->assertStringContainsString("/maker/course-offerings/{$offering->id}", $url);
+        $this->assertStringNotContainsString('OFFER101', $url);
+    }
+
     public function test_detail_renders_core_fields_from_course_master(): void
     {
         // After M2 overhaul, the show page reads hour fields directly from

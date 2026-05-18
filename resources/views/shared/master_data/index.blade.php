@@ -1,6 +1,40 @@
 <x-app-layout title="ข้อมูลหลักระบบ">
+    @php
+        $courseFormHasErrors = old('_form') === 'course' && $errors->any();
+        $courseOldPrerequisiteIds = old('prerequisite_ids', []);
+        if (! is_array($courseOldPrerequisiteIds)) {
+            $courseOldPrerequisiteIds = [];
+        }
+        $courseFormErrorState = [
+            'has_errors' => $courseFormHasErrors,
+            'mode' => old('_course_form_mode', 'create'),
+            'values' => [
+                'id' => old('_course_id', ''),
+                'route_key' => old('_course_route_key', ''),
+                'course_code' => old('course_code', ''),
+                'name_th' => old('name_th', ''),
+                'name_en' => old('name_en', ''),
+                'curriculum_id' => old('curriculum_id', ''),
+                'department_id' => old('department_id', ''),
+                'head_instructor_id' => old('head_instructor_id', ''),
+                'academic_level' => old('academic_level', 'undergraduate'),
+                'default_year_level' => old('default_year_level', ''),
+                'default_semester' => old('default_semester', ''),
+                'credits' => old('credits', ''),
+                'lecture_hours' => old('lecture_hours', 0),
+                'lab_hours' => old('lab_hours', 0),
+                'self_study_hours' => old('self_study_hours', 0),
+                'capacity' => old('capacity', ''),
+                'color_code' => old('color_code', '#3b82f6'),
+                'status' => old('status', 'active'),
+                'requires_practicum_rotation' => old('requires_practicum_rotation', '0'),
+                'prerequisite_ids' => array_map('strval', $courseOldPrerequisiteIds),
+            ],
+        ];
+    @endphp
     <div x-data="{
-        activeTab: new URLSearchParams(window.location.search).get('tab') || 'instructors',
+        courseFormErrorState: {{ Js::from($courseFormErrorState) }},
+        activeTab: {{ Js::from($courseFormHasErrors ? 'courses' : null) }} || new URLSearchParams(window.location.search).get('tab') || 'instructors',
         filters: {
             instructors: { keyword: '', department_id: '' },
             departments: { keyword: '' },
@@ -17,6 +51,13 @@
             const source = String(value || '').toLowerCase();
             const query = String(keyword || '').toLowerCase();
             return source.includes(query) || this.normalizeSearch(source).includes(this.normalizeSearch(query));
+        },
+        init() {
+            if (!this.courseFormErrorState.has_errors) return;
+            this.activeTab = 'courses';
+            this.editCourseMode = this.courseFormErrorState.mode === 'edit';
+            this.currentCourse = { ...this.currentCourse, ...this.courseFormErrorState.values };
+            this.showCourseModal = true;
         },
         showDeptModal: false,
         editDeptMode: false,
@@ -173,6 +214,7 @@
         editCourseMode: false,
         currentCourse: {
             id: '',
+            route_key: '',
             course_code: '',
             name_th: '',
             name_en: '',
@@ -199,7 +241,7 @@
         showStaffDropdown: false,
         openAddCourse() {
             this.editCourseMode = false;
-            this.currentCourse = { id: '', course_code: '', name_th: '', name_en: '', curriculum_id: '', department_id: '', head_instructor_id: '', academic_level: 'undergraduate', default_year_level: '', default_semester: '', credits: '', lecture_hours: 0, lab_hours: 0, self_study_hours: 0, capacity: '', color_code: '#3b82f6', status: 'active', requires_practicum_rotation: '0', prerequisite_ids: [] };
+            this.currentCourse = { id: '', route_key: '', course_code: '', name_th: '', name_en: '', curriculum_id: '', department_id: '', head_instructor_id: '', academic_level: 'undergraduate', default_year_level: '', default_semester: '', credits: '', lecture_hours: 0, lab_hours: 0, self_study_hours: 0, capacity: '', color_code: '#3b82f6', status: 'active', requires_practicum_rotation: '0', prerequisite_ids: [] };
             this.courseHeadSearch = '';
             this.selectedStaff = [];
             this.staffSearch = '';
@@ -208,6 +250,7 @@
         openEditCourse(course) {
             this.editCourseMode = true;
             this.currentCourse = { ...course };
+            this.currentCourse.route_key = course.course_code;
             this.currentCourse.requires_practicum_rotation = course.requires_practicum_rotation ? '1' : '0';
             this.currentCourse.prerequisite_ids = (course.prerequisites || []).map(prerequisite => String(prerequisite.id));
             this.courseHeadSearch = course.head_instructor ? course.head_instructor.formatted_name : '';
@@ -1696,17 +1739,36 @@
                             </svg>
                         </button>
                     </div>
-                    <form :action="editCourseMode ? '{{ url($routePrefix . '/master-data/courses') }}/' + currentCourse.id : '{{ route($routePrefix . '.courses.store') }}'"
+                    <form :action="editCourseMode ? '{{ route($routePrefix . '.courses.update', '__COURSE__') }}'.replace('__COURSE__', encodeURIComponent(currentCourse.route_key)) : '{{ route($routePrefix . '.courses.store') }}'"
                         method="POST">
                         @csrf
                         <input type="hidden" name="_method" value="PUT" :disabled="!editCourseMode">
+                        <input type="hidden" name="_form" value="course">
+                        <input type="hidden" name="_course_form_mode" :value="editCourseMode ? 'edit' : 'create'">
+                        <input type="hidden" name="_course_route_key" :value="currentCourse.route_key">
+                        <input type="hidden" name="_course_id" :value="currentCourse.id">
                         <div class="modal-body" style="display: flex; flex-direction: column; gap: 0;">
+                            @if($courseFormHasErrors)
+                                <div data-testid="course-form-validation-alert" style="background:color-mix(in oklch,var(--status-conflict-fg) 8%,white);border:1px solid color-mix(in oklch,var(--status-conflict-fg) 28%,white);border-radius:6px;padding:12px 14px;margin-bottom:16px;color:var(--status-conflict-fg);font-size:13px;line-height:1.5;">
+                                    <div style="font-weight:700;margin-bottom:6px;">บันทึกรายวิชาไม่สำเร็จ กรุณาตรวจสอบข้อมูลที่ระบุ</div>
+                                    <ul style="margin:0;padding-left:18px;">
+                                        @foreach($errors->all() as $error)
+                                            <li>{{ $error }}</li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endif
 
                             {{-- Section: ข้อมูลพื้นฐาน --}}
                             <div style="display: grid; grid-template-columns: 130px 1fr 1fr; gap: 16px; margin-bottom: 16px;">
                                 <div class="form-group" style="margin-bottom:0;">
                                     <label>รหัสวิชา <span style="color:var(--status-conflict-fg)">*</span></label>
                                     <input type="text" name="course_code" x-model="currentCourse.course_code" required placeholder="เช่น NSBS 212">
+                                    @error('course_code')
+                                        @if($courseFormHasErrors)
+                                            <div data-testid="course-code-error" style="margin-top:6px;color:var(--status-conflict-fg);font-size:12px;line-height:1.45;">{{ $message }}</div>
+                                        @endif
+                                    @enderror
                                 </div>
                                 <div class="form-group" style="margin-bottom:0;">
                                     <label>ชื่อวิชา (ไทย) <span style="color:var(--status-conflict-fg)">*</span></label>
@@ -1756,7 +1818,7 @@
                                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:1px;color:var(--brand-navy);"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
                                 <div>
                                     <div style="font-weight:600;margin-bottom:2px;">การกำหนดหัวหน้าวิชา / เจ้าหน้าที่ / อาจารย์ผู้สอน</div>
-                                    <div>ย้ายไปจัดการที่หน้า <a :href="'{{ route($routePrefix . '.course_pool.show', '__ID__') }}'.replace('__ID__', currentCourse.id)" style="color:var(--brand-navy);font-weight:600;">ตั้งค่าผู้รับผิดชอบรายวิชา</a></div>
+                                    <div>ย้ายไปจัดการที่หน้า <a :href="'{{ route($routePrefix . '.course_pool.show', '__COURSE__') }}'.replace('__COURSE__', encodeURIComponent(currentCourse.route_key))" style="color:var(--brand-navy);font-weight:600;">ตั้งค่าผู้รับผิดชอบรายวิชา</a></div>
                                 </div>
                             </div>
 
@@ -1885,7 +1947,7 @@
                             </div>
                         </div>
                     </form>
-                    <form id="deleteCourseForm" :action="'{{ url($routePrefix . '/master-data/courses') }}/' + currentCourse.id" method="POST" style="display: none;">
+                    <form id="deleteCourseForm" :action="'{{ route($routePrefix . '.courses.destroy', '__COURSE__') }}'.replace('__COURSE__', encodeURIComponent(currentCourse.route_key))" method="POST" style="display: none;">
                         @csrf
                         @method('DELETE')
                     </form>

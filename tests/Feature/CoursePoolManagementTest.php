@@ -54,6 +54,63 @@ class CoursePoolManagementTest extends TestCase
             ->assertSee('การพยาบาลเด็ก 1');
     }
 
+    public function test_admin_course_pool_detail_resolves_unique_course_code(): void
+    {
+        $admin  = $this->makeUser('admin');
+        $course = $this->makeCourse(['course_code' => 'NSBS 111', 'name_th' => 'Unique Route Course']);
+
+        $this->actingAsRole($admin, 'admin');
+
+        $this->get('/admin/course-pool/NSBS%20111')
+            ->assertOk()
+            ->assertSee($course->course_code)
+            ->assertSee('Unique Route Course');
+    }
+
+    public function test_admin_course_pool_detail_returns_404_for_missing_course_code(): void
+    {
+        $admin = $this->makeUser('admin');
+
+        $this->actingAsRole($admin, 'admin');
+
+        $this->get('/admin/course-pool/MISSING101')->assertNotFound();
+    }
+
+    public function test_admin_course_pool_detail_returns_404_for_duplicate_course_code(): void
+    {
+        $admin = $this->makeUser('admin');
+        $code = 'DUP 101';
+
+        $this->makeCourse(['course_code' => $code]);
+        $otherCurriculum = Curriculum::create([
+            'name' => 'Duplicate Code Curriculum',
+            'effective_year' => 2570,
+            'is_active' => true,
+        ]);
+        $this->makeCourse([
+            'course_code' => $code,
+            'curriculum_id' => $otherCurriculum->id,
+        ]);
+
+        $this->actingAsRole($admin, 'admin');
+
+        $this->get('/admin/course-pool/DUP%20101')->assertNotFound();
+    }
+
+    public function test_course_pool_index_links_use_course_code_not_numeric_id(): void
+    {
+        $admin = $this->makeUser('admin');
+        $course = $this->makeCourse(['course_code' => 'NSBS 111']);
+
+        $this->actingAsRole($admin, 'admin');
+
+        $this->get(route('admin.course_pool.index'))
+            ->assertOk()
+            ->assertSee('/admin/course-pool/NSBS%20111', false)
+            ->assertDontSee('/admin/course-pool/NSBS111', false)
+            ->assertDontSee('/admin/course-pool/' . $course->id, false);
+    }
+
     public function test_staff_can_access_course_pool_via_inherited_controller(): void
     {
         $staff  = $this->makeUser('staff');

@@ -15,6 +15,9 @@ use Illuminate\Validation\Rule;
 
 class MasterDataController extends Controller
 {
+    private const COURSE_CODE_ALLOWED_REGEX = '/^[A-Za-z0-9 _-]+$/';
+    private const COURSE_CODE_ALLOWED_MESSAGE = 'รหัสวิชาต้องใช้เฉพาะตัวอักษรภาษาอังกฤษ ตัวเลข ช่องว่าง ขีดกลาง หรือขีดล่าง';
+
     public function index()
     {
         // View-only for instructors: get users who have 'instructor' role
@@ -291,7 +294,7 @@ class MasterDataController extends Controller
     {
         $validated = $request->validate([
             'course_code'                 => [
-                'required', 'string', 'max:20',
+                'required', 'string', 'max:20', 'regex:' . self::COURSE_CODE_ALLOWED_REGEX,
                 Rule::unique('courses', 'course_code')
                     ->where(fn($q) => $q->where('curriculum_id', $request->input('curriculum_id'))),
             ],
@@ -315,7 +318,7 @@ class MasterDataController extends Controller
             'requires_practicum_rotation' => 'required|boolean',
             'prerequisite_ids'            => 'nullable|array',
             'prerequisite_ids.*'          => ['integer', 'distinct', 'exists:courses,id'],
-        ]);
+        ], $this->courseCodeValidationMessages());
 
         $validated['requires_practicum_rotation'] = $request->boolean('requires_practicum_rotation');
         $staffIds = $validated['staff_ids'] ?? [];
@@ -333,7 +336,7 @@ class MasterDataController extends Controller
     {
         $validated = $request->validate([
             'course_code'                 => [
-                'required', 'string', 'max:20',
+                'required', 'string', 'max:20', 'regex:' . self::COURSE_CODE_ALLOWED_REGEX,
                 Rule::unique('courses', 'course_code')
                     ->where(fn($q) => $q->where('curriculum_id', $request->input('curriculum_id')))
                     ->ignore($course->id),
@@ -358,7 +361,7 @@ class MasterDataController extends Controller
             'requires_practicum_rotation' => 'required|boolean',
             'prerequisite_ids'            => 'nullable|array',
             'prerequisite_ids.*'          => ['integer', 'distinct', 'exists:courses,id', Rule::notIn([$course->id])],
-        ]);
+        ], $this->courseCodeValidationMessages());
 
         $validated['requires_practicum_rotation'] = $request->boolean('requires_practicum_rotation');
         $staffIds = $validated['staff_ids'] ?? [];
@@ -511,6 +514,14 @@ class MasterDataController extends Controller
 
     // ── CSV Import ────────────────────────────────────────────────────
 
+    private function courseCodeValidationMessages(): array
+    {
+        return [
+            'course_code.regex' => self::COURSE_CODE_ALLOWED_MESSAGE,
+            'course_code.unique' => 'รหัสวิชานี้มีอยู่แล้วในหลักสูตรนี้',
+        ];
+    }
+
     public function importRooms(Request $request)
     {
         $request->validate(['csv_file' => 'required|file|extensions:csv,txt|max:5120']);
@@ -647,6 +658,11 @@ class MasterDataController extends Controller
                 continue;
             }
 
+            if (! preg_match(self::COURSE_CODE_ALLOWED_REGEX, $code)) {
+                $errors[] = "แถว {$row}: course_code '{$code}' " . self::COURSE_CODE_ALLOWED_MESSAGE;
+                continue;
+            }
+
             $currId = $curriculums[$currName] ?? null;
             if (!$currId) {
                 $errors[] = "แถว {$row}: หลักสูตร '{$currName}' ไม่พบในระบบ";
@@ -684,6 +700,7 @@ class MasterDataController extends Controller
             }
 
             // requires_practicum_rotation บังคับสำหรับ practicum / theory_practicum
+            $courseType = trim($csv['course_type'] ?? '') ?: 'theory';
             $rotationRaw = trim($csv['requires_practicum_rotation'] ?? '');
             if (in_array($courseType, ['practicum', 'theory_practicum']) && $rotationRaw === '') {
                 $errors[] = "แถว {$row}: วิชาประเภท {$courseType} ต้องระบุ requires_practicum_rotation (0 หรือ 1)";

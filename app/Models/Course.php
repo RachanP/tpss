@@ -41,6 +41,28 @@ class Course extends Model
         'default_semester' => 'integer',
     ];
 
+    public function getRouteKeyName(): string
+    {
+        return 'course_code';
+    }
+
+    public function resolveRouteBinding($value, $field = null)
+    {
+        $field ??= $this->getRouteKeyName();
+
+        if ($field !== 'course_code') {
+            return parent::resolveRouteBinding($value, $field);
+        }
+
+        $matches = $this->where($field, $value)->limit(2)->get();
+
+        if ($matches->count() !== 1) {
+            abort(404);
+        }
+
+        return $matches->first();
+    }
+
     public function curriculum(): BelongsTo
     {
         return $this->belongsTo(Curriculum::class);

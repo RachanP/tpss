@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\ActivityType;
+use App\Models\Course;
 use App\Models\Curriculum;
 use App\Models\Department;
 use App\Models\LocationType;
@@ -167,6 +168,180 @@ class MasterDataRedirectTest extends TestCase
 
         // Same code + same curriculum → should fail validation
         $this->post(route('admin.courses.store'), $payload)
-            ->assertSessionHasErrors('course_code');
+            ->assertSessionHasErrors([
+                'course_code' => 'รหัสวิชานี้มีอยู่แล้วในหลักสูตรนี้',
+            ]);
+    }
+
+    public function test_course_create_accepts_course_code_with_spaces(): void
+    {
+        $admin = $this->makeUser('admin');
+        $payload = $this->coursePayload(['course_code' => 'NSBS 301']);
+
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        $this->post(route('admin.courses.store'), $payload)
+            ->assertRedirect(route('admin.master_data', ['tab' => 'courses']));
+
+        $this->assertDatabaseHas('courses', ['course_code' => 'NSBS 301']);
+    }
+
+    public function test_course_update_accepts_course_code_with_spaces(): void
+    {
+        $admin = $this->makeUser('admin');
+        $course = Course::create($this->coursePayload(['course_code' => 'NSBS301']));
+
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        $this->put(route('admin.courses.update', $course), $this->coursePayload([
+            'course_code' => 'NSBS 302',
+            'curriculum_id' => $course->curriculum_id,
+            'department_id' => $course->department_id,
+            'head_instructor_id' => $course->head_instructor_id,
+        ]))->assertRedirect(route('admin.master_data', ['tab' => 'courses']));
+
+        $this->assertSame('NSBS 302', $course->fresh()->course_code);
+    }
+
+    public function test_course_create_rejects_dangerous_course_code_and_preserves_modal_feedback_state(): void
+    {
+        $admin = $this->makeUser('admin');
+        $payload = $this->coursePayload([
+            'course_code' => 'NSBS/301',
+            '_form' => 'course',
+            '_course_form_mode' => 'create',
+            '_course_route_key' => '',
+            '_course_id' => '',
+        ]);
+
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        $this->from(route('admin.master_data', ['tab' => 'courses']))
+            ->post(route('admin.courses.store'), $payload)
+            ->assertRedirect(route('admin.master_data', ['tab' => 'courses']))
+            ->assertSessionHasErrors('course_code')
+            ->assertSessionHasInput('_form', 'course')
+            ->assertSessionHasInput('_course_form_mode', 'create');
+
+        $this->assertDatabaseMissing('courses', ['course_code' => 'NSBS/301']);
+
+        $this->followingRedirects()
+            ->from(route('admin.master_data', ['tab' => 'courses']))
+            ->post(route('admin.courses.store'), $payload)
+            ->assertOk()
+            ->assertSee('บันทึกรายวิชาไม่สำเร็จ')
+            ->assertSee('รหัสวิชาต้องใช้เฉพาะตัวอักษรภาษาอังกฤษ ตัวเลข ช่องว่าง ขีดกลาง หรือขีดล่าง')
+            ->assertSee('courseFormErrorState', false)
+            ->assertSee('course-code-error', false);
+    }
+
+    public function test_course_update_rejects_dangerous_course_code_and_preserves_edit_route_key(): void
+    {
+        $admin = $this->makeUser('admin');
+        $course = Course::create($this->coursePayload(['course_code' => 'NSBS301']));
+        $payload = $this->coursePayload([
+            'course_code' => 'NSBS?302',
+            'curriculum_id' => $course->curriculum_id,
+            'department_id' => $course->department_id,
+            'head_instructor_id' => $course->head_instructor_id,
+            '_form' => 'course',
+            '_course_form_mode' => 'edit',
+            '_course_route_key' => $course->course_code,
+            '_course_id' => $course->id,
+        ]);
+
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        $this->from(route('admin.master_data', ['tab' => 'courses']))
+            ->put(route('admin.courses.update', $course), $payload)
+            ->assertRedirect(route('admin.master_data', ['tab' => 'courses']))
+            ->assertSessionHasErrors('course_code')
+            ->assertSessionHasInput('_form', 'course')
+            ->assertSessionHasInput('_course_form_mode', 'edit')
+            ->assertSessionHasInput('_course_route_key', 'NSBS301');
+
+        $this->assertSame('NSBS301', $course->fresh()->course_code);
+
+        $this->followingRedirects()
+            ->from(route('admin.master_data', ['tab' => 'courses']))
+            ->put(route('admin.courses.update', $course), $payload)
+            ->assertOk()
+            ->assertSee('บันทึกรายวิชาไม่สำเร็จ')
+            ->assertSee('NSBS?302')
+            ->assertSee('NSBS301');
+    }
+
+    public function test_course_create_rejects_dangerous_course_code_characters(): void
+    {
+        $admin = $this->makeUser('admin');
+        $dept = Department::create(['name' => 'Dangerous Code Dept']);
+        $curr = Curriculum::create([
+            'name' => 'Dangerous Code Curriculum',
+            'effective_year' => 2567,
+            'is_active' => true,
+        ]);
+        $head = $this->makeUser('instructor');
+
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        foreach (['NSBS/301', 'NSBS?301', 'NSBS#301', 'NSBS%301', 'NSBS&301', 'NSBS=301'] as $code) {
+            $payload = $this->coursePayload([
+                'course_code' => $code,
+                'curriculum_id' => $curr->id,
+                'department_id' => $dept->id,
+                'head_instructor_id' => $head->id,
+                '_form' => 'course',
+                '_course_form_mode' => 'create',
+            ]);
+
+            $this->from(route('admin.master_data', ['tab' => 'courses']))
+                ->post(route('admin.courses.store'), $payload)
+                ->assertRedirect(route('admin.master_data', ['tab' => 'courses']))
+                ->assertSessionHasErrors('course_code');
+
+            $this->assertDatabaseMissing('courses', ['course_code' => $code]);
+        }
+    }
+
+    public function test_course_create_accepts_official_course_code_format(): void
+    {
+        $admin = $this->makeUser('admin');
+        $payload = $this->coursePayload(['course_code' => 'NSBS_301-A']);
+
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        $this->post(route('admin.courses.store'), $payload)
+            ->assertRedirect(route('admin.master_data', ['tab' => 'courses']));
+
+        $this->assertDatabaseHas('courses', ['course_code' => 'NSBS_301-A']);
+    }
+
+    private function coursePayload(array $overrides = []): array
+    {
+        $dept = $overrides['department_id'] ?? Department::create(['name' => 'Course Dept ' . uniqid()])->id;
+        $curr = $overrides['curriculum_id'] ?? Curriculum::create([
+            'name' => 'Course Curriculum ' . uniqid(),
+            'effective_year' => 2567,
+            'is_active' => true,
+        ])->id;
+        $head = $overrides['head_instructor_id'] ?? $this->makeUser('instructor')->id;
+
+        return array_merge([
+            'course_code'                 => 'NSBS301',
+            'name_th'                     => 'วิชาทดสอบ',
+            'curriculum_id'               => $curr,
+            'department_id'               => $dept,
+            'head_instructor_id'          => $head,
+            'course_type'                 => 'theory',
+            'default_year_level'          => 1,
+            'default_semester'            => 1,
+            'credits'                     => 3,
+            'lecture_hours'               => 3,
+            'lab_hours'                   => 0,
+            'self_study_hours'            => 6,
+            'capacity'                    => 30,
+            'status'                      => 'active',
+            'requires_practicum_rotation' => 0,
+        ], $overrides);
     }
 }
