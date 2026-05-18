@@ -287,52 +287,12 @@
             this.showCurriculumModal = true;
         },
         confirmDeleteCurriculum() {
-            const count = this.currentCurriculum.courses_count || 0;
-            const name = this.currentCurriculum.name;
-            const form = document.getElementById('deleteCurriculumForm');
-
-            if (count === 0) {
-                // No courses — simple confirm
-                this.confirmDelete('deleteCurriculumForm', name, 'ไม่สามารถกู้คืนได้');
-                return;
-            }
-
-            // Has courses — require cascade confirm (2-step)
-            Swal.fire({
-                title: 'ยืนยันการลบหลักสูตรแบบ Cascade',
-                html: '<div style="text-align:left;font-size:14px;line-height:1.6;">'
-                    + '<div style="color:#b91c1c;font-weight:700;margin-bottom:8px;">⚠️ การกระทำนี้ไม่สามารถกู้คืนได้</div>'
-                    + '<div>หลักสูตร <strong>' + name + '</strong> มี <strong>' + count + ' รายวิชา</strong></div>'
-                    + '<div style="color:#6b7280;margin-top:8px;">ระบบจะลบรายวิชาทั้งหมดในหลักสูตรนี้พร้อมกัน '
-                    + '(เฉพาะวิชาที่ยังไม่ถูกนำไปใช้ในข้อมูลการสอน)</div>'
-                    + '</div>',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'ลบหลักสูตรและรายวิชา',
-                cancelButtonText: 'ยกเลิก',
-                reverseButtons: true,
-                focusCancel: true,
-                buttonsStyling: false,
-                customClass: {
-                    popup:         'tpss-delete-popup',
-                    confirmButton: 'tpss-delete-confirm',
-                    cancelButton:  'tpss-delete-cancel',
-                    actions:       'tpss-delete-actions',
-                }
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    // Inject confirm_cascade flag then submit
-                    let cascadeInput = form.querySelector('input[name="confirm_cascade"]');
-                    if (!cascadeInput) {
-                        cascadeInput = document.createElement('input');
-                        cascadeInput.type = 'hidden';
-                        cascadeInput.name = 'confirm_cascade';
-                        form.appendChild(cascadeInput);
-                    }
-                    cascadeInput.value = '1';
-                    form.submit();
-                }
-            });
+            // Delegate to global helper to avoid quoting issues inside x-data attribute
+            window.tpssConfirmCascadeCurriculum(
+                this.currentCurriculum.name,
+                this.currentCurriculum.courses_count || 0,
+                () => this.confirmDelete('deleteCurriculumForm', this.currentCurriculum.name, 'ไม่สามารถกู้คืนได้')
+            );
         },
 
         showCloneCurriculumModal: false,
@@ -568,7 +528,7 @@
                     @if(!$isAdmin)@include('shared.master_data._lock_icon')@endif
                 </button>
                 {{-- 2. หลักสูตร (ต้องมีก่อนสร้างรายวิชา/กลุ่ม) --}}
-                <button type="button" @click="activeTab = 'curriculums'"
+                <button type="button" data-testid="master-data-tab-curriculums" @click="activeTab = 'curriculums'"
                     :class="activeTab === 'curriculums' ? 'btn-primary' : 'btn btn-ghost'"
                     style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
@@ -579,7 +539,7 @@
                     @if(!$isAdmin)@include('shared.master_data._lock_icon')@endif
                 </button>
                 {{-- 3. รายวิชา (ต้องมีหลักสูตรก่อน) --}}
-                <button type="button" @click="activeTab = 'courses'"
+                <button type="button" data-testid="master-data-tab-courses" @click="activeTab = 'courses'"
                     :class="activeTab === 'courses' ? 'btn-primary' : 'btn btn-ghost'"
                     style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
@@ -1129,7 +1089,7 @@
                             </svg>
                             นำเข้าจากไฟล์
                         </button>
-                        <button class="btn btn-primary" @click="openAddCourse()">
+                        <button class="btn btn-primary" data-testid="courses-add-button" @click="openAddCourse()">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
                                 stroke-width="2" stroke-linecap="round">
                                 <line x1="12" y1="5" x2="12" y2="19" />
@@ -1146,7 +1106,7 @@
                             <circle cx="11" cy="11" r="8" />
                             <line x1="21" y1="21" x2="16.65" y2="16.65" />
                         </svg>
-                        <input type="text" x-model="filters.courses.keyword" placeholder="ค้นหารหัส ชื่อวิชา เครดิต ชั่วโมง ปี ภาค หรือความจุ">
+                        <input type="text" data-testid="courses-search-input" x-model="filters.courses.keyword" placeholder="ค้นหารหัส ชื่อวิชา เครดิต ชั่วโมง ปี ภาค หรือความจุ">
                     </div>
                     <select class="m7-filter-select" x-model="filters.courses.department_id">
                         <option value="">ทุกภาควิชา</option>
@@ -1254,6 +1214,7 @@
                                 </tr>
                             @endforelse
                             <tr
+                                data-testid="courses-empty-state"
                                 x-show="(filters.courses.keyword || filters.courses.department_id || filters.courses.curriculum_id || filters.courses.year_level || filters.courses.status) && !Array.from($el.parentNode.children).some(tr => tr !== $el && tr.dataset && tr.dataset.search && tr.style.display !== 'none')"
                                 x-cloak>
                                 <td colspan="7" style="text-align: center; padding: 40px; color: var(--fg-3);">ไม่พบข้อมูลที่ค้นหา</td>
@@ -1347,7 +1308,7 @@
                                 {{-- Actions (admin only) --}}
                                 @if($isAdmin)
                                 <div @click.stop style="flex-shrink: 0; display: flex; gap: 4px;">
-                                    <button class="action-btn" title="แก้ไขชื่อ/ปี" @click.stop="openEditCurriculum({{ Js::from($curr) }})">
+                                    <button class="action-btn" title="แก้ไขชื่อ/ปี" data-testid="curriculum-edit-button" data-curriculum-id="{{ $curr->id }}" @click.stop="openEditCurriculum({{ Js::from($curr) }})">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -1946,11 +1907,11 @@
                             <div style="display: grid; grid-template-columns: 130px 1fr 1fr; gap: 16px; margin-bottom: 16px;">
                                 <div class="form-group" style="margin-bottom:0;">
                                     <label>รหัสวิชา <span style="color:var(--status-conflict-fg)">*</span></label>
-                                    <input type="text" name="course_code" x-model="currentCourse.course_code" required placeholder="เช่น NSBS 212">
+                                    <input type="text" name="course_code" data-testid="course-form-code" x-model="currentCourse.course_code" required placeholder="เช่น NSBS 212">
                                 </div>
                                 <div class="form-group" style="margin-bottom:0;">
                                     <label>ชื่อวิชา (ไทย) <span style="color:var(--status-conflict-fg)">*</span></label>
-                                    <input type="text" name="name_th" x-model="currentCourse.name_th" required placeholder="เช่น การพยาบาลเด็ก 1">
+                                    <input type="text" name="name_th" data-testid="course-form-name-th" x-model="currentCourse.name_th" required placeholder="เช่น การพยาบาลเด็ก 1">
                                 </div>
                                 <div class="form-group" style="margin-bottom:0;">
                                     <label>ชื่อวิชา (อังกฤษ)</label>
@@ -1960,7 +1921,7 @@
                             <div style="display: grid; grid-template-columns: 1fr 1fr 80px; gap: 16px; margin-bottom: 16px;">
                                 <div class="form-group" style="margin-bottom:0;">
                                     <label>หลักสูตร <span style="color:var(--status-conflict-fg)">*</span></label>
-                                    <select name="curriculum_id" x-model="currentCourse.curriculum_id" required>
+                                    <select name="curriculum_id" data-testid="course-form-curriculum" x-model="currentCourse.curriculum_id" required>
                                         <option value="">-- เลือกหลักสูตร --</option>
                                         @foreach($curriculums as $curr)
                                             <option value="{{ $curr->id }}">{{ $curr->name }}</option>
@@ -2121,7 +2082,7 @@
                             </div>
                             <div style="display: flex; gap: 8px;">
                                 <button type="button" class="btn btn-ghost" @click="showCourseModal = false">ยกเลิก</button>
-                                <button type="submit" class="btn btn-primary">บันทึกข้อมูลวิชา</button>
+                                <button type="submit" data-testid="course-form-submit" class="btn btn-primary">บันทึกข้อมูลวิชา</button>
                             </div>
                         </div>
                     </form>
@@ -2187,7 +2148,7 @@
                         </div>
                         <div class="modal-foot" style="display: flex; justify-content: space-between;">
                             <div>
-                                <button type="button" class="btn btn-ghost" x-show="editCurriculumMode" @click="confirmDeleteCurriculum()" style="color: var(--status-conflict-fg);">
+                                <button type="button" data-testid="curriculum-delete-button" class="btn btn-ghost" x-show="editCurriculumMode" @click="confirmDeleteCurriculum()" style="color: var(--status-conflict-fg);">
                                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; display: inline-block; vertical-align: middle;"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg> ลบข้อมูล
                                 </button>
                             </div>

@@ -32,25 +32,27 @@ class CoursePoolManagementTest extends TestCase
     public function test_admin_can_list_course_pool(): void
     {
         $admin  = $this->makeUser('admin');
+        // Course::saving normalizes course_code (strips spaces, uppercases) → "NSBS111"
         $course = $this->makeCourse(['course_code' => 'NSBS 111']);
 
         $this->actingAsRole($admin, 'admin');
 
         $this->get(route('admin.course_pool.index'))
             ->assertOk()
-            ->assertSee('NSBS 111');
+            ->assertSee('NSBS111');
     }
 
     public function test_admin_can_view_course_pool_detail(): void
     {
         $admin  = $this->makeUser('admin');
+        // Course::saving normalizes "NSBS 212" → "NSBS212"
         $course = $this->makeCourse(['course_code' => 'NSBS 212', 'name_th' => 'การพยาบาลเด็ก 1']);
 
         $this->actingAsRole($admin, 'admin');
 
         $this->get(route('admin.course_pool.show', $course))
             ->assertOk()
-            ->assertSee('NSBS 212')
+            ->assertSee('NSBS212')
             ->assertSee('การพยาบาลเด็ก 1');
     }
 

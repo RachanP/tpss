@@ -233,6 +233,65 @@
             tpssDelete(fakeBtn);
         };
 
+        /* ─── Cascade delete confirm for curriculum (with course count) ── */
+        window.tpssConfirmCascadeCurriculum = function(curriculumName, courseCount, simpleConfirmFallback) {
+            if (courseCount === 0) {
+                simpleConfirmFallback && simpleConfirmFallback();
+                return;
+            }
+            var form = document.getElementById('deleteCurriculumForm');
+            var body = document.createElement('div');
+            body.style.textAlign = 'left';
+            body.style.fontSize = '14px';
+            body.style.lineHeight = '1.6';
+            var warn = document.createElement('div');
+            warn.style.color = '#b91c1c';
+            warn.style.fontWeight = '700';
+            warn.style.marginBottom = '8px';
+            warn.textContent = '⚠️ การกระทำนี้ไม่สามารถกู้คืนได้';
+            var info = document.createElement('div');
+            info.innerHTML = 'หลักสูตร <strong></strong> มี <strong></strong> รายวิชา';
+            info.querySelectorAll('strong')[0].textContent = curriculumName;
+            info.querySelectorAll('strong')[1].textContent = courseCount;
+            var hint = document.createElement('div');
+            hint.style.color = '#6b7280';
+            hint.style.marginTop = '8px';
+            hint.textContent = 'ระบบจะลบรายวิชาทั้งหมดในหลักสูตรนี้พร้อมกัน (เฉพาะวิชาที่ยังไม่ถูกนำไปใช้ในข้อมูลการสอน)';
+            body.appendChild(warn);
+            body.appendChild(info);
+            body.appendChild(hint);
+
+            Swal.fire({
+                title: 'ยืนยันการลบหลักสูตรแบบ Cascade',
+                html: body,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'ลบหลักสูตรและรายวิชา',
+                cancelButtonText: 'ยกเลิก',
+                reverseButtons: true,
+                focusCancel: true,
+                buttonsStyling: false,
+                customClass: {
+                    popup:         'tpss-delete-popup',
+                    confirmButton: 'tpss-delete-confirm',
+                    cancelButton:  'tpss-delete-cancel',
+                    actions:       'tpss-delete-actions',
+                }
+            }).then(function(result) {
+                if (result.isConfirmed && form) {
+                    var cascadeInput = form.querySelector('input[name="confirm_cascade"]');
+                    if (!cascadeInput) {
+                        cascadeInput = document.createElement('input');
+                        cascadeInput.type = 'hidden';
+                        cascadeInput.name = 'confirm_cascade';
+                        form.appendChild(cascadeInput);
+                    }
+                    cascadeInput.value = '1';
+                    form.submit();
+                }
+            });
+        };
+
         /* ─── tpssToast(message, type) — slide-down notification bar ── */
         function tpssToast(message, type) {
             var existing = document.getElementById('tpss-toast');

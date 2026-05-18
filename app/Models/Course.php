@@ -9,6 +9,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Course extends Model
 {
+    protected static function booted(): void
+    {
+        // Normalize course_code at every write path (form, CSV import, seeder, ทดสอบ)
+        // Aligns DB with the unique constraint (curriculum_id, course_code)
+        static::saving(function (Course $course) {
+            if ($course->course_code !== null) {
+                $course->course_code = preg_replace('/\s+/', '', mb_strtoupper(trim((string) $course->course_code)));
+            }
+        });
+    }
+
     protected $fillable = [
         'course_code',
         'curriculum_id',
