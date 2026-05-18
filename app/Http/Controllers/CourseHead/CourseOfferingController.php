@@ -22,6 +22,8 @@ class CourseOfferingController extends Controller
     public function index(): View
     {
         $offerings = CourseOffering::query()
+            ->select('course_offerings.*')
+            ->distinct()
             ->with(['course.curriculum', 'course.department', 'academicYear'])
             ->withCount(['studentGroups', 'instructorPool'])
             ->where('coordinator_id', Auth::id())

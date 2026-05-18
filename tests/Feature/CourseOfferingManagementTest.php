@@ -39,6 +39,73 @@ class CourseOfferingManagementTest extends TestCase
         $response->assertDontSee($other->course->course_code);
     }
 
+    public function test_course_head_index_shows_offering_once_with_multiple_instructors_and_groups(): void
+    {
+        $head = $this->makeUser('course_head');
+        $offering = $this->makeOffering($head, ['course_code' => 'NUR111']);
+        $firstInstructor = $this->makeUser('instructor');
+        $secondInstructor = $this->makeUser('instructor');
+
+        $offering->instructorPool()->attach($head->id, ['role_in_course' => 'coordinator']);
+        $offering->instructorPool()->attach($firstInstructor->id, ['role_in_course' => 'instructor']);
+        $offering->instructorPool()->attach($secondInstructor->id, ['role_in_course' => 'assistant_teacher']);
+
+        StudentGroup::create([
+            'course_offering_id' => $offering->id,
+            'group_code' => 'A1',
+            'student_count' => 20,
+        ]);
+        StudentGroup::create([
+            'course_offering_id' => $offering->id,
+            'group_code' => 'A2',
+            'student_count' => 10,
+        ]);
+
+        $this->actingAsCourseHead($head);
+
+        $response = $this->get(route('maker.course_offerings.index'));
+
+        $response->assertOk();
+        $this->assertSame(
+            1,
+            substr_count($response->getContent(), $this->offeringPath($offering))
+        );
+        $response->assertSee('2 กลุ่ม');
+    }
+
+    public function test_course_head_index_keeps_legitimate_distinct_offerings_separate(): void
+    {
+        $head = $this->makeUser('course_head');
+        $course = $this->makeCourse(['course_code' => 'NUR222']);
+        $firstOffering = $this->makeOffering($head, [
+            'course_id' => $course->id,
+            'academic_year_id' => $this->academicYear(101, 'scheduling')->id,
+        ]);
+        $secondOffering = $this->makeOffering($head, [
+            'course_id' => $course->id,
+            'academic_year_id' => $this->academicYear(102, 'scheduling')->id,
+        ]);
+        $unrelated = $this->makeOffering($this->makeUser('course_head'), ['course_code' => 'NUR333']);
+
+        $this->actingAsCourseHead($head);
+
+        $response = $this->get(route('maker.course_offerings.index'));
+
+        $response->assertOk();
+        $this->assertSame(
+            1,
+            substr_count($response->getContent(), $this->offeringPath($firstOffering))
+        );
+        $this->assertSame(
+            1,
+            substr_count($response->getContent(), $this->offeringPath($secondOffering))
+        );
+        $this->assertSame(
+            0,
+            substr_count($response->getContent(), $this->offeringPath($unrelated))
+        );
+    }
+
     public function test_unrelated_offering_access_is_blocked(): void
     {
         $head = $this->makeUser('course_head');
@@ -331,18 +398,21 @@ class CourseOfferingManagementTest extends TestCase
     private function makeOffering(User $coordinator, array $overrides = []): CourseOffering
     {
         $number = $this->sequence++;
-        $course = $this->makeCourse([
-            'course_code' => $overrides['course_code'] ?? "NUR{$number}",
-            'name_th' => $overrides['name_th'] ?? "Course {$number}",
-            'name_en' => $overrides['name_en'] ?? "Course {$number}",
-            'course_type' => $overrides['course_type'] ?? 'theory_practicum',
-            'lecture_hours' => $overrides['lecture_hours'] ?? 2,
-            'lab_hours' => $overrides['lab_hours'] ?? 1,
-        ]);
+        $courseId = $overrides['course_id'] ?? null;
+        if (! $courseId) {
+            $courseId = $this->makeCourse([
+                'course_code' => $overrides['course_code'] ?? "NUR{$number}",
+                'name_th' => $overrides['name_th'] ?? "Course {$number}",
+                'name_en' => $overrides['name_en'] ?? "Course {$number}",
+                'course_type' => $overrides['course_type'] ?? 'theory_practicum',
+                'lecture_hours' => $overrides['lecture_hours'] ?? 2,
+                'lab_hours' => $overrides['lab_hours'] ?? 1,
+            ])->id;
+        }
 
         return CourseOffering::create([
-            'course_id' => $course->id,
-            'academic_year_id' => $this->academicYear($number, $overrides['phase'] ?? 'scheduling')->id,
+            'course_id' => $courseId,
+            'academic_year_id' => $overrides['academic_year_id'] ?? $this->academicYear($number, $overrides['phase'] ?? 'scheduling')->id,
             'coordinator_id' => $coordinator->id,
             'approval_status' => 'draft',
             'total_student_count' => $overrides['total_student_count'] ?? 30,
@@ -413,5 +483,10 @@ class CourseOfferingManagementTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+    }
+
+    private function offeringPath(CourseOffering $offering): string
+    {
+        return parse_url(route('maker.course_offerings.show', $offering), PHP_URL_PATH);
     }
 }
