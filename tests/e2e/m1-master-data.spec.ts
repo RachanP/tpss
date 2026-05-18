@@ -39,12 +39,12 @@ test.describe('M1 Master Data — Friend 1 hardening coverage', () => {
     const firstRow = page.locator('tr[data-search][data-curriculum-id]:visible').first();
     await expect(firstRow).toBeVisible();
     const searchText = (await firstRow.getAttribute('data-search')) ?? '';
-    // data-search format starts with: "<course_code with space> <name_th> ..."
-    // course codes look like "NSBS 111" — grab the first 2 tokens
-    // data-search format starts with the course_code (now normalized: "nsbs111")
-    // followed by name. Grab the first whitespace-delimited token.
-    const existingCode = (searchText.split(/\s+/)[0] || '').toUpperCase();
-    expect(existingCode).toMatch(/^[A-Z]+\d+$/);
+    // data-search format: "<course_code> <name_th> ..." — course_code may have space (e.g. "nsbs 111")
+    // courseCodeExistsInCurriculum uses REPLACE/UPPER for whitespace-insensitive match
+    // so we can submit with or without the original space
+    const match = searchText.match(/^([a-z]+)\s*(\d+)/i);
+    expect(match).not.toBeNull();
+    const existingCode = `${match![1]} ${match![2]}`.toUpperCase();   // submit with space
 
     // Read the curriculum_id of the same row so we submit into the same curriculum
     const existingCurriculumId = await firstRow.getAttribute('data-curriculum-id');
@@ -71,7 +71,8 @@ test.describe('M1 Master Data — Friend 1 hardening coverage', () => {
     await expect(page.getByTestId('courses-search-input')).toBeVisible({ timeout: 15000 });
 
     // The controller flashes the duplicate error which the view renders inline in the modal
-    await expect(page.locator('body')).toContainText(/มีอยู่ในหลักสูตรที่เลือกแล้ว/, { timeout: 10000 });
+    // Message text: "รหัสวิชานี้มีอยู่แล้วในหลักสูตรนี้" (from courseCodeValidationMessages)
+    await expect(page.locator('body')).toContainText(/มีอยู่แล้วในหลักสูตรนี้/, { timeout: 10000 });
   });
 
   test('curriculum cascade-delete shows SweetAlert with course count', async ({ page }, testInfo) => {

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AcademicYear;
 use App\Models\Course;
 use App\Models\CourseRole;
 use App\Models\User;
@@ -15,14 +16,28 @@ class CoursePoolController extends Controller
 {
     public function index(): View
     {
-        $courses = Course::with(['curriculum', 'department', 'headInstructor', 'assignedStaff', 'instructors'])
+        $activeAcademicYear = AcademicYear::where('is_active', true)
+            ->orderByDesc('name')
+            ->orderByDesc('semester')
+            ->first();
+
+        $courseQuery = Course::with(['curriculum', 'department', 'headInstructor', 'assignedStaff', 'instructors'])
             ->withCount(['instructors', 'assignedStaff'])
             ->withExists([
                 'courseOfferings as has_locked_offering' => fn ($query) => $query->whereHas(
                     'academicYear',
                     fn ($yearQuery) => $yearQuery->whereIn('phase', ['scheduling', 'published'])
                 ),
-            ])
+            ]);
+
+        if ($activeAcademicYear) {
+            $courseQuery->withExists([
+                'courseOfferings as has_current_offering' => fn ($query) => $query
+                    ->where('academic_year_id', $activeAcademicYear->id),
+            ]);
+        }
+
+        $courses = $courseQuery
             ->orderBy('course_code')
             ->get();
 
@@ -30,7 +45,7 @@ class CoursePoolController extends Controller
         $isAdmin     = $activeRole === 'admin';
         $routePrefix = $isAdmin ? 'admin' : 'staff';
 
-        return view('shared.course_pool.index', compact('courses', 'isAdmin', 'routePrefix'));
+        return view('shared.course_pool.index', compact('courses', 'isAdmin', 'routePrefix', 'activeAcademicYear'));
     }
 
     public function show(Course $course): View

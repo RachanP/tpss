@@ -9,17 +9,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Course extends Model
 {
-    protected static function booted(): void
-    {
-        // Normalize course_code at every write path (form, CSV import, seeder, ทดสอบ)
-        // Aligns DB with the unique constraint (curriculum_id, course_code)
-        static::saving(function (Course $course) {
-            if ($course->course_code !== null) {
-                $course->course_code = preg_replace('/\s+/', '', mb_strtoupper(trim((string) $course->course_code)));
-            }
-        });
-    }
-
     protected $fillable = [
         'course_code',
         'curriculum_id',
@@ -51,6 +40,28 @@ class Course extends Model
         'default_year_level' => 'integer',
         'default_semester' => 'integer',
     ];
+
+    public function getRouteKeyName(): string
+    {
+        return 'course_code';
+    }
+
+    public function resolveRouteBinding($value, $field = null)
+    {
+        $field ??= $this->getRouteKeyName();
+
+        if ($field !== 'course_code') {
+            return parent::resolveRouteBinding($value, $field);
+        }
+
+        $matches = $this->where($field, $value)->limit(2)->get();
+
+        if ($matches->count() !== 1) {
+            abort(404);
+        }
+
+        return $matches->first();
+    }
 
     public function curriculum(): BelongsTo
     {

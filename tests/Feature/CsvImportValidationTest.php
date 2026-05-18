@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Curriculum;
+use App\Models\Department;
 use App\Models\LocationType;
 use App\Models\User;
 use App\Models\UserRole;
@@ -112,6 +114,99 @@ class CsvImportValidationTest extends TestCase
 
         $response->assertSessionHas('error');
         $this->assertStringContainsString('curriculum_name', session('error'));
+    }
+
+    // ── importCourses course_code policy ──────────────────────────────
+
+    public function test_import_courses_accepts_course_code_with_spaces(): void
+    {
+        $admin = $this->makeAdmin();
+        $this->seedCourseImportLookups();
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        $file = $this->csvFile(
+            "course_code,name_th,curriculum_name,department_name,head_instructor_employee_id,course_type,credits,lecture_hours,lab_hours,self_study_hours,capacity,default_year_level,default_semester,requires_practicum_rotation,status\n" .
+            "NSBS 301,วิชาทดสอบ,หลักสูตรทดสอบ,ภาควิชาทดสอบ,MU999,theory,3,3,0,6,30,1,1,0,active\n"
+        );
+
+        $this->post(route('admin.courses.import'), ['csv_file' => $file])
+            ->assertSessionMissing('import_errors');
+
+        $this->assertDatabaseHas('courses', ['course_code' => 'NSBS 301']);
+    }
+
+    public function test_import_courses_rejects_course_code_with_special_characters(): void
+    {
+        $admin = $this->makeAdmin();
+        $this->seedCourseImportLookups();
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        $file = $this->csvFile(
+            "course_code,name_th,curriculum_name,department_name,head_instructor_employee_id,course_type,credits,lecture_hours,lab_hours,self_study_hours,capacity,default_year_level,default_semester,requires_practicum_rotation,status\n" .
+            "NSBS/301,วิชาทดสอบ,หลักสูตรทดสอบ,ภาควิชาทดสอบ,MU999,theory,3,3,0,6,30,1,1,0,active\n"
+        );
+
+        $this->post(route('admin.courses.import'), ['csv_file' => $file])
+            ->assertSessionHas('import_errors');
+
+        $this->assertDatabaseMissing('courses', ['course_code' => 'NSBS/301']);
+        $this->assertStringContainsString('แถว 2', session('import_errors')[0]);
+        $this->assertStringContainsString('course_code', session('import_errors')[0]);
+        $this->assertStringContainsString('รหัสวิชาต้องใช้เฉพาะตัวอักษรภาษาอังกฤษ ตัวเลข ช่องว่าง ขีดกลาง หรือขีดล่าง', session('import_errors')[0]);
+    }
+
+    public function test_import_courses_rejects_dangerous_course_code_characters(): void
+    {
+        $admin = $this->makeAdmin();
+        $this->seedCourseImportLookups();
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        foreach (['NSBS/301', 'NSBS?301', 'NSBS#301', 'NSBS%301', 'NSBS&301', 'NSBS=301'] as $code) {
+            $file = $this->csvFile(
+                "course_code,name_th,curriculum_name,department_name,head_instructor_employee_id,course_type,credits,lecture_hours,lab_hours,self_study_hours,capacity,default_year_level,default_semester,requires_practicum_rotation,status\n" .
+                "{$code},วิชาทดสอบ,หลักสูตรทดสอบ,ภาควิชาทดสอบ,MU999,theory,3,3,0,6,30,1,1,0,active\n"
+            );
+
+            $this->post(route('admin.courses.import'), ['csv_file' => $file])
+                ->assertSessionHas('import_errors');
+
+            $this->assertDatabaseMissing('courses', ['course_code' => $code]);
+            $this->assertStringContainsString('course_code', session('import_errors')[0]);
+        }
+    }
+
+    public function test_import_courses_accepts_allowed_course_code_symbols(): void
+    {
+        $admin = $this->makeAdmin();
+        $this->seedCourseImportLookups();
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        $file = $this->csvFile(
+            "course_code,name_th,curriculum_name,department_name,head_instructor_employee_id,course_type,credits,lecture_hours,lab_hours,self_study_hours,capacity,default_year_level,default_semester,requires_practicum_rotation,status\n" .
+            "NSBS_301-A,วิชาทดสอบ,หลักสูตรทดสอบ,ภาควิชาทดสอบ,MU999,theory,3,3,0,6,30,1,1,0,active\n"
+        );
+
+        $this->post(route('admin.courses.import'), ['csv_file' => $file])
+            ->assertSessionMissing('import_errors');
+
+        $this->assertDatabaseHas('courses', ['course_code' => 'NSBS_301-A']);
+    }
+
+    private function seedCourseImportLookups(): void
+    {
+        Curriculum::create([
+            'name' => 'หลักสูตรทดสอบ',
+            'effective_year' => 2567,
+            'is_active' => true,
+        ]);
+        Department::create(['name' => 'ภาควิชาทดสอบ']);
+        User::create([
+            'username' => 'head_csv',
+            'name' => 'Head CSV',
+            'email' => 'head_csv@example.com',
+            'password' => Hash::make('password'),
+            'employee_id' => 'MU999',
+        ]);
     }
 
     // ── importUsers ───────────────────────────────────────────────────

@@ -11,6 +11,33 @@
     $defaultRotation  = (bool) ($course?->requires_practicum_rotation ?? false);
 @endphp
 
+<script>
+    (function () {
+        var key = 'tpss.courseOffering.scrollY.{{ $courseOffering->id }}';
+        try {
+            if ('scrollRestoration' in history) {
+                history.scrollRestoration = 'manual';
+            }
+
+            var saved = window.sessionStorage.getItem(key);
+            if (saved !== null) {
+                window.sessionStorage.removeItem(key);
+                var top = parseInt(saved, 10);
+                if (Number.isFinite(top) && top >= 0) {
+                    window.scrollTo(0, top);
+                    requestAnimationFrame(function () { window.scrollTo(0, top); });
+                }
+            }
+
+            window.tpssRememberCourseOfferingScroll = function () {
+                try {
+                    window.sessionStorage.setItem(key, String(window.scrollY || window.pageYOffset || 0));
+                } catch (error) {}
+            };
+        } catch (error) {}
+    })();
+</script>
+
 <x-app-layout title="รายละเอียดรายวิชา">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap;">
         <div>
@@ -143,8 +170,8 @@
                             ค่าเริ่มต้นจาก Master Data: {{ $defaultRotation ? 'มีการหมุนเวียนแหล่งฝึก' : 'ไม่มีการหมุนเวียนแหล่งฝึก' }}
                         </div>
                     </div>
-                    <div class="form-group" style="display:flex;align-items:flex-end;">
-                        <button type="submit" class="btn btn-primary">บันทึก</button>
+                    <div class="form-group" style="display:flex;align-items:flex-start;padding-top:24px;">
+                        <button type="submit" class="btn btn-primary" style="min-height:46px;padding-inline:22px;">บันทึก</button>
                     </div>
                 </div>
                 <div x-show="isOverride" x-cloak
@@ -603,6 +630,28 @@
             margin-bottom: 14px;
         }
 
+        .group-builder-copy {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .group-builder-meta {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .group-builder-actions {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
         .group-builder-title {
             color: var(--fg-1);
             font-weight: 800;
@@ -610,7 +659,6 @@
         }
 
         .group-total-pill {
-            flex: 0 0 auto;
             min-height: 34px;
             display: inline-flex;
             align-items: center;
@@ -621,6 +669,14 @@
             padding: 6px 12px;
             font-size: 13px;
             font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .group-builder-submit {
+            flex: 0 0 auto;
+            width: auto;
+            min-width: 0;
+            padding-inline: 14px;
             white-space: nowrap;
         }
 
@@ -726,8 +782,41 @@
             background: rgba(252, 254, 255, 0.98);
         }
 
+        .student-group-row.has-bulk-select {
+            grid-template-columns: 32px minmax(220px, 1.3fr) minmax(120px, 0.55fr) minmax(100px, 0.45fr) auto;
+        }
+
         .student-group-row.is-readonly {
             grid-template-columns: minmax(220px, 1.3fr) minmax(120px, 0.55fr) minmax(100px, 0.45fr);
+        }
+
+        .student-group-select {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .student-group-select input {
+            width: 18px;
+            height: 18px;
+            min-height: 18px;
+            cursor: pointer;
+        }
+
+        .student-group-select-all {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            color: var(--fg-2);
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .student-group-select-all input {
+            width: 17px;
+            height: 17px;
+            cursor: pointer;
         }
 
         .student-group-row label {
@@ -781,10 +870,86 @@
             box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.14);
         }
 
+        .student-group-row.has-bulk-select .student-group-swatch {
+            position: absolute;
+            left: 0;
+            top: 31px;
+            margin: 0;
+        }
+
+        .student-group-row.has-bulk-select .student-group-code {
+            position: relative;
+            padding-left: 26px;
+        }
+
         .student-group-actions {
             display: inline-flex;
             justify-content: flex-end;
             gap: 6px;
+        }
+
+        .student-group-bulkbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+            padding: 10px 12px;
+            border: 1px solid oklch(89% 0.018 235);
+            border-radius: 8px;
+            background: oklch(98% 0.006 235);
+        }
+
+        .student-group-bulkbar-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn-bulk-delete {
+            min-height: 34px;
+            border: 1px solid var(--status-conflict-border);
+            border-radius: 8px;
+            background: var(--status-conflict-bg);
+            color: var(--status-conflict-fg);
+            cursor: pointer;
+            padding: 6px 12px;
+            font-family: inherit;
+            font-weight: 700;
+        }
+
+        .btn-bulk-delete:disabled {
+            cursor: not-allowed;
+            opacity: .45;
+        }
+
+        .student-group-confirm-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: var(--z-modal);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: rgba(15, 23, 42, .42);
+        }
+
+        .student-group-confirm-dialog {
+            width: min(460px, 100%);
+            border: 1px solid oklch(88% 0.014 235);
+            border-radius: 14px;
+            background: var(--surface);
+            box-shadow: 0 24px 70px rgba(15, 23, 42, .2);
+            padding: 22px;
+        }
+
+        .student-group-confirm-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
         }
 
         .icon-btn-save,
@@ -836,6 +1001,15 @@
                 flex-direction: column;
             }
 
+            .group-builder-submit {
+                width: 100%;
+            }
+
+            .group-builder-actions {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
             .group-builder-fields {
                 grid-template-columns: 1fr 1fr;
             }
@@ -843,6 +1017,10 @@
             .student-group-row,
             .student-group-row.is-readonly {
                 grid-template-columns: 1fr;
+            }
+
+            .student-group-row.has-bulk-select {
+                grid-template-columns: 32px 1fr;
             }
 
             .student-group-count input {
@@ -855,18 +1033,33 @@
         }
     </style>
 
-    <div class="card">
+    <div class="card" id="student-groups" style="scroll-margin-top:72px;">
         <div class="card-hdr">
             <div>
                 <div class="card-ttl">กลุ่มนักศึกษา</div>
                 <div class="caption" style="margin-top:4px;">เปิดรับ {{ $studentLimit ?: '-' }} คน · จัดกลุ่มแล้ว {{ $studentTotal }} คน · ยังไม่ได้จัดกลุ่ม {{ $ungrouped }} คน</div>
             </div>
         </div>
-        <div style="padding:20px;">
+        <div
+            style="padding:20px;"
+            x-data="{
+                selectedGroups: [],
+                groupIds: {{ Js::from($courseOffering->studentGroups->pluck('id')->map(fn ($id) => (string) $id)->values()) }},
+                confirmBulkDeleteOpen: false,
+                get allGroupsSelected() {
+                    return this.groupIds.length > 0 && this.selectedGroups.length === this.groupIds.length;
+                },
+                toggleAllGroups(checked) {
+                    this.selectedGroups = checked ? [...this.groupIds] : [];
+                }
+            }"
+        >
             @if($canEdit && $ungrouped > 0)
             <form method="POST"
                 action="{{ route('maker.course_offerings.student_groups.bulk_store', $courseOffering) }}"
                 data-testid="bulk-groups-form"
+                data-preserve-scroll
+                @submit="window.tpssRememberCourseOfferingScroll && window.tpssRememberCourseOfferingScroll()"
                 x-data="{
                     prefix: '{{ old('group_prefix', 'A') }}',
                     start: {{ (int) old('start_number', 1) }},
@@ -922,12 +1115,14 @@
                 class="group-builder">
                 @csrf
                 <div class="group-builder-main">
-                    <div>
+                    <div class="group-builder-copy">
                         <div class="group-builder-title">สร้างกลุ่มแบบเร็ว</div>
                         <div class="caption" style="margin-top:3px;">ระบบใช้ยอดนักศึกษาที่ยังไม่ได้จัดกลุ่มจากข้อมูลรายวิชา แล้วช่วยแบ่งหรือให้ปรับรายกลุ่มได้</div>
                     </div>
-                    <div class="group-total-pill">ยังไม่ได้จัดกลุ่ม {{ $ungrouped }} คน</div>
-                    <button class="btn btn-primary" type="submit" data-testid="bulk-groups-submit">สร้างกลุ่ม</button>
+                    <div class="group-builder-actions">
+                        <div class="group-total-pill">ยังไม่ได้จัดกลุ่ม {{ $ungrouped }} คน</div>
+                        <button class="btn btn-primary group-builder-submit" type="submit" data-testid="bulk-groups-submit">สร้างกลุ่ม+</button>
+                    </div>
                 </div>
                 <div class="group-builder-fields">
                     <label>
@@ -970,12 +1165,65 @@
                 </div>
             @endif
 
+            @if($canEdit && $courseOffering->studentGroups->isNotEmpty())
+                <form
+                    id="bulk-group-delete-form"
+                    method="POST"
+                    action="{{ route('maker.course_offerings.student_groups.bulk_destroy', $courseOffering) }}"
+                    data-preserve-scroll
+                    @submit="window.tpssRememberCourseOfferingScroll && window.tpssRememberCourseOfferingScroll()"
+                >
+                    @csrf
+                    @method('DELETE')
+                </form>
+                <div class="student-group-bulkbar">
+                    <div class="caption">
+                        เลือกกลุ่มที่ต้องการลบได้หลายกลุ่ม
+                        <span x-show="selectedGroups.length > 0" x-text="'· เลือกแล้ว ' + selectedGroups.length + ' กลุ่ม'"></span>
+                    </div>
+                    <div class="student-group-bulkbar-actions">
+                        <label class="student-group-select-all">
+                            <input
+                                type="checkbox"
+                                :checked="allGroupsSelected"
+                                @change="toggleAllGroups($event.target.checked)"
+                                data-testid="bulk-group-select-all"
+                            >
+                            ทั้งหมด
+                        </label>
+                        <button type="button" class="btn btn-ghost" style="min-height:34px;padding:6px 12px;font-size:13px;" @click="selectedGroups = []" x-show="selectedGroups.length > 0">
+                            ล้างที่เลือก
+                        </button>
+                        <button
+                            type="button"
+                            class="btn-bulk-delete"
+                            data-testid="bulk-groups-delete"
+                            :disabled="selectedGroups.length < 1"
+                            @click="if (selectedGroups.length > 0) confirmBulkDeleteOpen = true"
+                        >
+                            ลบกลุ่มที่เลือก
+                        </button>
+                    </div>
+                </div>
+            @endif
+
             <div class="student-group-list">
                 @forelse($courseOffering->studentGroups as $group)
                     @if($canEdit)
-                    <form method="POST" action="{{ route('maker.course_offerings.student_groups.update', [$courseOffering, $group]) }}" class="student-group-row" data-testid="student-group-row">
+                    <form method="POST" action="{{ route('maker.course_offerings.student_groups.update', [$courseOffering, $group]) }}" class="student-group-row has-bulk-select" data-testid="student-group-row" data-preserve-scroll @submit="window.tpssRememberCourseOfferingScroll && window.tpssRememberCourseOfferingScroll()">
                         @csrf
                         @method('PUT')
+                        <div class="student-group-select">
+                            <input
+                                type="checkbox"
+                                name="group_ids[]"
+                                value="{{ $group->id }}"
+                                form="bulk-group-delete-form"
+                                x-model="selectedGroups"
+                                data-testid="bulk-group-checkbox"
+                                aria-label="เลือกกลุ่ม {{ $group->group_code }} เพื่อลบ"
+                            >
+                        </div>
                         <div class="student-group-code">
                             <span class="student-group-swatch" style="background:{{ $group->color_code ?: '#2563eb' }}"></span>
                             <label>
@@ -1000,7 +1248,7 @@
                             </button>
                         </div>
                     </form>
-                    <form id="group-delete-{{ $group->id }}" method="POST" action="{{ route('maker.course_offerings.student_groups.destroy', [$courseOffering, $group]) }}">
+                    <form id="group-delete-{{ $group->id }}" method="POST" action="{{ route('maker.course_offerings.student_groups.destroy', [$courseOffering, $group]) }}" data-preserve-scroll onsubmit="window.tpssRememberCourseOfferingScroll && window.tpssRememberCourseOfferingScroll()">
                         @csrf
                         @method('DELETE')
                     </form>
@@ -1018,6 +1266,36 @@
                     <div class="student-group-empty">ยังไม่มีกลุ่มนักศึกษา</div>
                 @endforelse
             </div>
+
+            @if($canEdit)
+                <div
+                    class="student-group-confirm-overlay"
+                    x-show="confirmBulkDeleteOpen"
+                    x-cloak
+                    @keydown.escape.window="confirmBulkDeleteOpen = false"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="bulk-delete-title"
+                >
+                    <div class="student-group-confirm-dialog" @click.outside="confirmBulkDeleteOpen = false">
+                        <div id="bulk-delete-title" style="font-size:18px;font-weight:800;color:var(--fg-1);">ยืนยันการลบกลุ่มนักศึกษา</div>
+                        <div class="body-sm" style="margin-top:8px;color:var(--fg-2);">
+                            คุณกำลังจะลบกลุ่มนักศึกษาที่เลือก <strong x-text="selectedGroups.length"></strong> กลุ่ม การลบนี้ไม่สามารถย้อนกลับได้
+                        </div>
+                        <div class="student-group-confirm-actions">
+                            <button type="button" class="btn btn-ghost" @click="confirmBulkDeleteOpen = false">ยกเลิก</button>
+                            <button
+                                type="submit"
+                                form="bulk-group-delete-form"
+                                class="btn-bulk-delete"
+                                @click="confirmBulkDeleteOpen = false"
+                            >
+                                ลบกลุ่มที่เลือก
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            @endif
         </div>
     </div>
 

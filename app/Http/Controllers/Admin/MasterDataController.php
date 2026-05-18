@@ -23,6 +23,9 @@ class MasterDataController extends Controller
      */
     private const PA_ENGLISH_CRITERION_DATE = '2016-10-01';
 
+    private const COURSE_CODE_ALLOWED_REGEX = '/^[A-Za-z0-9 _-]+$/';
+    private const COURSE_CODE_ALLOWED_MESSAGE = 'รหัสวิชาต้องใช้เฉพาะตัวอักษรภาษาอังกฤษ ตัวเลข ช่องว่าง ขีดกลาง หรือขีดล่าง';
+
     public function index()
     {
         // View-only for instructors: get users who have 'instructor' role
@@ -376,28 +379,19 @@ class MasterDataController extends Controller
         return redirect()->back()->with('success', 'อัปเดตข้อมูลอาจารย์เรียบร้อยแล้ว');
     }
 
-    private function normalizeCourseInput(Request $request): void
-    {
-        if (!$request->has('course_code')) {
-            return;
-        }
-
-        $request->merge([
-            'course_code' => preg_replace('/\s+/', '', mb_strtoupper(trim((string) $request->input('course_code')))),
-        ]);
-    }
-
+    /**
+     * Whitespace-insensitive duplicate check: course_code stored as user typed,
+     * but matched via REPLACE/UPPER so "NSBS 111" and "NSBS111" are treated as duplicates.
+     * Note: cannot use a regular DB index — full scan. Acceptable for small course tables.
+     */
     private function courseCodeExistsInCurriculum(string $courseCode, int $curriculumId, ?int $ignoreCourseId = null): bool
     {
-        // All course_code values are normalized at write time (normalizeCourseInput) +
-        // existing data normalized via migration 2026_05_18_120000_normalize_course_codes,
-        // so direct indexed lookup is safe.
         $normalized = preg_replace('/\s+/', '', mb_strtoupper(trim($courseCode)));
 
         return Course::query()
             ->where('curriculum_id', $curriculumId)
-            ->where('course_code', $normalized)
             ->when($ignoreCourseId, fn($query) => $query->whereKeyNot($ignoreCourseId))
+            ->whereRaw("REPLACE(UPPER(course_code), ' ', '') = ?", [$normalized])
             ->exists();
     }
 
@@ -414,11 +408,9 @@ class MasterDataController extends Controller
 
     public function storeCourse(Request $request)
     {
-        $this->normalizeCourseInput($request);
-
         $validated = $request->validate([
             'course_code'                 => [
-                'required', 'string', 'max:20',
+                'required', 'string', 'max:20', 'regex:' . self::COURSE_CODE_ALLOWED_REGEX,
                 Rule::unique('courses', 'course_code')
                     ->where(fn($q) => $q->where('curriculum_id', $request->input('curriculum_id'))),
             ],
@@ -442,13 +434,11 @@ class MasterDataController extends Controller
             'requires_practicum_rotation' => 'required|boolean',
             'prerequisite_ids'            => 'nullable|array',
             'prerequisite_ids.*'          => ['integer', 'distinct', 'exists:courses,id'],
-        ], [
-            'course_code.unique' => 'รหัสวิชานี้มีอยู่ในหลักสูตรที่เลือกแล้ว',
-        ]);
+        ], $this->courseCodeValidationMessages());
 
         if ($this->courseCodeExistsInCurriculum($validated['course_code'], (int) $validated['curriculum_id'])) {
             return back()
-                ->withErrors(['course_code' => 'รหัสวิชานี้มีอยู่ในหลักสูตรที่เลือกแล้ว'])
+                ->withErrors(['course_code' => 'รหัสวิชานี้มีอยู่แล้วในหลักสูตรนี้'])
                 ->withInput();
         }
 
@@ -466,11 +456,9 @@ class MasterDataController extends Controller
 
     public function updateCourse(Request $request, Course $course)
     {
-        $this->normalizeCourseInput($request);
-
         $validated = $request->validate([
             'course_code'                 => [
-                'required', 'string', 'max:20',
+                'required', 'string', 'max:20', 'regex:' . self::COURSE_CODE_ALLOWED_REGEX,
                 Rule::unique('courses', 'course_code')
                     ->where(fn($q) => $q->where('curriculum_id', $request->input('curriculum_id')))
                     ->ignore($course->id),
@@ -495,13 +483,11 @@ class MasterDataController extends Controller
             'requires_practicum_rotation' => 'required|boolean',
             'prerequisite_ids'            => 'nullable|array',
             'prerequisite_ids.*'          => ['integer', 'distinct', 'exists:courses,id', Rule::notIn([$course->id])],
-        ], [
-            'course_code.unique' => 'รหัสวิชานี้มีอยู่ในหลักสูตรที่เลือกแล้ว',
-        ]);
+        ], $this->courseCodeValidationMessages());
 
         if ($this->courseCodeExistsInCurriculum($validated['course_code'], (int) $validated['curriculum_id'], $course->id)) {
             return back()
-                ->withErrors(['course_code' => 'รหัสวิชานี้มีอยู่ในหลักสูตรที่เลือกแล้ว'])
+                ->withErrors(['course_code' => 'รหัสวิชานี้มีอยู่แล้วในหลักสูตรนี้'])
                 ->withInput();
         }
 
@@ -730,6 +716,14 @@ class MasterDataController extends Controller
 
     // ── CSV Import ────────────────────────────────────────────────────
 
+    private function courseCodeValidationMessages(): array
+    {
+        return [
+            'course_code.regex' => self::COURSE_CODE_ALLOWED_MESSAGE,
+            'course_code.unique' => 'รหัสวิชานี้มีอยู่แล้วในหลักสูตรนี้',
+        ];
+    }
+
     public function importRooms(Request $request)
     {
         $request->validate(['csv_file' => 'required|file|extensions:csv,txt|max:5120']);
@@ -866,6 +860,11 @@ class MasterDataController extends Controller
                 continue;
             }
 
+            if (! preg_match(self::COURSE_CODE_ALLOWED_REGEX, $code)) {
+                $errors[] = "แถว {$row}: course_code '{$code}' " . self::COURSE_CODE_ALLOWED_MESSAGE;
+                continue;
+            }
+
             $currId = $curriculums[$currName] ?? null;
             if (!$currId) {
                 $errors[] = "แถว {$row}: หลักสูตร '{$currName}' ไม่พบในระบบ";
@@ -909,6 +908,7 @@ class MasterDataController extends Controller
             }
 
             // requires_practicum_rotation บังคับสำหรับ practicum / theory_practicum
+            $courseType = trim($csv['course_type'] ?? '') ?: 'theory';
             $rotationRaw = trim($csv['requires_practicum_rotation'] ?? '');
             if (in_array($courseType, ['practicum', 'theory_practicum']) && $rotationRaw === '') {
                 $errors[] = "แถว {$row}: วิชาประเภท {$courseType} ต้องระบุ requires_practicum_rotation (0 หรือ 1)";

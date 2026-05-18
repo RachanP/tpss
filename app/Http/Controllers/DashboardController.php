@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Admin\AlertController;
+use App\Models\AcademicYear;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Models\UserRole;
@@ -37,8 +38,12 @@ class DashboardController extends Controller
 
         $criticals = AlertController::getCriticals();
         $alerts    = AlertController::getSummary();
+        $currentAcademicYear = AcademicYear::where('is_active', true)
+            ->orderByDesc('name')
+            ->orderByDesc('semester')
+            ->first();
 
-        return view('admin.dashboard', compact('instructors', 'teachingWeeks', 'hoursPerWeek', 'alerts', 'criticals'));
+        return view('admin.dashboard', compact('instructors', 'teachingWeeks', 'hoursPerWeek', 'alerts', 'criticals', 'currentAcademicYear'));
     }
 
     public function staff()

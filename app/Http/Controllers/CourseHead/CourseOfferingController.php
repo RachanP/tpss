@@ -22,8 +22,11 @@ class CourseOfferingController extends Controller
     public function index(): View
     {
         $offerings = CourseOffering::query()
+            ->select('course_offerings.*')
+            ->distinct()
             ->with(['course.curriculum', 'course.department', 'academicYear'])
             ->withCount(['studentGroups', 'instructorPool'])
+            ->withSum('studentGroups as allocated_student_count', 'student_count')
             ->where('coordinator_id', Auth::id())
             ->latest('updated_at')
             ->get();
@@ -218,12 +221,15 @@ class CourseOfferingController extends Controller
         ]);
 
         if ($message = $this->studentCountLimitError($courseOffering, (int) $validated['student_count'])) {
-            return back()->withErrors(['student_count' => $message])->withInput();
+            return $this->redirectToStudentGroups($courseOffering)
+                ->withErrors(['student_count' => $message])
+                ->withInput();
         }
 
         $courseOffering->studentGroups()->create($validated);
 
-        return back()->with('success', 'เพิ่มกลุ่มนักศึกษาเรียบร้อยแล้ว');
+        return $this->redirectToStudentGroups($courseOffering)
+            ->with('success', 'เพิ่มกลุ่มนักศึกษาเรียบร้อยแล้ว');
     }
 
     public function bulkStoreStudentGroups(Request $request, CourseOffering $courseOffering): RedirectResponse
@@ -249,13 +255,13 @@ class CourseOfferingController extends Controller
 
         $remainingStudents = $this->remainingStudentCount($courseOffering);
         if ($remainingStudents < 1) {
-            return back()
+            return $this->redirectToStudentGroups($courseOffering)
                 ->withErrors(['group_count' => 'จัดกลุ่มครบตามจำนวนนักศึกษาที่เปิดรับแล้ว'])
                 ->withInput();
         }
 
         if ($customCounts->isNotEmpty() && $customCounts->count() !== $groupCount) {
-            return back()
+            return $this->redirectToStudentGroups($courseOffering)
                 ->withErrors(['group_counts' => 'จำนวนช่องนักศึกษาต่อกลุ่มต้องตรงกับจำนวนกลุ่ม'])
                 ->withInput();
         }
@@ -265,13 +271,15 @@ class CourseOfferingController extends Controller
             : $remainingStudents;
 
         if ($totalStudents < $groupCount) {
-            return back()
+            return $this->redirectToStudentGroups($courseOffering)
                 ->withErrors(['total_students' => 'จำนวนนักศึกษารวมต้องไม่น้อยกว่าจำนวนกลุ่ม'])
                 ->withInput();
         }
 
         if ($message = $this->studentCountLimitError($courseOffering, $totalStudents)) {
-            return back()->withErrors(['total_students' => $message])->withInput();
+            return $this->redirectToStudentGroups($courseOffering)
+                ->withErrors(['total_students' => $message])
+                ->withInput();
         }
 
         $prefix = trim($validated['group_prefix']);
@@ -286,7 +294,7 @@ class CourseOfferingController extends Controller
             ->all();
 
         if (!empty($existingCodes)) {
-            return back()
+            return $this->redirectToStudentGroups($courseOffering)
                 ->withErrors(['group_prefix' => 'มีรหัสกลุ่มซ้ำแล้ว: ' . implode(', ', $existingCodes)])
                 ->withInput();
         }
@@ -307,7 +315,8 @@ class CourseOfferingController extends Controller
             }
         });
 
-        return back()->with('success', "สร้างกลุ่มนักศึกษา {$groupCount} กลุ่มเรียบร้อยแล้ว");
+        return $this->redirectToStudentGroups($courseOffering)
+            ->with('success', "สร้างกลุ่มนักศึกษา {$groupCount} กลุ่มเรียบร้อยแล้ว");
     }
 
     public function updateStudentGroup(
@@ -337,12 +346,55 @@ class CourseOfferingController extends Controller
             (int) $validated['student_count'],
             $studentGroup
         )) {
-            return back()->withErrors(['student_count' => $message])->withInput();
+            return $this->redirectToStudentGroups($courseOffering)
+                ->withErrors(['student_count' => $message])
+                ->withInput();
         }
 
         $studentGroup->update($validated);
 
-        return back()->with('success', 'อัปเดตกลุ่มนักศึกษาเรียบร้อยแล้ว');
+        return $this->redirectToStudentGroups($courseOffering)
+            ->with('success', 'อัปเดตกลุ่มนักศึกษาเรียบร้อยแล้ว');
+    }
+
+    public function bulkDestroyStudentGroups(Request $request, CourseOffering $courseOffering): RedirectResponse
+    {
+        $this->authorizeCourseHeadOffering($courseOffering);
+        if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
+
+        $validated = $request->validate([
+            'group_ids' => ['required', 'array', 'min:1'],
+            'group_ids.*' => ['integer', 'exists:student_groups,id'],
+        ], [
+            'group_ids.required' => 'กรุณาเลือกกลุ่มที่ต้องการลบ',
+            'group_ids.min' => 'กรุณาเลือกกลุ่มที่ต้องการลบ',
+        ]);
+
+        $groups = StudentGroup::query()
+            ->where('course_offering_id', $courseOffering->id)
+            ->whereIn('id', $validated['group_ids'])
+            ->get();
+
+        if ($groups->count() !== count(array_unique($validated['group_ids']))) {
+            abort(404);
+        }
+
+        $blocked = $groups
+            ->filter(fn (StudentGroup $group) => $this->studentGroupHasDownstreamReferences($group))
+            ->pluck('group_code')
+            ->all();
+
+        if (! empty($blocked)) {
+            return $this->redirectToStudentGroups($courseOffering)
+                ->withErrors([
+                    'student_groups' => 'ไม่สามารถลบกลุ่มที่ถูกอ้างอิงในตารางสอนได้: ' . implode(', ', $blocked),
+                ]);
+        }
+
+        DB::transaction(fn () => $groups->each->delete());
+
+        return $this->redirectToStudentGroups($courseOffering)
+            ->with('warning', 'ลบกลุ่มนักศึกษา ' . $groups->count() . ' กลุ่มเรียบร้อยแล้ว');
     }
 
     public function destroyStudentGroup(CourseOffering $courseOffering, StudentGroup $studentGroup): RedirectResponse
@@ -351,24 +403,16 @@ class CourseOfferingController extends Controller
         if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
         $this->assertStudentGroupBelongsToOffering($courseOffering, $studentGroup);
 
-        if (Schema::hasTable('schedule_student_groups') &&
-            DB::table('schedule_student_groups')->where('student_group_id', $studentGroup->id)->exists()) {
-            return back()->withErrors([
-                'student_groups' => 'ไม่สามารถลบกลุ่มที่ถูกอ้างอิงในตารางสอนได้ กรุณาจัดการตารางสอนที่เกี่ยวข้องก่อน',
-            ]);
-        }
-
-        if (Schema::hasTable('schedules') &&
-            Schema::hasColumn('schedules', 'student_group_id') &&
-            DB::table('schedules')->where('student_group_id', $studentGroup->id)->exists()) {
-            return back()->withErrors([
+        if ($this->studentGroupHasDownstreamReferences($studentGroup)) {
+            return $this->redirectToStudentGroups($courseOffering)->withErrors([
                 'student_groups' => 'ไม่สามารถลบกลุ่มที่ถูกอ้างอิงในตารางสอนได้ กรุณาจัดการตารางสอนที่เกี่ยวข้องก่อน',
             ]);
         }
 
         $studentGroup->delete();
 
-        return back()->with('success', 'ลบกลุ่มนักศึกษาเรียบร้อยแล้ว');
+        return $this->redirectToStudentGroups($courseOffering)
+            ->with('warning', 'ลบกลุ่มนักศึกษาเรียบร้อยแล้ว');
     }
 
     private function authorizeCourseHeadOffering(CourseOffering $courseOffering): void
@@ -390,6 +434,23 @@ class CourseOfferingController extends Controller
     private function assertStudentGroupBelongsToOffering(CourseOffering $courseOffering, StudentGroup $studentGroup): void
     {
         abort_unless((int) $studentGroup->course_offering_id === (int) $courseOffering->id, 404);
+    }
+
+    private function redirectToStudentGroups(CourseOffering $courseOffering): RedirectResponse
+    {
+        return redirect()->route('maker.course_offerings.show', $courseOffering);
+    }
+
+    private function studentGroupHasDownstreamReferences(StudentGroup $studentGroup): bool
+    {
+        if (Schema::hasTable('schedule_student_groups') &&
+            DB::table('schedule_student_groups')->where('student_group_id', $studentGroup->id)->exists()) {
+            return true;
+        }
+
+        return Schema::hasTable('schedules') &&
+            Schema::hasColumn('schedules', 'student_group_id') &&
+            DB::table('schedules')->where('student_group_id', $studentGroup->id)->exists();
     }
 
     private function studentCountLimitError(

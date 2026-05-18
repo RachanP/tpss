@@ -297,15 +297,16 @@
             var existing = document.getElementById('tpss-toast');
             if (existing) existing.remove();
 
-            var isSuccess = type !== 'error';
-            var bg      = isSuccess ? '#f0fdf4' : '#fef2f2';
-            var border  = isSuccess ? '#86efac' : '#fca5a5';
-            var iconClr = isSuccess ? '#16a34a' : '#dc2626';
-            var textClr = isSuccess ? '#14532d' : '#7f1d1d';
-            var labelClr= isSuccess ? '#15803d' : '#b91c1c';
-            var label   = isSuccess ? 'สำเร็จ' : 'เกิดข้อผิดพลาด';
+            var isError = type === 'error';
+            var isWarning = type === 'warning';
+            var bg      = isError ? '#fef2f2' : isWarning ? '#fffbeb' : '#f0fdf4';
+            var border  = isError ? '#fca5a5' : isWarning ? '#fcd34d' : '#86efac';
+            var iconClr = isError ? '#dc2626' : isWarning ? '#d97706' : '#16a34a';
+            var textClr = isError ? '#7f1d1d' : isWarning ? '#78350f' : '#14532d';
+            var labelClr= isError ? '#b91c1c' : isWarning ? '#92400e' : '#15803d';
+            var label   = isError ? 'เกิดข้อผิดพลาด' : isWarning ? 'ดำเนินการแล้ว' : 'สำเร็จ';
 
-            var iconSvg = isSuccess
+            var iconSvg = !isError
                 ? '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="' + iconClr + '" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>'
                 : '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="' + iconClr + '" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
 
@@ -313,7 +314,7 @@
             toast.id = 'tpss-toast';
             toast.innerHTML =
                 '<div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;">'
-                + '<div style="flex-shrink:0;width:36px;height:36px;border-radius:50%;background:' + (isSuccess ? '#dcfce7' : '#fee2e2') + ';display:flex;align-items:center;justify-content:center;">'
+                + '<div style="flex-shrink:0;width:36px;height:36px;border-radius:50%;background:' + (isError ? '#fee2e2' : isWarning ? '#fef3c7' : '#dcfce7') + ';display:flex;align-items:center;justify-content:center;">'
                 + iconSvg + '</div>'
                 + '<div style="min-width:0;">'
                 + '<div style="font-size:13px;font-weight:700;color:' + labelClr + ';line-height:1.2;">' + label + '</div>'
@@ -355,7 +356,7 @@
                 });
             });
 
-            if (isSuccess) {
+            if (!isError) {
                 var duration = 4000;
                 var bar = document.getElementById('tpss-toast-bar');
                 if (bar) {
@@ -380,6 +381,10 @@
 
             @if(session('error'))
                 tpssToast(@json(session('error')), 'error');
+            @endif
+
+            @if(session('warning'))
+                tpssToast(@json(session('warning')), 'warning');
             @endif
         });
     </script>
