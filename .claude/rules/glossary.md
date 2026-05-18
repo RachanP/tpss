@@ -12,6 +12,9 @@
 | ผู้ดูแลระบบ / Admin | `admin` |
 | รายวิชา | `course` |
 | รายวิชาที่เปิดสอน (ต่อปีการศึกษา) | `course_offering` |
+| ชุดผู้สอน template (ระดับวิชา) | `course_instructor` (pivot) |
+| บทบาทในวิชา (master list) | `course_role` |
+| หน้าจัดการ template ผู้รับผิดชอบ | `course_pool` (route + view) |
 | กิจกรรม / ตารางสอน (แต่ละ slot) | `schedule` |
 | ชุดฝึกปฏิบัติ | `practicum_series` |
 | กลุ่มนักศึกษา | `student_group` |
@@ -24,11 +27,13 @@
 | คำเตือน (บันทึกได้แต่ต้องแก้) | `warning` |
 | อนุมัติ | `approve` → status: `published` |
 | ตีกลับ | `reject` → status: `rejected` / `revised` |
-| บทบาทในวิชา | `role_in_course` |
-| หัวหน้าวิชา (บทบาทในวิชา) | `coordinator` |
-| เลขานุการวิชา | `secretary` |
-| อาจารย์ประจำกลุ่ม | `group_advisor` |
-| อาจารย์พี่เลี้ยง | `preceptor` |
+| บทบาทในวิชา (legacy marker) | `role_in_course` varchar — เก็บ 'coordinator' เท่านั้น |
+| บทบาทในวิชา (Sprint 3+) | `course_role_id` FK → `course_roles` |
+| หัวหน้าวิชา (auto-coordinator) | `course_roles.name_th = 'หัวหน้าวิชา'` |
+| เลขานุการวิชา | `course_roles.name_th = 'เลขานุการวิชา'` |
+| อาจารย์ผู้สอน | `course_roles.name_th = 'อาจารย์ผู้สอน'` (default) |
+| อาจารย์ประจำกลุ่ม | `course_roles.name_th = 'อาจารย์ประจำกลุ่ม'` |
+| อาจารย์พี่เลี้ยง | `course_roles.name_th = 'อาจารย์พี่เลี้ยง'` |
 | ความพร้อมสอน | `instructor_availability` |
 | ประวัติการอนุมัติ | `course_offering_approval` |
 | ความขัดแย้งที่ตรวจพบ (cache) | `schedule_conflict` |
@@ -56,7 +61,7 @@
 |--------|------|
 | M10 | Login, RBAC & Admin Settings |
 | M1 | Master Data Management |
-| M2 | Course Management |
+| M2 | Course Management (รวม Course Pool — Sprint 3) — **Prerequisite ย้ายไป M1 แล้ว** |
 | M3 | Schedule Management |
 | M4 | Conflict Checking |
 | M5 | Smart Warning System (Phase 2) |

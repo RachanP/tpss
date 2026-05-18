@@ -21,11 +21,16 @@
 
 ## Instructor & Conflict Logic
 
-1. **Instructor Pool**: ไม่ผูกอาจารย์ถาวรกับกลุ่มใน M2 — ใช้วิธี Add จาก HR → สร้าง Pool ต่อวิชา
+1. **Instructor Pool (2-layer — Sprint 3)**:
+   - **Course-level template** (`course_instructors`): Admin/Staff จัดผ่าน Course Pool — เก็บ default ผู้สอน + บทบาท
+   - **Offering-level snapshot** (`course_offering_instructors`): sync จาก template ตอน Admin เปิด scheduling phase
+   - Course Head แก้ไขได้เฉพาะ offering-level ระหว่าง `scheduling` phase
+   - Template ล็อกเมื่อ offering ใดเข้า `scheduling`/`published` แล้ว (ป้องกัน drift)
 2. **Cross-Course Conflict (M4)**: ตรวจโดยอ้างอิง Global Instructor ID ข้ามทุกรายวิชาในคณะ
 3. **Team Supervision**: เลือกอาจารย์ผู้สอนได้หลายท่านต่อ 1 กิจกรรม (via `schedule_instructors`)
 4. **Workload Quota (M6)**: คำนวณจาก (สัปดาห์/ปี) × (ชม./สัปดาห์) → ชั่วโมงรวมต่อปี
 5. **Name Display**: ไม่มีเว้นวรรคระหว่างตำแหน่ง/คำนำหน้ากับชื่อ (เช่น `อ.ดร.ราชันย์`)
+6. **Executive Filter**: executive role ถูกกรองออกจาก available instructor pool (ใน `CoursePoolController` + `CourseOfferingController::show`)
 
 ## Curriculum & Course Offering Architecture
 
@@ -34,13 +39,17 @@ Curriculum (Master Plan)
 └── Course → default_year_level, default_semester
 
 Course Offerings (ต่อเทอม — ตัวกลาง Master ↔ Schedule)
-├── สร้าง Draft Offerings อัตโนมัติเมื่อขึ้นเทอมใหม่
-└── Staff กด: Confirm / Skip / เปิดวิชาพิเศษ
+├── สร้างอัตโนมัติเมื่อ Admin เปิด scheduling phase
+└── Sync planning fields + instructor pool จาก course template
 ```
 
-- Dashboard Course Head แสดงเฉพาะวิชาที่ offering status = confirmed
+- **Critical-gate**: ก่อนเปิด scheduling Admin ต้องเคลียร์ critical alerts ให้หมด — รวม `no_active_course`, `active_courses_missing_head`
+- **Sync direction**: course template → offering snapshot (ทางเดียว) — ตอน `openSchedulingWindow`
+- **Sync scope**: planning hours, capacity, teaching_weeks, requires_practicum_rotation, instructor pool (ลบ stale entries)
+- Dashboard Course Head แสดงเฉพาะวิชาที่ offering อยู่ใน scheduling/published
 - Inactive Curriculum → Force Update รายวิชาทั้งหมดใน curriculum → `inactive`
 - Clone curriculum สำหรับ versioning (2569 → 2574) ไม่กระทบประวัติเดิม
+- **Prerequisite** อยู่ที่ course level (M1 Master Data) ไม่ใช่ offering level
 
 ## Performance Agreement (PA) Criteria ปี 2569
 

@@ -15,11 +15,13 @@
 // course_offerings.approval_status  (ระดับรายวิชาต่อปี — Course Head + Executive)
 ['draft', 'pending', 'published', 'rejected']
 
-// course_offerings.course_type
+// course_offerings.course_type  (Sprint 3 — column ทำเป็น nullable, UI ลบทิ้งแล้ว)
+// UI infer จาก lecture_hours + lab_hours + requires_practicum_rotation
 ['theory', 'practicum', 'theory_practicum']
 
-// course_offering_instructors.role_in_course
-['coordinator', 'secretary', 'instructor', 'group_advisor', 'preceptor']
+// course_offering_instructors.role_in_course  (Sprint 3 — varchar(100))
+// เก็บเฉพาะ 'coordinator' marker — role จริงดูที่ course_role_id FK
+// ค่าเก่า ['coordinator','secretary','instructor','group_advisor','preceptor'] เลิกใช้
 
 // rooms.status
 ['active', 'inactive', 'maintenance']
@@ -41,7 +43,7 @@
 ['quota_exceeded', 'capacity_exceeded', 'missing_info', 'no_schedule', 'outside_availability']
 ```
 
-## Two-Layer Status System (ตกลงแล้ว 16 พ.ค.)
+## Two-Layer Status System (ตกลงแล้ว 16 พ.ค. — implement Sprint 3)
 
 ```
 ชั้น 1 — ระดับระบบ (academic_years.phase):
@@ -75,6 +77,33 @@
 - **Helper**: `toBE(int $year): int` → `$year + 543`
 - **Academic Year**: ปีการศึกษา 2568 = เริ่ม ส.ค. 2025 ถึง พ.ค. 2026
 
+## Course Role & Template Pool (Sprint 3)
+
+```
+course_roles                          ← master list (seed 5 roles)
+└── id, name_th, sort_order
+    หัวหน้าวิชา / เลขานุการวิชา / อาจารย์ผู้สอน / อาจารย์ประจำกลุ่ม / อาจารย์พี่เลี้ยง
+
+course_instructors (pivot)            ← template ระดับวิชา
+└── course_id, user_id, course_role_id (nullable FK)
+
+course_offering_instructors (pivot)   ← snapshot ระดับ offering
+└── + course_role_id FK (nullable, ON DELETE SET NULL)
+└── role_in_course = 'coordinator' marker เท่านั้น
+```
+
+- **Lock semantics**: course template ล็อกเมื่อ offering ใดเข้า `scheduling` หรือ `published` phase
+- **Sync direction**: template → offering snapshot ตอน `openSchedulingWindow` (ไม่ sync กลับ)
+- **Coordinator**: auto-assign จาก `courses.head_instructor_id` (ไม่อยู่ใน role dropdown ของ UI)
+- **Default role** เมื่อเพิ่มอาจารย์ผ่าน UI = "อาจารย์ผู้สอน"
+- **Course Pool routes**: `admin.course_pool.*` + `staff.course_pool.*` (Staff inherits Admin controller)
+
+## Prerequisite Location (Sprint 3)
+
+- เก็บที่ **course level** (Master Data) ใน table `course_prerequisites`
+- ไม่ใช่ที่ offering level — prerequisite เป็น property ของวิชา ไม่เปลี่ยนตามรอบเปิดสอน
+- Validation: `Rule::notIn([$course->id])` ป้องกัน self-prerequisite
+
 ## Student Group — Schema Pattern
 
 ```
@@ -104,6 +133,16 @@ course_offerings
 - `drop_assigned_staff_from_courses_table` — ลบ FK เดิม
 - `add_employee_id_to_users_table` — ย้าย `employee_id` มาอยู่ใน `users` (ออกจาก `instructor_profiles`)
 - `add_requires_capacity_to_location_types_table` — `boolean requires_capacity default true` — ห้องในประเภทที่ไม่ต้องการความจุจะไม่โดน alert
+
+## Migrations Sprint 3 (Course Pool + Course Role)
+
+- `make_course_type_nullable_on_courses_table` — `course_type` nullable (UI ลบทิ้งแล้ว, infer แทน)
+- `create_course_roles_table` — master list ของบทบาทในวิชา
+- `change_role_in_course_to_varchar_on_course_offering_instructors` — enum → varchar(100)
+- `refactor_course_roles_remove_code_add_fk` — ลบ `code`, เพิ่ม FK `course_role_id` ใน offering pivot
+- `drop_is_active_from_course_roles` — `course_roles` ใช้แค่ master ไม่ต้องเปิด/ปิด
+- `create_course_instructors_table` — pivot template ระดับวิชา (course-level pool)
+- `add_course_role_id_to_course_instructors_table` — FK `course_role_id` ใน template pivot
 
 ## PA Criteria Config
 
