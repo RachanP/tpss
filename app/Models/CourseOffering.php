@@ -74,6 +74,57 @@ class CourseOffering extends Model
         ]);
     }
 
+    public function syncInstructorPoolFromCourseTemplate(): void
+    {
+        $course = $this->course ?? $this->course()->first();
+        if (!$course) return;
+
+        if ($course->head_instructor_id && (int) $this->coordinator_id !== (int) $course->head_instructor_id) {
+            $this->forceFill(['coordinator_id' => $course->head_instructor_id])->save();
+        }
+
+        $coordinatorRoleId = \App\Models\CourseRole::where('name_th', 'หัวหน้าวิชา')->value('id');
+        $sourcePool = $course->instructors()->get();
+        $sourceIds = $sourcePool->pluck('id')->all();
+        $templateIds = array_values(array_unique(array_filter([
+            $this->coordinator_id,
+            ...$sourceIds,
+        ])));
+
+        $existingIds = $this->instructorPool()->pluck('users.id')->all();
+        $staleIds = array_diff($existingIds, $templateIds);
+        if (!empty($staleIds)) {
+            $this->instructorPool()->detach($staleIds);
+        }
+
+        $this->attachCoordinator();
+
+        if ($this->coordinator_id) {
+            $this->instructorPool()->updateExistingPivot($this->coordinator_id, [
+                'role_in_course' => 'coordinator',
+                'course_role_id' => $coordinatorRoleId,
+            ]);
+        }
+
+        foreach ($sourcePool as $instructor) {
+            if ((int) $instructor->id === (int) $this->coordinator_id) {
+                continue;
+            }
+
+            $this->instructorPool()->syncWithoutDetaching([
+                $instructor->id => [
+                    'role_in_course' => 'instructor',
+                    'course_role_id' => $instructor->pivot->course_role_id,
+                ],
+            ]);
+
+            $this->instructorPool()->updateExistingPivot($instructor->id, [
+                'role_in_course' => 'instructor',
+                'course_role_id' => $instructor->pivot->course_role_id,
+            ]);
+        }
+    }
+
     public function copyInstructorPoolFromCourse(): void
     {
         $course = $this->course ?? $this->course()->first();

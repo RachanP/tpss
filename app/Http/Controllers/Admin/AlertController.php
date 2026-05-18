@@ -92,6 +92,28 @@ class AlertController extends Controller
         if (!LocationType::exists())
             $criticals[] = ['key' => 'no_location_type', 'label' => 'ยังไม่มีประเภทสถานที่ในระบบ',  'link' => route('admin.master_data') . '?tab=location_types', 'linkTxt' => 'เพิ่มประเภทสถานที่'];
 
+        $activeCoursesCount = Course::where('status', 'active')->count();
+        if ($activeCoursesCount === 0) {
+            $criticals[] = [
+                'key'     => 'no_active_course',
+                'label'   => 'ยังไม่มีรายวิชาที่เปิดสอนสำหรับรอบปัจจุบัน',
+                'link'    => route('admin.master_data') . '?tab=courses',
+                'linkTxt' => 'ตรวจสอบรายวิชา',
+            ];
+        }
+
+        $coursesMissingHeadCount = Course::where('status', 'active')
+            ->whereNull('head_instructor_id')
+            ->count();
+        if ($coursesMissingHeadCount > 0) {
+            $criticals[] = [
+                'key'     => 'active_courses_missing_head',
+                'label'   => 'รายวิชาที่เปิดสอนยังไม่มีหัวหน้าวิชา (' . $coursesMissingHeadCount . ' วิชา)',
+                'link'    => route('admin.course_pool.index'),
+                'linkTxt' => 'ตั้งค่าหัวหน้าวิชา',
+            ];
+        }
+
         $paViolations = self::getPaViolations();
         if (!empty($paViolations)) {
             $criticals[] = [

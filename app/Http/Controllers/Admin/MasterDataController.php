@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\DB;
 use App\Models\Department;
 use App\Models\User;
 use App\Models\LocationType;
@@ -11,7 +10,6 @@ use App\Models\Room;
 use App\Models\Course;
 use App\Models\Curriculum;
 use App\Models\ActivityType;
-use App\Models\CourseRole;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -43,17 +41,20 @@ class MasterDataController extends Controller
             $q->where('role', 'staff');
         })->with('instructorProfile')->where('is_active', true)->orderBy('name')->get();
 
-        // Courses with curriculum and head instructor
-        $courses = Course::with(['curriculum', 'department', 'headInstructor', 'assignedStaff'])->get();
+        // Courses with curriculum, head instructor, staff, and academic prerequisites
+        $courses = Course::with([
+            'curriculum',
+            'department',
+            'headInstructor',
+            'assignedStaff',
+            'prerequisites:id,course_code,name_th,name_en',
+        ])->orderBy('course_code')->get();
 
         // Curriculums with course count and courses list
         $curriculums = Curriculum::withCount('courses')->with(['courses' => fn($q) => $q->orderBy('course_code')])->get();
 
         // Activity Types
         $activityTypes = ActivityType::orderBy('name')->get();
-
-        // Course Roles
-        $courseRoles = CourseRole::orderBy('sort_order')->get();
 
         // Pre-flight counts for import warnings
         $usersWithEmployeeIdCount = User::whereNotNull('employee_id')->where('employee_id', '!=', '')->count();
@@ -71,7 +72,6 @@ class MasterDataController extends Controller
             'courses',
             'curriculums',
             'activityTypes',
-            'courseRoles',
             'staffUsers',
             'isAdmin',
             'routePrefix',
@@ -313,14 +313,18 @@ class MasterDataController extends Controller
             'color_code'                  => 'nullable|string|max:7',
             'status'                      => 'required|in:active,inactive',
             'requires_practicum_rotation' => 'required|boolean',
+            'prerequisite_ids'            => 'nullable|array',
+            'prerequisite_ids.*'          => ['integer', 'distinct', 'exists:courses,id'],
         ]);
 
         $validated['requires_practicum_rotation'] = $request->boolean('requires_practicum_rotation');
         $staffIds = $validated['staff_ids'] ?? [];
-        unset($validated['staff_ids']);
+        $prerequisiteIds = $validated['prerequisite_ids'] ?? [];
+        unset($validated['staff_ids'], $validated['prerequisite_ids']);
 
         $course = Course::create($validated);
         $course->assignedStaff()->sync($staffIds);
+        $course->prerequisites()->sync($prerequisiteIds);
 
         return $this->redirectToMasterData('courses')->with('success', 'เพิ่มรายวิชาเรียบร้อยแล้ว');
     }
@@ -352,14 +356,18 @@ class MasterDataController extends Controller
             'color_code'                  => 'nullable|string|max:7',
             'status'                      => 'required|in:active,inactive',
             'requires_practicum_rotation' => 'required|boolean',
+            'prerequisite_ids'            => 'nullable|array',
+            'prerequisite_ids.*'          => ['integer', 'distinct', 'exists:courses,id', Rule::notIn([$course->id])],
         ]);
 
         $validated['requires_practicum_rotation'] = $request->boolean('requires_practicum_rotation');
         $staffIds = $validated['staff_ids'] ?? [];
-        unset($validated['staff_ids']);
+        $prerequisiteIds = $validated['prerequisite_ids'] ?? [];
+        unset($validated['staff_ids'], $validated['prerequisite_ids']);
 
         $course->update($validated);
         $course->assignedStaff()->sync($staffIds);
+        $course->prerequisites()->sync($prerequisiteIds);
 
         return $this->redirectToMasterData('courses')->with('success', 'อัปเดตข้อมูลรายวิชาเรียบร้อยแล้ว');
     }
@@ -499,37 +507,6 @@ class MasterDataController extends Controller
         } catch (\Illuminate\Database\QueryException $e) {
             return redirect()->back()->with('error', 'ไม่สามารถลบได้เนื่องจากมีกิจกรรมผูกอยู่กับประเภทนี้');
         }
-    }
-
-    public function storeCourseRole(Request $request)
-    {
-        $validated = $request->validate([
-            'name_th' => 'required|string|max:100|unique:course_roles,name_th',
-        ]);
-        $maxOrder = CourseRole::max('sort_order') ?? 0;
-        CourseRole::create(array_merge($validated, ['sort_order' => $maxOrder + 1, 'is_active' => true]));
-        return $this->redirectToMasterData('course_roles')->with('success', 'เพิ่มบทบาทในวิชาเรียบร้อยแล้ว');
-    }
-
-    public function updateCourseRole(Request $request, CourseRole $courseRole)
-    {
-        $validated = $request->validate([
-            'name_th' => 'required|string|max:100|unique:course_roles,name_th,' . $courseRole->id,
-        ]);
-        $courseRole->update($validated);
-        return $this->redirectToMasterData('course_roles')->with('success', 'อัปเดตบทบาทในวิชาเรียบร้อยแล้ว');
-    }
-
-    public function destroyCourseRole(CourseRole $courseRole)
-    {
-        $inUse = DB::table('course_offering_instructors')
-            ->where('course_role_id', $courseRole->id)
-            ->exists();
-        if ($inUse) {
-            return back()->with('error', 'ไม่สามารถลบได้เนื่องจากบทบาทนี้ถูกใช้งานอยู่');
-        }
-        $courseRole->delete();
-        return $this->redirectToMasterData('course_roles')->with('success', 'ลบบทบาทในวิชาเรียบร้อยแล้ว');
     }
 
     // ── CSV Import ────────────────────────────────────────────────────

@@ -17,6 +17,12 @@ class CoursePoolController extends Controller
     {
         $courses = Course::with(['curriculum', 'department', 'headInstructor', 'assignedStaff', 'instructors'])
             ->withCount(['instructors', 'assignedStaff'])
+            ->withExists([
+                'courseOfferings as has_locked_offering' => fn ($query) => $query->whereHas(
+                    'academicYear',
+                    fn ($yearQuery) => $yearQuery->whereIn('phase', ['scheduling', 'published'])
+                ),
+            ])
             ->orderBy('course_code')
             ->get();
 
@@ -30,6 +36,7 @@ class CoursePoolController extends Controller
     public function show(Course $course): View
     {
         $course->load(['curriculum', 'department', 'headInstructor.instructorProfile.department', 'assignedStaff', 'instructors.instructorProfile.department']);
+        $isLocked = $this->isCoursePoolLocked($course);
 
         $availableInstructors = User::query()
             ->with('instructorProfile.department')
@@ -55,12 +62,20 @@ class CoursePoolController extends Controller
         $routePrefix = $isAdmin ? 'admin' : 'staff';
 
         return view('shared.course_pool.show', compact(
-            'course', 'availableInstructors', 'availableStaff', 'courseRoles', 'isAdmin', 'routePrefix'
+            'course',
+            'availableInstructors',
+            'availableStaff',
+            'courseRoles',
+            'isAdmin',
+            'routePrefix',
+            'isLocked'
         ));
     }
 
-    public function updateHead(Request $request, Course $course): RedirectResponse
+    public function updateHead(Request $request, Course $course): RedirectResponse|JsonResponse
     {
+        if ($locked = $this->blockWhenLocked($request, $course)) return $locked;
+
         $validated = $request->validate([
             'head_instructor_id' => ['nullable', 'integer', 'exists:users,id'],
         ]);
@@ -71,11 +86,14 @@ class CoursePoolController extends Controller
         }
 
         $course->update(['head_instructor_id' => $newHeadId]);
+        AlertController::flushCache();
         return back()->with('success', 'อัปเดตหัวหน้าวิชาเรียบร้อยแล้ว');
     }
 
     public function storeStaff(Request $request, Course $course): RedirectResponse|JsonResponse
     {
+        if ($locked = $this->blockWhenLocked($request, $course)) return $locked;
+
         $validated = $request->validate(['user_id' => ['required', 'integer', 'exists:users,id']]);
         $user = User::find($validated['user_id']);
 
@@ -95,6 +113,8 @@ class CoursePoolController extends Controller
 
     public function destroyStaff(Request $request, Course $course, User $user): RedirectResponse|JsonResponse
     {
+        if ($locked = $this->blockWhenLocked($request, $course)) return $locked;
+
         $course->assignedStaff()->detach($user->id);
         if ($request->expectsJson()) return response()->json(['ok' => true]);
         return back()->with('success', 'ลบเจ้าหน้าที่ออกจากรายวิชาแล้ว');
@@ -102,6 +122,8 @@ class CoursePoolController extends Controller
 
     public function storeInstructor(Request $request, Course $course): RedirectResponse|JsonResponse
     {
+        if ($locked = $this->blockWhenLocked($request, $course)) return $locked;
+
         $validated = $request->validate([
             'user_id'        => ['required', 'integer', 'exists:users,id'],
             'course_role_id' => ['nullable', 'integer', 'exists:course_roles,id'],
@@ -135,6 +157,8 @@ class CoursePoolController extends Controller
 
     public function updateInstructorRole(Request $request, Course $course, User $user): JsonResponse|RedirectResponse
     {
+        if ($locked = $this->blockWhenLocked($request, $course)) return $locked;
+
         $validated = $request->validate([
             'course_role_id' => ['nullable', 'integer', 'exists:course_roles,id'],
         ]);
@@ -160,9 +184,33 @@ class CoursePoolController extends Controller
 
     public function destroyInstructor(Request $request, Course $course, User $user): RedirectResponse|JsonResponse
     {
+        if ($locked = $this->blockWhenLocked($request, $course)) return $locked;
+
         $course->instructors()->detach($user->id);
         if ($request->expectsJson()) return response()->json(['ok' => true]);
         return back()->with('success', 'ลบอาจารย์ผู้สอนออกจากรายวิชาแล้ว');
+    }
+
+    private function isCoursePoolLocked(Course $course): bool
+    {
+        return $course->courseOfferings()
+            ->whereHas('academicYear', fn ($query) => $query->whereIn('phase', ['scheduling', 'published']))
+            ->exists();
+    }
+
+    private function blockWhenLocked(Request $request, Course $course): RedirectResponse|JsonResponse|null
+    {
+        if (! $this->isCoursePoolLocked($course)) {
+            return null;
+        }
+
+        $message = 'แม่แบบผู้รับผิดชอบรายวิชาถูกล็อกแล้ว เนื่องจากรายวิชานี้เปิดจัดตารางแล้ว กรุณาแก้ชุดผู้สอนในหน้า Course Offering ของรอบนั้น';
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => $message], 423);
+        }
+
+        return back()->with('error', $message);
     }
 
     private function fail(Request $request, string $message): RedirectResponse|JsonResponse

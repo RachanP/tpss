@@ -20,9 +20,17 @@
     @if(session('success'))
         <div class="alert alert-success" style="margin-bottom:16px;">{{ session('success') }}</div>
     @endif
+    @if(session('error'))
+        <div class="alert alert-error" style="margin-bottom:16px;">{{ session('error') }}</div>
+    @endif
     @if($errors->any())
         <div class="alert alert-error" style="margin-bottom:16px;">
             @foreach($errors->all() as $err)<div>{{ $err }}</div>@endforeach
+        </div>
+    @endif
+    @if($isLocked)
+        <div class="alert" style="margin-bottom:16px;background:oklch(97% 0.045 82);border:1px solid oklch(84% 0.09 82);color:oklch(35% 0.09 72);">
+            แม่แบบผู้รับผิดชอบรายวิชานี้ถูกล็อกแล้ว เพราะมี Course Offering ที่อยู่ในช่วงจัดตารางหรือเผยแพร่แล้ว การแก้รายชื่อผู้สอนให้ทำในหน้า Course Offering ของรอบนั้น
         </div>
     @endif
 
@@ -35,6 +43,13 @@
             </div>
         </div>
         <div style="padding:20px;">
+            @if($isLocked)
+            <div>
+                <div class="caption">หัวหน้าวิชาปัจจุบัน</div>
+                <div style="font-weight:700;margin-top:4px;">{{ $course->headInstructor?->formatted_name ?? 'ยังไม่กำหนด' }}</div>
+                <div class="caption" style="margin-top:4px;">แม่แบบถูกล็อกหลังเปิดจัดตารางแล้ว</div>
+            </div>
+            @else
             <form method="POST" action="{{ route($routePrefix . '.course_pool.head.update', $course) }}" style="display:flex;gap:12px;align-items:end;">
                 @csrf @method('PUT')
                 <div style="flex:1;">
@@ -50,6 +65,7 @@
                 </div>
                 <button type="submit" class="btn btn-primary">บันทึก</button>
             </form>
+            @endif
         </div>
     </div>
 
@@ -116,6 +132,7 @@
             </div>
         </div>
         <div style="padding:20px;">
+            @unless($isLocked)
             <div style="position:relative;margin-bottom:16px;">
                 <input x-ref="searchInput" type="text" x-model="search" @focus="openDropdown()" @input="openDropdown()"
                     placeholder="ค้นหาชื่อเจ้าหน้าที่..." style="width:100%;" autocomplete="off">
@@ -137,14 +154,17 @@
                     </div>
                 </template>
             </div>
+            @endunless
 
             <div style="display:flex;flex-wrap:wrap;gap:8px;" x-show="pool.length > 0">
                 <template x-for="user in pool" :key="user.id">
                     <div style="display:inline-flex;align-items:center;gap:8px;background:var(--surface-2);border:1px solid var(--border-1);border-radius:6px;padding:6px 12px;font-size:14px;">
                         <span style="font-weight:600;" x-text="user.name"></span>
+                        @unless($isLocked)
                         <button type="button" @click="remove(user.id)" style="background:none;border:none;cursor:pointer;padding:0;display:flex;opacity:0.5;line-height:1;" @mouseenter="$el.style.opacity='1'" @mouseleave="$el.style.opacity='0.5'">
                             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                         </button>
+                        @endunless
                     </div>
                 </template>
             </div>
@@ -171,7 +191,7 @@
         ]);
         $courseRolesData = $courseRoles->map(fn($r) => ['id' => $r->id, 'name' => $r->name_th]);
     @endphp
-    <div class="card" x-data="{
+    <div class="card" style="overflow:visible;" x-data="{
         pool: {{ $instData->toJson() }},
         all: {{ $allInst->toJson() }},
         roles: {{ $courseRolesData->toJson() }},
@@ -250,10 +270,11 @@
         <div class="card-hdr">
             <div>
                 <div class="card-ttl">อาจารย์ผู้สอน <span style="color:var(--fg-3);font-weight:400;font-size:13px;" x-text="`(${pool.length} คน)`"></span></div>
-                <div class="caption" style="margin-top:2px;">รายชื่ออาจารย์ที่สอนในวิชานี้ — จะถูก copy เข้า course offering เมื่อ Admin เปิดช่วงจัดตาราง หัวหน้าวิชาสามารถปรับเพิ่ม/ลดได้ภายหลัง</div>
+                <div class="caption" style="margin-top:2px;">รายชื่ออาจารย์แม่แบบของรายวิชา ใช้ก่อนเปิดช่วงจัดตารางและจะถูกล็อกเมื่อ Course Offering ถูกสร้างแล้ว</div>
             </div>
         </div>
         <div style="padding:20px;">
+            @unless($isLocked)
             <div style="position:relative;margin-bottom:16px;">
                 <input x-ref="searchInput" type="text" x-model="search" @focus="openDropdown()" @input="openDropdown()"
                     placeholder="ค้นหาชื่ออาจารย์หรือภาควิชา..." style="width:100%;" autocomplete="off">
@@ -288,6 +309,7 @@
                     </div>
                 </template>
             </div>
+            @endunless
 
             <div style="display:flex;flex-direction:column;gap:6px;" x-show="pool.length > 0">
                 <template x-for="user in pool" :key="user.id">
@@ -300,30 +322,196 @@
 
                         {{-- Role selector --}}
                         <div style="flex-shrink:0;width:200px;">
-                            <select
-                                @change="changeRole(user.id, $event.target.value ? Number($event.target.value) : null)"
-                                :style="user.role_name
-                                    ? 'background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;'
-                                    : 'background:#fef3c7;border:1px solid #fde68a;color:#92400e;font-style:italic;'"
-                                style="width:100%;border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer;line-height:1.2;font-family:inherit;outline:none;">
-                                <option value="" :selected="!user.course_role_id">— ยังไม่กำหนดบทบาท —</option>
-                                <template x-for="role in roles" :key="role.id">
-                                    <option :value="role.id" :selected="user.course_role_id === role.id" x-text="role.name"></option>
-                                </template>
-                            </select>
+                            <div class="course-role-control">
+                                @if($isLocked)
+                                <div class="course-role-readonly" :class="user.role_name ? 'is-assigned' : 'is-empty'">
+                                    <span class="course-role-dot"></span>
+                                    <span x-text="user.role_name || 'ยังไม่กำหนดบทบาท'"></span>
+                                </div>
+                                @else
+                                <button type="button"
+                                    class="course-role-trigger"
+                                    :class="user.role_name ? 'is-assigned' : 'is-empty'"
+                                    @click.stop="roleEditingId = roleEditingId === user.id ? null : user.id"
+                                    :aria-expanded="roleEditingId === user.id"
+                                    aria-haspopup="listbox">
+                                    <span class="course-role-dot"></span>
+                                    <span class="course-role-trigger-text" x-text="user.role_name || 'ยังไม่กำหนดบทบาท'"></span>
+                                    <svg class="course-role-chevron" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M6 9l6 6 6-6"/>
+                                    </svg>
+                                </button>
+                                <div x-show="roleEditingId === user.id"
+                                    x-cloak
+                                    @click.outside="roleEditingId = null"
+                                    x-transition:enter="transition ease-out duration-150"
+                                    x-transition:enter-start="opacity-0 scale-95"
+                                    x-transition:enter-end="opacity-100 scale-100"
+                                    class="course-role-menu"
+                                    role="listbox">
+                                    <button type="button"
+                                        class="course-role-option"
+                                        :class="{ 'is-selected': !user.course_role_id }"
+                                        @click="changeRole(user.id, null)"
+                                        role="option">
+                                        <span class="course-role-option-label">ยังไม่กำหนดบทบาท</span>
+                                        <svg x-show="!user.course_role_id" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M20 6L9 17l-5-5"/>
+                                        </svg>
+                                    </button>
+                                    <template x-for="role in roles" :key="role.id">
+                                        <button type="button"
+                                            class="course-role-option"
+                                            :class="{ 'is-selected': user.course_role_id === role.id }"
+                                            @click="changeRole(user.id, role.id)"
+                                            role="option">
+                                            <span class="course-role-option-label" x-text="role.name"></span>
+                                            <svg x-show="user.course_role_id === role.id" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M20 6L9 17l-5-5"/>
+                                            </svg>
+                                        </button>
+                                    </template>
+                                </div>
+                                @endif
+                            </div>
                         </div>
 
                         {{-- Remove --}}
+                        @unless($isLocked)
                         <button type="button" @click="remove(user.id)" title="ลบอาจารย์ออกจากชุดผู้สอน"
                             style="background:transparent;border:none;cursor:pointer;width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;color:var(--fg-3);border-radius:50%;flex-shrink:0;transition:all 0.15s;"
                             @mouseenter="$el.style.background='#fee2e2';$el.style.color='#dc2626'"
                             @mouseleave="$el.style.background='transparent';$el.style.color='var(--fg-3)'">
                             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                         </button>
+                        @endunless
                     </div>
                 </template>
             </div>
             <div x-show="pool.length === 0" style="color:var(--fg-3);font-size:14px;">ยังไม่มีอาจารย์ผู้สอนในวิชานี้</div>
         </div>
     </div>
+
+    <style>
+        .course-role-control {
+            position: relative;
+            width: 100%;
+        }
+
+        .course-role-trigger,
+        .course-role-readonly {
+            min-height: 38px;
+            width: 100%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.35;
+            white-space: nowrap;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+        }
+
+        .course-role-trigger {
+            cursor: pointer;
+        }
+
+        .course-role-trigger:hover {
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+        }
+
+        .course-role-trigger:focus-visible {
+            outline: 2px solid rgba(0, 36, 84, 0.24);
+            outline-offset: 2px;
+        }
+
+        .course-role-trigger.is-assigned,
+        .course-role-readonly.is-assigned {
+            background: oklch(96% 0.025 255);
+            border: 1px solid oklch(82% 0.055 255);
+            color: oklch(34% 0.09 255);
+        }
+
+        .course-role-trigger.is-empty,
+        .course-role-readonly.is-empty {
+            background: oklch(97% 0.045 82);
+            border: 1px solid oklch(84% 0.09 82);
+            color: oklch(43% 0.1 72);
+            font-style: italic;
+        }
+
+        .course-role-dot {
+            width: 7px;
+            height: 7px;
+            flex: 0 0 7px;
+            border-radius: 999px;
+            background: currentColor;
+            opacity: 0.72;
+        }
+
+        .course-role-trigger-text {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-align: center;
+        }
+
+        .course-role-chevron {
+            flex: 0 0 auto;
+            opacity: 0.7;
+        }
+
+        .course-role-menu {
+            position: absolute;
+            right: 0;
+            top: calc(100% + 6px);
+            width: 280px;
+            max-height: 280px;
+            overflow-y: auto;
+            padding: 8px;
+            border: 1px solid oklch(88% 0.018 240);
+            border-radius: 8px;
+            background: rgba(252, 254, 255, 0.98);
+            box-shadow: 0 18px 38px rgba(15, 23, 42, 0.18), 0 2px 8px rgba(15, 23, 42, 0.08);
+            z-index: 40;
+            transform-origin: top right;
+        }
+
+        .course-role-option {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            min-height: 36px;
+            border: 0;
+            border-radius: 6px;
+            background: rgba(252, 254, 255, 0.94);
+            color: var(--fg-1);
+            cursor: pointer;
+            padding: 8px 10px;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: left;
+        }
+
+        .course-role-option:hover,
+        .course-role-option.is-selected {
+            background: oklch(95% 0.025 240);
+            color: var(--brand-navy);
+        }
+
+        .course-role-option-label {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    </style>
 </x-app-layout>

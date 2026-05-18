@@ -43,10 +43,9 @@ Route::middleware(['auth', 'no-back'])->group(function () {
             Route::patch('/{courseOffering}/instructors/{user}/role', [CourseOfferingController::class, 'updateInstructorRole'])->name('instructors.role');
             Route::delete('/{courseOffering}/instructors/{user}', [CourseOfferingController::class, 'destroyInstructor'])->name('instructors.destroy');
             Route::post('/{courseOffering}/student-groups', [CourseOfferingController::class, 'storeStudentGroup'])->name('student_groups.store');
+            Route::post('/{courseOffering}/student-groups/bulk', [CourseOfferingController::class, 'bulkStoreStudentGroups'])->name('student_groups.bulk_store');
             Route::put('/{courseOffering}/student-groups/{studentGroup}', [CourseOfferingController::class, 'updateStudentGroup'])->name('student_groups.update');
             Route::delete('/{courseOffering}/student-groups/{studentGroup}', [CourseOfferingController::class, 'destroyStudentGroup'])->name('student_groups.destroy');
-            Route::post('/{courseOffering}/prerequisites', [CourseOfferingController::class, 'storePrerequisite'])->name('prerequisites.store');
-            Route::delete('/{courseOffering}/prerequisites/{course}', [CourseOfferingController::class, 'destroyPrerequisite'])->name('prerequisites.destroy');
         });
 
     // Admin User Management
@@ -90,10 +89,6 @@ Route::middleware(['auth', 'no-back'])->group(function () {
         Route::post('/admin/master-data/activity-types', 'App\Http\Controllers\Admin\MasterDataController@storeActivityType')->name('admin.activity_types.store');
         Route::put('/admin/master-data/activity-types/{activityType}', 'App\Http\Controllers\Admin\MasterDataController@updateActivityType')->name('admin.activity_types.update');
         Route::delete('/admin/master-data/activity-types/{activityType}', 'App\Http\Controllers\Admin\MasterDataController@destroyActivityType')->name('admin.activity_types.destroy');
-
-        Route::post('/admin/master-data/course-roles', 'App\Http\Controllers\Admin\MasterDataController@storeCourseRole')->name('admin.course_roles.store');
-        Route::put('/admin/master-data/course-roles/{courseRole}', 'App\Http\Controllers\Admin\MasterDataController@updateCourseRole')->name('admin.course_roles.update');
-        Route::delete('/admin/master-data/course-roles/{courseRole}', 'App\Http\Controllers\Admin\MasterDataController@destroyCourseRole')->name('admin.course_roles.destroy');
 
         // Course Pool (admin)
         Route::get('/admin/course-pool', 'App\Http\Controllers\Admin\CoursePoolController@index')->name('admin.course_pool.index');

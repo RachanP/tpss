@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\CourseHead;
 
 use App\Http\Controllers\Controller;
-use App\Models\Course;
 use App\Models\CourseOffering;
 use App\Models\CourseRole;
 use App\Models\StudentGroup;
@@ -41,18 +40,11 @@ class CourseOfferingController extends Controller
         $courseOffering->load([
             'course.curriculum',
             'course.department',
-            'course.prerequisites',
             'academicYear',
             'coordinator',
             'studentGroups' => fn ($query) => $query->orderBy('group_code'),
             'instructorPool.instructorProfile.department',
         ]);
-
-        $availablePrerequisiteCourses = Course::query()
-            ->with('curriculum')
-            ->where('id', '!=', $courseOffering->course_id)
-            ->orderBy('course_code')
-            ->get();
 
         $availableInstructors = User::query()
             ->with('instructorProfile.department')
@@ -70,7 +62,6 @@ class CourseOfferingController extends Controller
         return view('course_head.course_offerings.show', [
             'courseOffering' => $courseOffering,
             'availableInstructors' => $availableInstructors,
-            'availablePrerequisiteCourses' => $availablePrerequisiteCourses,
             'courseRoles' => $courseRoles,
             'teachingWeeks' => (int) SystemSetting::get('teaching_load_weeks', 39),
         ]);
@@ -81,12 +72,26 @@ class CourseOfferingController extends Controller
         $this->authorizeCourseHeadOffering($courseOffering);
         if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
 
+        $courseOffering->loadMissing('course');
+        $requestedRotation = $request->boolean('requires_practicum_rotation');
+        $defaultRotation = (bool) $courseOffering->course?->requires_practicum_rotation;
+        $isRotationOverride = $requestedRotation !== $defaultRotation;
+
         $request->validate([
             'requires_practicum_rotation' => ['nullable', 'boolean'],
+            'practicum_note' => [
+                Rule::requiredIf($isRotationOverride),
+                'nullable',
+                'string',
+                'max:1000',
+            ],
+        ], [
+            'practicum_note.required' => 'กรุณาระบุหมายเหตุเมื่อการหมุนเวียนแหล่งฝึกของรอบนี้ต่างจากค่าเริ่มต้นใน Master Data',
         ]);
 
         $courseOffering->update([
-            'requires_practicum_rotation' => $request->boolean('requires_practicum_rotation'),
+            'requires_practicum_rotation' => $requestedRotation,
+            'practicum_note' => $isRotationOverride ? trim((string) $request->input('practicum_note')) : null,
         ]);
 
         return redirect()
@@ -221,6 +226,90 @@ class CourseOfferingController extends Controller
         return back()->with('success', 'เพิ่มกลุ่มนักศึกษาเรียบร้อยแล้ว');
     }
 
+    public function bulkStoreStudentGroups(Request $request, CourseOffering $courseOffering): RedirectResponse
+    {
+        $this->authorizeCourseHeadOffering($courseOffering);
+        if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
+
+        $validated = $request->validate([
+            'group_prefix'   => ['required', 'string', 'max:20', 'regex:/^[A-Za-z0-9ก-๙_-]+$/u'],
+            'start_number'   => ['required', 'integer', 'min:0', 'max:999'],
+            'group_count'    => ['required', 'integer', 'min:1', 'max:100'],
+            'group_counts'   => ['nullable', 'array'],
+            'group_counts.*' => ['required_with:group_counts', 'integer', 'min:1', 'max:9999'],
+        ], [
+            'group_prefix.regex' => 'รหัสนำหน้ากลุ่มใช้ได้เฉพาะตัวอักษร ตัวเลข ขีดกลาง และขีดล่าง',
+        ]);
+
+        $groupCount = (int) $validated['group_count'];
+        $customCounts = collect($validated['group_counts'] ?? [])
+            ->take($groupCount)
+            ->map(fn ($count) => (int) $count)
+            ->values();
+
+        $remainingStudents = $this->remainingStudentCount($courseOffering);
+        if ($remainingStudents < 1) {
+            return back()
+                ->withErrors(['group_count' => 'จัดกลุ่มครบตามจำนวนนักศึกษาที่เปิดรับแล้ว'])
+                ->withInput();
+        }
+
+        if ($customCounts->isNotEmpty() && $customCounts->count() !== $groupCount) {
+            return back()
+                ->withErrors(['group_counts' => 'จำนวนช่องนักศึกษาต่อกลุ่มต้องตรงกับจำนวนกลุ่ม'])
+                ->withInput();
+        }
+
+        $totalStudents = $customCounts->isNotEmpty()
+            ? $customCounts->sum()
+            : $remainingStudents;
+
+        if ($totalStudents < $groupCount) {
+            return back()
+                ->withErrors(['total_students' => 'จำนวนนักศึกษารวมต้องไม่น้อยกว่าจำนวนกลุ่ม'])
+                ->withInput();
+        }
+
+        if ($message = $this->studentCountLimitError($courseOffering, $totalStudents)) {
+            return back()->withErrors(['total_students' => $message])->withInput();
+        }
+
+        $prefix = trim($validated['group_prefix']);
+        $startNumber = (int) $validated['start_number'];
+        $groupCodes = collect(range(0, $groupCount - 1))
+            ->map(fn ($offset) => $prefix . ($startNumber + $offset));
+
+        $existingCodes = StudentGroup::query()
+            ->where('course_offering_id', $courseOffering->id)
+            ->whereIn('group_code', $groupCodes)
+            ->pluck('group_code')
+            ->all();
+
+        if (!empty($existingCodes)) {
+            return back()
+                ->withErrors(['group_prefix' => 'มีรหัสกลุ่มซ้ำแล้ว: ' . implode(', ', $existingCodes)])
+                ->withInput();
+        }
+
+        $baseCount = intdiv($totalStudents, $groupCount);
+        $remainder = $totalStudents % $groupCount;
+        $colors = ['#2563eb', '#16a34a', '#ca8a04', '#dc2626', '#7c3aed', '#0891b2', '#db2777', '#4f46e5', '#65a30d', '#ea580c'];
+
+        DB::transaction(function () use ($courseOffering, $groupCodes, $baseCount, $remainder, $customCounts, $colors) {
+            foreach ($groupCodes->values() as $index => $groupCode) {
+                $courseOffering->studentGroups()->create([
+                    'group_code' => $groupCode,
+                    'student_count' => $customCounts->isNotEmpty()
+                        ? $customCounts[$index]
+                        : $baseCount + ($index < $remainder ? 1 : 0),
+                    'color_code' => $colors[$index % count($colors)],
+                ]);
+            }
+        });
+
+        return back()->with('success', "สร้างกลุ่มนักศึกษา {$groupCount} กลุ่มเรียบร้อยแล้ว");
+    }
+
     public function updateStudentGroup(
         Request $request,
         CourseOffering $courseOffering,
@@ -282,59 +371,6 @@ class CourseOfferingController extends Controller
         return back()->with('success', 'ลบกลุ่มนักศึกษาเรียบร้อยแล้ว');
     }
 
-    public function storePrerequisite(Request $request, CourseOffering $courseOffering): RedirectResponse
-    {
-        $this->authorizeCourseHeadOffering($courseOffering);
-        if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
-
-        $validated = $request->validate([
-            'prerequisite_course_id' => ['required', 'integer', 'exists:courses,id'],
-        ]);
-
-        $course = $courseOffering->course;
-        $prerequisiteCourseId = (int) $validated['prerequisite_course_id'];
-
-        if (! $course) {
-            return back()->withErrors([
-                'prerequisite_course_id' => 'ไม่พบข้อมูลรายวิชาหลักของรายวิชานี้',
-            ])->withInput();
-        }
-
-        if ((int) $course->id === $prerequisiteCourseId) {
-            return back()->withErrors([
-                'prerequisite_course_id' => 'ไม่สามารถเลือกรายวิชาเดียวกันเป็นรายวิชาที่ต้องเรียนมาก่อนได้',
-            ])->withInput();
-        }
-
-        if ($course->prerequisites()->where('courses.id', $prerequisiteCourseId)->exists()) {
-            return back()->withErrors([
-                'prerequisite_course_id' => 'รายวิชานี้ถูกเพิ่มเป็นรายวิชาที่ต้องเรียนมาก่อนแล้ว',
-            ])->withInput();
-        }
-
-        $course->prerequisites()->attach($prerequisiteCourseId);
-
-        return back()->with('success', 'เพิ่มรายวิชาที่ต้องเรียนมาก่อนเรียบร้อยแล้ว');
-    }
-
-    public function destroyPrerequisite(CourseOffering $courseOffering, Course $course): RedirectResponse
-    {
-        $this->authorizeCourseHeadOffering($courseOffering);
-        if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
-
-        $offeringCourse = $courseOffering->course;
-
-        if (! $offeringCourse) {
-            return back()->withErrors([
-                'prerequisite_course_id' => 'ไม่พบข้อมูลรายวิชาหลักของรายวิชานี้',
-            ]);
-        }
-
-        $offeringCourse->prerequisites()->detach($course->id);
-
-        return back()->with('success', 'ลบรายวิชาที่ต้องเรียนมาก่อนเรียบร้อยแล้ว');
-    }
-
     private function authorizeCourseHeadOffering(CourseOffering $courseOffering): void
     {
         abort_unless((int) $courseOffering->coordinator_id === (int) Auth::id(), 403);
@@ -361,7 +397,7 @@ class CourseOfferingController extends Controller
         int $newStudentCount,
         ?StudentGroup $ignoreGroup = null
     ): ?string {
-        $limit = $courseOffering->total_student_count;
+        $limit = $this->studentCountLimit($courseOffering);
 
         if (! $limit || $limit < 1) {
             return 'กรุณากำหนดจำนวนนักศึกษารวมของรายวิชาก่อนเพิ่มกลุ่มนักศึกษา';
@@ -376,5 +412,22 @@ class CourseOfferingController extends Controller
         }
 
         return null;
+    }
+
+    private function remainingStudentCount(CourseOffering $courseOffering): int
+    {
+        $limit = $this->studentCountLimit($courseOffering);
+        if (! $limit || $limit < 1) {
+            return 0;
+        }
+
+        return max(0, $limit - (int) $courseOffering->studentGroups()->sum('student_count'));
+    }
+
+    private function studentCountLimit(CourseOffering $courseOffering): int
+    {
+        $courseOffering->loadMissing('course');
+
+        return (int) ($courseOffering->total_student_count ?: $courseOffering->course?->capacity ?: 0);
     }
 }

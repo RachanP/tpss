@@ -2,6 +2,9 @@
     @if(session('success'))
         <div class="alert alert-success" style="margin-bottom:16px;">{{ session('success') }}</div>
     @endif
+    @if(session('error'))
+        <div class="alert alert-error" style="margin-bottom:16px;">{{ session('error') }}</div>
+    @endif
 
     <div class="card">
         <div class="card-hdr">
@@ -46,8 +49,11 @@
                             </td>
                             <td style="text-align:center;">
                                 <a href="{{ route($routePrefix . '.course_pool.show', $course) }}" class="btn btn-ghost" style="padding:4px 12px;font-size:13px;">
-                                    ตั้งค่า
+                                    {{ $course->has_locked_offering ? 'ดูแม่แบบ' : 'ตั้งค่า' }}
                                 </a>
+                                @if($course->has_locked_offering)
+                                    <div class="caption" style="margin-top:4px;">ล็อกแล้ว</div>
+                                @endif
                             </td>
                         </tr>
                     @empty

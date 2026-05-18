@@ -6,7 +6,9 @@
     $labHours         = $course?->lab_hours ?? 0;
     $studentTotal     = $courseOffering->studentGroups->sum('student_count');
     $courseCapacity   = $course?->capacity ?? 0;
-    $ungrouped        = max(0, $courseCapacity - $studentTotal);
+    $studentLimit     = $courseOffering->total_student_count ?: $courseCapacity;
+    $ungrouped        = max(0, $studentLimit - $studentTotal);
+    $defaultRotation  = (bool) ($course?->requires_practicum_rotation ?? false);
 @endphp
 
 <x-app-layout title="รายละเอียดรายวิชา">
@@ -120,20 +122,40 @@
             </div>
 
             @if($canEdit)
-            <form method="POST" action="{{ route('maker.course_offerings.update', $courseOffering) }}" style="border-top:1px solid var(--border-1);padding-top:20px;">
+            <form method="POST"
+                action="{{ route('maker.course_offerings.update', $courseOffering) }}"
+                x-data="{
+                    rotation: '{{ old('requires_practicum_rotation', $courseOffering->requires_practicum_rotation ? '1' : '0') }}',
+                    defaultRotation: '{{ $defaultRotation ? '1' : '0' }}',
+                    get isOverride() { return this.rotation !== this.defaultRotation; }
+                }"
+                style="border-top:1px solid var(--border-1);padding-top:20px;">
                 @csrf
                 @method('PUT')
                 <div class="form-row">
                     <div class="form-group">
                         <label>การจัดรอบฝึกปฏิบัติ</label>
-                        <select name="requires_practicum_rotation">
+                        <select name="requires_practicum_rotation" x-model="rotation">
                             <option value="0" @selected(! $courseOffering->requires_practicum_rotation)>ไม่มีการหมุนเวียนแหล่งฝึก</option>
                             <option value="1" @selected($courseOffering->requires_practicum_rotation)>มีการหมุนเวียนแหล่งฝึก</option>
                         </select>
+                        <div class="caption" style="margin-top:6px;">
+                            ค่าเริ่มต้นจาก Master Data: {{ $defaultRotation ? 'มีการหมุนเวียนแหล่งฝึก' : 'ไม่มีการหมุนเวียนแหล่งฝึก' }}
+                        </div>
                     </div>
                     <div class="form-group" style="display:flex;align-items:flex-end;">
                         <button type="submit" class="btn btn-primary">บันทึก</button>
                     </div>
+                </div>
+                <div x-show="isOverride" x-cloak
+                    style="margin-top:4px;margin-bottom:14px;padding:12px 14px;border:1px solid oklch(84% 0.08 80);border-radius:8px;background:oklch(98% 0.025 85);color:oklch(38% 0.08 75);font-size:13px;line-height:1.55;">
+                    รอบเปิดสอนนี้กำลังใช้ค่าการหมุนเวียนต่างจาก Master Data กรุณาระบุเหตุผลเพื่อใช้ตรวจสอบย้อนหลัง
+                </div>
+                <div class="form-group" x-show="isOverride" x-cloak style="margin-bottom:0;">
+                    <label>หมายเหตุเมื่อเปลี่ยนต่างจาก Master Data <span style="color:var(--status-conflict-fg)">*</span></label>
+                    <textarea name="practicum_note" rows="3" maxlength="1000"
+                        :required="isOverride"
+                        placeholder="เช่น ปีการศึกษานี้ใช้ simulation lab แทนการหมุนเวียนแหล่งฝึก">{{ old('practicum_note', $courseOffering->practicum_note) }}</textarea>
                 </div>
             </form>
             @else
@@ -141,6 +163,9 @@
                 <div>
                     <div class="caption">การจัดรอบฝึกปฏิบัติ</div>
                     <div style="font-weight:600;margin-top:4px;">{{ $courseOffering->requires_practicum_rotation ? 'มีการหมุนเวียนแหล่งฝึก' : 'ไม่มีการหมุนเวียนแหล่งฝึก' }}</div>
+                    @if($courseOffering->requires_practicum_rotation !== $defaultRotation)
+                        <div class="caption" style="margin-top:5px;color:oklch(42% 0.09 75);">ต่างจากค่าเริ่มต้นใน Master Data</div>
+                    @endif
                 </div>
                 @if($courseOffering->practicum_note)
                 <div>
@@ -177,7 +202,7 @@
         $courseDeptId = $course?->department_id;
     @endphp
 
-    <div class="card" x-data="{
+    <div class="card" style="overflow:visible;" x-data="{
         pool: {{ $poolData->toJson() }},
         all: {{ $allInstructors->toJson() }},
         roles: {{ $courseRolesData->toJson() }},
@@ -187,6 +212,7 @@
         loading: false,
         error: '',
         ddTop: 0, ddLeft: 0, ddWidth: 0,
+        roleMenuId: null,
         storeUrl: '{{ $storeUrl }}',
         roleBase: '{{ $roleBase }}',
         destroyBase: '{{ $destroyBase }}',
@@ -204,6 +230,7 @@
                 if (!r.ok) { this.error = data.message ?? 'เกิดข้อผิดพลาด'; return; }
                 const u = this.pool.find(x => x.id === userId);
                 if (u) { u.course_role_id = data.course_role_id; u.role_name = data.role_name; }
+                this.roleMenuId = null;
             } catch { this.error = 'ไม่สามารถเชื่อมต่อได้'; }
             finally { this.loading = false; }
         },
@@ -347,28 +374,65 @@
 
                         {{-- Role selector (coordinator = static badge) --}}
                         <template x-if="user.is_coordinator">
-                            <div style="flex-shrink:0;width:200px;text-align:center;background:#dcfce7;border:1px solid #86efac;color:#166534;border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:600;line-height:1.2;">หัวหน้าวิชา</div>
+                            <div class="course-role-badge course-role-badge-head">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7l7-4z"/>
+                                    <path d="M9 12l2 2 4-5"/>
+                                </svg>
+                                <span>หัวหน้าวิชา</span>
+                            </div>
                         </template>
                         <template x-if="!user.is_coordinator">
-                            <div style="flex-shrink:0;width:200px;">
+                            <div class="course-role-control">
                                 @if($canEdit)
-                                <select
-                                    @change="changeRole(user.id, $event.target.value ? Number($event.target.value) : null)"
-                                    :style="user.role_name
-                                        ? 'background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;'
-                                        : 'background:#fef3c7;border:1px solid #fde68a;color:#92400e;font-style:italic;'"
-                                    style="width:100%;border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer;line-height:1.2;font-family:inherit;outline:none;">
-                                    <option value="" :selected="!user.course_role_id">— ยังไม่กำหนดบทบาท —</option>
+                                <button type="button"
+                                    class="course-role-trigger"
+                                    :class="user.role_name ? 'is-assigned' : 'is-empty'"
+                                    @click.stop="roleMenuId = roleMenuId === user.id ? null : user.id"
+                                    :aria-expanded="roleMenuId === user.id"
+                                    aria-haspopup="listbox">
+                                    <span class="course-role-dot"></span>
+                                    <span class="course-role-trigger-text" x-text="user.role_name || 'ยังไม่กำหนดบทบาท'"></span>
+                                    <svg class="course-role-chevron" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M6 9l6 6 6-6"/>
+                                    </svg>
+                                </button>
+                                <div x-show="roleMenuId === user.id"
+                                    x-cloak
+                                    @click.outside="roleMenuId = null"
+                                    x-transition:enter="transition ease-out duration-150"
+                                    x-transition:enter-start="opacity-0 scale-95"
+                                    x-transition:enter-end="opacity-100 scale-100"
+                                    class="course-role-menu"
+                                    role="listbox">
+                                    <button type="button"
+                                        class="course-role-option"
+                                        :class="{ 'is-selected': !user.course_role_id }"
+                                        @click="changeRole(user.id, null)"
+                                        role="option">
+                                        <span class="course-role-option-label">ยังไม่กำหนดบทบาท</span>
+                                        <svg x-show="!user.course_role_id" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M20 6L9 17l-5-5"/>
+                                        </svg>
+                                    </button>
                                     <template x-for="role in roles" :key="role.id">
-                                        <option :value="role.id" :selected="user.course_role_id === role.id" x-text="role.name"></option>
+                                        <button type="button"
+                                            class="course-role-option"
+                                            :class="{ 'is-selected': user.course_role_id === role.id }"
+                                            @click="changeRole(user.id, role.id)"
+                                            role="option">
+                                            <span class="course-role-option-label" x-text="role.name"></span>
+                                            <svg x-show="user.course_role_id === role.id" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M20 6L9 17l-5-5"/>
+                                            </svg>
+                                        </button>
                                     </template>
-                                </select>
+                                </div>
                                 @else
-                                <div :style="user.role_name
-                                        ? 'background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;'
-                                        : 'background:var(--surface-2);border:1px solid var(--border-1);color:var(--fg-3);font-style:italic;'"
-                                    style="text-align:center;border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:600;line-height:1.2;"
-                                    x-text="user.role_name || 'ยังไม่กำหนดบทบาท'"></div>
+                                <div class="course-role-readonly" :class="user.role_name ? 'is-assigned' : 'is-empty'">
+                                    <span class="course-role-dot"></span>
+                                    <span x-text="user.role_name || 'ยังไม่กำหนดบทบาท'"></span>
+                                </div>
                                 @endif
                             </div>
                         </template>
@@ -389,131 +453,571 @@
         </div>
     </div>
 
-    <style>@keyframes spin { to { transform: translateY(-50%) rotate(360deg); } }</style>
+    <style>
+        @keyframes spin { to { transform: translateY(-50%) rotate(360deg); } }
+
+        .course-role-control {
+            position: relative;
+            flex-shrink: 0;
+            width: 250px;
+        }
+
+        .course-role-trigger,
+        .course-role-readonly,
+        .course-role-badge {
+            min-height: 38px;
+            width: 100%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.35;
+            white-space: nowrap;
+        }
+
+        .course-role-trigger {
+            cursor: pointer;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+        }
+
+        .course-role-trigger:hover {
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+        }
+
+        .course-role-trigger:focus-visible {
+            outline: 2px solid rgba(0, 36, 84, 0.24);
+            outline-offset: 2px;
+        }
+
+        .course-role-trigger.is-assigned,
+        .course-role-readonly.is-assigned {
+            background: oklch(96% 0.025 255);
+            border: 1px solid oklch(82% 0.055 255);
+            color: oklch(34% 0.09 255);
+        }
+
+        .course-role-trigger.is-empty,
+        .course-role-readonly.is-empty {
+            background: oklch(97% 0.045 82);
+            border: 1px solid oklch(84% 0.09 82);
+            color: oklch(43% 0.1 72);
+            font-style: italic;
+        }
+
+        .course-role-badge-head {
+            flex-shrink: 0;
+            width: 250px;
+            background: oklch(96% 0.055 150);
+            border: 1px solid oklch(78% 0.12 150);
+            color: oklch(33% 0.11 150);
+        }
+
+        .course-role-dot {
+            width: 7px;
+            height: 7px;
+            flex: 0 0 7px;
+            border-radius: 999px;
+            background: currentColor;
+            opacity: 0.72;
+        }
+
+        .course-role-trigger-text {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-align: center;
+        }
+
+        .course-role-chevron {
+            flex: 0 0 auto;
+            opacity: 0.7;
+        }
+
+        .course-role-menu {
+            position: absolute;
+            right: 0;
+            top: calc(100% + 6px);
+            width: 280px;
+            max-height: 280px;
+            overflow-y: auto;
+            padding: 8px;
+            border: 1px solid oklch(88% 0.018 240);
+            border-radius: 8px;
+            background: rgba(252, 254, 255, 0.98);
+            box-shadow: 0 18px 38px rgba(15, 23, 42, 0.18), 0 2px 8px rgba(15, 23, 42, 0.08);
+            z-index: 40;
+            transform-origin: top right;
+        }
+
+        .course-role-option {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            min-height: 36px;
+            border: 0;
+            border-radius: 6px;
+            background: rgba(252, 254, 255, 0.94);
+            color: var(--fg-1);
+            cursor: pointer;
+            padding: 8px 10px;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: left;
+        }
+
+        .course-role-option:hover,
+        .course-role-option.is-selected {
+            background: oklch(95% 0.025 240);
+            color: var(--brand-navy);
+        }
+
+        .course-role-option-label {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .group-builder {
+            margin-bottom: 18px;
+            padding: 16px;
+            border: 1px solid oklch(89% 0.02 235);
+            border-radius: 8px;
+            background: oklch(98% 0.012 230);
+        }
+
+        .group-builder-main {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 14px;
+        }
+
+        .group-builder-title {
+            color: var(--fg-1);
+            font-weight: 800;
+            font-size: 15px;
+        }
+
+        .group-total-pill {
+            flex: 0 0 auto;
+            min-height: 34px;
+            display: inline-flex;
+            align-items: center;
+            border: 1px solid oklch(82% 0.055 245);
+            border-radius: 999px;
+            background: oklch(96% 0.025 245);
+            color: var(--brand-navy);
+            padding: 6px 12px;
+            font-size: 13px;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .group-builder-fields {
+            display: grid;
+            grid-template-columns: 1.2fr repeat(2, minmax(120px, 1fr));
+            gap: 12px;
+            align-items: end;
+        }
+
+        .group-builder-fields label {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            color: var(--fg-2);
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .group-mode-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+
+        .group-mode-btn {
+            min-height: 32px;
+            border: 1px solid oklch(86% 0.018 235);
+            border-radius: 999px;
+            background: rgba(252, 254, 255, 0.96);
+            color: var(--fg-2);
+            cursor: pointer;
+            padding: 5px 12px;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .group-mode-btn.is-active {
+            border-color: oklch(72% 0.08 245);
+            background: oklch(95% 0.03 245);
+            color: var(--brand-navy);
+        }
+
+        .group-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            margin-top: 12px;
+        }
+
+        .group-preview-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            min-height: 30px;
+            padding: 5px 10px;
+            border: 1px solid oklch(88% 0.018 235);
+            border-radius: 999px;
+            background: rgba(252, 254, 255, 0.96);
+            color: var(--fg-1);
+            font-size: 13px;
+        }
+
+        .group-preview-chip span:last-child {
+            color: var(--fg-3);
+        }
+
+        .group-preview-color {
+            width: 9px;
+            height: 9px;
+            border-radius: 999px;
+            flex: 0 0 9px;
+        }
+
+        .group-count-mini {
+            width: 72px;
+            min-height: 28px;
+            border-radius: 999px;
+            padding: 3px 8px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .student-group-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .student-group-row {
+            display: grid;
+            grid-template-columns: minmax(220px, 1.3fr) minmax(120px, 0.55fr) minmax(100px, 0.45fr) auto;
+            gap: 12px;
+            align-items: center;
+            padding: 10px 12px;
+            border: 1px solid oklch(90% 0.014 235);
+            border-radius: 8px;
+            background: rgba(252, 254, 255, 0.98);
+        }
+
+        .student-group-row.is-readonly {
+            grid-template-columns: minmax(220px, 1.3fr) minmax(120px, 0.55fr) minmax(100px, 0.45fr);
+        }
+
+        .student-group-row label {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            color: var(--fg-3);
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .student-group-row input {
+            min-height: 36px;
+            font-size: 14px;
+        }
+
+        .student-group-code {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        .student-group-code label {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .student-group-code-display {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .student-group-count input {
+            max-width: 120px;
+        }
+
+        .student-group-color input[type='color'] {
+            width: 52px;
+            padding: 3px;
+            cursor: pointer;
+        }
+
+        .student-group-swatch {
+            width: 16px;
+            height: 16px;
+            flex: 0 0 16px;
+            border-radius: 999px;
+            margin-bottom: 10px;
+            box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.14);
+        }
+
+        .student-group-actions {
+            display: inline-flex;
+            justify-content: flex-end;
+            gap: 6px;
+        }
+
+        .icon-btn-save,
+        .icon-btn-delete {
+            width: 36px;
+            height: 36px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            cursor: pointer;
+            background: rgba(252, 254, 255, 0.96);
+        }
+
+        .icon-btn-save {
+            border: 1px solid oklch(82% 0.055 245);
+            color: var(--brand-navy);
+        }
+
+        .icon-btn-delete {
+            border: 1px solid oklch(88% 0.028 30);
+            color: oklch(42% 0.12 30);
+        }
+
+        .icon-btn-save:hover {
+            background: oklch(96% 0.025 245);
+        }
+
+        .icon-btn-delete:hover {
+            background: oklch(96% 0.035 30);
+        }
+
+        .student-group-empty {
+            padding: 24px;
+            text-align: center;
+            color: var(--fg-3);
+            border: 1px dashed oklch(86% 0.018 235);
+            border-radius: 8px;
+            background: oklch(98% 0.008 230);
+        }
+
+        @media (max-width: 720px) {
+            .course-role-control,
+            .course-role-badge-head {
+                width: 100%;
+            }
+
+            .group-builder-main {
+                flex-direction: column;
+            }
+
+            .group-builder-fields {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .student-group-row,
+            .student-group-row.is-readonly {
+                grid-template-columns: 1fr;
+            }
+
+            .student-group-count input {
+                max-width: none;
+            }
+
+            .student-group-actions {
+                justify-content: flex-start;
+            }
+        }
+    </style>
 
     <div class="card">
         <div class="card-hdr">
             <div>
                 <div class="card-ttl">กลุ่มนักศึกษา</div>
-                <div class="caption" style="margin-top:4px;">เปิดรับ {{ $courseCapacity ?: '-' }} คน · จัดกลุ่มแล้ว {{ $studentTotal }} คน · ยังไม่ได้จัดกลุ่ม {{ $ungrouped }} คน</div>
+                <div class="caption" style="margin-top:4px;">เปิดรับ {{ $studentLimit ?: '-' }} คน · จัดกลุ่มแล้ว {{ $studentTotal }} คน · ยังไม่ได้จัดกลุ่ม {{ $ungrouped }} คน</div>
             </div>
         </div>
         <div style="padding:20px;">
-            @if($canEdit)
-            <form method="POST" action="{{ route('maker.course_offerings.student_groups.store', $courseOffering) }}" class="form-row" style="margin-bottom:16px;">
+            @if($canEdit && $ungrouped > 0)
+            <form method="POST"
+                action="{{ route('maker.course_offerings.student_groups.bulk_store', $courseOffering) }}"
+                x-data="{
+                    prefix: '{{ old('group_prefix', 'A') }}',
+                    start: {{ (int) old('start_number', 1) }},
+                    count: {{ (int) old('group_count', $ungrouped > 0 ? min(9, max(1, (int) ceil($ungrouped / 30))) : 1) }},
+                    total: {{ (int) max(1, $ungrouped) }},
+                    customMode: {{ old('group_counts') ? 'true' : 'false' }},
+                    customCounts: {{ Js::from(array_map('intval', old('group_counts', []))) }},
+                    palette: ['#2563eb', '#16a34a', '#ca8a04', '#dc2626', '#7c3aed', '#0891b2', '#db2777', '#4f46e5', '#65a30d', '#ea580c'],
+                    get safeCount() { return Math.max(1, parseInt(this.count) || 1); },
+                    get safeTotal() { return Math.max(1, parseInt(this.total) || 1); },
+                    get base() { return Math.floor(this.safeTotal / this.safeCount); },
+                    get remainder() { return this.safeTotal % this.safeCount; },
+                    normalizeCounts() {
+                        const counts = Array.from({ length: this.safeCount }, (_, i) => {
+                            const fallback = this.base + (i < this.remainder ? 1 : 0);
+                            const current = this.customCounts[i];
+
+                            if (this.customMode && (current === '' || current === null)) {
+                                return '';
+                            }
+
+                            if (current === undefined || current === '' || current === null) {
+                                return fallback;
+                            }
+
+                            const parsed = parseInt(current);
+                            return Number.isNaN(parsed) ? fallback : parsed;
+                        });
+                        this.customCounts = counts;
+                    },
+                    setEvenSplit() {
+                        this.customMode = false;
+                        this.customCounts = [];
+                    },
+                    enableCustom() {
+                        this.customMode = true;
+                        this.normalizeCounts();
+                    },
+                    get customTotal() {
+                        this.normalizeCounts();
+                        return this.customCounts.reduce((sum, count) => sum + (parseInt(count) || 0), 0);
+                    },
+                    get preview() {
+                        this.normalizeCounts();
+                        return Array.from({ length: this.customMode ? this.safeCount : Math.min(this.safeCount, 12) }, (_, i) => ({
+                            index: i,
+                            code: `${this.prefix || 'A'}${(parseInt(this.start) || 0) + i}`,
+                            count: this.customMode ? this.customCounts[i] : this.base + (i < this.remainder ? 1 : 0),
+                            color: this.palette[i % this.palette.length],
+                        }));
+                    }
+                }"
+                class="group-builder">
                 @csrf
-                <div class="form-group">
-                    <label>รหัสกลุ่ม</label>
-                    <input type="text" name="group_code" value="{{ old('group_code') }}" required>
+                <div class="group-builder-main">
+                    <div>
+                        <div class="group-builder-title">สร้างกลุ่มแบบเร็ว</div>
+                        <div class="caption" style="margin-top:3px;">ระบบใช้ยอดนักศึกษาที่ยังไม่ได้จัดกลุ่มจากข้อมูลรายวิชา แล้วช่วยแบ่งหรือให้ปรับรายกลุ่มได้</div>
+                    </div>
+                    <div class="group-total-pill">ยังไม่ได้จัดกลุ่ม {{ $ungrouped }} คน</div>
+                    <button class="btn btn-primary" type="submit">สร้างกลุ่ม</button>
                 </div>
-                <div class="form-group">
-                    <label>จำนวนนักศึกษา</label>
-                    <input type="number" name="student_count" min="1" value="{{ old('student_count') }}" required>
+                <div class="group-builder-fields">
+                    <label>
+                        <span>รหัสนำหน้า</span>
+                        <input type="text" name="group_prefix" x-model="prefix" required>
+                    </label>
+                    <label>
+                        <span>เริ่มที่</span>
+                        <input type="number" name="start_number" x-model.number="start" min="0" required>
+                    </label>
+                    <label>
+                        <span>จำนวนกลุ่ม</span>
+                        <input type="number" name="group_count" x-model.number="count" min="1" max="100" required>
+                    </label>
                 </div>
-                <div class="form-group">
-                    <label>สี</label>
-                    <input type="text" name="color_code" value="{{ old('color_code') }}" placeholder="#2563eb">
+                <div class="group-mode-row">
+                    <button type="button" class="group-mode-btn" :class="{ 'is-active': !customMode }" @click="setEvenSplit()">แบ่งเท่า ๆ กัน</button>
+                    <button type="button" class="group-mode-btn" :class="{ 'is-active': customMode }" @click="enableCustom()">กำหนดเองรายกลุ่ม</button>
+                    <span class="caption" x-show="customMode" x-text="'รวม ' + customTotal + ' คน'"></span>
                 </div>
-                <div class="form-group" style="display:flex;align-items:flex-end;">
-                    <button class="btn btn-primary" type="submit">เพิ่มกลุ่ม</button>
+                <div class="group-preview" aria-label="ตัวอย่างกลุ่มที่จะสร้าง">
+                    <template x-for="group in preview" :key="group.code">
+                        <div class="group-preview-chip">
+                            <span class="group-preview-color" :style="`background:${group.color}`"></span>
+                            <strong x-text="group.code"></strong>
+                            <template x-if="!customMode">
+                                <span x-text="group.count + ' คน'"></span>
+                            </template>
+                            <template x-if="customMode">
+                                <input class="group-count-mini" type="number" name="group_counts[]" min="1" max="9999" x-model="customCounts[group.index]">
+                            </template>
+                        </div>
+                    </template>
+                    <div class="caption" x-show="!customMode && safeCount > 12">แสดงตัวอย่าง 12 กลุ่มแรก</div>
                 </div>
             </form>
-            @endif
-
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>รหัสกลุ่ม</th>
-                            <th>จำนวนนักศึกษา</th>
-                            <th>สี</th>
-                            @if($canEdit)<th></th>@endif
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($courseOffering->studentGroups as $group)
-                            <tr>
-                                @if($canEdit)
-                                <td>
-                                    <form id="group-update-{{ $group->id }}" method="POST" action="{{ route('maker.course_offerings.student_groups.update', [$courseOffering, $group]) }}">
-                                        @csrf
-                                        @method('PUT')
-                                    </form>
-                                    <input form="group-update-{{ $group->id }}" type="text" name="group_code" value="{{ $group->group_code }}" required>
-                                </td>
-                                <td><input form="group-update-{{ $group->id }}" type="number" name="student_count" min="1" value="{{ $group->student_count }}" required></td>
-                                <td><input form="group-update-{{ $group->id }}" type="text" name="color_code" value="{{ $group->color_code }}"></td>
-                                <td style="text-align:right;">
-                                    <div style="display:flex;gap:8px;justify-content:flex-end;">
-                                        <button form="group-update-{{ $group->id }}" class="btn btn-secondary" type="submit">บันทึก</button>
-                                        <form method="POST" action="{{ route('maker.course_offerings.student_groups.destroy', [$courseOffering, $group]) }}">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button class="btn btn-ghost" type="submit">ลบ</button>
-                                        </form>
-                                    </div>
-                                </td>
-                                @else
-                                <td style="font-weight:600;">{{ $group->group_code }}</td>
-                                <td>{{ $group->student_count }} คน</td>
-                                <td>
-                                    @if($group->color_code)
-                                        <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:{{ $group->color_code }};vertical-align:middle;margin-right:6px;"></span>{{ $group->color_code }}
-                                    @else
-                                        <span style="color:var(--fg-3);">—</span>
-                                    @endif
-                                </td>
-                                @endif
-                            </tr>
-                        @empty
-                            <tr><td colspan="{{ $canEdit ? 4 : 3 }}" style="text-align:center;color:var(--fg-3);">ยังไม่มีกลุ่มนักศึกษา</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="card-hdr">
-            <div>
-                <div class="card-ttl">เงื่อนไขรายวิชา</div>
-                <div class="caption" style="margin-top:4px;">รายวิชาที่ต้องเรียนมาก่อน</div>
-            </div>
-        </div>
-        <div style="padding:20px;">
-            @if($canEdit)
-            <form method="POST" action="{{ route('maker.course_offerings.prerequisites.store', $courseOffering) }}" style="display:flex;gap:10px;align-items:flex-end;margin-bottom:12px;">
-                @csrf
-                <div style="flex:1;">
-                    <select name="prerequisite_course_id" required>
-                        <option value="">เลือกรายวิชาที่ต้องเรียนมาก่อน</option>
-                        @foreach($availablePrerequisiteCourses as $candidateCourse)
-                            <option value="{{ $candidateCourse->id }}" @selected(old('prerequisite_course_id') == $candidateCourse->id)>
-                                {{ $candidateCourse->course_code }} {{ $candidateCourse->name_th ?? $candidateCourse->name_en }}
-                            </option>
-                        @endforeach
-                    </select>
+            @elseif($canEdit)
+                <div style="margin-bottom:18px;padding:12px 14px;border:1px solid oklch(88% 0.02 235);border-radius:8px;background:oklch(98% 0.012 230);color:var(--fg-2);font-size:14px;">
+                    จัดกลุ่มครบตามจำนวนนักศึกษาที่เปิดรับแล้ว
                 </div>
-                <button class="btn btn-primary" type="submit">เพิ่ม</button>
-            </form>
             @endif
-            <div class="body-sm">
-                @forelse($course?->prerequisites ?? collect() as $prerequisite)
+
+            <div class="student-group-list">
+                @forelse($courseOffering->studentGroups as $group)
                     @if($canEdit)
-                    <form method="POST" action="{{ route('maker.course_offerings.prerequisites.destroy', [$courseOffering, $prerequisite]) }}" style="display:inline-flex;align-items:center;gap:6px;margin:0 6px 6px 0;">
+                    <form method="POST" action="{{ route('maker.course_offerings.student_groups.update', [$courseOffering, $group]) }}" class="student-group-row">
+                        @csrf
+                        @method('PUT')
+                        <div class="student-group-code">
+                            <span class="student-group-swatch" style="background:{{ $group->color_code ?: '#2563eb' }}"></span>
+                            <label>
+                                <span>รหัสกลุ่ม</span>
+                                <input type="text" name="group_code" value="{{ $group->group_code }}" required>
+                            </label>
+                        </div>
+                        <label class="student-group-count">
+                            <span>นักศึกษา</span>
+                            <input type="number" name="student_count" min="1" value="{{ $group->student_count }}" required>
+                        </label>
+                        <label class="student-group-color">
+                            <span>สี</span>
+                            <input type="color" name="color_code" value="{{ $group->color_code ?: '#2563eb' }}">
+                        </label>
+                        <div class="student-group-actions">
+                            <button class="icon-btn-save" type="submit" title="บันทึกกลุ่ม {{ $group->group_code }}">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+                            </button>
+                            <button form="group-delete-{{ $group->id }}" class="icon-btn-delete" type="submit" title="ลบกลุ่ม {{ $group->group_code }}">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            </button>
+                        </div>
+                    </form>
+                    <form id="group-delete-{{ $group->id }}" method="POST" action="{{ route('maker.course_offerings.student_groups.destroy', [$courseOffering, $group]) }}">
                         @csrf
                         @method('DELETE')
-                        <span class="badge badge-gray">{{ $prerequisite->course_code }}</span>
-                        <button class="btn btn-ghost" type="submit" style="padding:4px 8px;">ลบ</button>
                     </form>
                     @else
-                    <span class="badge badge-gray" style="margin:0 6px 6px 0;">{{ $prerequisite->course_code }}</span>
+                    <div class="student-group-row is-readonly">
+                        <div class="student-group-code-display">
+                            <span class="student-group-swatch" style="background:{{ $group->color_code ?: '#2563eb' }}"></span>
+                            <strong>{{ $group->group_code }}</strong>
+                        </div>
+                        <div>{{ $group->student_count }} คน</div>
+                        <div class="caption">{{ $group->color_code ?: '-' }}</div>
+                    </div>
                     @endif
                 @empty
-                    <span style="color:var(--fg-3);">ไม่มีเงื่อนไขรายวิชาที่ต้องเรียนมาก่อน</span>
+                    <div class="student-group-empty">ยังไม่มีกลุ่มนักศึกษา</div>
                 @endforelse
             </div>
         </div>
     </div>
+
 </x-app-layout>
