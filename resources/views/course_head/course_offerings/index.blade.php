@@ -56,6 +56,11 @@
                             $lectureHours  = $offering->planned_lecture_hours ?? $course?->lecture_hours ?? 0;
                             $labHours      = $offering->planned_lab_hours ?? $course?->lab_hours ?? 0;
                             $practicumHours = $offering->planned_practicum_hours ?? 0;
+                            $studentTotal = $offering->total_student_count;
+                            $allocatedStudents = (int) ($offering->allocated_student_count ?? 0);
+                            $hasStudentTotal = $studentTotal !== null && (int) $studentTotal > 0;
+                            $studentLimit = (int) ($studentTotal ?? 0);
+                            $remainingStudents = $hasStudentTotal ? max(0, $studentLimit - $allocatedStudents) : null;
                         @endphp
                         <tr>
                             <td>
@@ -70,18 +75,50 @@
                                 </div>
                             </td>
                             <td>
-                                <div style="font-weight:700;">
+                                <div style="font-weight:700;white-space:nowrap;">
                                     @if($offering->student_groups_count > 0)
                                         {{ $offering->student_groups_count }} กลุ่ม
                                     @else
                                         ยังไม่ได้จัดกลุ่ม
                                     @endif
                                 </div>
-                                <div class="caption" style="margin-top:4px;">รับได้ {{ $course?->capacity ?? '-' }} คน</div>
+                                <div style="margin-top:8px;">
+                                    @if(! $hasStudentTotal)
+                                        <span class="badge badge-gray" data-testid="student-capacity-missing" style="white-space:nowrap;">
+                                            ยังไม่ได้กำหนดจำนวนนักศึกษา
+                                        </span>
+                                    @elseif($offering->student_groups_count < 1)
+                                        <span class="badge badge-gray" data-testid="student-capacity-no-groups" style="white-space:nowrap;">
+                                            ยังไม่มีกลุ่ม
+                                        </span>
+                                        <div class="caption" style="margin-top:4px;white-space:nowrap;">เหลือ {{ $remainingStudents }} คน</div>
+                                    @elseif($allocatedStudents >= $studentLimit)
+                                        <span
+                                            class="badge"
+                                            data-testid="student-capacity-full"
+                                            style="background:var(--status-conflict-bg);color:var(--status-conflict-fg);border:1px solid var(--status-conflict-border);white-space:nowrap;"
+                                        >
+                                            กลุ่มเต็ม
+                                        </span>
+                                    @elseif($remainingStudents <= 10)
+                                        <span class="badge badge-warn" data-testid="student-capacity-low" style="white-space:nowrap;">
+                                            เหลือ {{ $remainingStudents }} คน
+                                        </span>
+                                    @else
+                                        <span class="badge badge-ok" data-testid="student-capacity-open" style="white-space:nowrap;">
+                                            เหลือ {{ $remainingStudents }} คน
+                                        </span>
+                                    @endif
+                                </div>
+                                @if($hasStudentTotal)
+                                    <div class="caption" style="margin-top:4px;white-space:nowrap;">จัดแล้ว {{ $allocatedStudents }}/{{ $studentLimit }} คน</div>
+                                @else
+                                    <div class="caption" style="margin-top:4px;white-space:nowrap;">รับได้ - คน</div>
+                                @endif
                             </td>
-                            <td>
-                                <div class="body-sm">บรรยาย {{ $lectureHours }} · ปฏิบัติ {{ $labHours }}</div>
-                                <div class="caption" style="margin-top:4px;">ฝึกปฏิบัติ {{ $practicumHours }} · {{ $offering->teaching_weeks ?? '-' }} สัปดาห์</div>
+                            <td style="white-space:nowrap;">
+                                <div class="body-sm" style="white-space:nowrap;">บรรยาย {{ $lectureHours }} · ปฏิบัติ {{ $labHours }}</div>
+                                <div class="caption" style="margin-top:4px;white-space:nowrap;">ฝึกปฏิบัติ {{ $practicumHours }} · {{ $offering->teaching_weeks ?? '-' }} สัปดาห์</div>
                             </td>
                             <td>
                                 @if($phase === 'scheduling')
