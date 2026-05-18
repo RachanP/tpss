@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,         // create users + instructor_profiles (needs departments FK)
             DepartmentSeeder::class,   // pass 2: assign head/secretary now that users exist
             RoomSeeder::class,
+            CourseRoleSeeder::class,
             CourseSeeder::class,
             ActivityTypeSeeder::class,
             CourseOfferingSeeder::class,

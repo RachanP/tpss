@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\CourseHead;
 
 use App\Http\Controllers\Controller;
-use App\Models\Course;
 use App\Models\CourseOffering;
+use App\Models\CourseRole;
 use App\Models\StudentGroup;
+use App\Models\SystemSetting;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -38,30 +40,30 @@ class CourseOfferingController extends Controller
         $courseOffering->load([
             'course.curriculum',
             'course.department',
-            'course.prerequisites',
             'academicYear',
             'coordinator',
             'studentGroups' => fn ($query) => $query->orderBy('group_code'),
             'instructorPool.instructorProfile.department',
         ]);
 
-        $availablePrerequisiteCourses = Course::query()
-            ->with('curriculum')
-            ->where('id', '!=', $courseOffering->course_id)
-            ->orderBy('course_code')
-            ->get();
-
         $availableInstructors = User::query()
             ->with('instructorProfile.department')
             ->where('is_active', true)
             ->whereHas('instructorProfile')
+            ->whereHas('roles', fn ($q) => $q->whereIn('role', ['instructor', 'course_head']))
             ->orderBy('name')
+            ->get();
+
+        // Roles ที่เลือกได้ในชุดผู้สอน — ซ่อน "หัวหน้าวิชา" (auto-assigned ให้ coordinator)
+        $courseRoles = CourseRole::orderBy('sort_order')
+            ->where('name_th', '!=', 'หัวหน้าวิชา')
             ->get();
 
         return view('course_head.course_offerings.show', [
             'courseOffering' => $courseOffering,
             'availableInstructors' => $availableInstructors,
-            'availablePrerequisiteCourses' => $availablePrerequisiteCourses,
+            'courseRoles' => $courseRoles,
+            'teachingWeeks' => (int) SystemSetting::get('teaching_load_weeks', 39),
         ]);
     }
 
@@ -70,67 +72,130 @@ class CourseOfferingController extends Controller
         $this->authorizeCourseHeadOffering($courseOffering);
         if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
 
-        $validated = $request->validate([
-            'total_student_count' => ['required', 'integer', 'min:1', 'max:9999'],
-            'planned_lecture_hours' => ['nullable', 'integer', 'min:0', 'max:9999'],
-            'planned_lab_hours' => ['nullable', 'integer', 'min:0', 'max:9999'],
-            'planned_practicum_hours' => ['nullable', 'integer', 'min:0', 'max:9999'],
-            'teaching_weeks' => ['nullable', 'integer', 'min:1', 'max:52'],
+        $courseOffering->loadMissing('course');
+        $requestedRotation = $request->boolean('requires_practicum_rotation');
+        $defaultRotation = (bool) $courseOffering->course?->requires_practicum_rotation;
+        $isRotationOverride = $requestedRotation !== $defaultRotation;
+
+        $request->validate([
             'requires_practicum_rotation' => ['nullable', 'boolean'],
-            'practicum_note' => ['nullable', 'string', 'max:2000'],
+            'practicum_note' => [
+                Rule::requiredIf($isRotationOverride),
+                'nullable',
+                'string',
+                'max:1000',
+            ],
+        ], [
+            'practicum_note.required' => 'กรุณาระบุหมายเหตุเมื่อการหมุนเวียนแหล่งฝึกของรอบนี้ต่างจากค่าเริ่มต้นใน Master Data',
         ]);
 
-        $validated['requires_practicum_rotation'] = $request->boolean('requires_practicum_rotation');
-
-        $courseOffering->update($validated);
+        $courseOffering->update([
+            'requires_practicum_rotation' => $requestedRotation,
+            'practicum_note' => $isRotationOverride ? trim((string) $request->input('practicum_note')) : null,
+        ]);
 
         return redirect()
-            ->route('maker.course_offerings.show', $courseOffering)
+            ->to(route('maker.course_offerings.show', $courseOffering) . '#course-info')
             ->with('success', 'บันทึกข้อมูลรายวิชาเรียบร้อยแล้ว');
     }
 
-    public function storeInstructor(Request $request, CourseOffering $courseOffering): RedirectResponse
+    public function storeInstructor(Request $request, CourseOffering $courseOffering): RedirectResponse|JsonResponse
     {
         $this->authorizeCourseHeadOffering($courseOffering);
         if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
 
         $validated = $request->validate([
-            'user_id' => ['required', 'integer', 'exists:users,id'],
+            'user_id'        => ['required', 'integer', 'exists:users,id'],
+            'course_role_id' => ['nullable', 'integer', 'exists:course_roles,id'],
         ]);
 
-        $user = User::with('instructorProfile')->find($validated['user_id']);
+        $user = User::with('instructorProfile.department')->find($validated['user_id']);
 
         if (! $user || ! $user->is_active || ! $user->instructorProfile) {
-            return back()
-                ->withErrors(['user_id' => 'เลือกได้เฉพาะอาจารย์ที่ยังใช้งานอยู่และมีข้อมูลโปรไฟล์อาจารย์'])
-                ->withInput();
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'เลือกได้เฉพาะอาจารย์ที่ยังใช้งานอยู่และมีข้อมูลโปรไฟล์อาจารย์'], 422);
+            }
+            return back()->withErrors(['user_id' => 'เลือกได้เฉพาะอาจารย์ที่ยังใช้งานอยู่และมีข้อมูลโปรไฟล์อาจารย์'])->withInput();
         }
 
         if ($courseOffering->instructorPool()->where('users.id', $user->id)->exists()) {
-            return back()
-                ->withErrors(['user_id' => 'อาจารย์คนนี้อยู่ในชุดผู้สอนของรายวิชานี้แล้ว'])
-                ->withInput();
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'อาจารย์คนนี้อยู่ในชุดผู้สอนของรายวิชานี้แล้ว'], 422);
+            }
+            return back()->withErrors(['user_id' => 'อาจารย์คนนี้อยู่ในชุดผู้สอนของรายวิชานี้แล้ว'])->withInput();
         }
+
+        $roleId = $validated['course_role_id'] ?? CourseRole::where('name_th', 'อาจารย์ผู้สอน')->value('id');
 
         $courseOffering->instructorPool()->attach($user->id, [
             'role_in_course' => 'instructor',
+            'course_role_id' => $roleId,
         ]);
+
+        if ($request->expectsJson()) {
+            $role = $roleId ? CourseRole::find($roleId) : null;
+            return response()->json([
+                'id'             => $user->id,
+                'name'           => $user->formatted_name,
+                'department'     => $user->instructorProfile?->department?->name ?? '-',
+                'course_role_id' => $roleId,
+                'role_name'      => $role?->name_th,
+                'is_coordinator' => false,
+            ]);
+        }
 
         return back()->with('success', 'เพิ่มอาจารย์ในรายวิชาเรียบร้อยแล้ว');
     }
 
-    public function destroyInstructor(CourseOffering $courseOffering, User $user): RedirectResponse
+    public function updateInstructorRole(Request $request, CourseOffering $courseOffering, User $user): JsonResponse|RedirectResponse
+    {
+        $this->authorizeCourseHeadOffering($courseOffering);
+        if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
+
+        $validated = $request->validate([
+            'course_role_id' => ['nullable', 'integer', 'exists:course_roles,id'],
+        ]);
+
+        if (! $courseOffering->instructorPool()->where('users.id', $user->id)->exists()) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'อาจารย์คนนี้ไม่อยู่ในชุดผู้สอน'], 422);
+            }
+            return back()->withErrors(['user_id' => 'อาจารย์คนนี้ไม่อยู่ในชุดผู้สอน']);
+        }
+
+        $courseOffering->instructorPool()->updateExistingPivot($user->id, [
+            'course_role_id' => $validated['course_role_id'] ?? null,
+        ]);
+
+        if ($request->expectsJson()) {
+            $role = $validated['course_role_id'] ? CourseRole::find($validated['course_role_id']) : null;
+            return response()->json([
+                'ok'             => true,
+                'course_role_id' => $validated['course_role_id'] ?? null,
+                'role_name'      => $role?->name_th,
+            ]);
+        }
+
+        return back()->with('success', 'อัปเดตบทบาทเรียบร้อยแล้ว');
+    }
+
+    public function destroyInstructor(Request $request, CourseOffering $courseOffering, User $user): RedirectResponse|JsonResponse
     {
         $this->authorizeCourseHeadOffering($courseOffering);
         if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
 
         if ((int) $courseOffering->coordinator_id === (int) $user->id) {
-            return back()->withErrors([
-                'instructor_pool' => 'ไม่สามารถนำหัวหน้าวิชาหลักออกจากชุดผู้สอนได้ กรุณาเปลี่ยนหัวหน้าวิชาผ่านหน้าตั้งค่ารายวิชาแยกต่างหาก',
-            ]);
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'ไม่สามารถนำหัวหน้าวิชาหลักออกจากชุดผู้สอนได้'], 422);
+            }
+            return back()->withErrors(['instructor_pool' => 'ไม่สามารถนำหัวหน้าวิชาหลักออกจากชุดผู้สอนได้']);
         }
 
         $courseOffering->instructorPool()->detach($user->id);
+
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true]);
+        }
 
         return back()->with('success', 'ลบอาจารย์ออกจากชุดผู้สอนเรียบร้อยแล้ว');
     }
@@ -159,6 +224,90 @@ class CourseOfferingController extends Controller
         $courseOffering->studentGroups()->create($validated);
 
         return back()->with('success', 'เพิ่มกลุ่มนักศึกษาเรียบร้อยแล้ว');
+    }
+
+    public function bulkStoreStudentGroups(Request $request, CourseOffering $courseOffering): RedirectResponse
+    {
+        $this->authorizeCourseHeadOffering($courseOffering);
+        if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
+
+        $validated = $request->validate([
+            'group_prefix'   => ['required', 'string', 'max:20', 'regex:/^[A-Za-z0-9ก-๙_-]+$/u'],
+            'start_number'   => ['required', 'integer', 'min:0', 'max:999'],
+            'group_count'    => ['required', 'integer', 'min:1', 'max:100'],
+            'group_counts'   => ['nullable', 'array'],
+            'group_counts.*' => ['required_with:group_counts', 'integer', 'min:1', 'max:9999'],
+        ], [
+            'group_prefix.regex' => 'รหัสนำหน้ากลุ่มใช้ได้เฉพาะตัวอักษร ตัวเลข ขีดกลาง และขีดล่าง',
+        ]);
+
+        $groupCount = (int) $validated['group_count'];
+        $customCounts = collect($validated['group_counts'] ?? [])
+            ->take($groupCount)
+            ->map(fn ($count) => (int) $count)
+            ->values();
+
+        $remainingStudents = $this->remainingStudentCount($courseOffering);
+        if ($remainingStudents < 1) {
+            return back()
+                ->withErrors(['group_count' => 'จัดกลุ่มครบตามจำนวนนักศึกษาที่เปิดรับแล้ว'])
+                ->withInput();
+        }
+
+        if ($customCounts->isNotEmpty() && $customCounts->count() !== $groupCount) {
+            return back()
+                ->withErrors(['group_counts' => 'จำนวนช่องนักศึกษาต่อกลุ่มต้องตรงกับจำนวนกลุ่ม'])
+                ->withInput();
+        }
+
+        $totalStudents = $customCounts->isNotEmpty()
+            ? $customCounts->sum()
+            : $remainingStudents;
+
+        if ($totalStudents < $groupCount) {
+            return back()
+                ->withErrors(['total_students' => 'จำนวนนักศึกษารวมต้องไม่น้อยกว่าจำนวนกลุ่ม'])
+                ->withInput();
+        }
+
+        if ($message = $this->studentCountLimitError($courseOffering, $totalStudents)) {
+            return back()->withErrors(['total_students' => $message])->withInput();
+        }
+
+        $prefix = trim($validated['group_prefix']);
+        $startNumber = (int) $validated['start_number'];
+        $groupCodes = collect(range(0, $groupCount - 1))
+            ->map(fn ($offset) => $prefix . ($startNumber + $offset));
+
+        $existingCodes = StudentGroup::query()
+            ->where('course_offering_id', $courseOffering->id)
+            ->whereIn('group_code', $groupCodes)
+            ->pluck('group_code')
+            ->all();
+
+        if (!empty($existingCodes)) {
+            return back()
+                ->withErrors(['group_prefix' => 'มีรหัสกลุ่มซ้ำแล้ว: ' . implode(', ', $existingCodes)])
+                ->withInput();
+        }
+
+        $baseCount = intdiv($totalStudents, $groupCount);
+        $remainder = $totalStudents % $groupCount;
+        $colors = ['#2563eb', '#16a34a', '#ca8a04', '#dc2626', '#7c3aed', '#0891b2', '#db2777', '#4f46e5', '#65a30d', '#ea580c'];
+
+        DB::transaction(function () use ($courseOffering, $groupCodes, $baseCount, $remainder, $customCounts, $colors) {
+            foreach ($groupCodes->values() as $index => $groupCode) {
+                $courseOffering->studentGroups()->create([
+                    'group_code' => $groupCode,
+                    'student_count' => $customCounts->isNotEmpty()
+                        ? $customCounts[$index]
+                        : $baseCount + ($index < $remainder ? 1 : 0),
+                    'color_code' => $colors[$index % count($colors)],
+                ]);
+            }
+        });
+
+        return back()->with('success', "สร้างกลุ่มนักศึกษา {$groupCount} กลุ่มเรียบร้อยแล้ว");
     }
 
     public function updateStudentGroup(
@@ -222,59 +371,6 @@ class CourseOfferingController extends Controller
         return back()->with('success', 'ลบกลุ่มนักศึกษาเรียบร้อยแล้ว');
     }
 
-    public function storePrerequisite(Request $request, CourseOffering $courseOffering): RedirectResponse
-    {
-        $this->authorizeCourseHeadOffering($courseOffering);
-        if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
-
-        $validated = $request->validate([
-            'prerequisite_course_id' => ['required', 'integer', 'exists:courses,id'],
-        ]);
-
-        $course = $courseOffering->course;
-        $prerequisiteCourseId = (int) $validated['prerequisite_course_id'];
-
-        if (! $course) {
-            return back()->withErrors([
-                'prerequisite_course_id' => 'ไม่พบข้อมูลรายวิชาหลักของรายวิชานี้',
-            ])->withInput();
-        }
-
-        if ((int) $course->id === $prerequisiteCourseId) {
-            return back()->withErrors([
-                'prerequisite_course_id' => 'ไม่สามารถเลือกรายวิชาเดียวกันเป็นรายวิชาที่ต้องเรียนมาก่อนได้',
-            ])->withInput();
-        }
-
-        if ($course->prerequisites()->where('courses.id', $prerequisiteCourseId)->exists()) {
-            return back()->withErrors([
-                'prerequisite_course_id' => 'รายวิชานี้ถูกเพิ่มเป็นรายวิชาที่ต้องเรียนมาก่อนแล้ว',
-            ])->withInput();
-        }
-
-        $course->prerequisites()->attach($prerequisiteCourseId);
-
-        return back()->with('success', 'เพิ่มรายวิชาที่ต้องเรียนมาก่อนเรียบร้อยแล้ว');
-    }
-
-    public function destroyPrerequisite(CourseOffering $courseOffering, Course $course): RedirectResponse
-    {
-        $this->authorizeCourseHeadOffering($courseOffering);
-        if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
-
-        $offeringCourse = $courseOffering->course;
-
-        if (! $offeringCourse) {
-            return back()->withErrors([
-                'prerequisite_course_id' => 'ไม่พบข้อมูลรายวิชาหลักของรายวิชานี้',
-            ]);
-        }
-
-        $offeringCourse->prerequisites()->detach($course->id);
-
-        return back()->with('success', 'ลบรายวิชาที่ต้องเรียนมาก่อนเรียบร้อยแล้ว');
-    }
-
     private function authorizeCourseHeadOffering(CourseOffering $courseOffering): void
     {
         abort_unless((int) $courseOffering->coordinator_id === (int) Auth::id(), 403);
@@ -301,7 +397,7 @@ class CourseOfferingController extends Controller
         int $newStudentCount,
         ?StudentGroup $ignoreGroup = null
     ): ?string {
-        $limit = $courseOffering->total_student_count;
+        $limit = $this->studentCountLimit($courseOffering);
 
         if (! $limit || $limit < 1) {
             return 'กรุณากำหนดจำนวนนักศึกษารวมของรายวิชาก่อนเพิ่มกลุ่มนักศึกษา';
@@ -316,5 +412,22 @@ class CourseOfferingController extends Controller
         }
 
         return null;
+    }
+
+    private function remainingStudentCount(CourseOffering $courseOffering): int
+    {
+        $limit = $this->studentCountLimit($courseOffering);
+        if (! $limit || $limit < 1) {
+            return 0;
+        }
+
+        return max(0, $limit - (int) $courseOffering->studentGroups()->sum('student_count'));
+    }
+
+    private function studentCountLimit(CourseOffering $courseOffering): int
+    {
+        $courseOffering->loadMissing('course');
+
+        return (int) ($courseOffering->total_student_count ?: $courseOffering->course?->capacity ?: 0);
     }
 }

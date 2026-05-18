@@ -41,8 +41,14 @@ class MasterDataController extends Controller
             $q->where('role', 'staff');
         })->with('instructorProfile')->where('is_active', true)->orderBy('name')->get();
 
-        // Courses with curriculum and head instructor
-        $courses = Course::with(['curriculum', 'department', 'headInstructor', 'assignedStaff'])->get();
+        // Courses with curriculum, head instructor, staff, and academic prerequisites
+        $courses = Course::with([
+            'curriculum',
+            'department',
+            'headInstructor',
+            'assignedStaff',
+            'prerequisites:id,course_code,name_th,name_en',
+        ])->orderBy('course_code')->get();
 
         // Curriculums with course count and courses list
         $curriculums = Curriculum::withCount('courses')->with(['courses' => fn($q) => $q->orderBy('course_code')])->get();
@@ -293,10 +299,9 @@ class MasterDataController extends Controller
             'name_en'                     => 'nullable|string|max:255',
             'curriculum_id'               => 'required|exists:curriculums,id',
             'department_id'               => 'nullable|exists:departments,id',
-            'head_instructor_id'          => 'required|exists:users,id',
+            'head_instructor_id'          => 'nullable|exists:users,id',
             'staff_ids'                   => 'nullable|array',
             'staff_ids.*'                 => 'exists:users,id',
-            'course_type'                 => 'required|in:theory,practicum,theory_practicum',
             'academic_level'              => 'nullable|in:undergraduate,graduate',
             'default_year_level'          => 'required|integer|min:1|max:4',
             'default_semester'            => 'required|integer|min:1|max:3',
@@ -308,14 +313,18 @@ class MasterDataController extends Controller
             'color_code'                  => 'nullable|string|max:7',
             'status'                      => 'required|in:active,inactive',
             'requires_practicum_rotation' => 'required|boolean',
+            'prerequisite_ids'            => 'nullable|array',
+            'prerequisite_ids.*'          => ['integer', 'distinct', 'exists:courses,id'],
         ]);
 
         $validated['requires_practicum_rotation'] = $request->boolean('requires_practicum_rotation');
         $staffIds = $validated['staff_ids'] ?? [];
-        unset($validated['staff_ids']);
+        $prerequisiteIds = $validated['prerequisite_ids'] ?? [];
+        unset($validated['staff_ids'], $validated['prerequisite_ids']);
 
         $course = Course::create($validated);
         $course->assignedStaff()->sync($staffIds);
+        $course->prerequisites()->sync($prerequisiteIds);
 
         return $this->redirectToMasterData('courses')->with('success', 'เพิ่มรายวิชาเรียบร้อยแล้ว');
     }
@@ -333,10 +342,9 @@ class MasterDataController extends Controller
             'name_en'                     => 'nullable|string|max:255',
             'curriculum_id'               => 'required|exists:curriculums,id',
             'department_id'               => 'nullable|exists:departments,id',
-            'head_instructor_id'          => 'required|exists:users,id',
+            'head_instructor_id'          => 'nullable|exists:users,id',
             'staff_ids'                   => 'nullable|array',
             'staff_ids.*'                 => 'exists:users,id',
-            'course_type'                 => 'required|in:theory,practicum,theory_practicum',
             'academic_level'              => 'nullable|in:undergraduate,graduate',
             'default_year_level'          => 'required|integer|min:1|max:4',
             'default_semester'            => 'required|integer|min:1|max:3',
@@ -348,14 +356,18 @@ class MasterDataController extends Controller
             'color_code'                  => 'nullable|string|max:7',
             'status'                      => 'required|in:active,inactive',
             'requires_practicum_rotation' => 'required|boolean',
+            'prerequisite_ids'            => 'nullable|array',
+            'prerequisite_ids.*'          => ['integer', 'distinct', 'exists:courses,id', Rule::notIn([$course->id])],
         ]);
 
         $validated['requires_practicum_rotation'] = $request->boolean('requires_practicum_rotation');
         $staffIds = $validated['staff_ids'] ?? [];
-        unset($validated['staff_ids']);
+        $prerequisiteIds = $validated['prerequisite_ids'] ?? [];
+        unset($validated['staff_ids'], $validated['prerequisite_ids']);
 
         $course->update($validated);
         $course->assignedStaff()->sync($staffIds);
+        $course->prerequisites()->sync($prerequisiteIds);
 
         return $this->redirectToMasterData('courses')->with('success', 'อัปเดตข้อมูลรายวิชาเรียบร้อยแล้ว');
     }
@@ -630,15 +642,8 @@ class MasterDataController extends Controller
             $currName   = trim($csv['curriculum_name'] ?? '');
             $credits    = trim($csv['credits'] ?? '');
             $headEmpId  = trim($csv['head_instructor_employee_id'] ?? '');
-            $courseType = trim($csv['course_type'] ?? '');
-
-            if (!$code || !$nameTh || !$currName || $credits === '' || !$headEmpId || !$courseType) {
-                $errors[] = "แถว {$row}: ข้อมูลบังคับไม่ครบ (course_code, name_th, curriculum_name, credits, head_instructor_employee_id, course_type)";
-                continue;
-            }
-
-            if (!in_array($courseType, ['theory', 'practicum', 'theory_practicum'])) {
-                $errors[] = "แถว {$row}: course_type ต้องเป็น theory, practicum หรือ theory_practicum";
+            if (!$code || !$nameTh || !$currName || $credits === '' || !$headEmpId) {
+                $errors[] = "แถว {$row}: ข้อมูลบังคับไม่ครบ (course_code, name_th, curriculum_name, credits, head_instructor_employee_id)";
                 continue;
             }
 
@@ -706,7 +711,6 @@ class MasterDataController extends Controller
                         'name_en'                     => trim($csv['name_en'] ?? '') ?: null,
                         'department_id'               => $deptId,
                         'head_instructor_id'          => $headId,
-                        'course_type'                 => $courseType,
                         'credits'                     => (int)$credits,
                         'lecture_hours'               => $lecture,
                         'lab_hours'                   => $lab,

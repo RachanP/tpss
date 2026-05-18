@@ -5,11 +5,6 @@
         'published' => ['label' => 'เผยแพร่แล้ว','badge' => 'badge-ok'],
         'rejected'  => ['label' => 'ตีกลับ',     'badge' => 'badge-error'],
     ];
-    $courseTypeLabels = [
-        'theory'           => 'ทฤษฎี',
-        'practicum'        => 'ปฏิบัติ/ฝึกปฏิบัติ',
-        'theory_practicum' => 'ทฤษฎีและปฏิบัติ',
-    ];
 @endphp
 
 <x-app-layout title="จัดการรายวิชา">
@@ -66,9 +61,7 @@
                             <td>
                                 <div style="font-weight:700;color:var(--fg-1);">{{ $course?->course_code ?? '-' }}</div>
                                 <div class="body-sm" style="margin-top:3px;">{{ $course?->name_th ?? $course?->name_en ?? '-' }}</div>
-                                <div class="caption" style="margin-top:5px;">
-                                    {{ $course?->credits ?? '-' }} หน่วยกิต · {{ $courseTypeLabels[$course?->course_type] ?? '-' }}
-                                </div>
+                                <div class="caption" style="margin-top:5px;">{{ $course?->credits ?? '-' }} หน่วยกิต</div>
                             </td>
                             <td>
                                 <div class="body-sm">{{ $course?->curriculum?->name ?? '-' }}</div>
@@ -77,7 +70,13 @@
                                 </div>
                             </td>
                             <td>
-                                <div style="font-weight:700;">{{ $offering->student_groups_count }} กลุ่ม</div>
+                                <div style="font-weight:700;">
+                                    @if($offering->student_groups_count > 0)
+                                        {{ $offering->student_groups_count }} กลุ่ม
+                                    @else
+                                        ยังไม่ได้จัดกลุ่ม
+                                    @endif
+                                </div>
                                 <div class="caption" style="margin-top:4px;">รับได้ {{ $course?->capacity ?? '-' }} คน</div>
                             </td>
                             <td>

@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\AcademicYear;
 use App\Models\Course;
 use App\Models\CourseOffering;
+use App\Models\CourseRole;
 use App\Models\SystemSetting;
 use App\Http\Controllers\Admin\AlertController;
 use Illuminate\Support\Facades\DB;
@@ -30,10 +31,11 @@ class AdminSettingController extends Controller
         }
 
         $schedulingSummary = AcademicYear::orderBy('name', 'desc')->orderBy('semester', 'desc')->get();
+        $schedulingCriticals = AlertController::getCriticals();
 
         $isAdmin     = true;
         $routePrefix = 'admin';
-        return view('admin.settings', compact('academicYears', 'paCriteria', 'workloadQuota', 'teachingQuota', 'workloadWeeks', 'teachingWeeks', 'workloadHoursPerWeek', 'isAdmin', 'routePrefix', 'schedulingSummary'));
+        return view('admin.settings', compact('academicYears', 'paCriteria', 'workloadQuota', 'teachingQuota', 'workloadWeeks', 'teachingWeeks', 'workloadHoursPerWeek', 'isAdmin', 'routePrefix', 'schedulingSummary', 'schedulingCriticals'));
     }
 
     public function storeYear(Request $request)
@@ -139,28 +141,73 @@ class AdminSettingController extends Controller
                 ->with('error', "ปีการศึกษา {$year->name} ภาค {$year->semester} เผยแพร่แล้ว ไม่สามารถย้อนกลับได้");
         }
 
-        // Auto-create offerings for all active courses matching this semester
+        $criticals = AlertController::getCriticals();
+        if (!empty($criticals)) {
+            $labels = collect($criticals)->pluck('label')->take(3)->implode(', ');
+            $suffix = count($criticals) > 3 ? ' และรายการอื่น ๆ' : '';
+
+            return redirect()
+                ->route('admin.settings', ['tab' => 'scheduling'])
+                ->with('error', "ยังไม่สามารถเปิดช่วงจัดตารางได้ เนื่องจากยังมี Critical: {$labels}{$suffix}");
+        }
+
+        // Auto-create offerings for active courses in this academic year/semester.
+        // The selected academic year supplies the year/term; course.status is the
+        // source of truth for which courses are active in that term.
+        // Existing offerings for this academic year are synced too, because they may
+        // have been seeded or created before the template was finalized.
         $courses = Course::where('status', 'active')
-            ->where('default_semester', $year->semester)
             ->whereNotNull('head_instructor_id')
             ->get();
 
         $created = 0;
-        DB::transaction(function () use ($courses, $year, &$created) {
-            foreach ($courses as $course) {
-                $exists = CourseOffering::where('course_id', $course->id)
-                    ->where('academic_year_id', $year->id)
-                    ->exists();
+        $synced = 0;
+        $teachingWeeks = (int) SystemSetting::get('teaching_load_weeks', 39);
+        $coordinatorRoleId = CourseRole::where('name_th', 'หัวหน้าวิชา')->value('id');
 
-                if (!$exists) {
-                    CourseOffering::create([
+        DB::transaction(function () use ($courses, $year, $teachingWeeks, $coordinatorRoleId, &$created, &$synced) {
+            foreach ($courses as $course) {
+                $offering = CourseOffering::firstOrCreate(
+                    [
+                        'course_id' => $course->id,
+                        'academic_year_id' => $year->id,
+                    ],
+                    [
                         'course_id'       => $course->id,
                         'academic_year_id'=> $year->id,
                         'coordinator_id'  => $course->head_instructor_id,
                         'approval_status' => 'draft',
-                    ]);
+                    ]
+                );
+
+                if ($offering->wasRecentlyCreated) {
                     $created++;
                 }
+            }
+
+            $offeringsToSync = CourseOffering::with('course')
+                ->where('academic_year_id', $year->id)
+                ->whereHas('course', fn ($query) => $query
+                    ->where('status', 'active')
+                    ->whereNotNull('head_instructor_id'))
+                ->get();
+
+            foreach ($offeringsToSync as $offering) {
+                $course = $offering->course;
+                if ($course) {
+                    $offering->fill([
+                        'coordinator_id' => $course->head_instructor_id,
+                        'total_student_count' => $course->capacity,
+                        'planned_lecture_hours' => $course->lecture_hours,
+                        'planned_lab_hours' => $course->requires_practicum_rotation ? 0 : $course->lab_hours,
+                        'planned_practicum_hours' => $course->requires_practicum_rotation ? $course->lab_hours : 0,
+                        'teaching_weeks' => $teachingWeeks,
+                        'requires_practicum_rotation' => $course->requires_practicum_rotation,
+                        'practicum_note' => null,
+                    ])->save();
+                }
+                $offering->syncInstructorPoolFromCourseTemplate($coordinatorRoleId);
+                $synced++;
             }
 
             $year->update(['phase' => 'scheduling']);
@@ -168,10 +215,11 @@ class AdminSettingController extends Controller
 
         $total = CourseOffering::where('academic_year_id', $year->id)->count();
         $newMsg = $created > 0 ? "สร้างใหม่ {$created} รายวิชา" : "ไม่มีรายวิชาใหม่";
+        $syncMsg = $synced > 0 ? "ซิงก์แม่แบบ {$synced} รายวิชา" : "ไม่พบรายวิชาเดิมที่ต้องซิงก์";
 
         return redirect()
             ->route('admin.settings', ['tab' => 'scheduling'])
-            ->with('success', "เปิดช่วงจัดตารางสำหรับปีการศึกษา {$year->name} ภาค {$year->semester} แล้ว — {$newMsg} รวม {$total} รายวิชาพร้อมจัดตาราง");
+            ->with('success', "เปิดช่วงจัดตารางสำหรับปีการศึกษา {$year->name} ภาค {$year->semester} แล้ว — {$newMsg}, {$syncMsg} รวม {$total} รายวิชาพร้อมจัดตาราง");
     }
 
     public function closeSchedulingWindow(AcademicYear $year)

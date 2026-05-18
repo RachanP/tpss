@@ -3,11 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\AcademicYear;
+use App\Models\ActivityType;
 use App\Models\Course;
 use App\Models\CourseOffering;
 use App\Models\Curriculum;
 use App\Models\Department;
 use App\Models\InstructorProfile;
+use App\Models\LocationType;
 use App\Models\StudentGroup;
 use App\Models\User;
 use App\Models\UserRole;
@@ -24,13 +26,14 @@ class SchedulingPhaseTest extends TestCase
 
     // ── Admin: Open Scheduling Window ────────────────────────────────
 
-    public function test_open_sets_phase_and_creates_offerings_for_matching_active_courses(): void
+    public function test_open_sets_phase_and_creates_offerings_for_active_courses(): void
     {
         $admin = $this->makeAdmin();
         $head  = $this->makeInstructor();
         $year  = $this->makeYear(['semester' => 1, 'phase' => 'preparation']);
         $course = $this->makeCourse(['default_semester' => 1, 'head_instructor_id' => $head->id]);
 
+        $this->seedCriticalsBaseline();
         $this->actingAsAdmin($admin);
 
         $this->patch(route('admin.settings.scheduling.open', $year))
@@ -47,19 +50,25 @@ class SchedulingPhaseTest extends TestCase
         ]);
     }
 
-    public function test_open_skips_courses_with_wrong_semester_or_no_head(): void
+    public function test_open_creates_offerings_for_all_active_courses_regardless_of_semester(): void
     {
+        // After M2 hardening, the openSchedulingWindow no longer filters by
+        // default_semester — course.status is the source of truth.
         $admin = $this->makeAdmin();
         $head  = $this->makeInstructor();
         $year  = $this->makeYear(['semester' => 1, 'phase' => 'preparation']);
+        $sem1Course = $this->makeCourse(['default_semester' => 1, 'head_instructor_id' => $head->id]);
+        $sem2Course = $this->makeCourse(['default_semester' => 2, 'head_instructor_id' => $head->id]);
+        // Inactive course → skipped entirely (status filter).
+        $this->makeCourse(['default_semester' => 1, 'head_instructor_id' => $head->id, 'status' => 'inactive']);
 
-        $this->makeCourse(['default_semester' => 1, 'head_instructor_id' => null]);
-        $this->makeCourse(['default_semester' => 2, 'head_instructor_id' => $head->id]);
-
+        $this->seedCriticalsBaseline();
         $this->actingAsAdmin($admin);
         $this->patch(route('admin.settings.scheduling.open', $year));
 
-        $this->assertDatabaseCount('course_offerings', 0);
+        $this->assertDatabaseCount('course_offerings', 2);
+        $this->assertDatabaseHas('course_offerings', ['course_id' => $sem1Course->id, 'academic_year_id' => $year->id]);
+        $this->assertDatabaseHas('course_offerings', ['course_id' => $sem2Course->id, 'academic_year_id' => $year->id]);
     }
 
     public function test_open_is_idempotent_when_offering_already_exists(): void
@@ -76,10 +85,44 @@ class SchedulingPhaseTest extends TestCase
             'approval_status'  => 'draft',
         ]);
 
+        $this->seedCriticalsBaseline();
         $this->actingAsAdmin($admin);
         $this->patch(route('admin.settings.scheduling.open', $year));
 
         $this->assertDatabaseCount('course_offerings', 1);
+    }
+
+    public function test_open_blocked_when_criticals_exist(): void
+    {
+        // No ActivityType / LocationType → critical gate should block opening.
+        $admin = $this->makeAdmin();
+        $head  = $this->makeInstructor();
+        $year  = $this->makeYear(['phase' => 'preparation']);
+        $this->makeCourse(['head_instructor_id' => $head->id]);
+
+        $this->actingAsAdmin($admin);
+
+        $this->patch(route('admin.settings.scheduling.open', $year))
+            ->assertRedirect(route('admin.settings', ['tab' => 'scheduling']))
+            ->assertSessionHas('error');
+
+        $this->assertSame('preparation', $year->fresh()->phase);
+        $this->assertDatabaseCount('course_offerings', 0);
+    }
+
+    public function test_open_blocked_when_active_course_missing_head_instructor(): void
+    {
+        $admin = $this->makeAdmin();
+        $year  = $this->makeYear(['phase' => 'preparation']);
+        $this->makeCourse(['head_instructor_id' => null]); // active but headless
+
+        $this->seedCriticalsBaseline();
+        $this->actingAsAdmin($admin);
+
+        $this->patch(route('admin.settings.scheduling.open', $year))
+            ->assertSessionHas('error');
+
+        $this->assertSame('preparation', $year->fresh()->phase);
     }
 
     public function test_open_blocked_for_inactive_year(): void
@@ -178,17 +221,21 @@ class SchedulingPhaseTest extends TestCase
 
         $this->from(route('maker.course_offerings.show', $offering))
             ->put(route('maker.course_offerings.update', $offering), [
-                'total_student_count' => 100,
-                'teaching_weeks'      => 15,
+                'requires_practicum_rotation' => 1,
+                'practicum_note'              => 'override note',
             ])
             ->assertRedirect(route('maker.course_offerings.show', $offering))
             ->assertSessionHas('error');
 
-        $this->assertNull($offering->fresh()->total_student_count);
+        $fresh = $offering->fresh();
+        $this->assertFalse((bool) $fresh->requires_practicum_rotation);
+        $this->assertNull($fresh->practicum_note);
     }
 
     public function test_offering_info_update_allowed_during_scheduling(): void
     {
+        // After M2 hardening, the update endpoint only writes requires_practicum_rotation
+        // (+ a required practicum_note when overriding the course default).
         $head    = $this->makeCourseHead();
         $year    = $this->makeYear(['phase' => 'scheduling']);
         $offering = $this->makeOffering($head, $year);
@@ -197,13 +244,15 @@ class SchedulingPhaseTest extends TestCase
 
         $this->from(route('maker.course_offerings.show', $offering))
             ->put(route('maker.course_offerings.update', $offering), [
-                'total_student_count' => 80,
-                'teaching_weeks'      => 15,
+                'requires_practicum_rotation' => 1,
+                'practicum_note'              => 'ใช้ simulation lab แทนการหมุนเวียน',
             ])
-            ->assertRedirect(route('maker.course_offerings.show', $offering))
+            ->assertRedirect(route('maker.course_offerings.show', $offering) . '#course-info')
             ->assertSessionHasNoErrors();
 
-        $this->assertSame(80, $offering->fresh()->total_student_count);
+        $fresh = $offering->fresh();
+        $this->assertTrue((bool) $fresh->requires_practicum_rotation);
+        $this->assertSame('ใช้ simulation lab แทนการหมุนเวียน', $fresh->practicum_note);
     }
 
     // ── Phase Guard: Instructor pool mutations ────────────────────────
@@ -291,73 +340,9 @@ class SchedulingPhaseTest extends TestCase
         $this->assertDatabaseHas('student_groups', ['id' => $group->id, 'student_count' => 20]);
     }
 
-    // ── Phase Guard: Prerequisite mutations ───────────────────────────
-
-    public function test_prerequisite_mutations_blocked_during_preparation(): void
-    {
-        $head        = $this->makeCourseHead();
-        $year        = $this->makeYear(['phase' => 'preparation']);
-        $offering    = $this->makeOffering($head, $year);
-        $prereqCourse = $this->makeCourse();
-
-        $this->actingAsCourseHead($head);
-
-        // store
-        $this->from(route('maker.course_offerings.show', $offering))
-            ->post(route('maker.course_offerings.prerequisites.store', $offering), [
-                'prerequisite_course_id' => $prereqCourse->id,
-            ])
-            ->assertRedirect(route('maker.course_offerings.show', $offering))
-            ->assertSessionHas('error');
-
-        $this->assertDatabaseMissing('course_prerequisites', [
-            'course_id'             => $offering->course_id,
-            'prerequisite_course_id'=> $prereqCourse->id,
-        ]);
-
-        // attach manually, then try removing — still blocked
-        DB::table('course_prerequisites')->insert([
-            'course_id'             => $offering->course_id,
-            'prerequisite_course_id'=> $prereqCourse->id,
-        ]);
-
-        $this->from(route('maker.course_offerings.show', $offering))
-            ->delete(route('maker.course_offerings.prerequisites.destroy', [$offering, $prereqCourse]))
-            ->assertRedirect(route('maker.course_offerings.show', $offering))
-            ->assertSessionHas('error');
-
-        $this->assertDatabaseHas('course_prerequisites', [
-            'course_id'              => $offering->course_id,
-            'prerequisite_course_id' => $prereqCourse->id,
-        ]);
-    }
-
-    // ── Phase Guard: Schedule create / store ─────────────────────────
-
-    public function test_schedule_create_and_store_blocked_during_preparation(): void
-    {
-        $head    = $this->makeCourseHead();
-        $year    = $this->makeYear(['phase' => 'preparation']);
-        $offering = $this->makeOffering($head, $year);
-
-        $this->actingAsCourseHead($head);
-
-        $this->get(route('maker.course_offerings.schedules.create', $offering))
-            ->assertRedirect(route('maker.course_offerings.schedules.index', $offering))
-            ->assertSessionHasErrors('schedule');
-
-        $this->post(route('maker.course_offerings.schedules.store', $offering), [
-            'teaching_date'    => '2026-08-01',
-            'start_time'       => '09:00',
-            'end_time'         => '11:00',
-            'activity_type_id' => 999,
-            'instructor_ids'   => [],
-        ])
-            ->assertRedirect(route('maker.course_offerings.schedules.index', $offering))
-            ->assertSessionHasErrors('schedule');
-
-        $this->assertDatabaseCount('schedules', 0);
-    }
+    // Prerequisite + schedule guard tests removed: prerequisites moved to Master Data
+    // (per-course, not per-offering), and schedule routes were removed in this branch
+    // (M3 not yet implemented). See CoursePoolManagementTest for prerequisite coverage.
 
     // ── Helpers ──────────────────────────────────────────────────────
 
@@ -473,6 +458,20 @@ class SchedulingPhaseTest extends TestCase
     private function department(): Department
     {
         return Department::firstOrCreate(['name' => 'Phase Test Dept']);
+    }
+
+    /**
+     * Ensure all baseline criticals are cleared so openSchedulingWindow is not blocked.
+     * (no_activity_type, no_location_type — others are auto-created by other helpers.)
+     */
+    private function seedCriticalsBaseline(): void
+    {
+        ActivityType::firstOrCreate(['name' => 'Lecture'], [
+            'color_code' => '#2563eb',
+            'category'   => 'lecture',
+        ]);
+        LocationType::firstOrCreate(['name' => 'ห้องเรียน']);
+        \App\Http\Controllers\Admin\AlertController::flushCache();
     }
 
     private function curriculum(): Curriculum
