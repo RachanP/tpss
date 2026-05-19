@@ -1308,7 +1308,7 @@
                                 <th>ชื่อรายวิชา (ไทย / อังกฤษ)</th>
                                 <th>ภาควิชา / หลักสูตร</th>
                                 <th style="text-align: center;">หน่วยกิต</th>
-                                <th>หัวหน้าวิชาเริ่มต้น</th>
+                                <th>หัวหน้าวิชา/ผู้ประสานรายวิชา</th>
                                 <th style="text-align: center;">สถานะ</th>
                                 <th style="text-align: center;">จัดการ</th>
                             </tr>
@@ -1353,6 +1353,16 @@
                                         @if($course->headInstructor)
                                             <div style="display: flex; align-items: center; gap: 6px;">
                                                 <span style="font-size: 13px; color: var(--fg-2);">{{ $course->headInstructor->formatted_name }}</span>
+                                            </div>
+                                        @elseif($course->status === 'active')
+                                            <div style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 99px; background: color-mix(in oklch, var(--status-conflict) 14%, transparent); border: 1px solid color-mix(in oklch, var(--status-conflict) 35%, transparent); color: var(--status-conflict-fg);"
+                                                title="วิชาเปิดสอนต้องระบุหัวหน้าวิชา">
+                                                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+                                                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                                                    <line x1="12" y1="9" x2="12" y2="13"/>
+                                                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                                                </svg>
+                                                <span style="font-size: 11px; font-weight: 700;">ยังไม่มีหัวหน้าวิชา</span>
                                             </div>
                                         @else
                                             <span style="color: var(--fg-4); font-size: 11px; font-style: italic;">- ไม่ระบุ -</span>
