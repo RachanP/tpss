@@ -43,6 +43,11 @@
             curriculums: { keyword: '', is_active: '' },
             activity_types: { keyword: '', category: '' },
         },
+        validFilterIds: {
+            departments: {{ Js::from($departments->pluck('id')->map(fn($id) => (string) $id)->values()) }},
+            curriculums: {{ Js::from($curriculums->pluck('id')->map(fn($id) => (string) $id)->values()) }},
+            locationTypes: {{ Js::from($locationTypes->pluck('id')->map(fn($id) => (string) $id)->values()) }},
+        },
         filterStorageKey() {
             return 'tpss.masterData.filters.' + window.location.pathname;
         },
@@ -62,6 +67,25 @@
             } catch (e) {
                 sessionStorage.removeItem(this.filterStorageKey());
             }
+        },
+        sanitizeRestoredFilters() {
+            const isKnownId = (ids, value) => !value || ids.includes(String(value));
+            let changed = false;
+
+            if (!isKnownId(this.validFilterIds.curriculums, this.filters.courses.curriculum_id)) {
+                this.filters.courses.curriculum_id = '';
+                changed = true;
+            }
+            if (!isKnownId(this.validFilterIds.departments, this.filters.courses.department_id)) {
+                this.filters.courses.department_id = '';
+                changed = true;
+            }
+            if (!isKnownId(this.validFilterIds.locationTypes, this.filters.location_types.location_type_id)) {
+                this.filters.location_types.location_type_id = '';
+                changed = true;
+            }
+
+            if (changed) this.persistFilters();
         },
         persistFilters() {
             try {
@@ -83,6 +107,21 @@
             const source = String(value || '').toLowerCase();
             const query = String(keyword || '').toLowerCase();
             return source.includes(query) || this.normalizeSearch(source).includes(this.normalizeSearch(query));
+        },
+        hasAnyCourseFilter() {
+            return Object.values(this.filters.courses).some(value => !!value);
+        },
+        courseRowMatches(row) {
+            const data = row.dataset || {};
+
+            return this.includesText(data.search, this.filters.courses.keyword)
+                && (this.filters.courses.department_id === '' || data.departmentId == this.filters.courses.department_id)
+                && (this.filters.courses.curriculum_id === '' || data.curriculumId == this.filters.courses.curriculum_id)
+                && (this.filters.courses.year_level === '' || data.yearLevel == this.filters.courses.year_level)
+                && (this.filters.courses.status === '' || data.status == this.filters.courses.status);
+        },
+        hasMatchingCourseRows(tbody) {
+            return Array.from(tbody.children).some(row => row.dataset?.search && this.courseRowMatches(row));
         },
         init() {
             if (!this.courseFormErrorState.has_errors) return;
@@ -502,6 +541,7 @@
             history.replaceState(null, '', '?tab=' + activeTab);
         }
         restoreFilters();
+        sanitizeRestoredFilters();
         @if($errors->hasAny(['course_code','name_th','name_en','curriculum_id','department_id','head_instructor_id','academic_level','default_year_level','default_semester','credits','lecture_hours','lab_hours','self_study_hours','capacity','color_code','status','requires_practicum_rotation','prerequisite_ids','prerequisite_ids.*']))
             activeTab = 'courses';
             editCourseMode = {{ old('course_form_id') ? 'true' : 'false' }};
@@ -1197,7 +1237,7 @@
                                     data-curriculum-id="{{ $course->curriculum_id ?? '' }}"
                                     data-year-level="{{ $course->default_year_level ?? '' }}"
                                     data-status="{{ $course->status ?? '' }}"
-                                    x-show="includesText($el.dataset.search, filters.courses.keyword) && (filters.courses.department_id === '' || $el.dataset.departmentId == filters.courses.department_id) && (filters.courses.curriculum_id === '' || $el.dataset.curriculumId == filters.courses.curriculum_id) && (filters.courses.year_level === '' || $el.dataset.yearLevel == filters.courses.year_level) && (filters.courses.status === '' || $el.dataset.status == filters.courses.status)"
+                                    x-show="courseRowMatches($el)"
                                     style="{{ $course->status === 'inactive' ? 'opacity: 0.45; filter: grayscale(1); background: #fafafa;' : '' }}">
                                     <td style="vertical-align: middle;">
                                         <div style="display: flex; align-items: center; gap: 8px;">
@@ -1258,7 +1298,7 @@
                             @endforelse
                             <tr
                                 data-testid="courses-empty-state"
-                                x-show="(filters.courses.keyword || filters.courses.department_id || filters.courses.curriculum_id || filters.courses.year_level || filters.courses.status) && !Array.from($el.parentNode.children).some(tr => tr !== $el && tr.dataset && tr.dataset.search && tr.style.display !== 'none')"
+                                x-show="hasAnyCourseFilter() && !hasMatchingCourseRows($el.parentNode)"
                                 x-cloak>
                                 <td colspan="7" style="text-align: center; padding: 40px; color: var(--fg-3);">ไม่พบข้อมูลที่ค้นหา</td>
                             </tr>

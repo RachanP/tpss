@@ -32,6 +32,28 @@ test.describe('M1 Master Data — Friend 1 hardening coverage', () => {
     await expect(emptyState).toContainText('ไม่พบข้อมูลที่ค้นหา');
   });
 
+  test('courses tab clears a deleted curriculum filter from session storage', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile-chrome', 'Master-data table layout is desktop-only');
+
+    await login(page, 'admin_01');
+    await page.goto('/admin/master-data?tab=courses');
+    await expect(page.getByTestId('courses-search-input')).toBeVisible({ timeout: 15000 });
+
+    await page.evaluate(() => {
+      sessionStorage.setItem('tpss.masterData.filters./admin/master-data', JSON.stringify({
+        filters: {
+          courses: { curriculum_id: '999999999' },
+        },
+      }));
+    });
+
+    await page.reload();
+    await expect(page.getByTestId('courses-search-input')).toBeVisible({ timeout: 15000 });
+
+    await expect(page.locator('select[x-model="filters.courses.curriculum_id"]')).toHaveValue('');
+    await expect(page.locator('tr[data-search][data-curriculum-id]:visible').first()).toBeVisible();
+  });
+
   test('course code duplicate in same curriculum is rejected', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === 'mobile-chrome', 'Modal layout is desktop-only for admin');
 
