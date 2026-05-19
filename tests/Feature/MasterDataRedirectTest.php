@@ -99,6 +99,26 @@ class MasterDataRedirectTest extends TestCase
         $response->assertRedirect(route('admin.master_data', ['tab' => 'activity_types']));
     }
 
+    public function test_admin_can_confirm_same_person_as_department_head_and_secretary(): void
+    {
+        $admin = $this->makeUser('admin');
+        $instructor = $this->makeUser('instructor');
+        $department = Department::create(['name' => 'ภาควิชาทดสอบ']);
+
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        $this->put(route('admin.departments.update', $department), [
+            'name' => $department->name,
+            'head_user_id' => $instructor->id,
+            'secretary_user_id' => $instructor->id,
+            'force_position_override' => '1',
+        ])->assertRedirect();
+
+        $department->refresh();
+        $this->assertSame($instructor->id, $department->head_user_id);
+        $this->assertSame($instructor->id, $department->secretary_user_id);
+    }
+
     // ── Course composite unique ───────────────────────────────────────
 
     public function test_same_course_code_allowed_in_different_curriculums(): void

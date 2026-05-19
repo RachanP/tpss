@@ -1492,19 +1492,20 @@
                                 <input type="text" name="name" x-model="currentDept.name" required
                                     placeholder="เช่น ภาควิชาการพยาบาลกุมารเวชศาสตร์">
                             </div>
+                            <div class="dept-empty-assignment" x-show="deptInstructorUsers.length === 0" x-cloak>
+                                ยังไม่มีอาจารย์ในภาควิชานี้ จึงยังเลือกหัวหน้าภาควิชาและเลขานุการภาควิชาไม่ได้
+                            </div>
                             <div class="form-row">
                                 <div class="form-group" style="position: relative;">
                                     <label>หัวหน้าภาควิชา</label>
-                                    <template x-if="editDeptMode && deptInstructorUsers.length === 0">
-                                        <p style="font-size:12px;color:var(--fg-3);margin:4px 0 8px;">ยังไม่มีอาจารย์ในภาควิชานี้</p>
-                                    </template>
                                     <div style="position: relative; display: flex; gap: 6px; align-items: flex-start;">
                                         <div style="flex: 1; position: relative;">
                                             <input type="text" x-model="headSearch" @input="showHeadDropdown = true"
                                                 @focus="showHeadDropdown = true" @click.away="showHeadDropdown = false"
-                                                :disabled="editDeptMode && deptInstructorUsers.length === 0"
-                                                placeholder="พิมพ์ชื่อเพื่อค้นหา..." autocomplete="off">
-                                            <div class="search-results" x-show="showHeadDropdown" x-cloak>
+                                                :disabled="deptInstructorUsers.length === 0"
+                                                :placeholder="deptInstructorUsers.length === 0 ? 'ไม่มีอาจารย์ในภาควิชานี้' : 'พิมพ์ชื่อเพื่อค้นหา...'"
+                                                autocomplete="off">
+                                            <div class="search-results" x-show="showHeadDropdown && deptInstructorUsers.length > 0" x-cloak>
                                                 <template
                                                     x-for="user in deptInstructorUsers.filter(u => u.name.toLowerCase().includes(headSearch.toLowerCase()))"
                                                     :key="user.id">
@@ -1535,9 +1536,10 @@
                                             <input type="text" x-model="secretarySearch"
                                                 @input="showSecretaryDropdown = true" @focus="showSecretaryDropdown = true"
                                                 @click.away="showSecretaryDropdown = false"
-                                                :disabled="editDeptMode && deptInstructorUsers.length === 0"
-                                                placeholder="พิมพ์ชื่อเพื่อค้นหา..." autocomplete="off">
-                                            <div class="search-results" x-show="showSecretaryDropdown" x-cloak>
+                                                :disabled="deptInstructorUsers.length === 0"
+                                                :placeholder="deptInstructorUsers.length === 0 ? 'ไม่มีอาจารย์ในภาควิชานี้' : 'พิมพ์ชื่อเพื่อค้นหา...'"
+                                                autocomplete="off">
+                                            <div class="search-results" x-show="showSecretaryDropdown && deptInstructorUsers.length > 0" x-cloak>
                                                 <template
                                                     x-for="user in deptInstructorUsers.filter(u => u.name.toLowerCase().includes(secretarySearch.toLowerCase()))"
                                                     :key="user.id">
@@ -2767,6 +2769,23 @@
             max-height: 200px;
             overflow-y: auto;
             margin-top: 4px;
+        }
+
+        .dept-empty-assignment {
+            margin: -8px 0 18px;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-2);
+            color: var(--fg-3);
+            font-size: 12px;
+            line-height: 1.55;
+        }
+
+        .modal-body input:disabled {
+            background: var(--bg-2);
+            color: var(--fg-3);
+            cursor: not-allowed;
         }
 
         .search-item {

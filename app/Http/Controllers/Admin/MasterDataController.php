@@ -258,26 +258,6 @@ class MasterDataController extends Controller
         $newSecId  = $validated['secretary_user_id'] ?? null;
         $forceOverride = $request->boolean('force_position_override');
 
-        // Same person picked for both positions → treat as role swap (keep newly-assigned one)
-        if ($newHeadId && $newSecId && (int) $newHeadId === (int) $newSecId) {
-            $previouslyHead = (int) $department->head_user_id === (int) $newHeadId;
-            $previouslySec  = (int) $department->secretary_user_id === (int) $newSecId;
-
-            if ($previouslyHead && !$previouslySec) {
-                // Was head, now also picked as secretary → move to secretary only
-                $newHeadId = null;
-            } elseif ($previouslySec && !$previouslyHead) {
-                // Was secretary, now also picked as head → move to head only
-                $newSecId = null;
-            } else {
-                // Fresh selection in both fields → prefer secretary (latest intent wins)
-                $newHeadId = null;
-            }
-
-            $validated['head_user_id'] = $newHeadId;
-            $validated['secretary_user_id'] = $newSecId;
-        }
-
         // If override confirmed by user, release positions from other depts first
         if ($forceOverride) {
             if ($newHeadId) {
