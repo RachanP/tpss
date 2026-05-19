@@ -35,20 +35,21 @@
 ## Curriculum & Course Offering Architecture
 
 ```
-Curriculum (Master Plan)
-└── Course → default_year_level, default_semester
+Curriculum (Master Plan) → education_level, duration_years, uses_year_level, total_credits_required
+└── Course → default_year_level (nullable เมื่อ !uses_year_level), default_semester, is_required
 
 Course Offerings (ต่อเทอม — ตัวกลาง Master ↔ Schedule)
 ├── สร้างอัตโนมัติเมื่อ Admin เปิด scheduling phase
 └── Sync planning fields + instructor pool จาก course template
 ```
 
+- **Curriculum types** (19 พ.ค.): รองรับ ป.ตรี/ป.โท/ป.เอก ผ่าน `education_level` — `uses_year_level=false` สำหรับหลักสูตรที่ใช้ prerequisite + หน่วยกิตสะสมแทนระบบชั้นปี (ทั่วไป ป.โท/ป.เอก)
 - **Critical-gate**: ก่อนเปิด scheduling Admin ต้องเคลียร์ critical alerts ให้หมด — รวม `no_active_course`, `active_courses_missing_head`
 - **Sync direction**: course template → offering snapshot (ทางเดียว) — ตอน `openSchedulingWindow`
 - **Sync scope**: planning hours, capacity, teaching_weeks, requires_practicum_rotation, instructor pool (ลบ stale entries)
 - Dashboard Course Head แสดงเฉพาะวิชาที่ offering อยู่ใน scheduling/published
 - Inactive Curriculum → Force Update รายวิชาทั้งหมดใน curriculum → `inactive`
-- Clone curriculum สำหรับ versioning (2569 → 2574) ไม่กระทบประวัติเดิม
+- Clone curriculum สำหรับ versioning (2569 → 2574) ไม่กระทบประวัติเดิม + clone metadata ทั้งหมด
 - **Prerequisite** อยู่ที่ course level (M1 Master Data) ไม่ใช่ offering level
 
 ## Performance Agreement (PA) Criteria ปี 2569
