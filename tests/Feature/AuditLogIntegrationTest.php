@@ -111,6 +111,7 @@ class AuditLogIntegrationTest extends TestCase
                 'self_study_hours'            => 6,
                 'capacity'                    => 30,
                 'requires_practicum_rotation' => false,
+                'is_required'                 => true,
             ]);
 
         $this->assertDatabaseHas('audit_logs', [
@@ -384,6 +385,7 @@ class AuditLogIntegrationTest extends TestCase
             'capacity'                 => 30,
             'status'                   => 'active',
             'requires_practicum_rotation' => false,
+            'is_required'                 => true,
         ], $overrides));
     }
 
@@ -414,6 +416,7 @@ class AuditLogIntegrationTest extends TestCase
             'self_study_hours'            => $course->self_study_hours,
             'capacity'                    => $course->capacity,
             'requires_practicum_rotation' => $course->requires_practicum_rotation ? 1 : 0,
+            'is_required'                 => $course->is_required ? 1 : 0,
         ];
     }
 
