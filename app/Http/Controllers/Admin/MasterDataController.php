@@ -412,41 +412,10 @@ class MasterDataController extends Controller
 
     public function storeCourse(Request $request)
     {
-        $validated = $request->validate([
-            'course_code'                 => [
-                'required', 'string', 'max:20', 'regex:' . self::COURSE_CODE_ALLOWED_REGEX,
-                Rule::unique('courses', 'course_code')
-                    ->where(fn($q) => $q->where('curriculum_id', $request->input('curriculum_id'))),
-            ],
-            'name_th'                     => 'required|string|max:255',
-            'name_en'                     => 'nullable|string|max:255',
-            'curriculum_id'               => 'required|exists:curriculums,id',
-            'department_id'               => 'nullable|exists:departments,id',
-            'head_instructor_id'          => [
-                Rule::requiredIf(fn () => $request->input('status') === 'active'),
-                'nullable',
-                'exists:users,id',
-            ],
-            'staff_ids'                   => 'nullable|array',
-            'staff_ids.*'                 => 'exists:users,id',
-            'instructor_ids'              => 'nullable|array',
-            'instructor_ids.*'            => 'integer|distinct|exists:users,id',
-            'instructor_role_ids'         => 'nullable|array',
-            'instructor_role_ids.*'       => 'nullable|integer|exists:course_roles,id',
-            'academic_level'              => 'nullable|in:undergraduate,graduate',
-            'default_year_level'          => 'required|integer|min:1|max:4',
-            'default_semester'            => 'required|integer|min:1|max:3',
-            'credits'                     => 'required|integer|min:0',
-            'lecture_hours'               => 'required|integer|min:0',
-            'lab_hours'                   => 'required|integer|min:0',
-            'self_study_hours'            => 'required|integer|min:0',
-            'capacity'                    => 'required|integer|min:1',
-            'color_code'                  => 'nullable|string|max:7',
-            'status'                      => 'required|in:active,inactive',
-            'requires_practicum_rotation' => 'required|boolean',
-            'prerequisite_ids'            => 'nullable|array',
-            'prerequisite_ids.*'          => ['integer', 'distinct', 'exists:courses,id'],
-        ], $this->courseValidationMessages());
+        $curriculum = Curriculum::find($request->input('curriculum_id'));
+        $rules = $this->courseValidationRules($request, $curriculum);
+
+        $validated = $request->validate($rules, $this->courseValidationMessages());
 
         if ($this->courseCodeExistsInCurriculum($validated['course_code'], (int) $validated['curriculum_id'])) {
             return back()
@@ -455,6 +424,10 @@ class MasterDataController extends Controller
         }
 
         $validated['requires_practicum_rotation'] = $request->boolean('requires_practicum_rotation');
+        $validated['is_required'] = $request->boolean('is_required');
+        if ($curriculum && ! $curriculum->uses_year_level) {
+            $validated['default_year_level'] = null;
+        }
         $staffIds = $validated['staff_ids'] ?? [];
         $instructorIds = $validated['instructor_ids'] ?? [];
         $instructorRoleIds = $validated['instructor_role_ids'] ?? [];
@@ -472,43 +445,12 @@ class MasterDataController extends Controller
     public function updateCourse(Request $request, Course $course)
     {
         $assignmentsLocked = $this->isCourseAssignmentLocked($course);
+        $curriculum = Curriculum::find($request->input('curriculum_id'));
 
-        $validated = $request->validate([
-            'course_code'                 => [
-                'required', 'string', 'max:20', 'regex:' . self::COURSE_CODE_ALLOWED_REGEX,
-                Rule::unique('courses', 'course_code')
-                    ->where(fn($q) => $q->where('curriculum_id', $request->input('curriculum_id')))
-                    ->ignore($course->id),
-            ],
-            'name_th'                     => 'required|string|max:255',
-            'name_en'                     => 'nullable|string|max:255',
-            'curriculum_id'               => 'required|exists:curriculums,id',
-            'department_id'               => 'nullable|exists:departments,id',
-            'head_instructor_id'          => [
-                Rule::requiredIf(fn () => ! $assignmentsLocked && $request->input('status') === 'active'),
-                'nullable',
-                'exists:users,id',
-            ],
-            'staff_ids'                   => 'nullable|array',
-            'staff_ids.*'                 => 'exists:users,id',
-            'instructor_ids'              => 'nullable|array',
-            'instructor_ids.*'            => 'integer|distinct|exists:users,id',
-            'instructor_role_ids'         => 'nullable|array',
-            'instructor_role_ids.*'       => 'nullable|integer|exists:course_roles,id',
-            'academic_level'              => 'nullable|in:undergraduate,graduate',
-            'default_year_level'          => 'required|integer|min:1|max:4',
-            'default_semester'            => 'required|integer|min:1|max:3',
-            'credits'                     => 'required|integer|min:0',
-            'lecture_hours'               => 'required|integer|min:0',
-            'lab_hours'                   => 'required|integer|min:0',
-            'self_study_hours'            => 'required|integer|min:0',
-            'capacity'                    => 'required|integer|min:1',
-            'color_code'                  => 'nullable|string|max:7',
-            'status'                      => 'required|in:active,inactive',
-            'requires_practicum_rotation' => 'required|boolean',
-            'prerequisite_ids'            => 'nullable|array',
-            'prerequisite_ids.*'          => ['integer', 'distinct', 'exists:courses,id', Rule::notIn([$course->id])],
-        ], $this->courseValidationMessages());
+        $rules = $this->courseValidationRules($request, $curriculum, $course, $assignmentsLocked);
+        $rules['prerequisite_ids.*'][] = Rule::notIn([$course->id]);
+
+        $validated = $request->validate($rules, $this->courseValidationMessages());
 
         if ($this->courseCodeExistsInCurriculum($validated['course_code'], (int) $validated['curriculum_id'], $course->id)) {
             return back()
@@ -517,6 +459,10 @@ class MasterDataController extends Controller
         }
 
         $validated['requires_practicum_rotation'] = $request->boolean('requires_practicum_rotation');
+        $validated['is_required'] = $request->boolean('is_required');
+        if ($curriculum && ! $curriculum->uses_year_level) {
+            $validated['default_year_level'] = null;
+        }
         $staffIds = $validated['staff_ids'] ?? [];
         $instructorIds = $validated['instructor_ids'] ?? [];
         $instructorRoleIds = $validated['instructor_role_ids'] ?? [];
@@ -534,6 +480,61 @@ class MasterDataController extends Controller
         $course->prerequisites()->sync($prerequisiteIds);
 
         return $this->redirectToMasterData('courses')->with('success', 'อัปเดตข้อมูลรายวิชาเรียบร้อยแล้ว');
+    }
+
+    private function courseValidationRules(
+        Request $request,
+        ?Curriculum $curriculum,
+        ?Course $existing = null,
+        bool $assignmentsLocked = false
+    ): array {
+        $uniqueRule = Rule::unique('courses', 'course_code')
+            ->where(fn($q) => $q->where('curriculum_id', $request->input('curriculum_id')));
+        if ($existing) {
+            $uniqueRule->ignore($existing->id);
+        }
+
+        $usesYearLevel = $curriculum ? (bool) $curriculum->uses_year_level : true;
+        $maxYear = $curriculum ? max(1, (int) $curriculum->duration_years) : 4;
+
+        $yearRules = $usesYearLevel
+            ? ['required', 'integer', 'min:1', 'max:' . $maxYear]
+            : ['nullable', 'integer', 'min:1', 'max:' . $maxYear];
+
+        return [
+            'course_code'                 => [
+                'required', 'string', 'max:20', 'regex:' . self::COURSE_CODE_ALLOWED_REGEX,
+                $uniqueRule,
+            ],
+            'name_th'                     => 'required|string|max:255',
+            'name_en'                     => 'nullable|string|max:255',
+            'curriculum_id'               => 'required|exists:curriculums,id',
+            'department_id'               => 'nullable|exists:departments,id',
+            'head_instructor_id'          => [
+                Rule::requiredIf(fn () => ! $assignmentsLocked && $request->input('status') === 'active'),
+                'nullable',
+                'exists:users,id',
+            ],
+            'staff_ids'                   => 'nullable|array',
+            'staff_ids.*'                 => 'exists:users,id',
+            'instructor_ids'              => 'nullable|array',
+            'instructor_ids.*'            => 'integer|distinct|exists:users,id',
+            'instructor_role_ids'         => 'nullable|array',
+            'instructor_role_ids.*'       => 'nullable|integer|exists:course_roles,id',
+            'default_year_level'          => $yearRules,
+            'default_semester'            => 'required|integer|min:1|max:3',
+            'credits'                     => 'required|integer|min:0',
+            'lecture_hours'               => 'required|integer|min:0',
+            'lab_hours'                   => 'required|integer|min:0',
+            'self_study_hours'            => 'required|integer|min:0',
+            'capacity'                    => 'required|integer|min:1',
+            'color_code'                  => 'nullable|string|max:7',
+            'status'                      => 'required|in:active,inactive',
+            'requires_practicum_rotation' => 'required|boolean',
+            'is_required'                 => 'required|boolean',
+            'prerequisite_ids'            => 'nullable|array',
+            'prerequisite_ids.*'          => ['integer', 'distinct', 'exists:courses,id'],
+        ];
     }
 
     private function isCourseAssignmentLocked(Course $course): bool
@@ -567,21 +568,12 @@ class MasterDataController extends Controller
     {
         $this->normalizeCurriculumInput($request);
 
-        $validated = $request->validate([
-            'name' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('curriculums', 'name')
-                    ->where(fn($query) => $query->where('effective_year', $request->input('effective_year'))),
-            ],
-            'effective_year' => 'required|integer',
-            'is_active' => 'required|boolean'
-        ], [
-            'name.unique' => 'มีหลักสูตรนี้ในปีที่เริ่มใช้นี้อยู่ในระบบแล้ว',
-            'name.required' => 'กรุณากรอกชื่อหลักสูตร',
-            'effective_year.required' => 'กรุณากรอกปีที่เริ่มใช้หลักสูตร',
-        ]);
+        $validated = $request->validate(
+            $this->curriculumValidationRules($request),
+            $this->curriculumValidationMessages()
+        );
+
+        $validated['duration_years'] = $validated['duration_years'] ?? 1;
 
         Curriculum::create($validated);
 
@@ -592,22 +584,17 @@ class MasterDataController extends Controller
     {
         $this->normalizeCurriculumInput($request);
 
-        $validated = $request->validate([
-            'name' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('curriculums', 'name')
-                    ->where(fn($query) => $query->where('effective_year', $request->input('effective_year')))
-                    ->ignore($curriculum->id),
-            ],
-            'effective_year' => 'required|integer',
-            'is_active' => 'required|boolean'
-        ], [
-            'name.unique' => 'มีหลักสูตรนี้ในปีที่เริ่มใช้นี้อยู่ในระบบแล้ว',
-            'name.required' => 'กรุณากรอกชื่อหลักสูตร',
-            'effective_year.required' => 'กรุณากรอกปีที่เริ่มใช้หลักสูตร',
-        ]);
+        $validated = $request->validate(
+            $this->curriculumValidationRules($request, $curriculum),
+            $this->curriculumValidationMessages()
+        );
+
+        $validated['duration_years'] = $validated['duration_years'] ?? $curriculum->duration_years ?? 1;
+
+        // ถ้าเปลี่ยน uses_year_level เป็น false → เคลียร์ default_year_level ของทุกวิชาในหลักสูตร
+        if (! $validated['uses_year_level']) {
+            $curriculum->courses()->update(['default_year_level' => null]);
+        }
 
         $curriculum->update($validated);
 
@@ -634,9 +621,13 @@ class MasterDataController extends Controller
         ]);
 
         $newCurriculum = Curriculum::create([
-            'name' => $validated['name'],
-            'effective_year' => $validated['effective_year'],
-            'is_active' => false,
+            'name'                   => $validated['name'],
+            'effective_year'         => $validated['effective_year'],
+            'education_level'        => $curriculum->education_level,
+            'duration_years'         => $curriculum->duration_years,
+            'uses_year_level'        => $curriculum->uses_year_level,
+            'total_credits_required' => $curriculum->total_credits_required,
+            'is_active'              => false,
         ]);
 
         $courses = $curriculum->courses;
@@ -788,6 +779,50 @@ class MasterDataController extends Controller
     {
         return $this->courseCodeValidationMessages() + [
             'head_instructor_id.required' => 'กรุณากำหนดหัวหน้าวิชาสำหรับรายวิชาที่เปิดใช้งาน',
+            'default_year_level.required' => 'หลักสูตรนี้ใช้ระบบชั้นปี กรุณาระบุชั้นปีตามแผน',
+            'default_year_level.max'      => 'ชั้นปีตามแผนต้องไม่เกินจำนวนปีของหลักสูตร',
+            'is_required.required'        => 'กรุณาระบุว่าเป็นวิชาบังคับหรือวิชาเลือก',
+        ];
+    }
+
+    private function curriculumValidationRules(Request $request, ?Curriculum $existing = null): array
+    {
+        $uniqueRule = Rule::unique('curriculums', 'name')
+            ->where(fn($query) => $query->where('effective_year', $request->input('effective_year')));
+        if ($existing) {
+            $uniqueRule->ignore($existing->id);
+        }
+
+        $usesYearLevel = filter_var($request->input('uses_year_level'), FILTER_VALIDATE_BOOLEAN);
+
+        return [
+            'name'                   => ['required', 'string', 'max:255', $uniqueRule],
+            'effective_year'         => 'required|integer',
+            'education_level'        => 'required|in:bachelor,master,doctorate',
+            'uses_year_level'        => 'required|boolean',
+            'duration_years'         => $usesYearLevel
+                ? ['required', 'integer', 'min:1', 'max:10']
+                : ['nullable', 'integer', 'min:1', 'max:10'],
+            'total_credits_required' => $usesYearLevel
+                ? ['nullable', 'integer', 'min:0', 'max:9999']
+                : ['required', 'integer', 'min:1', 'max:9999'],
+            'is_active'              => 'required|boolean',
+        ];
+    }
+
+    private function curriculumValidationMessages(): array
+    {
+        return [
+            'name.unique' => 'มีหลักสูตรนี้ในปีที่เริ่มใช้นี้อยู่ในระบบแล้ว',
+            'name.required' => 'กรุณากรอกชื่อหลักสูตร',
+            'effective_year.required' => 'กรุณากรอกปีที่เริ่มใช้หลักสูตร',
+            'education_level.required' => 'กรุณาเลือกระดับการศึกษา',
+            'education_level.in' => 'ระดับการศึกษาต้องเป็น ป.ตรี / ป.โท / ป.เอก',
+            'duration_years.required' => 'กรุณาระบุจำนวนปีของหลักสูตร',
+            'duration_years.min' => 'จำนวนปีของหลักสูตรต้องอย่างน้อย 1 ปี',
+            'uses_year_level.required' => 'กรุณาเลือกรูปแบบการจัดชั้นปี',
+            'total_credits_required.required' => 'หลักสูตรที่ไม่ใช้ระบบชั้นปีต้องระบุหน่วยกิตขั้นต่ำเพื่อใช้เป็นเงื่อนไขจบการศึกษา',
+            'total_credits_required.min' => 'หน่วยกิตขั้นต่ำต้องอย่างน้อย 1 หน่วยกิต',
         ];
     }
 
@@ -903,7 +938,8 @@ class MasterDataController extends Controller
             return back()->with('error', 'หัวไฟล์ CSV ไม่ครบ: ' . implode(', ', $missing));
         }
 
-        $curriculums    = Curriculum::pluck('id', 'name')->toArray();
+        $curriculumModels = Curriculum::all()->keyBy('id');
+        $curriculums    = $curriculumModels->mapWithKeys(fn($c) => [$c->name => $c->id])->toArray();
         $departments    = Department::pluck('id', 'name')->toArray();
         $employeeIds    = User::whereNotNull('employee_id')->pluck('id', 'employee_id')->toArray();
         $updateOnDup    = $request->boolean('update_on_duplicate');
@@ -957,10 +993,23 @@ class MasterDataController extends Controller
 
             $yearLevel = trim($csv['default_year_level'] ?? '');
             $semester  = trim($csv['default_semester'] ?? '');
-            if ($yearLevel === '' || $semester === '') {
-                $errors[] = "แถว {$row}: ต้องระบุ default_year_level และ default_semester";
+            $curriculumModel = $curriculumModels->get($currId);
+            $usesYearLevel = $curriculumModel ? (bool) $curriculumModel->uses_year_level : true;
+            $maxYearForCurriculum = $curriculumModel ? max(1, (int) $curriculumModel->duration_years) : 4;
+
+            if ($semester === '') {
+                $errors[] = "แถว {$row}: ต้องระบุ default_semester";
                 continue;
             }
+            if ($usesYearLevel && $yearLevel === '') {
+                $errors[] = "แถว {$row}: หลักสูตร '{$currName}' ใช้ระบบชั้นปี ต้องระบุ default_year_level";
+                continue;
+            }
+            if ($yearLevel !== '' && ((int) $yearLevel < 1 || (int) $yearLevel > $maxYearForCurriculum)) {
+                $errors[] = "แถว {$row}: default_year_level ต้องอยู่ระหว่าง 1 ถึง {$maxYearForCurriculum} ตามจำนวนปีของหลักสูตร";
+                continue;
+            }
+            $yearLevelValue = ($usesYearLevel && $yearLevel !== '') ? (int) $yearLevel : null;
 
             $capacity = trim($csv['capacity'] ?? '');
             if ($capacity === '' || (int)$capacity < 1) {
@@ -994,6 +1043,8 @@ class MasterDataController extends Controller
             $selfStudy = (int)(trim($csv['self_study_hours'] ?? '0') ?: '0');
             $status    = in_array(trim($csv['status'] ?? ''), ['active', 'inactive']) ? trim($csv['status']) : 'active';
             $colorCode = trim($csv['color_code'] ?? '') ?: null;
+            $isRequiredRaw = trim($csv['is_required'] ?? '');
+            $isRequired = $isRequiredRaw === '' ? true : in_array(strtolower($isRequiredRaw), ['1', 'true', 'yes', 'y']);
 
             try {
                 Course::updateOrCreate(
@@ -1008,13 +1059,13 @@ class MasterDataController extends Controller
                         'lecture_hours'               => $lecture,
                         'lab_hours'                   => $lab,
                         'self_study_hours'            => $selfStudy,
-                        'default_year_level'          => (int)$yearLevel,
+                        'default_year_level'          => $yearLevelValue,
                         'default_semester'            => (int)$semester,
                         'capacity'                    => (int)$capacity,
                         'requires_practicum_rotation' => $rotation,
+                        'is_required'                 => $isRequired,
                         'color_code'                  => $colorCode,
                         'status'                      => $status,
-                        'academic_level'              => 'undergraduate',
                     ]
                 );
                 $successCount++;

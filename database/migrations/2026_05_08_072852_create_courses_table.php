@@ -23,10 +23,11 @@ return new class extends Migration
             $table->string('name_en', 255)->nullable();
             // course_type ทำเป็น nullable — UI infer จาก lecture_hours + lab_hours + requires_practicum_rotation
             $table->enum('course_type', ['theory', 'practicum', 'theory_practicum'])->nullable();
-            $table->enum('academic_level', ['undergraduate', 'graduate'])->default('undergraduate');
-            $table->integer('default_year_level')->nullable()->comment('ชั้นปีที่ต้องเรียนตามแผน (1-4)');
+            // ระดับการศึกษาย้ายไปอยู่ที่ curriculums.education_level (เพราะเป็น property ของหลักสูตร ไม่ใช่ของรายวิชา)
+            $table->integer('default_year_level')->nullable()->comment('ชั้นปีที่ต้องเรียนตามแผน — null ถ้าหลักสูตรไม่ใช้ระบบชั้นปี');
             $table->integer('default_semester')->nullable()->comment('ภาคเรียนที่ต้องเรียนตามแผน (1, 2, 3)');
             $table->boolean('requires_practicum_rotation')->default(false);
+            $table->boolean('is_required')->default(true)->comment('true=วิชาบังคับของหลักสูตร, false=วิชาเลือก');
             $table->integer('credits');
             $table->integer('lecture_hours')->default(0);
             $table->integer('lab_hours')->default(0);

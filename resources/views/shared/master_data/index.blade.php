@@ -29,8 +29,8 @@
                 'curriculum_id' => old('curriculum_id', ''),
                 'department_id' => old('department_id', ''),
                 'head_instructor_id' => old('head_instructor_id', ''),
-                'academic_level' => old('academic_level', 'undergraduate'),
                 'default_year_level' => old('default_year_level', ''),
+                'is_required' => old('is_required', '1'),
                 'default_semester' => old('default_semester', ''),
                 'credits' => old('credits', ''),
                 'lecture_hours' => old('lecture_hours', 0),
@@ -312,6 +312,11 @@
         // Courses
         showCourseModal: false,
         editCourseMode: false,
+        curriculumMeta: {{ Js::from($curriculums->mapWithKeys(fn($c) => [(string) $c->id => [
+            'uses_year_level' => (bool) $c->uses_year_level,
+            'duration_years'  => (int) $c->duration_years,
+            'education_level' => $c->education_level,
+        ]])) }},
         currentCourse: {
             id: '',
             route_key: '',
@@ -321,7 +326,6 @@
             curriculum_id: '',
             department_id: '',
             head_instructor_id: '',
-            academic_level: 'undergraduate',
             default_year_level: '',
             default_semester: '',
             credits: '',
@@ -332,8 +336,21 @@
             color_code: '#3b82f6',
             status: 'active',
             requires_practicum_rotation: false,
+            is_required: '1',
             prerequisite_ids: [],
             has_locked_offering: false
+        },
+        currentCurriculumUsesYearLevel() {
+            const meta = this.curriculumMeta[String(this.currentCourse.curriculum_id || '')];
+            return meta ? !!meta.uses_year_level : true;
+        },
+        currentCurriculumDurationYears() {
+            const meta = this.curriculumMeta[String(this.currentCourse.curriculum_id || '')];
+            return meta && meta.duration_years > 0 ? meta.duration_years : 4;
+        },
+        currentCurriculumYearOptions() {
+            const n = this.currentCurriculumDurationYears();
+            return Array.from({ length: n }, (_, i) => i + 1);
         },
         courseHeadSearch: '',
         showCourseHeadDropdown: false,
@@ -346,7 +363,7 @@
         showAllCourseInstructors: false,
         openAddCourse() {
             this.editCourseMode = false;
-            this.currentCourse = { id: '', route_key: '', course_code: '', name_th: '', name_en: '', curriculum_id: '', department_id: '', head_instructor_id: '', academic_level: 'undergraduate', default_year_level: '', default_semester: '', credits: '', lecture_hours: 0, lab_hours: 0, self_study_hours: 0, capacity: '', color_code: '#3b82f6', status: 'active', requires_practicum_rotation: '0', prerequisite_ids: [], has_locked_offering: false };
+            this.currentCourse = { id: '', route_key: '', course_code: '', name_th: '', name_en: '', curriculum_id: '', department_id: '', head_instructor_id: '', default_year_level: '', default_semester: '', credits: '', lecture_hours: 0, lab_hours: 0, self_study_hours: 0, capacity: '', color_code: '#3b82f6', status: 'active', requires_practicum_rotation: '0', is_required: '1', prerequisite_ids: [], has_locked_offering: false };
             this.courseHeadSearch = '';
             this.selectedStaff = [];
             this.staffSearch = '';
@@ -360,6 +377,7 @@
             this.currentCourse = { ...course };
             this.currentCourse.route_key = course.course_code;
             this.currentCourse.requires_practicum_rotation = course.requires_practicum_rotation ? '1' : '0';
+            this.currentCourse.is_required = (course.is_required ?? true) ? '1' : '0';
             this.currentCourse.prerequisite_ids = (course.prerequisites || []).map(prerequisite => String(prerequisite.id));
             this.courseHeadSearch = course.head_instructor ? course.head_instructor.formatted_name : '';
             this.selectedStaff = course.assigned_staff ? course.assigned_staff.map(s => ({ id: s.id, name: s.formatted_name || s.name })) : [];
@@ -441,16 +459,53 @@
         // Curriculums
         showCurriculumModal: false,
         editCurriculumMode: false,
-        currentCurriculum: { id: '', name: '', effective_year: '', is_active: true },
+        currentCurriculum: {
+            id: '', name: '', effective_year: '',
+            education_level: 'bachelor', duration_years: 4, uses_year_level: '1',
+            total_credits_required: '', is_active: '1',
+        },
         openAddCurriculum() {
             this.editCurriculumMode = false;
-            this.currentCurriculum = { id: '', name: '', effective_year: '', is_active: true };
+            this.currentCurriculum = {
+                id: '', name: '', effective_year: '',
+                education_level: 'bachelor', duration_years: 4, uses_year_level: '1',
+                total_credits_required: '', is_active: '1',
+            };
             this.showCurriculumModal = true;
         },
         openEditCurriculum(curr) {
             this.editCurriculumMode = true;
-            this.currentCurriculum = { ...curr, is_active: curr.is_active ? '1' : '0' };
+            this.currentCurriculum = {
+                ...curr,
+                is_active: curr.is_active ? '1' : '0',
+                uses_year_level: curr.uses_year_level ? '1' : '0',
+                education_level: curr.education_level || 'bachelor',
+                duration_years: curr.duration_years || 4,
+                total_credits_required: curr.total_credits_required ?? '',
+            };
             this.showCurriculumModal = true;
+        },
+        applyEducationLevelDefaults() {
+            // auto-default เฉพาะตอนสร้างใหม่ — แก้ไขแล้วไม่ทับค่าเดิมที่ admin ตั้งไว้
+            if (this.editCurriculumMode) return;
+
+            const lvl = this.currentCurriculum.education_level;
+            if (lvl === 'master') {
+                this.currentCurriculum.duration_years = 2;
+                this.currentCurriculum.uses_year_level = '0';
+                if (!this.currentCurriculum.total_credits_required) {
+                    this.currentCurriculum.total_credits_required = 36;
+                }
+            } else if (lvl === 'doctorate') {
+                this.currentCurriculum.duration_years = 3;
+                this.currentCurriculum.uses_year_level = '0';
+                if (!this.currentCurriculum.total_credits_required) {
+                    this.currentCurriculum.total_credits_required = 48;
+                }
+            } else {
+                this.currentCurriculum.duration_years = 4;
+                this.currentCurriculum.uses_year_level = '1';
+            }
         },
         confirmDeleteCurriculum() {
             // Delegate to global helper to avoid quoting issues inside x-data attribute
@@ -626,7 +681,7 @@
         }
         restoreFilters();
         sanitizeRestoredFilters();
-        @if($errors->hasAny(['course_code','name_th','name_en','curriculum_id','department_id','head_instructor_id','academic_level','default_year_level','default_semester','credits','lecture_hours','lab_hours','self_study_hours','capacity','color_code','status','requires_practicum_rotation','prerequisite_ids','prerequisite_ids.*']))
+        @if($errors->hasAny(['course_code','name_th','name_en','curriculum_id','department_id','head_instructor_id','default_year_level','default_semester','credits','lecture_hours','lab_hours','self_study_hours','capacity','color_code','status','requires_practicum_rotation','is_required','prerequisite_ids','prerequisite_ids.*']))
             activeTab = 'courses';
             editCourseMode = {{ old('course_form_id') ? 'true' : 'false' }};
             currentCourse = {
@@ -637,7 +692,6 @@
                 curriculum_id: {{ Js::from(old('curriculum_id', '')) }},
                 department_id: {{ Js::from(old('department_id', '')) }},
                 head_instructor_id: {{ Js::from(old('head_instructor_id', '')) }},
-                academic_level: {{ Js::from(old('academic_level', 'undergraduate')) }},
                 default_year_level: {{ Js::from(old('default_year_level', '')) }},
                 default_semester: {{ Js::from(old('default_semester', '')) }},
                 credits: {{ Js::from(old('credits', '')) }},
@@ -648,17 +702,22 @@
                 color_code: {{ Js::from(old('color_code', '#3b82f6')) }},
                 status: {{ Js::from(old('status', 'active')) }},
                 requires_practicum_rotation: {{ Js::from(old('requires_practicum_rotation', '0')) }},
+                is_required: {{ Js::from(old('is_required', '1')) }},
                 prerequisite_ids: {{ Js::from(array_map('strval', old('prerequisite_ids', []))) }},
             };
             showCourseModal = true;
         @endif
-        @if(old('curriculum_form') && $errors->hasAny(['name','effective_year','is_active']))
+        @if(old('curriculum_form') && $errors->hasAny(['name','effective_year','is_active','education_level','duration_years','uses_year_level','total_credits_required']))
             activeTab = 'curriculums';
             editCurriculumMode = {{ old('curriculum_form_id') ? 'true' : 'false' }};
             currentCurriculum = {
                 id: {{ Js::from(old('curriculum_form_id', '')) }},
                 name: {{ Js::from(old('name', '')) }},
                 effective_year: {{ Js::from(old('effective_year', '')) }},
+                education_level: {{ Js::from(old('education_level', 'bachelor')) }},
+                duration_years: {{ Js::from(old('duration_years', 4)) }},
+                uses_year_level: {{ Js::from(old('uses_year_level', '1')) }},
+                total_credits_required: {{ Js::from(old('total_credits_required', '')) }},
                 is_active: {{ Js::from(old('is_active', '1')) }},
             };
             showCurriculumModal = true;
@@ -1316,7 +1375,7 @@
                         <tbody>
                             @forelse($courses as $course)
                                 <tr
-                                    data-search="{{ Str::lower($course->course_code . ' ' . $course->name_th . ' ' . ($course->name_en ?? '') . ' ' . ($course->headInstructor->formatted_name ?? '') . ' ' . ($course->department->name ?? '') . ' ' . ($course->curriculum->name ?? '') . ' ' . ($course->credits ?? '') . ' หน่วยกิต ' . ($course->lecture_hours ?? 0) . '-' . ($course->lab_hours ?? 0) . '-' . ($course->self_study_hours ?? 0) . ' ' . ($course->default_year_level ?? '') . ' ปี ' . ($course->default_semester ?? '') . ' ภาค ' . ($course->capacity ?? '') . ' คน ' . ($course->academic_level ?? '') . ' ' . ($course->status ?? '') . ' ' . ($course->status === 'active' ? 'เปิดสอน' : 'ปิดสอน')) }}"
+                                    data-search="{{ Str::lower($course->course_code . ' ' . $course->name_th . ' ' . ($course->name_en ?? '') . ' ' . ($course->headInstructor->formatted_name ?? '') . ' ' . ($course->department->name ?? '') . ' ' . ($course->curriculum->name ?? '') . ' ' . ($course->credits ?? '') . ' หน่วยกิต ' . ($course->lecture_hours ?? 0) . '-' . ($course->lab_hours ?? 0) . '-' . ($course->self_study_hours ?? 0) . ' ' . ($course->default_year_level ?? '') . ' ปี ' . ($course->default_semester ?? '') . ' ภาค ' . ($course->capacity ?? '') . ' คน ' . ($course->is_required ? 'บังคับ' : 'เลือก') . ' ' . ($course->status ?? '') . ' ' . ($course->status === 'active' ? 'เปิดสอน' : 'ปิดสอน')) }}"
                                     data-department-id="{{ $course->department_id ?? '' }}"
                                     data-curriculum-id="{{ $course->curriculum_id ?? '' }}"
                                     data-year-level="{{ $course->default_year_level ?? '' }}"
@@ -2140,16 +2199,6 @@
                                     <input type="number" name="credits" x-model="currentCourse.credits" required min="0" placeholder="2">
                                 </div>
                             </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
-                                <div class="form-group" style="margin-bottom:0;">
-                                    <label>ระดับการศึกษา</label>
-                                    <select name="academic_level" x-model="currentCourse.academic_level">
-                                        <option value="undergraduate">ปริญญาตรี</option>
-                                        <option value="graduate">บัณฑิตศึกษา</option>
-                                    </select>
-                                </div>
-                            </div>
-
                             {{-- Section: ผู้รับผิดชอบรายวิชา --}}
                             <div class="course-assignment-panel">
                                 <div class="course-assignment-head">
@@ -2279,16 +2328,21 @@
                                 <span style="font-size:11px;font-weight:700;color:var(--fg-3);text-transform:uppercase;letter-spacing:.6px;white-space:nowrap;">แผนการเรียน</span>
                                 <div style="flex:1;height:1px;background:var(--border);"></div>
                             </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px;">
-                                <div class="form-group" style="margin-bottom:0;">
+                            <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 20px;">
+                                <div class="form-group" style="margin-bottom:0;" x-show="currentCurriculumUsesYearLevel()">
                                     <label>ชั้นปีตามแผน <span style="color:var(--status-conflict-fg)">*</span></label>
-                                    <select name="default_year_level" x-model="currentCourse.default_year_level" required>
+                                    <select name="default_year_level" x-model="currentCourse.default_year_level" :required="currentCurriculumUsesYearLevel()">
                                         <option value="">-- เลือกชั้นปี --</option>
-                                        <option value="1">ชั้นปีที่ 1</option>
-                                        <option value="2">ชั้นปีที่ 2</option>
-                                        <option value="3">ชั้นปีที่ 3</option>
-                                        <option value="4">ชั้นปีที่ 4</option>
+                                        <template x-for="y in currentCurriculumYearOptions()" :key="y">
+                                            <option :value="y" x-text="'ชั้นปีที่ ' + y"></option>
+                                        </template>
                                     </select>
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;" x-show="!currentCurriculumUsesYearLevel()">
+                                    <label>ชั้นปีตามแผน</label>
+                                    <div style="height:38px;display:flex;align-items:center;padding:0 10px;border:1px dashed var(--border);border-radius:4px;background:var(--bg-2);font-size:12px;color:var(--fg-3);">
+                                        ไม่ใช้ระบบชั้นปี — กำหนดผ่าน prerequisite/หน่วยกิตสะสม
+                                    </div>
                                 </div>
                                 <div class="form-group" style="margin-bottom:0;">
                                     <label>ภาคเรียนตามแผน <span style="color:var(--status-conflict-fg)">*</span></label>
@@ -2297,6 +2351,13 @@
                                         <option value="1">ภาคเรียนที่ 1</option>
                                         <option value="2">ภาคเรียนที่ 2</option>
                                         <option value="3">ภาคฤดูร้อน</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label>ประเภทวิชา</label>
+                                    <select name="is_required" x-model="currentCourse.is_required">
+                                        <option value="1">วิชาบังคับ</option>
+                                        <option value="0">วิชาเลือก</option>
                                     </select>
                                 </div>
                                 <div class="form-group" style="margin-bottom:0;">
@@ -2431,10 +2492,10 @@
                         <input type="hidden" name="curriculum_form" value="1">
                         <input type="hidden" name="curriculum_form_id" :value="currentCurriculum.id" :disabled="!editCurriculumMode">
                         <div class="modal-body">
-                            @if(old('curriculum_form') && $errors->hasAny(['name','effective_year','is_active']))
+                            @if(old('curriculum_form') && $errors->hasAny(['name','effective_year','is_active','education_level','duration_years','uses_year_level','total_credits_required']))
                                 <div style="margin-bottom:16px;padding:12px 14px;background:oklch(97% 0.02 20);border:1px solid oklch(82% 0.08 25);border-radius:8px;color:var(--status-conflict-fg);font-size:13px;line-height:1.6;">
                                     <div style="font-weight:700;margin-bottom:4px;">ไม่สามารถบันทึกหลักสูตรได้</div>
-                                    @foreach(['name','effective_year','is_active'] as $field)
+                                    @foreach(['name','effective_year','is_active','education_level','duration_years','uses_year_level','total_credits_required'] as $field)
                                         @foreach($errors->get($field) as $error)
                                             <div>{{ $error }}</div>
                                         @endforeach
@@ -2445,18 +2506,55 @@
                                 <label>ชื่อหลักสูตร <span style="color: var(--status-conflict-fg)">*</span></label>
                                 <input type="text" name="name" x-model="currentCurriculum.name" required placeholder="เช่น พยาบาลศาสตรบัณฑิต (2565)">
                             </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                                <div class="form-group">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 16px;">
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label>ระดับการศึกษา <span style="color: var(--status-conflict-fg)">*</span></label>
+                                    <select name="education_level" x-model="currentCurriculum.education_level" @change="applyEducationLevelDefaults()" required>
+                                        <option value="bachelor">ปริญญาตรี</option>
+                                        <option value="master">ปริญญาโท</option>
+                                        <option value="doctorate">ปริญญาเอก</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;">
                                     <label>ปีที่เริ่มใช้ (พ.ศ.) <span style="color: var(--status-conflict-fg)">*</span></label>
                                     <input type="number" name="effective_year" x-model="currentCurriculum.effective_year" required placeholder="2565">
                                 </div>
-                                <div class="form-group">
-                                    <label>สถานะ</label>
-                                    <select name="is_active" x-model="currentCurriculum.is_active">
-                                        <option value="1">กำลังใช้งาน</option>
-                                        <option value="0">ปิดใช้งาน</option>
-                                    </select>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 16px;">
+                                <label>รูปแบบการจัดชั้นปี <span style="color: var(--status-conflict-fg)">*</span></label>
+                                <select name="uses_year_level" x-model="currentCurriculum.uses_year_level" required>
+                                    <option value="1">ใช้ระบบชั้นปี (cohort) — เหมาะกับ ป.ตรี</option>
+                                    <option value="0">ใช้ prerequisite + หน่วยกิตสะสม — เหมาะกับ ป.โท / ป.เอก</option>
+                                </select>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 16px;">
+                                <div class="form-group" style="margin-bottom:0;" x-show="String(currentCurriculum.uses_year_level) === '1'">
+                                    <label>จำนวนปีของหลักสูตร <span style="color: var(--status-conflict-fg)">*</span></label>
+                                    <input type="number" name="duration_years" x-model="currentCurriculum.duration_years" min="1" max="10" :required="String(currentCurriculum.uses_year_level) === '1'" placeholder="4">
+                                    <div style="margin-top:4px;font-size:11px;color:var(--fg-4);">ป.ตรี=4, ป.โท=2, ป.เอก=3</div>
                                 </div>
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label>
+                                        หน่วยกิตขั้นต่ำ
+                                        <template x-if="String(currentCurriculum.uses_year_level) === '0'">
+                                            <span style="color: var(--status-conflict-fg)">*</span>
+                                        </template>
+                                        <template x-if="String(currentCurriculum.uses_year_level) === '1'">
+                                            <span style="font-weight:400;color:var(--fg-4);font-size:11px;">(ไม่บังคับ)</span>
+                                        </template>
+                                    </label>
+                                    <input type="number" name="total_credits_required" x-model="currentCurriculum.total_credits_required" min="0" :required="String(currentCurriculum.uses_year_level) === '0'" placeholder="เช่น 140">
+                                    <template x-if="String(currentCurriculum.uses_year_level) === '0'">
+                                        <div style="margin-top:4px;font-size:11px;color:var(--fg-4);">ใช้เป็นเงื่อนไขจบการศึกษา (แทนระบบชั้นปี)</div>
+                                    </template>
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label>สถานะ</label>
+                                <select name="is_active" x-model="currentCurriculum.is_active">
+                                    <option value="1">กำลังใช้งาน</option>
+                                    <option value="0">ปิดใช้งาน</option>
+                                </select>
                             </div>
                         </div>
                         <div class="modal-foot" style="display: flex; justify-content: space-between;">

@@ -147,6 +147,7 @@ class MasterDataRedirectTest extends TestCase
             'capacity'                    => 30,
             'status'                      => 'active',
             'requires_practicum_rotation' => 0,
+            'is_required'                 => 1,
         ];
 
         $this->post(route('admin.courses.store'), $payload)->assertRedirect();
@@ -182,6 +183,7 @@ class MasterDataRedirectTest extends TestCase
             'capacity'                    => 30,
             'status'                      => 'active',
             'requires_practicum_rotation' => 0,
+            'is_required'                 => 1,
         ];
 
         $this->post(route('admin.courses.store'), $payload)->assertRedirect();
@@ -336,6 +338,136 @@ class MasterDataRedirectTest extends TestCase
         $this->assertDatabaseHas('courses', ['course_code' => 'NSBS_301-A']);
     }
 
+    // ── Master curriculum (ป.โท) — uses_year_level=false ──────────────
+
+    public function test_admin_can_create_master_curriculum_without_year_level(): void
+    {
+        $admin = $this->makeUser('admin');
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        $this->post(route('admin.curriculums.store'), [
+            'name'                   => 'หลักสูตรพยาบาลศาสตรมหาบัณฑิต 2569',
+            'effective_year'         => 2569,
+            'education_level'        => 'master',
+            'duration_years'         => 2,
+            'uses_year_level'        => 0,
+            'total_credits_required' => 36,
+            'is_active'              => 1,
+        ])->assertRedirect(route('admin.master_data', ['tab' => 'curriculums']));
+
+        $this->assertDatabaseHas('curriculums', [
+            'name'             => 'หลักสูตรพยาบาลศาสตรมหาบัณฑิต 2569',
+            'education_level'  => 'master',
+            'duration_years'   => 2,
+            'uses_year_level'  => 0,
+        ]);
+    }
+
+    public function test_course_in_master_curriculum_does_not_require_year_level(): void
+    {
+        $admin = $this->makeUser('admin');
+        $curr  = Curriculum::create([
+            'name'            => 'หลักสูตรปริญญาโท ทดสอบ',
+            'effective_year'  => 2569,
+            'education_level' => 'master',
+            'duration_years'  => 2,
+            'uses_year_level' => false,
+            'is_active'       => true,
+        ]);
+
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        $payload = $this->coursePayload([
+            'course_code'        => 'NSGM 501',
+            'curriculum_id'      => $curr->id,
+            'default_year_level' => '',
+        ]);
+
+        $this->post(route('admin.courses.store'), $payload)
+            ->assertRedirect(route('admin.master_data', ['tab' => 'courses']));
+
+        $this->assertDatabaseHas('courses', [
+            'course_code'        => 'NSGM 501',
+            'default_year_level' => null,
+        ]);
+    }
+
+    public function test_toggling_curriculum_off_year_level_clears_course_year_levels(): void
+    {
+        $admin = $this->makeUser('admin');
+        $curr  = Curriculum::create([
+            'name'            => 'หลักสูตรทดสอบ cascade',
+            'effective_year'  => 2569,
+            'education_level' => 'bachelor',
+            'duration_years'  => 4,
+            'uses_year_level' => true,
+            'is_active'       => true,
+        ]);
+        $dept = Department::create(['name' => 'ภาควิชา cascade']);
+        $head = $this->makeUser('instructor');
+
+        $course = Course::create($this->coursePayload([
+            'course_code'        => 'CSC 101',
+            'curriculum_id'      => $curr->id,
+            'department_id'      => $dept->id,
+            'head_instructor_id' => $head->id,
+            'default_year_level' => 2,
+        ]));
+
+        $this->assertEquals(2, $course->fresh()->default_year_level);
+
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        $this->put(route('admin.curriculums.update', $curr), [
+            'name'                   => $curr->name,
+            'effective_year'         => $curr->effective_year,
+            'education_level'        => 'master',
+            'uses_year_level'        => 0,
+            'total_credits_required' => 36,
+            'is_active'              => 1,
+        ])->assertRedirect(route('admin.master_data', ['tab' => 'curriculums']));
+
+        $this->assertNull($course->fresh()->default_year_level);
+    }
+
+    public function test_credit_based_curriculum_requires_total_credits(): void
+    {
+        $admin = $this->makeUser('admin');
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        $this->post(route('admin.curriculums.store'), [
+            'name'            => 'หลักสูตรหน่วยกิตสะสมไม่มีเครดิต',
+            'effective_year'  => 2569,
+            'education_level' => 'master',
+            'uses_year_level' => 0,
+            'is_active'       => 1,
+        ])->assertSessionHasErrors('total_credits_required');
+    }
+
+    public function test_course_year_level_max_capped_by_curriculum_duration(): void
+    {
+        $admin = $this->makeUser('admin');
+        $curr  = Curriculum::create([
+            'name'            => 'หลักสูตรปริญญาเอก ทดสอบ',
+            'effective_year'  => 2569,
+            'education_level' => 'doctorate',
+            'duration_years'  => 3,
+            'uses_year_level' => true,
+            'is_active'       => true,
+        ]);
+
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        $payload = $this->coursePayload([
+            'course_code'        => 'NSDR 401',
+            'curriculum_id'      => $curr->id,
+            'default_year_level' => 4,
+        ]);
+
+        $this->post(route('admin.courses.store'), $payload)
+            ->assertSessionHasErrors('default_year_level');
+    }
+
     private function coursePayload(array $overrides = []): array
     {
         $dept = $overrides['department_id'] ?? Department::create(['name' => 'Course Dept ' . uniqid()])->id;
@@ -362,6 +494,7 @@ class MasterDataRedirectTest extends TestCase
             'capacity'                    => 30,
             'status'                      => 'active',
             'requires_practicum_rotation' => 0,
+            'is_required'                 => 1,
         ], $overrides);
     }
 }

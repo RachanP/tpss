@@ -353,7 +353,6 @@ class CourseOfferingShowPageTest extends TestCase
             'name_th'                  => "วิชา {$n}",
             'name_en'                  => "Course {$n}",
             'course_type'              => 'theory',
-            'academic_level'           => 'undergraduate',
             'default_year_level'       => 1,
             'default_semester'         => 1,
             'credits'                  => 3,
