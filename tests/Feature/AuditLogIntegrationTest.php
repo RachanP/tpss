@@ -11,6 +11,7 @@ use App\Models\Curriculum;
 use App\Models\Department;
 use App\Models\InstructorProfile;
 use App\Models\LocationType;
+use App\Models\Room;
 use App\Models\User;
 use App\Models\UserRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -285,11 +286,280 @@ class AuditLogIntegrationTest extends TestCase
         $this->assertStringContainsString($name, $log->description);
     }
 
+    public function test_curriculum_crud_creates_audit_logs(): void
+    {
+        $this->actingAsAdmin()
+            ->post(route('admin.curriculums.store'), $this->curriculumPayload([
+                'name' => 'หลักสูตรตรวจสอบ Audit',
+            ]))
+            ->assertRedirect();
+
+        $curriculum = Curriculum::where('name', 'หลักสูตรตรวจสอบ Audit')->firstOrFail();
+        $createLog = $this->latestLog('ข้อมูลหลัก.สร้าง', 'curriculums');
+        $this->assertSame('ข้อมูลหลัก', $createLog->category);
+        $this->assertNull($createLog->old_values);
+        $this->assertSame('หลักสูตรตรวจสอบ Audit', $createLog->new_values['name']);
+
+        $this->actingAsAdmin()
+            ->put(route('admin.curriculums.update', $curriculum), $this->curriculumPayload([
+                'name' => $curriculum->name,
+                'effective_year' => $curriculum->effective_year,
+                'total_credits_required' => 130,
+            ]))
+            ->assertRedirect();
+
+        $updateLog = $this->latestLog('ข้อมูลหลัก.แก้ไข', 'curriculums');
+        $this->assertSame(['total_credits_required'], array_keys($updateLog->old_values));
+        $this->assertSame(120, $updateLog->old_values['total_credits_required']);
+        $this->assertSame(130, $updateLog->new_values['total_credits_required']);
+
+        $this->makeCourse(['curriculum_id' => $curriculum->id]);
+        $this->actingAsAdmin()
+            ->delete(route('admin.curriculums.destroy', $curriculum), ['confirm_cascade' => 1])
+            ->assertRedirect();
+
+        $deleteLog = $this->latestLog('ข้อมูลหลัก.ลบ', 'curriculums');
+        $this->assertSame('หลักสูตรตรวจสอบ Audit', $deleteLog->old_values['name']);
+        $this->assertSame(1, $deleteLog->new_values['deleted_course_count']);
+    }
+
+    public function test_department_crud_creates_audit_logs(): void
+    {
+        $this->actingAsAdmin()
+            ->post(route('admin.departments.store'), ['name' => 'ภาควิชา Audit'])
+            ->assertRedirect();
+
+        $department = Department::where('name', 'ภาควิชา Audit')->firstOrFail();
+        $createLog = $this->latestLog('ข้อมูลหลัก.สร้าง', 'departments');
+        $this->assertSame('ข้อมูลหลัก', $createLog->category);
+        $this->assertSame('ภาควิชา Audit', $createLog->new_values['name']);
+
+        $this->actingAsAdmin()
+            ->put(route('admin.departments.update', $department), ['name' => 'ภาควิชา Audit ใหม่'])
+            ->assertRedirect();
+
+        $updateLog = $this->latestLog('ข้อมูลหลัก.แก้ไข', 'departments');
+        $this->assertSame(['name'], array_keys($updateLog->old_values));
+        $this->assertSame('ภาควิชา Audit', $updateLog->old_values['name']);
+        $this->assertSame('ภาควิชา Audit ใหม่', $updateLog->new_values['name']);
+
+        $this->actingAsAdmin()
+            ->delete(route('admin.departments.destroy', $department->fresh()))
+            ->assertRedirect();
+
+        $deleteLog = $this->latestLog('ข้อมูลหลัก.ลบ', 'departments');
+        $this->assertSame('ภาควิชา Audit ใหม่', $deleteLog->old_values['name']);
+    }
+
+    public function test_room_and_location_type_crud_create_audit_logs(): void
+    {
+        $this->actingAsAdmin()
+            ->post(route('admin.location_types.store'), [
+                'name' => 'ประเภทห้อง Audit',
+                'requires_capacity' => 1,
+            ])
+            ->assertRedirect();
+
+        $locationType = LocationType::where('name', 'ประเภทห้อง Audit')->firstOrFail();
+        $this->assertSame('ประเภทห้อง Audit', $this->latestLog('ข้อมูลหลัก.สร้าง', 'location_types')->new_values['name']);
+
+        $this->actingAsAdmin()
+            ->put(route('admin.location_types.update', $locationType), [
+                'name' => 'ประเภทห้อง Audit',
+                'requires_capacity' => 0,
+            ])
+            ->assertRedirect();
+
+        $locationUpdateLog = $this->latestLog('ข้อมูลหลัก.แก้ไข', 'location_types');
+        $this->assertSame(['requires_capacity'], array_keys($locationUpdateLog->old_values));
+        $this->assertTrue($locationUpdateLog->old_values['requires_capacity']);
+        $this->assertFalse($locationUpdateLog->new_values['requires_capacity']);
+
+        $this->actingAsAdmin()
+            ->post(route('admin.rooms.store'), [
+                'room_code' => 'LAB-201',
+                'room_name' => 'ห้องปฏิบัติการ 201',
+                'building' => 'อาคาร 1',
+                'capacity' => 40,
+                'location_type_id' => $locationType->id,
+                'status' => 'active',
+                'equipment_type' => 'projector,bed',
+            ])
+            ->assertRedirect();
+
+        $room = Room::where('room_code', 'LAB-201')->firstOrFail();
+        $this->assertSame('LAB-201', $this->latestLog('ข้อมูลหลัก.สร้าง', 'rooms')->new_values['room_code']);
+
+        $this->actingAsAdmin()
+            ->put(route('admin.rooms.update', $room), [
+                'room_code' => 'LAB-201',
+                'room_name' => 'ห้องปฏิบัติการ 201',
+                'building' => 'อาคาร 1',
+                'capacity' => 45,
+                'location_type_id' => $locationType->id,
+                'status' => 'active',
+                'equipment_type' => 'projector,bed',
+            ])
+            ->assertRedirect();
+
+        $roomUpdateLog = $this->latestLog('ข้อมูลหลัก.แก้ไข', 'rooms');
+        $this->assertSame(['capacity'], array_keys($roomUpdateLog->old_values));
+        $this->assertSame(40, $roomUpdateLog->old_values['capacity']);
+        $this->assertSame(45, $roomUpdateLog->new_values['capacity']);
+
+        $this->actingAsAdmin()
+            ->delete(route('admin.rooms.destroy', $room->fresh()))
+            ->assertRedirect();
+        $this->assertSame('LAB-201', $this->latestLog('ข้อมูลหลัก.ลบ', 'rooms')->old_values['room_code']);
+
+        $this->actingAsAdmin()
+            ->delete(route('admin.location_types.destroy', $locationType->fresh()))
+            ->assertRedirect();
+        $this->assertSame('ประเภทห้อง Audit', $this->latestLog('ข้อมูลหลัก.ลบ', 'location_types')->old_values['name']);
+    }
+
+    public function test_activity_type_crud_creates_audit_logs(): void
+    {
+        $this->actingAsAdmin()
+            ->post(route('admin.activity_types.store'), [
+                'name' => 'กิจกรรม Audit',
+                'color_code' => '#336699',
+                'category' => 'lecture',
+            ])
+            ->assertRedirect();
+
+        $activityType = ActivityType::where('name', 'กิจกรรม Audit')->firstOrFail();
+        $this->assertSame('กิจกรรม Audit', $this->latestLog('ข้อมูลหลัก.สร้าง', 'activity_types')->new_values['name']);
+
+        $this->actingAsAdmin()
+            ->put(route('admin.activity_types.update', $activityType), [
+                'name' => 'กิจกรรม Audit ใหม่',
+                'color_code' => '#336699',
+                'category' => 'lecture',
+            ])
+            ->assertRedirect();
+
+        $updateLog = $this->latestLog('ข้อมูลหลัก.แก้ไข', 'activity_types');
+        $this->assertSame(['name'], array_keys($updateLog->old_values));
+        $this->assertSame('กิจกรรม Audit', $updateLog->old_values['name']);
+        $this->assertSame('กิจกรรม Audit ใหม่', $updateLog->new_values['name']);
+
+        $this->actingAsAdmin()
+            ->delete(route('admin.activity_types.destroy', $activityType->fresh()))
+            ->assertRedirect();
+
+        $deleteLog = $this->latestLog('ข้อมูลหลัก.ลบ', 'activity_types');
+        $this->assertSame('กิจกรรม Audit ใหม่', $deleteLog->old_values['name']);
+    }
+
+    public function test_academic_year_create_and_update_use_master_data_category(): void
+    {
+        $this->actingAsAdmin()
+            ->post(route('admin.settings.years.store'), [
+                'name' => '2570',
+                'semester' => 1,
+                'start_date' => '2027-08-01',
+                'end_date' => '2027-12-31',
+                'is_active' => '1',
+            ])
+            ->assertRedirect();
+
+        $year = AcademicYear::where('name', '2570')->where('semester', 1)->firstOrFail();
+        $createLog = $this->latestLog('ข้อมูลหลัก.สร้าง', 'academic_years');
+        $this->assertSame('ข้อมูลหลัก', $createLog->category);
+        $this->assertSame('2570', $createLog->new_values['name']);
+
+        $this->actingAsAdmin()
+            ->put(route('admin.settings.years.update', $year), [
+                'name' => '2570',
+                'semester' => 1,
+                'start_date' => '2027-08-15',
+                'end_date' => '2027-12-31',
+                'is_active' => '1',
+            ])
+            ->assertRedirect();
+
+        $updateLog = $this->latestLog('ข้อมูลหลัก.แก้ไข', 'academic_years');
+        $this->assertSame(['start_date'], array_keys($updateLog->old_values));
+        $this->assertSame('2027-08-01', $updateLog->old_values['start_date']);
+        $this->assertSame('2027-08-15', $updateLog->new_values['start_date']);
+    }
+
+    public function test_instructor_master_data_update_logs_profile_fields_only_when_changed(): void
+    {
+        $instructor = $this->makeInstructor();
+        $profile = $instructor->instructorProfile;
+        $department = $this->makeDepartment(['name' => 'ภาควิชาใหม่สำหรับอาจารย์']);
+
+        $this->actingAsAdmin()
+            ->put(route('admin.instructors.update', $instructor->id), [
+                'name' => $instructor->name,
+                'prefix' => $instructor->prefix ?? 'อ.',
+                'employee_id' => $instructor->employee_id,
+                'department_id' => $department->id,
+                'title' => $profile->title,
+                'academic_degree' => $profile->academic_degree ?? 'ปริญญาโท',
+                'employment_type' => $profile->employment_type ?? 'พนักงานมหาวิทยาลัย',
+                'hired_at' => $profile->hired_at,
+                'is_english_passed' => 0,
+                'teaching_pct' => 45,
+                'research_pct' => 25,
+                'service_pct' => 10,
+                'culture_pct' => 10,
+                'other_pct' => 10,
+            ])
+            ->assertRedirect();
+
+        $log = $this->latestLog('ข้อมูลหลัก.แก้ไข', 'instructor_profiles');
+        $this->assertSame('ข้อมูลหลัก', $log->category);
+        $this->assertArrayHasKey('department_id', $log->old_values);
+        $this->assertArrayHasKey('teaching_pct', $log->old_values);
+        $this->assertArrayNotHasKey('roles', $log->old_values);
+        $this->assertSame($department->id, $log->new_values['department_id']);
+        $this->assertSame(45, $log->new_values['teaching_pct']);
+    }
+
+    public function test_no_op_and_validation_failure_do_not_create_phase_2b_logs(): void
+    {
+        $activityType = ActivityType::create([
+            'name' => 'ไม่เปลี่ยนแปลง',
+            'color_code' => '#336699',
+            'category' => 'lecture',
+        ]);
+
+        $this->actingAsAdmin()
+            ->put(route('admin.activity_types.update', $activityType), [
+                'name' => $activityType->name,
+                'color_code' => $activityType->color_code,
+                'category' => $activityType->category,
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseCount('audit_logs', 0);
+
+        $this->actingAsAdmin()
+            ->post(route('admin.activity_types.store'), [
+                'color_code' => '#336699',
+                'category' => 'lecture',
+            ])
+            ->assertSessionHasErrors('name');
+
+        $this->assertDatabaseCount('audit_logs', 0);
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────
 
     private function actingAsAdmin(): static
     {
         return $this->actingAs($this->admin)->withSession(['active_role' => 'admin']);
+    }
+
+    private function latestLog(string $action, string $table): AuditLog
+    {
+        return AuditLog::where('action', $action)
+            ->where('table_affected', $table)
+            ->latest('id')
+            ->firstOrFail();
     }
 
     private function makeAdmin(): User
@@ -312,6 +582,7 @@ class AuditLogIntegrationTest extends TestCase
         $user = User::create([
             'username'    => "instr_{$n}",
             'name'        => "Instructor {$n}",
+            'prefix'      => 'อ.',
             'email'       => "instr_{$n}@test.example",
             'employee_id' => "EMP{$n}",
             'password'    => Hash::make('password'),
@@ -360,9 +631,12 @@ class AuditLogIntegrationTest extends TestCase
         );
     }
 
-    private function makeDepartment(): Department
+    private function makeDepartment(array $overrides = []): Department
     {
-        return Department::firstOrCreate(['name' => 'ภาควิชาทดสอบ']);
+        return Department::firstOrCreate(
+            ['name' => $overrides['name'] ?? 'ภาควิชาทดสอบ'],
+            $overrides
+        );
     }
 
     private function makeCourse(array $overrides = []): Course
@@ -418,6 +692,19 @@ class AuditLogIntegrationTest extends TestCase
             'requires_practicum_rotation' => $course->requires_practicum_rotation ? 1 : 0,
             'is_required'                 => $course->is_required ? 1 : 0,
         ];
+    }
+
+    private function curriculumPayload(array $overrides = []): array
+    {
+        return array_merge([
+            'name' => 'หลักสูตรทดสอบ Audit',
+            'effective_year' => 2569,
+            'education_level' => 'bachelor',
+            'duration_years' => 4,
+            'uses_year_level' => 1,
+            'total_credits_required' => 120,
+            'is_active' => 1,
+        ], $overrides);
     }
 
     private function seedCriticals(): void

@@ -14,6 +14,44 @@ use Illuminate\Support\Facades\DB;
 
 class AdminSettingController extends Controller
 {
+    private function auditSnapshot(AcademicYear $year): array
+    {
+        return collect($year->only(['name', 'semester', 'start_date', 'end_date', 'is_active']))
+            ->map(fn ($value) => $value instanceof \DateTimeInterface ? $value->format('Y-m-d') : $value)
+            ->all();
+    }
+
+    private function auditDiff(array $before, array $after): array
+    {
+        $old = [];
+        $new = [];
+
+        foreach ($after as $key => $value) {
+            if (($before[$key] ?? null) !== $value) {
+                $old[$key] = $before[$key] ?? null;
+                $new[$key] = $value;
+            }
+        }
+
+        return [$old, $new];
+    }
+
+    private function logAcademicYearUpdate(AcademicYear $year, array $oldValues, array $newValues): void
+    {
+        if (empty($oldValues) && empty($newValues)) {
+            return;
+        }
+
+        AuditLogger::log(
+            action: 'ข้อมูลหลัก.แก้ไข',
+            table: 'academic_years',
+            recordId: $year->id,
+            oldValues: $oldValues,
+            newValues: $newValues,
+            description: "แก้ไขปีการศึกษา {$year->name} ภาค {$year->semester}",
+        );
+    }
+
     public function index()
     {
         $academicYears = AcademicYear::orderBy('name', 'desc')->orderBy('semester', 'desc')->get();
@@ -76,7 +114,17 @@ class AdminSettingController extends Controller
             })->update(['status' => 'inactive']);
         }
 
-        AcademicYear::create($validated);
+        $year = AcademicYear::create($validated);
+
+        AuditLogger::log(
+            action: 'ข้อมูลหลัก.สร้าง',
+            table: 'academic_years',
+            recordId: $year->id,
+            oldValues: null,
+            newValues: $this->auditSnapshot($year),
+            description: "สร้างปีการศึกษา {$year->name} ภาค {$year->semester}",
+        );
+
         AlertController::flushCache();
         return redirect()->route($this->settingsRoute(), ['tab' => 'academic'])->with('success', 'เพิ่มปีการศึกษาเรียบร้อยแล้ว');
     }
@@ -99,6 +147,8 @@ class AdminSettingController extends Controller
             return redirect()->route($this->settingsRoute(), ['tab' => 'academic'])
                 ->with('error', 'ไม่สามารถยกเลิกปีการศึกษาปัจจุบันได้ — ต้องมีปีการศึกษาที่ใช้งานอยู่เสมอ กรุณาตั้งค่าปีการศึกษาอื่นเป็นปัจจุบันก่อน');
         }
+
+        $before = $this->auditSnapshot($year);
 
         if ($validated['is_active']) {
             AcademicYear::where('id', '!=', $year->id)->where('is_active', true)->update(['is_active' => false]);
@@ -124,6 +174,11 @@ class AdminSettingController extends Controller
         }
 
         $year->update($validated);
+
+        $after = $this->auditSnapshot($year->fresh());
+        [$oldValues, $newValues] = $this->auditDiff($before, $after);
+        $this->logAcademicYearUpdate($year->fresh(), $oldValues, $newValues);
+
         AlertController::flushCache();
         return redirect()->route($this->settingsRoute(), ['tab' => 'academic'])->with('success', 'อัปเดตปีการศึกษาเรียบร้อยแล้ว');
     }
