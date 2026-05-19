@@ -282,6 +282,26 @@ class AdminSettingController extends Controller
             description: "เปิดช่วงจัดตารางปีการศึกษา {$year->name} ภาค {$year->semester}",
         );
 
+        if ($created > 0 || $synced > 0) {
+            AuditLogger::log(
+                action:      'รายวิชาและผู้รับผิดชอบ.ซิงก์ข้อมูล',
+                table:       'course_offerings',
+                recordId:    $year->id,
+                oldValues:   null,
+                newValues:   [
+                    'academic_year_id' => $year->id,
+                    'academic_year_name' => $year->name,
+                    'semester' => $year->semester,
+                    'offerings_created' => $created,
+                    'offerings_synced' => $synced,
+                    'affected_count' => $synced ?: $created,
+                    'sample_course_codes' => $courses->pluck('course_code')->take(5)->values()->all(),
+                ],
+                category:    'รายวิชาและผู้รับผิดชอบ',
+                description: "ซิงก์ข้อมูลรายวิชาจากต้นแบบไปยังรอบเปิดสอน ปีการศึกษา {$year->name} ภาค {$year->semester}",
+            );
+        }
+
         return redirect()
             ->route('admin.settings', ['tab' => 'academic'])
             ->with('success', "เปิดช่วงจัดตารางสำหรับปีการศึกษา {$year->name} ภาค {$year->semester} แล้ว — {$newMsg}, {$syncMsg} รวม {$total} รายวิชาพร้อมจัดตาราง");

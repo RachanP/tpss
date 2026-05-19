@@ -7,11 +7,13 @@ use App\Models\ActivityType;
 use App\Models\AuditLog;
 use App\Models\Course;
 use App\Models\CourseOffering;
+use App\Models\CourseRole;
 use App\Models\Curriculum;
 use App\Models\Department;
 use App\Models\InstructorProfile;
 use App\Models\LocationType;
 use App\Models\Room;
+use App\Models\StudentGroup;
 use App\Models\User;
 use App\Models\UserRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -54,6 +56,11 @@ class AuditLogIntegrationTest extends TestCase
         $log = AuditLog::where('action', 'ตั้งค่าระบบ.เปิดช่วงจัดตาราง')->first();
         $this->assertSame('preparation', $log->old_values['phase']);
         $this->assertSame('scheduling',  $log->new_values['phase']);
+
+        $syncLog = $this->latestLog('รายวิชาและผู้รับผิดชอบ.ซิงก์ข้อมูล', 'course_offerings');
+        $this->assertSame('รายวิชาและผู้รับผิดชอบ', $syncLog->category);
+        $this->assertSame(1, $syncLog->new_values['offerings_created']);
+        $this->assertSame(1, $syncLog->new_values['offerings_synced']);
     }
 
     public function test_close_scheduling_window_creates_audit_log_with_phase_change(): void
@@ -547,11 +554,227 @@ class AuditLogIntegrationTest extends TestCase
         $this->assertDatabaseCount('audit_logs', 0);
     }
 
+    public function test_course_offering_practicum_update_logs_changed_fields_and_no_op_is_skipped(): void
+    {
+        $head = $this->makeCourseHead();
+        $offering = $this->makeOffering($head);
+
+        $this->actingAsCourseHead($head)
+            ->put(route('maker.course_offerings.update', $offering), [
+                'requires_practicum_rotation' => 1,
+                'practicum_note' => 'หมุนเวียนแหล่งฝึก',
+            ])
+            ->assertRedirect();
+
+        $log = $this->latestLog('รายวิชาและผู้รับผิดชอบ.แก้ไข', 'course_offerings');
+        $this->assertSame('รายวิชาและผู้รับผิดชอบ', $log->category);
+        $this->assertSame(['requires_practicum_rotation', 'practicum_note'], array_keys($log->old_values));
+        $this->assertFalse($log->old_values['requires_practicum_rotation']);
+        $this->assertTrue($log->new_values['requires_practicum_rotation']);
+        $this->assertSame($offering->id, $log->new_values['course_offering_id']);
+
+        $this->actingAsCourseHead($head)
+            ->put(route('maker.course_offerings.update', $offering->fresh()), [
+                'requires_practicum_rotation' => 1,
+                'practicum_note' => 'หมุนเวียนแหล่งฝึก',
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(1, AuditLog::where('action', 'รายวิชาและผู้รับผิดชอบ.แก้ไข')
+            ->where('table_affected', 'course_offerings')
+            ->count());
+    }
+
+    public function test_offering_instructor_add_role_update_and_remove_are_audited(): void
+    {
+        $head = $this->makeCourseHead();
+        $instructor = $this->makeInstructor();
+        $offering = $this->makeOffering($head);
+        $roleA = $this->makeCourseRole('ผู้สอนบรรยาย');
+        $roleB = $this->makeCourseRole('ผู้สอนปฏิบัติ');
+
+        $this->actingAsCourseHead($head)
+            ->post(route('maker.course_offerings.instructors.store', $offering), [
+                'user_id' => $instructor->id,
+                'course_role_id' => $roleA->id,
+            ])
+            ->assertRedirect();
+
+        $createLog = $this->latestLog('รายวิชาและผู้รับผิดชอบ.สร้าง', 'course_offering_instructors');
+        $this->assertSame($instructor->id, $createLog->new_values['user_id']);
+        $this->assertSame($roleA->id, $createLog->new_values['course_role_id']);
+
+        $this->actingAsCourseHead($head)
+            ->patch(route('maker.course_offerings.instructors.role', [$offering, $instructor]), [
+                'course_role_id' => $roleB->id,
+            ])
+            ->assertRedirect();
+
+        $updateLog = $this->latestLog('รายวิชาและผู้รับผิดชอบ.แก้ไข', 'course_offering_instructors');
+        $this->assertSame($roleA->id, $updateLog->old_values['course_role_id']);
+        $this->assertSame($roleB->id, $updateLog->new_values['course_role_id']);
+
+        $this->actingAsCourseHead($head)
+            ->patch(route('maker.course_offerings.instructors.role', [$offering, $instructor]), [
+                'course_role_id' => $roleB->id,
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(1, AuditLog::where('action', 'รายวิชาและผู้รับผิดชอบ.แก้ไข')
+            ->where('table_affected', 'course_offering_instructors')
+            ->count());
+
+        $this->actingAsCourseHead($head)
+            ->delete(route('maker.course_offerings.instructors.destroy', [$offering, $instructor]))
+            ->assertRedirect();
+
+        $deleteLog = $this->latestLog('รายวิชาและผู้รับผิดชอบ.ลบ', 'course_offering_instructors');
+        $this->assertSame($instructor->id, $deleteLog->old_values['user_id']);
+        $this->assertSame($roleB->id, $deleteLog->old_values['course_role_id']);
+    }
+
+    public function test_student_group_crud_and_bulk_actions_are_audited(): void
+    {
+        $head = $this->makeCourseHead();
+        $offering = $this->makeOffering($head, ['total_student_count' => 40]);
+
+        $this->actingAsCourseHead($head)
+            ->post(route('maker.course_offerings.student_groups.store', $offering), [
+                'group_code' => 'A1',
+                'student_count' => 10,
+                'color_code' => '#2563eb',
+            ])
+            ->assertRedirect();
+
+        $group = StudentGroup::where('course_offering_id', $offering->id)->where('group_code', 'A1')->firstOrFail();
+        $createLog = $this->latestLog('รายวิชาและผู้รับผิดชอบ.สร้าง', 'student_groups');
+        $this->assertSame('A1', $createLog->new_values['group_code']);
+
+        $this->actingAsCourseHead($head)
+            ->put(route('maker.course_offerings.student_groups.update', [$offering, $group]), [
+                'group_code' => 'A1',
+                'student_count' => 12,
+                'color_code' => '#2563eb',
+            ])
+            ->assertRedirect();
+
+        $updateLog = $this->latestLog('รายวิชาและผู้รับผิดชอบ.แก้ไข', 'student_groups');
+        $this->assertSame(['student_count'], array_keys($updateLog->old_values));
+        $this->assertSame(10, $updateLog->old_values['student_count']);
+        $this->assertSame(12, $updateLog->new_values['student_count']);
+
+        $this->actingAsCourseHead($head)
+            ->delete(route('maker.course_offerings.student_groups.destroy', [$offering, $group->fresh()]))
+            ->assertRedirect();
+
+        $deleteLog = $this->latestLog('รายวิชาและผู้รับผิดชอบ.ลบ', 'student_groups');
+        $this->assertSame('A1', $deleteLog->old_values['group_code']);
+
+        $this->actingAsCourseHead($head)
+            ->post(route('maker.course_offerings.student_groups.bulk_store', $offering), [
+                'group_prefix' => 'B',
+                'start_number' => 1,
+                'group_count' => 2,
+                'group_counts' => [10, 10],
+            ])
+            ->assertRedirect();
+
+        $bulkCreateLog = $this->latestLog('รายวิชาและผู้รับผิดชอบ.สร้าง', 'student_groups');
+        $this->assertSame(2, $bulkCreateLog->new_values['affected_count']);
+        $this->assertSame(['B1', 'B2'], $bulkCreateLog->new_values['sample_group_codes']);
+
+        $bulkIds = StudentGroup::where('course_offering_id', $offering->id)
+            ->whereIn('group_code', ['B1', 'B2'])
+            ->pluck('id')
+            ->all();
+
+        $this->actingAsCourseHead($head)
+            ->delete(route('maker.course_offerings.student_groups.bulk_destroy', $offering), [
+                'group_ids' => $bulkIds,
+            ])
+            ->assertRedirect();
+
+        $bulkDeleteLog = $this->latestLog('รายวิชาและผู้รับผิดชอบ.ลบ', 'student_groups');
+        $this->assertSame(2, $bulkDeleteLog->new_values['affected_count']);
+        $this->assertSame(['B1', 'B2'], $bulkDeleteLog->old_values['sample_group_codes']);
+    }
+
+    public function test_validation_unauthorized_and_phase_blocked_course_management_actions_do_not_log(): void
+    {
+        $head = $this->makeCourseHead();
+        $otherHead = $this->makeCourseHead();
+        $offering = $this->makeOffering($head);
+
+        $this->actingAsCourseHead($head)
+            ->post(route('maker.course_offerings.student_groups.store', $offering), [
+                'student_count' => 10,
+            ])
+            ->assertSessionHasErrors('group_code');
+
+        $this->actingAsCourseHead($otherHead)
+            ->put(route('maker.course_offerings.update', $offering), [
+                'requires_practicum_rotation' => 1,
+                'practicum_note' => 'ไม่ได้รับสิทธิ์',
+            ])
+            ->assertForbidden();
+
+        $blockedOffering = $this->makeOffering($head, [], ['phase' => 'preparation']);
+        $this->actingAsCourseHead($head)
+            ->put(route('maker.course_offerings.update', $blockedOffering), [
+                'requires_practicum_rotation' => 1,
+                'practicum_note' => 'ยังไม่เปิดช่วง',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseCount('audit_logs', 0);
+    }
+
+    public function test_course_pool_responsibility_changes_log_under_course_management_category_and_locked_course_skips(): void
+    {
+        $course = $this->makeFullCourse();
+        $newHead = $this->makeInstructor();
+        $responsible = $this->makeInstructor();
+        $role = $this->makeCourseRole('ผู้รับผิดชอบร่วม');
+
+        $this->actingAsAdmin()
+            ->put(route('admin.courses.update', $course), array_merge($this->coursePayload($course), [
+                'head_instructor_id' => $newHead->id,
+                'instructor_ids' => [$responsible->id],
+                'instructor_role_ids' => [$responsible->id => $role->id],
+            ]))
+            ->assertRedirect();
+
+        $log = $this->latestLog('รายวิชาและผู้รับผิดชอบ.แก้ไข', 'course_instructors');
+        $this->assertSame('รายวิชาและผู้รับผิดชอบ', $log->category);
+        $this->assertSame($course->head_instructor_id, $log->old_values['head_instructor_id']);
+        $this->assertSame($newHead->id, $log->new_values['head_instructor_id']);
+        $this->assertSame($responsible->id, $log->new_values['responsible_instructors'][0]['user_id']);
+
+        $lockedCourse = $this->makeFullCourse();
+        $this->makeOffering($this->makeCourseHead(), [], ['phase' => 'scheduling'], $lockedCourse);
+
+        $beforeCount = AuditLog::where('category', 'รายวิชาและผู้รับผิดชอบ')->count();
+        $this->actingAsAdmin()
+            ->put(route('admin.courses.update', $lockedCourse), array_merge($this->coursePayload($lockedCourse), [
+                'head_instructor_id' => $newHead->id,
+                'instructor_ids' => [$responsible->id],
+                'instructor_role_ids' => [$responsible->id => $role->id],
+            ]))
+            ->assertRedirect();
+
+        $this->assertSame($beforeCount, AuditLog::where('category', 'รายวิชาและผู้รับผิดชอบ')->count());
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────
 
     private function actingAsAdmin(): static
     {
         return $this->actingAs($this->admin)->withSession(['active_role' => 'admin']);
+    }
+
+    private function actingAsCourseHead(User $user): static
+    {
+        return $this->actingAs($user)->withSession(['active_role' => 'course_head']);
     }
 
     private function latestLog(string $action, string $table): AuditLog
@@ -597,6 +820,25 @@ class AuditLogIntegrationTest extends TestCase
         return $user;
     }
 
+    private function makeCourseHead(): User
+    {
+        $user = $this->makeInstructor();
+        UserRole::updateOrCreate(
+            ['user_id' => $user->id, 'role' => 'course_head'],
+            ['is_primary' => false]
+        );
+
+        return $user;
+    }
+
+    private function makeCourseRole(string $name): CourseRole
+    {
+        return CourseRole::firstOrCreate(
+            ['name_th' => $name],
+            ['sort_order' => $this->seq++]
+        );
+    }
+
     private function makeUserWithRole(string $role, bool $isActive = true): User
     {
         $n    = $this->seq++;
@@ -613,8 +855,10 @@ class AuditLogIntegrationTest extends TestCase
 
     private function makeYear(array $overrides = []): AcademicYear
     {
+        $n = $this->seq++;
+
         return AcademicYear::create(array_merge([
-            'name'       => '2569',
+            'name'       => "2569-{$n}",
             'semester'   => 1,
             'start_date' => '2026-08-01',
             'end_date'   => '2026-12-31',
@@ -660,6 +904,33 @@ class AuditLogIntegrationTest extends TestCase
             'status'                   => 'active',
             'requires_practicum_rotation' => false,
             'is_required'                 => true,
+        ], $overrides));
+    }
+
+    private function makeOffering(
+        User $coordinator,
+        array $overrides = [],
+        array $yearOverrides = [],
+        ?Course $course = null
+    ): CourseOffering {
+        $course ??= $this->makeCourse([
+            'head_instructor_id' => $coordinator->id,
+            'capacity' => $overrides['total_student_count'] ?? 30,
+        ]);
+        $year = $this->makeYear(array_merge(['phase' => 'scheduling'], $yearOverrides));
+
+        return CourseOffering::create(array_merge([
+            'course_id' => $course->id,
+            'academic_year_id' => $year->id,
+            'coordinator_id' => $coordinator->id,
+            'approval_status' => 'draft',
+            'total_student_count' => 30,
+            'planned_lecture_hours' => 3,
+            'planned_lab_hours' => 0,
+            'planned_practicum_hours' => 0,
+            'teaching_weeks' => 16,
+            'requires_practicum_rotation' => false,
+            'practicum_note' => null,
         ], $overrides));
     }
 

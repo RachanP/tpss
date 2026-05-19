@@ -28,6 +28,7 @@ class MasterDataController extends Controller
 
     private const COURSE_CODE_ALLOWED_REGEX = '/^[A-Za-z0-9 _-]+$/';
     private const COURSE_CODE_ALLOWED_MESSAGE = 'รหัสวิชาต้องใช้เฉพาะตัวอักษรภาษาอังกฤษ ตัวเลข ช่องว่าง ขีดกลาง หรือขีดล่าง';
+    private const COURSE_MANAGEMENT_CATEGORY = 'รายวิชาและผู้รับผิดชอบ';
 
     public function index()
     {
@@ -656,6 +657,7 @@ class MasterDataController extends Controller
         // Snapshot auditable fields before update
         $auditFields = ['course_code', 'name_th', 'status', 'credits', 'head_instructor_id', 'default_semester'];
         $auditBefore = $course->only($auditFields);
+        $responsibilityBefore = $assignmentsLocked ? null : $this->courseResponsibilitySnapshot($course);
 
         $course->update($validated);
         if (! $assignmentsLocked) {
@@ -676,6 +678,24 @@ class MasterDataController extends Controller
                 newValues:   $diff['new'] ?: null,
                 description: "แก้ไขรายวิชา {$course->course_code} {$course->name_th}",
             );
+        }
+
+        if (! $assignmentsLocked && $responsibilityBefore !== null) {
+            $freshCourse = $course->fresh();
+            $responsibilityAfter = $this->courseResponsibilitySnapshot($freshCourse);
+            $responsibilityDiff = AuditLogger::diff($responsibilityBefore, $responsibilityAfter);
+
+            if (!empty($responsibilityDiff['old']) || !empty($responsibilityDiff['new'])) {
+                AuditLogger::log(
+                    action: self::COURSE_MANAGEMENT_CATEGORY . '.แก้ไข',
+                    table: 'course_instructors',
+                    recordId: $course->id,
+                    oldValues: $responsibilityDiff['old'] ?: null,
+                    newValues: ($responsibilityDiff['new'] ?: []) + $this->courseAuditContext($freshCourse),
+                    category: self::COURSE_MANAGEMENT_CATEGORY,
+                    description: "แก้ไขผู้รับผิดชอบรายวิชา {$freshCourse->course_code} {$freshCourse->name_th}",
+                );
+            }
         }
 
         return $this->redirectToMasterData('courses')->with('success', 'อัปเดตข้อมูลรายวิชาเรียบร้อยแล้ว');
@@ -761,6 +781,37 @@ class MasterDataController extends Controller
             ->all();
 
         $course->instructors()->sync($syncPayload);
+    }
+
+    private function courseResponsibilitySnapshot(Course $course): array
+    {
+        $roles = CourseRole::pluck('name_th', 'id');
+        $head = $course->head_instructor_id ? User::find($course->head_instructor_id) : null;
+
+        return [
+            'head_instructor_id' => $course->head_instructor_id,
+            'head_instructor_name' => $head?->formatted_name ?? $head?->name,
+            'responsible_instructors' => $course->instructors()
+                ->orderBy('users.id')
+                ->get()
+                ->map(fn (User $user) => [
+                    'user_id' => $user->id,
+                    'instructor_name' => $user->formatted_name ?? $user->name,
+                    'course_role_id' => $user->pivot->course_role_id ? (int) $user->pivot->course_role_id : null,
+                    'course_role_name' => $user->pivot->course_role_id ? ($roles[$user->pivot->course_role_id] ?? null) : null,
+                ])
+                ->values()
+                ->all(),
+        ];
+    }
+
+    private function courseAuditContext(Course $course): array
+    {
+        return [
+            'course_id' => $course->id,
+            'course_code' => $course->course_code,
+            'course_name' => $course->name_th,
+        ];
     }
 
     public function storeCurriculum(Request $request)

@@ -9,6 +9,7 @@ use App\Models\CourseRole;
 use App\Models\StudentGroup;
 use App\Models\SystemSetting;
 use App\Models\User;
+use App\Services\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,6 +21,8 @@ use Illuminate\View\View;
 
 class CourseOfferingController extends Controller
 {
+    private const AUDIT_CATEGORY = 'รายวิชาและผู้รับผิดชอบ';
+
     public function index(): View
     {
         $offerings = CourseOffering::query()
@@ -93,10 +96,23 @@ class CourseOfferingController extends Controller
             'practicum_note.required' => 'กรุณาระบุหมายเหตุเมื่อการหมุนเวียนแหล่งฝึกของรอบนี้ต่างจากค่าเริ่มต้นใน Master Data',
         ]);
 
+        $auditFields = ['requires_practicum_rotation', 'practicum_note'];
+        $auditBefore = $this->auditModelSnapshot($courseOffering, $auditFields);
+
         $courseOffering->update([
             'requires_practicum_rotation' => $requestedRotation,
             'practicum_note' => $isRotationOverride ? trim((string) $request->input('practicum_note')) : null,
         ]);
+
+        $auditAfter = $this->auditModelSnapshot($courseOffering->fresh(), $auditFields);
+        $diff = AuditLogger::diff($auditBefore, $auditAfter);
+        $this->logCourseManagementUpdate(
+            table: 'course_offerings',
+            recordId: $courseOffering->id,
+            oldValues: $diff['old'],
+            newValues: $diff['new'] + $this->offeringAuditContext($courseOffering),
+            description: "แก้ไขข้อมูลฝึกปฏิบัติของ {$this->offeringCourseLabel($courseOffering)}",
+        );
 
         return redirect()
             ->to(route('maker.course_offerings.show', $courseOffering) . '#course-info')
@@ -140,6 +156,13 @@ class CourseOfferingController extends Controller
             'course_role_id' => $roleId,
         ]);
 
+        $this->logCourseManagementCreate(
+            table: 'course_offering_instructors',
+            recordId: $courseOffering->id,
+            newValues: $this->offeringInstructorAuditValues($courseOffering, $user, $roleId, 'instructor'),
+            description: "เพิ่มผู้สอนในรายวิชา {$this->offeringCourseLabel($courseOffering)}",
+        );
+
         if ($request->expectsJson()) {
             $role = $roleId ? CourseRole::find($roleId) : null;
             return response()->json([
@@ -172,15 +195,31 @@ class CourseOfferingController extends Controller
                 ->withErrors(['user_id' => 'อาจารย์คนนี้ไม่อยู่ในชุดผู้สอน']);
         }
 
+        $currentInstructor = $courseOffering->instructorPool()
+            ->where('users.id', $user->id)
+            ->first();
+        $oldRoleId = $currentInstructor?->pivot?->course_role_id ? (int) $currentInstructor->pivot->course_role_id : null;
+        $newRoleId = isset($validated['course_role_id']) ? (int) $validated['course_role_id'] : null;
+
         $courseOffering->instructorPool()->updateExistingPivot($user->id, [
-            'course_role_id' => $validated['course_role_id'] ?? null,
+            'course_role_id' => $newRoleId,
         ]);
 
+        if ($oldRoleId !== $newRoleId) {
+            $this->logCourseManagementUpdate(
+                table: 'course_offering_instructors',
+                recordId: $courseOffering->id,
+                oldValues: $this->offeringInstructorAuditValues($courseOffering, $user, $oldRoleId, 'instructor'),
+                newValues: $this->offeringInstructorAuditValues($courseOffering, $user, $newRoleId, 'instructor'),
+                description: "เปลี่ยนบทบาทผู้สอนในรายวิชา {$this->offeringCourseLabel($courseOffering)}",
+            );
+        }
+
         if ($request->expectsJson()) {
-            $role = $validated['course_role_id'] ? CourseRole::find($validated['course_role_id']) : null;
+            $role = $newRoleId ? CourseRole::find($newRoleId) : null;
             return response()->json([
                 'ok'             => true,
-                'course_role_id' => $validated['course_role_id'] ?? null,
+                'course_role_id' => $newRoleId,
                 'role_name'      => $role?->name_th,
             ]);
         }
@@ -201,7 +240,22 @@ class CourseOfferingController extends Controller
                 ->withErrors(['instructor_pool' => 'ไม่สามารถนำหัวหน้าวิชาหลักออกจากชุดผู้สอนได้']);
         }
 
-        $courseOffering->instructorPool()->detach($user->id);
+        $currentInstructor = $courseOffering->instructorPool()
+            ->where('users.id', $user->id)
+            ->first();
+        $oldRoleId = $currentInstructor?->pivot?->course_role_id ? (int) $currentInstructor->pivot->course_role_id : null;
+
+        $detached = $courseOffering->instructorPool()->detach($user->id);
+
+        if ($detached > 0) {
+            $this->logCourseManagementDelete(
+                table: 'course_offering_instructors',
+                recordId: $courseOffering->id,
+                oldValues: $this->offeringInstructorAuditValues($courseOffering, $user, $oldRoleId, $currentInstructor?->pivot?->role_in_course ?? 'instructor'),
+                newValues: $this->offeringAuditContext($courseOffering),
+                description: "ลบผู้สอนออกจากรายวิชา {$this->offeringCourseLabel($courseOffering)}",
+            );
+        }
 
         if ($request->expectsJson()) {
             return response()->json(['ok' => true]);
@@ -233,7 +287,14 @@ class CourseOfferingController extends Controller
                 ->withInput();
         }
 
-        $courseOffering->studentGroups()->create($validated);
+        $studentGroup = $courseOffering->studentGroups()->create($validated);
+
+        $this->logCourseManagementCreate(
+            table: 'student_groups',
+            recordId: $studentGroup->id,
+            newValues: $this->studentGroupAuditValues($courseOffering, $studentGroup),
+            description: "สร้างกลุ่มนักศึกษา {$studentGroup->group_code} ใน {$this->offeringCourseLabel($courseOffering)}",
+        );
 
         return $this->redirectToStudentGroups($courseOffering)
             ->with('success', 'เพิ่มกลุ่มนักศึกษาเรียบร้อยแล้ว');
@@ -310,9 +371,10 @@ class CourseOfferingController extends Controller
         $remainder = $totalStudents % $groupCount;
         $colors = ['#2563eb', '#16a34a', '#ca8a04', '#dc2626', '#7c3aed', '#0891b2', '#db2777', '#4f46e5', '#65a30d', '#ea580c'];
 
-        DB::transaction(function () use ($courseOffering, $groupCodes, $baseCount, $remainder, $customCounts, $colors) {
+        $createdGroups = [];
+        DB::transaction(function () use ($courseOffering, $groupCodes, $baseCount, $remainder, $customCounts, $colors, &$createdGroups) {
             foreach ($groupCodes->values() as $index => $groupCode) {
-                $courseOffering->studentGroups()->create([
+                $createdGroups[] = $courseOffering->studentGroups()->create([
                     'group_code' => $groupCode,
                     'student_count' => $customCounts->isNotEmpty()
                         ? $customCounts[$index]
@@ -321,6 +383,13 @@ class CourseOfferingController extends Controller
                 ]);
             }
         });
+
+        $this->logCourseManagementCreate(
+            table: 'student_groups',
+            recordId: $courseOffering->id,
+            newValues: $this->bulkStudentGroupAuditValues($courseOffering, collect($createdGroups)),
+            description: "สร้างกลุ่มนักศึกษาอัตโนมัติ {$groupCount} กลุ่ม ใน {$this->offeringCourseLabel($courseOffering)}",
+        );
 
         return $this->redirectToStudentGroups($courseOffering)
             ->with('success', "สร้างกลุ่มนักศึกษา {$groupCount} กลุ่มเรียบร้อยแล้ว");
@@ -358,7 +427,20 @@ class CourseOfferingController extends Controller
                 ->withInput();
         }
 
+        $auditFields = ['group_code', 'student_count', 'color_code'];
+        $auditBefore = $this->auditModelSnapshot($studentGroup, $auditFields);
+
         $studentGroup->update($validated);
+
+        $auditAfter = $this->auditModelSnapshot($studentGroup->fresh(), $auditFields);
+        $diff = AuditLogger::diff($auditBefore, $auditAfter);
+        $this->logCourseManagementUpdate(
+            table: 'student_groups',
+            recordId: $studentGroup->id,
+            oldValues: $diff['old'],
+            newValues: $diff['new'] + $this->offeringAuditContext($courseOffering),
+            description: "แก้ไขกลุ่มนักศึกษา {$studentGroup->group_code} ใน {$this->offeringCourseLabel($courseOffering)}",
+        );
 
         return $this->redirectToStudentGroups($courseOffering)
             ->with('success', 'อัปเดตกลุ่มนักศึกษาเรียบร้อยแล้ว');
@@ -394,6 +476,10 @@ class CourseOfferingController extends Controller
         // Batch query downstream references once, then re-check inside a transaction
         // (resolves N+1 + race between check and delete)
         $deletedCount = 0;
+        $deletedGroupValues = $groups
+            ->sortBy('id')
+            ->map(fn (StudentGroup $group) => $this->studentGroupAuditValues($courseOffering, $group))
+            ->values();
         try {
             DB::transaction(function () use ($groups, &$deletedCount) {
                 $ids = $groups->pluck('id')->all();
@@ -413,6 +499,16 @@ class CourseOfferingController extends Controller
             return $this->redirectToStudentGroups($courseOffering)
                 ->withErrors(['student_groups' => $e->getMessage()]);
         }
+
+        $this->logCourseManagementDelete(
+            table: 'student_groups',
+            recordId: $courseOffering->id,
+            oldValues: $this->bulkStudentGroupAuditValues($courseOffering, $deletedGroupValues),
+            newValues: [
+                'affected_count' => $deletedCount,
+            ] + $this->offeringAuditContext($courseOffering),
+            description: "ลบกลุ่มนักศึกษา {$deletedCount} กลุ่ม ใน {$this->offeringCourseLabel($courseOffering)}",
+        );
 
         return $this->redirectToStudentGroups($courseOffering)
             ->with('warning', "ลบกลุ่มนักศึกษา {$deletedCount} กลุ่มเรียบร้อยแล้ว");
@@ -464,7 +560,16 @@ class CourseOfferingController extends Controller
             ]);
         }
 
+        $auditValues = $this->studentGroupAuditValues($courseOffering, $studentGroup);
         $studentGroup->delete();
+
+        $this->logCourseManagementDelete(
+            table: 'student_groups',
+            recordId: $studentGroup->id,
+            oldValues: $auditValues,
+            newValues: $this->offeringAuditContext($courseOffering),
+            description: "ลบกลุ่มนักศึกษา {$auditValues['group_code']} ใน {$this->offeringCourseLabel($courseOffering)}",
+        );
 
         return $this->redirectToStudentGroups($courseOffering)
             ->with('warning', 'ลบกลุ่มนักศึกษาเรียบร้อยแล้ว');
@@ -551,5 +656,114 @@ class CourseOfferingController extends Controller
         $courseOffering->loadMissing('course');
 
         return (int) ($courseOffering->total_student_count ?: $courseOffering->course?->capacity ?: 0);
+    }
+
+    private function auditModelSnapshot(object $model, array $fields): array
+    {
+        return collect($fields)
+            ->mapWithKeys(fn (string $field) => [$field => $model->{$field}])
+            ->all();
+    }
+
+    private function offeringAuditContext(CourseOffering $courseOffering): array
+    {
+        $courseOffering->loadMissing(['course', 'academicYear']);
+
+        return [
+            'course_offering_id' => $courseOffering->id,
+            'course_id' => $courseOffering->course_id,
+            'course_code' => $courseOffering->course?->course_code,
+            'course_name' => $courseOffering->course?->name_th,
+            'academic_year' => $courseOffering->academicYear?->name,
+            'semester' => $courseOffering->academicYear?->semester,
+        ];
+    }
+
+    private function offeringCourseLabel(CourseOffering $courseOffering): string
+    {
+        $courseOffering->loadMissing('course');
+
+        return trim(($courseOffering->course?->course_code ?? 'รายวิชา') . ' ' . ($courseOffering->course?->name_th ?? ''));
+    }
+
+    private function offeringInstructorAuditValues(
+        CourseOffering $courseOffering,
+        User $user,
+        ?int $courseRoleId,
+        string $roleInCourse
+    ): array {
+        return [
+            'user_id' => $user->id,
+            'instructor_name' => $user->formatted_name ?? $user->name,
+            'course_role_id' => $courseRoleId,
+            'course_role_name' => $courseRoleId ? CourseRole::find($courseRoleId)?->name_th : null,
+            'role_in_course' => $roleInCourse,
+        ] + $this->offeringAuditContext($courseOffering);
+    }
+
+    private function studentGroupAuditValues(CourseOffering $courseOffering, StudentGroup $studentGroup): array
+    {
+        return [
+            'student_group_id' => $studentGroup->id,
+            'group_code' => $studentGroup->group_code,
+            'student_count' => $studentGroup->student_count,
+            'color_code' => $studentGroup->color_code,
+        ] + $this->offeringAuditContext($courseOffering);
+    }
+
+    private function bulkStudentGroupAuditValues(CourseOffering $courseOffering, iterable $groups): array
+    {
+        $collection = collect($groups)->values();
+
+        return [
+            'affected_count' => $collection->count(),
+            'sample_group_ids' => $collection->pluck('student_group_id')->filter()->take(5)->values()->all()
+                ?: $collection->pluck('id')->filter()->take(5)->values()->all(),
+            'sample_group_codes' => $collection->pluck('group_code')->take(5)->values()->all(),
+            'total_student_count' => $collection->sum('student_count'),
+        ] + $this->offeringAuditContext($courseOffering);
+    }
+
+    private function logCourseManagementCreate(string $table, int $recordId, array $newValues, string $description): void
+    {
+        AuditLogger::log(
+            action: self::AUDIT_CATEGORY . '.สร้าง',
+            table: $table,
+            recordId: $recordId,
+            oldValues: null,
+            newValues: $newValues,
+            category: self::AUDIT_CATEGORY,
+            description: $description,
+        );
+    }
+
+    private function logCourseManagementUpdate(string $table, int $recordId, array $oldValues, array $newValues, string $description): void
+    {
+        if (empty($oldValues)) {
+            return;
+        }
+
+        AuditLogger::log(
+            action: self::AUDIT_CATEGORY . '.แก้ไข',
+            table: $table,
+            recordId: $recordId,
+            oldValues: $oldValues,
+            newValues: $newValues,
+            category: self::AUDIT_CATEGORY,
+            description: $description,
+        );
+    }
+
+    private function logCourseManagementDelete(string $table, int $recordId, array $oldValues, ?array $newValues, string $description): void
+    {
+        AuditLogger::log(
+            action: self::AUDIT_CATEGORY . '.ลบ',
+            table: $table,
+            recordId: $recordId,
+            oldValues: $oldValues,
+            newValues: $newValues,
+            category: self::AUDIT_CATEGORY,
+            description: $description,
+        );
     }
 }
