@@ -79,7 +79,6 @@ class AlertSystemTest extends TestCase
             'name_th'                     => 'รายวิชาทดสอบ',
             'name_en'                     => 'Critical Test Course',
             'course_type'                 => 'theory',
-            'academic_level'              => 'undergraduate',
             'default_year_level'          => 1,
             'default_semester'            => 1,
             'credits'                     => 3,

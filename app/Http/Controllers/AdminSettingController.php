@@ -132,13 +132,13 @@ class AdminSettingController extends Controller
     {
         if (!$year->is_active) {
             return redirect()
-                ->route('admin.settings', ['tab' => 'scheduling'])
+                ->route('admin.settings', ['tab' => 'academic'])
                 ->with('error', "เปิดช่วงจัดตารางได้เฉพาะปีการศึกษาปัจจุบัน ({$year->name} ภาค {$year->semester} ไม่ใช่ปีปัจจุบัน)");
         }
 
         if ($year->phase === 'published') {
             return redirect()
-                ->route('admin.settings', ['tab' => 'scheduling'])
+                ->route('admin.settings', ['tab' => 'academic'])
                 ->with('error', "ปีการศึกษา {$year->name} ภาค {$year->semester} เผยแพร่แล้ว ไม่สามารถย้อนกลับได้");
         }
 
@@ -148,7 +148,7 @@ class AdminSettingController extends Controller
             $suffix = count($criticals) > 3 ? ' และรายการอื่น ๆ' : '';
 
             return redirect()
-                ->route('admin.settings', ['tab' => 'scheduling'])
+                ->route('admin.settings', ['tab' => 'academic'])
                 ->with('error', "ยังไม่สามารถเปิดช่วงจัดตารางได้ เนื่องจากยังมี Critical: {$labels}{$suffix}");
         }
 
@@ -228,7 +228,7 @@ class AdminSettingController extends Controller
         );
 
         return redirect()
-            ->route('admin.settings', ['tab' => 'scheduling'])
+            ->route('admin.settings', ['tab' => 'academic'])
             ->with('success', "เปิดช่วงจัดตารางสำหรับปีการศึกษา {$year->name} ภาค {$year->semester} แล้ว — {$newMsg}, {$syncMsg} รวม {$total} รายวิชาพร้อมจัดตาราง");
     }
 
@@ -236,13 +236,13 @@ class AdminSettingController extends Controller
     {
         if (!$year->is_active) {
             return redirect()
-                ->route('admin.settings', ['tab' => 'scheduling'])
+                ->route('admin.settings', ['tab' => 'academic'])
                 ->with('error', "ปิดช่วงจัดตารางได้เฉพาะปีการศึกษาปัจจุบัน");
         }
 
         if ($year->phase !== 'scheduling') {
             return redirect()
-                ->route('admin.settings', ['tab' => 'scheduling'])
+                ->route('admin.settings', ['tab' => 'academic'])
                 ->with('error', "ปีการศึกษา {$year->name} ภาค {$year->semester} ไม่ได้อยู่ในช่วงจัดตาราง");
         }
 
@@ -258,7 +258,7 @@ class AdminSettingController extends Controller
         );
 
         return redirect()
-            ->route('admin.settings', ['tab' => 'scheduling'])
+            ->route('admin.settings', ['tab' => 'academic'])
             ->with('success', "ปิดช่วงจัดตารางสำหรับปีการศึกษา {$year->name} ภาค {$year->semester} แล้ว");
     }
 

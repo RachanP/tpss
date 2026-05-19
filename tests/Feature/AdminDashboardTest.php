@@ -34,7 +34,7 @@ class AdminDashboardTest extends TestCase
             ->assertSee('ปีการศึกษา 2569 / เทอม 1')
             ->assertSee('เปิดจัดตาราง')
             ->assertSee('จัดการสถานะระบบ')
-            ->assertSee(route('admin.settings', ['tab' => 'scheduling']), false);
+            ->assertSee(route('admin.settings', ['tab' => 'academic']), false);
     }
 
     public function test_admin_dashboard_renders_no_active_year_fallback(): void
@@ -48,7 +48,7 @@ class AdminDashboardTest extends TestCase
         $response->assertOk()
             ->assertSee('ยังไม่ได้ตั้งค่าปีการศึกษาปัจจุบัน')
             ->assertSee('จัดการสถานะระบบ')
-            ->assertSee(route('admin.settings', ['tab' => 'scheduling']), false);
+            ->assertSee(route('admin.settings', ['tab' => 'academic']), false);
     }
 
     public function test_admin_dashboard_uses_thai_phase_labels(): void

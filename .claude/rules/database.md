@@ -23,6 +23,13 @@
 // เก็บเฉพาะ 'coordinator' marker — role จริงดูที่ course_role_id FK
 // ค่าเก่า ['coordinator','secretary','instructor','group_advisor','preceptor'] เลิกใช้
 
+// curriculums.education_level  (19 พ.ค. — รองรับ ป.โท/ป.เอก)
+['bachelor', 'master', 'doctorate']
+
+// courses.academic_level  ❌ ลบทิ้งแล้ว 19 พ.ค.
+// เหตุผล: ระดับการศึกษาเป็น property ของหลักสูตร ไม่ใช่ของรายวิชา
+// → ย้ายไปอยู่ที่ curriculums.education_level
+
 // rooms.status
 ['active', 'inactive', 'maintenance']
 
@@ -48,7 +55,7 @@
 ```
 ชั้น 1 — ระดับระบบ (academic_years.phase):
   preparation → scheduling → published
-  Admin เปิด/ปิดผ่าน Settings tab "ช่วงจัดตาราง"
+  Admin เปิด/ปิดผ่าน Settings tab "ปีการศึกษา" (column "ช่วงจัดตาราง")
   เปิดทั้งภาคเรียนพร้อมกัน — ไม่ใช่ทีละวิชา
 
 ชั้น 2 — ระดับรายวิชา (course_offerings.approval_status):
@@ -97,6 +104,26 @@ course_offering_instructors (pivot)   ← snapshot ระดับ offering
 - **Coordinator**: auto-assign จาก `courses.head_instructor_id` (ไม่อยู่ใน role dropdown ของ UI)
 - **Default role** เมื่อเพิ่มอาจารย์ผ่าน UI = "อาจารย์ผู้สอน"
 - **Course Pool routes**: `admin.course_pool.*` + `staff.course_pool.*` (Staff inherits Admin controller)
+
+## Curriculum Program Metadata (19 พ.ค. — รองรับ ป.โท/ป.เอก)
+
+```
+curriculums
+├── education_level enum('bachelor','master','doctorate')  default 'bachelor'
+├── duration_years tinyint                                 default 4
+├── uses_year_level boolean                                default true
+│   ├── true  → ใช้ระบบชั้นปี (cohort) — ป.ตรี
+│   └── false → ใช้ prerequisite + หน่วยกิตสะสม — ป.โท/ป.เอก
+└── total_credits_required smallint nullable               (required เมื่อ uses_year_level=false)
+```
+
+- **courses.default_year_level**: nullable, capped ด้วย `curriculum.duration_years`
+- **courses.is_required**: boolean default true (`true`=วิชาบังคับ, `false`=วิชาเลือก) — แทน `academic_level` เดิม
+- **Cascade**: toggle `uses_year_level: true → false` ใน updateCurriculum จะ `default_year_level=null` ให้วิชาในหลักสูตรทั้งหมด
+- **Auto-defaults ตอนสร้าง curriculum ใหม่** (Alpine):
+  - bachelor → `duration_years=4, uses_year_level=true`
+  - master   → `duration_years=2, uses_year_level=false, total_credits_required=36`
+  - doctorate → `duration_years=3, uses_year_level=false, total_credits_required=48`
 
 ## Prerequisite Location (Sprint 3)
 
@@ -162,6 +189,14 @@ course_offerings
 - `drop_is_active_from_course_roles` — `course_roles` ใช้แค่ master ไม่ต้องเปิด/ปิด
 - `create_course_instructors_table` — pivot template ระดับวิชา (course-level pool)
 - `add_course_role_id_to_course_instructors_table` — FK `course_role_id` ใน template pivot
+
+## Migrations Sprint 3 Hardening (19 พ.ค. — consolidated into create-table baselines)
+
+- `add_program_metadata_to_curriculums_table` — `education_level`, `duration_years`, `uses_year_level`, `total_credits_required`
+- `drop_academic_level_from_courses_table` — ลบ `courses.academic_level` (ย้ายไป curriculums.education_level)
+- `add_is_required_to_courses_table` — `boolean is_required default true` แทน academic_level
+
+**หมายเหตุ**: ทั้ง 3 รายการนี้ถูก consolidate เข้า create-table migrations เดิม (ไม่มี alter migration แยก) — flow ทีมคือ `migrate:fresh --seed` เสมอ ไม่จำเป็นต้องเก็บ alter migration ไว้สำหรับ forward-only path
 
 ## PA Criteria Config
 

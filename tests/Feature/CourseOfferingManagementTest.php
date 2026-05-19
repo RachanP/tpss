@@ -637,7 +637,6 @@ class CourseOfferingManagementTest extends TestCase
             'name_th' => $overrides['name_th'] ?? "Course {$number}",
             'name_en' => $overrides['name_en'] ?? "Course {$number}",
             'course_type' => $overrides['course_type'] ?? 'theory_practicum',
-            'academic_level' => $overrides['academic_level'] ?? 'undergraduate',
             'default_year_level' => $overrides['default_year_level'] ?? 2,
             'default_semester' => $overrides['default_semester'] ?? 1,
             'requires_practicum_rotation' => $overrides['requires_practicum_rotation'] ?? false,

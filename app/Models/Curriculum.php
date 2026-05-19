@@ -12,12 +12,25 @@ class Curriculum extends Model
     protected $fillable = [
         'name',
         'effective_year',
+        'education_level',
+        'duration_years',
+        'uses_year_level',
+        'total_credits_required',
         'is_active'
     ];
 
     protected $casts = [
         'effective_year' => 'integer',
+        'duration_years' => 'integer',
+        'uses_year_level' => 'boolean',
+        'total_credits_required' => 'integer',
         'is_active' => 'boolean'
+    ];
+
+    protected $attributes = [
+        'education_level' => 'bachelor',
+        'duration_years' => 4,
+        'uses_year_level' => true,
     ];
 
     public function courses(): HasMany

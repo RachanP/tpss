@@ -22,6 +22,13 @@
 | ประเภทสถานที่ | `location_type` |
 | ประเภทกิจกรรม | `activity_type` |
 | ปีการศึกษา | `academic_year` |
+| ระดับการศึกษา (ของหลักสูตร) | `curriculums.education_level` enum |
+| ปริญญาตรี / โท / เอก | `bachelor` / `master` / `doctorate` |
+| จำนวนปีของหลักสูตร | `curriculums.duration_years` |
+| รูปแบบการจัดชั้นปี (cohort vs credit) | `curriculums.uses_year_level` boolean |
+| หน่วยกิตขั้นต่ำของหลักสูตร | `curriculums.total_credits_required` |
+| วิชาบังคับ / วิชาเลือก | `courses.is_required` boolean (true=บังคับ) |
+| ชั้นปีตามแผน | `courses.default_year_level` (nullable เมื่อ curriculum.uses_year_level=false) |
 | ภาระงาน | `workload` / `teaching_quota` |
 | การซ้อนทับเวลา (บล็อกบันทึก) | `conflict` |
 | คำเตือน (บันทึกได้แต่ต้องแก้) | `warning` |

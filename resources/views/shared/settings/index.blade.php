@@ -77,16 +77,6 @@
                     </svg>
                     ปีการศึกษา
                 </button>
-                <button type="button" @click="activeTab = 'scheduling'"
-                    :class="activeTab === 'scheduling' ? 'btn-primary' : 'btn btn-ghost'"
-                    style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
-                        style="margin-right: 6px;">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <polyline points="12 6 12 12 16 14"></polyline>
-                    </svg>
-                    ช่วงจัดตาราง
-                </button>
                 <button type="button" @click="activeTab = 'pa'"
                     :class="activeTab === 'pa' ? 'btn-primary' : 'btn btn-ghost'"
                     style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
@@ -102,16 +92,45 @@
         </div>
         @endif
 
-        <!-- Tab: Academic Year -->
+        <!-- Tab: Academic Year (รวมการจัดการช่วงจัดตารางในตารางเดียวกัน) -->
+        @php
+            $schedulingCriticals = $schedulingCriticals ?? [];
+            $hasSchedulingCriticals = $isAdmin && count($schedulingCriticals) > 0;
+        @endphp
         <div x-show="activeTab === 'academic'" {{ $isAdmin ? 'x-cloak' : '' }}>
             @if(session('success'))
                 <div style="background: oklch(95% 0.05 145); border: 1px solid oklch(70% 0.15 145); color: oklch(35% 0.12 145); padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; font-size: 14px;">
                     {{ session('success') }}
                 </div>
             @endif
+            @if($isAdmin && session('error'))
+                <div style="background: oklch(95% 0.05 25); border: 1px solid oklch(70% 0.15 25); color: oklch(35% 0.12 25); padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; font-size: 14px;">
+                    {{ session('error') }}
+                </div>
+            @endif
+
+            @if($hasSchedulingCriticals)
+                <div style="background:var(--status-conflict-bg);border:1px solid var(--status-conflict-border);border-radius:8px;margin-bottom:16px;padding:14px 16px;color:var(--status-conflict-fg);">
+                    <div style="font-weight:700;margin-bottom:6px;">ยังไม่สามารถเปิดช่วงจัดตารางได้</div>
+                    <div style="font-size:13px;line-height:1.55;margin-bottom:10px;">ต้องแก้ Critical ให้หมดก่อนเปิดช่วงจัดตาราง เพื่อให้รายวิชาทุกวิชาพร้อมถูกสร้างเป็น Course Offering</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                        @foreach($schedulingCriticals as $critical)
+                            <a href="{{ $critical['link'] }}" style="text-decoration:none;color:var(--status-conflict-fg);background:color-mix(in oklch,var(--status-conflict) 8%,white);border:1px solid color-mix(in oklch,var(--status-conflict) 22%,white);border-radius:999px;padding:5px 10px;font-size:12px;font-weight:700;">
+                                {{ $critical['label'] }}
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
             <div class="card">
                 <div class="card-hdr">
-                    <div class="card-ttl">รายการปีการศึกษา</div>
+                    <div>
+                        <div class="card-ttl">รายการปีการศึกษา</div>
+                        @if($isAdmin)
+                            <div style="font-size: 12px; color: var(--fg-3); margin-top: 4px;">Admin เปิด/ปิดช่วงจัดตาราง — หัวหน้าวิชาทุกท่านจัดตารางได้พร้อมกัน</div>
+                        @endif
+                    </div>
                     <div class="card-actions">
                         <button class="btn btn-primary" @click="openAddModal()">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
@@ -131,6 +150,7 @@
                                 <th>เทอม</th>
                                 <th>วันที่เริ่ม - สิ้นสุด</th>
                                 <th>สถานะปัจจุบัน</th>
+                                <th>ช่วงจัดตาราง</th>
                                 <th style="text-align: center;">จัดการ</th>
                             </tr>
                         </thead>
@@ -153,8 +173,20 @@
                                             <span class="badge badge-gray">ทั่วไป</span>
                                         @endif
                                     </td>
+                                    <td>
+                                        @if($year->phase === 'scheduling')
+                                            <span class="badge" style="background: oklch(90% 0.1 145); color: oklch(30% 0.15 145); border: 1px solid oklch(70% 0.15 145);">
+                                                <span style="width: 6px; height: 6px; border-radius: 50%; background: oklch(50% 0.2 145); margin-right: 6px; display: inline-block;"></span>
+                                                เปิดช่วงจัดตาราง
+                                            </span>
+                                        @elseif($year->phase === 'published')
+                                            <span class="badge badge-primary">เผยแพร่แล้ว</span>
+                                        @else
+                                            <span class="badge badge-gray">เตรียมข้อมูล</span>
+                                        @endif
+                                    </td>
                                     <td style="text-align: center;">
-                                        <div style="display: flex; gap: 6px; justify-content: center;">
+                                        <div style="display: flex; gap: 6px; justify-content: center; align-items: center;">
                                             <button class="action-btn" title="แก้ไข"
                                                 @click="openEditModal({{ json_encode($year) }})">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -163,12 +195,46 @@
                                                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                                                 </svg>
                                             </button>
+                                            @if($isAdmin)
+                                                @if($year->phase === 'preparation')
+                                                    @if($year->is_active)
+                                                        <form id="open-scheduling-{{ $year->id }}" method="POST" action="{{ route('admin.settings.scheduling.open', $year) }}" style="margin:0;">
+                                                            @csrf
+                                                            @method('PATCH')
+                                                            <button type="button"
+                                                                class="{{ $hasSchedulingCriticals ? 'btn btn-ghost' : 'btn btn-primary' }}"
+                                                                style="font-size: 13px; padding: 6px 14px; {{ $hasSchedulingCriticals ? 'opacity:0.55;cursor:not-allowed;' : '' }}"
+                                                                @if($hasSchedulingCriticals)
+                                                                    disabled
+                                                                    title="ต้องแก้ Critical ให้หมดก่อนเปิดช่วงจัดตาราง"
+                                                                @else
+                                                                    @click="startOpenScheduleCountdown('open-scheduling-{{ $year->id }}', 'ปีการศึกษา {{ $year->name }} ภาค {{ $year->semester }}')"
+                                                                @endif>
+                                                                เปิดช่วงจัดตาราง
+                                                            </button>
+                                                        </form>
+                                                    @else
+                                                        <button type="button" class="btn btn-ghost" disabled style="font-size: 13px; padding: 6px 14px; opacity: 0.4; cursor: not-allowed;" title="เปิดได้เฉพาะปีการศึกษาปัจจุบัน">
+                                                            เปิดช่วงจัดตาราง
+                                                        </button>
+                                                    @endif
+                                                @elseif($year->phase === 'scheduling')
+                                                    <form method="POST" action="{{ route('admin.settings.scheduling.close', $year) }}" style="margin:0;">
+                                                        @csrf
+                                                        @method('PATCH')
+                                                        <button type="submit" class="btn btn-ghost" style="font-size: 13px; padding: 6px 14px; border: 1px solid var(--border);"
+                                                            onclick="return confirm('ปิดช่วงจัดตารางสำหรับปีการศึกษา {{ $year->name }} ภาค {{ $year->semester }}?')">
+                                                            ปิดช่วงจัดตาราง
+                                                        </button>
+                                                    </form>
+                                                @endif
+                                            @endif
                                         </div>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" style="text-align: center; padding: 40px; color: var(--fg-3);">
+                                    <td colspan="6" style="text-align: center; padding: 40px; color: var(--fg-3);">
                                         ยังไม่มีข้อมูลปีการศึกษา</td>
                                 </tr>
                             @endforelse
@@ -176,6 +242,34 @@
                     </table>
                 </div>
             </div>
+
+            @if($isAdmin)
+                <div x-show="openScheduleConfirmForm" x-cloak
+                    style="position:fixed;inset:0;z-index:80;background:rgba(15,23,42,.36);"
+                    @keydown.escape.window="cancelOpenScheduleCountdown()">
+                    <div style="min-height:100vh;width:100%;display:flex;align-items:center;justify-content:center;padding:20px;">
+                        <div style="width:min(520px,100%);background:oklch(99% 0.006 235);border:1px solid var(--border);border-radius:10px;box-shadow:0 24px 70px rgba(15,23,42,.24);overflow:hidden;">
+                            <div style="padding:18px 20px;border-bottom:1px solid var(--border);background:oklch(97% 0.012 235);">
+                                <div style="font-weight:800;color:var(--fg-1);font-size:16px;">ยืนยันเปิดช่วงจัดตาราง</div>
+                                <div style="font-size:13px;color:var(--fg-3);margin-top:4px;" x-text="openScheduleConfirmLabel"></div>
+                            </div>
+                            <div style="padding:18px 20px;background:oklch(99% 0.006 235);">
+                                <div style="font-size:14px;color:var(--fg-2);line-height:1.65;">
+                                    ระบบจะสร้างและซิงก์ Course Offering จากรายวิชา active ทั้งหมด จากนั้นหัวหน้าวิชาจะเริ่มแก้ข้อมูลเพื่อจัดตารางได้
+                                </div>
+                                <div style="margin-top:14px;padding:12px 14px;border:1px solid oklch(84% 0.08 80);border-radius:8px;background:oklch(98% 0.025 85);color:oklch(38% 0.08 75);font-size:13px;font-weight:700;"
+                                    x-text="openScheduleCountdown > 0 ? 'รอ ' + openScheduleCountdown + ' วินาที ก่อนยืนยัน' : 'พร้อมยืนยันเปิดช่วงจัดตาราง'"></div>
+                            </div>
+                            <div style="display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--border);background:oklch(98% 0.008 235);">
+                                <button type="button" class="btn btn-ghost" @click="cancelOpenScheduleCountdown()">ยกเลิก</button>
+                                <button type="button" class="btn btn-primary" :disabled="openScheduleCountdown > 0" :style="openScheduleCountdown > 0 ? 'opacity:.55;cursor:not-allowed;' : ''" @click="confirmOpenSchedule()">
+                                    ยืนยันเปิดช่วงจัดตาราง
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
         </div>
 
         <!-- Add/Edit Modal (Academic Year) -->
@@ -255,146 +349,6 @@
         </template>
 
         @if($isAdmin)
-        <!-- Tab: ช่วงจัดตาราง -->
-        <div x-show="activeTab === 'scheduling'" x-cloak>
-            @php
-                $schedulingCriticals = $schedulingCriticals ?? [];
-                $hasSchedulingCriticals = count($schedulingCriticals) > 0;
-            @endphp
-            @if(session('success') && request('tab') === 'scheduling')
-                <div style="background: oklch(95% 0.05 145); border: 1px solid oklch(70% 0.15 145); color: oklch(35% 0.12 145); padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; font-size: 14px;">
-                    {{ session('success') }}
-                </div>
-            @endif
-            @if(session('error') && request('tab') === 'scheduling')
-                <div style="background: oklch(95% 0.05 25); border: 1px solid oklch(70% 0.15 25); color: oklch(35% 0.12 25); padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; font-size: 14px;">
-                    {{ session('error') }}
-                </div>
-            @endif
-
-            @if($hasSchedulingCriticals)
-                <div style="background:var(--status-conflict-bg);border:1px solid var(--status-conflict-border);border-radius:8px;margin-bottom:16px;padding:14px 16px;color:var(--status-conflict-fg);">
-                    <div style="font-weight:700;margin-bottom:6px;">ยังไม่สามารถเปิดช่วงจัดตารางได้</div>
-                    <div style="font-size:13px;line-height:1.55;margin-bottom:10px;">ต้องแก้ Critical ให้หมดก่อนเปิดช่วงจัดตาราง เพื่อให้รายวิชาทุกวิชาพร้อมถูกสร้างเป็น Course Offering</div>
-                    <div style="display:flex;flex-wrap:wrap;gap:8px;">
-                        @foreach($schedulingCriticals as $critical)
-                            <a href="{{ $critical['link'] }}" style="text-decoration:none;color:var(--status-conflict-fg);background:color-mix(in oklch,var(--status-conflict) 8%,white);border:1px solid color-mix(in oklch,var(--status-conflict) 22%,white);border-radius:999px;padding:5px 10px;font-size:12px;font-weight:700;">
-                                {{ $critical['label'] }}
-                            </a>
-                        @endforeach
-                    </div>
-                </div>
-            @endif
-
-            <div class="card">
-                <div class="card-hdr">
-                    <div class="card-ttl">สถานะช่วงจัดตาราง ตามปีการศึกษา</div>
-                    <div style="font-size: 12px; color: var(--fg-3);">Admin เปิด/ปิด — หัวหน้าวิชาทุกท่านจัดตารางได้พร้อมกัน</div>
-                </div>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>ปีการศึกษา</th>
-                                <th>ภาคเรียน</th>
-                                <th>สถานะระบบ</th>
-                                <th style="text-align: center;">จัดการ</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($schedulingSummary as $year)
-                                <tr>
-                                    <td style="font-weight: 600; color: var(--fg-1);">{{ $year->name }}</td>
-                                    <td>ภาคเรียนที่ {{ $year->semester }}</td>
-                                    <td>
-                                        @if($year->phase === 'scheduling')
-                                            <span class="badge" style="background: oklch(90% 0.1 145); color: oklch(30% 0.15 145); border: 1px solid oklch(70% 0.15 145);">
-                                                <span style="width: 6px; height: 6px; border-radius: 50%; background: oklch(50% 0.2 145); margin-right: 6px; display: inline-block;"></span>
-                                                เปิดช่วงจัดตาราง
-                                            </span>
-                                        @elseif($year->phase === 'published')
-                                            <span class="badge badge-primary">เผยแพร่แล้ว</span>
-                                        @else
-                                            <span class="badge badge-gray">เตรียมข้อมูล</span>
-                                        @endif
-                                    </td>
-                                    <td style="text-align: center;">
-                                        <div style="display: flex; gap: 6px; justify-content: center;">
-                                            @if($year->phase === 'preparation')
-                                                @if($year->is_active)
-                                                    <form id="open-scheduling-{{ $year->id }}" method="POST" action="{{ route('admin.settings.scheduling.open', $year) }}">
-                                                        @csrf
-                                                        @method('PATCH')
-                                                        <button type="button"
-                                                            class="{{ $hasSchedulingCriticals ? 'btn btn-ghost' : 'btn btn-primary' }}"
-                                                            style="font-size: 13px; padding: 6px 14px; {{ $hasSchedulingCriticals ? 'opacity:0.55;cursor:not-allowed;' : '' }}"
-                                                            @if($hasSchedulingCriticals)
-                                                                disabled
-                                                                title="ต้องแก้ Critical ให้หมดก่อนเปิดช่วงจัดตาราง"
-                                                            @else
-                                                                @click="startOpenScheduleCountdown('open-scheduling-{{ $year->id }}', 'ปีการศึกษา {{ $year->name }} ภาค {{ $year->semester }}')"
-                                                            @endif>
-                                                            เปิดช่วงจัดตาราง
-                                                        </button>
-                                                    </form>
-                                                @else
-                                                    <button type="button" class="btn btn-ghost" disabled style="font-size: 13px; padding: 6px 14px; opacity: 0.4; cursor: not-allowed;" title="เปิดได้เฉพาะปีการศึกษาปัจจุบัน">
-                                                        เปิดช่วงจัดตาราง
-                                                    </button>
-                                                @endif
-                                            @elseif($year->phase === 'scheduling')
-                                                <form method="POST" action="{{ route('admin.settings.scheduling.close', $year) }}">
-                                                    @csrf
-                                                    @method('PATCH')
-                                                    <button type="submit" class="btn btn-ghost" style="font-size: 13px; padding: 6px 14px; border: 1px solid var(--border);"
-                                                        onclick="return confirm('ปิดช่วงจัดตารางสำหรับปีการศึกษา {{ $year->name }} ภาค {{ $year->semester }}?')">
-                                                        ปิดช่วงจัดตาราง
-                                                    </button>
-                                                </form>
-                                            @else
-                                                <span style="font-size: 12px; color: var(--fg-3);">—</span>
-                                            @endif
-                                        </div>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="4" style="text-align: center; padding: 40px; color: var(--fg-3);">
-                                        ยังไม่มีปีการศึกษา — เพิ่มในแท็บปีการศึกษาก่อน
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div x-show="openScheduleConfirmForm" x-cloak
-                style="position:fixed;inset:0;z-index:80;background:rgba(15,23,42,.36);"
-                @keydown.escape.window="cancelOpenScheduleCountdown()">
-                <div style="min-height:100vh;width:100%;display:flex;align-items:center;justify-content:center;padding:20px;">
-                    <div style="width:min(520px,100%);background:oklch(99% 0.006 235);border:1px solid var(--border);border-radius:10px;box-shadow:0 24px 70px rgba(15,23,42,.24);overflow:hidden;">
-                        <div style="padding:18px 20px;border-bottom:1px solid var(--border);background:oklch(97% 0.012 235);">
-                            <div style="font-weight:800;color:var(--fg-1);font-size:16px;">ยืนยันเปิดช่วงจัดตาราง</div>
-                            <div style="font-size:13px;color:var(--fg-3);margin-top:4px;" x-text="openScheduleConfirmLabel"></div>
-                        </div>
-                        <div style="padding:18px 20px;background:oklch(99% 0.006 235);">
-                            <div style="font-size:14px;color:var(--fg-2);line-height:1.65;">
-                                ระบบจะสร้างและซิงก์ Course Offering จากรายวิชา active ทั้งหมด จากนั้นหัวหน้าวิชาจะเริ่มแก้ข้อมูลเพื่อจัดตารางได้
-                            </div>
-                            <div style="margin-top:14px;padding:12px 14px;border:1px solid oklch(84% 0.08 80);border-radius:8px;background:oklch(98% 0.025 85);color:oklch(38% 0.08 75);font-size:13px;font-weight:700;"
-                                x-text="openScheduleCountdown > 0 ? 'รอ ' + openScheduleCountdown + ' วินาที ก่อนยืนยัน' : 'พร้อมยืนยันเปิดช่วงจัดตาราง'"></div>
-                        </div>
-                        <div style="display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--border);background:oklch(98% 0.008 235);">
-                            <button type="button" class="btn btn-ghost" @click="cancelOpenScheduleCountdown()">ยกเลิก</button>
-                            <button type="button" class="btn btn-primary" :disabled="openScheduleCountdown > 0" :style="openScheduleCountdown > 0 ? 'opacity:.55;cursor:not-allowed;' : ''" @click="confirmOpenSchedule()">
-                                ยืนยันเปิดช่วงจัดตาราง
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- Tab: PA Rules -->
         <div x-show="activeTab === 'pa'" x-cloak>

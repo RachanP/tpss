@@ -16,8 +16,12 @@ class CurriculumSeeder extends Seeder
             [
                 'name' => 'หลักสูตรพยาบาลศาสตรบัณฑิต (ปรับปรุง 2565)',
                 'effective_year' => 2565,
+                'education_level' => 'bachelor',
+                'duration_years' => 4,
+                'uses_year_level' => true,
+                'total_credits_required' => 140,
                 'is_active' => true,
-            ]
+            ],
         ];
 
         foreach ($programs as $programData) {

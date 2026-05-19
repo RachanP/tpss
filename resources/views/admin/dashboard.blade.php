@@ -64,7 +64,7 @@
                         @endif
                     </div>
                 </div>
-                <a href="{{ route('admin.settings', ['tab' => 'scheduling']) }}" class="btn btn-primary" data-testid="system-settings-shortcut" style="white-space:nowrap;text-decoration:none;">
+                <a href="{{ route('admin.settings', ['tab' => 'academic']) }}" class="btn btn-primary" data-testid="system-settings-shortcut" style="white-space:nowrap;text-decoration:none;">
                     จัดการสถานะระบบ
                 </a>
             </div>

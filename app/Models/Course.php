@@ -17,10 +17,10 @@ class Course extends Model
         'name_th',
         'name_en',
         'course_type',
-        'academic_level',
         'default_year_level',
         'default_semester',
         'requires_practicum_rotation',
+        'is_required',
         'credits',
         'lecture_hours',
         'lab_hours',
@@ -32,6 +32,7 @@ class Course extends Model
 
     protected $casts = [
         'requires_practicum_rotation' => 'boolean',
+        'is_required' => 'boolean',
         'credits' => 'integer',
         'lecture_hours' => 'integer',
         'lab_hours' => 'integer',
@@ -39,6 +40,10 @@ class Course extends Model
         'capacity' => 'integer',
         'default_year_level' => 'integer',
         'default_semester' => 'integer',
+    ];
+
+    protected $attributes = [
+        'is_required' => true,
     ];
 
     public function getRouteKeyName(): string

@@ -37,7 +37,7 @@ class SchedulingPhaseTest extends TestCase
         $this->actingAsAdmin($admin);
 
         $this->patch(route('admin.settings.scheduling.open', $year))
-            ->assertRedirect(route('admin.settings', ['tab' => 'scheduling']))
+            ->assertRedirect(route('admin.settings', ['tab' => 'academic']))
             ->assertSessionHas('success');
 
         $year->refresh();
@@ -103,7 +103,7 @@ class SchedulingPhaseTest extends TestCase
         $this->actingAsAdmin($admin);
 
         $this->patch(route('admin.settings.scheduling.open', $year))
-            ->assertRedirect(route('admin.settings', ['tab' => 'scheduling']))
+            ->assertRedirect(route('admin.settings', ['tab' => 'academic']))
             ->assertSessionHas('error');
 
         $this->assertSame('preparation', $year->fresh()->phase);
@@ -133,7 +133,7 @@ class SchedulingPhaseTest extends TestCase
         $this->actingAsAdmin($admin);
 
         $this->patch(route('admin.settings.scheduling.open', $year))
-            ->assertRedirect(route('admin.settings', ['tab' => 'scheduling']))
+            ->assertRedirect(route('admin.settings', ['tab' => 'academic']))
             ->assertSessionHas('error');
 
         $this->assertSame('preparation', $year->fresh()->phase);
@@ -147,7 +147,7 @@ class SchedulingPhaseTest extends TestCase
         $this->actingAsAdmin($admin);
 
         $this->patch(route('admin.settings.scheduling.open', $year))
-            ->assertRedirect(route('admin.settings', ['tab' => 'scheduling']))
+            ->assertRedirect(route('admin.settings', ['tab' => 'academic']))
             ->assertSessionHas('error');
 
         $this->assertSame('published', $year->fresh()->phase);
@@ -163,7 +163,7 @@ class SchedulingPhaseTest extends TestCase
         $this->actingAsAdmin($admin);
 
         $this->patch(route('admin.settings.scheduling.close', $year))
-            ->assertRedirect(route('admin.settings', ['tab' => 'scheduling']))
+            ->assertRedirect(route('admin.settings', ['tab' => 'academic']))
             ->assertSessionHas('success');
 
         $this->assertSame('preparation', $year->fresh()->phase);
@@ -430,7 +430,6 @@ class SchedulingPhaseTest extends TestCase
             'name_th'                  => "วิชา {$n}",
             'name_en'                  => "Course {$n}",
             'course_type'              => 'theory',
-            'academic_level'           => 'undergraduate',
             'default_year_level'       => 1,
             'default_semester'         => 1,
             'credits'                  => 3,

@@ -1,4 +1,4 @@
-# Sprint Status — ณ 18 พ.ค. 2569
+# Sprint Status — ณ 19 พ.ค. 2569
 
 ## Phase Overview
 
@@ -35,7 +35,7 @@
 ## Sprint 3 (M2) — สิ่งที่เสร็จแล้ว
 
 ### Two-Layer Status System
-- `academic_years.phase` (preparation → scheduling → published) + Settings tab "ช่วงจัดตาราง"
+- `academic_years.phase` (preparation → scheduling → published) — จัดการในแท็บ "ปีการศึกษา" (column "ช่วงจัดตาราง")
 - `course_offerings.approval_status` (draft → pending → published/rejected)
 - ScheduleController + CourseOfferingController guard `phase != 'scheduling'`
 
@@ -66,6 +66,17 @@
 - `resources/views/course_head/schedules/{index,create}.blade.php` ลบ
 - `routes/web.php` ลบ schedule routes (controller method ยังอยู่ — orphan)
 
+### Sprint 3 Hardening — 19 พ.ค.
+
+- **academic_level refactor** (commit `5f436b5`): ย้าย `courses.academic_level` → `curriculums.education_level` (ระดับการศึกษาเป็น property ของหลักสูตร)
+- **รองรับ ป.โท/ป.เอก**: เพิ่ม `curriculums.{education_level, duration_years, uses_year_level, total_credits_required}` — ป.โท/ป.เอกใช้ระบบ prerequisite + หน่วยกิตสะสมแทนระบบชั้นปี
+- **`courses.is_required`** boolean แทน academic_level (วิชาบังคับ/เลือก)
+- **`courses.default_year_level`** เป็น nullable, capped ตาม `curriculum.duration_years`
+- **updateCurriculum cascade**: toggle `uses_year_level: true → false` → `default_year_level=null` ทุกวิชาในหลักสูตร
+- **Settings UI merge** (commit `b05381b`): รวม tab "ช่วงจัดตาราง" เข้า tab "ปีการศึกษา" — ตารางเดียวรวม phase column + ปุ่ม toggle (admin-only) staff เห็น read-only — ลด cognitive load
+- **CSV importer**: รับ `is_required` column แบบ optional (default true) + preload curriculums (เลิก N+1)
+- **เพิ่ม 4 tests**: master curriculum without year_level, course year_level capped by duration, credit-based requires total_credits, cascade clear on toggle
+
 ### Test Coverage (134 tests / 133 passing)
 - `CoursePoolManagementTest` (18) — CRUD + lock + RBAC
 - `CourseOfferingHardeningTest` (11) — template sync + bulk groups + critical gate
@@ -82,7 +93,7 @@
 - **ชั้น 2 — ระดับรายวิชา**: `course_offerings.approval_status` (Course Head + Executive)
 
 ### Scheduling Window
-- Admin เปิด/ปิดผ่าน Settings tab "ช่วงจัดตาราง" (admin-only)
+- Admin เปิด/ปิดผ่าน Settings tab "ปีการศึกษา" (column "ช่วงจัดตาราง", admin-only — staff เห็นเป็น pill อย่างเดียว)
 - เปิด **ทั้งภาคเรียน** พร้อมกัน — fairness
 - Critical-gate ต้องเคลียร์ก่อน
 - Email notification = Phase 2 (future work)
@@ -106,9 +117,10 @@
 | คำถาม | คำตอบ |
 |-------|-------|
 | ผู้ประสานรายวิชา = course_head role เดียวกับหัวหน้าวิชาไหม? | ใช่ — role เดียวกัน |
-| ใครกด "ยืนยันเปิด" ให้จัดตาราง? | **Admin** ผ่าน Settings tab "ช่วงจัดตาราง" |
+| ใครกด "ยืนยันเปิด" ให้จัดตาราง? | **Admin** ผ่าน Settings tab "ปีการศึกษา" (ปุ่ม toggle ใน column "ช่วงจัดตาราง") |
 | Course Head รู้ว่าวิชาถูกเปิดให้จัดตารางยังไง? | Phase 2 — email notification (Gmail) |
 | Prerequisite ระดับวิชาหรือระดับรอบเปิดสอน? | ระดับวิชา (M1 Master Data) |
+| ป.โท/ป.เอก ใช้ระบบชั้นปีไหม? | ไม่ — ใช้ prerequisite + หน่วยกิตสะสม (`curriculums.uses_year_level=false`) |
 
 ## ข้อค้นพบสำคัญสำหรับ M3 (Schedule Management)
 
