@@ -17,7 +17,6 @@ return new class extends Migration
             $table->id();
             $table->string('name', 100);
             $table->string('color_code', 10)->nullable()->default('#3498db');
-            $table->boolean('is_practicum')->nullable();
             $table->enum('category', ["lecture","practicum","thesis","other"]);
             $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->nullable();

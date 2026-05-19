@@ -6,14 +6,13 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-            $table->string('username', 100)->unique()->comment('\\u0e23\\u0e2b\\u0e31\\u0e2a\\u0e40\\u0e02\\u0e49\\u0e32\\u0e23\\u0e30\\u0e1a\\u0e1a \\u0e40\\u0e0a\\u0e48\\u0e19 staff_01, porntip.w');
+            $table->string('prefix', 50)->nullable();
+            $table->string('username', 100)->unique()->comment('รหัสเข้าระบบ เช่น staff_01, porntip.w');
+            $table->string('employee_id', 50)->nullable()->unique()->comment('รหัสพนักงาน');
             $table->string('name', 255);
             $table->string('email', 255)->unique();
             $table->string('password', 255);
@@ -24,9 +23,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('users');

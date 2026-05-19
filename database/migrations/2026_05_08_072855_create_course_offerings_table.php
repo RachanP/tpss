@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::disableForeignKeyConstraints();
@@ -19,10 +16,20 @@ return new class extends Migration
             $table->foreign('course_id')->references('id')->on('courses');
             $table->unsignedBigInteger('academic_year_id');
             $table->foreign('academic_year_id')->references('id')->on('academic_years');
-            $table->unsignedBigInteger('coordinator_id')->comment('\\u0e2b\\u0e31\\u0e27\\u0e2b\\u0e19\\u0e49\\u0e32\\u0e27\\u0e34\\u0e0a\\u0e32');
+            $table->unsignedBigInteger('coordinator_id')->comment('หัวหน้าวิชา');
             $table->foreign('coordinator_id')->references('id')->on('users');
-            $table->enum('approval_status', ["draft","pending","published","rejected"]);
+            $table->enum('approval_status', ['draft', 'pending', 'published', 'rejected']);
             $table->text('rejection_reason')->nullable();
+
+            // M2 planning fields — snapshot ของจำนวน นศ. + ชั่วโมง + รอบฝึกตอน open scheduling
+            $table->unsignedInteger('total_student_count')->nullable();
+            $table->unsignedInteger('planned_lecture_hours')->nullable();
+            $table->unsignedInteger('planned_lab_hours')->nullable();
+            $table->unsignedInteger('planned_practicum_hours')->nullable();
+            $table->unsignedTinyInteger('teaching_weeks')->nullable();
+            $table->boolean('requires_practicum_rotation')->default(false);
+            $table->text('practicum_note')->nullable()->comment('override note เมื่อ rotation ต่างจาก Master Data');
+
             $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->nullable();
             $table->timestamp('deleted_at')->nullable();
@@ -31,9 +38,6 @@ return new class extends Migration
         Schema::enableForeignKeyConstraints();
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('course_offerings');

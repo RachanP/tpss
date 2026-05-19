@@ -15,7 +15,8 @@ return new class extends Migration
 
         Schema::create('location_types', function (Blueprint $table) {
             $table->id();
-            $table->string('name', 100)->unique()->comment('\\u0e40\\u0e0a\\u0e48\\u0e19 Lecture, Lab, Ward, Online, External');
+            $table->string('name', 100)->unique()->comment('เช่น Lecture, Lab, Ward, Online, External');
+            $table->boolean('requires_capacity')->default(true)->comment('ห้องในประเภทนี้ต้องระบุความจุไหม (false = ชุมชน/หอผู้ป่วย ไม่ต้องการ)');
             $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->nullable();
         });

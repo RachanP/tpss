@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::disableForeignKeyConstraints();
@@ -24,8 +21,9 @@ return new class extends Migration
             $table->foreign('head_instructor_id')->references('id')->on('users');
             $table->string('name_th', 255);
             $table->string('name_en', 255)->nullable();
-            $table->enum('course_type', ["theory","practicum","theory_practicum"]);
-            $table->enum('academic_level', ["undergraduate", "graduate"])->default('undergraduate');
+            // course_type ทำเป็น nullable — UI infer จาก lecture_hours + lab_hours + requires_practicum_rotation
+            $table->enum('course_type', ['theory', 'practicum', 'theory_practicum'])->nullable();
+            $table->enum('academic_level', ['undergraduate', 'graduate'])->default('undergraduate');
             $table->integer('default_year_level')->nullable()->comment('ชั้นปีที่ต้องเรียนตามแผน (1-4)');
             $table->integer('default_semester')->nullable()->comment('ภาคเรียนที่ต้องเรียนตามแผน (1, 2, 3)');
             $table->boolean('requires_practicum_rotation')->default(false);
@@ -33,8 +31,9 @@ return new class extends Migration
             $table->integer('lecture_hours')->default(0);
             $table->integer('lab_hours')->default(0);
             $table->integer('self_study_hours')->default(0);
+            $table->unsignedInteger('capacity')->nullable()->comment('จำนวนนักศึกษาสูงสุดที่รับได้ในวิชานี้');
             $table->string('color_code', 10)->nullable();
-            $table->enum('status', ["active","inactive"])->default('active');
+            $table->enum('status', ['active', 'inactive'])->default('active');
             $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->nullable();
             $table->timestamp('deleted_at')->nullable();
@@ -44,9 +43,6 @@ return new class extends Migration
         Schema::enableForeignKeyConstraints();
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('courses');

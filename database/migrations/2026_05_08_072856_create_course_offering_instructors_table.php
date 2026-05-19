@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::disableForeignKeyConstraints();
@@ -16,7 +13,9 @@ return new class extends Migration
         Schema::create('course_offering_instructors', function (Blueprint $table) {
             $table->unsignedBigInteger('course_offering_id');
             $table->unsignedBigInteger('user_id');
-            $table->enum('role_in_course', ["coordinator","secretary","instructor","group_advisor","preceptor"])->nullable();
+            // role_in_course เก็บเฉพาะ 'coordinator' marker — role จริงใช้ course_role_id FK
+            $table->string('role_in_course', 100)->default('instructor');
+            $table->foreignId('course_role_id')->nullable()->constrained('course_roles')->nullOnDelete();
             $table->primary(['course_offering_id', 'user_id']);
             $table->foreign('course_offering_id')->references('id')->on('course_offerings')->onDelete('cascade');
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
@@ -25,9 +24,6 @@ return new class extends Migration
         Schema::enableForeignKeyConstraints();
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('course_offering_instructors');

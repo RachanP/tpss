@@ -6,32 +6,27 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::disableForeignKeyConstraints();
 
         Schema::create('student_groups', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('course_offering_id');
+            $table->foreign('course_offering_id')
+                ->references('id')->on('course_offerings')
+                ->restrictOnDelete();
             $table->string('group_code', 255);
-            $table->unsignedBigInteger('curriculum_id');
-            $table->foreign('curriculum_id')->references('id')->on('curriculums');
-            $table->unsignedBigInteger('academic_year_id');
-            $table->foreign('academic_year_id')->references('id')->on('academic_years');
             $table->integer('student_count');
             $table->string('color_code', 10)->nullable();
             $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->nullable();
+            $table->unique(['course_offering_id', 'group_code'], 'student_groups_offering_group_code_unique');
         });
 
         Schema::enableForeignKeyConstraints();
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('student_groups');
