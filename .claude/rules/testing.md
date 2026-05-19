@@ -45,6 +45,20 @@ npx playwright show-report                      # HTML report
 - E2E ของ modal ให้ skip mobile: `test.skip(testInfo.project.name === 'mobile-chrome', '...')`
 - admin เป้าหมายคือ desktop อยู่แล้ว ไม่จำเป็นต้อง cover mobile
 
+## Alpine x-show race (Friend 1 quirk)
+
+Alpine x-show expressions ที่อ่าน sibling DOM state จะ re-evaluate **ช้ากว่า** trigger เดิม — เช่น empty-state row ที่ check `$el.parentNode.children...style.display !== 'none'` จะเห็น stale display values รอบแรก แล้วถึงจะ pass รอบสอง
+
+**Workaround ใน E2E test:**
+```ts
+await input.fill('A');       // กระตุ้นรอบแรก (sibling rows hide)
+await input.fill('');        // reset เพื่อ force re-render
+await input.fill('ZZZZ');    // รอบจริง — Alpine ผ่าน 3 cycles แล้ว predicate stable
+await expect(emptyState).toBeVisible({ timeout: 10000 });
+```
+
+**ทำไม:** Alpine ไม่ tracking sibling DOM mutations เป็น reactive dep — ต้องมี trigger ของตัวเองหลาย ๆ ครั้ง ดูตัวอย่างใน `tests/e2e/m1-master-data.spec.ts` empty-state test
+
 ## Feature Test Pattern
 
 ```php

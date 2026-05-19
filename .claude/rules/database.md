@@ -104,6 +104,25 @@ course_offering_instructors (pivot)   ← snapshot ระดับ offering
 - ไม่ใช่ที่ offering level — prerequisite เป็น property ของวิชา ไม่เปลี่ยนตามรอบเปิดสอน
 - Validation: `Rule::notIn([$course->id])` ป้องกัน self-prerequisite
 
+## Course Code — Format & Uniqueness Policy (ตกลง 18 พ.ค.)
+
+```
+Storage:     เก็บตามที่ user พิมพ์ — "NSBS 111" (มี space) คงไว้
+Regex:       [A-Za-z0-9 _-]+ บังคับ (ไม่อนุญาต Thai/CJK ใน ID)
+Uniqueness:  REPLACE(UPPER(course_code), ' ', '') = ?  ต่อ curriculum_id
+             → "NSBS 111" กับ "NSBS111" ถือเป็น duplicate (whitespace-insensitive)
+Route bind:  Course::getRouteKeyName() = 'course_code'
+             Course::resolveRouteBinding ใช้ limit(2) → ถ้าเจอ > 1 row abort(404)
+URL:         /admin/course-pool/NSBS%20111 (space encoded เป็น %20)
+```
+
+**Why this design (ไม่ normalize):**
+- ลูกค้าพิมพ์ "NSBS 111" → DB เก็บ "NSBS 111" → display "NSBS 111" — ตรงตามที่กรอก
+- Duplicate prevention ยังอยู่ — REPLACE-based check จับ "NSBS111" submitted ทับ "NSBS 111" stored
+- Trade-off: `courseCodeExistsInCurriculum` ไม่ใช้ DB index → full scan (acceptable: course tables เล็ก)
+
+**Migration:** `2026_05_18_120000_normalize_course_codes` มีอยู่แต่ไม่ active ใน flow ปัจจุบัน (legacy จากความพยายาม normalize ที่ rollback แล้ว) — เก็บไว้เป็น migration history ที่ idempotent บน data ปัจจุบัน
+
 ## Student Group — Schema Pattern
 
 ```

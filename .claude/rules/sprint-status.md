@@ -131,9 +131,12 @@
 - บันทึกผลใน System Test Checklist
 - เอกสาร (SRS / User Manual) อัปเดตแล้ว (ถ้าเกี่ยวข้อง)
 
-## Sprint 3 Bug Report — 18 พ.ค. 2569 (bug_sprint2_18_05_69.pdf)
+## Sprint 3 Bug Report — 18 พ.ค. 2569 (bug_sprint2_18_05_69.pdf) ✅ ปิดหมดแล้ว
 
-15 bugs จากการ test M1/M2/M10 — แบ่งเป็น 2 branch ขนาน:
+15 bugs จากการ test M1/M2/M10 — ปิดแล้วใน 2 branch:
+- **Branch A** (`fix/m1-master-data-bugs`) — merged `d614817` + review fixes `6770a65, fe0ebee`
+- **Branch B** (`fix/m2-ux-bugs`) — merged `23b4e0f` + review fixes `5ef4386`
+- พร้อมเริ่ม Schedule Suite (M3+M4+M8) ได้แล้ว
 
 ### Branch A — `fix/m1-master-data-bugs` (Friend 1)
 1. รหัสวิชาซ้ำในหลักสูตรเดียวกันได้ — ต้อง unique constraint `(curriculum_id, course_code)`
@@ -198,8 +201,8 @@ main ← production-ready
         ├── feature/admin-dashboard-alerts  ✅ merge แล้ว
         ├── 7-m7-search_and_filter          ✅ merge แล้ว
         ├── 3-m2-course_management          ✅ merge แล้ว (18 พ.ค.)
-        ├── test/user-management-coverage   🟡 รอ review/merge (8ecdfb1)
-        ├── fix/m1-master-data-bugs         🔲 Friend 1
-        ├── fix/m2-ux-bugs                  🔲 Friend 2 (urgent: #6, #10, #14)
-        └── (after bugs) M3 Schedule        🔲 พร้อมเริ่มหลัง bug merge
+        ├── test/user-management-coverage   ✅ merge แล้ว (8ecdfb1)
+        ├── fix/m1-master-data-bugs         ✅ merge แล้ว (d614817 + 6770a65 + fe0ebee review fixes)
+        ├── fix/m2-ux-bugs                  ✅ merge แล้ว (23b4e0f + 5ef4386 review fixes)
+        └── (next) Schedule Suite M3+M4+M8  🟢 พร้อมเริ่ม
 ```
