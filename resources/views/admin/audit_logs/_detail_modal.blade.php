@@ -37,9 +37,11 @@
         transform:translate(-50%,-50%);
         z-index:1001;
         width:min(780px,95vw);
-        max-height:88vh;
+        max-width:95vw;
+        max-height:90vh;
         display:flex;
         flex-direction:column;
+        overflow:hidden;
         background:var(--bg-1,#fff);
         border:1.5px solid var(--border);
         border-radius:6px;
@@ -69,7 +71,7 @@
     </div>
 
     {{-- Body --}}
-    <div style="flex:1;overflow-y:auto;padding:16px 20px;">
+    <div style="flex:1;min-height:0;min-width:0;display:flex;flex-direction:column;overflow:hidden;padding:16px 20px;">
 
         {{-- Parse error fallback --}}
         <template x-if="jsonError">
@@ -85,24 +87,28 @@
 
         {{-- JSON Code Block --}}
         <template x-if="!jsonError">
-            <pre
-                data-testid="audit-json-block"
-                x-text="formattedJson"
-                style="
-                    margin:0;
-                    padding:16px;
-                    background:var(--bg-2,#f8f9fa);
-                    border:1px solid var(--border);
-                    border-radius:4px;
-                    font-family:'IBM Plex Mono',ui-monospace,monospace;
-                    font-size:12px;
-                    line-height:1.65;
-                    color:var(--fg-1);
-                    white-space:pre;
-                    overflow-x:auto;
-                    tab-size:2;
-                "
-            ></pre>
+            <div style="max-height:calc(90vh - 180px);max-width:100%;min-width:0;overflow-y:auto;overflow-x:auto;border-radius:12px;">
+                <pre
+                    data-testid="audit-json-block"
+                    x-text="formattedJson"
+                    style="
+                        margin:0;
+                        padding:16px;
+                        background:var(--bg-2,#f8f9fa);
+                        border:1px solid var(--border);
+                        border-radius:4px;
+                        font-family:'IBM Plex Mono',ui-monospace,monospace;
+                        font-size:12px;
+                        line-height:1.65;
+                        color:var(--fg-1);
+                        white-space:pre-wrap;
+                        overflow-wrap:anywhere;
+                        word-break:break-word;
+                        min-width:0;
+                        tab-size:2;
+                    "
+                ></pre>
+            </div>
         </template>
     </div>
 

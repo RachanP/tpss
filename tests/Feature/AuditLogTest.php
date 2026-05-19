@@ -280,6 +280,28 @@ class AuditLogTest extends TestCase
         $this->assertDatabaseMissing('audit_logs', ['category' => 'M10']);
     }
 
+    public function test_audit_detail_modal_wraps_long_json_without_breaking_layout(): void
+    {
+        $html = view('admin.audit_logs._detail_modal')->render();
+
+        $this->assertStringContainsString('data-testid="audit-detail-modal"', $html);
+        $this->assertStringContainsString('max-width:95vw', $html);
+        $this->assertStringContainsString('max-height:90vh', $html);
+        $this->assertStringContainsString('overflow:hidden', $html);
+        $this->assertStringContainsString('flex:1;min-height:0;min-width:0;display:flex;flex-direction:column;overflow:hidden', $html);
+
+        $this->assertStringContainsString('max-height:calc(90vh - 180px);max-width:100%;min-width:0;overflow-y:auto;overflow-x:auto', $html);
+        $this->assertStringContainsString('data-testid="audit-json-block"', $html);
+        $this->assertStringContainsString('font-family:\'IBM Plex Mono\',ui-monospace,monospace', $html);
+        $this->assertStringContainsString('white-space:pre-wrap', $html);
+        $this->assertStringContainsString('overflow-wrap:anywhere', $html);
+        $this->assertStringContainsString('word-break:break-word', $html);
+        $this->assertStringContainsString('min-width:0', $html);
+
+        $this->assertStringContainsString('data-testid="audit-copy-btn"', $html);
+        $this->assertStringContainsString('@click="copyJson()"', $html);
+    }
+
     public function test_recent_activity_partial_renders_without_provided_variable(): void
     {
         $createdAt = now()->startOfSecond();
