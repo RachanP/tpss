@@ -280,6 +280,141 @@ class AuditLogTest extends TestCase
         $this->assertDatabaseMissing('audit_logs', ['category' => 'M10']);
     }
 
+    public function test_recent_activity_partial_renders_without_provided_variable(): void
+    {
+        $createdAt = now()->startOfSecond();
+
+        for ($i = 1; $i <= 6; $i++) {
+            AuditLog::create([
+                'user_id'        => $this->admin->id,
+                'action'         => 'ข้อมูลหลัก.สร้าง',
+                'table_affected' => 'courses',
+                'record_id'      => $i,
+                'old_values'     => null,
+                'new_values'     => ['name_th' => "Course {$i}"],
+                'category'       => 'ข้อมูลหลัก',
+                'description'    => "กิจกรรมทดสอบ {$i}",
+                'created_at'     => $createdAt,
+            ]);
+        }
+
+        $html = view('shared.dashboard.recent-activity')->render();
+
+        $this->assertStringContainsString('กิจกรรมล่าสุด', $html);
+        foreach ([6, 5, 4, 3, 2] as $visibleLogNumber) {
+            $this->assertStringContainsString("กิจกรรมทดสอบ {$visibleLogNumber}", $html);
+        }
+
+        $this->assertStringNotContainsString('กิจกรรมทดสอบ 1', $html);
+        $this->assertStringContainsString('กิจกรรมทดสอบ 6', $html);
+        $this->assertStringContainsString('Admin Test', $html);
+    }
+
+    public function test_recent_activity_partial_renders_provided_recent_audit_logs(): void
+    {
+        AuditLog::create([
+            'user_id'        => $this->admin->id,
+            'action'         => 'ข้อมูลหลัก.สร้าง',
+            'table_affected' => 'courses',
+            'record_id'      => 1,
+            'old_values'     => null,
+            'new_values'     => [],
+            'category'       => 'ข้อมูลหลัก',
+            'description'    => 'ไม่ควรแสดงจาก fallback',
+            'created_at'     => now(),
+        ]);
+
+        $providedLog = AuditLog::create([
+            'user_id'        => $this->staff->id,
+            'action'         => 'ตารางสอน.แก้ไข',
+            'table_affected' => 'schedules',
+            'record_id'      => 2,
+            'old_values'     => ['status' => 'draft'],
+            'new_values'     => ['status' => 'pending_approval'],
+            'category'       => 'ตารางสอน',
+            'description'    => 'แสดงจากตัวแปรที่ส่งเข้า partial',
+            'created_at'     => now()->subMinute(),
+        ])->load('user');
+
+        $html = view('shared.dashboard.recent-activity', [
+            'recentAuditLogs' => collect([$providedLog]),
+        ])->render();
+
+        $this->assertStringContainsString('แสดงจากตัวแปรที่ส่งเข้า partial', $html);
+        $this->assertStringContainsString('Staff Test', $html);
+        $this->assertStringNotContainsString('ไม่ควรแสดงจาก fallback', $html);
+    }
+
+    public function test_recent_activity_partial_empty_state_appears_when_no_logs(): void
+    {
+        $html = view('shared.dashboard.recent-activity')->render();
+
+        $this->assertStringContainsString('ยังไม่มีกิจกรรมล่าสุด', $html);
+    }
+
+    public function test_recent_activity_partial_all_link_points_to_audit_log_index(): void
+    {
+        $html = view('shared.dashboard.recent-activity', [
+            'recentAuditLogs' => collect(),
+        ])->render();
+
+        $this->assertStringContainsString('ดูทั้งหมด', $html);
+        $this->assertStringContainsString(route('admin.audit_logs.index'), $html);
+    }
+
+    public function test_recent_activity_partial_renders_thai_category_and_action_labels(): void
+    {
+        $log = AuditLog::create([
+            'user_id'        => $this->admin->id,
+            'action'         => 'ผู้ใช้และสิทธิ์.แก้ไข',
+            'table_affected' => 'users',
+            'record_id'      => $this->staff->id,
+            'old_values'     => ['name' => 'Old Name'],
+            'new_values'     => ['name' => 'New Name'],
+            'category'       => 'ผู้ใช้และสิทธิ์',
+            'description'    => 'แก้ไขข้อมูลผู้ใช้',
+            'created_at'     => now(),
+        ]);
+
+        $html = view('shared.dashboard.recent-activity', [
+            'recentAuditLogs' => collect([$log]),
+        ])->render();
+
+        $this->assertSame(['ผู้ใช้และสิทธิ์'], $this->recentActivityBadgeTexts($html, 'recent-activity-category'));
+        $this->assertSame(['แก้ไข'], $this->recentActivityBadgeTexts($html, 'recent-activity-action'));
+        $this->assertStringNotContainsString('ผู้ใช้และสิทธิ์.แก้ไข', implode(' ', $this->recentActivityBadgeTexts($html, 'recent-activity-action')));
+    }
+
+    public function test_recent_activity_partial_does_not_show_m_code_labels(): void
+    {
+        $log = AuditLog::create([
+            'user_id'        => $this->admin->id,
+            'action'         => 'M1.แก้ไข',
+            'table_affected' => 'users',
+            'record_id'      => $this->staff->id,
+            'old_values'     => ['name' => 'Old Name'],
+            'new_values'     => ['name' => 'New Name'],
+            'category'       => 'M10',
+            'description'    => 'แก้ไขข้อมูลผู้ใช้',
+            'created_at'     => now(),
+        ]);
+
+        $html = view('shared.dashboard.recent-activity', [
+            'recentAuditLogs' => collect([$log]),
+        ])->render();
+
+        $visibleCategoryAndActionText = implode(' ', array_merge(
+            $this->recentActivityBadgeTexts($html, 'recent-activity-category'),
+            $this->recentActivityBadgeTexts($html, 'recent-activity-action'),
+        ));
+
+        $this->assertStringNotContainsString('M1', $visibleCategoryAndActionText);
+        $this->assertStringNotContainsString('M2', $visibleCategoryAndActionText);
+        $this->assertStringNotContainsString('M10', $visibleCategoryAndActionText);
+        $this->assertStringContainsString('ระบบ', $visibleCategoryAndActionText);
+        $this->assertStringContainsString('แก้ไข', $visibleCategoryAndActionText);
+    }
+
     public function test_view_actions_are_not_present_after_navigation(): void
     {
         // Verify no "VIEW" or "LOGIN" category appears in audit logs when admin views a page
@@ -288,5 +423,19 @@ class AuditLogTest extends TestCase
 
         $this->assertDatabaseMissing('audit_logs', ['action' => 'VIEW']);
         $this->assertDatabaseMissing('audit_logs', ['category' => 'security']);
+    }
+
+    private function recentActivityBadgeTexts(string $html, string $testId): array
+    {
+        preg_match_all(
+            '/<span[^>]*data-testid="' . preg_quote($testId, '/') . '"[^>]*>(.*?)<\/span>/s',
+            $html,
+            $matches,
+        );
+
+        return array_map(
+            fn (string $value) => trim(preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($value), ENT_QUOTES | ENT_HTML5, 'UTF-8'))),
+            $matches[1],
+        );
     }
 }
