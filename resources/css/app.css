@@ -494,6 +494,7 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  min-width: 0;
   flex: 1;
   transition: margin-left var(--dur-slow) var(--ease-out);
 }
@@ -543,6 +544,7 @@ body {
 
 .content-area {
   padding: 18px var(--content-pad) 60px;
+  min-width: 0;
 }
 
 /* ── SIDEBAR COMPONENTS ── */
@@ -846,6 +848,7 @@ body {
   overflow: hidden;
   margin-bottom: 24px;
   box-shadow: var(--shadow-xs);
+  min-width: 0;
 }
 
 .card-hdr {
@@ -915,6 +918,7 @@ body {
 /* Tables */
 .table-responsive {
   width: 100%;
+  min-width: 0;
   overflow-x: auto;
 }
 
