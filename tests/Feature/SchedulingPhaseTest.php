@@ -224,7 +224,7 @@ class SchedulingPhaseTest extends TestCase
                 'requires_practicum_rotation' => 1,
                 'practicum_note'              => 'override note',
             ])
-            ->assertRedirect(route('maker.course_offerings.show', $offering))
+            ->assertRedirect(route('maker.course_offerings.show', $offering) . '#course-info')
             ->assertSessionHas('error');
 
         $fresh = $offering->fresh();
@@ -271,7 +271,7 @@ class SchedulingPhaseTest extends TestCase
             ->post(route('maker.course_offerings.instructors.store', $offering), [
                 'user_id' => $instructor->id,
             ])
-            ->assertRedirect(route('maker.course_offerings.show', $offering))
+            ->assertRedirect(route('maker.course_offerings.show', $offering) . '#instructors')
             ->assertSessionHas('error');
 
         $this->assertDatabaseMissing('course_offering_instructors', [
@@ -288,7 +288,7 @@ class SchedulingPhaseTest extends TestCase
 
         $this->from(route('maker.course_offerings.show', $offering))
             ->delete(route('maker.course_offerings.instructors.destroy', [$offering, $instructor]))
-            ->assertRedirect(route('maker.course_offerings.show', $offering))
+            ->assertRedirect(route('maker.course_offerings.show', $offering) . '#instructors')
             ->assertSessionHas('error');
 
         $this->assertDatabaseHas('course_offering_instructors', [
@@ -312,13 +312,12 @@ class SchedulingPhaseTest extends TestCase
 
         $this->actingAsCourseHead($head);
 
-        // store
         $this->from(route('maker.course_offerings.show', $offering))
             ->post(route('maker.course_offerings.student_groups.store', $offering), [
                 'group_code'    => 'B1',
                 'student_count' => 10,
             ])
-            ->assertRedirect(route('maker.course_offerings.show', $offering))
+            ->assertRedirect(route('maker.course_offerings.show', $offering) . '#student-groups')
             ->assertSessionHas('error');
 
         // update
@@ -327,13 +326,12 @@ class SchedulingPhaseTest extends TestCase
                 'group_code'    => 'A1',
                 'student_count' => 30,
             ])
-            ->assertRedirect(route('maker.course_offerings.show', $offering))
+            ->assertRedirect(route('maker.course_offerings.show', $offering) . '#student-groups')
             ->assertSessionHas('error');
 
-        // destroy
         $this->from(route('maker.course_offerings.show', $offering))
             ->delete(route('maker.course_offerings.student_groups.destroy', [$offering, $group]))
-            ->assertRedirect(route('maker.course_offerings.show', $offering))
+            ->assertRedirect(route('maker.course_offerings.show', $offering) . '#student-groups')
             ->assertSessionHas('error');
 
         $this->assertDatabaseCount('student_groups', 1);
