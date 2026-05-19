@@ -23,6 +23,28 @@
                     const query = String(keyword || '').toLowerCase();
                     return source.includes(query) || this.normalizeSearch(source).includes(this.normalizeSearch(query));
                 },
+                hasActiveFilters() {
+                    return Object.values(this.filters).some(value => String(value || '').trim() !== '');
+                },
+                userRowMatches(row) {
+                    return this.includesText(row.dataset.search, this.filters.keyword)
+                        && (this.filters.role === '' || (row.dataset.roles || '').split(' ').includes(this.filters.role))
+                        && (this.filters.status === '' || row.dataset.status === this.filters.status)
+                        && (this.filters.department_id === '' || (row.dataset.departmentIds || '').split(' ').includes(this.filters.department_id))
+                        && (this.filters.position === '' || (this.filters.position === 'none' ? !row.dataset.position : (row.dataset.position || '').split(' ').includes(this.filters.position)));
+                },
+                hasMatchingUsers(root) {
+                    return Array.from(root.querySelectorAll('[data-testid="users-row"]')).some(row => this.userRowMatches(row));
+                },
+                clearUserFilters() {
+                    this.filters = {
+                        keyword: '',
+                        role: '',
+                        status: '',
+                        department_id: '',
+                        position: '',
+                    };
+                },
                 teachingTotalHours: {{ \App\Models\SystemSetting::get('teaching_load_weeks', 39) * \App\Models\SystemSetting::get('teaching_quota_hours_per_week', 35) }}, 
                 currentUser: {
                     id: '',
@@ -645,10 +667,21 @@
                                 </td>
                             </tr>
                         @endforeach
-                        <tr x-show="(filters.keyword || filters.role || filters.status || filters.department_id || filters.position)
-                            && !Array.from($el.parentNode.children).some(tr => tr !== $el && tr.style.display !== 'none')">
-                            <td colspan="5" style="text-align: center; padding: 40px; color: var(--fg-3);">
-                                ไม่พบผู้ใช้งานตามเงื่อนไขที่ค้นหา
+                        <tr x-show="hasActiveFilters() && !hasMatchingUsers($root)">
+                            <td colspan="5">
+                                <div class="users-empty-state">
+                                    <div class="users-empty-icon" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+                                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="11" cy="11" r="7"/>
+                                            <line x1="16.65" y1="16.65" x2="21" y2="21"/>
+                                            <line x1="8" y1="11" x2="14" y2="11"/>
+                                        </svg>
+                                    </div>
+                                    <div class="users-empty-title">ไม่พบผู้ใช้ที่ตรงกับเงื่อนไข</div>
+                                    <div class="users-empty-copy">ลองเปลี่ยนคำค้นหา บทบาท สถานะ ภาควิชา หรือตำแหน่งภาควิชา</div>
+                                    <button type="button" class="users-empty-action" @click="clearUserFilters()">ล้างตัวกรอง</button>
+                                </div>
                             </td>
                         </tr>
                     </tbody>
@@ -1209,6 +1242,66 @@
             outline: 0;
             border-color: var(--brand-navy);
             box-shadow: 0 0 0 3px oklch(92% 0.025 250);
+        }
+
+        .users-empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 164px;
+            padding: 28px 20px 32px;
+            color: var(--fg-2);
+            text-align: center;
+        }
+
+        .users-empty-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 46px;
+            height: 46px;
+            margin-bottom: 12px;
+            border: 1px solid oklch(86% 0.025 235);
+            border-radius: 50%;
+            background: oklch(97% 0.012 235);
+            color: var(--fg-3);
+        }
+
+        .users-empty-title {
+            color: var(--fg-1);
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1.45;
+        }
+
+        .users-empty-copy {
+            margin-top: 4px;
+            color: var(--fg-3);
+            font-size: 13px;
+            line-height: 1.55;
+        }
+
+        .users-empty-action {
+            margin-top: 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--surface);
+            color: var(--brand-navy);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1;
+            padding: 9px 14px;
+            transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
+        }
+
+        .users-empty-action:hover,
+        .users-empty-action:focus-visible {
+            border-color: var(--brand-navy);
+            background: oklch(98% 0.01 245);
+            box-shadow: 0 0 0 3px oklch(92% 0.025 250);
+            outline: 0;
         }
 
         @media (max-width: 1280px) {

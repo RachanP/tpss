@@ -1,16 +1,11 @@
 import { expect, test } from '@playwright/test';
 import { login, switchRole } from './support/auth';
 
-test('admin can see locked course pool templates after scheduling opens', async ({ page }) => {
+test('course pool page is removed from admin workflow', async ({ page }) => {
   await login(page, 'admin_01');
 
-  await page.goto('/admin/course-pool', { waitUntil: 'domcontentloaded' });
-  await page.getByTestId('course-pool-template-button').first().click();
-
-  await expect(page.getByTestId('course-pool-template-modal')).toBeVisible();
-  await expect(page.getByText('แม่แบบนี้ถูกล็อกแล้ว')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'เปิดหน้ารายละเอียด' })).toHaveCount(0);
-  await expect(page).toHaveURL(/\/admin\/course-pool$/);
+  const response = await page.goto('/admin/course-pool', { waitUntil: 'domcontentloaded' });
+  expect(response?.status()).toBe(404);
 });
 
 test('course head can bulk-create student groups from an offering', async ({ page }) => {

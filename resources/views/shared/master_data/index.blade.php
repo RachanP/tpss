@@ -5,6 +5,18 @@
         if (! is_array($courseOldPrerequisiteIds)) {
             $courseOldPrerequisiteIds = [];
         }
+        $courseOldStaffIds = old('staff_ids', []);
+        if (! is_array($courseOldStaffIds)) {
+            $courseOldStaffIds = [];
+        }
+        $courseOldInstructorIds = old('instructor_ids', []);
+        if (! is_array($courseOldInstructorIds)) {
+            $courseOldInstructorIds = [];
+        }
+        $courseOldInstructorRoleIds = old('instructor_role_ids', []);
+        if (! is_array($courseOldInstructorRoleIds)) {
+            $courseOldInstructorRoleIds = [];
+        }
         $courseFormErrorState = [
             'has_errors' => $courseFormHasErrors,
             'mode' => old('_course_form_mode', 'create'),
@@ -29,6 +41,9 @@
                 'status' => old('status', 'active'),
                 'requires_practicum_rotation' => old('requires_practicum_rotation', '0'),
                 'prerequisite_ids' => array_map('strval', $courseOldPrerequisiteIds),
+                'staff_ids' => array_map('intval', $courseOldStaffIds),
+                'instructor_ids' => array_map('intval', $courseOldInstructorIds),
+                'instructor_role_ids' => $courseOldInstructorRoleIds,
             ],
         ];
     @endphp
@@ -128,6 +143,17 @@
             this.activeTab = 'courses';
             this.editCourseMode = this.courseFormErrorState.mode === 'edit';
             this.currentCourse = { ...this.currentCourse, ...this.courseFormErrorState.values };
+            this.courseHeadSearch = (this.usersList.find(u => String(u.id) === String(this.currentCourse.head_instructor_id)) || {}).formatted_name || '';
+            this.selectedStaff = staffUsers.filter(u => (this.currentCourse.staff_ids || []).map(String).includes(String(u.id)));
+            this.selectedCourseInstructors = courseInstructorUsers
+                .filter(u => (this.currentCourse.instructor_ids || []).map(String).includes(String(u.id)))
+                .map(u => ({
+                    id: u.id,
+                    name: u.formatted_name || u.name,
+                    department: u.department || '-',
+                    department_id: u.department_id || null,
+                    course_role_id: (this.currentCourse.instructor_role_ids || {})[u.id] || (this.currentCourse.instructor_role_ids || {})[String(u.id)] || this.defaultCourseRoleId()
+                }));
             this.showCourseModal = true;
         },
         showDeptModal: false,
@@ -306,19 +332,27 @@
             color_code: '#3b82f6',
             status: 'active',
             requires_practicum_rotation: false,
-            prerequisite_ids: []
+            prerequisite_ids: [],
+            has_locked_offering: false
         },
         courseHeadSearch: '',
         showCourseHeadDropdown: false,
         selectedStaff: [],
         staffSearch: '',
         showStaffDropdown: false,
+        selectedCourseInstructors: [],
+        courseInstructorSearch: '',
+        showCourseInstructorDropdown: false,
+        showAllCourseInstructors: false,
         openAddCourse() {
             this.editCourseMode = false;
-            this.currentCourse = { id: '', route_key: '', course_code: '', name_th: '', name_en: '', curriculum_id: '', department_id: '', head_instructor_id: '', academic_level: 'undergraduate', default_year_level: '', default_semester: '', credits: '', lecture_hours: 0, lab_hours: 0, self_study_hours: 0, capacity: '', color_code: '#3b82f6', status: 'active', requires_practicum_rotation: '0', prerequisite_ids: [] };
+            this.currentCourse = { id: '', route_key: '', course_code: '', name_th: '', name_en: '', curriculum_id: '', department_id: '', head_instructor_id: '', academic_level: 'undergraduate', default_year_level: '', default_semester: '', credits: '', lecture_hours: 0, lab_hours: 0, self_study_hours: 0, capacity: '', color_code: '#3b82f6', status: 'active', requires_practicum_rotation: '0', prerequisite_ids: [], has_locked_offering: false };
             this.courseHeadSearch = '';
             this.selectedStaff = [];
             this.staffSearch = '';
+            this.selectedCourseInstructors = [];
+            this.courseInstructorSearch = '';
+            this.showAllCourseInstructors = false;
             this.showCourseModal = true;
         },
         openEditCourse(course) {
@@ -330,12 +364,25 @@
             this.courseHeadSearch = course.head_instructor ? course.head_instructor.formatted_name : '';
             this.selectedStaff = course.assigned_staff ? course.assigned_staff.map(s => ({ id: s.id, name: s.formatted_name || s.name })) : [];
             this.staffSearch = '';
+            this.selectedCourseInstructors = course.instructors ? course.instructors.map(u => ({
+                id: u.id,
+                name: u.formatted_name || u.name,
+                department: u.instructor_profile?.department?.name || '-',
+                department_id: u.instructor_profile?.department_id || null,
+                course_role_id: u.pivot?.course_role_id || ''
+            })) : [];
+            this.courseInstructorSearch = '';
+            this.showAllCourseInstructors = false;
             this.showCourseModal = true;
         },
         selectCourseHead(user) {
             this.currentCourse.head_instructor_id = user.id;
             this.courseHeadSearch = user.formatted_name || user.name;
             this.showCourseHeadDropdown = false;
+        },
+        clearCourseHead() {
+            this.currentCourse.head_instructor_id = '';
+            this.courseHeadSearch = '';
         },
         addStaff(user) {
             if (!this.selectedStaff.find(s => s.id === user.id)) {
@@ -352,6 +399,43 @@
                 !this.selectedStaff.find(s => s.id === u.id) &&
                 (u.formatted_name || u.name).toLowerCase().includes(this.staffSearch.toLowerCase())
             );
+        },
+        courseAssignmentsLocked() {
+            return this.editCourseMode && !!this.currentCourse.has_locked_offering;
+        },
+        filteredCourseHeadList() {
+            const q = this.courseHeadSearch.toLowerCase();
+            return this.courseHeadList.filter(u => !q || (u.formatted_name || u.name).toLowerCase().includes(q));
+        },
+        defaultCourseRoleId() {
+            const defaultRole = courseRoleOptions.find(r => r.name === 'อาจารย์ผู้สอน');
+            return defaultRole ? defaultRole.id : (courseRoleOptions[0]?.id || '');
+        },
+        addCourseInstructor(user) {
+            if (!this.selectedCourseInstructors.find(s => s.id === user.id)) {
+                this.selectedCourseInstructors.push({
+                    id: user.id,
+                    name: user.formatted_name || user.name,
+                    department: user.department || '-',
+                    department_id: user.department_id || null,
+                    course_role_id: this.defaultCourseRoleId()
+                });
+            }
+            this.courseInstructorSearch = '';
+            this.showCourseInstructorDropdown = false;
+        },
+        removeCourseInstructor(id) {
+            this.selectedCourseInstructors = this.selectedCourseInstructors.filter(s => s.id !== id);
+        },
+        filteredCourseInstructorList() {
+            const q = this.courseInstructorSearch.toLowerCase();
+            const deptId = this.currentCourse.department_id ? String(this.currentCourse.department_id) : null;
+
+            return courseInstructorUsers.filter(u => {
+                if (this.selectedCourseInstructors.find(s => s.id === u.id)) return false;
+                if (!this.showAllCourseInstructors && deptId && String(u.department_id || '') !== deptId) return false;
+                return !q || (u.formatted_name || u.name).toLowerCase().includes(q) || String(u.department || '').toLowerCase().includes(q);
+            });
         },
 
         // Curriculums
@@ -1981,6 +2065,15 @@
                         <input type="hidden" name="_course_form_mode" :value="editCourseMode ? 'edit' : 'create'">
                         <input type="hidden" name="_course_route_key" :value="currentCourse.route_key">
                         <input type="hidden" name="_course_id" :value="currentCourse.id">
+                        <template x-for="staff in selectedStaff" :key="`staff-${staff.id}`">
+                            <input type="hidden" name="staff_ids[]" :value="staff.id" :disabled="courseAssignmentsLocked()">
+                        </template>
+                        <template x-for="user in selectedCourseInstructors" :key="`course-instructor-${user.id}`">
+                            <div>
+                                <input type="hidden" name="instructor_ids[]" :value="user.id" :disabled="courseAssignmentsLocked()">
+                                <input type="hidden" :name="`instructor_role_ids[${user.id}]`" :value="user.course_role_id" :disabled="courseAssignmentsLocked()">
+                            </div>
+                        </template>
                         <div class="modal-body" style="display: flex; flex-direction: column; gap: 0;">
                             @if($courseFormHasErrors)
                                 <div data-testid="course-form-validation-alert" style="background:color-mix(in oklch,var(--status-conflict-fg) 8%,white);border:1px solid color-mix(in oklch,var(--status-conflict-fg) 28%,white);border-radius:6px;padding:12px 14px;margin-bottom:16px;color:var(--status-conflict-fg);font-size:13px;line-height:1.5;">
@@ -2047,12 +2140,127 @@
                                 </div>
                             </div>
 
-                            {{-- Note: ผู้รับผิดชอบย้ายไปหน้า "ตั้งค่าผู้รับผิดชอบรายวิชา" --}}
-                            <div x-show="editCourseMode" style="background:var(--surface-1);border:1px solid var(--border);border-radius:6px;padding:12px 14px;margin-bottom:20px;font-size:13px;color:var(--fg-2);display:flex;align-items:flex-start;gap:10px;">
-                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:1px;color:var(--brand-navy);"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                                <div>
-                                    <div style="font-weight:600;margin-bottom:2px;">การกำหนดหัวหน้าวิชา / เจ้าหน้าที่ / อาจารย์ผู้สอน</div>
-                                    <div>ย้ายไปจัดการที่หน้า <a :href="'{{ route($routePrefix . '.course_pool.show', '__COURSE__') }}'.replace('__COURSE__', encodeURIComponent(currentCourse.route_key))" style="color:var(--brand-navy);font-weight:600;">ตั้งค่าผู้รับผิดชอบรายวิชา</a></div>
+                            {{-- Section: ผู้รับผิดชอบรายวิชา --}}
+                            <div class="course-assignment-panel">
+                                <div class="course-assignment-head">
+                                    <div>
+                                        <div class="course-assignment-title">ผู้รับผิดชอบรายวิชา</div>
+                                        <div class="course-assignment-copy">กำหนดหัวหน้าวิชา เจ้าหน้าที่ดูแล และบทบาทอาจารย์ผู้สอนจาก modal รายวิชานี้</div>
+                                    </div>
+                                    <span class="course-lock-badge" x-show="courseAssignmentsLocked()">ล็อกแล้ว</span>
+                                </div>
+
+                                <div class="course-lock-note" x-show="courseAssignmentsLocked()">
+                                    แม่แบบผู้รับผิดชอบถูกล็อกแล้ว เพราะรายวิชานี้มี Course Offering ที่อยู่ในช่วงจัดตารางหรือเผยแพร่แล้ว แก้ชุดผู้สอนในหน้า Course Offering ของรอบนั้น
+                                </div>
+
+                                <div class="course-assignment-grid">
+                                    <div class="form-group" style="margin-bottom:0;position:relative;" @click.outside="showCourseHeadDropdown = false">
+                                        <label>หัวหน้าวิชา <span x-show="currentCourse.status === 'active' && !courseAssignmentsLocked()" style="color:var(--status-conflict-fg)">*</span></label>
+                                        <div class="course-combobox">
+                                            <input type="text" x-model="courseHeadSearch" :disabled="courseAssignmentsLocked()"
+                                                @focus="showCourseHeadDropdown = !courseAssignmentsLocked()"
+                                                @input="showCourseHeadDropdown = !courseAssignmentsLocked()"
+                                                placeholder="พิมพ์ชื่อเพื่อค้นหา...">
+                                            <button type="button" x-show="currentCourse.head_instructor_id && !courseAssignmentsLocked()" @click="clearCourseHead()" class="course-clear-btn">×</button>
+                                            <div x-show="showCourseHeadDropdown && !courseAssignmentsLocked()" x-cloak class="course-combobox-menu">
+                                                <template x-for="user in filteredCourseHeadList()" :key="user.id">
+                                                    <button type="button" class="course-combobox-item" @click="selectCourseHead(user)">
+                                                        <span x-text="user.formatted_name || user.name"></span>
+                                                    </button>
+                                                </template>
+                                                <div class="course-combobox-empty" x-show="filteredCourseHeadList().length === 0">ไม่พบหัวหน้าวิชาที่ตรงกัน</div>
+                                            </div>
+                                        </div>
+                                        <input type="hidden" name="head_instructor_id" x-model="currentCourse.head_instructor_id" :disabled="courseAssignmentsLocked()">
+                                        @error('head_instructor_id')
+                                            @if($courseFormHasErrors)
+                                                <div style="margin-top:6px;color:var(--status-conflict-fg);font-size:12px;line-height:1.45;">{{ $message }}</div>
+                                            @endif
+                                        @enderror
+                                    </div>
+
+                                    <div class="form-group" style="margin-bottom:0;position:relative;" @click.outside="showStaffDropdown = false">
+                                        <label>เจ้าหน้าที่ดูแลรายวิชา</label>
+                                        <div class="course-combobox">
+                                            <input type="text" x-model="staffSearch" :disabled="courseAssignmentsLocked()"
+                                                @focus="showStaffDropdown = !courseAssignmentsLocked()"
+                                                @input="showStaffDropdown = !courseAssignmentsLocked()"
+                                                placeholder="พิมพ์ชื่อเพื่อค้นหา...">
+                                            <div x-show="showStaffDropdown && !courseAssignmentsLocked()" x-cloak class="course-combobox-menu">
+                                                <template x-for="user in filteredStaffList()" :key="user.id">
+                                                    <button type="button" class="course-combobox-item" @click="addStaff(user)">
+                                                        <span x-text="user.formatted_name || user.name"></span>
+                                                    </button>
+                                                </template>
+                                                <div class="course-combobox-empty" x-show="filteredStaffList().length === 0">ไม่พบเจ้าหน้าที่ที่ตรงกัน</div>
+                                            </div>
+                                        </div>
+                                        <div class="course-chip-list" x-show="selectedStaff.length > 0">
+                                            <template x-for="staff in selectedStaff" :key="staff.id">
+                                                <span class="course-chip">
+                                                    <span x-text="staff.name"></span>
+                                                    <button type="button" x-show="!courseAssignmentsLocked()" @click="removeStaff(staff.id)" aria-label="ลบเจ้าหน้าที่">×</button>
+                                                </span>
+                                            </template>
+                                        </div>
+                                        <div class="course-inline-empty" x-show="selectedStaff.length === 0">ยังไม่มีเจ้าหน้าที่ดูแล</div>
+                                    </div>
+                                </div>
+
+                                <div class="course-instructor-block">
+                                    <div class="course-instructor-head">
+                                        <div>
+                                            <label style="display:block;margin-bottom:3px;">อาจารย์ผู้สอน</label>
+                                            <div class="course-assignment-copy">เลือกอาจารย์และกำหนดตำแหน่งในรายวิชา</div>
+                                        </div>
+                                        <span class="course-count-badge" x-text="selectedCourseInstructors.length + ' คน'"></span>
+                                    </div>
+
+                                    <div class="course-instructor-search" x-show="!courseAssignmentsLocked()" @click.outside="showCourseInstructorDropdown = false">
+                                        <input type="text" x-model="courseInstructorSearch"
+                                            @focus="showCourseInstructorDropdown = true"
+                                            @input="showCourseInstructorDropdown = true"
+                                            placeholder="ค้นหาชื่ออาจารย์หรือภาควิชา...">
+                                        <div class="course-scope-toggle" x-show="currentCourse.department_id">
+                                            <button type="button" @click="showAllCourseInstructors = false" :class="!showAllCourseInstructors ? 'is-active' : ''">ภาควิชานี้</button>
+                                            <button type="button" @click="showAllCourseInstructors = true" :class="showAllCourseInstructors ? 'is-active' : ''">ทั้งหมด</button>
+                                        </div>
+                                        <div x-show="showCourseInstructorDropdown" x-cloak class="course-combobox-menu">
+                                            <template x-for="user in filteredCourseInstructorList()" :key="user.id">
+                                                <button type="button" class="course-combobox-item" @click="addCourseInstructor(user)">
+                                                    <span>
+                                                        <strong x-text="user.formatted_name || user.name"></strong>
+                                                        <small x-text="user.department || '-'"></small>
+                                                    </span>
+                                                </button>
+                                            </template>
+                                            <div class="course-combobox-empty" x-show="filteredCourseInstructorList().length === 0">ไม่พบอาจารย์ที่ตรงกัน</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="course-instructor-list" x-show="selectedCourseInstructors.length > 0">
+                                        <template x-for="user in selectedCourseInstructors" :key="user.id">
+                                            <div class="course-instructor-row">
+                                                <div class="course-instructor-name">
+                                                    <strong x-text="user.name"></strong>
+                                                    <span x-text="user.department"></span>
+                                                </div>
+                                                <select x-model="user.course_role_id" :disabled="courseAssignmentsLocked()">
+                                                    <template x-for="role in courseRoleOptions" :key="role.id">
+                                                        <option :value="role.id" x-text="role.name"></option>
+                                                    </template>
+                                                </select>
+                                                <button type="button" x-show="!courseAssignmentsLocked()" class="course-remove-btn" @click="removeCourseInstructor(user.id)" aria-label="ลบอาจารย์">
+                                                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                                                        <line x1="18" y1="6" x2="6" y2="18"/>
+                                                        <line x1="6" y1="6" x2="18" y2="18"/>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </template>
+                                    </div>
+                                    <div class="course-inline-empty" x-show="selectedCourseInstructors.length === 0">ยังไม่มีอาจารย์ผู้สอนในรายวิชานี้</div>
                                 </div>
                             </div>
 
@@ -2788,6 +2996,250 @@
             cursor: not-allowed;
         }
 
+        .course-assignment-panel {
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--surface-1);
+            padding: 16px;
+        }
+
+        .course-assignment-head,
+        .course-instructor-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+
+        .course-assignment-title {
+            color: var(--fg-1);
+            font-size: 14px;
+            font-weight: 800;
+            line-height: 1.4;
+        }
+
+        .course-assignment-copy {
+            color: var(--fg-3);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .course-lock-badge,
+        .course-count-badge {
+            flex-shrink: 0;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: var(--surface);
+            color: var(--fg-2);
+            font-size: 11px;
+            font-weight: 800;
+            line-height: 1;
+            padding: 6px 10px;
+        }
+
+        .course-lock-note {
+            margin-bottom: 14px;
+            border: 1px solid var(--status-warning-border);
+            border-radius: 6px;
+            background: var(--status-warning-bg);
+            color: var(--status-warning-fg);
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.55;
+            padding: 10px 12px;
+        }
+
+        .course-assignment-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .course-combobox {
+            position: relative;
+        }
+
+        .course-clear-btn {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: 0;
+            background: transparent;
+            color: var(--fg-3);
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+            padding: 4px;
+        }
+
+        .course-combobox-menu {
+            position: absolute;
+            z-index: 50;
+            top: calc(100% + 4px);
+            left: 0;
+            right: 0;
+            max-height: 220px;
+            overflow: auto;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--surface);
+            box-shadow: 0 10px 24px rgba(15, 23, 42, .12);
+        }
+
+        .course-combobox-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            width: 100%;
+            border: 0;
+            border-bottom: 1px solid var(--border);
+            background: transparent;
+            color: var(--fg-1);
+            cursor: pointer;
+            font-size: 13px;
+            padding: 10px 12px;
+            text-align: left;
+        }
+
+        .course-combobox-item:hover,
+        .course-combobox-item:focus-visible {
+            background: var(--bg-2);
+            outline: 0;
+        }
+
+        .course-combobox-item small {
+            display: block;
+            margin-top: 2px;
+            color: var(--fg-3);
+            font-size: 12px;
+        }
+
+        .course-combobox-empty,
+        .course-inline-empty {
+            color: var(--fg-3);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .course-combobox-empty {
+            padding: 11px 12px;
+        }
+
+        .course-chip-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .course-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: var(--surface);
+            color: var(--fg-1);
+            font-size: 12px;
+            font-weight: 700;
+            padding: 6px 10px;
+        }
+
+        .course-chip button,
+        .course-remove-btn {
+            border: 0;
+            background: transparent;
+            color: var(--fg-3);
+            cursor: pointer;
+            line-height: 1;
+            padding: 0;
+        }
+
+        .course-instructor-block {
+            border-top: 1px solid var(--border);
+            padding-top: 14px;
+        }
+
+        .course-instructor-search {
+            position: relative;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .course-scope-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--surface);
+            padding: 3px;
+        }
+
+        .course-scope-toggle button {
+            border: 0;
+            border-radius: 6px;
+            background: transparent;
+            color: var(--fg-3);
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 7px 10px;
+        }
+
+        .course-scope-toggle button.is-active {
+            background: var(--brand-navy);
+            color: var(--surface);
+        }
+
+        .course-instructor-list {
+            display: grid;
+            gap: 8px;
+        }
+
+        .course-instructor-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 190px 28px;
+            align-items: center;
+            gap: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--surface);
+            padding: 10px 12px;
+        }
+
+        .course-instructor-name strong,
+        .course-instructor-name span {
+            display: block;
+        }
+
+        .course-instructor-name strong {
+            color: var(--fg-1);
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .course-instructor-name span {
+            color: var(--fg-3);
+            font-size: 12px;
+            margin-top: 2px;
+        }
+
+        @media (max-width: 760px) {
+            .course-assignment-grid,
+            .course-instructor-search,
+            .course-instructor-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
         .search-item {
             padding: 10px 12px;
             cursor: pointer;
@@ -2810,6 +3262,8 @@
 
     <script>
         const staffUsers = {{ Js::from($staffUsers->map(fn($u) => ['id' => $u->id, 'name' => $u->formatted_name, 'formatted_name' => $u->formatted_name])) }};
+        const courseInstructorUsers = {{ Js::from($courseInstructorUsers->map(fn($u) => ['id' => $u->id, 'name' => $u->formatted_name, 'formatted_name' => $u->formatted_name, 'department' => $u->instructorProfile?->department?->name ?? '-', 'department_id' => $u->instructorProfile?->department_id])) }};
+        const courseRoleOptions = {{ Js::from($courseRoles->map(fn($role) => ['id' => $role->id, 'name' => $role->name_th])->values()) }};
 
         function tpssDeptConflictWarn(form, lines, opts) {
             opts = opts || {};

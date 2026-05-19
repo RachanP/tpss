@@ -157,15 +157,6 @@
                 </svg>
                 จัดการข้อมูลหลัก
             </a>
-            <a href="{{ route('staff.course_pool.index') }}" class="nv {{ Request::routeIs('staff.course_pool.*') ? 'on' : '' }}">
-                <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                    <circle cx="9" cy="7" r="4"/>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                </svg>
-                ตั้งค่าผู้รับผิดชอบรายวิชา
-            </a>
             <a href="#" class="nv">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -339,19 +330,7 @@
                 ข้อมูลหลัก
             </a>
 
-            {{-- 3. จัดการรายวิชา --}}
-            <div class="sb-sec" style="margin-top: 15px;">จัดการรายวิชา</div>
-            <a href="{{ route('admin.course_pool.index') }}" class="nv {{ Request::routeIs('admin.course_pool.*') ? 'on' : '' }}">
-                <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                    <circle cx="9" cy="7" r="4"/>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                </svg>
-                ผู้รับผิดชอบรายวิชา
-            </a>
-
-            {{-- 4. จัดการตารางสอน --}}
+            {{-- 3. จัดการตารางสอน --}}
             <div class="sb-sec" style="margin-top: 15px;">จัดการตารางสอน</div>
             <a href="#" class="nv">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

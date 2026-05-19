@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\LocationType;
 use App\Models\Room;
 use App\Models\Course;
+use App\Models\CourseRole;
 use App\Models\Curriculum;
 use App\Models\ActivityType;
 use Illuminate\Http\Request;
@@ -56,10 +57,31 @@ class MasterDataController extends Controller
         $courses = Course::with([
             'curriculum',
             'department',
-            'headInstructor',
+            'headInstructor.instructorProfile.department',
             'assignedStaff',
+            'instructors.instructorProfile.department',
             'prerequisites:id,course_code,name_th,name_en',
-        ])->orderBy('course_code')->get();
+        ])
+            ->withExists([
+                'courseOfferings as has_locked_offering' => fn ($query) => $query->whereHas(
+                    'academicYear',
+                    fn ($yearQuery) => $yearQuery->whereIn('phase', ['scheduling', 'published'])
+                ),
+            ])
+            ->orderBy('course_code')
+            ->get();
+
+        $courseRoles = CourseRole::orderBy('sort_order')
+            ->where('name_th', '!=', 'หัวหน้าวิชา')
+            ->get();
+
+        $courseInstructorUsers = User::query()
+            ->with('instructorProfile.department')
+            ->where('is_active', true)
+            ->whereHas('instructorProfile')
+            ->whereHas('roles', fn ($q) => $q->whereIn('role', ['instructor', 'course_head']))
+            ->orderBy('name')
+            ->get();
 
         // Curriculums with course count and courses list
         $curriculums = Curriculum::withCount('courses')->with(['courses' => fn($q) => $q->orderBy('course_code')])->get();
@@ -91,6 +113,8 @@ class MasterDataController extends Controller
             'curriculums',
             'activityTypes',
             'staffUsers',
+            'courseRoles',
+            'courseInstructorUsers',
             'isAdmin',
             'routePrefix',
             'usersWithEmployeeIdCount',
@@ -398,9 +422,17 @@ class MasterDataController extends Controller
             'name_en'                     => 'nullable|string|max:255',
             'curriculum_id'               => 'required|exists:curriculums,id',
             'department_id'               => 'nullable|exists:departments,id',
-            'head_instructor_id'          => 'nullable|exists:users,id',
+            'head_instructor_id'          => [
+                Rule::requiredIf(fn () => $request->input('status') === 'active'),
+                'nullable',
+                'exists:users,id',
+            ],
             'staff_ids'                   => 'nullable|array',
             'staff_ids.*'                 => 'exists:users,id',
+            'instructor_ids'              => 'nullable|array',
+            'instructor_ids.*'            => 'integer|distinct|exists:users,id',
+            'instructor_role_ids'         => 'nullable|array',
+            'instructor_role_ids.*'       => 'nullable|integer|exists:course_roles,id',
             'academic_level'              => 'nullable|in:undergraduate,graduate',
             'default_year_level'          => 'required|integer|min:1|max:4',
             'default_semester'            => 'required|integer|min:1|max:3',
@@ -414,7 +446,7 @@ class MasterDataController extends Controller
             'requires_practicum_rotation' => 'required|boolean',
             'prerequisite_ids'            => 'nullable|array',
             'prerequisite_ids.*'          => ['integer', 'distinct', 'exists:courses,id'],
-        ], $this->courseCodeValidationMessages());
+        ], $this->courseValidationMessages());
 
         if ($this->courseCodeExistsInCurriculum($validated['course_code'], (int) $validated['curriculum_id'])) {
             return back()
@@ -424,11 +456,14 @@ class MasterDataController extends Controller
 
         $validated['requires_practicum_rotation'] = $request->boolean('requires_practicum_rotation');
         $staffIds = $validated['staff_ids'] ?? [];
+        $instructorIds = $validated['instructor_ids'] ?? [];
+        $instructorRoleIds = $validated['instructor_role_ids'] ?? [];
         $prerequisiteIds = $validated['prerequisite_ids'] ?? [];
-        unset($validated['staff_ids'], $validated['prerequisite_ids']);
+        unset($validated['staff_ids'], $validated['instructor_ids'], $validated['instructor_role_ids'], $validated['prerequisite_ids']);
 
         $course = Course::create($validated);
         $course->assignedStaff()->sync($staffIds);
+        $this->syncCourseInstructors($course, $instructorIds, $instructorRoleIds);
         $course->prerequisites()->sync($prerequisiteIds);
 
         return $this->redirectToMasterData('courses')->with('success', 'เพิ่มรายวิชาเรียบร้อยแล้ว');
@@ -436,6 +471,8 @@ class MasterDataController extends Controller
 
     public function updateCourse(Request $request, Course $course)
     {
+        $assignmentsLocked = $this->isCourseAssignmentLocked($course);
+
         $validated = $request->validate([
             'course_code'                 => [
                 'required', 'string', 'max:20', 'regex:' . self::COURSE_CODE_ALLOWED_REGEX,
@@ -447,9 +484,17 @@ class MasterDataController extends Controller
             'name_en'                     => 'nullable|string|max:255',
             'curriculum_id'               => 'required|exists:curriculums,id',
             'department_id'               => 'nullable|exists:departments,id',
-            'head_instructor_id'          => 'nullable|exists:users,id',
+            'head_instructor_id'          => [
+                Rule::requiredIf(fn () => ! $assignmentsLocked && $request->input('status') === 'active'),
+                'nullable',
+                'exists:users,id',
+            ],
             'staff_ids'                   => 'nullable|array',
             'staff_ids.*'                 => 'exists:users,id',
+            'instructor_ids'              => 'nullable|array',
+            'instructor_ids.*'            => 'integer|distinct|exists:users,id',
+            'instructor_role_ids'         => 'nullable|array',
+            'instructor_role_ids.*'       => 'nullable|integer|exists:course_roles,id',
             'academic_level'              => 'nullable|in:undergraduate,graduate',
             'default_year_level'          => 'required|integer|min:1|max:4',
             'default_semester'            => 'required|integer|min:1|max:3',
@@ -463,7 +508,7 @@ class MasterDataController extends Controller
             'requires_practicum_rotation' => 'required|boolean',
             'prerequisite_ids'            => 'nullable|array',
             'prerequisite_ids.*'          => ['integer', 'distinct', 'exists:courses,id', Rule::notIn([$course->id])],
-        ], $this->courseCodeValidationMessages());
+        ], $this->courseValidationMessages());
 
         if ($this->courseCodeExistsInCurriculum($validated['course_code'], (int) $validated['curriculum_id'], $course->id)) {
             return back()
@@ -473,14 +518,49 @@ class MasterDataController extends Controller
 
         $validated['requires_practicum_rotation'] = $request->boolean('requires_practicum_rotation');
         $staffIds = $validated['staff_ids'] ?? [];
+        $instructorIds = $validated['instructor_ids'] ?? [];
+        $instructorRoleIds = $validated['instructor_role_ids'] ?? [];
         $prerequisiteIds = $validated['prerequisite_ids'] ?? [];
-        unset($validated['staff_ids'], $validated['prerequisite_ids']);
+        if ($assignmentsLocked) {
+            unset($validated['head_instructor_id']);
+        }
+        unset($validated['staff_ids'], $validated['instructor_ids'], $validated['instructor_role_ids'], $validated['prerequisite_ids']);
 
         $course->update($validated);
-        $course->assignedStaff()->sync($staffIds);
+        if (! $assignmentsLocked) {
+            $course->assignedStaff()->sync($staffIds);
+            $this->syncCourseInstructors($course, $instructorIds, $instructorRoleIds);
+        }
         $course->prerequisites()->sync($prerequisiteIds);
 
         return $this->redirectToMasterData('courses')->with('success', 'อัปเดตข้อมูลรายวิชาเรียบร้อยแล้ว');
+    }
+
+    private function isCourseAssignmentLocked(Course $course): bool
+    {
+        return $course->courseOfferings()
+            ->whereHas('academicYear', fn ($query) => $query->whereIn('phase', ['scheduling', 'published']))
+            ->exists();
+    }
+
+    private function syncCourseInstructors(Course $course, array $instructorIds, array $roleIds): void
+    {
+        $defaultRoleId = CourseRole::where('name_th', 'อาจารย์ผู้สอน')->value('id');
+
+        $syncPayload = collect($instructorIds)
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->mapWithKeys(function (int $id) use ($roleIds, $defaultRoleId) {
+                $roleId = $roleIds[$id] ?? $roleIds[(string) $id] ?? $defaultRoleId;
+
+                return [
+                    $id => ['course_role_id' => $roleId ? (int) $roleId : null],
+                ];
+            })
+            ->all();
+
+        $course->instructors()->sync($syncPayload);
     }
 
     public function storeCurriculum(Request $request)
@@ -701,6 +781,13 @@ class MasterDataController extends Controller
         return [
             'course_code.regex' => self::COURSE_CODE_ALLOWED_MESSAGE,
             'course_code.unique' => 'รหัสวิชานี้มีอยู่แล้วในหลักสูตรนี้',
+        ];
+    }
+
+    private function courseValidationMessages(): array
+    {
+        return $this->courseCodeValidationMessages() + [
+            'head_instructor_id.required' => 'กรุณากำหนดหัวหน้าวิชาสำหรับรายวิชาที่เปิดใช้งาน',
         ];
     }
 

@@ -109,7 +109,7 @@ class AlertController extends Controller
             $criticals[] = [
                 'key'     => 'active_courses_missing_head',
                 'label'   => 'รายวิชาที่เปิดสอนยังไม่มีหัวหน้าวิชา (' . $coursesMissingHeadCount . ' วิชา)',
-                'link'    => route('admin.course_pool.index'),
+                'link'    => route('admin.master_data', ['tab' => 'courses']),
                 'linkTxt' => 'ตั้งค่าหัวหน้าวิชา',
             ];
         }
