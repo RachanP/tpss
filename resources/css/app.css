@@ -758,6 +758,14 @@ body {
   padding: 1px 7px;
   border-radius: var(--r-pill);
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  line-height: 1;
+}
+
+.nv-bd-ic {
+  flex-shrink: 0;
 }
 
 .nv-alert-badges {
