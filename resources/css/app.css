@@ -753,13 +753,41 @@ body {
 }
 
 .nv-bd {
-  margin-left: auto;
-  color: white;
   font-size: var(--fs-xxs);
   font-weight: var(--fw-bold);
   padding: 1px 7px;
   border-radius: var(--r-pill);
   flex-shrink: 0;
+}
+
+.nv-alert-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.nv-bd-red {
+  background: var(--status-conflict);
+  color: oklch(99% 0.004 25);
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--status-conflict) 35%, transparent);
+}
+
+.nv-bd-warning {
+  background: var(--status-warning);
+  color: oklch(99% 0.006 65);
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--status-warning) 35%, transparent);
+}
+
+.nv.on .nv-bd-red,
+.nv:hover .nv-bd-red {
+  background: oklch(56% 0.22 25);
+}
+
+.nv.on .nv-bd-warning,
+.nv:hover .nv-bd-warning {
+  background: oklch(66% 0.17 65);
 }
 
 .sb-foot {

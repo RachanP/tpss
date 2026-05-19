@@ -285,8 +285,8 @@
         @elseif($activeRole === 'admin')
             @php
                 $alertSummary = \App\Http\Controllers\Admin\AlertController::getSummary();
-                $alertCount   = $alertSummary['total'];
                 $alertCritical = $alertSummary['critical'];
+                $alertWarnings = $alertSummary['warnings'];
             @endphp
             {{-- 1. ภาพรวม --}}
             <div class="sb-sec">ภาพรวม</div>
@@ -305,10 +305,15 @@
                     <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
                 </svg>
                 <span>แจ้งเตือน</span>
-                @if($alertCritical > 0)
-                    <span class="nv-bd nv-bd-red">{{ $alertCritical }} critical</span>
-                @elseif($alertCount > 0)
-                    <span class="nv-bd nv-bd-soft" style="background: var(--status-warning); color: #fff;">{{ $alertCount }}</span>
+                @if($alertCritical > 0 || $alertWarnings > 0)
+                    <span class="nv-alert-badges">
+                        @if($alertCritical > 0)
+                            <span class="nv-bd nv-bd-red">{{ $alertCritical }}</span>
+                        @endif
+                        @if($alertWarnings > 0)
+                            <span class="nv-bd nv-bd-warning">{{ $alertWarnings }}</span>
+                        @endif
+                    </span>
                 @endif
             </a>
 
