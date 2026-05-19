@@ -694,6 +694,6 @@ class CourseOfferingManagementTest extends TestCase
 
     private function studentGroupsUrl(CourseOffering $offering): string
     {
-        return route('maker.course_offerings.show', $offering);
+        return route('maker.course_offerings.show', $offering) . '#student-groups';
     }
 }

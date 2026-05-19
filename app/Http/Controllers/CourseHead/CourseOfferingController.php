@@ -74,7 +74,7 @@ class CourseOfferingController extends Controller
     public function update(Request $request, CourseOffering $courseOffering): RedirectResponse
     {
         $this->authorizeCourseHeadOffering($courseOffering);
-        if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
+        if ($redirect = $this->requireSchedulingPhase($courseOffering, 'course-info')) return $redirect;
 
         $courseOffering->loadMissing('course');
         $requestedRotation = $request->boolean('requires_practicum_rotation');
@@ -106,7 +106,7 @@ class CourseOfferingController extends Controller
     public function storeInstructor(Request $request, CourseOffering $courseOffering): RedirectResponse|JsonResponse
     {
         $this->authorizeCourseHeadOffering($courseOffering);
-        if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
+        if ($redirect = $this->requireSchedulingPhase($courseOffering, 'instructors')) return $redirect;
 
         $validated = $request->validate([
             'user_id'        => ['required', 'integer', 'exists:users,id'],
@@ -119,14 +119,18 @@ class CourseOfferingController extends Controller
             if ($request->expectsJson()) {
                 return response()->json(['message' => 'เลือกได้เฉพาะอาจารย์ที่ยังใช้งานอยู่และมีข้อมูลโปรไฟล์อาจารย์'], 422);
             }
-            return back()->withErrors(['user_id' => 'เลือกได้เฉพาะอาจารย์ที่ยังใช้งานอยู่และมีข้อมูลโปรไฟล์อาจารย์'])->withInput();
+            return $this->redirectToInstructors($courseOffering)
+                ->withErrors(['user_id' => 'เลือกได้เฉพาะอาจารย์ที่ยังใช้งานอยู่และมีข้อมูลโปรไฟล์อาจารย์'])
+                ->withInput();
         }
 
         if ($courseOffering->instructorPool()->where('users.id', $user->id)->exists()) {
             if ($request->expectsJson()) {
                 return response()->json(['message' => 'อาจารย์คนนี้อยู่ในชุดผู้สอนของรายวิชานี้แล้ว'], 422);
             }
-            return back()->withErrors(['user_id' => 'อาจารย์คนนี้อยู่ในชุดผู้สอนของรายวิชานี้แล้ว'])->withInput();
+            return $this->redirectToInstructors($courseOffering)
+                ->withErrors(['user_id' => 'อาจารย์คนนี้อยู่ในชุดผู้สอนของรายวิชานี้แล้ว'])
+                ->withInput();
         }
 
         $roleId = $validated['course_role_id'] ?? CourseRole::where('name_th', 'อาจารย์ผู้สอน')->value('id');
@@ -154,7 +158,7 @@ class CourseOfferingController extends Controller
     public function updateInstructorRole(Request $request, CourseOffering $courseOffering, User $user): JsonResponse|RedirectResponse
     {
         $this->authorizeCourseHeadOffering($courseOffering);
-        if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
+        if ($redirect = $this->requireSchedulingPhase($courseOffering, 'instructors')) return $redirect;
 
         $validated = $request->validate([
             'course_role_id' => ['nullable', 'integer', 'exists:course_roles,id'],
@@ -164,7 +168,8 @@ class CourseOfferingController extends Controller
             if ($request->expectsJson()) {
                 return response()->json(['message' => 'อาจารย์คนนี้ไม่อยู่ในชุดผู้สอน'], 422);
             }
-            return back()->withErrors(['user_id' => 'อาจารย์คนนี้ไม่อยู่ในชุดผู้สอน']);
+            return $this->redirectToInstructors($courseOffering)
+                ->withErrors(['user_id' => 'อาจารย์คนนี้ไม่อยู่ในชุดผู้สอน']);
         }
 
         $courseOffering->instructorPool()->updateExistingPivot($user->id, [
@@ -186,13 +191,14 @@ class CourseOfferingController extends Controller
     public function destroyInstructor(Request $request, CourseOffering $courseOffering, User $user): RedirectResponse|JsonResponse
     {
         $this->authorizeCourseHeadOffering($courseOffering);
-        if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
+        if ($redirect = $this->requireSchedulingPhase($courseOffering, 'instructors')) return $redirect;
 
         if ((int) $courseOffering->coordinator_id === (int) $user->id) {
             if ($request->expectsJson()) {
                 return response()->json(['message' => 'ไม่สามารถนำหัวหน้าวิชาหลักออกจากชุดผู้สอนได้'], 422);
             }
-            return back()->withErrors(['instructor_pool' => 'ไม่สามารถนำหัวหน้าวิชาหลักออกจากชุดผู้สอนได้']);
+            return $this->redirectToInstructors($courseOffering)
+                ->withErrors(['instructor_pool' => 'ไม่สามารถนำหัวหน้าวิชาหลักออกจากชุดผู้สอนได้']);
         }
 
         $courseOffering->instructorPool()->detach($user->id);
@@ -207,7 +213,7 @@ class CourseOfferingController extends Controller
     public function storeStudentGroup(Request $request, CourseOffering $courseOffering): RedirectResponse
     {
         $this->authorizeCourseHeadOffering($courseOffering);
-        if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
+        if ($redirect = $this->requireSchedulingPhase($courseOffering, 'student-groups')) return $redirect;
 
         $validated = $request->validate([
             'group_code' => [
@@ -236,7 +242,7 @@ class CourseOfferingController extends Controller
     public function bulkStoreStudentGroups(Request $request, CourseOffering $courseOffering): RedirectResponse
     {
         $this->authorizeCourseHeadOffering($courseOffering);
-        if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
+        if ($redirect = $this->requireSchedulingPhase($courseOffering, 'student-groups')) return $redirect;
 
         $validated = $request->validate([
             'group_prefix'   => ['required', 'string', 'max:20', 'regex:/^[A-Za-z0-9ก-๙_-]+$/u'],
@@ -326,7 +332,7 @@ class CourseOfferingController extends Controller
         StudentGroup $studentGroup
     ): RedirectResponse {
         $this->authorizeCourseHeadOffering($courseOffering);
-        if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
+        if ($redirect = $this->requireSchedulingPhase($courseOffering, 'student-groups')) return $redirect;
         $this->assertStudentGroupBelongsToOffering($courseOffering, $studentGroup);
 
         $validated = $request->validate([
@@ -361,7 +367,7 @@ class CourseOfferingController extends Controller
     public function bulkDestroyStudentGroups(Request $request, CourseOffering $courseOffering): RedirectResponse
     {
         $this->authorizeCourseHeadOffering($courseOffering);
-        if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
+        if ($redirect = $this->requireSchedulingPhase($courseOffering, 'student-groups')) return $redirect;
 
         $validated = $request->validate([
             'group_ids' => ['required', 'array', 'min:1'],
@@ -449,7 +455,7 @@ class CourseOfferingController extends Controller
     public function destroyStudentGroup(CourseOffering $courseOffering, StudentGroup $studentGroup): RedirectResponse
     {
         $this->authorizeCourseHeadOffering($courseOffering);
-        if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
+        if ($redirect = $this->requireSchedulingPhase($courseOffering, 'student-groups')) return $redirect;
         $this->assertStudentGroupBelongsToOffering($courseOffering, $studentGroup);
 
         if ($this->studentGroupHasDownstreamReferences($studentGroup)) {
@@ -469,13 +475,14 @@ class CourseOfferingController extends Controller
         abort_unless((int) $courseOffering->coordinator_id === (int) Auth::id(), 403);
     }
 
-    private function requireSchedulingPhase(CourseOffering $courseOffering): ?RedirectResponse
+    private function requireSchedulingPhase(CourseOffering $courseOffering, string $section = 'course-info'): ?RedirectResponse
     {
         $courseOffering->loadMissing('academicYear');
         if ($courseOffering->academicYear?->phase !== 'scheduling') {
             return redirect()
-                ->route('maker.course_offerings.show', $courseOffering)
-                ->with('error', 'ยังไม่เปิดช่วงจัดตาราง — Admin ต้องเปิดช่วงจัดตารางก่อนจึงจะแก้ไขข้อมูลรายวิชาได้');
+                ->to(route('maker.course_offerings.show', $courseOffering) . '#' . $section)
+                ->with('error', 'ยังไม่เปิดช่วงจัดตาราง — Admin ต้องเปิดช่วงจัดตารางก่อนจึงจะแก้ไขข้อมูลรายวิชาได้')
+                ->with('error_section', $section);
         }
         return null;
     }
@@ -487,7 +494,12 @@ class CourseOfferingController extends Controller
 
     private function redirectToStudentGroups(CourseOffering $courseOffering): RedirectResponse
     {
-        return redirect()->route('maker.course_offerings.show', $courseOffering);
+        return redirect()->to(route('maker.course_offerings.show', $courseOffering) . '#student-groups');
+    }
+
+    private function redirectToInstructors(CourseOffering $courseOffering): RedirectResponse
+    {
+        return redirect()->to(route('maker.course_offerings.show', $courseOffering) . '#instructors');
     }
 
     private function studentGroupHasDownstreamReferences(StudentGroup $studentGroup): bool

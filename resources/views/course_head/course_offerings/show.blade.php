@@ -9,6 +9,26 @@
     $studentLimit     = $courseOffering->total_student_count ?: $courseCapacity;
     $ungrouped        = max(0, $studentLimit - $studentTotal);
     $defaultRotation  = (bool) ($course?->requires_practicum_rotation ?? false);
+    $courseInfoErrorKeys = ['requires_practicum_rotation', 'practicum_note'];
+    $instructorErrorKeys = ['user_id', 'course_role_id', 'instructor_pool'];
+    $studentGroupErrorKeys = [
+        'group_code',
+        'student_count',
+        'color_code',
+        'group_prefix',
+        'start_number',
+        'group_count',
+        'group_counts',
+        'group_counts.*',
+        'total_students',
+        'group_ids',
+        'group_ids.*',
+        'student_groups',
+    ];
+    $courseInfoErrorKey = collect($courseInfoErrorKeys)->first(fn ($key) => $errors->has($key));
+    $instructorErrorKey = collect($instructorErrorKeys)->first(fn ($key) => $errors->has($key));
+    $studentGroupErrorKey = collect($studentGroupErrorKeys)->first(fn ($key) => $errors->has($key));
+    $errorSection = session('error_section');
 @endphp
 
 <script>
@@ -62,17 +82,9 @@
         </div>
     </div>
 
-    @if(session('error'))
+    @if(session('error') && ! $errorSection)
         <div style="background:oklch(95% 0.05 25);border:1px solid oklch(70% 0.15 25);color:oklch(35% 0.12 25);padding:12px 16px;border-radius:6px;margin-bottom:16px;font-size:14px;">
             {{ session('error') }}
-        </div>
-    @endif
-
-    @if($errors->any())
-        <div class="card" style="border-color:var(--status-conflict-border);background:var(--status-conflict-bg);">
-            <div style="padding:14px 18px;color:var(--status-conflict-fg);font-weight:600;">
-                {{ $errors->first() }}
-            </div>
         </div>
     @endif
 
@@ -117,6 +129,17 @@
             </div>
         </div>
         <div style="padding:20px;">
+            @if($courseInfoErrorKey)
+                <div class="section-error-alert">
+                    {{ $errors->first($courseInfoErrorKey) }}
+                </div>
+            @endif
+            @if(session('error') && $errorSection === 'course-info')
+                <div class="section-error-alert">
+                    {{ session('error') }}
+                </div>
+            @endif
+
             <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:20px;margin-bottom:20px;">
                 <div>
                     <div class="caption">ภาควิชา</div>
@@ -229,7 +252,7 @@
         $courseDeptId = $course?->department_id;
     @endphp
 
-    <div class="card" style="overflow:visible;" x-data="{
+    <div class="card" id="instructors" style="overflow:visible;scroll-margin-top:72px;" x-data="{
         pool: {{ $poolData->toJson() }},
         all: {{ $allInstructors->toJson() }},
         roles: {{ $courseRolesData->toJson() }},
@@ -315,6 +338,16 @@
             </div>
         </div>
         <div style="padding:20px;">
+            @if($instructorErrorKey)
+                <div class="section-error-alert">
+                    {{ $errors->first($instructorErrorKey) }}
+                </div>
+            @endif
+            @if(session('error') && $errorSection === 'instructors')
+                <div class="section-error-alert">
+                    {{ session('error') }}
+                </div>
+            @endif
 
             {{-- Error message --}}
             <div x-show="error" x-text="error" style="background:var(--status-conflict-bg);border:1px solid var(--status-conflict-border);color:var(--status-conflict-fg);padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:14px;"></div>
@@ -418,7 +451,6 @@
                                     @click.stop="roleMenuId = roleMenuId === user.id ? null : user.id"
                                     :aria-expanded="roleMenuId === user.id"
                                     aria-haspopup="listbox">
-                                    <span class="course-role-dot"></span>
                                     <span class="course-role-trigger-text" x-text="user.role_name || 'ยังไม่กำหนดบทบาท'"></span>
                                     <svg class="course-role-chevron" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M6 9l6 6 6-6"/>
@@ -482,6 +514,18 @@
 
     <style>
         @keyframes spin { to { transform: translateY(-50%) rotate(360deg); } }
+
+        .section-error-alert {
+            margin-bottom: 14px;
+            padding: 10px 14px;
+            border: 1px solid var(--status-conflict-border);
+            border-radius: 6px;
+            background: var(--status-conflict-bg);
+            color: var(--status-conflict-fg);
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.55;
+        }
 
         .course-role-control {
             position: relative;
@@ -1054,6 +1098,17 @@
                 }
             }"
         >
+            @if($studentGroupErrorKey)
+                <div class="section-error-alert">
+                    {{ $errors->first($studentGroupErrorKey) }}
+                </div>
+            @endif
+            @if(session('error') && $errorSection === 'student-groups')
+                <div class="section-error-alert">
+                    {{ session('error') }}
+                </div>
+            @endif
+
             @if($canEdit && $ungrouped > 0)
             <form method="POST"
                 action="{{ route('maker.course_offerings.student_groups.bulk_store', $courseOffering) }}"
