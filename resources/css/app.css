@@ -7,6 +7,20 @@
    strain on data-dense schedule grids.
    Role axis (existing app convention): each user role carries a hue
    used as accent on top of the navy base — see --role-* in /role-*.
+   ─────────────────────────────────────────────────────────────────────
+
+   TABLE OF CONTENTS
+     1. FONTS                  ............................. line  12
+     2. DESIGN TOKENS (:root)  ............................. line  93
+     3. RESPONSIVE TOKENS      ............................. line 334
+     4. SEMANTIC TYPOGRAPHY    ............................. line 350
+     5. LAYOUT SHELL           ............................. line 459
+     6. SIDEBAR COMPONENTS     ............................. line 534
+     7. SIDEBAR SCROLLBAR      ............................. line 765
+     8. UI COMPONENTS          ............................. line 789
+     9. ROLE SELECTION CARDS   ............................. line 1265
+    10. ROLE SWITCHER DROPDOWN ............................. line 1401
+    11. RESPONSIVE OVERRIDES   ............................. line 1441
    ───────────────────────────────────────────────────────────────────── */
 
 /* ════ FONTS ══════════════════════════════════════════════ */

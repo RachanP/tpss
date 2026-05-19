@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\CourseHead;
 
+use App\Exceptions\BulkDestroyBlockedException;
 use App\Http\Controllers\Controller;
 use App\Models\CourseOffering;
 use App\Models\CourseRole;
@@ -370,31 +371,79 @@ class CourseOfferingController extends Controller
             'group_ids.min' => 'กรุณาเลือกกลุ่มที่ต้องการลบ',
         ]);
 
+        $requestedIds = array_values(array_unique(array_map('intval', $validated['group_ids'])));
+
         $groups = StudentGroup::query()
             ->where('course_offering_id', $courseOffering->id)
-            ->whereIn('id', $validated['group_ids'])
+            ->whereIn('id', $requestedIds)
             ->get();
 
-        if ($groups->count() !== count(array_unique($validated['group_ids']))) {
-            abort(404);
+        // If any requested id doesn't belong to this offering → forbidden, not "not found"
+        if ($groups->count() !== count($requestedIds)) {
+            return $this->redirectToStudentGroups($courseOffering)->withErrors([
+                'student_groups' => 'พบกลุ่มนักศึกษาที่ไม่ได้อยู่ในรายวิชานี้ กรุณาโหลดหน้าใหม่และลองอีกครั้ง',
+            ]);
         }
 
-        $blocked = $groups
-            ->filter(fn (StudentGroup $group) => $this->studentGroupHasDownstreamReferences($group))
-            ->pluck('group_code')
-            ->all();
+        // Batch query downstream references once, then re-check inside a transaction
+        // (resolves N+1 + race between check and delete)
+        $deletedCount = 0;
+        try {
+            DB::transaction(function () use ($groups, &$deletedCount) {
+                $ids = $groups->pluck('id')->all();
+                $blockedIds = $this->studentGroupsWithDownstreamReferences($ids);
 
-        if (! empty($blocked)) {
+                if (! empty($blockedIds)) {
+                    $blockedCodes = $groups->whereIn('id', $blockedIds)->pluck('group_code')->all();
+                    throw new BulkDestroyBlockedException(
+                        'ไม่สามารถลบกลุ่มที่ถูกอ้างอิงในตารางสอนได้: ' . implode(', ', $blockedCodes)
+                    );
+                }
+
+                StudentGroup::whereIn('id', $ids)->delete();
+                $deletedCount = count($ids);
+            });
+        } catch (BulkDestroyBlockedException $e) {
             return $this->redirectToStudentGroups($courseOffering)
-                ->withErrors([
-                    'student_groups' => 'ไม่สามารถลบกลุ่มที่ถูกอ้างอิงในตารางสอนได้: ' . implode(', ', $blocked),
-                ]);
+                ->withErrors(['student_groups' => $e->getMessage()]);
         }
-
-        DB::transaction(fn () => $groups->each->delete());
 
         return $this->redirectToStudentGroups($courseOffering)
-            ->with('warning', 'ลบกลุ่มนักศึกษา ' . $groups->count() . ' กลุ่มเรียบร้อยแล้ว');
+            ->with('warning', "ลบกลุ่มนักศึกษา {$deletedCount} กลุ่มเรียบร้อยแล้ว");
+    }
+
+    /**
+     * Batch-check which student groups have schedule references (single query per table).
+     * Returns IDs of groups that cannot be safely deleted.
+     *
+     * @param  array<int>  $ids
+     * @return array<int>
+     */
+    private function studentGroupsWithDownstreamReferences(array $ids): array
+    {
+        if (empty($ids)) {
+            return [];
+        }
+
+        $blocked = collect();
+
+        if (Schema::hasTable('schedule_student_groups')) {
+            $blocked = $blocked->merge(
+                DB::table('schedule_student_groups')
+                    ->whereIn('student_group_id', $ids)
+                    ->pluck('student_group_id')
+            );
+        }
+
+        if (Schema::hasTable('schedules') && Schema::hasColumn('schedules', 'student_group_id')) {
+            $blocked = $blocked->merge(
+                DB::table('schedules')
+                    ->whereIn('student_group_id', $ids)
+                    ->pluck('student_group_id')
+            );
+        }
+
+        return $blocked->unique()->values()->all();
     }
 
     public function destroyStudentGroup(CourseOffering $courseOffering, StudentGroup $studentGroup): RedirectResponse

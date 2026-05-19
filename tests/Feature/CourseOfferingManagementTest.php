@@ -532,6 +532,38 @@ class CourseOfferingManagementTest extends TestCase
         $this->assertDatabaseHas('student_groups', ['id' => $selected->id]);
     }
 
+    public function test_bulk_destroy_rejects_group_ids_from_other_offerings(): void
+    {
+        $head = $this->makeUser('course_head');
+        $myOffering = $this->makeOffering($head);
+        $otherOffering = $this->makeOffering($this->makeUser('course_head'));
+
+        $myGroup = StudentGroup::create([
+            'course_offering_id' => $myOffering->id,
+            'group_code' => 'A1',
+            'student_count' => 20,
+        ]);
+        $foreignGroup = StudentGroup::create([
+            'course_offering_id' => $otherOffering->id,
+            'group_code' => 'B1',
+            'student_count' => 20,
+        ]);
+
+        $this->actingAsCourseHead($head);
+
+        // Trying to delete a group that belongs to someone else's offering must fail
+        // with a 422-style error response (not 404) and not delete anything
+        $this->from(route('maker.course_offerings.show', $myOffering))
+            ->delete(route('maker.course_offerings.student_groups.bulk_destroy', $myOffering), [
+                'group_ids' => [$myGroup->id, $foreignGroup->id],
+            ])
+            ->assertRedirect($this->studentGroupsUrl($myOffering))
+            ->assertSessionHasErrors('student_groups');
+
+        $this->assertDatabaseHas('student_groups', ['id' => $myGroup->id]);
+        $this->assertDatabaseHas('student_groups', ['id' => $foreignGroup->id]);
+    }
+
     private function actingAsCourseHead(User $user): void
     {
         $this->actingAs($user);

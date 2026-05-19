@@ -2,7 +2,8 @@ import { expect, test } from '@playwright/test';
 import { login } from './support/auth';
 
 test.describe('M1 Master Data — Friend 1 hardening coverage', () => {
-  test('courses tab shows empty state when search has no match', async ({ page }) => {
+  test('courses tab shows empty state when search has no match', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile-chrome', 'Master-data table layout is desktop-only');
     await login(page, 'admin_01');
     await page.goto('/admin/master-data?tab=courses');
 
@@ -18,9 +19,12 @@ test.describe('M1 Master Data — Friend 1 hardening coverage', () => {
 
     // Type a nonsense keyword that shouldn't match anything
     // Note: Alpine evaluates row x-show before empty-state x-show, so empty-state
-    // sees stale sibling display values. Type 2 chars to force a 2nd evaluation pass.
-    await page.getByTestId('courses-search-input').fill('Z');
-    await page.getByTestId('courses-search-input').fill('ZZZZ-NO-MATCH-XYZ');
+    // sees stale sibling display values on first fill. Multiple fills force re-evaluation
+    // cycles until the empty-state predicate stabilises (works around a Friend 1 quirk).
+    const searchInput = page.getByTestId('courses-search-input');
+    await searchInput.fill('Z');
+    await searchInput.fill('');
+    await searchInput.fill('ZZZZ-NO-MATCH-XYZ');
 
     // Empty state row should now be visible
     const emptyState = page.getByTestId('courses-empty-state');
