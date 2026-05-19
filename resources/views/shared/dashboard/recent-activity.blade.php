@@ -1,7 +1,11 @@
 @php
     $recentAuditLogs = isset($recentAuditLogs)
         ? collect($recentAuditLogs)->take(5)
-        : \App\Models\AuditLog::latest('created_at')->latest('id')->limit(5)->get();
+        : \App\Models\AuditLog::query()
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->limit(5)
+            ->get();
 
     $categoryStyles = [
         'ตารางสอน' => ['bg' => 'oklch(96% 0.025 250)', 'fg' => 'oklch(38% 0.13 250)', 'dot' => 'oklch(48% 0.16 250)'],
@@ -30,7 +34,7 @@
     $displayCategoryFor = function ($category) {
         $category = trim((string) $category);
 
-        return preg_match('/^M\d+$/i', $category) ? 'ระบบ' : ($category ?: 'ระบบ');
+        return preg_match('/^M\d+(\.|$)/i', $category) ? 'ระบบ' : ($category ?: 'ระบบ');
     };
 
     $displayActionFor = function ($action) {
@@ -44,7 +48,12 @@
             return 'ดำเนินการ';
         }
 
-        $label = str_contains($action, '.') ? trim(strrchr($action, '.'), '.') : $action;
+        $parts = explode('.', $action);
+        $label = trim((string) end($parts));
+
+        if (preg_match('/^M\d+$/i', $label)) {
+            return 'ดำเนินการ';
+        }
 
         return $label !== '' ? $label : 'ดำเนินการ';
     };
@@ -99,7 +108,7 @@
                     </div>
 
                     <div style="font-size:13px;font-weight:600;color:var(--fg-1);line-height:1.55;overflow:hidden;text-overflow:ellipsis;">
-                        {{ $log->description ?: $log->action }}
+                        {{ $log->description ?: $action }}
                     </div>
 
                     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:3px;font-size:12px;color:var(--fg-3);line-height:1.55;">

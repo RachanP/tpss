@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
-use App\Models\User;
 use App\Services\AuditLogger;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class AuditLogController extends Controller
@@ -19,12 +19,22 @@ class AuditLogController extends Controller
             $query->where('category', $request->category);
         }
 
-        if ($request->filled('user_id')) {
+        if ($request->filled('actor')) {
+            $actor = $request->actor;
+            $query->whereHas('user', function ($userQuery) use ($actor) {
+                $userQuery->where('name', 'like', '%' . $actor . '%')
+                    ->orWhere('email', 'like', '%' . $actor . '%');
+            });
+        } elseif ($request->filled('user_id')) {
             $query->where('user_id', $request->user_id);
         }
 
         if ($request->filled('action')) {
-            $query->where('action', 'like', '%' . $request->action . '%');
+            $action = $request->action;
+            $query->where(function ($actionQuery) use ($action) {
+                $actionQuery->where('action', $action)
+                    ->orWhere('action', 'like', '%.' . $action);
+            });
         }
 
         if ($request->filled('date_from')) {
@@ -36,9 +46,26 @@ class AuditLogController extends Controller
         }
 
         $logs          = $query->paginate(50)->withQueryString();
-        $users         = User::orderBy('name')->get(['id', 'name', 'username']);
         $categoryLabels = AuditLogger::CATEGORY_LABELS;
+        $actionOptions = AuditLog::query()
+            ->select('action')
+            ->whereNotNull('action')
+            ->distinct()
+            ->orderBy('action')
+            ->pluck('action')
+            ->map(fn (string $action) => Str::after($action, '.') ?: $action)
+            ->unique()
+            ->values()
+            ->map(fn (string $actionLabel) => [
+                'value' => $actionLabel,
+                'label' => $actionLabel,
+            ])
+            ->all();
 
-        return view('admin.audit_logs.index', compact('logs', 'users', 'categoryLabels'));
+        if ($request->query('partial') === 'table' || $request->ajax()) {
+            return view('admin.audit_logs._table', compact('logs'));
+        }
+
+        return view('admin.audit_logs.index', compact('logs', 'categoryLabels', 'actionOptions'));
     }
 }

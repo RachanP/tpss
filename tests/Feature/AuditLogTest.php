@@ -239,6 +239,264 @@ class AuditLogTest extends TestCase
         $response->assertSee('ข้อมูลหลัก');
     }
 
+    public function test_admin_can_search_audit_logs_by_actor_name_or_email(): void
+    {
+        $this->actingAs($this->admin);
+
+        AuditLog::create([
+            'user_id'        => $this->admin->id,
+            'action'         => 'ข้อมูลหลัก.สร้าง',
+            'table_affected' => 'courses',
+            'record_id'      => 1,
+            'old_values'     => null,
+            'new_values'     => [],
+            'category'       => 'ข้อมูลหลัก',
+            'description'    => 'บันทึกของผู้ดูแลระบบ',
+            'created_at'     => now(),
+        ]);
+
+        AuditLog::create([
+            'user_id'        => $this->staff->id,
+            'action'         => 'ตารางสอน.แก้ไข',
+            'table_affected' => 'schedules',
+            'record_id'      => 2,
+            'old_values'     => null,
+            'new_values'     => [],
+            'category'       => 'ตารางสอน',
+            'description'    => 'บันทึกของเจ้าหน้าที่',
+            'created_at'     => now()->subMinute(),
+        ]);
+
+        $response = $this->get(route('admin.audit_logs.index', ['actor' => 'Admin']));
+        $response->assertOk();
+        $response->assertSee('บันทึกของผู้ดูแลระบบ');
+        $response->assertDontSee('บันทึกของเจ้าหน้าที่');
+
+        $response = $this->get(route('admin.audit_logs.index', ['actor' => 'staff@test']));
+        $response->assertOk();
+        $response->assertSee('บันทึกของเจ้าหน้าที่');
+        $response->assertDontSee('บันทึกของผู้ดูแลระบบ');
+    }
+
+    public function test_audit_log_filters_are_static_search_controls(): void
+    {
+        $this->actingAs($this->admin);
+
+        $response = $this->get(route('admin.audit_logs.index'));
+        $response->assertOk();
+        $html = $response->getContent();
+
+        $response->assertSee('ค้นหาชื่อหรืออีเมล...');
+        $response->assertSee('data-testid="audit-logs-filter-actor"', false);
+        $response->assertSee('@input.debounce.500ms="fetchResults()"', false);
+        $response->assertSee('data-testid="audit-logs-filter-action"', false);
+        $response->assertSee('@change="fetchResults()"', false);
+        $response->assertSee('ทุกการกระทำ');
+        $response->assertSee('ค้นหา');
+        $response->assertSee('รีเซต');
+        $response->assertDontSee('name="user_id"', false);
+        $response->assertDontSee('filtersOpen');
+        $response->assertDontSee('ล้างตัวกรอง');
+        $response->assertDontSee('>วิกฤต<', false);
+        $response->assertDontSee('>ทั่วไป<', false);
+
+        $actorIndex = strpos($html, 'data-testid="audit-logs-filter-actor"');
+        $categoryIndex = strpos($html, 'data-testid="audit-logs-filter-category"');
+        $this->assertLessThan($categoryIndex, $actorIndex);
+        $this->assertStringContainsString('href="' . route('admin.audit_logs.index') . '"', $html);
+    }
+
+    public function test_audit_log_partial_request_returns_table_only(): void
+    {
+        $this->actingAs($this->admin);
+
+        AuditLog::create([
+            'user_id' => $this->admin->id,
+            'action' => 'ข้อมูลหลัก.สร้าง',
+            'table_affected' => 'courses',
+            'record_id' => 1,
+            'old_values' => null,
+            'new_values' => [],
+            'category' => 'ข้อมูลหลัก',
+            'description' => 'Partial row',
+            'created_at' => now(),
+        ]);
+
+        $response = $this
+            ->withHeader('X-Requested-With', 'XMLHttpRequest')
+            ->get(route('admin.audit_logs.index', ['partial' => 'table']));
+
+        $response->assertOk();
+        $response->assertSee('data-testid="audit-logs-table"', false);
+        $response->assertSee('Partial row');
+        $response->assertDontSee('<x-app-layout', false);
+        $response->assertDontSee('data-testid="audit-logs-filter-actor"', false);
+    }
+
+    public function test_admin_can_filter_by_action_dropdown_value(): void
+    {
+        $this->actingAs($this->admin);
+
+        AuditLogger::log('ข้อมูลหลัก.สร้าง', 'courses', 1, null, []);
+        AuditLogger::log('ตารางสอน.แก้ไข', 'schedules', 2, null, []);
+
+        $response = $this
+            ->withHeader('X-Requested-With', 'XMLHttpRequest')
+            ->get(route('admin.audit_logs.index', [
+                'action' => 'แก้ไข',
+                'partial' => 'table',
+            ]));
+        $response->assertOk();
+        $response->assertSee('ตารางสอน.แก้ไข');
+        $response->assertDontSee('ข้อมูลหลัก.สร้าง');
+    }
+
+    public function test_audit_log_action_dropdown_shows_unique_user_facing_labels(): void
+    {
+        $this->actingAs($this->admin);
+
+        AuditLogger::log('ข้อมูลหลัก.แก้ไข', 'courses', 1, null, []);
+        AuditLogger::log('ตารางสอน.แก้ไข', 'schedules', 2, null, []);
+        AuditLogger::log('ข้อมูลหลัก.สร้าง', 'courses', 3, null, []);
+
+        $response = $this->get(route('admin.audit_logs.index'));
+        $response->assertOk();
+
+        preg_match(
+            '/<select[^>]*data-testid="audit-logs-filter-action"[^>]*>(.*?)<\/select>/s',
+            $response->getContent(),
+            $selectMatch,
+        );
+
+        $this->assertNotEmpty($selectMatch);
+
+        preg_match_all('/<option\b[^>]*value="([^"]*)"[^>]*>(.*?)<\/option>/s', $selectMatch[1], $matches, PREG_SET_ORDER);
+        $actionOptions = collect($matches)
+            ->filter(fn (array $match) => in_array(html_entity_decode($match[1]), ['แก้ไข', 'สร้าง'], true))
+            ->map(fn (array $match) => trim(html_entity_decode(strip_tags($match[2]))))
+            ->values()
+            ->all();
+
+        $this->assertEqualsCanonicalizing(['สร้าง', 'แก้ไข'], $actionOptions);
+        $this->assertCount(2, $actionOptions);
+    }
+
+    public function test_admin_can_filter_by_date_range(): void
+    {
+        $this->actingAs($this->admin);
+
+        $insideRangeLog = AuditLog::create([
+            'user_id' => $this->admin->id,
+            'action' => 'ข้อมูลหลัก.สร้าง',
+            'table_affected' => 'courses',
+            'record_id' => 1,
+            'old_values' => null,
+            'new_values' => [],
+            'category' => 'ข้อมูลหลัก',
+            'description' => 'อยู่ในช่วงวันที่',
+        ]);
+        $insideRangeLog->forceFill(['created_at' => '2026-05-19 10:00:00'])->save();
+
+        $outsideRangeLog = AuditLog::create([
+            'user_id' => $this->admin->id,
+            'action' => 'ข้อมูลหลัก.สร้าง',
+            'table_affected' => 'courses',
+            'record_id' => 2,
+            'old_values' => null,
+            'new_values' => [],
+            'category' => 'ข้อมูลหลัก',
+            'description' => 'นอกช่วงวันที่',
+        ]);
+        $outsideRangeLog->forceFill(['created_at' => '2026-05-18 10:00:00'])->save();
+
+        $response = $this
+            ->withHeader('X-Requested-With', 'XMLHttpRequest')
+            ->get(route('admin.audit_logs.index', [
+            'date_from' => '2026-05-19',
+            'date_to' => '2026-05-19',
+            'partial' => 'table',
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('อยู่ในช่วงวันที่');
+        $response->assertDontSee('นอกช่วงวันที่');
+    }
+
+    public function test_audit_log_table_shows_ip_from_context(): void
+    {
+        $this->actingAs($this->admin);
+
+        AuditLog::create([
+            'user_id' => $this->admin->id,
+            'action' => 'ข้อมูลหลัก.สร้าง',
+            'table_affected' => 'courses',
+            'record_id' => 1,
+            'old_values' => null,
+            'new_values' => ['context' => ['ip_address' => '203.0.113.10']],
+            'category' => 'ข้อมูลหลัก',
+            'description' => 'มี IP',
+            'created_at' => now(),
+        ]);
+
+        AuditLog::create([
+            'user_id' => $this->admin->id,
+            'action' => 'ตารางสอน.แก้ไข',
+            'table_affected' => 'schedules',
+            'record_id' => 2,
+            'old_values' => null,
+            'new_values' => [],
+            'category' => 'ตารางสอน',
+            'description' => 'ไม่มี IP',
+            'created_at' => now()->subMinute(),
+        ]);
+
+        $response = $this->get(route('admin.audit_logs.index'));
+        $response->assertOk();
+        $response->assertSee('IP');
+        $response->assertSee('203.0.113.10');
+        $response->assertSee('ไม่มี IP');
+        $response->assertDontSee('ตาราง / รายการ');
+    }
+
+    public function test_audit_log_pagination_preserves_filters(): void
+    {
+        $this->actingAs($this->admin);
+
+        for ($i = 1; $i <= 55; $i++) {
+            AuditLog::create([
+                'user_id' => $this->admin->id,
+                'action' => 'ข้อมูลหลัก.สร้าง',
+                'table_affected' => 'courses',
+                'record_id' => $i,
+                'old_values' => null,
+                'new_values' => [],
+                'category' => 'ข้อมูลหลัก',
+                'description' => "รายการ {$i}",
+                'created_at' => now()->subSeconds($i),
+            ]);
+        }
+
+        $response = $this->get(route('admin.audit_logs.index', [
+            'actor' => 'Admin',
+            'category' => 'ข้อมูลหลัก',
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('แสดง 1–50 จาก 55 รายการ');
+        $response->assertSee('data-testid="audit-logs-pagination"', false);
+
+        preg_match_all('/href="([^"]+)"/', $response->getContent(), $matches);
+        $paginationUrls = collect($matches[1])
+            ->map(fn (string $href) => html_entity_decode($href))
+            ->filter(fn (string $href) => str_contains($href, 'page=2'));
+
+        $this->assertNotEmpty($paginationUrls);
+        $nextPageUrl = $paginationUrls->first();
+        $this->assertStringContainsString('actor=Admin', $nextPageUrl);
+        $this->assertStringContainsString('category=', $nextPageUrl);
+        $this->assertStringContainsString('page=2', $nextPageUrl);
+    }
+
     public function test_non_admin_cannot_access_audit_logs(): void
     {
         session(['active_role' => 'staff']);
@@ -316,7 +574,7 @@ class AuditLogTest extends TestCase
                 'new_values'     => ['name_th' => "Course {$i}"],
                 'category'       => 'ข้อมูลหลัก',
                 'description'    => "กิจกรรมทดสอบ {$i}",
-                'created_at'     => $createdAt,
+                'created_at'     => $createdAt->copy()->addSeconds($i),
             ]);
         }
 
