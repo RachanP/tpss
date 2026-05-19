@@ -5,12 +5,12 @@ test('admin can see locked course pool templates after scheduling opens', async 
   await login(page, 'admin_01');
 
   await page.goto('/admin/course-pool', { waitUntil: 'domcontentloaded' });
-  const coursePoolHref = await page.getByTestId('course-pool-show-link').first().getAttribute('href');
-  expect(coursePoolHref).toBeTruthy();
-  await page.goto(coursePoolHref!, { waitUntil: 'domcontentloaded' });
+  await page.getByTestId('course-pool-template-button').first().click();
 
-  await expect(page.getByTestId('course-pool-locked-alert')).toBeVisible();
-  await expect(page.locator('select[name="head_instructor_id"]')).toHaveCount(0);
+  await expect(page.getByTestId('course-pool-template-modal')).toBeVisible();
+  await expect(page.getByText('แม่แบบนี้ถูกล็อกแล้ว')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'เปิดหน้ารายละเอียด' })).toHaveCount(0);
+  await expect(page).toHaveURL(/\/admin\/course-pool$/);
 });
 
 test('course head can bulk-create student groups from an offering', async ({ page }) => {

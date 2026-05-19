@@ -21,7 +21,13 @@ class CoursePoolController extends Controller
             ->orderByDesc('semester')
             ->first();
 
-        $courseQuery = Course::with(['curriculum', 'department', 'headInstructor', 'assignedStaff', 'instructors'])
+        $courseQuery = Course::with([
+                'curriculum',
+                'department',
+                'headInstructor.instructorProfile.department',
+                'assignedStaff',
+                'instructors.instructorProfile.department',
+            ])
             ->withCount(['instructors', 'assignedStaff'])
             ->withExists([
                 'courseOfferings as has_locked_offering' => fn ($query) => $query->whereHas(
@@ -44,8 +50,16 @@ class CoursePoolController extends Controller
         $activeRole  = session('active_role');
         $isAdmin     = $activeRole === 'admin';
         $routePrefix = $isAdmin ? 'admin' : 'staff';
+        $courseRolesById = CourseRole::pluck('name_th', 'id');
+        $availableInstructors = User::query()
+            ->with('instructorProfile.department')
+            ->where('is_active', true)
+            ->whereHas('instructorProfile')
+            ->whereHas('roles', fn ($q) => $q->whereIn('role', ['instructor', 'course_head']))
+            ->orderBy('name')
+            ->get();
 
-        return view('shared.course_pool.index', compact('courses', 'isAdmin', 'routePrefix', 'activeAcademicYear'));
+        return view('shared.course_pool.index', compact('courses', 'isAdmin', 'routePrefix', 'activeAcademicYear', 'courseRolesById', 'availableInstructors'));
     }
 
     public function show(Course $course): View
