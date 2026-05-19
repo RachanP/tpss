@@ -9,6 +9,7 @@ use App\Models\CourseOffering;
 use App\Models\CourseRole;
 use App\Models\SystemSetting;
 use App\Http\Controllers\Admin\AlertController;
+use App\Services\AuditLogger;
 use Illuminate\Support\Facades\DB;
 
 class AdminSettingController extends Controller
@@ -217,6 +218,15 @@ class AdminSettingController extends Controller
         $newMsg = $created > 0 ? "สร้างใหม่ {$created} รายวิชา" : "ไม่มีรายวิชาใหม่";
         $syncMsg = $synced > 0 ? "ซิงก์แม่แบบ {$synced} รายวิชา" : "ไม่พบรายวิชาเดิมที่ต้องซิงก์";
 
+        AuditLogger::log(
+            action:      'ตั้งค่าระบบ.เปิดช่วงจัดตาราง',
+            table:       'academic_years',
+            recordId:    $year->id,
+            oldValues:   ['phase' => 'preparation'],
+            newValues:   ['phase' => 'scheduling', 'offerings_created' => $created, 'offerings_synced' => $synced],
+            description: "เปิดช่วงจัดตารางปีการศึกษา {$year->name} ภาค {$year->semester}",
+        );
+
         return redirect()
             ->route('admin.settings', ['tab' => 'scheduling'])
             ->with('success', "เปิดช่วงจัดตารางสำหรับปีการศึกษา {$year->name} ภาค {$year->semester} แล้ว — {$newMsg}, {$syncMsg} รวม {$total} รายวิชาพร้อมจัดตาราง");
@@ -237,6 +247,15 @@ class AdminSettingController extends Controller
         }
 
         $year->update(['phase' => 'preparation']);
+
+        AuditLogger::log(
+            action:      'ตั้งค่าระบบ.ปิดช่วงจัดตาราง',
+            table:       'academic_years',
+            recordId:    $year->id,
+            oldValues:   ['phase' => 'scheduling'],
+            newValues:   ['phase' => 'preparation'],
+            description: "ปิดช่วงจัดตารางปีการศึกษา {$year->name} ภาค {$year->semester}",
+        );
 
         return redirect()
             ->route('admin.settings', ['tab' => 'scheduling'])

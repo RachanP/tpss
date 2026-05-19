@@ -11,6 +11,7 @@ use App\Models\Course;
 use App\Models\CourseRole;
 use App\Models\Curriculum;
 use App\Models\ActivityType;
+use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -466,6 +467,21 @@ class MasterDataController extends Controller
         $this->syncCourseInstructors($course, $instructorIds, $instructorRoleIds);
         $course->prerequisites()->sync($prerequisiteIds);
 
+        AuditLogger::log(
+            action:      'ข้อมูลหลัก.สร้าง',
+            table:       'courses',
+            recordId:    $course->id,
+            oldValues:   null,
+            newValues:   [
+                'course_code'        => $course->course_code,
+                'name_th'            => $course->name_th,
+                'status'             => $course->status,
+                'credits'            => $course->credits,
+                'head_instructor_id' => $course->head_instructor_id,
+            ],
+            description: "สร้างรายวิชา {$course->course_code} {$course->name_th}",
+        );
+
         return $this->redirectToMasterData('courses')->with('success', 'เพิ่มรายวิชาเรียบร้อยแล้ว');
     }
 
@@ -526,12 +542,30 @@ class MasterDataController extends Controller
         }
         unset($validated['staff_ids'], $validated['instructor_ids'], $validated['instructor_role_ids'], $validated['prerequisite_ids']);
 
+        // Snapshot auditable fields before update
+        $auditFields = ['course_code', 'name_th', 'status', 'credits', 'head_instructor_id', 'default_semester'];
+        $auditBefore = $course->only($auditFields);
+
         $course->update($validated);
         if (! $assignmentsLocked) {
             $course->assignedStaff()->sync($staffIds);
             $this->syncCourseInstructors($course, $instructorIds, $instructorRoleIds);
         }
         $course->prerequisites()->sync($prerequisiteIds);
+
+        // Diff and log only when something actually changed
+        $auditAfter = $course->fresh()->only($auditFields);
+        $diff = AuditLogger::diff($auditBefore, $auditAfter);
+        if (!empty($diff['old']) || !empty($diff['new'])) {
+            AuditLogger::log(
+                action:      'ข้อมูลหลัก.แก้ไข',
+                table:       'courses',
+                recordId:    $course->id,
+                oldValues:   $diff['old'] ?: null,
+                newValues:   $diff['new'] ?: null,
+                description: "แก้ไขรายวิชา {$course->course_code} {$course->name_th}",
+            );
+        }
 
         return $this->redirectToMasterData('courses')->with('success', 'อัปเดตข้อมูลรายวิชาเรียบร้อยแล้ว');
     }
@@ -685,8 +719,21 @@ class MasterDataController extends Controller
 
     public function destroyCourse(Course $course)
     {
+        $snapshot  = ['course_code' => $course->course_code, 'name_th' => $course->name_th, 'status' => $course->status];
+        $courseId  = $course->id;
+
         try {
             $course->delete();
+
+            AuditLogger::log(
+                action:      'ข้อมูลหลัก.ลบ',
+                table:       'courses',
+                recordId:    $courseId,
+                oldValues:   $snapshot,
+                newValues:   null,
+                description: "ลบรายวิชา {$snapshot['course_code']} {$snapshot['name_th']}",
+            );
+
             return $this->redirectToMasterData('courses')->with('success', 'ลบรายวิชาเรียบร้อยแล้ว');
         } catch (\Illuminate\Database\QueryException $e) {
             return redirect()->back()->with('error', 'ไม่สามารถลบได้เนื่องจากมีข้อมูลการสอนผูกอยู่');

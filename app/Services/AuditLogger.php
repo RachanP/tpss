@@ -85,28 +85,33 @@ class AuditLogger
         ?array $newValues = null,
         ?string $category = null,
         ?string $description = null,
-    ): AuditLog {
-        $category    ??= Str::before($action, '.');
-        $description ??= self::generateDescription($action);
+    ): ?AuditLog {
+        try {
+            $category    ??= Str::before($action, '.');
+            $description ??= self::generateDescription($action);
 
-        // Auto-inject request context — logger-generated wins; caller cannot override
-        $newValues = array_merge($newValues ?? [], [
-            self::CONTEXT_KEY => [
-                'ip_address' => request()->ip(),
-                'user_agent' => substr(request()->userAgent() ?? '', 0, 200),
-            ],
-        ]);
+            // Auto-inject request context — logger-generated wins; caller cannot override
+            $newValues = array_merge($newValues ?? [], [
+                self::CONTEXT_KEY => [
+                    'ip_address' => request()->ip(),
+                    'user_agent' => substr(request()->userAgent() ?? '', 0, 200),
+                ],
+            ]);
 
-        return AuditLog::create([
-            'user_id'        => auth()->id(),
-            'action'         => $action,
-            'table_affected' => $table,
-            'record_id'      => $recordId,
-            'old_values'     => self::sanitize($oldValues),
-            'new_values'     => self::sanitize($newValues),
-            'category'       => $category,
-            'description'    => $description,
-        ]);
+            return AuditLog::create([
+                'user_id'        => auth()->id(),
+                'action'         => $action,
+                'table_affected' => $table,
+                'record_id'      => $recordId,
+                'old_values'     => self::sanitize($oldValues),
+                'new_values'     => self::sanitize($newValues),
+                'category'       => $category,
+                'description'    => $description,
+            ]);
+        } catch (\Throwable $e) {
+            report($e);
+            return null;
+        }
     }
 
     /**
