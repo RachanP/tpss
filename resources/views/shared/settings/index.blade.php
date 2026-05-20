@@ -196,28 +196,24 @@
                                                 </svg>
                                             </button>
                                             @if($isAdmin)
-                                                @if($year->phase === 'preparation')
-                                                    @if($year->is_active)
-                                                        <form id="open-scheduling-{{ $year->id }}" method="POST" action="{{ route('admin.settings.scheduling.open', $year) }}" style="margin:0;">
-                                                            @csrf
-                                                            @method('PATCH')
-                                                            <button type="button"
-                                                                class="{{ $hasSchedulingCriticals ? 'btn btn-ghost' : 'btn btn-primary' }}"
-                                                                style="font-size: 13px; padding: 6px 14px; {{ $hasSchedulingCriticals ? 'opacity:0.55;cursor:not-allowed;' : '' }}"
-                                                                @if($hasSchedulingCriticals)
-                                                                    disabled
-                                                                    title="ต้องแก้ Critical ให้หมดก่อนเปิดช่วงจัดตาราง"
-                                                                @else
-                                                                    @click="startOpenScheduleCountdown('open-scheduling-{{ $year->id }}', 'ปีการศึกษา {{ $year->name }} ภาค {{ $year->semester }}')"
-                                                                @endif>
-                                                                เปิดช่วงจัดตาราง
-                                                            </button>
-                                                        </form>
-                                                    @else
-                                                        <button type="button" class="btn btn-ghost" disabled style="font-size: 13px; padding: 6px 14px; opacity: 0.4; cursor: not-allowed;" title="เปิดได้เฉพาะปีการศึกษาปัจจุบัน">
+                                                @if(!$year->is_active)
+                                                    <span style="font-size:12px;color:var(--fg-3);white-space:nowrap;">ตั้งเป็นปีปัจจุบันก่อน</span>
+                                                @elseif($year->phase === 'preparation')
+                                                    <form id="open-scheduling-{{ $year->id }}" method="POST" action="{{ route('admin.settings.scheduling.open', $year) }}" style="margin:0;">
+                                                        @csrf
+                                                        @method('PATCH')
+                                                        <button type="button"
+                                                            class="{{ $hasSchedulingCriticals ? 'btn btn-ghost' : 'btn btn-primary' }}"
+                                                            style="font-size: 13px; padding: 6px 14px; {{ $hasSchedulingCriticals ? 'opacity:0.55;cursor:not-allowed;' : '' }}"
+                                                            @if($hasSchedulingCriticals)
+                                                                disabled
+                                                                title="ต้องแก้ Critical ให้หมดก่อนเปิดช่วงจัดตาราง"
+                                                            @else
+                                                                @click="startOpenScheduleCountdown('open-scheduling-{{ $year->id }}', 'ปีการศึกษา {{ $year->name }} ภาค {{ $year->semester }}')"
+                                                            @endif>
                                                             เปิดช่วงจัดตาราง
                                                         </button>
-                                                    @endif
+                                                    </form>
                                                 @elseif($year->phase === 'scheduling')
                                                     <form method="POST" action="{{ route('admin.settings.scheduling.close', $year) }}" style="margin:0;">
                                                         @csrf

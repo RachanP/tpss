@@ -4,11 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Admin\AlertController;
 use App\Models\AcademicYear;
+use App\Models\Course;
+use App\Models\CourseOffering;
+use App\Models\Curriculum;
+use App\Models\Room;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Models\UserRole;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -43,7 +48,55 @@ class DashboardController extends Controller
             ->orderByDesc('semester')
             ->first();
 
-        return view('admin.dashboard', compact('instructors', 'teachingWeeks', 'hoursPerWeek', 'alerts', 'criticals', 'currentAcademicYear'));
+        $roomsByType = \App\Models\LocationType::withCount('rooms')
+            ->orderByDesc('rooms_count')
+            ->get()
+            ->map(fn($lt) => ['label' => $lt->name, 'count' => $lt->rooms_count]);
+
+        $curriculumsByLevel = Curriculum::select('education_level', DB::raw('COUNT(*) as cnt'))
+            ->groupBy('education_level')
+            ->pluck('cnt', 'education_level')
+            ->toArray();
+
+        $stats = [
+            'users' => [
+                'active' => User::where('is_active', true)->count(),
+                'total'  => User::count(),
+            ],
+            'courses' => [
+                'active' => Course::where('status', 'active')->count(),
+                'total'  => Course::count(),
+            ],
+            'rooms' => [
+                'total'    => Room::count(),
+                'by_type'  => $roomsByType,
+            ],
+            'curriculums' => [
+                'total'     => Curriculum::count(),
+                'by_level'  => [
+                    'bachelor'  => $curriculumsByLevel['bachelor']  ?? 0,
+                    'master'    => $curriculumsByLevel['master']    ?? 0,
+                    'doctorate' => $curriculumsByLevel['doctorate'] ?? 0,
+                ],
+            ],
+        ];
+
+        $pipelineCounts = $currentAcademicYear
+            ? CourseOffering::where('academic_year_id', $currentAcademicYear->id)
+                ->select('approval_status', DB::raw('COUNT(*) as count'))
+                ->groupBy('approval_status')
+                ->pluck('count', 'approval_status')
+                ->toArray()
+            : [];
+
+        $pipeline = [
+            'draft'     => $pipelineCounts['draft']     ?? 0,
+            'pending'   => $pipelineCounts['pending']   ?? 0,
+            'published' => $pipelineCounts['published'] ?? 0,
+            'rejected'  => $pipelineCounts['rejected']  ?? 0,
+        ];
+
+        return view('admin.dashboard', compact('instructors', 'teachingWeeks', 'hoursPerWeek', 'alerts', 'criticals', 'currentAcademicYear', 'stats', 'pipeline'));
     }
 
     public function staff()
