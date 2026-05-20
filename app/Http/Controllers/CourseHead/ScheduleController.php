@@ -24,7 +24,8 @@ class ScheduleController extends Controller
 
         $schedules = $courseOffering->schedules()
             ->with(['activityType', 'room', 'instructors.instructorProfile.department', 'studentGroups'])
-            ->orderBy('teaching_date')
+            ->orderBy('start_date')
+            ->orderBy('end_date')
             ->orderBy('start_time')
             ->get();
 
@@ -60,7 +61,8 @@ class ScheduleController extends Controller
         }
 
         $validated = $request->validate([
-            'teaching_date' => ['required', 'date'],
+            'start_date' => ['required', 'date'],
+            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
             'start_time' => ['required', 'date_format:H:i'],
             'end_time' => ['required', 'date_format:H:i', 'after:start_time'],
             'activity_type_id' => ['required', 'integer', 'exists:activity_types,id'],
@@ -84,7 +86,8 @@ class ScheduleController extends Controller
                     ->where(fn ($query) => $query->where('course_offering_id', $courseOffering->id)),
             ],
         ], [], [
-            'teaching_date' => 'วันที่สอน',
+            'start_date' => 'วันที่เริ่มต้น',
+            'end_date' => 'วันที่สิ้นสุด',
             'start_time' => 'เวลาเริ่ม',
             'end_time' => 'เวลาสิ้นสุด',
             'activity_type_id' => 'ประเภทกิจกรรม',
@@ -105,7 +108,8 @@ class ScheduleController extends Controller
                 'activity_type_id' => $validated['activity_type_id'],
                 'room_id' => $validated['room_id'] ?? null,
                 'practicum_series_id' => null,
-                'teaching_date' => $validated['teaching_date'],
+                'start_date' => $validated['start_date'],
+                'end_date' => $validated['end_date'],
                 'start_time' => $validated['start_time'],
                 'end_time' => $validated['end_time'],
                 'topic' => $validated['topic'] ?? null,

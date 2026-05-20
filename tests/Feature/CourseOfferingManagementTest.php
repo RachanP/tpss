@@ -583,7 +583,8 @@ class CourseOfferingManagementTest extends TestCase
         $scheduleId = DB::table('schedules')->insertGetId([
             'course_offering_id' => $offering->id,
             'activity_type_id' => $activityTypeId,
-            'teaching_date' => '2026-08-01',
+            'start_date' => '2026-08-01',
+            'end_date' => '2026-08-01',
             'start_time' => '08:00:00',
             'end_time' => '10:00:00',
             'status' => 'draft',
@@ -680,7 +681,8 @@ class CourseOfferingManagementTest extends TestCase
         $scheduleId = DB::table('schedules')->insertGetId([
             'course_offering_id' => $offering->id,
             'activity_type_id' => $activityTypeId,
-            'teaching_date' => '2026-08-01',
+            'start_date' => '2026-08-01',
+            'end_date' => '2026-08-01',
             'start_time' => '08:00:00',
             'end_time' => '10:00:00',
             'status' => 'draft',
