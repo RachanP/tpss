@@ -47,6 +47,18 @@ class AdminUserManagementTest extends TestCase
         $response->assertSee('Admin User');
     }
 
+    public function test_admin_user_delete_confirm_does_not_apply_scrollbar_layout_compensation(): void
+    {
+        $this->actingAs($this->admin);
+
+        $response = $this->get('/admin/users');
+
+        $response->assertStatus(200);
+        $response->assertSee('function tpssDelete(btn)', false);
+        $response->assertSee('heightAuto: false', false);
+        $response->assertSee('scrollbarPadding: false', false);
+    }
+
     public function test_admin_can_create_user(): void
     {
         $department = Department::create([

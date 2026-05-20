@@ -214,6 +214,8 @@
                 reverseButtons: true,
                 focusCancel: true,
                 buttonsStyling: false,
+                heightAuto: false,
+                scrollbarPadding: false,
                 customClass: {
                     popup:         'tpss-delete-popup',
                     confirmButton: 'tpss-delete-confirm',
