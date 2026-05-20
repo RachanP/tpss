@@ -200,9 +200,9 @@ class ScheduleController extends Controller
                 ->sum('student_count');
         }
 
-        $groupConflicts = empty($validated['student_group_ids'])
+        $groupConflictDetails = empty($validated['student_group_ids'])
             ? collect()
-            : $this->conflictingStudentGroups($courseOffering, $validated, $currentSchedule);
+            : $this->conflictingStudentGroupDetails($courseOffering, $validated, $currentSchedule);
         $instructorConflicts = empty($validated['instructor_ids'])
             ? collect()
             : $this->conflictingInstructors($validated, $currentSchedule);
@@ -210,7 +210,8 @@ class ScheduleController extends Controller
 
         return response()->json([
             'conflicts' => [
-                'groups' => $groupConflicts->values(),
+                'groups' => $groupConflictDetails->pluck('code')->values(),
+                'group_ids' => $groupConflictDetails->pluck('id')->map(fn ($id) => (string) $id)->values(),
                 'instructors' => $instructorConflicts->values(),
                 'room' => $roomConflict,
                 'capacity' => $capacity && $studentCount > $capacity ? [
@@ -397,12 +398,22 @@ class ScheduleController extends Controller
 
     private function conflictingStudentGroups(CourseOffering $courseOffering, array $validated, ?Schedule $currentSchedule = null)
     {
+        return $this->conflictingStudentGroupDetails($courseOffering, $validated, $currentSchedule)
+            ->pluck('code')
+            ->values();
+    }
+
+    private function conflictingStudentGroupDetails(CourseOffering $courseOffering, array $validated, ?Schedule $currentSchedule = null)
+    {
         return $this->overlappingSchedules($courseOffering->schedules(), $validated, $currentSchedule)
             ->whereHas('studentGroups', fn ($query) => $query->whereIn('student_groups.id', $validated['student_group_ids']))
             ->with(['studentGroups' => fn ($query) => $query->whereIn('student_groups.id', $validated['student_group_ids'])])
             ->get()
-            ->flatMap(fn ($schedule) => $schedule->studentGroups->pluck('group_code'))
-            ->unique()
+            ->flatMap(fn ($schedule) => $schedule->studentGroups->map(fn ($group) => [
+                'id' => (int) $group->id,
+                'code' => $group->group_code,
+            ]))
+            ->unique('id')
             ->values();
     }
 
@@ -475,8 +486,15 @@ class ScheduleController extends Controller
                 ];
             }
 
-            foreach ($schedules as $otherSchedule) {
-                if ((int) $schedule->id === (int) $otherSchedule->id || ! $this->schedulesOverlap($schedule, $otherSchedule)) {
+            $overlappingSchedules = $this->overlappingSchedules(Schedule::query(), [
+                'start_date' => $schedule->start_date,
+                'end_date' => $schedule->end_date,
+                'start_time' => substr((string) $schedule->start_time, 0, 5),
+                'end_time' => substr((string) $schedule->end_time, 0, 5),
+            ], $schedule)->with(['instructors', 'studentGroups'])->get();
+
+            foreach ($overlappingSchedules as $otherSchedule) {
+                if (! $this->schedulesOverlap($schedule, $otherSchedule)) {
                     continue;
                 }
 

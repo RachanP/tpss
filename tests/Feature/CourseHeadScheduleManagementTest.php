@@ -134,6 +134,7 @@ class CourseHeadScheduleManagementTest extends TestCase
         ])
             ->assertOk()
             ->assertJsonPath('conflicts.groups.0', 'A1')
+            ->assertJsonPath('conflicts.group_ids.0', (string) $group->id)
             ->assertJsonPath('conflicts.instructors.0', $instructor->formatted_name)
             ->assertJsonPath('conflicts.room', $room->room_code.' '.$room->room_name)
             ->assertJsonPath('conflicts.capacity.selected', 20)
@@ -179,6 +180,47 @@ class CourseHeadScheduleManagementTest extends TestCase
             ->assertSee('ผู้สอนชนเวลา')
             ->assertSee('ห้องชนเวลา')
             ->assertSee('จำนวนเกิน');
+    }
+
+    public function test_schedule_index_warning_badges_include_cross_offering_resource_conflicts(): void
+    {
+        $head = $this->makeUser('course_head');
+        $otherHead = $this->makeUser('course_head');
+        $instructor = $this->makeUser('instructor');
+        $otherInstructor = $this->makeUser('instructor');
+        $offering = $this->makeOffering($head, 'NUR501');
+        $otherOffering = $this->makeOffering($otherHead, 'NUR502');
+        $offering->instructorPool()->attach($instructor->id, ['role_in_course' => 'instructor']);
+        $otherOffering->instructorPool()->attach($otherInstructor->id, ['role_in_course' => 'instructor']);
+        $group = $this->makeGroup($offering, 'A1');
+        $otherGroup = $this->makeGroup($otherOffering, 'B1');
+        $activityTypeId = $this->createActivityType();
+        $room = $this->makeRoom('R-501');
+
+        $current = $this->makeSchedule($offering, $activityTypeId, $room->id, [
+            'start_date' => '2026-08-05',
+            'end_date' => '2026-08-05',
+            'start_time' => '08:00',
+            'end_time' => '10:00',
+        ]);
+        $current->instructors()->attach($instructor->id, ['is_lead' => false]);
+        $current->studentGroups()->attach($group->id);
+
+        $other = $this->makeSchedule($otherOffering, $activityTypeId, $room->id, [
+            'start_date' => '2026-08-05',
+            'end_date' => '2026-08-05',
+            'start_time' => '09:00',
+            'end_time' => '11:00',
+        ]);
+        $other->instructors()->attach($instructor->id, ['is_lead' => false]);
+        $other->studentGroups()->attach($otherGroup->id);
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.course_offerings.schedules.index', $offering))
+            ->assertOk()
+            ->assertSee('ผู้สอนชนเวลา')
+            ->assertSee('ห้องชนเวลา');
     }
 
     private function actingAsCourseHead(User $user): void

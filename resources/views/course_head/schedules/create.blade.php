@@ -755,6 +755,7 @@
                 conflictTimer: null,
                 realtime: {
                     groups: [],
+                    groupIds: [],
                     instructors: [],
                     room: null,
                     capacity: null,
@@ -819,7 +820,7 @@
                     this.queueConflictCheck();
                 },
                 groupUnavailable(groupId) {
-                    if (this.realtime.groups.includes(String(groupId))) {
+                    if (this.realtime.groupIds.includes(String(groupId))) {
                         return true;
                     }
 
@@ -858,6 +859,7 @@
                 resetRealtimeConflicts() {
                     this.realtime = {
                         groups: [],
+                        groupIds: [],
                         instructors: [],
                         room: null,
                         capacity: null,
@@ -918,6 +920,7 @@
                         const data = await response.json();
                         this.realtime = {
                             groups: (data.conflicts?.groups || []).map(String),
+                            groupIds: (data.conflicts?.group_ids || []).map(String),
                             instructors: data.conflicts?.instructors || [],
                             room: data.conflicts?.room || null,
                             capacity: data.conflicts?.capacity || null,
