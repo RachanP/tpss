@@ -1352,7 +1352,18 @@
                             @error('instructor_ids')<div class="caption" style="color:var(--status-conflict-fg);margin-top:5px;">{{ $message }}</div>@enderror
                             @error('instructor_ids.*')<div class="caption" style="color:var(--status-conflict-fg);margin-top:5px;">{{ $message }}</div>@enderror
                         </div>
-                        <div class="form-group" x-data="{ groupQuery: '' }">
+                        <div
+                            class="form-group"
+                            x-data="{
+                                groupQuery: '',
+                                groups: @js($courseOffering->studentGroups->map(fn ($group) => mb_strtolower($group->group_code.' '.$group->student_count.' คน', 'UTF-8'))->values()),
+                                hasGroupMatches() {
+                                    const keyword = this.groupQuery.trim().toLowerCase();
+
+                                    return !keyword || this.groups.some((group) => group.includes(keyword));
+                                }
+                            }"
+                        >
                             <label>กลุ่มนักศึกษา <span style="color:var(--status-conflict-fg)">*</span></label>
                             <input type="search" class="schedule-check-search" x-model="groupQuery" placeholder="ค้นหากลุ่มนักศึกษา">
                             <div class="schedule-check-list">
@@ -1368,6 +1379,9 @@
                                 @empty
                                     <div class="caption">ยังไม่มีกลุ่มนักศึกษา</div>
                                 @endforelse
+                                @if($courseOffering->studentGroups->isNotEmpty())
+                                    <div class="caption" x-show="!hasGroupMatches()" x-cloak>ไม่พบข้อมูลกลุ่มนักศึกษาที่ตรงกับคำค้นหา</div>
+                                @endif
                             </div>
                             <div class="schedule-realtime-alert" x-show="groupConflictMessage()" x-text="groupConflictMessage()" x-cloak></div>
                             @error('student_group_ids')<div class="caption" x-show="!touchedGroups && !touchedCapacity" style="color:var(--status-conflict-fg);margin-top:5px;">{{ $message }}</div>@enderror
