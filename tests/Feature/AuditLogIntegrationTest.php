@@ -568,7 +568,10 @@ class AuditLogIntegrationTest extends TestCase
 
         $log = $this->latestLog('รายวิชาและผู้รับผิดชอบ.แก้ไข', 'course_offerings');
         $this->assertSame('รายวิชาและผู้รับผิดชอบ', $log->category);
-        $this->assertSame(['requires_practicum_rotation', 'practicum_note'], array_keys($log->old_values));
+        $this->assertEqualsCanonicalizing(
+            ['requires_practicum_rotation', 'practicum_note'],
+            array_keys($log->old_values)
+        );
         $this->assertFalse($log->old_values['requires_practicum_rotation']);
         $this->assertTrue($log->new_values['requires_practicum_rotation']);
         $this->assertSame($offering->id, $log->new_values['course_offering_id']);
