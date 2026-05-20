@@ -14,6 +14,63 @@
     $availableInstructorIds = $availableInstructors->pluck('id')->map(fn ($id) => (int) $id);
     $instructorFilterOptions = $availableInstructors;
     $warningScheduleCount = collect($scheduleWarnings ?? [])->filter(fn ($warnings) => count($warnings) > 0)->count();
+    $sampleScheduleRows = [
+        [
+            'date' => '01/08/2569',
+            'date_hint' => 'ถึง 01/08/2569',
+            'time' => '09:00 - 12:00',
+            'activity' => 'Bedside Teaching',
+            'topic' => 'ฝึกปฏิบัติในห้องจำลอง',
+            'groups' => ['A1', 'A2', 'A3'],
+            'instructor' => 'ผู้สอนตัวอย่าง',
+            'room_code' => 'HOSP-RAMA',
+            'room_name' => 'โรงพยาบาลตัวอย่าง',
+        ],
+        [
+            'date' => '03/08/2569',
+            'date_hint' => 'ถึง 03/08/2569',
+            'time' => '08:00 - 10:00',
+            'activity' => 'Conference / Case Conference',
+            'topic' => 'บรรยายหัวข้อหลัก',
+            'groups' => ['A4', 'A5'],
+            'instructor' => 'ผู้สอนตัวอย่าง',
+            'room_code' => 'R-301',
+            'room_name' => 'ห้องบรรยายตัวอย่าง',
+        ],
+        [
+            'date' => '04/08/2569',
+            'date_hint' => 'ถึง 04/08/2569',
+            'time' => '13:00 - 15:00',
+            'activity' => 'Lab / ห้องปฏิบัติการ',
+            'topic' => 'ฝึกปฏิบัติทักษะในห้องจำลอง',
+            'groups' => ['A6', 'A7'],
+            'instructor' => 'ผู้สอนตัวอย่าง',
+            'room_code' => 'LAB-401',
+            'room_name' => 'ห้องปฏิบัติการตัวอย่าง',
+        ],
+        [
+            'date' => '05/08/2569',
+            'date_hint' => 'ถึง 05/08/2569',
+            'time' => '10:30 - 12:00',
+            'activity' => 'Post-Conference',
+            'topic' => 'ทบทวนและประเมินทักษะ',
+            'groups' => ['A8'],
+            'instructor' => 'ผู้สอนตัวอย่าง',
+            'room_code' => 'R-302',
+            'room_name' => 'ห้องประชุมตัวอย่าง',
+        ],
+        [
+            'date' => '07/08/2569',
+            'date_hint' => 'ถึง 07/08/2569',
+            'time' => '13:30 - 15:30',
+            'activity' => 'Reflection',
+            'topic' => 'อภิปรายและสะท้อนคิด',
+            'groups' => ['A1', 'A4'],
+            'instructor' => 'ผู้สอนตัวอย่าง',
+            'room_code' => 'R-301',
+            'room_name' => 'ห้องบรรยายตัวอย่าง',
+        ],
+    ];
     $scheduleItems = $schedules->map(function ($schedule) use ($statusMeta, $formatThaiDate, $availableInstructorIds, $scheduleWarnings) {
         $meta = $statusMeta[$schedule->status] ?? ['label' => $schedule->status, 'class' => 'badge-gray'];
         $warningLabels = collect($scheduleWarnings[$schedule->id] ?? [])->pluck('label')->implode(' ');
@@ -95,6 +152,22 @@
             gap: 10px;
             margin-top: 16px;
             flex-wrap: wrap;
+        }
+        .schedule-sample-note {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 14px 20px;
+            background: oklch(97% 0.012 235);
+            color: var(--fg-2);
+            border-bottom: 1px solid var(--border);
+        }
+        .schedule-sample-row td {
+            background: oklch(99% 0.004 240);
+        }
+        .schedule-sample-row:hover td {
+            background: oklch(98% 0.006 235);
         }
         .schedule-filter-bar {
             display: grid;
@@ -386,19 +459,52 @@
                     @empty
                         <tr>
                             <td colspan="8">
-                                <div class="schedule-empty">
-                                    <div class="schedule-empty-title">ยังไม่มีรายการสอน</div>
-                                    <div>เพิ่มรายการสอนแรกของรายวิชานี้เพื่อเริ่มตรวจตารางและความพร้อมของกลุ่ม</div>
-                                    <div class="schedule-empty-actions">
-                                        @if($canCreate)
-                                            <a href="{{ route('maker.course_offerings.schedules.create', $courseOffering) }}" class="btn btn-primary">เพิ่มรายการสอน</a>
-                                        @else
-                                            <span class="badge badge-gray">ยังไม่เปิดช่วงจัดตาราง</span>
-                                        @endif
+                                <div class="schedule-sample-note">
+                                    <div>
+                                        <div style="font-weight:700;color:var(--fg-1);">ยังไม่มีรายการสอนจริง</div>
+                                        <div class="caption" style="margin-top:3px;">แสดงตัวอย่างสมมติเพื่อเป็นแนวทางการจัดรูปแบบรายการสอน</div>
                                     </div>
+                                    @if($canCreate)
+                                        <a href="{{ route('maker.course_offerings.schedules.create', $courseOffering) }}" class="btn btn-primary">เพิ่มรายการสอน</a>
+                                    @else
+                                        <span class="badge badge-gray">ยังไม่เปิดช่วงจัดตาราง</span>
+                                    @endif
                                 </div>
                             </td>
                         </tr>
+                        @foreach($sampleScheduleRows as $sample)
+                            <tr class="schedule-sample-row">
+                                <td class="schedule-date-range">
+                                    <div style="font-weight:700;color:var(--fg-1);">{{ $sample['date'] }}</div>
+                                    <div class="caption" style="margin-top:3px;">{{ $sample['date_hint'] }}</div>
+                                </td>
+                                <td>
+                                    <div class="schedule-time">{{ $sample['time'] }}</div>
+                                </td>
+                                <td>
+                                    <div style="font-weight:700;color:var(--fg-1);">{{ $sample['activity'] }}</div>
+                                    <div class="body-sm" style="margin-top:3px;">{{ $sample['topic'] }}</div>
+                                </td>
+                                <td>
+                                    @foreach($sample['groups'] as $group)
+                                        <span class="badge badge-gray" style="margin:2px;">{{ $group }}</span>
+                                    @endforeach
+                                </td>
+                                <td>
+                                    <div class="body-sm">{{ $sample['instructor'] }}</div>
+                                </td>
+                                <td>
+                                    <div class="body-sm">{{ $sample['room_code'] }}</div>
+                                    <div class="caption" style="margin-top:3px;">{{ $sample['room_name'] }}</div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-gray">ตัวอย่างสมมติ</span>
+                                </td>
+                                <td>
+                                    <span class="caption">-</span>
+                                </td>
+                            </tr>
+                        @endforeach
                     @endforelse
                     @if($schedules->isNotEmpty())
                         <tr x-show="matchedCount() === 0" x-cloak>
