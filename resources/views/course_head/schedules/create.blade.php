@@ -59,7 +59,7 @@
             border: 1px solid oklch(82% 0.028 235);
             border-radius: 10px;
             background: linear-gradient(180deg, oklch(99% 0.006 235), oklch(96.5% 0.014 235));
-            padding: 16px 20px;
+            padding: 14px 18px;
             box-shadow: 0 1px 0 oklch(90% 0.018 235);
         }
         .schedule-entry-kicker {
@@ -77,26 +77,8 @@
             letter-spacing: 0;
             margin: 0;
         }
-        .schedule-entry-meta {
-            display: flex;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 10px;
-        }
-        .schedule-entry-course {
-            display: inline-flex;
-            align-items: center;
-            min-height: 28px;
-            border: 1px solid oklch(78% 0.038 235);
-            border-radius: 999px;
-            background: oklch(94.5% 0.02 235);
-            color: var(--brand-navy);
-            padding: 4px 10px;
-            font-size: 12px;
-            font-weight: 800;
-        }
         .schedule-entry-desc {
+            margin-top: 6px;
             color: var(--fg-2);
             font-size: 13px;
             line-height: 1.6;
@@ -1006,11 +988,7 @@
         <div class="schedule-entry-card">
             <div class="schedule-entry-kicker">ตารางสอนรายวิชา</div>
             <h1 class="schedule-entry-title">{{ $pageTitle }}</h1>
-            <div class="schedule-entry-meta">
-                <span class="schedule-entry-course">{{ $course?->course_code ?? '-' }}</span>
-                <span class="schedule-entry-desc">{{ $course?->name_th ?? $course?->name_en ?? '-' }}</span>
-                <span class="badge badge-gray">{{ $academicYear?->name ?? '-' }} / เทอม {{ $academicYear?->semester ?? '-' }}</span>
-            </div>
+            <div class="schedule-entry-desc">ระบุช่วงวันที่ เวลา ผู้สอน และกลุ่มนักศึกษาสำหรับรายการนี้</div>
         </div>
     </div>
 
