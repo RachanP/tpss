@@ -11,11 +11,11 @@
 
     if (!$currentAcademicYear) {
         $systemStatus = [
-            'title' => 'ยังไม่ได้ตั้งค่าปีการศึกษาที่ใช้งาน',
+            'title' => 'ยังไม่ได้ตั้งค่าปีการศึกษาปัจจุบัน',
             'pill' => 'p-warning',
             'label' => 'ต้องตั้งค่าก่อน',
             'desc' => 'ตั้งค่าปีการศึกษาที่ใช้งานก่อน ระบบจึงจะประเมินความพร้อมและเปิดช่วงจัดตารางได้',
-            'actionLabel' => 'ตั้งค่าปีการศึกษา',
+            'actionLabel' => 'จัดการสถานะระบบ',
             'actionRoute' => route('admin.settings', ['tab' => 'academic']),
             'tone' => 'warning',
         ];
@@ -25,8 +25,8 @@
             'pill' => 'p-conflict',
             'label' => 'พบเงื่อนไขสำคัญ',
             'desc' => "แก้เงื่อนไขสำคัญ {$criticalCount} รายการก่อนเปิดช่วงจัดตาราง เพื่อป้องกันข้อมูลตั้งต้นไม่ครบ",
-            'actionLabel' => 'ไปแก้เงื่อนไขสำคัญ',
-            'actionRoute' => route('admin.alerts'),
+            'actionLabel' => 'จัดการสถานะระบบ',
+            'actionRoute' => route('admin.settings', ['tab' => 'academic']),
             'tone' => 'conflict',
         ];
     } elseif ($currentPhase === 'preparation' && $warningCount > 0) {
@@ -35,8 +35,8 @@
             'pill' => 'p-warning',
             'label' => 'มีรายการควรตรวจสอบ',
             'desc' => "ตรวจสอบข้อมูล {$warningCount} รายการก่อนเปิดช่วงจัดตาราง หากไม่กระทบการจัดตารางสามารถดำเนินการต่อได้",
-            'actionLabel' => 'ตรวจสอบข้อมูล',
-            'actionRoute' => route('admin.alerts'),
+            'actionLabel' => 'จัดการสถานะระบบ',
+            'actionRoute' => route('admin.settings', ['tab' => 'academic']),
             'tone' => 'warning',
         ];
     } elseif ($currentPhase === 'preparation') {
@@ -45,7 +45,7 @@
             'pill' => 'p-success',
             'label' => 'พร้อมดำเนินการ',
             'desc' => 'ข้อมูลหลักพร้อมแล้ว สามารถเปิดช่วงจัดตารางให้หัวหน้าวิชาเริ่มจัดการรายวิชาได้',
-            'actionLabel' => 'เปิดช่วงจัดตาราง',
+            'actionLabel' => 'จัดการสถานะระบบ',
             'actionRoute' => route('admin.settings', ['tab' => 'academic']),
             'tone' => 'success',
         ];
@@ -57,7 +57,7 @@
             'desc' => $pendingOfferings > 0
                 ? "ติดตามรายวิชาที่รออนุมัติ {$pendingOfferings} วิชา และความคืบหน้าการจัดตารางของแต่ละรายวิชา"
                 : 'ติดตามความคืบหน้าการจัดตารางและรายการที่ส่งอนุมัติจากหัวหน้าวิชา',
-            'actionLabel' => 'ดูสถานะปีการศึกษา',
+            'actionLabel' => 'จัดการสถานะระบบ',
             'actionRoute' => route('admin.settings', ['tab' => 'academic']),
             'tone' => 'success',
         ];
@@ -67,7 +67,7 @@
             'pill' => 'p-info',
             'label' => 'เสร็จสิ้นรอบนี้',
             'desc' => 'ตารางสอนเผยแพร่แล้ว ใช้หน้านี้ติดตามข้อมูลสรุปและความเคลื่อนไหวของระบบ',
-            'actionLabel' => 'ดูสถานะปีการศึกษา',
+            'actionLabel' => 'จัดการสถานะระบบ',
             'actionRoute' => route('admin.settings', ['tab' => 'academic']),
             'tone' => 'info',
         ];
@@ -190,7 +190,7 @@
                 </div>
             @else
                 <div style="font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--status-warning-fg); margin-bottom: 6px;">
-                    ยังไม่ได้ตั้งค่าปีการศึกษา
+                    ยังไม่ได้ตั้งค่าปีการศึกษาปัจจุบัน
                 </div>
                 <div style="font-size: 11.5px; color: var(--fg-3); margin-bottom: 12px;">
                     กรุณาเพิ่มหรือเปิดใช้งานปีการศึกษาในหน้าตั้งค่าระบบ

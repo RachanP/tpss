@@ -209,15 +209,189 @@ class CourseOfferingManagementTest extends TestCase
         $this->get(route('maker.course_offerings.show', $offering))->assertForbidden();
     }
 
-    public function test_course_offering_routes_remain_numeric_id_based(): void
+    public function test_course_offering_routes_use_readable_route_keys(): void
     {
         $head = $this->makeUser('course_head');
-        $offering = $this->makeOffering($head, ['course_code' => 'OFFER101']);
+        $year = $this->academicYearNamed('2568', 2);
+        $offering = $this->makeOffering($head, [
+            'course_code' => 'NSBS 231',
+            'academic_year_id' => $year->id,
+        ]);
 
         $url = route('maker.course_offerings.show', $offering);
+        $path = parse_url($url, PHP_URL_PATH);
 
-        $this->assertStringContainsString("/maker/course-offerings/{$offering->id}", $url);
-        $this->assertStringNotContainsString('OFFER101', $url);
+        $this->assertStringContainsString('/maker/course-offerings/nsbs-231-2568-2', $url);
+        $this->assertStringNotContainsString('%20', $url);
+        $this->assertSame('/maker/course-offerings/nsbs-231-2568-2', $path);
+        $this->assertNotSame("/maker/course-offerings/{$offering->id}", $path);
+    }
+
+    public function test_readable_course_offering_route_binds_for_management_actions(): void
+    {
+        $head = $this->makeUser('course_head');
+        $instructor = $this->makeUser('instructor');
+        $offering = $this->makeOffering($head, [
+            'course_code' => 'NSBS 232',
+            'academic_year_id' => $this->academicYearNamed('2568', 2)->id,
+            'total_student_count' => 30,
+        ]);
+        $offering->instructorPool()->attach($instructor->id, ['role_in_course' => 'instructor']);
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.course_offerings.show', $offering))
+            ->assertOk()
+            ->assertSee('NSBS 232');
+
+        $this->from(route('maker.course_offerings.show', $offering))
+            ->put(route('maker.course_offerings.update', $offering), [
+                'requires_practicum_rotation' => 0,
+            ])
+            ->assertRedirect(route('maker.course_offerings.show', $offering) . '#course-info')
+            ->assertSessionHasNoErrors();
+
+        $this->from(route('maker.course_offerings.show', $offering))
+            ->post(route('maker.course_offerings.student_groups.store', $offering), [
+                'group_code' => 'A1',
+                'student_count' => 10,
+            ])
+            ->assertRedirect($this->studentGroupsUrl($offering))
+            ->assertSessionHasNoErrors();
+
+        $this->from(route('maker.course_offerings.show', $offering))
+            ->patch(route('maker.course_offerings.instructors.role', [$offering, $instructor]), [
+                'course_role_id' => null,
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->from(route('maker.course_offerings.show', $offering))
+            ->delete(route('maker.course_offerings.instructors.destroy', [$offering, $instructor]))
+            ->assertSessionHasNoErrors();
+
+        $group = $offering->studentGroups()->firstOrFail();
+
+        $this->from(route('maker.course_offerings.show', $offering))
+            ->delete(route('maker.course_offerings.student_groups.destroy', [$offering, $group]))
+            ->assertSessionHasNoErrors();
+    }
+
+    public function test_legacy_numeric_course_offering_urls_still_resolve(): void
+    {
+        $head = $this->makeUser('course_head');
+        $offering = $this->makeOffering($head, ['course_code' => 'LEGACY101']);
+
+        $this->actingAsCourseHead($head);
+
+        $this->get("/maker/course-offerings/{$offering->id}")
+            ->assertOk()
+            ->assertSee('LEGACY101');
+    }
+
+    public function test_legacy_numeric_course_offering_urls_keep_authorization(): void
+    {
+        $head = $this->makeUser('course_head');
+        $otherHead = $this->makeUser('course_head');
+        $offering = $this->makeOffering($otherHead, ['course_code' => 'LEGACY403']);
+
+        $this->actingAsCourseHead($head);
+
+        $this->get("/maker/course-offerings/{$offering->id}")->assertForbidden();
+    }
+
+    public function test_duplicate_course_code_across_academic_years_gets_distinct_urls(): void
+    {
+        $head = $this->makeUser('course_head');
+        $course = $this->makeCourse(['course_code' => 'NSBS 233']);
+        $firstOffering = $this->makeOffering($head, [
+            'course_id' => $course->id,
+            'academic_year_id' => $this->academicYearNamed('2568', 1)->id,
+        ]);
+        $secondOffering = $this->makeOffering($head, [
+            'course_id' => $course->id,
+            'academic_year_id' => $this->academicYearNamed('2569', 1)->id,
+        ]);
+
+        $this->assertSame('/maker/course-offerings/nsbs-233-2568-1', $this->offeringPath($firstOffering));
+        $this->assertSame('/maker/course-offerings/nsbs-233-2569-1', $this->offeringPath($secondOffering));
+    }
+
+    public function test_route_key_appends_id_when_readable_base_collides(): void
+    {
+        $head = $this->makeUser('course_head');
+        $year = $this->academicYearNamed('2568', 2);
+        $firstCurriculum = Curriculum::create([
+            'name' => 'Collision Curriculum A',
+            'effective_year' => 2565,
+            'is_active' => true,
+        ]);
+        $secondCurriculum = Curriculum::create([
+            'name' => 'Collision Curriculum B',
+            'effective_year' => 2566,
+            'is_active' => true,
+        ]);
+        $firstCourse = $this->makeCourse([
+            'course_code' => 'NSBS 234',
+            'curriculum_id' => $firstCurriculum->id,
+        ]);
+        $secondCourse = $this->makeCourse([
+            'course_code' => 'NSBS 234',
+            'curriculum_id' => $secondCurriculum->id,
+        ]);
+        $firstOffering = $this->makeOffering($head, [
+            'course_id' => $firstCourse->id,
+            'academic_year_id' => $year->id,
+        ]);
+        $secondOffering = $this->makeOffering($head, [
+            'course_id' => $secondCourse->id,
+            'academic_year_id' => $year->id,
+        ]);
+
+        $this->assertSame(
+            "/maker/course-offerings/nsbs-234-2568-2-{$firstOffering->id}",
+            $this->offeringPath($firstOffering)
+        );
+        $this->assertSame(
+            "/maker/course-offerings/nsbs-234-2568-2-{$secondOffering->id}",
+            $this->offeringPath($secondOffering)
+        );
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.course_offerings.show', $firstOffering))
+            ->assertOk()
+            ->assertSee('NSBS 234');
+    }
+
+    public function test_ambiguous_readable_course_offering_url_without_id_returns_not_found(): void
+    {
+        $head = $this->makeUser('course_head');
+        $year = $this->academicYearNamed('2568', 2);
+        $firstCurriculum = Curriculum::create([
+            'name' => 'Ambiguous Curriculum A',
+            'effective_year' => 2565,
+            'is_active' => true,
+        ]);
+        $secondCurriculum = Curriculum::create([
+            'name' => 'Ambiguous Curriculum B',
+            'effective_year' => 2566,
+            'is_active' => true,
+        ]);
+
+        foreach ([$firstCurriculum, $secondCurriculum] as $curriculum) {
+            $course = $this->makeCourse([
+                'course_code' => 'NSBS 235',
+                'curriculum_id' => $curriculum->id,
+            ]);
+            $this->makeOffering($head, [
+                'course_id' => $course->id,
+                'academic_year_id' => $year->id,
+            ]);
+        }
+
+        $this->actingAsCourseHead($head);
+
+        $this->get('/maker/course-offerings/nsbs-235-2568-2')->assertNotFound();
     }
 
     public function test_detail_renders_core_fields_from_course_master(): void
@@ -663,11 +837,23 @@ class CourseOfferingManagementTest extends TestCase
         ]);
     }
 
-    private function academicYear(int $number, string $phase = 'scheduling'): AcademicYear
+    private function academicYear(int $number, string $phase = 'scheduling', int $semester = 1): AcademicYear
     {
         return AcademicYear::create([
             'name' => "2569-{$number}",
-            'semester' => 1,
+            'semester' => $semester,
+            'start_date' => '2026-08-01',
+            'end_date' => '2026-12-31',
+            'is_active' => true,
+            'phase' => $phase,
+        ]);
+    }
+
+    private function academicYearNamed(string $name, int $semester, string $phase = 'scheduling'): AcademicYear
+    {
+        return AcademicYear::create([
+            'name' => $name,
+            'semester' => $semester,
             'start_date' => '2026-08-01',
             'end_date' => '2026-12-31',
             'is_active' => true,
