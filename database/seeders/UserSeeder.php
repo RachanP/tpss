@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\User;
 use App\Models\UserRole;
 use App\Models\InstructorProfile;
+use App\Models\Department;
 use Illuminate\Database\Seeder;
 
 class UserSeeder extends Seeder
@@ -12,6 +13,8 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         $password = 'password';
+        $mentalHealthDepartmentId = Department::where('name', 'ภาควิชาสุขภาพจิต และการพยาบาลจิตเวชศาสตร์')->value('id');
+        $foundationDepartmentId = Department::where('name', 'ภาควิชาการพยาบาลรากฐาน')->value('id');
 
         $users = [
             // ─── Admin ────────────────────────────────────────────────────────
@@ -30,7 +33,7 @@ class UserSeeder extends Seeder
                 // ผู้ช่วยอาจารย์ + ป.โท: สอน ≤70%, วิจัย 15-20%, บริการ 5-20%, ศิลปะ 0-15%, อื่นๆ 0-20%
                 'profile' => [
                     'title'           => 'ผู้ช่วยอาจารย์',
-                    'department_id'   => 3,
+                    'department_id'   => $mentalHealthDepartmentId,
                     'employment_type' => 'พนักงานมหาวิทยาลัย',
                     'academic_degree' => 'ปริญญาโท',
                     'hired_at'        => '2020-01-15',
@@ -57,7 +60,7 @@ class UserSeeder extends Seeder
                 // ศาสตราจารย์ + ป.เอก: สอน 20-70%, วิจัย 20-70%, บริการ 5-20%, ศิลปะ 5-15%, อื่นๆ 0-20%
                 'profile' => [
                     'title'           => 'ศาสตราจารย์',
-                    'department_id'   => 3,
+                    'department_id'   => $mentalHealthDepartmentId,
                     'employment_type' => 'ข้าราชการ',
                     'academic_degree' => 'ปริญญาเอก',
                     'hired_at'        => '2010-05-20',
@@ -85,7 +88,7 @@ class UserSeeder extends Seeder
                 // รองศาสตราจารย์ + ป.เอก: สอน 20-70%, วิจัย 20-70%, บริการ 5-20%, ศิลปะ 5-15%, อื่นๆ 0-20%
                 'profile' => [
                     'title'           => 'รองศาสตราจารย์',
-                    'department_id'   => 1,
+                    'department_id'   => $foundationDepartmentId,
                     'employment_type' => 'พนักงานมหาวิทยาลัย',
                     'academic_degree' => 'ปริญญาเอก',
                     'hired_at'        => '2005-10-10',

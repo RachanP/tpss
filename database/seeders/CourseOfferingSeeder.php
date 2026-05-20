@@ -13,9 +13,9 @@ class CourseOfferingSeeder extends Seeder
 {
     public function run(): void
     {
-        $year = AcademicYear::where('is_active', true)->first() ?? AcademicYear::first();
+        $year = AcademicYear::where('is_active', true)->first();
         if (!$year) {
-            $this->command->warn('ไม่พบปีการศึกษา — ข้ามการ seed course offerings');
+            $this->command->info('CourseOfferingSeeder: ข้ามแล้ว — ยังไม่ได้เลือกปีการศึกษาปัจจุบัน');
             return;
         }
 

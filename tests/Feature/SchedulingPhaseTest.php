@@ -153,6 +153,24 @@ class SchedulingPhaseTest extends TestCase
         $this->assertSame('published', $year->fresh()->phase);
     }
 
+    public function test_settings_page_shows_scheduling_action_only_for_current_year(): void
+    {
+        $admin = $this->makeAdmin();
+        $currentYear = $this->makeYear(['name' => '2570', 'semester' => 1, 'is_active' => true]);
+        $otherYear = $this->makeYear(['name' => '2569', 'semester' => 2, 'is_active' => false]);
+
+        $this->seedCriticalsBaseline();
+        $this->actingAsAdmin($admin);
+
+        $response = $this->get(route('admin.settings', ['tab' => 'academic']));
+
+        $response
+            ->assertOk()
+            ->assertSee('open-scheduling-' . $currentYear->id, false)
+            ->assertDontSee('open-scheduling-' . $otherYear->id, false)
+            ->assertSee('ตั้งเป็นปีปัจจุบันก่อน');
+    }
+
     // ── Admin: Close Scheduling Window ───────────────────────────────
 
     public function test_close_reverts_phase_to_preparation(): void

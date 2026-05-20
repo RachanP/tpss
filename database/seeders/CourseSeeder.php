@@ -45,7 +45,7 @@ class CourseSeeder extends Seeder
                 'color_code' => '#3b82f6',
                 'department_id' => $deptFoundation->id ?? 1,
                 'head_instructor_id' => $headRachan?->id,
-                'status' => 'active',
+                'status' => 'inactive',
                 'staff_usernames' => ['staff_01'],
                 'instructors' => [
                     'somsak_t' => 'อาจารย์ผู้สอน',
@@ -68,7 +68,7 @@ class CourseSeeder extends Seeder
                 'color_code' => '#10b981',
                 'department_id' => $deptFoundation->id ?? 1,
                 'head_instructor_id' => $headRachan?->id,
-                'status' => 'active',
+                'status' => 'inactive',
                 'prerequisite_codes' => ['NSBS 111'],
                 'staff_usernames' => ['staff_01'],
                 'instructors' => [
@@ -92,7 +92,7 @@ class CourseSeeder extends Seeder
                 'color_code' => '#8b5cf6',
                 'department_id' => $deptMental->id ?? 3,
                 'head_instructor_id' => $headPronpimon?->id,
-                'status' => 'active',
+                'status' => 'inactive',
                 'prerequisite_codes' => ['NSBS 111'],
                 'staff_usernames' => ['staff_01'],
                 'instructors' => [
@@ -116,7 +116,7 @@ class CourseSeeder extends Seeder
                 'color_code' => '#f59e0b',
                 'department_id' => $deptFoundation->id ?? 1,
                 'head_instructor_id' => $headPronpimon?->id,
-                'status' => 'active',
+                'status' => 'inactive',
                 'prerequisite_codes' => ['NSBS 212'],
                 'staff_usernames' => ['staff_01'],
                 'instructors' => [
@@ -140,7 +140,7 @@ class CourseSeeder extends Seeder
                 'color_code' => '#0891b2',
                 'department_id' => $deptAdult->id ?? $deptFoundation->id ?? 1,
                 'head_instructor_id' => $headSomsak?->id ?? $headRachan?->id,
-                'status' => 'active',
+                'status' => 'inactive',
                 'prerequisite_codes' => ['NSBS 111'],
                 'staff_usernames' => ['staff_01'],
                 'instructors' => [
@@ -164,7 +164,7 @@ class CourseSeeder extends Seeder
                 'color_code' => '#db2777',
                 'department_id' => $deptFoundation->id ?? 1,
                 'head_instructor_id' => $headRachan?->id,
-                'status' => 'active',
+                'status' => 'inactive',
                 'prerequisite_codes' => ['NSBS 111'],
                 'staff_usernames' => ['staff_01'],
                 'instructors' => [
@@ -188,7 +188,7 @@ class CourseSeeder extends Seeder
                 'color_code' => '#7c3aed',
                 'department_id' => $deptMental->id ?? 3,
                 'head_instructor_id' => $headPronpimon?->id,
-                'status' => 'active',
+                'status' => 'inactive',
                 'prerequisite_codes' => ['NSBS 213'],
                 'staff_usernames' => ['staff_01'],
                 'instructors' => [
