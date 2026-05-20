@@ -25,7 +25,7 @@ class AcademicYearSeeder extends Seeder
                 'semester' => 2,
                 'start_date' => '2025-11-01',
                 'end_date' => '2026-03-15',
-                'is_active' => true,
+                'is_active' => false,
             ],
             [
                 'name' => '2569',

@@ -117,7 +117,7 @@
         </div>
         <div class="st-card">
             <div class="st-val">{{ $lectureHours }} / {{ $labHours }}</div>
-            <div class="st-lbl">ชม.บรรยาย / ชม.ปฏิบัติ</div>
+            <div class="st-lbl">บรรยาย / ปฏิบัติ (ชั่วโมง)</div>
         </div>
     </div>
 

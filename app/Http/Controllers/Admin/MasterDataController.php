@@ -11,6 +11,8 @@ use App\Models\Course;
 use App\Models\CourseRole;
 use App\Models\Curriculum;
 use App\Models\ActivityType;
+use App\Services\AuditLogger;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -26,6 +28,7 @@ class MasterDataController extends Controller
 
     private const COURSE_CODE_ALLOWED_REGEX = '/^[A-Za-z0-9 _-]+$/';
     private const COURSE_CODE_ALLOWED_MESSAGE = 'รหัสวิชาต้องใช้เฉพาะตัวอักษรภาษาอังกฤษ ตัวเลข ช่องว่าง ขีดกลาง หรือขีดล่าง';
+    private const COURSE_MANAGEMENT_CATEGORY = 'รายวิชาและผู้รับผิดชอบ';
 
     public function index()
     {
@@ -133,6 +136,83 @@ class MasterDataController extends Controller
         return redirect()->route($this->masterDataRouteName(), ['tab' => $tab]);
     }
 
+    private function auditSnapshot(Model $model, array $fields): array
+    {
+        return collect($model->only($fields))
+            ->map(fn ($value) => $value instanceof \DateTimeInterface ? $value->format('Y-m-d') : $value)
+            ->all();
+    }
+
+    private function auditDiff(array $before, array $after): array
+    {
+        $old = [];
+        $new = [];
+
+        foreach ($after as $key => $value) {
+            $beforeValue = $before[$key] ?? null;
+
+            if ($this->normalizeAuditValue($beforeValue) !== $this->normalizeAuditValue($value)) {
+                $old[$key] = $beforeValue;
+                $new[$key] = $value;
+            }
+        }
+
+        return [$old, $new];
+    }
+
+    private function normalizeAuditValue(mixed $value): mixed
+    {
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('Y-m-d');
+        }
+
+        if (is_array($value)) {
+            return array_values($value);
+        }
+
+        return $value;
+    }
+
+    private function logMasterDataCreate(string $table, int $recordId, array $newValues, string $description): void
+    {
+        AuditLogger::log(
+            action: 'ข้อมูลหลัก.สร้าง',
+            table: $table,
+            recordId: $recordId,
+            oldValues: null,
+            newValues: $newValues,
+            description: $description,
+        );
+    }
+
+    private function logMasterDataUpdate(string $table, int $recordId, array $oldValues, array $newValues, string $description): void
+    {
+        if (empty($oldValues) && empty($newValues)) {
+            return;
+        }
+
+        AuditLogger::log(
+            action: 'ข้อมูลหลัก.แก้ไข',
+            table: $table,
+            recordId: $recordId,
+            oldValues: $oldValues,
+            newValues: $newValues,
+            description: $description,
+        );
+    }
+
+    private function logMasterDataDelete(string $table, int $recordId, array $oldValues, ?array $newValues, string $description): void
+    {
+        AuditLogger::log(
+            action: 'ข้อมูลหลัก.ลบ',
+            table: $table,
+            recordId: $recordId,
+            oldValues: $oldValues,
+            newValues: $newValues,
+            description: $description,
+        );
+    }
+
     private function paCriteriaGroup(string $title, string $degree, ?string $hiredAt = null, bool $isEnglishPassed = false): string
     {
         $isNote1 = $title === 'ผู้ช่วยอาจารย์'
@@ -192,7 +272,14 @@ class MasterDataController extends Controller
         ]);
         $validated['requires_capacity'] = $request->boolean('requires_capacity');
 
-        LocationType::create($validated);
+        $locationType = LocationType::create($validated);
+
+        $this->logMasterDataCreate(
+            'location_types',
+            $locationType->id,
+            $this->auditSnapshot($locationType, ['name', 'requires_capacity']),
+            "สร้างประเภทสถานที่ {$locationType->name}",
+        );
 
         return $this->redirectToMasterData('location_types')->with('success', 'เพิ่มประเภทสถานที่เรียบร้อยแล้ว');
     }
@@ -204,7 +291,20 @@ class MasterDataController extends Controller
         ]);
         $validated['requires_capacity'] = $request->boolean('requires_capacity');
 
+        $fields = ['name', 'requires_capacity'];
+        $before = $this->auditSnapshot($locationType, $fields);
+
         $locationType->update($validated);
+
+        $after = $this->auditSnapshot($locationType->fresh(), $fields);
+        [$oldValues, $newValues] = $this->auditDiff($before, $after);
+        $this->logMasterDataUpdate(
+            'location_types',
+            $locationType->id,
+            $oldValues,
+            $newValues,
+            "แก้ไขประเภทสถานที่ {$locationType->name}",
+        );
 
         return $this->redirectToMasterData('location_types')->with('success', 'อัปเดตประเภทสถานที่เรียบร้อยแล้ว');
     }
@@ -228,7 +328,14 @@ class MasterDataController extends Controller
             $validated['equipment_type'] = [];
         }
 
-        Room::create($validated);
+        $room = Room::create($validated);
+
+        $this->logMasterDataCreate(
+            'rooms',
+            $room->id,
+            $this->auditSnapshot($room, ['room_code', 'room_name', 'building', 'capacity', 'location_type_id', 'status', 'address', 'equipment_type']),
+            "สร้างห้อง {$room->room_code}",
+        );
 
         return $this->redirectToMasterData('location_types')->with('success', 'เพิ่มห้อง/สถานที่เรียบร้อยแล้ว');
     }
@@ -252,7 +359,20 @@ class MasterDataController extends Controller
             $validated['equipment_type'] = [];
         }
 
+        $fields = ['room_code', 'room_name', 'building', 'capacity', 'location_type_id', 'status', 'address', 'equipment_type'];
+        $before = $this->auditSnapshot($room, $fields);
+
         $room->update($validated);
+
+        $after = $this->auditSnapshot($room->fresh(), $fields);
+        [$oldValues, $newValues] = $this->auditDiff($before, $after);
+        $this->logMasterDataUpdate(
+            'rooms',
+            $room->id,
+            $oldValues,
+            $newValues,
+            "แก้ไขห้อง {$room->room_code}",
+        );
 
         return $this->redirectToMasterData('location_types')->with('success', 'อัปเดตห้อง/สถานที่เรียบร้อยแล้ว');
     }
@@ -265,7 +385,13 @@ class MasterDataController extends Controller
             'secretary_user_id' => 'nullable|exists:users,id',
         ]);
 
-        Department::create($validated);
+        $department = Department::create($validated);
+        $this->logMasterDataCreate(
+            'departments',
+            $department->id,
+            $this->auditSnapshot($department, ['name', 'head_user_id', 'secretary_user_id']),
+            "สร้างภาควิชา {$department->name}",
+        );
         AlertController::flushCache();
         return redirect()->back()->with('success', 'เพิ่มภาควิชาเรียบร้อยแล้ว');
     }
@@ -296,7 +422,20 @@ class MasterDataController extends Controller
             }
         }
 
+        $fields = ['name', 'head_user_id', 'secretary_user_id'];
+        $before = $this->auditSnapshot($department, $fields);
+
         $department->update($validated);
+
+        $after = $this->auditSnapshot($department->fresh(), $fields);
+        [$oldValues, $newValues] = $this->auditDiff($before, $after);
+        $this->logMasterDataUpdate(
+            'departments',
+            $department->id,
+            $oldValues,
+            $newValues,
+            "แก้ไขภาควิชา {$department->name}",
+        );
         AlertController::flushCache();
         return redirect()->back()->with('success', 'อัปเดตภาควิชาเรียบร้อยแล้ว');
     }
@@ -351,6 +490,22 @@ class MasterDataController extends Controller
             return redirect()->back()->withErrors(['teaching_pct' => "สัดส่วนรวมทั้งหมดต้องเท่ากับ 100% (ปัจจุบัน: {$total}%)"])->withInput();
         }
 
+        $userFields = ['name', 'prefix', 'employee_id'];
+        $profileFields = [
+            'title',
+            'academic_degree',
+            'department_id',
+            'employment_type',
+            'hired_at',
+            'is_english_passed',
+            'teaching_pct',
+            'research_pct',
+            'service_pct',
+            'culture_pct',
+            'other_pct',
+        ];
+        $before = $this->auditSnapshot($user, $userFields) + ($profile ? $this->auditSnapshot($profile, $profileFields) : []);
+
         // Update user name, prefix, and employee_id
         $user->update(['name' => $request->name, 'prefix' => $request->prefix, 'employee_id' => $request->employee_id ?: null]);
 
@@ -378,6 +533,18 @@ class MasterDataController extends Controller
                 'other_pct'       => $request->other_pct,
             ]);
         }
+
+        $user->refresh();
+        $profile = $user->instructorProfile;
+        $after = $this->auditSnapshot($user, $userFields) + ($profile ? $this->auditSnapshot($profile, $profileFields) : []);
+        [$oldValues, $newValues] = $this->auditDiff($before, $after);
+        $this->logMasterDataUpdate(
+            'instructor_profiles',
+            $profile?->id ?? $user->id,
+            $oldValues,
+            $newValues,
+            "แก้ไขข้อมูลอาจารย์ {$user->name}",
+        );
 
         AlertController::flushCache();
         return redirect()->back()->with('success', 'อัปเดตข้อมูลอาจารย์เรียบร้อยแล้ว');
@@ -439,6 +606,21 @@ class MasterDataController extends Controller
         $this->syncCourseInstructors($course, $instructorIds, $instructorRoleIds);
         $course->prerequisites()->sync($prerequisiteIds);
 
+        AuditLogger::log(
+            action:      'ข้อมูลหลัก.สร้าง',
+            table:       'courses',
+            recordId:    $course->id,
+            oldValues:   null,
+            newValues:   [
+                'course_code'        => $course->course_code,
+                'name_th'            => $course->name_th,
+                'status'             => $course->status,
+                'credits'            => $course->credits,
+                'head_instructor_id' => $course->head_instructor_id,
+            ],
+            description: "สร้างรายวิชา {$course->course_code} {$course->name_th}",
+        );
+
         return $this->redirectToMasterData('courses')->with('success', 'เพิ่มรายวิชาเรียบร้อยแล้ว');
     }
 
@@ -472,12 +654,49 @@ class MasterDataController extends Controller
         }
         unset($validated['staff_ids'], $validated['instructor_ids'], $validated['instructor_role_ids'], $validated['prerequisite_ids']);
 
+        // Snapshot auditable fields before update
+        $auditFields = ['course_code', 'name_th', 'status', 'credits', 'head_instructor_id', 'default_semester'];
+        $auditBefore = $course->only($auditFields);
+        $responsibilityBefore = $assignmentsLocked ? null : $this->courseResponsibilitySnapshot($course);
+
         $course->update($validated);
         if (! $assignmentsLocked) {
             $course->assignedStaff()->sync($staffIds);
             $this->syncCourseInstructors($course, $instructorIds, $instructorRoleIds);
         }
         $course->prerequisites()->sync($prerequisiteIds);
+
+        // Diff and log only when something actually changed
+        $auditAfter = $course->fresh()->only($auditFields);
+        $diff = AuditLogger::diff($auditBefore, $auditAfter);
+        if (!empty($diff['old']) || !empty($diff['new'])) {
+            AuditLogger::log(
+                action:      'ข้อมูลหลัก.แก้ไข',
+                table:       'courses',
+                recordId:    $course->id,
+                oldValues:   $diff['old'] ?: null,
+                newValues:   $diff['new'] ?: null,
+                description: "แก้ไขรายวิชา {$course->course_code} {$course->name_th}",
+            );
+        }
+
+        if (! $assignmentsLocked && $responsibilityBefore !== null) {
+            $freshCourse = $course->fresh();
+            $responsibilityAfter = $this->courseResponsibilitySnapshot($freshCourse);
+            $responsibilityDiff = AuditLogger::diff($responsibilityBefore, $responsibilityAfter);
+
+            if (!empty($responsibilityDiff['old']) || !empty($responsibilityDiff['new'])) {
+                AuditLogger::log(
+                    action: self::COURSE_MANAGEMENT_CATEGORY . '.แก้ไข',
+                    table: 'course_instructors',
+                    recordId: $course->id,
+                    oldValues: $responsibilityDiff['old'] ?: null,
+                    newValues: ($responsibilityDiff['new'] ?: []) + $this->courseAuditContext($freshCourse),
+                    category: self::COURSE_MANAGEMENT_CATEGORY,
+                    description: "แก้ไขผู้รับผิดชอบรายวิชา {$freshCourse->course_code} {$freshCourse->name_th}",
+                );
+            }
+        }
 
         return $this->redirectToMasterData('courses')->with('success', 'อัปเดตข้อมูลรายวิชาเรียบร้อยแล้ว');
     }
@@ -564,6 +783,37 @@ class MasterDataController extends Controller
         $course->instructors()->sync($syncPayload);
     }
 
+    private function courseResponsibilitySnapshot(Course $course): array
+    {
+        $roles = CourseRole::pluck('name_th', 'id');
+        $head = $course->head_instructor_id ? User::find($course->head_instructor_id) : null;
+
+        return [
+            'head_instructor_id' => $course->head_instructor_id,
+            'head_instructor_name' => $head?->formatted_name ?? $head?->name,
+            'responsible_instructors' => $course->instructors()
+                ->orderBy('users.id')
+                ->get()
+                ->map(fn (User $user) => [
+                    'user_id' => $user->id,
+                    'instructor_name' => $user->formatted_name ?? $user->name,
+                    'course_role_id' => $user->pivot->course_role_id ? (int) $user->pivot->course_role_id : null,
+                    'course_role_name' => $user->pivot->course_role_id ? ($roles[$user->pivot->course_role_id] ?? null) : null,
+                ])
+                ->values()
+                ->all(),
+        ];
+    }
+
+    private function courseAuditContext(Course $course): array
+    {
+        return [
+            'course_id' => $course->id,
+            'course_code' => $course->course_code,
+            'course_name' => $course->name_th,
+        ];
+    }
+
     public function storeCurriculum(Request $request)
     {
         $this->normalizeCurriculumInput($request);
@@ -575,7 +825,14 @@ class MasterDataController extends Controller
 
         $validated['duration_years'] = $validated['duration_years'] ?? 1;
 
-        Curriculum::create($validated);
+        $curriculum = Curriculum::create($validated);
+
+        $this->logMasterDataCreate(
+            'curriculums',
+            $curriculum->id,
+            $this->auditSnapshot($curriculum, ['name', 'effective_year', 'education_level', 'duration_years', 'uses_year_level', 'total_credits_required', 'is_active']),
+            "สร้างหลักสูตร {$curriculum->name}",
+        );
 
         return $this->redirectToMasterData('curriculums')->with('success', 'เพิ่มหลักสูตรเรียบร้อยแล้ว');
     }
@@ -591,12 +848,27 @@ class MasterDataController extends Controller
 
         $validated['duration_years'] = $validated['duration_years'] ?? $curriculum->duration_years ?? 1;
 
-        // ถ้าเปลี่ยน uses_year_level เป็น false → เคลียร์ default_year_level ของทุกวิชาในหลักสูตร
-        if (! $validated['uses_year_level']) {
-            $curriculum->courses()->update(['default_year_level' => null]);
-        }
+        $fields = ['name', 'effective_year', 'education_level', 'duration_years', 'uses_year_level', 'total_credits_required', 'is_active'];
+        $before = $this->auditSnapshot($curriculum, $fields);
 
-        $curriculum->update($validated);
+        DB::transaction(function () use ($curriculum, $validated) {
+            // ถ้าเปลี่ยน uses_year_level เป็น false → เคลียร์ default_year_level ของทุกวิชาในหลักสูตร
+            if (! $validated['uses_year_level']) {
+                $curriculum->courses()->update(['default_year_level' => null]);
+            }
+
+            $curriculum->update($validated);
+        });
+
+        $after = $this->auditSnapshot($curriculum->fresh(), $fields);
+        [$oldValues, $newValues] = $this->auditDiff($before, $after);
+        $this->logMasterDataUpdate(
+            'curriculums',
+            $curriculum->id,
+            $oldValues,
+            $newValues,
+            "แก้ไขหลักสูตร {$curriculum->name}",
+        );
 
         return $this->redirectToMasterData('curriculums')->with('success', 'อัปเดตข้อมูลหลักสูตรเรียบร้อยแล้ว');
     }
@@ -643,8 +915,20 @@ class MasterDataController extends Controller
 
     public function destroyDepartment(Department $department)
     {
+        $snapshot = $this->auditSnapshot($department, ['name', 'head_user_id', 'secretary_user_id']);
+        $departmentId = $department->id;
+
         try {
             $department->delete();
+
+            $this->logMasterDataDelete(
+                'departments',
+                $departmentId,
+                $snapshot,
+                null,
+                "ลบภาควิชา {$snapshot['name']}",
+            );
+
             return $this->redirectToMasterData('departments')->with('success', 'ลบภาควิชาเรียบร้อยแล้ว');
         } catch (\Illuminate\Database\QueryException $e) {
             return redirect()->back()->with('error', 'ไม่สามารถลบได้เนื่องจากมีข้อมูลผูกพันอยู่ (เช่น มีอาจารย์หรือวิชาสังกัดอยู่)');
@@ -653,9 +937,22 @@ class MasterDataController extends Controller
 
     public function destroyLocationType(LocationType $locationType)
     {
+        $snapshot = $this->auditSnapshot($locationType, ['name', 'requires_capacity']);
+        $locationTypeId = $locationType->id;
         $affected = $locationType->rooms()->count();
-        $locationType->rooms()->delete();
-        $locationType->delete();
+
+        DB::transaction(function () use ($locationType) {
+            $locationType->rooms()->delete();
+            $locationType->delete();
+        });
+
+        $this->logMasterDataDelete(
+            'location_types',
+            $locationTypeId,
+            $snapshot,
+            ['deleted_room_count' => $affected],
+            "ลบประเภทสถานที่ {$snapshot['name']}",
+        );
 
         $msg = 'ลบประเภทสถานที่เรียบร้อยแล้ว';
         if ($affected > 0) {
@@ -666,8 +963,20 @@ class MasterDataController extends Controller
 
     public function destroyRoom(Room $room)
     {
+        $snapshot = $this->auditSnapshot($room, ['room_code', 'room_name', 'building', 'capacity', 'location_type_id', 'status', 'address', 'equipment_type']);
+        $roomId = $room->id;
+
         try {
             $room->delete();
+
+            $this->logMasterDataDelete(
+                'rooms',
+                $roomId,
+                $snapshot,
+                null,
+                "ลบห้อง {$snapshot['room_code']}",
+            );
+
             return $this->redirectToMasterData('location_types')->with('success', 'ลบห้องเรียบร้อยแล้ว');
         } catch (\Illuminate\Database\QueryException $e) {
             return redirect()->back()->with('error', 'ไม่สามารถลบได้เนื่องจากมีข้อมูลผูกพันอยู่');
@@ -676,8 +985,21 @@ class MasterDataController extends Controller
 
     public function destroyCourse(Course $course)
     {
+        $snapshot  = ['course_code' => $course->course_code, 'name_th' => $course->name_th, 'status' => $course->status];
+        $courseId  = $course->id;
+
         try {
             $course->delete();
+
+            AuditLogger::log(
+                action:      'ข้อมูลหลัก.ลบ',
+                table:       'courses',
+                recordId:    $courseId,
+                oldValues:   $snapshot,
+                newValues:   null,
+                description: "ลบรายวิชา {$snapshot['course_code']} {$snapshot['name_th']}",
+            );
+
             return $this->redirectToMasterData('courses')->with('success', 'ลบรายวิชาเรียบร้อยแล้ว');
         } catch (\Illuminate\Database\QueryException $e) {
             return redirect()->back()->with('error', 'ไม่สามารถลบได้เนื่องจากมีข้อมูลการสอนผูกอยู่');
@@ -687,6 +1009,8 @@ class MasterDataController extends Controller
     public function destroyCurriculum(Request $request, Curriculum $curriculum)
     {
         try {
+            $snapshot = $this->auditSnapshot($curriculum, ['name', 'effective_year', 'education_level', 'duration_years', 'uses_year_level', 'total_credits_required', 'is_active']);
+            $curriculumId = $curriculum->id;
             $courses = $curriculum->courses()->withCount('courseOfferings')->get();
             $blockedCourses = $courses->filter(fn($course) => $course->course_offerings_count > 0);
 
@@ -720,6 +1044,14 @@ class MasterDataController extends Controller
                 $curriculum->delete();
             });
 
+            $this->logMasterDataDelete(
+                'curriculums',
+                $curriculumId,
+                $snapshot,
+                ['deleted_course_count' => $deletedCourseCount],
+                "ลบหลักสูตร {$snapshot['name']}",
+            );
+
             $message = 'ลบหลักสูตรเรียบร้อยแล้ว';
             if ($deletedCourseCount > 0) {
                 $message .= " (ลบรายวิชาในหลักสูตรออก {$deletedCourseCount} วิชา)";
@@ -740,7 +1072,15 @@ class MasterDataController extends Controller
             'color_code' => 'required|string|max:10',
             'category'   => 'required|in:lecture,practicum,thesis,other',
         ]);
-        ActivityType::create($validated);
+        $activityType = ActivityType::create($validated);
+
+        $this->logMasterDataCreate(
+            'activity_types',
+            $activityType->id,
+            $this->auditSnapshot($activityType, ['name', 'color_code', 'category']),
+            "สร้างประเภทกิจกรรม {$activityType->name}",
+        );
+
         return $this->redirectToMasterData('activity_types')->with('success', 'เพิ่มประเภทกิจกรรมเรียบร้อยแล้ว');
     }
 
@@ -751,14 +1091,40 @@ class MasterDataController extends Controller
             'color_code' => 'required|string|max:10',
             'category'   => 'required|in:lecture,practicum,thesis,other',
         ]);
+        $fields = ['name', 'color_code', 'category'];
+        $before = $this->auditSnapshot($activityType, $fields);
+
         $activityType->update($validated);
+
+        $after = $this->auditSnapshot($activityType->fresh(), $fields);
+        [$oldValues, $newValues] = $this->auditDiff($before, $after);
+        $this->logMasterDataUpdate(
+            'activity_types',
+            $activityType->id,
+            $oldValues,
+            $newValues,
+            "แก้ไขประเภทกิจกรรม {$activityType->name}",
+        );
+
         return $this->redirectToMasterData('activity_types')->with('success', 'อัปเดตประเภทกิจกรรมเรียบร้อยแล้ว');
     }
 
     public function destroyActivityType(ActivityType $activityType)
     {
+        $snapshot = $this->auditSnapshot($activityType, ['name', 'color_code', 'category']);
+        $activityTypeId = $activityType->id;
+
         try {
             $activityType->delete();
+
+            $this->logMasterDataDelete(
+                'activity_types',
+                $activityTypeId,
+                $snapshot,
+                null,
+                "ลบประเภทกิจกรรม {$snapshot['name']}",
+            );
+
             return $this->redirectToMasterData('activity_types')->with('success', 'ลบประเภทกิจกรรมเรียบร้อยแล้ว');
         } catch (\Illuminate\Database\QueryException $e) {
             return redirect()->back()->with('error', 'ไม่สามารถลบได้เนื่องจากมีกิจกรรมผูกอยู่กับประเภทนี้');

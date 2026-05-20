@@ -9,10 +9,49 @@ use App\Models\CourseOffering;
 use App\Models\CourseRole;
 use App\Models\SystemSetting;
 use App\Http\Controllers\Admin\AlertController;
+use App\Services\AuditLogger;
 use Illuminate\Support\Facades\DB;
 
 class AdminSettingController extends Controller
 {
+    private function auditSnapshot(AcademicYear $year): array
+    {
+        return collect($year->only(['name', 'semester', 'start_date', 'end_date', 'is_active']))
+            ->map(fn ($value) => $value instanceof \DateTimeInterface ? $value->format('Y-m-d') : $value)
+            ->all();
+    }
+
+    private function auditDiff(array $before, array $after): array
+    {
+        $old = [];
+        $new = [];
+
+        foreach ($after as $key => $value) {
+            if (($before[$key] ?? null) !== $value) {
+                $old[$key] = $before[$key] ?? null;
+                $new[$key] = $value;
+            }
+        }
+
+        return [$old, $new];
+    }
+
+    private function logAcademicYearUpdate(AcademicYear $year, array $oldValues, array $newValues): void
+    {
+        if (empty($oldValues) && empty($newValues)) {
+            return;
+        }
+
+        AuditLogger::log(
+            action: 'ข้อมูลหลัก.แก้ไข',
+            table: 'academic_years',
+            recordId: $year->id,
+            oldValues: $oldValues,
+            newValues: $newValues,
+            description: "แก้ไขปีการศึกษา {$year->name} ภาค {$year->semester}",
+        );
+    }
+
     public function index()
     {
         $academicYears = AcademicYear::orderBy('name', 'desc')->orderBy('semester', 'desc')->get();
@@ -75,7 +114,17 @@ class AdminSettingController extends Controller
             })->update(['status' => 'inactive']);
         }
 
-        AcademicYear::create($validated);
+        $year = AcademicYear::create($validated);
+
+        AuditLogger::log(
+            action: 'ข้อมูลหลัก.สร้าง',
+            table: 'academic_years',
+            recordId: $year->id,
+            oldValues: null,
+            newValues: $this->auditSnapshot($year),
+            description: "สร้างปีการศึกษา {$year->name} ภาค {$year->semester}",
+        );
+
         AlertController::flushCache();
         return redirect()->route($this->settingsRoute(), ['tab' => 'academic'])->with('success', 'เพิ่มปีการศึกษาเรียบร้อยแล้ว');
     }
@@ -98,6 +147,8 @@ class AdminSettingController extends Controller
             return redirect()->route($this->settingsRoute(), ['tab' => 'academic'])
                 ->with('error', 'ไม่สามารถยกเลิกปีการศึกษาปัจจุบันได้ — ต้องมีปีการศึกษาที่ใช้งานอยู่เสมอ กรุณาตั้งค่าปีการศึกษาอื่นเป็นปัจจุบันก่อน');
         }
+
+        $before = $this->auditSnapshot($year);
 
         if ($validated['is_active']) {
             AcademicYear::where('id', '!=', $year->id)->where('is_active', true)->update(['is_active' => false]);
@@ -123,6 +174,11 @@ class AdminSettingController extends Controller
         }
 
         $year->update($validated);
+
+        $after = $this->auditSnapshot($year->fresh());
+        [$oldValues, $newValues] = $this->auditDiff($before, $after);
+        $this->logAcademicYearUpdate($year->fresh(), $oldValues, $newValues);
+
         AlertController::flushCache();
         return redirect()->route($this->settingsRoute(), ['tab' => 'academic'])->with('success', 'อัปเดตปีการศึกษาเรียบร้อยแล้ว');
     }
@@ -217,6 +273,35 @@ class AdminSettingController extends Controller
         $newMsg = $created > 0 ? "สร้างใหม่ {$created} รายวิชา" : "ไม่มีรายวิชาใหม่";
         $syncMsg = $synced > 0 ? "ซิงก์แม่แบบ {$synced} รายวิชา" : "ไม่พบรายวิชาเดิมที่ต้องซิงก์";
 
+        AuditLogger::log(
+            action:      'ตั้งค่าระบบ.เปิดช่วงจัดตาราง',
+            table:       'academic_years',
+            recordId:    $year->id,
+            oldValues:   ['phase' => 'preparation'],
+            newValues:   ['phase' => 'scheduling', 'offerings_created' => $created, 'offerings_synced' => $synced],
+            description: "เปิดช่วงจัดตารางปีการศึกษา {$year->name} ภาค {$year->semester}",
+        );
+
+        if ($created > 0 || $synced > 0) {
+            AuditLogger::log(
+                action:      'รายวิชาและผู้รับผิดชอบ.ซิงก์ข้อมูล',
+                table:       'course_offerings',
+                recordId:    $year->id,
+                oldValues:   null,
+                newValues:   [
+                    'academic_year_id' => $year->id,
+                    'academic_year_name' => $year->name,
+                    'semester' => $year->semester,
+                    'offerings_created' => $created,
+                    'offerings_synced' => $synced,
+                    'affected_count' => $synced ?: $created,
+                    'sample_course_codes' => $courses->pluck('course_code')->take(5)->values()->all(),
+                ],
+                category:    'รายวิชาและผู้รับผิดชอบ',
+                description: "ซิงก์ข้อมูลรายวิชาจากต้นแบบไปยังรอบเปิดสอน ปีการศึกษา {$year->name} ภาค {$year->semester}",
+            );
+        }
+
         return redirect()
             ->route('admin.settings', ['tab' => 'academic'])
             ->with('success', "เปิดช่วงจัดตารางสำหรับปีการศึกษา {$year->name} ภาค {$year->semester} แล้ว — {$newMsg}, {$syncMsg} รวม {$total} รายวิชาพร้อมจัดตาราง");
@@ -237,6 +322,15 @@ class AdminSettingController extends Controller
         }
 
         $year->update(['phase' => 'preparation']);
+
+        AuditLogger::log(
+            action:      'ตั้งค่าระบบ.ปิดช่วงจัดตาราง',
+            table:       'academic_years',
+            recordId:    $year->id,
+            oldValues:   ['phase' => 'scheduling'],
+            newValues:   ['phase' => 'preparation'],
+            description: "ปิดช่วงจัดตารางปีการศึกษา {$year->name} ภาค {$year->semester}",
+        );
 
         return redirect()
             ->route('admin.settings', ['tab' => 'academic'])

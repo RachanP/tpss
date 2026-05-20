@@ -7,6 +7,7 @@ use App\Models\UserRole;
 use App\Models\Department;
 use App\Models\InstructorProfile;
 use App\Models\SystemSetting;
+use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
@@ -102,7 +103,8 @@ class AdminUserController extends Controller
             }
         }
 
-        DB::transaction(function () use ($validated, $request, $needsProfile, $isInstructor) {
+        $createdUser = null;
+        DB::transaction(function () use ($validated, $request, $needsProfile, $isInstructor, &$createdUser) {
             $user = User::create([
                 'username'    => $validated['username'],
                 'prefix'      => $validated['prefix'] ?? null,
@@ -112,6 +114,7 @@ class AdminUserController extends Controller
                 'employee_id' => $validated['employee_id'] ?? null,
                 'is_active'   => $validated['is_active'] ?? true,
             ]);
+            $createdUser = $user;
 
             foreach ($validated['roles'] as $role) {
                 UserRole::create([
@@ -159,6 +162,25 @@ class AdminUserController extends Controller
         });
 
         \App\Http\Controllers\Admin\AlertController::flushCache();
+
+        if ($createdUser) {
+            AuditLogger::log(
+                action:      'ผู้ใช้และสิทธิ์.สร้าง',
+                table:       'users',
+                recordId:    $createdUser->id,
+                oldValues:   null,
+                newValues:   [
+                    'name'         => $createdUser->name,
+                    'username'     => $createdUser->username,
+                    'email'        => $createdUser->email,
+                    'roles'        => $validated['roles'],
+                    'primary_role' => $validated['primary_role'],
+                    'is_active'    => $createdUser->is_active,
+                ],
+                description: "สร้างผู้ใช้ {$createdUser->name} ({$createdUser->username})",
+            );
+        }
+
         return redirect()->route('admin.users')->with('success', 'เพิ่มผู้ใช้เรียบร้อยแล้ว');
     }
 
@@ -218,6 +240,11 @@ class AdminUserController extends Controller
                 ])->withInput();
             }
         }
+
+        // Snapshot for audit diff — captured before the transaction mutates the record
+        $auditBefore = $user->only(['prefix', 'name', 'username', 'email', 'employee_id', 'is_active']);
+        $beforeRoles = $user->roles()->orderBy('role')->pluck('role')->all();
+        $beforePrimaryRole = $user->roles()->where('is_primary', true)->value('role');
 
         DB::transaction(function () use ($validated, $user, $request, $needsProfile, $isInstructor) {
             $user->update([
@@ -283,17 +310,59 @@ class AdminUserController extends Controller
         });
 
         \App\Http\Controllers\Admin\AlertController::flushCache();
+
+        // Diff user fields + roles; skip audit if truly nothing changed
+        $user->refresh();
+        $auditAfter = $user->only(['prefix', 'name', 'username', 'email', 'employee_id', 'is_active']);
+        $afterRoles = collect($validated['roles'])->sort()->values()->all();
+        $afterPrimaryRole = $validated['primary_role'];
+        $diff = AuditLogger::diff($auditBefore, $auditAfter);
+        if ($beforeRoles !== $afterRoles) {
+            $diff['old']['roles'] = $beforeRoles;
+            $diff['new']['roles'] = $afterRoles;
+        }
+        if ($beforePrimaryRole !== $afterPrimaryRole) {
+            $diff['old']['primary_role'] = $beforePrimaryRole;
+            $diff['new']['primary_role'] = $afterPrimaryRole;
+        }
+        if (!empty($diff['old']) || !empty($diff['new'])) {
+            AuditLogger::log(
+                action:      'ผู้ใช้และสิทธิ์.แก้ไข',
+                table:       'users',
+                recordId:    $user->id,
+                oldValues:   $diff['old'] ?: null,
+                newValues:   $diff['new'] ?: null,
+                description: "แก้ไขข้อมูลผู้ใช้ {$user->name}",
+            );
+        }
+
         return redirect()->route('admin.users')->with('success', 'อัปเดตข้อมูลผู้ใช้เรียบร้อยแล้ว');
     }
 
     public function toggleStatus(User $user)
     {
+        $wasActive = (bool) $user->is_active;
         $user->update(['is_active' => !$user->is_active]);
+        $user->refresh();
+
+        $verb = $user->is_active ? 'เปิดใช้งาน' : 'ปิดใช้งาน';
+        AuditLogger::log(
+            action:      'ผู้ใช้และสิทธิ์.เปลี่ยนสถานะ',
+            table:       'users',
+            recordId:    $user->id,
+            oldValues:   ['is_active' => $wasActive],
+            newValues:   ['is_active' => $user->is_active],
+            description: "{$verb}บัญชีผู้ใช้ {$user->name}",
+        );
+
         return response()->json(['success' => true, 'is_active' => $user->is_active]);
     }
 
     public function destroy(User $user)
     {
+        $snapshot = ['name' => $user->name, 'username' => $user->username, 'email' => $user->email];
+        $userId   = $user->id;
+
         try {
             DB::transaction(function () use ($user) {
                 // Release department positions held by this user (FK has no cascade)
@@ -304,6 +373,16 @@ class AdminUserController extends Controller
                 // user_roles cascades on delete
                 $user->delete();
             });
+
+            AuditLogger::log(
+                action:      'ผู้ใช้และสิทธิ์.ลบ',
+                table:       'users',
+                recordId:    $userId,
+                oldValues:   $snapshot,
+                newValues:   null,
+                description: "ลบบัญชีผู้ใช้ {$snapshot['name']} ({$snapshot['username']})",
+            );
+
             \App\Http\Controllers\Admin\AlertController::flushCache();
             return redirect()->route('admin.users')->with('success', 'ลบผู้ใช้เรียบร้อยแล้ว');
         } catch (\Illuminate\Database\QueryException $e) {
