@@ -69,6 +69,7 @@
         </div>
         <div class="card-actions">
             @php $phase = $courseOffering->academicYear?->phase ?? 'preparation'; @endphp
+            <a href="{{ route('maker.course_offerings.schedules.index', $courseOffering) }}" class="btn btn-primary" data-testid="course-offering-schedules-link">จัดตารางสอน</a>
             @if($phase === 'scheduling')
                 <span class="badge" style="background:oklch(90% 0.1 145);color:oklch(30% 0.15 145);border:1px solid oklch(70% 0.15 145);">เปิดจัดตาราง</span>
             @elseif($phase === 'published')

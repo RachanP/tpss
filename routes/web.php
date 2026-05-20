@@ -38,6 +38,12 @@ Route::middleware(['auth', 'no-back'])->group(function () {
         ->name('maker.course_offerings.')
         ->group(function () {
             Route::get('/', [CourseOfferingController::class, 'index'])->name('index');
+            Route::get('/{courseOffering}/schedules', [ScheduleController::class, 'index'])->name('schedules.index');
+            Route::get('/{courseOffering}/schedules/create', [ScheduleController::class, 'create'])->name('schedules.create');
+            Route::post('/{courseOffering}/schedules', [ScheduleController::class, 'store'])->name('schedules.store');
+            Route::get('/{courseOffering}/schedules/{schedule}/edit', [ScheduleController::class, 'edit'])->name('schedules.edit');
+            Route::put('/{courseOffering}/schedules/{schedule}', [ScheduleController::class, 'update'])->name('schedules.update');
+            Route::delete('/{courseOffering}/schedules/{schedule}', [ScheduleController::class, 'destroy'])->name('schedules.destroy');
             Route::get('/{courseOffering}', [CourseOfferingController::class, 'show'])->name('show');
             Route::put('/{courseOffering}', [CourseOfferingController::class, 'update'])->name('update');
             Route::post('/{courseOffering}/instructors', [CourseOfferingController::class, 'storeInstructor'])->name('instructors.store');
