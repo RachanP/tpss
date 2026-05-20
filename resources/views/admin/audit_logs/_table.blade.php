@@ -8,6 +8,24 @@
         'ผู้ใช้และสิทธิ์'         => 'p-purple',
         'รายงาน'                 => 'p-teal',
     ];
+
+    $actionToneFor = function (?string $action): array {
+        $action = (string) $action;
+
+        if (str_contains($action, 'ลบ') || str_contains($action, 'ปิดใช้งาน') || str_contains($action, 'ปฏิเสธ')) {
+            return ['label' => 'สำคัญ', 'class' => 'p-conflict'];
+        }
+
+        if (str_contains($action, 'สร้าง') || str_contains($action, 'เปิดช่วงจัดตาราง') || str_contains($action, 'อนุมัติ')) {
+            return ['label' => 'ปกติ', 'class' => 'p-success'];
+        }
+
+        if (str_contains($action, 'ปิดช่วงจัดตาราง') || str_contains($action, 'ซิงก์ข้อมูล')) {
+            return ['label' => 'ติดตาม', 'class' => 'p-warning'];
+        }
+
+        return ['label' => 'ติดตาม', 'class' => 'p-info'];
+    };
 @endphp
 
 @if($logs->isEmpty())
@@ -24,67 +42,76 @@
     </div>
 @else
     <div style="overflow-x:auto;">
-        <table class="data-table" data-testid="audit-logs-table">
+        <table class="data-table audit-log-table" data-testid="audit-logs-table">
             <thead>
                 <tr>
-                    <th style="width:60px;">#</th>
+                    <th style="width:72px;">ลำดับ</th>
                     <th style="width:150px;">เวลา</th>
-                    <th style="width:160px;">ผู้ดำเนินการ</th>
+                    <th style="width:180px;">ผู้ดำเนินการ</th>
                     <th style="width:150px;">หมวดหมู่</th>
                     <th>การกระทำ</th>
-                    <th style="width:120px;">IP</th>
-                    <th style="width:60px;text-align:center;">รายละเอียด</th>
+                    <th style="width:126px;">ที่อยู่ IP</th>
+                    <th style="width:116px;text-align:right;">รายละเอียด</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach($logs as $log)
                     @php
                         $catClass = $categoryColors[$log->category] ?? 'p-neutral';
+                        $actionVerb = \Illuminate\Support\Str::after($log->action, '.') ?: $log->action;
+                        $actionTone = $actionToneFor($log->action);
                         $beYear   = ($log->created_at->year + 543);
                         $dateStr  = $log->created_at->format('d/m/') . $beYear . ' ' . $log->created_at->format('H:i');
                         $ipAddress = data_get($log->new_values, 'context.ip_address');
                     @endphp
                     <tr data-testid="audit-logs-row" data-log-id="{{ $log->id }}">
-                        <td style="font-size:11px;color:var(--fg-3);font-variant-numeric:tabular-nums;">
+                        <td class="audit-log-id">
                             {{ $log->id }}
                         </td>
-                        <td style="font-size:12px;white-space:nowrap;color:var(--fg-2);">
+                        <td class="audit-log-time">
                             {{ $dateStr }}
                         </td>
-                        <td style="font-size:13px;">
-                            {{ $log->user?->name ?? '—' }}
+                        <td>
+                            <div class="audit-log-actor">{{ $log->user?->name ?? 'ระบบ' }}</div>
+                            @if($log->user?->email)
+                                <div class="audit-log-sub">{{ $log->user->email }}</div>
+                            @endif
                         </td>
                         <td>
                             @if($log->category)
-                                <span class="pill {{ $catClass }}" style="font-size:11px;">
+                                <span class="pill {{ $catClass }} audit-log-pill">
                                     {{ $log->category }}
                                 </span>
                             @else
-                                <span style="color:var(--fg-3);font-size:12px;">—</span>
+                                <span class="audit-log-sub">—</span>
                             @endif
                         </td>
-                        <td style="font-size:13px;">
-                            <div style="font-weight:600;">{{ $log->action }}</div>
+                        <td>
+                            <div class="audit-log-action-line">
+                                <span class="pill {{ $actionTone['class'] }} audit-log-pill">{{ $actionVerb }}</span>
+                                <span class="pill p-neutral audit-log-pill">{{ $actionTone['label'] }}</span>
+                            </div>
                             @if($log->description)
-                                <div style="font-size:11px;color:var(--fg-3);margin-top:2px;">{{ $log->description }}</div>
+                                <div class="audit-log-desc">{{ $log->description }}</div>
                             @endif
+                            <div class="audit-log-sub">ตาราง: {{ $log->table_affected }} · รหัส: {{ $log->record_id }}</div>
                         </td>
-                        <td style="font-size:12px;color:var(--fg-2);white-space:nowrap;font-family:monospace;">
+                        <td class="audit-log-ip">
                             {{ $ipAddress ?: '-' }}
                         </td>
-                        <td style="text-align:center;">
+                        <td style="text-align:right;">
                             <button
                                 type="button"
-                                class="btn btn-sm"
-                                style="padding:4px 8px;"
+                                class="btn btn-sm audit-log-detail-btn"
                                 data-testid="audit-detail-btn-{{ $log->id }}"
                                 @click="openModal({{ Js::from($log->toDetailPayload()) }})"
-                                title="ดู JSON รายละเอียด">
+                                title="ดูรายละเอียดบันทึก">
                                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none"
                                      stroke="currentColor" stroke-width="2">
                                     <circle cx="11" cy="11" r="8"/>
                                     <line x1="21" y1="21" x2="16.65" y2="16.65"/>
                                 </svg>
+                                <span>ดูรายละเอียด</span>
                             </button>
                         </td>
                     </tr>
@@ -139,3 +166,71 @@
         @endif
     </div>
 @endif
+
+<style>
+    .audit-log-table th {
+        font-size: 11px;
+        font-weight: 800;
+        color: var(--fg-3);
+    }
+    .audit-log-table td {
+        padding-top: 13px;
+        padding-bottom: 13px;
+        vertical-align: middle;
+    }
+    .audit-log-id,
+    .audit-log-time,
+    .audit-log-ip {
+        color: var(--fg-3);
+        font-size: 12px;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+    }
+    .audit-log-ip {
+        color: var(--fg-2);
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+    }
+    .audit-log-actor {
+        color: var(--fg-1);
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1.35;
+    }
+    .audit-log-sub {
+        margin-top: 3px;
+        color: var(--fg-3);
+        font-size: 11px;
+        line-height: 1.35;
+    }
+    .audit-log-action-line {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-bottom: 4px;
+    }
+    .audit-log-pill {
+        font-size: 11px;
+        font-weight: 700;
+    }
+    .audit-log-desc {
+        color: var(--fg-1);
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1.45;
+    }
+    .audit-log-detail-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 5px 10px;
+        white-space: nowrap;
+    }
+
+    @media (max-width: 860px) {
+        .audit-log-detail-btn span {
+            display: none;
+        }
+    }
+</style>
