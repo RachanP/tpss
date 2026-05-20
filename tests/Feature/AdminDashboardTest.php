@@ -13,7 +13,7 @@ class AdminDashboardTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admin_dashboard_renders_current_phase_badge_and_settings_shortcut(): void
+    public function test_admin_dashboard_renders_current_phase_badge_and_critical_shortcut(): void
     {
         $admin = $this->makeAdmin();
         AcademicYear::create([
@@ -33,8 +33,10 @@ class AdminDashboardTest extends TestCase
             ->assertSee('สถานะระบบปัจจุบัน')
             ->assertSee('ปีการศึกษา 2569 / เทอม 1')
             ->assertSee('เปิดจัดตาราง')
-            ->assertSee('จัดการสถานะระบบ')
-            ->assertSee(route('admin.settings', ['tab' => 'academic']), false);
+            ->assertSee('พบเงื่อนไขสำคัญ')
+            ->assertSee('ยังเปิดจัดตารางไม่ได้')
+            ->assertSee('ไปแก้เงื่อนไขสำคัญ')
+            ->assertSee(route('admin.alerts'), false);
     }
 
     public function test_admin_dashboard_renders_no_active_year_fallback(): void
@@ -46,8 +48,8 @@ class AdminDashboardTest extends TestCase
         $response = $this->get(route('admin.dashboard'));
 
         $response->assertOk()
-            ->assertSee('ยังไม่ได้ตั้งค่าปีการศึกษาปัจจุบัน')
-            ->assertSee('จัดการสถานะระบบ')
+            ->assertSee('ยังไม่ได้ตั้งค่าปีการศึกษาที่ใช้งาน')
+            ->assertSee('ตั้งค่าปีการศึกษา')
             ->assertSee(route('admin.settings', ['tab' => 'academic']), false);
     }
 
