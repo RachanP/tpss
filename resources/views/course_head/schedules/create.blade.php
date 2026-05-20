@@ -42,6 +42,65 @@
 
 <x-app-layout :title="$pageTitle">
     <style>
+        .schedule-entry-head {
+            display: grid;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+        .schedule-back-link {
+            color: var(--brand-navy);
+            text-decoration: none;
+            font-weight: 700;
+        }
+        .schedule-back-link:hover {
+            text-decoration: underline;
+        }
+        .schedule-entry-card {
+            border: 1px solid oklch(82% 0.028 235);
+            border-radius: 10px;
+            background: linear-gradient(180deg, oklch(99% 0.006 235), oklch(96.5% 0.014 235));
+            padding: 16px 20px;
+            box-shadow: 0 1px 0 oklch(90% 0.018 235);
+        }
+        .schedule-entry-kicker {
+            color: var(--fg-3);
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .schedule-entry-title {
+            font-family: var(--font-display);
+            font-size: 28px;
+            font-weight: 800;
+            line-height: 1.2;
+            color: var(--fg-1);
+            letter-spacing: 0;
+            margin: 0;
+        }
+        .schedule-entry-meta {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .schedule-entry-course {
+            display: inline-flex;
+            align-items: center;
+            min-height: 28px;
+            border: 1px solid oklch(78% 0.038 235);
+            border-radius: 999px;
+            background: oklch(94.5% 0.02 235);
+            color: var(--brand-navy);
+            padding: 4px 10px;
+            font-size: 12px;
+            font-weight: 800;
+        }
+        .schedule-entry-desc {
+            color: var(--fg-2);
+            font-size: 13px;
+            line-height: 1.6;
+        }
         .schedule-form-layout {
             display: grid;
             grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
@@ -582,6 +641,12 @@
             }
         }
         @media (max-width: 640px) {
+            .schedule-entry-card {
+                padding: 15px;
+            }
+            .schedule-entry-title {
+                font-size: 24px;
+            }
             .schedule-time-fields,
             .schedule-period-fields {
                 grid-template-columns: 1fr;
@@ -936,12 +1001,16 @@
 
     </script>
 
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap;">
-        <div>
-            <a href="{{ route('maker.course_offerings.schedules.index', $courseOffering) }}" class="body-sm" style="color:var(--brand-navy);text-decoration:none;">← กลับไปตารางสอน</a>
-            <div class="eyebrow" style="margin-top:8px;">{{ $pageTitle }}</div>
-            <h1 class="h1" style="margin:4px 0 6px;">{{ $pageTitle }}</h1>
-            <p class="body-sm" style="margin:0;max-width:72ch;">ระบุช่วงวันที่ เวลา ผู้สอน และกลุ่มนักศึกษาสำหรับรายการตารางสอนนี้</p>
+    <div class="schedule-entry-head">
+        <a href="{{ route('maker.course_offerings.schedules.index', $courseOffering) }}" class="body-sm schedule-back-link">← กลับไปตารางสอน</a>
+        <div class="schedule-entry-card">
+            <div class="schedule-entry-kicker">ตารางสอนรายวิชา</div>
+            <h1 class="schedule-entry-title">{{ $pageTitle }}</h1>
+            <div class="schedule-entry-meta">
+                <span class="schedule-entry-course">{{ $course?->course_code ?? '-' }}</span>
+                <span class="schedule-entry-desc">{{ $course?->name_th ?? $course?->name_en ?? '-' }}</span>
+                <span class="badge badge-gray">{{ $academicYear?->name ?? '-' }} / เทอม {{ $academicYear?->semester ?? '-' }}</span>
+            </div>
         </div>
     </div>
 
@@ -971,7 +1040,7 @@
                     <div style="font-weight:700;margin-top:3px;">{{ $courseOffering->studentGroups->count() }} กลุ่ม</div>
                 </div>
                     <div class="schedule-side-item">
-                        <div class="caption">ผู้สอนในภาควิชา</div>
+                        <div class="caption">ผู้สอนในรายวิชา</div>
                         <div style="font-weight:700;margin-top:3px;">{{ $availableInstructors->count() }} คน</div>
                     </div>
             </div>

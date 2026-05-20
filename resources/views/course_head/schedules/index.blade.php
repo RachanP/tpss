@@ -45,6 +45,67 @@
 
 <x-app-layout title="ตารางสอน">
     <style>
+        .schedule-page-head {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+        .schedule-back-link {
+            color: var(--brand-navy);
+            text-decoration: none;
+            font-weight: 700;
+        }
+        .schedule-back-link:hover {
+            text-decoration: underline;
+        }
+        .schedule-course-head {
+            border: 1px solid oklch(82% 0.028 235);
+            border-radius: 10px;
+            background: linear-gradient(180deg, oklch(99% 0.006 235), oklch(96.5% 0.014 235));
+            padding: 18px 22px;
+            box-shadow: 0 1px 0 oklch(90% 0.018 235);
+        }
+        .schedule-course-kicker {
+            color: var(--fg-3);
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .schedule-course-title-row {
+            display: flex;
+            align-items: baseline;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+        .schedule-course-code {
+            font-family: var(--font-display);
+            font-size: 34px;
+            line-height: 1.15;
+            font-weight: 800;
+            color: var(--brand-navy);
+            letter-spacing: 0;
+        }
+        .schedule-course-year {
+            display: inline-flex;
+            align-items: center;
+            min-height: 28px;
+            border: 1px solid oklch(78% 0.038 235);
+            border-radius: 999px;
+            background: oklch(94.5% 0.02 235);
+            color: var(--brand-navy);
+            padding: 4px 10px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .schedule-course-name {
+            margin: 6px 0 0;
+            max-width: 78ch;
+            color: var(--fg-1);
+            font-size: 15px;
+            line-height: 1.6;
+            font-weight: 600;
+        }
         .schedule-summary {
             display: grid;
             grid-template-columns: minmax(260px, 1.2fr) repeat(3, minmax(140px, .6fr));
@@ -191,6 +252,12 @@
             }
         }
         @media (max-width: 640px) {
+            .schedule-course-head {
+                padding: 16px;
+            }
+            .schedule-course-code {
+                font-size: 28px;
+            }
             .schedule-summary {
                 grid-template-columns: 1fr;
             }
@@ -238,12 +305,15 @@
         }
     </script>
 
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap;">
-        <div>
-            <a href="{{ route('maker.course_offerings.show', $courseOffering) }}" class="body-sm" style="color:var(--brand-navy);text-decoration:none;">← กลับไปรายละเอียดรายวิชา</a>
-            <div class="eyebrow" style="margin-top:8px;">ตารางสอนรายวิชา</div>
-            <h1 class="h1" style="margin:4px 0 6px;">{{ $course?->course_code ?? '-' }}</h1>
-            <p class="body-sm" style="margin:0;max-width:72ch;">
+    <div class="schedule-page-head">
+        <a href="{{ route('maker.course_offerings.show', $courseOffering) }}" class="body-sm schedule-back-link">← กลับไปรายละเอียดรายวิชา</a>
+        <div class="schedule-course-head">
+            <div class="schedule-course-kicker">ตารางสอนรายวิชา</div>
+            <div class="schedule-course-title-row">
+                <h1 class="schedule-course-code">{{ $course?->course_code ?? '-' }}</h1>
+                <span class="schedule-course-year">{{ $academicYear?->name ?? '-' }} / เทอม {{ $academicYear?->semester ?? '-' }}</span>
+            </div>
+            <p class="schedule-course-name">
                 {{ $course?->name_th ?? $course?->name_en ?? '' }}
             </p>
         </div>
