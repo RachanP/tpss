@@ -260,6 +260,28 @@ class ScheduleController extends Controller
                 ->throwResponse();
         }
 
+        $conflictingInstructors = $this->conflictingInstructors($validated, $request->route('schedule'));
+
+        if ($conflictingInstructors->isNotEmpty()) {
+            back()
+                ->withInput()
+                ->withErrors([
+                    'instructor_ids' => 'ผู้สอนนี้มีรายการสอนในช่วงเวลาเดียวกันแล้ว: '.$conflictingInstructors->join(', '),
+                ])
+                ->throwResponse();
+        }
+
+        $conflictingRoom = $this->conflictingRoom($validated, $request->route('schedule'));
+
+        if ($conflictingRoom) {
+            back()
+                ->withInput()
+                ->withErrors([
+                    'room_id' => 'ห้องหรือสถานที่นี้มีรายการสอนในช่วงเวลาเดียวกันแล้ว: '.$conflictingRoom,
+                ])
+                ->throwResponse();
+        }
+
         return $validated;
     }
 
@@ -308,18 +330,54 @@ class ScheduleController extends Controller
 
     private function conflictingStudentGroups(CourseOffering $courseOffering, array $validated, ?Schedule $currentSchedule = null)
     {
-        return $courseOffering->schedules()
-            ->when($currentSchedule, fn ($query) => $query->whereKeyNot($currentSchedule->id))
-            ->whereDate('start_date', '<=', $validated['end_date'])
-            ->whereDate('end_date', '>=', $validated['start_date'])
-            ->where('start_time', '<', $validated['end_time'])
-            ->where('end_time', '>', $validated['start_time'])
+        return $this->overlappingSchedules($courseOffering->schedules(), $validated, $currentSchedule)
             ->whereHas('studentGroups', fn ($query) => $query->whereIn('student_groups.id', $validated['student_group_ids']))
             ->with(['studentGroups' => fn ($query) => $query->whereIn('student_groups.id', $validated['student_group_ids'])])
             ->get()
             ->flatMap(fn ($schedule) => $schedule->studentGroups->pluck('group_code'))
             ->unique()
             ->values();
+    }
+
+    private function conflictingInstructors(array $validated, ?Schedule $currentSchedule = null)
+    {
+        return $this->overlappingSchedules(Schedule::query(), $validated, $currentSchedule)
+            ->whereHas('instructors', fn ($query) => $query->whereIn('users.id', $validated['instructor_ids']))
+            ->with(['instructors' => fn ($query) => $query->whereIn('users.id', $validated['instructor_ids'])])
+            ->get()
+            ->flatMap(fn ($schedule) => $schedule->instructors->pluck('formatted_name'))
+            ->unique()
+            ->values();
+    }
+
+    private function conflictingRoom(array $validated, ?Schedule $currentSchedule = null): ?string
+    {
+        if (empty($validated['room_id'])) {
+            return null;
+        }
+
+        $schedule = $this->overlappingSchedules(Schedule::query(), $validated, $currentSchedule)
+            ->where('room_id', $validated['room_id'])
+            ->with('room')
+            ->first();
+
+        if (! $schedule) {
+            return null;
+        }
+
+        return $schedule->room?->room_code
+            ? trim($schedule->room->room_code.' '.$schedule->room->room_name)
+            : 'ไม่ระบุชื่อห้อง';
+    }
+
+    private function overlappingSchedules($query, array $validated, ?Schedule $currentSchedule = null)
+    {
+        return $query
+            ->when($currentSchedule, fn ($query) => $query->whereKeyNot($currentSchedule->id))
+            ->whereDate('start_date', '<=', $validated['end_date'])
+            ->whereDate('end_date', '>=', $validated['start_date'])
+            ->where('start_time', '<', $validated['end_time'])
+            ->where('end_time', '>', $validated['start_time']);
     }
 
     private function availableInstructors(CourseOffering $courseOffering)
