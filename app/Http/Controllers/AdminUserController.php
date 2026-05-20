@@ -242,8 +242,9 @@ class AdminUserController extends Controller
         }
 
         // Snapshot for audit diff — captured before the transaction mutates the record
-        $auditBefore = $user->only(['name', 'username', 'email', 'is_active']);
-        $beforeRoles  = $user->roles()->orderBy('role')->pluck('role')->all();
+        $auditBefore = $user->only(['prefix', 'name', 'username', 'email', 'employee_id', 'is_active']);
+        $beforeRoles = $user->roles()->orderBy('role')->pluck('role')->all();
+        $beforePrimaryRole = $user->roles()->where('is_primary', true)->value('role');
 
         DB::transaction(function () use ($validated, $user, $request, $needsProfile, $isInstructor) {
             $user->update([
@@ -312,12 +313,17 @@ class AdminUserController extends Controller
 
         // Diff user fields + roles; skip audit if truly nothing changed
         $user->refresh();
-        $auditAfter = $user->only(['name', 'username', 'email', 'is_active']);
-        $afterRoles  = collect($validated['roles'])->sort()->values()->all();
+        $auditAfter = $user->only(['prefix', 'name', 'username', 'email', 'employee_id', 'is_active']);
+        $afterRoles = collect($validated['roles'])->sort()->values()->all();
+        $afterPrimaryRole = $validated['primary_role'];
         $diff = AuditLogger::diff($auditBefore, $auditAfter);
         if ($beforeRoles !== $afterRoles) {
             $diff['old']['roles'] = $beforeRoles;
             $diff['new']['roles'] = $afterRoles;
+        }
+        if ($beforePrimaryRole !== $afterPrimaryRole) {
+            $diff['old']['primary_role'] = $beforePrimaryRole;
+            $diff['new']['primary_role'] = $afterPrimaryRole;
         }
         if (!empty($diff['old']) || !empty($diff['new'])) {
             AuditLogger::log(

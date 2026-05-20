@@ -230,6 +230,28 @@ class AuditLogIntegrationTest extends TestCase
         $this->assertContains('admin', $log->new_values['roles']);
     }
 
+    public function test_update_user_logs_primary_role_change_even_when_role_list_is_same(): void
+    {
+        $user = $this->makeUserWithRole('staff');
+        UserRole::create(['user_id' => $user->id, 'role' => 'admin', 'is_primary' => false]);
+
+        $this->actingAsAdmin()
+            ->put(route('admin.users.update', $user), [
+                'username'     => $user->username,
+                'name'         => $user->name,
+                'email'        => $user->email,
+                'roles'        => ['staff', 'admin'],
+                'primary_role' => 'admin',
+                'is_active'    => true,
+            ])
+            ->assertRedirect();
+
+        $log = AuditLog::where('action', 'ผู้ใช้และสิทธิ์.แก้ไข')->first();
+        $this->assertNotNull($log);
+        $this->assertSame('staff', $log->old_values['primary_role']);
+        $this->assertSame('admin', $log->new_values['primary_role']);
+    }
+
     public function test_update_user_with_no_changes_does_not_create_audit_log(): void
     {
         $user = $this->makeUserWithRole('staff');
