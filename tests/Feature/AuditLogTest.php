@@ -482,8 +482,10 @@ class AuditLogTest extends TestCase
         ]));
 
         $response->assertOk();
-        $response->assertSee('แสดง 1–50 จาก 55 รายการ');
+        $response->assertSee('แสดง 1–25 จาก 55 รายการ');
         $response->assertSee('data-testid="audit-logs-pagination"', false);
+        $response->assertSee('<');
+        $response->assertSee('>');
 
         preg_match_all('/href="([^"]+)"/', $response->getContent(), $matches);
         $paginationUrls = collect($matches[1])
@@ -495,6 +497,58 @@ class AuditLogTest extends TestCase
         $this->assertStringContainsString('actor=Admin', $nextPageUrl);
         $this->assertStringContainsString('category=', $nextPageUrl);
         $this->assertStringContainsString('page=2', $nextPageUrl);
+    }
+
+    public function test_audit_log_pagination_is_hidden_when_total_does_not_exceed_page_size(): void
+    {
+        $this->actingAs($this->admin);
+
+        for ($i = 1; $i <= 15; $i++) {
+            AuditLog::create([
+                'user_id' => $this->admin->id,
+                'action' => 'ข้อมูลหลัก.สร้าง',
+                'table_affected' => 'courses',
+                'record_id' => $i,
+                'old_values' => null,
+                'new_values' => [],
+                'category' => 'ข้อมูลหลัก',
+                'description' => "รายการ {$i}",
+                'created_at' => now()->subSeconds($i),
+            ]);
+        }
+
+        $response = $this->get(route('admin.audit_logs.index'));
+
+        $response->assertOk();
+        $response->assertSee('แสดง 1–15 จาก 15 รายการ');
+        $response->assertDontSee('data-testid="audit-logs-pagination"', false);
+    }
+
+    public function test_audit_log_pagination_appears_after_twenty_five_items(): void
+    {
+        $this->actingAs($this->admin);
+
+        for ($i = 1; $i <= 26; $i++) {
+            AuditLog::create([
+                'user_id' => $this->admin->id,
+                'action' => 'ข้อมูลหลัก.สร้าง',
+                'table_affected' => 'courses',
+                'record_id' => $i,
+                'old_values' => null,
+                'new_values' => [],
+                'category' => 'ข้อมูลหลัก',
+                'description' => "รายการ {$i}",
+                'created_at' => now()->subSeconds($i),
+            ]);
+        }
+
+        $response = $this->get(route('admin.audit_logs.index'));
+
+        $response->assertOk();
+        $response->assertSee('แสดง 1–25 จาก 26 รายการ');
+        $response->assertSee('data-testid="audit-logs-pagination"', false);
+        $response->assertSee('<');
+        $response->assertSee('>');
     }
 
     public function test_non_admin_cannot_access_audit_logs(): void

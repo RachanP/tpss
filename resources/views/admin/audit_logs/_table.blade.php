@@ -136,9 +136,9 @@
             @endphp
             <nav aria-label="Pagination" data-testid="audit-logs-pagination" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
                 @if($logs->onFirstPage())
-                    <span style="display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:32px;border:1px solid var(--border);border-radius:6px;color:var(--fg-3);opacity:.55;">‹</span>
+                    <span style="display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:32px;border:1px solid var(--border);border-radius:6px;color:var(--fg-3);opacity:.55;">&lt;</span>
                 @else
-                    <a href="{{ $logs->previousPageUrl() }}" rel="prev" style="display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:32px;border:1px solid var(--border);border-radius:6px;color:var(--fg-2);text-decoration:none;">‹</a>
+                    <a href="{{ $logs->previousPageUrl() }}" rel="prev" style="display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:32px;border:1px solid var(--border);border-radius:6px;color:var(--fg-2);text-decoration:none;">&lt;</a>
                 @endif
 
                 @foreach($paginationElements as $element)
@@ -158,9 +158,9 @@
                 @endforeach
 
                 @if($logs->hasMorePages())
-                    <a href="{{ $logs->nextPageUrl() }}" rel="next" style="display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:32px;border:1px solid var(--border);border-radius:6px;color:var(--fg-2);text-decoration:none;">›</a>
+                    <a href="{{ $logs->nextPageUrl() }}" rel="next" style="display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:32px;border:1px solid var(--border);border-radius:6px;color:var(--fg-2);text-decoration:none;">&gt;</a>
                 @else
-                    <span style="display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:32px;border:1px solid var(--border);border-radius:6px;color:var(--fg-3);opacity:.55;">›</span>
+                    <span style="display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:32px;border:1px solid var(--border);border-radius:6px;color:var(--fg-3);opacity:.55;">&gt;</span>
                 @endif
             </nav>
         @endif
