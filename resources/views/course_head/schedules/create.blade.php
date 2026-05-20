@@ -42,11 +42,6 @@
 
 <x-app-layout :title="$pageTitle">
     <style>
-        .schedule-entry-head {
-            display: grid;
-            gap: 10px;
-            margin-bottom: 18px;
-        }
         .schedule-back-link {
             color: var(--brand-navy);
             text-decoration: none;
@@ -54,34 +49,6 @@
         }
         .schedule-back-link:hover {
             text-decoration: underline;
-        }
-        .schedule-entry-card {
-            border: 1px solid oklch(82% 0.028 235);
-            border-radius: 10px;
-            background: linear-gradient(180deg, oklch(99% 0.006 235), oklch(96.5% 0.014 235));
-            padding: 14px 18px;
-            box-shadow: 0 1px 0 oklch(90% 0.018 235);
-        }
-        .schedule-entry-kicker {
-            color: var(--fg-3);
-            font-size: 12px;
-            font-weight: 700;
-            margin-bottom: 4px;
-        }
-        .schedule-entry-title {
-            font-family: var(--font-display);
-            font-size: 28px;
-            font-weight: 800;
-            line-height: 1.2;
-            color: var(--fg-1);
-            letter-spacing: 0;
-            margin: 0;
-        }
-        .schedule-entry-desc {
-            margin-top: 6px;
-            color: var(--fg-2);
-            font-size: 13px;
-            line-height: 1.6;
         }
         .schedule-form-layout {
             display: grid;
@@ -623,12 +590,6 @@
             }
         }
         @media (max-width: 640px) {
-            .schedule-entry-card {
-                padding: 15px;
-            }
-            .schedule-entry-title {
-                font-size: 24px;
-            }
             .schedule-time-fields,
             .schedule-period-fields {
                 grid-template-columns: 1fr;
@@ -983,12 +944,12 @@
 
     </script>
 
-    <div class="schedule-entry-head">
-        <a href="{{ route('maker.course_offerings.schedules.index', $courseOffering) }}" class="body-sm schedule-back-link">← กลับไปตารางสอน</a>
-        <div class="schedule-entry-card">
-            <div class="schedule-entry-kicker">ตารางสอนรายวิชา</div>
-            <h1 class="schedule-entry-title">{{ $pageTitle }}</h1>
-            <div class="schedule-entry-desc">ระบุช่วงวันที่ เวลา ผู้สอน และกลุ่มนักศึกษาสำหรับรายการนี้</div>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap;">
+        <div>
+            <a href="{{ route('maker.course_offerings.schedules.index', $courseOffering) }}" class="body-sm schedule-back-link">← กลับไปตารางสอน</a>
+            <div class="eyebrow" style="margin-top:8px;">ตารางสอนรายวิชา</div>
+            <h1 class="h1" style="margin:4px 0 6px;">{{ $pageTitle }}</h1>
+            <p class="body-sm" style="margin:0;max-width:72ch;">ระบุช่วงวันที่ เวลา ผู้สอน และกลุ่มนักศึกษาสำหรับรายการนี้</p>
         </div>
     </div>
 
