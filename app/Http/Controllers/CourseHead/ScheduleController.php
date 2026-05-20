@@ -7,6 +7,7 @@ use App\Models\ActivityType;
 use App\Models\CourseOffering;
 use App\Models\Room;
 use App\Models\Schedule;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -152,6 +153,69 @@ class ScheduleController extends Controller
         return redirect()
             ->route('maker.course_offerings.schedules.index', $courseOffering)
             ->with('success', 'แก้ไขรายการสอนเรียบร้อยแล้ว');
+    }
+
+    public function checkConflicts(Request $request, CourseOffering $courseOffering): JsonResponse
+    {
+        $this->authorizeCourseHeadOffering($courseOffering);
+        $courseOffering->load('course');
+
+        $validated = $request->validate([
+            'schedule_id' => ['nullable', 'integer', 'exists:schedules,id'],
+            'start_date' => ['required', 'date'],
+            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
+            'start_time' => ['required', 'date_format:H:i'],
+            'end_time' => ['required', 'date_format:H:i', 'after:start_time'],
+            'room_id' => ['nullable', 'integer', 'exists:rooms,id'],
+            'capacity_required' => ['nullable', 'integer', 'min:1'],
+            'instructor_ids' => ['nullable', 'array'],
+            'instructor_ids.*' => ['integer'],
+            'student_group_ids' => ['nullable', 'array'],
+            'student_group_ids.*' => ['integer'],
+        ], $this->validationMessages());
+
+        $currentSchedule = null;
+        if (! empty($validated['schedule_id'])) {
+            $currentSchedule = Schedule::find($validated['schedule_id']);
+            $this->authorizeScheduleBelongsToOffering($courseOffering, $currentSchedule);
+        }
+
+        $validated['instructor_ids'] = array_values(array_intersect(
+            $validated['instructor_ids'] ?? [],
+            $this->availableInstructors($courseOffering)->pluck('id')->map(fn ($id) => (int) $id)->all()
+        ));
+        $validated['student_group_ids'] = array_values(array_intersect(
+            $validated['student_group_ids'] ?? [],
+            $courseOffering->studentGroups()->pluck('id')->map(fn ($id) => (int) $id)->all()
+        ));
+
+        $studentCount = 0;
+        $capacity = $validated['capacity_required'] ?? null;
+        if (! empty($validated['student_group_ids'])) {
+            $studentCount = (int) $courseOffering->studentGroups()
+                ->whereIn('id', $validated['student_group_ids'])
+                ->sum('student_count');
+        }
+
+        $groupConflicts = empty($validated['student_group_ids'])
+            ? collect()
+            : $this->conflictingStudentGroups($courseOffering, $validated, $currentSchedule);
+        $instructorConflicts = empty($validated['instructor_ids'])
+            ? collect()
+            : $this->conflictingInstructors($validated, $currentSchedule);
+        $roomConflict = $this->conflictingRoom($validated, $currentSchedule);
+
+        return response()->json([
+            'conflicts' => [
+                'groups' => $groupConflicts->values(),
+                'instructors' => $instructorConflicts->values(),
+                'room' => $roomConflict,
+                'capacity' => $capacity && $studentCount > $capacity ? [
+                    'selected' => $studentCount,
+                    'limit' => (int) $capacity,
+                ] : null,
+            ],
+        ]);
     }
 
     public function destroy(CourseOffering $courseOffering, Schedule $schedule): RedirectResponse

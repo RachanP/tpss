@@ -32,6 +32,7 @@
     $formAction = $isEditing
         ? route('maker.course_offerings.schedules.update', [$courseOffering, $schedule])
         : route('maker.course_offerings.schedules.store', $courseOffering);
+    $checkConflictUrl = route('maker.course_offerings.schedules.check_conflicts', $courseOffering);
     $pageTitle = $isEditing ? 'แก้ไขรายการสอน' : 'เพิ่มรายการสอน';
     $initialStartDate = old('start_date', $schedule?->start_date?->format('Y-m-d') ?? '');
     $initialEndDate = old('end_date', $schedule?->end_date?->format('Y-m-d') ?? '');
@@ -165,6 +166,18 @@
             font-weight: 700;
             font-size: 12px;
             padding: 0 4px;
+        }
+        .schedule-realtime-alert {
+            color: var(--status-conflict-fg);
+            font-size: 12px;
+            font-weight: 700;
+            margin-top: 6px;
+        }
+        .schedule-realtime-note {
+            color: var(--status-warning-fg, oklch(42% 0.08 75));
+            font-size: 12px;
+            font-weight: 700;
+            margin-top: 6px;
         }
         .schedule-actions {
             display: flex;
@@ -731,19 +744,29 @@
             };
         }
 
-        function scheduleFormState(initialCapacity, initialGroups, groups, schedules, initialStartDate, initialEndDate, initialStartTime, initialEndTime) {
+        function scheduleFormState(initialCapacity, initialGroups, groups, schedules, initialStartDate, initialEndDate, initialStartTime, initialEndTime, conflictCheckUrl, currentScheduleId) {
             return {
                 capacity: initialCapacity || '',
                 selectedGroups: initialGroups,
                 touchedCapacity: false,
                 touchedGroups: false,
                 serverErrorTouched: false,
+                isCheckingConflicts: false,
+                conflictTimer: null,
+                realtime: {
+                    groups: [],
+                    instructors: [],
+                    room: null,
+                    capacity: null,
+                },
                 groups,
                 schedules,
                 startDate: initialStartDate || '',
                 endDate: initialEndDate || '',
                 startTime: initialStartTime || '',
                 endTime: initialEndTime || '',
+                conflictCheckUrl,
+                currentScheduleId,
                 selectedStudentCount() {
                     return this.selectedGroups.reduce((total, id) => {
                         const group = this.groups.find((item) => item.id === String(id));
@@ -756,23 +779,34 @@
                     return capacity > 0 && this.selectedStudentCount() > capacity;
                 },
                 capacityMessageVisible() {
-                    return this.capacityExceeded();
+                    return this.capacityExceeded() || Boolean(this.realtime.capacity);
+                },
+                capacityMessage() {
+                    if (this.realtime.capacity) {
+                        return `จำนวนผู้เรียนที่เลือก (${this.realtime.capacity.selected} คน) เกินจำนวนรองรับที่ระบุ (${this.realtime.capacity.limit} คน)`;
+                    }
+
+                    return 'จำนวนผู้เรียนของกลุ่มที่เลือกเกินจำนวนรองรับที่ระบุ';
                 },
                 markCapacityChanged() {
                     this.touchedCapacity = true;
                     this.serverErrorTouched = true;
+                    this.queueConflictCheck();
                 },
                 markGroupsChanged() {
                     this.touchedGroups = true;
                     this.serverErrorTouched = true;
+                    this.queueConflictCheck();
                 },
                 markFormChanged() {
                     this.serverErrorTouched = true;
+                    this.queueConflictCheck();
                 },
                 setDateRange(event) {
                     this.startDate = event.detail.start || '';
                     this.endDate = event.detail.end || '';
                     this.serverErrorTouched = true;
+                    this.queueConflictCheck();
                 },
                 setTime(event) {
                     if (event.detail.field === 'start') {
@@ -782,8 +816,13 @@
                     }
 
                     this.serverErrorTouched = true;
+                    this.queueConflictCheck();
                 },
                 groupUnavailable(groupId) {
+                    if (this.realtime.groups.includes(String(groupId))) {
+                        return true;
+                    }
+
                     if (!this.startDate || !this.endDate || !this.startTime || !this.endTime) {
                         return false;
                     }
@@ -800,6 +839,94 @@
                     return this.groups
                         .filter((group) => this.groupUnavailable(group.id))
                         .map((group) => group.id);
+                },
+                instructorConflictMessage() {
+                    if (this.realtime.instructors.length === 0) return '';
+
+                    return `ผู้สอนมีรายการสอนในช่วงเวลาเดียวกันแล้ว: ${this.realtime.instructors.join(', ')}`;
+                },
+                groupConflictMessage() {
+                    if (this.realtime.groups.length === 0) return '';
+
+                    return `กลุ่มนักศึกษามีรายการสอนในช่วงเวลาเดียวกันแล้ว: ${this.realtime.groups.join(', ')}`;
+                },
+                roomConflictMessage() {
+                    if (!this.realtime.room) return '';
+
+                    return `ห้องหรือสถานที่นี้มีรายการสอนในช่วงเวลาเดียวกันแล้ว: ${this.realtime.room}`;
+                },
+                resetRealtimeConflicts() {
+                    this.realtime = {
+                        groups: [],
+                        instructors: [],
+                        room: null,
+                        capacity: null,
+                    };
+                },
+                readyForConflictCheck() {
+                    const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+                    return this.startDate
+                        && this.endDate
+                        && timePattern.test(this.startTime)
+                        && timePattern.test(this.endTime)
+                        && this.startTime < this.endTime;
+                },
+                queueConflictCheck() {
+                    window.clearTimeout(this.conflictTimer);
+
+                    if (!this.readyForConflictCheck()) {
+                        this.resetRealtimeConflicts();
+                        return;
+                    }
+
+                    this.conflictTimer = window.setTimeout(() => this.checkConflicts(), 350);
+                },
+                async checkConflicts() {
+                    const form = this.$root;
+                    const formData = new FormData(form);
+                    const payload = {
+                        schedule_id: this.currentScheduleId || null,
+                        start_date: formData.get('start_date'),
+                        end_date: formData.get('end_date'),
+                        start_time: formData.get('start_time'),
+                        end_time: formData.get('end_time'),
+                        room_id: formData.get('room_id') || null,
+                        capacity_required: formData.get('capacity_required') || null,
+                        instructor_ids: formData.getAll('instructor_ids[]'),
+                        student_group_ids: formData.getAll('student_group_ids[]'),
+                    };
+
+                    this.isCheckingConflicts = true;
+
+                    try {
+                        const response = await fetch(this.conflictCheckUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': formData.get('_token'),
+                            },
+                            body: JSON.stringify(payload),
+                        });
+
+                        if (!response.ok) {
+                            this.resetRealtimeConflicts();
+                            return;
+                        }
+
+                        const data = await response.json();
+                        this.realtime = {
+                            groups: (data.conflicts?.groups || []).map(String),
+                            instructors: data.conflicts?.instructors || [],
+                            room: data.conflicts?.room || null,
+                            capacity: data.conflicts?.capacity || null,
+                        };
+                    } catch (error) {
+                        this.resetRealtimeConflicts();
+                    } finally {
+                        this.isCheckingConflicts = false;
+                    }
                 },
             };
         }
@@ -847,7 +974,7 @@
             </div>
         </aside>
 
-        <form method="POST" action="{{ $formAction }}" class="schedule-panel schedule-main-panel" data-testid="schedule-create-form" x-data="scheduleFormState(@js(old('capacity_required', $schedule?->capacity_required ?? '')), @js($oldGroups->values()), @js($groupOptions), @js($scheduleConflicts), @js($initialStartDate), @js($initialEndDate), @js($initialStartTime), @js($initialEndTime))" @schedule-date-range-change.window="setDateRange($event)" @schedule-time-change.window="setTime($event)" @input="markFormChanged()" @change="markFormChanged()">
+        <form method="POST" action="{{ $formAction }}" class="schedule-panel schedule-main-panel" data-testid="schedule-create-form" x-data="scheduleFormState(@js(old('capacity_required', $schedule?->capacity_required ?? '')), @js($oldGroups->values()), @js($groupOptions), @js($scheduleConflicts), @js($initialStartDate), @js($initialEndDate), @js($initialStartTime), @js($initialEndTime), @js($checkConflictUrl), @js($schedule?->id))" x-init="queueConflictCheck()" @schedule-date-range-change.window="setDateRange($event)" @schedule-time-change.window="setTime($event)" @schedule-room-change.window="queueConflictCheck()" @input="markFormChanged()" @change="markFormChanged()">
             @csrf
             @if($isEditing)
                 @method('PUT')
@@ -1085,6 +1212,7 @@
                                         this.selected = id;
                                         this.query = '';
                                         this.open = false;
+                                        window.dispatchEvent(new CustomEvent('schedule-room-change'));
                                     }
                                 }"
                                 @keydown.escape.window="open = false"
@@ -1106,6 +1234,7 @@
                                     <div class="schedule-select-empty" x-show="filteredOptions().length === 0" x-cloak>ไม่พบห้องหรือสถานที่ที่ตรงกับคำค้นหา</div>
                                 </div>
                             </div>
+                            <div class="schedule-realtime-alert" x-show="roomConflictMessage()" x-text="roomConflictMessage()" x-cloak></div>
                             @error('room_id')<div class="caption" style="color:var(--status-conflict-fg);margin-top:5px;">{{ $message }}</div>@enderror
                         </div>
                     </div>
@@ -1128,9 +1257,7 @@
                             <div class="caption" style="margin-top:6px;">
                                 เลือกแล้ว <span x-text="selectedStudentCount()"></span> คน
                             </div>
-                            <div class="caption" x-show="capacityMessageVisible()" style="color:var(--status-conflict-fg);margin-top:5px;" x-cloak>
-                                จำนวนผู้เรียนของกลุ่มที่เลือกเกินจำนวนรองรับที่ระบุ
-                            </div>
+                            <div class="schedule-realtime-alert" x-show="capacityMessageVisible()" x-text="capacityMessage()" x-cloak></div>
                         </div>
                     </div>
                 </div>
@@ -1171,6 +1298,7 @@
                                     <div class="caption" x-show="!hasInstructorMatches()" x-cloak>ไม่พบข้อมูลผู้สอนที่ตรงกับคำค้นหา</div>
                                 @endif
                             </div>
+                            <div class="schedule-realtime-alert" x-show="instructorConflictMessage()" x-text="instructorConflictMessage()" x-cloak></div>
                             @error('instructor_ids')<div class="caption" style="color:var(--status-conflict-fg);margin-top:5px;">{{ $message }}</div>@enderror
                             @error('instructor_ids.*')<div class="caption" style="color:var(--status-conflict-fg);margin-top:5px;">{{ $message }}</div>@enderror
                         </div>
@@ -1191,6 +1319,7 @@
                                     <div class="caption">ยังไม่มีกลุ่มนักศึกษา</div>
                                 @endforelse
                             </div>
+                            <div class="schedule-realtime-alert" x-show="groupConflictMessage()" x-text="groupConflictMessage()" x-cloak></div>
                             @error('student_group_ids')<div class="caption" x-show="!touchedGroups && !touchedCapacity" style="color:var(--status-conflict-fg);margin-top:5px;">{{ $message }}</div>@enderror
                             @error('student_group_ids.*')<div class="caption" x-show="!touchedGroups" style="color:var(--status-conflict-fg);margin-top:5px;">{{ $message }}</div>@enderror
                         </div>

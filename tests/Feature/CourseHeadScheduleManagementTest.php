@@ -101,6 +101,45 @@ class CourseHeadScheduleManagementTest extends TestCase
         ])->assertSessionHasErrors('room_id');
     }
 
+    public function test_conflict_check_endpoint_returns_realtime_conflicts(): void
+    {
+        $head = $this->makeUser('course_head');
+        $instructor = $this->makeUser('instructor');
+        $offering = $this->makeOffering($head, 'NUR301');
+        $offering->instructorPool()->attach($instructor->id, ['role_in_course' => 'instructor']);
+        $group = $this->makeGroup($offering, 'A1');
+        $activityTypeId = $this->createActivityType();
+        $room = $this->makeRoom('R-301');
+
+        $existing = $this->makeSchedule($offering, $activityTypeId, $room->id, [
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-03',
+            'start_time' => '08:00',
+            'end_time' => '10:00',
+        ]);
+        $existing->instructors()->attach($instructor->id, ['is_lead' => false]);
+        $existing->studentGroups()->attach($group->id);
+
+        $this->actingAsCourseHead($head);
+
+        $this->postJson(route('maker.course_offerings.schedules.check_conflicts', $offering), [
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-03',
+            'start_time' => '09:00',
+            'end_time' => '11:00',
+            'room_id' => $room->id,
+            'capacity_required' => 10,
+            'instructor_ids' => [$instructor->id],
+            'student_group_ids' => [$group->id],
+        ])
+            ->assertOk()
+            ->assertJsonPath('conflicts.groups.0', 'A1')
+            ->assertJsonPath('conflicts.instructors.0', $instructor->formatted_name)
+            ->assertJsonPath('conflicts.room', $room->room_code.' '.$room->room_name)
+            ->assertJsonPath('conflicts.capacity.selected', 20)
+            ->assertJsonPath('conflicts.capacity.limit', 10);
+    }
+
     private function actingAsCourseHead(User $user): void
     {
         $this->actingAs($user);
