@@ -1051,6 +1051,7 @@ input[type="email"],
 input[type="password"],
 input[type="number"],
 input[type="date"],
+input[type="time"],
 select,
 textarea {
   width: 100%;
@@ -1070,6 +1071,13 @@ select:focus,
 textarea:focus {
   border-color: var(--brand-navy);
   box-shadow: 0 0 0 3px color-mix(in oklch, var(--brand-navy) 10%, transparent);
+}
+
+.error-msg {
+  margin-top: 6px;
+  font-size: var(--fs-sm);
+  color: var(--status-conflict-fg);
+  line-height: 1.45;
 }
 
 /* Role Chip Picker */

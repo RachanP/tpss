@@ -13,6 +13,8 @@ class Schedule extends Model
         'activity_type_id',
         'room_id',
         'practicum_series_id',
+        'start_date',
+        'end_date',
         'teaching_date',
         'start_time',
         'end_time',
@@ -24,6 +26,8 @@ class Schedule extends Model
     ];
 
     protected $casts = [
+        'start_date' => 'date',
+        'end_date' => 'date',
         'teaching_date' => 'date',
         'capacity_required' => 'integer',
     ];
