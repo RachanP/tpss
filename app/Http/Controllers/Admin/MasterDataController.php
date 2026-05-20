@@ -910,6 +910,26 @@ class MasterDataController extends Controller
             $newCourse->save();
         }
 
+        AuditLogger::log(
+            action: 'ข้อมูลหลัก.คัดลอก',
+            table: 'curriculums',
+            recordId: $newCurriculum->id,
+            oldValues: [
+                'source_curriculum_id' => $curriculum->id,
+                'source_name' => $curriculum->name,
+                'source_effective_year' => $curriculum->effective_year,
+            ],
+            newValues: [
+                'curriculum_id' => $newCurriculum->id,
+                'name' => $newCurriculum->name,
+                'effective_year' => $newCurriculum->effective_year,
+                'cloned_course_count' => $courses->count(),
+                'sample_course_codes' => $courses->pluck('course_code')->take(5)->values()->all(),
+            ],
+            category: 'ข้อมูลหลัก',
+            description: "คัดลอกหลักสูตร {$curriculum->name} เป็น {$newCurriculum->name}",
+        );
+
         return $this->redirectToMasterData('curriculums')->with('success', 'คัดลอกหลักสูตรเรียบร้อยแล้ว (' . $courses->count() . ' วิชา) — สถานะทั้งหมดตั้งเป็นปิดใช้งาน กรุณาเปิดใช้งานด้วยตนเอง');
     }
 
@@ -1214,6 +1234,9 @@ class MasterDataController extends Controller
         $locationTypes = LocationType::pluck('id', 'name')->toArray();
         $updateOnDup   = $request->boolean('update_on_duplicate');
         $successCount  = 0;
+        $createdCount  = 0;
+        $updatedCount  = 0;
+        $sampleRoomCodes = [];
         $errors        = [];
         $row           = 1;
 
@@ -1269,6 +1292,10 @@ class MasterDataController extends Controller
                     ]
                 );
                 $successCount++;
+                $exists ? $updatedCount++ : $createdCount++;
+                if (count($sampleRoomCodes) < 5) {
+                    $sampleRoomCodes[] = $roomCode;
+                }
             } catch (\Exception $e) {
                 $errors[] = "แถว {$row}: เกิดข้อผิดพลาด — " . $e->getMessage();
             }
@@ -1280,6 +1307,26 @@ class MasterDataController extends Controller
         $msg = $failCount > 0
             ? "นำเข้าสำเร็จ {$successCount} ห้อง, ข้าม {$failCount} แถว — ดูรายละเอียดด้านล่างขวา"
             : "นำเข้าสำเร็จทั้งหมด {$successCount} ห้อง";
+
+        if ($successCount > 0) {
+            AuditLogger::log(
+                action: 'ข้อมูลหลัก.นำเข้า CSV',
+                table: 'rooms',
+                recordId: 0,
+                oldValues: null,
+                newValues: [
+                    'success_count' => $successCount,
+                    'created_count' => $createdCount,
+                    'updated_count' => $updatedCount,
+                    'error_count' => $failCount,
+                    'update_on_duplicate' => $updateOnDup,
+                    'sample_room_codes' => $sampleRoomCodes,
+                ],
+                category: 'ข้อมูลหลัก',
+                description: "นำเข้าห้อง/สถานที่จาก CSV สำเร็จ {$successCount} ห้อง",
+            );
+        }
+
         $redirect = $this->redirectToMasterData('location_types')->with('success', $msg);
         if ($errors) $redirect->with('import_errors', $errors);
         return $redirect;
@@ -1310,6 +1357,9 @@ class MasterDataController extends Controller
         $employeeIds    = User::whereNotNull('employee_id')->pluck('id', 'employee_id')->toArray();
         $updateOnDup    = $request->boolean('update_on_duplicate');
         $successCount = 0;
+        $createdCount = 0;
+        $updatedCount = 0;
+        $sampleCourseCodes = [];
         $errors       = [];
         $row          = 1;
 
@@ -1435,6 +1485,10 @@ class MasterDataController extends Controller
                     ]
                 );
                 $successCount++;
+                $exists ? $updatedCount++ : $createdCount++;
+                if (count($sampleCourseCodes) < 5) {
+                    $sampleCourseCodes[] = $code;
+                }
             } catch (\Exception $e) {
                 $errors[] = "แถว {$row}: เกิดข้อผิดพลาด — " . $e->getMessage();
             }
@@ -1446,6 +1500,26 @@ class MasterDataController extends Controller
         $msg = $failCount > 0
             ? "นำเข้าสำเร็จ {$successCount} วิชา, ข้าม {$failCount} แถว — ดูรายละเอียดด้านล่างขวา"
             : "นำเข้าสำเร็จทั้งหมด {$successCount} วิชา";
+
+        if ($successCount > 0) {
+            AuditLogger::log(
+                action: 'ข้อมูลหลัก.นำเข้า CSV',
+                table: 'courses',
+                recordId: 0,
+                oldValues: null,
+                newValues: [
+                    'success_count' => $successCount,
+                    'created_count' => $createdCount,
+                    'updated_count' => $updatedCount,
+                    'error_count' => $failCount,
+                    'update_on_duplicate' => $updateOnDup,
+                    'sample_course_codes' => $sampleCourseCodes,
+                ],
+                category: 'ข้อมูลหลัก',
+                description: "นำเข้ารายวิชาจาก CSV สำเร็จ {$successCount} วิชา",
+            );
+        }
+
         $redirect = $this->redirectToMasterData('courses')->with('success', $msg);
         if ($errors) $redirect->with('import_errors', $errors);
         return $redirect;

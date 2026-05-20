@@ -361,6 +361,14 @@ class AdminSettingController extends Controller
             }
         }
 
+        $oldValues = [
+            'teaching_quota_weeks' => (int) SystemSetting::get('teaching_quota_weeks', 46),
+            'teaching_load_weeks' => (int) SystemSetting::get('teaching_load_weeks', 39),
+            'teaching_quota_hours_per_week' => (int) SystemSetting::get('teaching_quota_hours_per_week', 35),
+            'teaching_quota_hours' => (int) SystemSetting::get('teaching_quota_hours', 1610),
+            'pa_criteria_config' => json_decode(SystemSetting::get('pa_criteria_config', '{}'), true) ?: [],
+        ];
+
         $totalHours = $request->teaching_quota_weeks * $request->teaching_quota_hours_per_week;
 
         SystemSetting::set('teaching_quota_weeks', $request->teaching_quota_weeks);
@@ -378,6 +386,28 @@ class AdminSettingController extends Controller
             }
         }
         SystemSetting::set('pa_criteria_config', json_encode($criteria));
+
+        $newValues = [
+            'teaching_quota_weeks' => (int) $request->teaching_quota_weeks,
+            'teaching_load_weeks' => (int) $request->teaching_load_weeks,
+            'teaching_quota_hours_per_week' => (int) $request->teaching_quota_hours_per_week,
+            'teaching_quota_hours' => (int) $totalHours,
+            'pa_criteria_config' => $criteria,
+        ];
+
+        [$changedOld, $changedNew] = $this->auditDiff($oldValues, $newValues);
+        if (!empty($changedOld) || !empty($changedNew)) {
+            AuditLogger::log(
+                action: 'ตั้งค่าระบบ.แก้ไข',
+                table: 'system_settings',
+                recordId: 0,
+                oldValues: $changedOld,
+                newValues: $changedNew,
+                category: 'ตั้งค่าระบบ',
+                description: 'แก้ไขค่าคงที่และเกณฑ์ PA',
+            );
+        }
+
         AlertController::flushCache();
         return redirect()->route('admin.settings', ['tab' => 'pa'])->with('success', 'บันทึกค่าคงที่และเกณฑ์ PA เรียบร้อยแล้ว');
     }

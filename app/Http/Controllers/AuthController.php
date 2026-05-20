@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\UserRole;
+use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -84,6 +85,16 @@ class AuthController extends Controller
         $user = Auth::user();
         $user->password = $request->new_password;
         $user->save();
+
+        AuditLogger::log(
+            action: 'ผู้ใช้และสิทธิ์.เปลี่ยนรหัสผ่าน',
+            table: 'users',
+            recordId: $user->id,
+            oldValues: null,
+            newValues: ['password_changed' => true],
+            category: 'ผู้ใช้และสิทธิ์',
+            description: "เปลี่ยนรหัสผ่านผู้ใช้ {$user->name}",
+        );
 
         return back()->with('success', 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว');
     }

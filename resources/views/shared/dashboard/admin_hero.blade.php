@@ -11,11 +11,11 @@
 
     if (!$currentAcademicYear) {
         $systemStatus = [
-            'title' => 'ยังไม่ได้ตั้งค่าปีการศึกษาปัจจุบัน',
+            'title' => 'ยังไม่ได้ตั้งค่าปีการศึกษาที่ใช้งาน',
             'pill' => 'p-warning',
             'label' => 'ต้องตั้งค่าก่อน',
             'desc' => 'ตั้งค่าปีการศึกษาที่ใช้งานก่อน ระบบจึงจะประเมินความพร้อมและเปิดช่วงจัดตารางได้',
-            'actionLabel' => 'จัดการสถานะระบบ',
+            'actionLabel' => 'ตั้งค่าปีการศึกษา',
             'actionRoute' => route('admin.settings', ['tab' => 'academic']),
             'tone' => 'warning',
         ];
@@ -25,8 +25,8 @@
             'pill' => 'p-conflict',
             'label' => 'พบเงื่อนไขสำคัญ',
             'desc' => "แก้เงื่อนไขสำคัญ {$criticalCount} รายการก่อนเปิดช่วงจัดตาราง เพื่อป้องกันข้อมูลตั้งต้นไม่ครบ",
-            'actionLabel' => 'จัดการสถานะระบบ',
-            'actionRoute' => route('admin.settings', ['tab' => 'academic']),
+            'actionLabel' => 'ไปแก้เงื่อนไขสำคัญ',
+            'actionRoute' => route('admin.alerts'),
             'tone' => 'conflict',
         ];
     } elseif ($currentPhase === 'preparation' && $warningCount > 0) {
