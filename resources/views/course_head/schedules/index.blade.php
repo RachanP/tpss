@@ -13,8 +13,10 @@
     $groupFilterOptions = $schedules->flatMap->studentGroups->unique('id')->sortBy('group_code')->values();
     $availableInstructorIds = $availableInstructors->pluck('id')->map(fn ($id) => (int) $id);
     $instructorFilterOptions = $availableInstructors;
-    $scheduleItems = $schedules->map(function ($schedule) use ($statusMeta, $formatThaiDate, $availableInstructorIds) {
+    $warningScheduleCount = collect($scheduleWarnings ?? [])->filter(fn ($warnings) => count($warnings) > 0)->count();
+    $scheduleItems = $schedules->map(function ($schedule) use ($statusMeta, $formatThaiDate, $availableInstructorIds, $scheduleWarnings) {
         $meta = $statusMeta[$schedule->status] ?? ['label' => $schedule->status, 'class' => 'badge-gray'];
+        $warningLabels = collect($scheduleWarnings[$schedule->id] ?? [])->pluck('label')->implode(' ');
 
         return [
             'id' => (string) $schedule->id,
@@ -33,6 +35,7 @@
                 $schedule->room?->room_code,
                 $schedule->room?->room_name,
                 $meta['label'],
+                $warningLabels,
                 $schedule->studentGroups->pluck('group_code')->implode(' '),
                 $schedule->instructors->whereIn('id', $availableInstructorIds)->pluck('formatted_name')->implode(' '),
             ])->filter()->implode(' '), 'UTF-8'),
@@ -167,6 +170,15 @@
             border-color: var(--status-conflict-fg);
             background: var(--status-conflict-bg);
         }
+        .schedule-warning-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 7px;
+        }
+        .schedule-warning-stack .badge {
+            margin: 0;
+        }
         @media (max-width: 980px) {
             .schedule-summary {
                 grid-template-columns: 1fr 1fr;
@@ -266,6 +278,11 @@
                 @endif
                 @if($courseOffering->requires_practicum_rotation)
                     <span class="badge badge-warn">มีรอบฝึกปฏิบัติ</span>
+                @endif
+                @if($warningScheduleCount > 0)
+                    <span class="badge badge-warn">มีคำเตือน {{ $warningScheduleCount }} รายการ</span>
+                @elseif($schedules->isNotEmpty())
+                    <span class="badge badge-ok">ข้อมูลพร้อมใช้งาน</span>
                 @endif
             </div>
         </div>
@@ -385,6 +402,13 @@
                             </td>
                             <td>
                                 <span class="badge {{ $meta['class'] }}">{{ $meta['label'] }}</span>
+                                @if(!empty($scheduleWarnings[$schedule->id] ?? []))
+                                    <div class="schedule-warning-stack">
+                                        @foreach($scheduleWarnings[$schedule->id] as $warning)
+                                            <span class="badge {{ $warning['class'] }}">{{ $warning['label'] }}</span>
+                                        @endforeach
+                                    </div>
+                                @endif
                             </td>
                             <td>
                                 @if($canCreate)

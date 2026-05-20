@@ -35,10 +35,13 @@ class ScheduleController extends Controller
             ->orderBy('start_time')
             ->get();
 
+        $availableInstructors = $this->availableInstructors($courseOffering);
+
         return view('course_head.schedules.index', [
             'courseOffering' => $courseOffering,
             'schedules' => $schedules,
-            'availableInstructors' => $this->availableInstructors($courseOffering),
+            'availableInstructors' => $availableInstructors,
+            'scheduleWarnings' => $this->scheduleWarnings($schedules, $availableInstructors),
         ]);
     }
 
@@ -442,6 +445,80 @@ class ScheduleController extends Controller
             ->whereDate('end_date', '>=', $validated['start_date'])
             ->where('start_time', '<', $validated['end_time'])
             ->where('end_time', '>', $validated['start_time']);
+    }
+
+    private function scheduleWarnings($schedules, $availableInstructors): array
+    {
+        $validInstructorIds = $availableInstructors->pluck('id')->map(fn ($id) => (int) $id);
+        $warningsBySchedule = [];
+
+        foreach ($schedules as $schedule) {
+            $warnings = [];
+            $validScheduleInstructorIds = $schedule->instructors
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->intersect($validInstructorIds)
+                ->values();
+
+            if ($validScheduleInstructorIds->isEmpty() || $schedule->studentGroups->isEmpty() || ! $schedule->activityType) {
+                $warnings['missing_info'] = [
+                    'label' => 'ข้อมูลไม่ครบ',
+                    'class' => 'badge-warn',
+                ];
+            }
+
+            $studentCount = (int) $schedule->studentGroups->sum('student_count');
+            if ($schedule->capacity_required && $studentCount > $schedule->capacity_required) {
+                $warnings['capacity_exceeded'] = [
+                    'label' => 'จำนวนเกิน',
+                    'class' => 'badge-warn',
+                ];
+            }
+
+            foreach ($schedules as $otherSchedule) {
+                if ((int) $schedule->id === (int) $otherSchedule->id || ! $this->schedulesOverlap($schedule, $otherSchedule)) {
+                    continue;
+                }
+
+                if ($schedule->studentGroups->pluck('id')->intersect($otherSchedule->studentGroups->pluck('id'))->isNotEmpty()) {
+                    $warnings['group_overlap'] = [
+                        'label' => 'กลุ่มชนเวลา',
+                        'class' => 'badge-err',
+                    ];
+                }
+
+                $otherInstructorIds = $otherSchedule->instructors
+                    ->pluck('id')
+                    ->map(fn ($id) => (int) $id)
+                    ->intersect($validInstructorIds);
+
+                if ($validScheduleInstructorIds->intersect($otherInstructorIds)->isNotEmpty()) {
+                    $warnings['instructor_overlap'] = [
+                        'label' => 'ผู้สอนชนเวลา',
+                        'class' => 'badge-err',
+                    ];
+                }
+
+                if ($schedule->room_id && (int) $schedule->room_id === (int) $otherSchedule->room_id) {
+                    $warnings['room_overlap'] = [
+                        'label' => 'ห้องชนเวลา',
+                        'class' => 'badge-err',
+                    ];
+                }
+            }
+
+            $warningsBySchedule[$schedule->id] = array_values($warnings);
+        }
+
+        return $warningsBySchedule;
+    }
+
+    private function schedulesOverlap(Schedule $first, Schedule $second): bool
+    {
+        return $first->start_date?->format('Y-m-d') <= $second->end_date?->format('Y-m-d')
+            && $first->end_date?->format('Y-m-d') >= $second->start_date?->format('Y-m-d')
+            && substr((string) $first->start_time, 0, 5) < substr((string) $second->end_time, 0, 5)
+            && substr((string) $first->end_time, 0, 5) > substr((string) $second->start_time, 0, 5);
     }
 
     private function availableInstructors(CourseOffering $courseOffering)

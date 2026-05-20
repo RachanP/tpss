@@ -140,6 +140,47 @@ class CourseHeadScheduleManagementTest extends TestCase
             ->assertJsonPath('conflicts.capacity.limit', 10);
     }
 
+    public function test_schedule_index_shows_warning_badges(): void
+    {
+        $head = $this->makeUser('course_head');
+        $instructor = $this->makeUser('instructor');
+        $offering = $this->makeOffering($head, 'NUR401');
+        $offering->instructorPool()->attach($instructor->id, ['role_in_course' => 'instructor']);
+        $firstGroup = $this->makeGroup($offering, 'A1');
+        $secondGroup = $this->makeGroup($offering, 'A2');
+        $activityTypeId = $this->createActivityType();
+        $room = $this->makeRoom('R-401');
+
+        $first = $this->makeSchedule($offering, $activityTypeId, $room->id, [
+            'start_date' => '2026-08-04',
+            'end_date' => '2026-08-04',
+            'start_time' => '08:00',
+            'end_time' => '10:00',
+        ]);
+        $first->instructors()->attach($instructor->id, ['is_lead' => false]);
+        $first->studentGroups()->attach($firstGroup->id);
+
+        $second = $this->makeSchedule($offering, $activityTypeId, $room->id, [
+            'start_date' => '2026-08-04',
+            'end_date' => '2026-08-04',
+            'start_time' => '09:00',
+            'end_time' => '11:00',
+        ]);
+        $second->instructors()->attach($instructor->id, ['is_lead' => false]);
+        $second->studentGroups()->attach([$firstGroup->id, $secondGroup->id]);
+        $second->update(['capacity_required' => 10]);
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.course_offerings.schedules.index', $offering))
+            ->assertOk()
+            ->assertSee('มีคำเตือน')
+            ->assertSee('กลุ่มชนเวลา')
+            ->assertSee('ผู้สอนชนเวลา')
+            ->assertSee('ห้องชนเวลา')
+            ->assertSee('จำนวนเกิน');
+    }
+
     private function actingAsCourseHead(User $user): void
     {
         $this->actingAs($user);
