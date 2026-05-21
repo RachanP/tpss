@@ -13,6 +13,7 @@
     $groupOptions = $courseOffering->studentGroups
         ->map(fn ($group) => [
             'id' => (string) $group->id,
+            'code' => $group->group_code,
             'student_count' => (int) $group->student_count,
         ])
         ->values();
@@ -42,6 +43,36 @@
 
 <x-app-layout :title="$pageTitle">
     <style>
+        @if(request()->boolean('embedded'))
+            body {
+                background: oklch(97% 0.012 235);
+            }
+            .sidebar-overlay,
+            .app-layout > .sidebar,
+            .app-layout > aside,
+            .topbar,
+            .schedule-form-layout > aside {
+                display: none !important;
+            }
+            .app-layout {
+                display: block !important;
+                min-height: auto !important;
+            }
+            .main-content {
+                margin: 0 !important;
+                width: 100% !important;
+                min-height: auto !important;
+            }
+            .content-area {
+                padding: 18px !important;
+            }
+            .schedule-form-layout {
+                display: block !important;
+            }
+            .schedule-main-panel {
+                border-radius: 10px;
+            }
+        @endif
         .schedule-back-link {
             color: var(--brand-navy);
             text-decoration: none;
@@ -752,13 +783,16 @@
             };
         }
 
-        function scheduleFormState(initialCapacity, initialGroups, groups, schedules, initialStartDate, initialEndDate, initialStartTime, initialEndTime, conflictCheckUrl, currentScheduleId) {
+        function scheduleFormState(initialCapacity, initialGroups, initialInstructors, groups, schedules, initialStartDate, initialEndDate, initialStartTime, initialEndTime, conflictCheckUrl, currentScheduleId, hasServerErrors) {
             return {
                 capacity: initialCapacity || '',
                 selectedGroups: initialGroups,
+                selectedInstructors: initialInstructors,
                 touchedCapacity: false,
                 touchedGroups: false,
                 serverErrorTouched: false,
+                hasServerErrors,
+                submitAttempted: hasServerErrors,
                 isCheckingConflicts: false,
                 conflictTimer: null,
                 realtime: {
@@ -811,6 +845,33 @@
                     this.serverErrorTouched = true;
                     this.queueConflictCheck();
                 },
+                markSubmitAttempted() {
+                    this.submitAttempted = true;
+                    this.serverErrorTouched = false;
+                },
+                guardSubmit(event) {
+                    this.markSubmitAttempted();
+
+                    if (this.clientBlockingMessage()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                },
+                formValue(name) {
+                    return String(new FormData(this.$root).get(name) || '').trim();
+                },
+                missingRequiredMessage() {
+                    if (!this.submitAttempted) return '';
+                    if (!this.formValue('start_date') || !this.formValue('end_date')) return 'กรุณาเลือกช่วงวันที่';
+                    if (!this.formValue('start_time')) return 'กรุณาระบุเวลาเริ่ม';
+                    if (!this.formValue('end_time')) return 'กรุณาระบุเวลาสิ้นสุด';
+                    if (this.formValue('start_time') && this.formValue('end_time') && this.formValue('start_time') >= this.formValue('end_time')) return 'เวลาสิ้นสุดต้องมากกว่าเวลาเริ่ม';
+                    if (!this.formValue('activity_type_id')) return 'กรุณาเลือกประเภทกิจกรรม';
+                    if (this.selectedInstructors.length === 0) return 'กรุณาเลือกผู้สอนอย่างน้อย 1 คน';
+                    if (this.selectedGroups.length === 0) return 'กรุณาเลือกกลุ่มนักศึกษาอย่างน้อย 1 กลุ่ม';
+
+                    return '';
+                },
                 setDateRange(event) {
                     this.startDate = event.detail.start || '';
                     this.endDate = event.detail.end || '';
@@ -849,20 +910,50 @@
                         .filter((group) => this.groupUnavailable(group.id))
                         .map((group) => group.id);
                 },
+                selectedConflictGroups() {
+                    const realtimeIds = this.realtime.groupIds.map(String);
+
+                    return this.groups
+                        .filter((group) => this.selectedGroups.map(String).includes(String(group.id)))
+                        .filter((group) => realtimeIds.includes(String(group.id)) || this.groupUnavailable(group.id))
+                        .map((group) => group.id);
+                },
                 instructorConflictMessage() {
                     if (this.realtime.instructors.length === 0) return '';
 
                     return `ผู้สอนมีรายการสอนในช่วงเวลาเดียวกันแล้ว: ${this.realtime.instructors.join(', ')}`;
                 },
                 groupConflictMessage() {
-                    if (this.realtime.groups.length === 0) return '';
+                    if (this.realtime.groups.length > 0) {
+                        return `กลุ่มนักศึกษามีรายการสอนในช่วงเวลาเดียวกันแล้ว: ${this.realtime.groups.join(', ')}`;
+                    }
 
-                    return `กลุ่มนักศึกษามีรายการสอนในช่วงเวลาเดียวกันแล้ว: ${this.realtime.groups.join(', ')}`;
+                    const selectedCodes = this.groups
+                        .filter((group) => this.selectedConflictGroups().map(String).includes(String(group.id)))
+                        .map((group) => group.code || group.id);
+
+                    if (selectedCodes.length === 0) return '';
+
+                    return `กลุ่มนักศึกษามีรายการสอนในช่วงเวลาเดียวกันแล้ว: ${selectedCodes.join(', ')}`;
+                },
+                missingInstructorMessage() {
+                    if (!this.submitAttempted || this.serverErrorTouched || this.selectedInstructors.length > 0) return '';
+
+                    return 'กรุณาเลือกผู้สอนอย่างน้อย 1 คน';
                 },
                 roomConflictMessage() {
                     if (!this.realtime.room) return '';
 
                     return `ห้องหรือสถานที่นี้มีรายการสอนในช่วงเวลาเดียวกันแล้ว: ${this.realtime.room}`;
+                },
+                clientBlockingMessage() {
+                    if (this.missingRequiredMessage()) return this.missingRequiredMessage();
+                    if (this.capacityMessageVisible()) return this.capacityMessage();
+                    if (this.groupConflictMessage()) return this.groupConflictMessage();
+                    if (this.instructorConflictMessage()) return this.instructorConflictMessage();
+                    if (this.roomConflictMessage()) return this.roomConflictMessage();
+
+                    return '';
                 },
                 resetRealtimeConflicts() {
                     this.realtime = {
@@ -985,7 +1076,7 @@
             </div>
         </aside>
 
-        <form method="POST" action="{{ $formAction }}" class="schedule-panel schedule-main-panel" data-testid="schedule-create-form" x-data="scheduleFormState(@js(old('capacity_required', $schedule?->capacity_required ?? '')), @js($oldGroups->values()), @js($groupOptions), @js($scheduleConflicts), @js($initialStartDate), @js($initialEndDate), @js($initialStartTime), @js($initialEndTime), @js($checkConflictUrl), @js($schedule?->id))" x-init="queueConflictCheck()" @schedule-date-range-change.window="setDateRange($event)" @schedule-time-change.window="setTime($event)" @schedule-room-change.window="queueConflictCheck()" @input="markFormChanged()" @change="markFormChanged()">
+        <form method="POST" action="{{ $formAction }}" class="schedule-panel schedule-main-panel" data-testid="schedule-create-form" novalidate x-data="scheduleFormState(@js(old('capacity_required', $schedule?->capacity_required ?? '')), @js($oldGroups->values()), @js($oldInstructors->values()), @js($groupOptions), @js($scheduleConflicts), @js($initialStartDate), @js($initialEndDate), @js($initialStartTime), @js($initialEndTime), @js($checkConflictUrl), @js($schedule?->id), @js($errors->any()))" x-init="queueConflictCheck()" @schedule-date-range-change.window="setDateRange($event)" @schedule-time-change.window="setTime($event)" @schedule-room-change.window="queueConflictCheck()" @input="markFormChanged()" @change="markFormChanged()" @submit="guardSubmit($event)">
             @csrf
             @if($isEditing)
                 @method('PUT')
@@ -1299,7 +1390,7 @@
                                 @forelse($availableInstructors as $instructor)
                                     @php($instructorSearch = mb_strtolower($instructor->formatted_name, 'UTF-8'))
                                     <label class="schedule-check-option" x-show="@js($instructorSearch).includes(instructorQuery.trim().toLowerCase())" x-cloak>
-                                        <input type="checkbox" name="instructor_ids[]" value="{{ $instructor->id }}" @checked($oldInstructors->contains((string) $instructor->id)) data-testid="schedule-instructor-option">
+                                        <input type="checkbox" name="instructor_ids[]" value="{{ $instructor->id }}" x-model="selectedInstructors" @change="markFormChanged()" @checked($oldInstructors->contains((string) $instructor->id)) data-testid="schedule-instructor-option">
                                         <span>{{ $instructor->formatted_name }}</span>
                                     </label>
                                 @empty
@@ -1331,7 +1422,7 @@
                                 @forelse($courseOffering->studentGroups as $group)
                                     @php($groupSearch = mb_strtolower($group->group_code.' '.$group->student_count.' คน', 'UTF-8'))
                                     <label class="schedule-check-option" :class="{ 'has-conflict': groupUnavailable('{{ $group->id }}') }" x-show="@js($groupSearch).includes(groupQuery.trim().toLowerCase())" x-cloak>
-                                        <input type="checkbox" name="student_group_ids[]" value="{{ $group->id }}" x-model="selectedGroups" @change="markGroupsChanged()" data-testid="schedule-group-option">
+                                        <input type="checkbox" name="student_group_ids[]" value="{{ $group->id }}" x-model="selectedGroups" :disabled="groupUnavailable('{{ $group->id }}') && !selectedGroups.map(String).includes('{{ $group->id }}')" @change="markGroupsChanged()" data-testid="schedule-group-option">
                                         <span>
                                             {{ $group->group_code }} <span class="caption">({{ $group->student_count }} คน)</span>
                                             <span class="caption" x-show="groupUnavailable('{{ $group->id }}')" style="display:block;color:var(--status-conflict-fg);" x-cloak>มีรายการสอนช่วงนี้แล้ว</span>
@@ -1358,8 +1449,9 @@
             </div>
 
             <div class="schedule-actions">
+                <div class="schedule-inline-alert" x-show="clientBlockingMessage()" x-text="clientBlockingMessage()" x-cloak></div>
                 @if($errors->any())
-                    <div class="schedule-inline-alert" x-show="!serverErrorTouched && !capacityMessageVisible()" x-cloak>
+                    <div class="schedule-inline-alert" x-show="!serverErrorTouched && !clientBlockingMessage()" x-cloak>
                         {{ $errors->first() }}
                     </div>
                 @endif

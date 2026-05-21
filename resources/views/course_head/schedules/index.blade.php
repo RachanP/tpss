@@ -147,9 +147,72 @@
         .schedule-warning-stack .badge {
             margin: 0;
         }
+        .schedule-create-modal-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 80;
+            display: grid;
+            place-items: center;
+            padding: 24px;
+            background: oklch(16% 0.025 240 / 0.48);
+        }
+        .schedule-create-modal {
+            width: min(1180px, 100%);
+            height: min(86vh, 860px);
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr);
+            border: 1px solid oklch(82% 0.025 235);
+            border-radius: 12px;
+            background: oklch(98% 0.006 235);
+            box-shadow: 0 18px 48px oklch(12% 0.025 240 / 0.22);
+            overflow: hidden;
+        }
+        .schedule-create-modal-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+        }
+        .schedule-create-modal-title {
+            font-family: var(--font-display);
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--fg-1);
+        }
+        .schedule-create-modal-close {
+            min-width: 38px;
+            min-height: 38px;
+            border: 1px solid oklch(84% 0.025 235);
+            border-radius: 8px;
+            background: oklch(97% 0.01 235);
+            color: var(--fg-2);
+            font: inherit;
+            font-size: 22px;
+            line-height: 1;
+            cursor: pointer;
+        }
+        .schedule-create-modal-close:hover {
+            border-color: var(--brand-navy);
+            color: var(--brand-navy);
+        }
+        .schedule-create-frame {
+            width: 100%;
+            height: 100%;
+            border: 0;
+            background: oklch(97% 0.012 235);
+        }
         @media (max-width: 980px) {
             .schedule-filter-bar {
                 grid-template-columns: 1fr 1fr;
+            }
+            .schedule-create-modal-backdrop {
+                padding: 12px;
+            }
+            .schedule-create-modal {
+                height: 92vh;
             }
         }
         @media (max-width: 640px) {
@@ -195,8 +258,42 @@
                 },
             };
         }
+
+        function scheduleCreateModal() {
+            return {
+                createOpen: false,
+                frameUrl: 'about:blank',
+                modalTitle: 'เพิ่มรายการสอน',
+                modalSubtitle: 'กรอกช่วงวัน เวลา ผู้สอน และกลุ่มนักศึกษา',
+                createUrl: @js(route('maker.course_offerings.schedules.create', ['courseOffering' => $courseOffering, 'embedded' => 1])),
+                openCreateModal() {
+                    this.modalTitle = 'เพิ่มรายการสอน';
+                    this.modalSubtitle = 'กรอกช่วงวัน เวลา ผู้สอน และกลุ่มนักศึกษา';
+                    this.frameUrl = this.createUrl;
+                    this.createOpen = true;
+                    document.documentElement.style.overflow = 'hidden';
+                },
+                openEditModal(url) {
+                    this.modalTitle = 'แก้ไขรายการสอน';
+                    this.modalSubtitle = 'ปรับช่วงวัน เวลา ผู้สอน หรือกลุ่มนักศึกษา';
+                    this.frameUrl = url;
+                    this.createOpen = true;
+                    document.documentElement.style.overflow = 'hidden';
+                },
+                closeCreateModal() {
+                    this.createOpen = false;
+                    this.frameUrl = 'about:blank';
+                    document.documentElement.style.overflow = '';
+                },
+            };
+        }
+
+        if (window.self !== window.top && window.location.pathname.endsWith('/schedules')) {
+            window.top.location.href = window.location.href;
+        }
     </script>
 
+    <div x-data="scheduleCreateModal()" @keydown.escape.window="closeCreateModal()">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap;">
         <div>
             <a href="{{ route('maker.course_offerings.show', $courseOffering) }}" class="body-sm schedule-back-link">← กลับไปรายละเอียดรายวิชา</a>
@@ -266,7 +363,7 @@
             </div>
             <div class="card-actions">
                 @if($canCreate)
-                    <a href="{{ route('maker.course_offerings.schedules.create', $courseOffering) }}" class="btn btn-primary" data-testid="schedule-create-link">เพิ่มรายการสอน</a>
+                    <button type="button" class="btn btn-primary" data-testid="schedule-create-link" @click="openCreateModal()">เพิ่มรายการสอน</button>
                 @else
                     <span class="badge badge-gray">ยังไม่เปิดช่วงจัดตาราง</span>
                 @endif
@@ -371,7 +468,7 @@
                             <td>
                                 @if($canCreate)
                                     <div class="schedule-row-actions">
-                                        <a href="{{ route('maker.course_offerings.schedules.edit', [$courseOffering, $schedule]) }}" class="btn btn-ghost" style="padding:6px 10px;">แก้ไข</a>
+                                        <button type="button" class="btn btn-ghost" style="padding:6px 10px;" @click="openEditModal(@js(route('maker.course_offerings.schedules.edit', ['courseOffering' => $courseOffering, 'schedule' => $schedule, 'embedded' => 1])))">แก้ไข</button>
                                         <form method="POST" action="{{ route('maker.course_offerings.schedules.destroy', [$courseOffering, $schedule]) }}" onsubmit="return confirm('ต้องการลบรายการสอนนี้หรือไม่?');">
                                             @csrf
                                             @method('DELETE')
@@ -391,7 +488,7 @@
                                     <div>เพิ่มรายการสอนแรกของรายวิชานี้เพื่อเริ่มตรวจตารางและความพร้อมของกลุ่ม</div>
                                     <div class="schedule-empty-actions">
                                         @if($canCreate)
-                                            <a href="{{ route('maker.course_offerings.schedules.create', $courseOffering) }}" class="btn btn-primary">เพิ่มรายการสอน</a>
+                                            <button type="button" class="btn btn-primary" @click="openCreateModal()">เพิ่มรายการสอน</button>
                                         @else
                                             <span class="badge badge-gray">ยังไม่เปิดช่วงจัดตาราง</span>
                                         @endif
@@ -416,5 +513,28 @@
                 </tbody>
             </table>
         </div>
+    </div>
+
+    <div
+        class="schedule-create-modal-backdrop"
+        x-show="createOpen"
+        x-transition.opacity
+        x-cloak
+        @click.self="closeCreateModal()"
+        role="dialog"
+        aria-modal="true"
+        aria-label="เพิ่มรายการสอน"
+    >
+        <div class="schedule-create-modal">
+            <div class="schedule-create-modal-head">
+                <div>
+                    <div class="schedule-create-modal-title" x-text="modalTitle"></div>
+                    <div class="caption" style="margin-top:2px;" x-text="modalSubtitle"></div>
+                </div>
+                <button type="button" class="schedule-create-modal-close" @click="closeCreateModal()" aria-label="ปิด">&times;</button>
+            </div>
+            <iframe class="schedule-create-frame" :src="createOpen ? frameUrl : 'about:blank'" :title="modalTitle"></iframe>
+        </div>
+    </div>
     </div>
 </x-app-layout>
