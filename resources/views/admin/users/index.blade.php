@@ -802,7 +802,7 @@
                                 <label
                                     style="margin-bottom: 12px; font-weight: 700; color: var(--fg-1); display: block; font-size: 14px;">บทบาทและสิทธิ์การใช้งาน
                                 </label>
-                                <div class="role-grid">
+                                <div class="role-grid users-role-grid-compact">
                                     @foreach(['admin' => 'ผู้ดูแลระบบ', 'staff' => 'เจ้าหน้าที่', 'course_head' => 'หัวหน้าวิชา', 'executive' => 'ผู้บริหาร', 'instructor' => 'อาจารย์ผู้สอน'] as $val => $label)
                                         @php
                                             $icon = [
@@ -1172,6 +1172,52 @@
     </div>
 
     <style>
+        .users-role-grid-compact {
+            gap: 5px;
+        }
+
+        .users-role-grid-compact .role-card {
+            min-height: 46px;
+            gap: 9px;
+            padding: 8px 10px;
+            border-radius: 8px;
+        }
+
+        .users-role-grid-compact .role-check {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+        }
+
+        .users-role-grid-compact .role-check svg {
+            width: 12px;
+            height: 12px;
+        }
+
+        .users-role-grid-compact .role-icon-box {
+            width: 30px;
+            height: 30px;
+            border-radius: 7px;
+        }
+
+        .users-role-grid-compact .role-icon-box svg {
+            width: 17px;
+            height: 17px;
+        }
+
+        .users-role-grid-compact .role-name {
+            font-size: 13px;
+            line-height: 1.35;
+        }
+
+        .users-role-grid-compact .btn-primary-role {
+            padding: 3px 8px;
+            border-radius: 7px;
+            font-size: 10px;
+            letter-spacing: 0;
+            text-transform: none;
+        }
+
         .users-filter-bar {
             display: grid;
             grid-template-columns: minmax(420px, 1.8fr) repeat(4, minmax(150px, .85fr));
