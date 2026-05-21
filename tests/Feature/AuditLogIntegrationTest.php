@@ -26,6 +26,7 @@ class AuditLogIntegrationTest extends TestCase
 {
     use RefreshDatabase;
 
+    private const USER_EDIT_ACTION = 'ผู้ใช้และสิทธิ์.แก้ไข';
     private const PASSWORD_ACTION = 'ผู้ใช้และสิทธิ์.เปลี่ยนรหัสผ่าน';
 
     private User $admin;
@@ -499,6 +500,189 @@ class AuditLogIntegrationTest extends TestCase
                 'is_active' => true,
             ])
             ->assertSessionHasErrors('password');
+
+        $this->assertDatabaseCount('audit_logs', 0);
+    }
+
+    public function test_admin_update_employment_type_only_creates_user_edit_audit_log(): void
+    {
+        $user = $this->makeInstructorForAdminUpdate([
+            'employment_type' => 'พนักงานมหาวิทยาลัย',
+        ]);
+
+        $this->actingAsAdmin()
+            ->put(route('admin.users.update', $user), $this->adminInstructorUpdatePayload($user, [
+                'instructor_employment_type' => 'ข้าราชการ',
+            ]))
+            ->assertRedirect();
+
+        $log = $this->latestLog(self::USER_EDIT_ACTION, 'users');
+        $this->assertSame($user->id, $log->record_id);
+        $this->assertSame('พนักงานมหาวิทยาลัย', $log->old_values['employment_type']);
+        $this->assertSame('ข้าราชการ', $log->new_values['employment_type']);
+        $this->assertDatabaseMissing('audit_logs', [
+            'action' => self::PASSWORD_ACTION,
+            'table_affected' => 'users',
+            'record_id' => $user->id,
+        ]);
+    }
+
+    public function test_admin_update_hired_at_with_thai_buddhist_date_creates_iso_audit_diff(): void
+    {
+        $user = $this->makeInstructorForAdminUpdate([
+            'hired_at' => '2005-10-10',
+        ]);
+
+        $this->actingAsAdmin()
+            ->put(route('admin.users.update', $user), $this->adminInstructorUpdatePayload($user, [
+                'instructor_hired_at' => '15/01/2570',
+            ]))
+            ->assertRedirect();
+
+        $log = $this->latestLog(self::USER_EDIT_ACTION, 'users');
+        $this->assertSame('2005-10-10', $log->old_values['hired_at']);
+        $this->assertSame('2027-01-15', $log->new_values['hired_at']);
+    }
+
+    public function test_admin_update_same_hired_at_with_thai_buddhist_equivalent_is_no_op_audit(): void
+    {
+        $user = $this->makeInstructorForAdminUpdate([
+            'hired_at' => '2027-01-15',
+        ]);
+
+        $this->actingAsAdmin()
+            ->put(route('admin.users.update', $user), $this->adminInstructorUpdatePayload($user, [
+                'instructor_hired_at' => '15/01/2570',
+            ]))
+            ->assertRedirect();
+
+        $this->assertDatabaseCount('audit_logs', 0);
+    }
+
+    public function test_admin_update_pa_percentages_creates_user_edit_audit_log(): void
+    {
+        $user = $this->makeInstructorForAdminUpdate([
+            'teaching_pct' => 50,
+            'research_pct' => 20,
+            'service_pct' => 10,
+            'culture_pct' => 10,
+            'other_pct' => 10,
+        ]);
+
+        $this->actingAsAdmin()
+            ->put(route('admin.users.update', $user), $this->adminInstructorUpdatePayload($user, [
+                'instructor_teaching_pct' => 45,
+                'instructor_research_pct' => 25,
+            ]))
+            ->assertRedirect();
+
+        $log = $this->latestLog(self::USER_EDIT_ACTION, 'users');
+        $this->assertSame(50, $log->old_values['teaching_pct']);
+        $this->assertSame(45, $log->new_values['teaching_pct']);
+        $this->assertSame(20, $log->old_values['research_pct']);
+        $this->assertSame(25, $log->new_values['research_pct']);
+    }
+
+    public function test_admin_update_profile_identity_fields_creates_user_edit_audit_log(): void
+    {
+        $oldDepartment = $this->makeDepartment(['name' => 'Audit Old Department']);
+        $newDepartment = $this->makeDepartment(['name' => 'Audit New Department']);
+        $user = $this->makeInstructorForAdminUpdate([
+            'title' => 'อาจารย์',
+            'department_id' => $oldDepartment->id,
+            'academic_degree' => 'ปริญญาโท',
+        ]);
+
+        $this->actingAsAdmin()
+            ->put(route('admin.users.update', $user), $this->adminInstructorUpdatePayload($user, [
+                'instructor_title' => 'ผู้ช่วยอาจารย์',
+                'instructor_department_id' => $newDepartment->id,
+                'instructor_academic_degree' => 'ปริญญาเอก',
+            ]))
+            ->assertRedirect();
+
+        $log = $this->latestLog(self::USER_EDIT_ACTION, 'users');
+        $this->assertSame('อาจารย์', $log->old_values['title']);
+        $this->assertSame('ผู้ช่วยอาจารย์', $log->new_values['title']);
+        $this->assertSame($oldDepartment->id, $log->old_values['department_id']);
+        $this->assertSame($newDepartment->id, $log->new_values['department_id']);
+        $this->assertSame('ปริญญาโท', $log->old_values['academic_degree']);
+        $this->assertSame('ปริญญาเอก', $log->new_values['academic_degree']);
+    }
+
+    public function test_admin_update_department_position_creates_user_edit_audit_log(): void
+    {
+        $department = $this->makeDepartment(['name' => 'Audit Position Department']);
+        $user = $this->makeInstructorForAdminUpdate([
+            'department_id' => $department->id,
+        ]);
+
+        $this->actingAsAdmin()
+            ->put(route('admin.users.update', $user), $this->adminInstructorUpdatePayload($user, [
+                'instructor_department_position' => 'head',
+            ]))
+            ->assertRedirect();
+
+        $log = $this->latestLog(self::USER_EDIT_ACTION, 'users');
+        $this->assertNull($log->old_values['department_position']);
+        $this->assertSame('head', $log->new_values['department_position']);
+    }
+
+    public function test_admin_password_only_update_creates_password_audit_only(): void
+    {
+        $user = $this->makeUserWithRole('staff');
+
+        $this->actingAsAdmin()
+            ->put(route('admin.users.update', $user), [
+                'username' => $user->username,
+                'name' => $user->name,
+                'email' => $user->email,
+                'password' => 'changed-password-123',
+                'roles' => ['staff'],
+                'primary_role' => 'staff',
+                'is_active' => true,
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(0, AuditLog::where('action', self::USER_EDIT_ACTION)->count());
+        $this->assertSame(1, AuditLog::where('action', self::PASSWORD_ACTION)->count());
+    }
+
+    public function test_admin_profile_and_password_update_creates_both_audit_logs(): void
+    {
+        $user = $this->makeInstructorForAdminUpdate([
+            'employment_type' => 'พนักงานมหาวิทยาลัย',
+        ]);
+
+        $this->actingAsAdmin()
+            ->put(route('admin.users.update', $user), $this->adminInstructorUpdatePayload($user, [
+                'password' => 'changed-password-123',
+                'instructor_employment_type' => 'ข้าราชการ',
+            ]))
+            ->assertRedirect();
+
+        $editLog = $this->latestLog(self::USER_EDIT_ACTION, 'users');
+        $passwordLog = $this->latestLog(self::PASSWORD_ACTION, 'users');
+
+        $this->assertSame($user->id, $editLog->record_id);
+        $this->assertSame($user->id, $passwordLog->record_id);
+        $this->assertSame('ข้าราชการ', $editLog->new_values['employment_type']);
+        $this->assertTrue($passwordLog->new_values['password_changed']);
+        $this->assertNoSensitivePasswordFields($editLog->old_values);
+        $this->assertNoSensitivePasswordFields($editLog->new_values);
+        $this->assertNoSensitivePasswordFields($passwordLog->old_values);
+        $this->assertNoSensitivePasswordFields($passwordLog->new_values);
+    }
+
+    public function test_admin_profile_validation_failure_does_not_create_audit_log(): void
+    {
+        $user = $this->makeInstructorForAdminUpdate();
+
+        $this->actingAsAdmin()
+            ->put(route('admin.users.update', $user), $this->adminInstructorUpdatePayload($user, [
+                'instructor_teaching_pct' => 40,
+            ]))
+            ->assertSessionHasErrors('instructor_teaching_pct');
 
         $this->assertDatabaseCount('audit_logs', 0);
     }
@@ -1397,6 +1581,69 @@ class AuditLogIntegrationTest extends TestCase
             'department_id' => $this->makeDepartment()->id,
         ]);
         return $user;
+    }
+
+    private function makeInstructorForAdminUpdate(array $profileOverrides = []): User
+    {
+        $user = $this->makeInstructor();
+        $profile = $user->instructorProfile;
+
+        $profile->update(array_merge([
+            'title' => 'อาจารย์',
+            'department_id' => $profile->department_id,
+            'academic_degree' => 'ปริญญาโท',
+            'employment_type' => 'พนักงานมหาวิทยาลัย',
+            'hired_at' => '2026-01-01',
+            'is_english_passed' => false,
+            'teaching_pct' => 50,
+            'research_pct' => 20,
+            'service_pct' => 10,
+            'culture_pct' => 10,
+            'other_pct' => 10,
+            'teaching_quota' => 0,
+        ], $profileOverrides));
+
+        return $user->fresh(['roles', 'instructorProfile', 'headOfDepartments', 'secretaryOfDepartments']);
+    }
+
+    private function adminInstructorUpdatePayload(User $user, array $overrides = []): array
+    {
+        $user = $user->fresh(['roles', 'instructorProfile', 'headOfDepartments', 'secretaryOfDepartments']);
+        $profile = $user->instructorProfile;
+        $roles = $user->roles->pluck('role')->sort()->values()->all();
+
+        return array_merge([
+            'username' => $user->username,
+            'prefix' => $user->prefix,
+            'name' => $user->name,
+            'email' => $user->email,
+            'employee_id' => $user->employee_id,
+            'roles' => $roles,
+            'primary_role' => optional($user->roles->firstWhere('is_primary', true))->role ?? $roles[0],
+            'is_active' => (bool) $user->is_active,
+            'instructor_title' => $profile->title,
+            'instructor_department_id' => $profile->department_id,
+            'instructor_academic_degree' => $profile->academic_degree,
+            'instructor_employment_type' => $profile->employment_type,
+            'instructor_hired_at' => $profile->hired_at,
+            'instructor_is_english_passed' => $profile->is_english_passed ? 1 : 0,
+            'instructor_teaching_pct' => $profile->teaching_pct,
+            'instructor_research_pct' => $profile->research_pct,
+            'instructor_service_pct' => $profile->service_pct,
+            'instructor_culture_pct' => $profile->culture_pct,
+            'instructor_other_pct' => $profile->other_pct,
+            'instructor_teaching_quota' => $profile->teaching_quota,
+            'instructor_department_position' => $this->departmentPositionForTestUser($user),
+        ], $overrides);
+    }
+
+    private function departmentPositionForTestUser(User $user): ?string
+    {
+        if ($user->headOfDepartments->isNotEmpty()) {
+            return 'head';
+        }
+
+        return $user->secretaryOfDepartments->isNotEmpty() ? 'secretary' : null;
     }
 
     private function makeCourseHead(): User

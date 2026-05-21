@@ -67,7 +67,7 @@
                 <label>วันที่เริ่ม</label>
                 <x-thai-date-input
                     name="date_from"
-                    class="form-ctrl"
+                    class="form-ctrl audit-date-input"
                     :value="$dateFilterValues['date_from'] ?? request('date_from')"
                     data-testid="audit-logs-filter-date-from"
                     @change="fetchResults()" />
@@ -77,7 +77,7 @@
                 <label>วันที่สิ้นสุด</label>
                 <x-thai-date-input
                     name="date_to"
-                    class="form-ctrl"
+                    class="form-ctrl audit-date-input"
                     :value="$dateFilterValues['date_to'] ?? request('date_to')"
                     data-testid="audit-logs-filter-date-to"
                     @change="fetchResults()" />
@@ -260,13 +260,15 @@ function auditLogPage() {
         display: grid;
         grid-template-columns: minmax(190px, 1.25fr) minmax(150px, 1fr) minmax(150px, 1fr) minmax(145px, .9fr) minmax(145px, .9fr) auto;
         gap: 12px;
-        align-items: end;
+        align-items: start;
     }
     .audit-filter-field {
-        display: flex;
-        flex-direction: column;
+        display: grid;
+        grid-template-rows: 16px auto;
         gap: 5px;
         min-width: 0;
+        min-height: 94px;
+        align-content: start;
     }
     .audit-filter-field label {
         font-size: 11px;
@@ -279,11 +281,17 @@ function auditLogPage() {
         min-height: 40px;
         font-size: 13px;
     }
+    .audit-filter-field .audit-date-input + p {
+        min-height: 34px;
+        margin-bottom: 0;
+    }
     .audit-filter-actions {
         display: grid;
         grid-template-columns: 104px 86px;
         gap: 8px;
-        align-items: end;
+        align-items: start;
+        min-height: 94px;
+        padding-top: 21px;
     }
     .audit-filter-submit,
     .audit-filter-reset {
