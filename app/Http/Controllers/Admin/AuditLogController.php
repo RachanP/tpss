@@ -45,7 +45,7 @@ class AuditLogController extends Controller
             $query->whereDate('created_at', '<=', $request->date_to);
         }
 
-        $logs          = $query->paginate(50)->withQueryString();
+        $logs          = $query->paginate(25)->withQueryString();
         $categoryLabels = AuditLogger::CATEGORY_LABELS;
         $actionOptions = AuditLog::query()
             ->select('action')

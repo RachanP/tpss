@@ -241,6 +241,8 @@ class AdminUserController extends Controller
             }
         }
 
+        $passwordChanged = $request->filled('password');
+
         // Snapshot for audit diff — captured before the transaction mutates the record
         $auditBefore = $user->only(['prefix', 'name', 'username', 'email', 'employee_id', 'is_active']);
         $beforeRoles = $user->roles()->orderBy('role')->pluck('role')->all();
@@ -336,6 +338,25 @@ class AdminUserController extends Controller
             );
         }
 
+        if ($passwordChanged) {
+            AuditLogger::log(
+                action: 'ผู้ใช้และสิทธิ์.เปลี่ยนรหัสผ่าน',
+                table: 'users',
+                recordId: $user->id,
+                oldValues: [],
+                newValues: [
+                    'target_user' => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                    ],
+                    'password_changed' => true,
+                ],
+                category: 'ผู้ใช้และสิทธิ์',
+                description: "เปลี่ยนรหัสผ่านของผู้ใช้ {$user->name}",
+            );
+        }
+
         return redirect()->route('admin.users')->with('success', 'อัปเดตข้อมูลผู้ใช้เรียบร้อยแล้ว');
     }
 
@@ -415,6 +436,9 @@ class AdminUserController extends Controller
         $paCriteria      = json_decode(\App\Models\SystemSetting::get('pa_criteria_config', '{}'), true);
 
         $successCount = 0;
+        $createdCount = 0;
+        $updatedCount = 0;
+        $sampleUsernames = [];
         $errors       = [];
         $warnings     = [];
         $row          = 1;
@@ -493,6 +517,7 @@ class AdminUserController extends Controller
             }
 
             try {
+                $isUpdate = (bool) $existing;
                 DB::transaction(function () use ($csv, $username, $email, $name, $roles, $primaryRole, $departments, $existing, $password, &$warnings, $paCriteria, $row, $isInstructor, $needsProfile) {
                     $profileData = $this->buildProfileData($csv, $departments, $isInstructor);
 
@@ -558,6 +583,10 @@ class AdminUserController extends Controller
                     }
                 });
                 $successCount++;
+                $isUpdate ? $updatedCount++ : $createdCount++;
+                if (count($sampleUsernames) < 5) {
+                    $sampleUsernames[] = $username;
+                }
             } catch (\Exception $e) {
                 $errors[] = "แถว {$row}: เกิดข้อผิดพลาด — " . $e->getMessage();
             }
@@ -566,6 +595,27 @@ class AdminUserController extends Controller
         fclose($handle);
 
         \App\Http\Controllers\Admin\AlertController::flushCache();
+
+        if ($successCount > 0) {
+            AuditLogger::log(
+                action: 'ผู้ใช้และสิทธิ์.นำเข้า CSV',
+                table: 'users',
+                recordId: 0,
+                oldValues: null,
+                newValues: [
+                    'success_count' => $successCount,
+                    'created_count' => $createdCount,
+                    'updated_count' => $updatedCount,
+                    'error_count' => count($errors),
+                    'warning_count' => count($warnings),
+                    'update_on_duplicate' => $updateOnDup,
+                    'sample_usernames' => $sampleUsernames,
+                ],
+                category: 'ผู้ใช้และสิทธิ์',
+                description: "นำเข้าผู้ใช้จาก CSV สำเร็จ {$successCount} รายการ",
+            );
+        }
+
         $msg = "นำเข้าสำเร็จ {$successCount} รายการ";
         $redirect = redirect()->route('admin.users')->with('success', $msg);
         

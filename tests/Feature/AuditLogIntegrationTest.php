@@ -14,9 +14,11 @@ use App\Models\InstructorProfile;
 use App\Models\LocationType;
 use App\Models\Room;
 use App\Models\StudentGroup;
+use App\Models\SystemSetting;
 use App\Models\User;
 use App\Models\UserRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
@@ -265,6 +267,137 @@ class AuditLogIntegrationTest extends TestCase
                 'primary_role' => 'staff',
                 'is_active'    => true,
             ]);
+
+        $this->assertDatabaseCount('audit_logs', 0);
+    }
+
+    public function test_admin_changing_another_user_password_creates_password_audit_log(): void
+    {
+        $user = $this->makeUserWithRole('staff');
+
+        $this->actingAsAdmin()
+            ->put(route('admin.users.update', $user), [
+                'username' => $user->username,
+                'name' => $user->name,
+                'email' => $user->email,
+                'password' => 'changed-password-123',
+                'roles' => ['staff'],
+                'primary_role' => 'staff',
+                'is_active' => true,
+            ])
+            ->assertRedirect();
+
+        $log = $this->latestLog('ผู้ใช้และสิทธิ์.เปลี่ยนรหัสผ่าน', 'users');
+        $this->assertSame($user->id, $log->record_id);
+        $this->assertSame([], $log->old_values);
+        $this->assertTrue($log->new_values['password_changed']);
+        $this->assertSame($user->id, $log->new_values['target_user']['id']);
+        $this->assertSame($user->name, $log->new_values['target_user']['name']);
+        $this->assertSame($user->email, $log->new_values['target_user']['email']);
+        $this->assertArrayHasKey('context', $log->new_values);
+        $this->assertNoSensitivePasswordFields($log->old_values);
+        $this->assertNoSensitivePasswordFields($log->new_values);
+    }
+
+    public function test_admin_changing_password_for_multiple_users_creates_audit_log_per_target(): void
+    {
+        $first = $this->makeUserWithRole('staff');
+        $second = $this->makeUserWithRole('staff');
+
+        foreach ([$first, $second] as $index => $user) {
+            $this->actingAsAdmin()
+                ->put(route('admin.users.update', $user), [
+                    'username' => $user->username,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'password' => "changed-password-{$index}-123",
+                    'roles' => ['staff'],
+                    'primary_role' => 'staff',
+                    'is_active' => true,
+                ])
+                ->assertRedirect();
+        }
+
+        $logs = AuditLog::where('action', 'ผู้ใช้และสิทธิ์.เปลี่ยนรหัสผ่าน')
+            ->where('table_affected', 'users')
+            ->orderBy('id')
+            ->get();
+
+        $this->assertCount(2, $logs);
+        $this->assertEqualsCanonicalizing(
+            [$first->id, $second->id],
+            $logs->pluck('new_values.target_user.id')->all(),
+        );
+    }
+
+    public function test_admin_updating_user_with_blank_password_does_not_create_password_audit_log(): void
+    {
+        $user = $this->makeUserWithRole('staff');
+
+        $this->actingAsAdmin()
+            ->put(route('admin.users.update', $user), [
+                'username' => $user->username,
+                'name' => $user->name,
+                'email' => $user->email,
+                'password' => '',
+                'roles' => ['staff'],
+                'primary_role' => 'staff',
+                'is_active' => true,
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseMissing('audit_logs', [
+            'action' => 'ผู้ใช้และสิทธิ์.เปลี่ยนรหัสผ่าน',
+            'table_affected' => 'users',
+            'record_id' => $user->id,
+        ]);
+    }
+
+    public function test_admin_updating_role_and_password_creates_profile_and_password_audits(): void
+    {
+        $user = $this->makeUserWithRole('staff');
+
+        $this->actingAsAdmin()
+            ->put(route('admin.users.update', $user), [
+                'username' => $user->username,
+                'name' => $user->name,
+                'email' => $user->email,
+                'password' => 'changed-password-123',
+                'roles' => ['staff', 'admin'],
+                'primary_role' => 'admin',
+                'is_active' => true,
+            ])
+            ->assertRedirect();
+
+        $profileLog = $this->latestLog('ผู้ใช้และสิทธิ์.แก้ไข', 'users');
+        $passwordLog = $this->latestLog('ผู้ใช้และสิทธิ์.เปลี่ยนรหัสผ่าน', 'users');
+
+        $this->assertSame($user->id, $profileLog->record_id);
+        $this->assertSame($user->id, $passwordLog->record_id);
+        $this->assertSame('staff', $profileLog->old_values['primary_role']);
+        $this->assertSame('admin', $profileLog->new_values['primary_role']);
+        $this->assertTrue($passwordLog->new_values['password_changed']);
+        $this->assertNoSensitivePasswordFields($profileLog->old_values);
+        $this->assertNoSensitivePasswordFields($profileLog->new_values);
+        $this->assertNoSensitivePasswordFields($passwordLog->old_values);
+        $this->assertNoSensitivePasswordFields($passwordLog->new_values);
+    }
+
+    public function test_admin_password_validation_failure_does_not_create_audit_log(): void
+    {
+        $user = $this->makeUserWithRole('staff');
+
+        $this->actingAsAdmin()
+            ->put(route('admin.users.update', $user), [
+                'username' => $user->username,
+                'name' => $user->name,
+                'email' => $user->email,
+                'password' => 'short',
+                'roles' => ['staff'],
+                'primary_role' => 'staff',
+                'is_active' => true,
+            ])
+            ->assertSessionHasErrors('password');
 
         $this->assertDatabaseCount('audit_logs', 0);
     }
@@ -790,6 +923,206 @@ class AuditLogIntegrationTest extends TestCase
         $this->assertSame($beforeCount, AuditLog::where('category', 'รายวิชาและผู้รับผิดชอบ')->count());
     }
 
+    // ── Phase 3A: Bulk / Settings Writes ─────────────────────────────
+
+    public function test_import_users_creates_one_aggregate_audit_log_without_passwords(): void
+    {
+        $csv = implode("\n", [
+            'username,email,name,password,roles,primary_role',
+            'csv_user_1,csv1@test.example,CSV User 1,password123,staff,staff',
+            'csv_user_2,csv2@test.example,CSV User 2,password456,staff,staff',
+            '',
+        ]);
+
+        $this->actingAsAdmin()
+            ->post(route('admin.users.import'), ['csv_file' => $this->csvFile($csv)])
+            ->assertRedirect();
+
+        $log = $this->latestLog('ผู้ใช้และสิทธิ์.นำเข้า CSV', 'users');
+        $this->assertSame('ผู้ใช้และสิทธิ์', $log->category);
+        $this->assertSame(2, $log->new_values['success_count']);
+        $this->assertSame(2, $log->new_values['created_count']);
+        $this->assertSame(0, $log->new_values['updated_count']);
+        $this->assertSame(['csv_user_1', 'csv_user_2'], $log->new_values['sample_usernames']);
+        $this->assertArrayHasKey('context', $log->new_values);
+        $this->assertArrayNotHasKey('password', $log->new_values);
+        $this->assertArrayNotHasKey('password_hash', $log->new_values);
+    }
+
+    public function test_invalid_user_import_does_not_create_audit_log(): void
+    {
+        $this->actingAsAdmin()
+            ->post(route('admin.users.import'), [
+                'csv_file' => $this->csvFile("username,email,name,password,roles\nbad,bad@test.example,Bad,password123,staff\n"),
+            ])
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseCount('audit_logs', 0);
+    }
+
+    public function test_import_rooms_creates_one_aggregate_audit_log_with_counts_and_samples(): void
+    {
+        LocationType::create(['name' => 'ห้องเรียน']);
+        Room::create([
+            'room_code' => 'OLD-1',
+            'room_name' => 'ห้องเดิม',
+            'location_type_id' => LocationType::where('name', 'ห้องเรียน')->value('id'),
+            'status' => 'active',
+        ]);
+
+        $csv = implode("\n", [
+            'room_code,room_name,location_type_name,status',
+            'OLD-1,ห้องเดิมปรับปรุง,ห้องเรียน,active',
+            'NEW-1,ห้องใหม่,ห้องเรียน,active',
+            '',
+        ]);
+
+        $this->actingAsAdmin()
+            ->post(route('admin.rooms.import'), [
+                'csv_file' => $this->csvFile($csv),
+                'update_on_duplicate' => '1',
+            ])
+            ->assertRedirect();
+
+        $log = $this->latestLog('ข้อมูลหลัก.นำเข้า CSV', 'rooms');
+        $this->assertSame(2, $log->new_values['success_count']);
+        $this->assertSame(1, $log->new_values['created_count']);
+        $this->assertSame(1, $log->new_values['updated_count']);
+        $this->assertSame(['OLD-1', 'NEW-1'], $log->new_values['sample_room_codes']);
+        $this->assertTrue($log->new_values['update_on_duplicate']);
+        $this->assertArrayHasKey('context', $log->new_values);
+    }
+
+    public function test_invalid_room_import_does_not_create_audit_log(): void
+    {
+        $this->actingAsAdmin()
+            ->post(route('admin.rooms.import'), [
+                'csv_file' => $this->csvFile("room_code,room_name\nRM-01,ห้องทดสอบ\n"),
+            ])
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseCount('audit_logs', 0);
+    }
+
+    public function test_empty_import_file_does_not_create_audit_log(): void
+    {
+        $this->actingAsAdmin()
+            ->post(route('admin.rooms.import'), ['csv_file' => $this->csvFile('')])
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseCount('audit_logs', 0);
+    }
+
+    public function test_import_courses_creates_one_aggregate_audit_log_with_counts_and_samples(): void
+    {
+        $curriculum = $this->makeCurriculum();
+        $department = $this->makeDepartment();
+        $head = $this->makeInstructor();
+
+        $csv = implode("\n", [
+            'course_code,name_th,curriculum_name,department_name,head_instructor_employee_id,course_type,credits,lecture_hours,lab_hours,self_study_hours,capacity,default_year_level,default_semester,requires_practicum_rotation,status',
+            "CSV101,วิชา CSV 1,{$curriculum->name},{$department->name},{$head->employee_id},theory,3,3,0,6,30,1,1,0,active",
+            "CSV102,วิชา CSV 2,{$curriculum->name},{$department->name},{$head->employee_id},theory,3,3,0,6,30,1,1,0,active",
+            '',
+        ]);
+
+        $this->actingAsAdmin()
+            ->post(route('admin.courses.import'), ['csv_file' => $this->csvFile($csv)])
+            ->assertRedirect();
+
+        $log = $this->latestLog('ข้อมูลหลัก.นำเข้า CSV', 'courses');
+        $this->assertSame(2, $log->new_values['success_count']);
+        $this->assertSame(2, $log->new_values['created_count']);
+        $this->assertSame(0, $log->new_values['updated_count']);
+        $this->assertSame(['CSV101', 'CSV102'], $log->new_values['sample_course_codes']);
+        $this->assertArrayHasKey('context', $log->new_values);
+    }
+
+    public function test_invalid_course_import_does_not_create_audit_log(): void
+    {
+        $this->actingAsAdmin()
+            ->post(route('admin.courses.import'), [
+                'csv_file' => $this->csvFile("course_code,name_th,credits\nCSV101,วิชา CSV,3\n"),
+            ])
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseCount('audit_logs', 0);
+    }
+
+    public function test_curriculum_clone_creates_audit_log_with_cloned_course_count(): void
+    {
+        $curriculum = $this->makeCurriculum();
+        $this->makeCourse(['curriculum_id' => $curriculum->id, 'course_code' => 'CLONE101']);
+        $this->makeCourse(['curriculum_id' => $curriculum->id, 'course_code' => 'CLONE102']);
+
+        $this->actingAsAdmin()
+            ->post(route('admin.curriculums.clone', $curriculum), [
+                'name' => 'หลักสูตร Clone Audit',
+                'effective_year' => 2570,
+            ])
+            ->assertRedirect();
+
+        $newCurriculum = Curriculum::where('name', 'หลักสูตร Clone Audit')->firstOrFail();
+        $log = $this->latestLog('ข้อมูลหลัก.คัดลอก', 'curriculums');
+        $this->assertSame($newCurriculum->id, $log->record_id);
+        $this->assertSame($curriculum->id, $log->old_values['source_curriculum_id']);
+        $this->assertSame(2, $log->new_values['cloned_course_count']);
+        $this->assertSame(['CLONE101', 'CLONE102'], $log->new_values['sample_course_codes']);
+        $this->assertArrayHasKey('context', $log->new_values);
+    }
+
+    public function test_update_constants_logs_changed_keys_only(): void
+    {
+        $criteria = [
+            'อาจารย์' => [
+                't' => ['min' => 20, 'max' => 70],
+                'r' => ['min' => 20, 'max' => 70],
+            ],
+        ];
+        SystemSetting::set('teaching_quota_weeks', 46);
+        SystemSetting::set('teaching_load_weeks', 39);
+        SystemSetting::set('teaching_quota_hours_per_week', 35);
+        SystemSetting::set('teaching_quota_hours', 1610);
+        SystemSetting::set('pa_criteria_config', json_encode($criteria));
+
+        $this->actingAsAdmin()
+            ->post(route('admin.settings.constants.update'), [
+                'teaching_quota_weeks' => 46,
+                'teaching_load_weeks' => 40,
+                'teaching_quota_hours_per_week' => 35,
+                'pa_criteria' => $criteria,
+            ])
+            ->assertRedirect();
+
+        $log = $this->latestLog('ตั้งค่าระบบ.แก้ไข', 'system_settings');
+        $this->assertSame(['teaching_load_weeks'], array_keys($log->old_values));
+        $this->assertSame(39, $log->old_values['teaching_load_weeks']);
+        $this->assertSame(40, $log->new_values['teaching_load_weeks']);
+        $this->assertArrayHasKey('context', $log->new_values);
+    }
+
+    public function test_password_change_creates_audit_log_without_raw_password(): void
+    {
+        $user = $this->makeUserWithRole('staff');
+
+        $this->actingAs($user)->withSession(['active_role' => 'staff'])
+            ->put(route('profile.password.update'), [
+                'new_password' => 'new-password-123',
+                'new_password_confirmation' => 'new-password-123',
+            ])
+            ->assertRedirect();
+
+        $log = $this->latestLog('ผู้ใช้และสิทธิ์.เปลี่ยนรหัสผ่าน', 'users');
+        $this->assertSame($user->id, $log->record_id);
+        $this->assertNull($log->old_values);
+        $this->assertTrue($log->new_values['password_changed']);
+        $this->assertArrayHasKey('context', $log->new_values);
+        $this->assertArrayNotHasKey('password', $log->new_values);
+        $this->assertArrayNotHasKey('new_password', $log->new_values);
+        $this->assertNoSensitivePasswordFields($log->old_values);
+        $this->assertNoSensitivePasswordFields($log->new_values);
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────
 
     private function actingAsAdmin(): static
@@ -808,6 +1141,39 @@ class AuditLogIntegrationTest extends TestCase
             ->where('table_affected', $table)
             ->latest('id')
             ->firstOrFail();
+    }
+
+    private function csvFile(string $content, string $name = 'import.csv'): UploadedFile
+    {
+        $tmp = tempnam(sys_get_temp_dir(), 'audit-csv');
+        file_put_contents($tmp, $content);
+
+        return new UploadedFile($tmp, $name, 'text/csv', null, true);
+    }
+
+    private function assertNoSensitivePasswordFields(?array $payload): void
+    {
+        foreach (['password', 'password_hash', 'password_confirmation', 'current_password', 'new_password'] as $field) {
+            $this->assertFalse(
+                $this->arrayHasKeyRecursive($field, $payload ?? []),
+                "Sensitive audit field [{$field}] should not be present.",
+            );
+        }
+    }
+
+    private function arrayHasKeyRecursive(string $needle, array $payload): bool
+    {
+        foreach ($payload as $key => $value) {
+            if ($key === $needle) {
+                return true;
+            }
+
+            if (is_array($value) && $this->arrayHasKeyRecursive($needle, $value)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function makeAdmin(): User
