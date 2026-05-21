@@ -65,18 +65,22 @@
 
             <div class="audit-filter-field">
                 <label>วันที่เริ่ม</label>
-                <input type="date" name="date_from" class="form-ctrl"
-                       value="{{ request('date_from') }}"
-                       data-testid="audit-logs-filter-date-from"
-                       @change="fetchResults()">
+                <x-thai-date-input
+                    name="date_from"
+                    class="form-ctrl"
+                    :value="$dateFilterValues['date_from'] ?? request('date_from')"
+                    data-testid="audit-logs-filter-date-from"
+                    @change="fetchResults()" />
             </div>
 
             <div class="audit-filter-field">
                 <label>วันที่สิ้นสุด</label>
-                <input type="date" name="date_to" class="form-ctrl"
-                       value="{{ request('date_to') }}"
-                       data-testid="audit-logs-filter-date-to"
-                       @change="fetchResults()">
+                <x-thai-date-input
+                    name="date_to"
+                    class="form-ctrl"
+                    :value="$dateFilterValues['date_to'] ?? request('date_to')"
+                    data-testid="audit-logs-filter-date-to"
+                    @change="fetchResults()" />
             </div>
 
             <div class="audit-filter-actions">

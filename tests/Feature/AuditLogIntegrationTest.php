@@ -26,6 +26,8 @@ class AuditLogIntegrationTest extends TestCase
 {
     use RefreshDatabase;
 
+    private const PASSWORD_ACTION = 'ผู้ใช้และสิทธิ์.เปลี่ยนรหัสผ่าน';
+
     private User $admin;
     private int  $seq = 1;
 
@@ -232,6 +234,28 @@ class AuditLogIntegrationTest extends TestCase
         $this->assertContains('admin', $log->new_values['roles']);
     }
 
+    public function test_role_only_update_does_not_create_password_audit_log(): void
+    {
+        $user = $this->makeUserWithRole('staff');
+
+        $this->actingAsAdmin()
+            ->put(route('admin.users.update', $user), [
+                'username' => $user->username,
+                'name' => $user->name,
+                'email' => $user->email,
+                'roles' => ['admin'],
+                'primary_role' => 'admin',
+                'is_active' => true,
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseMissing('audit_logs', [
+            'action' => self::PASSWORD_ACTION,
+            'table_affected' => 'users',
+            'record_id' => $user->id,
+        ]);
+    }
+
     public function test_update_user_logs_primary_role_change_even_when_role_list_is_same(): void
     {
         $user = $this->makeUserWithRole('staff');
@@ -297,6 +321,11 @@ class AuditLogIntegrationTest extends TestCase
         $this->assertArrayHasKey('context', $log->new_values);
         $this->assertNoSensitivePasswordFields($log->old_values);
         $this->assertNoSensitivePasswordFields($log->new_values);
+
+        $this->assertSame(1, AuditLog::where('action', self::PASSWORD_ACTION)
+            ->where('table_affected', 'users')
+            ->where('record_id', $user->id)
+            ->count());
     }
 
     public function test_admin_changing_password_for_multiple_users_creates_audit_log_per_target(): void
@@ -351,6 +380,78 @@ class AuditLogIntegrationTest extends TestCase
             'table_affected' => 'users',
             'record_id' => $user->id,
         ]);
+    }
+
+    public function test_role_update_with_same_password_does_not_log_password_change(): void
+    {
+        $user = $this->makeUserWithRole('staff');
+        $originalHash = $user->password;
+
+        $this->actingAsAdmin()
+            ->put(route('admin.users.update', $user), [
+                'username' => $user->username,
+                'name' => $user->name,
+                'email' => $user->email,
+                'password' => 'password',
+                'roles' => ['admin'],
+                'primary_role' => 'admin',
+                'is_active' => true,
+            ])
+            ->assertRedirect();
+
+        $this->assertSame($originalHash, $user->fresh()->password);
+        $this->assertDatabaseMissing('audit_logs', [
+            'action' => self::PASSWORD_ACTION,
+            'table_affected' => 'users',
+            'record_id' => $user->id,
+        ]);
+    }
+
+    public function test_admin_editing_own_account_without_password_does_not_log_password_change(): void
+    {
+        $this->actingAsAdmin()
+            ->put(route('admin.users.update', $this->admin), [
+                'username' => $this->admin->username,
+                'name' => $this->admin->name,
+                'email' => $this->admin->email,
+                'password' => '',
+                'roles' => ['admin'],
+                'primary_role' => 'admin',
+                'is_active' => true,
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseMissing('audit_logs', [
+            'action' => self::PASSWORD_ACTION,
+            'table_affected' => 'users',
+            'record_id' => $this->admin->id,
+        ]);
+    }
+
+    public function test_password_change_audit_payload_has_no_raw_password_or_hash(): void
+    {
+        $user = $this->makeUserWithRole('staff');
+        $rawPassword = 'changed-password-123';
+
+        $this->actingAsAdmin()
+            ->put(route('admin.users.update', $user), [
+                'username' => $user->username,
+                'name' => $user->name,
+                'email' => $user->email,
+                'password' => $rawPassword,
+                'roles' => ['staff'],
+                'primary_role' => 'staff',
+                'is_active' => true,
+            ])
+            ->assertRedirect();
+
+        $log = $this->latestLog(self::PASSWORD_ACTION, 'users');
+        $payloadJson = json_encode([$log->old_values, $log->new_values], JSON_THROW_ON_ERROR);
+
+        $this->assertStringNotContainsString($rawPassword, $payloadJson);
+        $this->assertStringNotContainsString($user->fresh()->password, $payloadJson);
+        $this->assertNoSensitivePasswordFields($log->old_values);
+        $this->assertNoSensitivePasswordFields($log->new_values);
     }
 
     public function test_admin_updating_role_and_password_creates_profile_and_password_audits(): void
@@ -647,6 +748,25 @@ class AuditLogIntegrationTest extends TestCase
         $this->assertSame('2027-08-15', $updateLog->new_values['start_date']);
     }
 
+    public function test_academic_year_dates_accept_thai_buddhist_input(): void
+    {
+        $this->actingAsAdmin()
+            ->post(route('admin.settings.years.store'), [
+                'name' => '2571',
+                'semester' => 2,
+                'start_date' => '23/06/2569',
+                'end_date' => '24/06/2569',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('academic_years', [
+            'name' => '2571',
+            'semester' => 2,
+            'start_date' => '2026-06-23',
+            'end_date' => '2026-06-24',
+        ]);
+    }
+
     public function test_instructor_master_data_update_logs_profile_fields_only_when_changed(): void
     {
         $instructor = $this->makeInstructor();
@@ -679,6 +799,36 @@ class AuditLogIntegrationTest extends TestCase
         $this->assertArrayNotHasKey('roles', $log->old_values);
         $this->assertSame($department->id, $log->new_values['department_id']);
         $this->assertSame(45, $log->new_values['teaching_pct']);
+    }
+
+    public function test_master_data_instructor_hired_date_accepts_thai_buddhist_input(): void
+    {
+        $instructor = $this->makeInstructor();
+        $department = $this->makeDepartment(['name' => 'Thai Date Master Data Department']);
+
+        $this->actingAsAdmin()
+            ->put(route('admin.instructors.update', $instructor->id), [
+                'name' => $instructor->name,
+                'prefix' => $instructor->prefix ?? 'อ.',
+                'employee_id' => $instructor->employee_id,
+                'department_id' => $department->id,
+                'title' => 'อาจารย์',
+                'academic_degree' => 'ปริญญาโท',
+                'employment_type' => 'พนักงานมหาวิทยาลัย',
+                'hired_at' => '23/06/2569',
+                'is_english_passed' => 0,
+                'teaching_pct' => 50,
+                'research_pct' => 20,
+                'service_pct' => 10,
+                'culture_pct' => 10,
+                'other_pct' => 10,
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('instructor_profiles', [
+            'user_id' => $instructor->id,
+            'hired_at' => '2026-06-23',
+        ]);
     }
 
     public function test_no_op_and_validation_failure_do_not_create_phase_2b_logs(): void
@@ -1121,6 +1271,44 @@ class AuditLogIntegrationTest extends TestCase
         $this->assertArrayNotHasKey('new_password', $log->new_values);
         $this->assertNoSensitivePasswordFields($log->old_values);
         $this->assertNoSensitivePasswordFields($log->new_values);
+    }
+
+    public function test_date_filter_with_buddhist_year_text_input_parses_correctly(): void
+    {
+        $insideLog = AuditLog::create([
+            'user_id' => $this->admin->id,
+            'action' => 'ข้อมูลหลัก.สร้าง',
+            'table_affected' => 'courses',
+            'record_id' => 1,
+            'old_values' => null,
+            'new_values' => [],
+            'category' => 'ข้อมูลหลัก',
+            'description' => 'พบจากวันที่ พ.ศ.',
+        ]);
+        $insideLog->forceFill(['created_at' => '2026-05-21 09:00:00'])->save();
+
+        $outsideLog = AuditLog::create([
+            'user_id' => $this->admin->id,
+            'action' => 'ข้อมูลหลัก.สร้าง',
+            'table_affected' => 'courses',
+            'record_id' => 2,
+            'old_values' => null,
+            'new_values' => [],
+            'category' => 'ข้อมูลหลัก',
+            'description' => 'ก่อนช่วงวันที่ พ.ศ.',
+        ]);
+        $outsideLog->forceFill(['created_at' => '2026-05-20 09:00:00'])->save();
+
+        $response = $this->actingAsAdmin()
+            ->withHeader('X-Requested-With', 'XMLHttpRequest')
+            ->get(route('admin.audit_logs.index', [
+                'date_from' => '21/05/2569',
+                'partial' => 'table',
+            ]));
+
+        $response->assertOk();
+        $response->assertSee('พบจากวันที่ พ.ศ.');
+        $response->assertDontSee('ก่อนช่วงวันที่ พ.ศ.');
     }
 
     // ── Helpers ───────────────────────────────────────────────────────

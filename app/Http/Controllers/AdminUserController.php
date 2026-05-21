@@ -8,6 +8,7 @@ use App\Models\Department;
 use App\Models\InstructorProfile;
 use App\Models\SystemSetting;
 use App\Services\AuditLogger;
+use App\Support\ThaiDate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
@@ -47,6 +48,8 @@ class AdminUserController extends Controller
 
     public function store(Request $request)
     {
+        $this->normalizeThaiDateInput($request, 'instructor_hired_at');
+
         $roles        = $request->input('roles', []);
         $isInstructor = in_array('instructor', $roles);
         $needsDept    = $isInstructor || in_array('course_head', $roles);
@@ -186,6 +189,8 @@ class AdminUserController extends Controller
 
     public function update(Request $request, User $user)
     {
+        $this->normalizeThaiDateInput($request, 'instructor_hired_at');
+
         $roles        = $request->input('roles', []);
         $isInstructor = in_array('instructor', $roles);
         $needsDept    = $isInstructor || in_array('course_head', $roles);
@@ -241,14 +246,15 @@ class AdminUserController extends Controller
             }
         }
 
-        $passwordChanged = $request->filled('password');
+        $passwordChanged = $request->filled('password')
+            && !Hash::check($request->input('password'), $user->password);
 
         // Snapshot for audit diff — captured before the transaction mutates the record
         $auditBefore = $user->only(['prefix', 'name', 'username', 'email', 'employee_id', 'is_active']);
         $beforeRoles = $user->roles()->orderBy('role')->pluck('role')->all();
         $beforePrimaryRole = $user->roles()->where('is_primary', true)->value('role');
 
-        DB::transaction(function () use ($validated, $user, $request, $needsProfile, $isInstructor) {
+        DB::transaction(function () use ($validated, $user, $request, $needsProfile, $isInstructor, $passwordChanged) {
             $user->update([
                 'username'    => $validated['username'],
                 'prefix'      => $validated['prefix'] ?? null,
@@ -258,7 +264,7 @@ class AdminUserController extends Controller
                 'is_active'   => $validated['is_active'],
             ]);
 
-            if ($request->filled('password')) {
+            if ($passwordChanged) {
                 $user->update(['password' => $validated['password']]);
             }
 
@@ -688,5 +694,22 @@ class AdminUserController extends Controller
     public function settings()
     {
         return view('admin.settings');
+    }
+
+    private function normalizeThaiDateInput(Request $request, string $field): void
+    {
+        if (! $request->has($field)) {
+            return;
+        }
+
+        $value = $request->input($field);
+        if ($value === null || trim((string) $value) === '') {
+            return;
+        }
+
+        $iso = ThaiDate::parseToIso((string) $value);
+        if ($iso) {
+            $request->merge([$field => $iso]);
+        }
     }
 }

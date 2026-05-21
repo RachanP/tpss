@@ -123,6 +123,45 @@
             const query = String(keyword || '').toLowerCase();
             return source.includes(query) || this.normalizeSearch(source).includes(this.normalizeSearch(query));
         },
+        thaiDateForInput(value) {
+            const raw = String(value || '').trim();
+            if (!raw) return '';
+
+            const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (iso) {
+                return iso[3] + '/' + iso[2] + '/' + (parseInt(iso[1], 10) + 543);
+            }
+
+            const display = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+            if (display) {
+                const year = parseInt(display[3], 10);
+                return display[1].padStart(2, '0') + '/' + display[2].padStart(2, '0') + '/' + (year >= 2400 ? year : year + 543);
+            }
+
+            return raw;
+        },
+        thaiDateToIso(value) {
+            const raw = String(value || '').trim();
+            if (!raw) return '';
+
+            const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (iso) return iso[1] + '-' + iso[2] + '-' + iso[3];
+
+            const display = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+            if (display) {
+                let year = parseInt(display[3], 10);
+                if (year >= 2400) year -= 543;
+                if (year < 1900 || year > 2100) return '';
+                return String(year).padStart(4, '0') + '-' + display[2].padStart(2, '0') + '-' + display[1].padStart(2, '0');
+            }
+
+            const digits = raw.replace(/\D/g, '');
+            if (digits.length === 8) {
+                return this.thaiDateToIso(digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4));
+            }
+
+            return '';
+        },
         hasAnyCourseFilter() {
             return Object.values(this.filters.courses).some(value => !!value);
         },
@@ -215,7 +254,7 @@
                 academic_degree: instructor.instructor_profile?.academic_degree || '',
                 department_id: instructor.instructor_profile?.department_id || '',
                 employment_type: instructor.instructor_profile?.employment_type || '',
-                hired_at: instructor.instructor_profile?.hired_at || '',
+                hired_at: this.thaiDateForInput(instructor.instructor_profile?.hired_at || ''),
                 teaching_pct: instructor.instructor_profile?.teaching_pct ?? 0,
                 research_pct: instructor.instructor_profile?.research_pct ?? 0,
                 service_pct:  instructor.instructor_profile?.service_pct  ?? 0,
@@ -582,7 +621,7 @@
         getInstructorPARules() {
             const title  = this.currentInstructor.title;
             const degree = this.currentInstructor.academic_degree;
-            const hiredAt = this.currentInstructor.hired_at;
+            const hiredAt = this.thaiDateToIso(this.currentInstructor.hired_at);
             const isEnglishPassed = this.currentInstructor.is_english_passed;
             const isNote1 = title === 'ผู้ช่วยอาจารย์' && degree === 'ปริญญาเอก' && hiredAt && new Date(hiredAt) < new Date('2016-10-01');
             const useInstructorRules =
@@ -628,8 +667,8 @@
         showInstructorEnglishCriterion() {
             return this.currentInstructor.title === 'ผู้ช่วยอาจารย์'
                 && this.currentInstructor.academic_degree === 'ปริญญาเอก'
-                && this.currentInstructor.hired_at
-                && new Date(this.currentInstructor.hired_at) >= new Date('2016-10-01');
+                && this.thaiDateToIso(this.currentInstructor.hired_at)
+                && new Date(this.thaiDateToIso(this.currentInstructor.hired_at)) >= new Date('2016-10-01');
         },
         get paTotal() {
             return (parseInt(this.currentInstructor.teaching_pct)||0)
@@ -1842,10 +1881,8 @@
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label>วันบรรจุ
-                                        <span style="font-weight:400;color:var(--fg-3);font-size:11px;margin-left:4px;">(ค.ศ.)</span>
-                                    </label>
-                                    <input type="date" name="hired_at" x-model="currentInstructor.hired_at">
+                                    <label>วันบรรจุ</label>
+                                    <x-thai-date-input name="hired_at" x-model="currentInstructor.hired_at" />
                                 </div>
                                 </div>
                             <div class="instructor-english-panel" x-show="showInstructorEnglishCriterion()" x-cloak>

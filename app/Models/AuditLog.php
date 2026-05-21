@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\AuditLogger;
+use App\Support\ThaiDate;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -73,8 +74,8 @@ class AuditLog extends Model
             'context'       => $context,
             'masked_fields' => $maskedFields,
             'created_at'    => $this->created_at
-                ->timezone('Asia/Bangkok')
                 ->format('Y-m-d H:i:s'),
+            'display_created_at' => ThaiDate::formatDateTimeThai($this->created_at),
         ];
     }
 }
