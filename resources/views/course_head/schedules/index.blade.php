@@ -52,6 +52,13 @@
             ? $color
             : 'var(--brand-navy)';
     };
+    // สีกลุ่มนักศึกษา — ดึงจาก student_groups.color_code (ต่อ course offering)
+    $groupTone = function ($group) {
+        $color = (string) ($group->color_code ?? '');
+        return str_starts_with($color, '#') || str_starts_with($color, 'oklch') || str_starts_with($color, 'var(')
+            ? $color
+            : 'var(--schedule-border-strong)';
+    };
 @endphp
 
 <x-app-layout title="ตารางสอน">
@@ -170,32 +177,6 @@
             color: var(--fg-3);
             font-size: 12px;
         }
-        .day-section {
-            margin-bottom: 7px;
-        }
-        .day-header {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin: 8px 2px 5px;
-            color: var(--fg-1);
-            font-size: 13px;
-            font-weight: 900;
-        }
-        .day-date {
-            border: 1px solid var(--schedule-border);
-            border-radius: 999px;
-            padding: 1px 8px;
-            background: var(--surface);
-            color: var(--schedule-muted);
-            font-size: 11px;
-            font-weight: 800;
-        }
-        .day-line {
-            height: 1px;
-            background: var(--schedule-border);
-            flex: 1;
-        }
         .day-add-link {
             min-height: 27px;
             padding: 3px 9px;
@@ -207,48 +188,7 @@
             font-weight: 900;
             cursor: pointer;
         }
-        .activity-row {
-            width: 100%;
-            display: grid;
-            grid-template-columns: 78px 1px minmax(0, 1fr) auto;
-            gap: 9px;
-            align-items: center;
-            border: 1px solid color-mix(in oklch, var(--activity-color) 42%, var(--schedule-border));
-            border-radius: 8px;
-            background: color-mix(in oklch, var(--activity-color) 7%, var(--surface));
-            padding: 7px 9px;
-            margin-bottom: 5px;
-            box-shadow: 0 1px 2px oklch(0% 0 0 / 0.04);
-            cursor: pointer;
-            text-align: left;
-            font: inherit;
-        }
-        .activity-row:hover,
-        .activity-row:focus-visible,
-        .grid-activity:hover,
-        .grid-activity:focus-visible {
-            border-color: color-mix(in oklch, var(--activity-color) 62%, var(--schedule-border-strong));
-            box-shadow: 0 2px 8px oklch(0% 0 0 / 0.08);
-            outline: none;
-        }
-        .activity-time {
-            text-align: right;
-            font-variant-numeric: tabular-nums;
-            font-size: 12.5px;
-            font-weight: 900;
-            color: var(--fg-1);
-        }
-        .activity-duration {
-            margin-top: 1px;
-            color: var(--schedule-muted);
-            font-size: 10.5px;
-            font-weight: 700;
-        }
-        .activity-vline {
-            width: 1px;
-            height: 34px;
-            background: var(--schedule-border);
-        }
+        /* activity-tag — ใช้ทั้งในโหมดรายการและ detail modal */
         .activity-tag {
             display: inline-flex;
             align-items: center;
@@ -262,39 +202,130 @@
             font-weight: 900;
             text-transform: uppercase;
         }
-        .activity-course {
-            display: inline-flex;
-            align-items: center;
-            min-height: 17px;
-            margin-left: 5px;
-            padding: 1px 6px;
-            border: 1px solid var(--schedule-border);
-            border-radius: 999px;
-            background: var(--schedule-soft);
+        .grid-activity:hover,
+        .grid-activity:focus-visible {
+            border-color: color-mix(in oklch, var(--activity-color) 62%, var(--schedule-border-strong));
+            box-shadow: 0 2px 8px oklch(0% 0 0 / 0.08);
+            outline: none;
+        }
+        /* ── โหมดรายการ (list) — ตารางคอลัมน์ อ่านง่าย ───────────────── */
+        .sched-list-wrap {
+            overflow-x: auto;
+            border: 1px solid var(--schedule-border-strong);
+            border-radius: 8px;
+        }
+        .sched-list {
+            width: 100%;
+            min-width: 680px;
+            border-collapse: collapse;
+            background: var(--surface);
+        }
+        .sched-list thead th {
+            background: var(--schedule-soft-strong);
             color: var(--schedule-muted);
-            font-size: 10px;
-            font-weight: 800;
-        }
-        .activity-name {
-            margin-top: 3px;
-            color: var(--fg-1);
-            font-size: 13px;
+            text-align: left;
+            font-size: 11px;
             font-weight: 900;
-            line-height: 1.3;
+            padding: 8px 11px;
+            border-bottom: 1px solid var(--schedule-border-strong);
+            white-space: nowrap;
         }
-        .activity-meta {
-            margin-top: 2px;
+        .sched-day td {
+            background: var(--schedule-soft);
+            border-top: 1px solid var(--schedule-border);
+            border-bottom: 1px solid var(--schedule-border);
+            padding: 6px 11px;
+        }
+        .sched-day-head {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .sched-day-name {
+            color: var(--fg-1);
+            font-size: 12.5px;
+            font-weight: 900;
+        }
+        .sched-day-date {
             color: var(--schedule-muted);
             font-size: 11px;
-            line-height: 1.35;
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
         }
-        .activity-groups {
+        .sched-day-count {
+            color: var(--schedule-muted);
+            font-size: 11px;
+            font-weight: 750;
+        }
+        .sched-day-spacer {
+            flex: 1;
+        }
+        .sched-row {
+            cursor: pointer;
+            border-left: 3px solid var(--activity-color);
+        }
+        .sched-row > td {
+            border-bottom: 1px solid var(--schedule-border);
+            padding: 8px 11px;
+            vertical-align: top;
+            font-size: 12.5px;
+        }
+        .sched-row:hover > td,
+        .sched-row:focus-visible > td {
+            background: color-mix(in oklch, var(--activity-color) 8%, var(--surface));
+        }
+        .sched-row:focus-visible {
+            outline: 2px solid var(--brand-navy);
+            outline-offset: -2px;
+        }
+        .sched-time {
+            color: var(--fg-1);
+            font-size: 12.5px;
+            font-weight: 900;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+        .sched-duration {
+            margin-top: 2px;
+            color: var(--schedule-muted);
+            font-size: 10.5px;
+            font-weight: 700;
+        }
+        .sched-activity-course {
+            margin-left: 5px;
+            color: var(--schedule-muted);
+            font-size: 10.5px;
+            font-weight: 800;
+        }
+        .sched-activity-name {
+            margin-top: 4px;
+            color: var(--fg-1);
+            font-size: 12.5px;
+            font-weight: 800;
+            line-height: 1.3;
+        }
+        .sched-cell-groups {
             display: flex;
             gap: 4px;
-            align-items: center;
-            justify-content: flex-end;
             flex-wrap: wrap;
-            min-width: 104px;
+        }
+        .sched-strong {
+            color: var(--fg-1);
+            font-size: 11.5px;
+            font-weight: 750;
+        }
+        .sched-muted {
+            color: var(--schedule-muted);
+            font-size: 11px;
+        }
+        .sched-empty-cell {
+            padding: 12px;
+            text-align: center;
+            background: var(--surface);
+            color: var(--schedule-muted);
+            font-size: 12px;
+            font-weight: 750;
+            border-bottom: 1px solid var(--schedule-border);
         }
         .group-chip {
             display: inline-flex;
@@ -307,6 +338,15 @@
             color: var(--fg-2);
             font-size: 11px;
             font-weight: 900;
+        }
+        /* จุดสีกลุ่มนักศึกษา — สีจาก student_groups.color_code */
+        .group-dot {
+            width: 8px;
+            height: 8px;
+            margin-right: 5px;
+            border-radius: 999px;
+            flex-shrink: 0;
+            background: var(--schedule-border-strong);
         }
         .schedule-empty {
             border: 1px dashed var(--schedule-border-strong);
@@ -526,18 +566,6 @@
             .schedule-toolbar {
                 align-items: flex-start;
             }
-            .activity-row {
-                grid-template-columns: 1fr;
-            }
-            .activity-time {
-                text-align: left;
-            }
-            .activity-vline {
-                display: none;
-            }
-            .activity-groups {
-                justify-content: flex-start;
-            }
             .modal-form-grid,
             .modal-choice-grid {
                 grid-template-columns: 1fr;
@@ -626,65 +654,101 @@
             <div class="schedule-empty" data-testid="schedule-no-offerings-empty">ยังไม่มีรายวิชาที่ต้องจัดตาราง</div>
         @else
             <div x-show="view === 'list'" x-cloak data-testid="schedule-list-view">
-                @foreach($weekDays as $day)
-                    @php
-                        $dayOccurrences = $occurrencesByDate->get($day->toDateString(), collect());
-                    @endphp
-                    <section class="day-section">
-                        <div class="day-header">
-                            <span>{{ $thaiDays[$day->dayOfWeekIso] ?? $day->format('l') }}</span>
-                            <span class="day-date">{{ $formatDate($day) }}</span>
-                            <span class="day-line"></span>
-                            @if($canEdit)
-                                <button type="button" class="day-add-link" @click="openCreate('{{ $day->toDateString() }}')">+ เพิ่ม</button>
-                            @endif
-                        </div>
+                @php
+                    $statusMeta = [
+                        'draft' => ['label' => 'แบบร่าง', 'class' => 'badge-gray'],
+                        'pending_approval' => ['label' => 'รออนุมัติ', 'class' => 'badge-warn'],
+                        'approved' => ['label' => 'อนุมัติแล้ว', 'class' => 'badge-ok'],
+                        'revised' => ['label' => 'ส่งกลับแก้ไข', 'class' => 'badge-err'],
+                    ];
+                @endphp
+                <div class="sched-list-wrap">
+                    <table class="sched-list">
+                        <thead>
+                            <tr>
+                                <th style="width:120px;">เวลา</th>
+                                <th>กิจกรรม</th>
+                                <th style="width:128px;">กลุ่ม</th>
+                                <th style="width:150px;">ผู้สอน</th>
+                                <th style="width:158px;">สถานที่</th>
+                                <th style="width:104px;">สถานะ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($weekDays as $day)
+                                @php
+                                    $dayOccurrences = $occurrencesByDate->get($day->toDateString(), collect());
+                                @endphp
+                                <tr class="sched-day">
+                                    <td colspan="6">
+                                        <div class="sched-day-head">
+                                            <span class="sched-day-name">{{ $thaiDays[$day->dayOfWeekIso] ?? $day->format('l') }}</span>
+                                            <span class="sched-day-date">{{ $formatDate($day) }}</span>
+                                            <span class="sched-day-count">· {{ $dayOccurrences->count() }} รายการ</span>
+                                            <span class="sched-day-spacer"></span>
+                                            @if($canEdit)
+                                                <button type="button" class="day-add-link" @click="openCreate('{{ $day->toDateString() }}')">+ เพิ่ม</button>
+                                            @endif
+                                        </div>
+                                    </td>
+                                </tr>
 
-                        @forelse($dayOccurrences as $occurrence)
-                            @php
-                                $schedule = $occurrence['schedule'];
-                                $activity = $schedule->activityType;
-                                $room = $schedule->room;
-                                $offeringCourse = $schedule->courseOffering?->course;
-                                $timeText = $formatTime($schedule->start_time) . '-' . $formatTime($schedule->end_time);
-                                $instructorText = $schedule->instructors->isNotEmpty()
-                                    ? ($schedule->instructors->count() === 1
-                                        ? ($schedule->instructors->first()->formatted_name ?? $schedule->instructors->first()->name)
-                                        : $schedule->instructors->count() . ' ท่าน')
-                                    : 'ไม่มีผู้สอน';
-                            @endphp
-                            <article role="button" tabindex="0" class="activity-row" style="--activity-color: {{ $activityTone($schedule) }};" data-testid="schedule-row" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
-                                <div class="activity-time">
-                                    <div>{{ $timeText }}</div>
-                                    <div class="activity-duration">{{ $formatDuration($occurrence['duration_minutes']) }}</div>
-                                </div>
-                                <div class="activity-vline"></div>
-                                <div>
-                                    <span class="activity-tag">{{ $activity?->name ?? 'กิจกรรม' }}</span>
-                                    <span class="activity-course">{{ $offeringCourse?->course_code ?? '-' }}</span>
-                                    <div class="activity-name">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
-                                    <div class="activity-meta">
-                                        {{ $room?->room_name ?? $room?->room_code ?? 'ไม่ระบุสถานที่' }}
-                                        @if($room?->building)
-                                            · {{ $room->building }}
-                                        @endif
-                                        · {{ $instructorText }}
-                                        @if($isWorkspace)
-                                            · {{ $offeringCourse?->name_th ?? $offeringCourse?->name_en ?? '' }}
-                                        @endif
-                                    </div>
-                                </div>
-                                <div class="activity-groups">
-                                    @foreach($schedule->studentGroups as $group)
-                                        <span class="group-chip">{{ $group->group_code }}</span>
-                                    @endforeach
-                                </div>
-                            </article>
-                        @empty
-                            <div class="schedule-empty">ยังไม่มีกิจกรรม, กดเพิ่มเพื่อใส่กิจกรรม</div>
-                        @endforelse
-                    </section>
-                @endforeach
+                                @forelse($dayOccurrences as $occurrence)
+                                    @php
+                                        $schedule = $occurrence['schedule'];
+                                        $activity = $schedule->activityType;
+                                        $room = $schedule->room;
+                                        $offeringCourse = $schedule->courseOffering?->course;
+                                        $timeText = $formatTime($schedule->start_time) . '-' . $formatTime($schedule->end_time);
+                                        $instructorText = $schedule->instructors->isNotEmpty()
+                                            ? ($schedule->instructors->count() === 1
+                                                ? ($schedule->instructors->first()->formatted_name ?? $schedule->instructors->first()->name)
+                                                : $schedule->instructors->count() . ' ท่าน')
+                                            : 'ไม่มีผู้สอน';
+                                        $status = $statusMeta[$schedule->status] ?? ['label' => $schedule->status, 'class' => 'badge-gray'];
+                                    @endphp
+                                    <tr role="button" tabindex="0" class="sched-row" style="--activity-color: {{ $activityTone($schedule) }};" data-testid="schedule-row" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
+                                        <td>
+                                            <div class="sched-time">{{ $timeText }}</div>
+                                            <div class="sched-duration">{{ $formatDuration($occurrence['duration_minutes']) }}</div>
+                                        </td>
+                                        <td>
+                                            <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }};">{{ $activity?->name ?? 'กิจกรรม' }}</span>
+                                            <span class="sched-activity-course">{{ $offeringCourse?->course_code ?? '-' }}</span>
+                                            <div class="sched-activity-name">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
+                                            @if($isWorkspace && ($offeringCourse?->name_th || $offeringCourse?->name_en))
+                                                <div class="sched-muted" style="margin-top:2px;">{{ $offeringCourse?->name_th ?? $offeringCourse?->name_en }}</div>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            @if($schedule->studentGroups->isNotEmpty())
+                                                <div class="sched-cell-groups">
+                                                    @foreach($schedule->studentGroups as $group)
+                                                        <span class="group-chip"><span class="group-dot" style="background: {{ $groupTone($group) }};"></span>{{ $group->group_code }}</span>
+                                                    @endforeach
+                                                </div>
+                                            @else
+                                                <span class="sched-muted">—</span>
+                                            @endif
+                                        </td>
+                                        <td><span class="sched-strong">{{ $instructorText }}</span></td>
+                                        <td>
+                                            <div class="sched-strong">{{ $room?->room_name ?? $room?->room_code ?? 'ไม่ระบุสถานที่' }}</div>
+                                            @if($room?->building)
+                                                <div class="sched-muted" style="margin-top:1px;">{{ $room->building }}</div>
+                                            @endif
+                                        </td>
+                                        <td><span class="badge {{ $status['class'] }}">{{ $status['label'] }}</span></td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="6" class="sched-empty-cell">ยังไม่มีกิจกรรม@if($canEdit) · กด “+ เพิ่ม” เพื่อใส่กิจกรรม@endif</td>
+                                    </tr>
+                                @endforelse
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <div x-show="view === 'grid'" x-cloak data-testid="schedule-grid-view">
