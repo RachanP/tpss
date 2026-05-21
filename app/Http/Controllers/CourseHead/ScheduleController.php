@@ -433,11 +433,10 @@ class ScheduleController extends Controller
                         'time_slot' => substr((string) $schedule->start_time, 0, 2) . ':00',
                     ]);
             })
-            ->sortBy([
-                fn ($item) => $item['date']->toDateString(),
-                fn ($item) => (string) $item['schedule']->start_time,
-                fn ($item) => $item['schedule']->id,
-            ])
+            // Laravel 13: sortBy([closure, closure, ...]) เรียงผิด — ใช้ closure เดียวสร้าง composite key
+            ->sortBy(fn ($item) => $item['date']->toDateString()
+                . ' ' . substr((string) $item['schedule']->start_time, 0, 8)
+                . ' ' . str_pad((string) $item['schedule']->id, 10, '0', STR_PAD_LEFT))
             ->values();
     }
 
