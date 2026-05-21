@@ -273,6 +273,7 @@
 
         // Rooms
         locTypeMap: {{ Js::from($locationTypes->mapWithKeys(fn($t) => [$t->id => (bool) $t->requires_capacity])) }},
+        locTypeOptions: {{ Js::from($locationTypes->map(fn($t) => ['id' => $t->id, 'name' => $t->name])->values()) }},
         showRoomModal: false,
         showImportRoomModal: false,
         showImportCourseModal: false,
@@ -307,6 +308,10 @@
                 equipment_type: Array.isArray(room.equipment_type) ? room.equipment_type.join(', ') : ''
             };
             this.showRoomModal = true;
+        },
+        roomLocationTypeName() {
+            const selected = this.locTypeOptions.find(type => String(type.id) === String(this.currentRoom.location_type_id));
+            return selected ? selected.name : '-- เลือกประเภท --';
         },
 
         // Courses
@@ -2018,7 +2023,7 @@
         <!-- Add/Edit Modal (Room) -->
         <template x-if="showRoomModal">
             <div class="overlay" x-cloak>
-                <div class="modal-center" style="max-width: 600px;"
+                <div class="modal-center room-modal"
                     x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95"
                     x-transition:enter-end="opacity-100 scale-100">
                     <div class="modal-hdr" style="background: var(--bg-2);">
@@ -2037,8 +2042,13 @@
                         method="POST">
                         @csrf
                         <input type="hidden" name="_method" value="PUT" :disabled="!editRoomMode">
-                        <div class="modal-body">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                        <div class="modal-body room-modal-body">
+                            <section class="room-form-section">
+                                <div class="room-section-head">
+                                    <div class="room-section-title">ข้อมูลห้อง/สถานที่</div>
+                                    <div class="room-section-copy">รหัส ชื่อ และอาคารของสถานที่ที่ใช้จัดตาราง</div>
+                                </div>
+                                <div class="room-form-grid room-form-grid--identity">
                                 <div class="form-group">
                                     <label>รหัสห้อง/สถานที่ <span style="color: var(--status-conflict-fg)">*</span></label>
                                     <input type="text" name="room_code" x-model="currentRoom.room_code" required
@@ -2049,12 +2059,48 @@
                                     <input type="text" name="room_name" x-model="currentRoom.room_name" required
                                         placeholder="เช่น ห้องบรรยาย 1">
                                 </div>
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                                 <div class="form-group">
                                     <label>อาคาร</label>
                                     <input type="text" name="building" x-model="currentRoom.building"
                                         placeholder="เช่น อาคาร 1">
+                                </div>
+                                </div>
+                            </section>
+
+                            <section class="room-form-section">
+                                <div class="room-section-head">
+                                    <div class="room-section-title">ประเภทและการใช้งาน</div>
+                                    <div class="room-section-copy">ประเภทสถานที่ ความจุ และสถานะการใช้งาน</div>
+                                </div>
+                                <div class="room-form-grid room-form-grid--usage">
+                                <div class="form-group">
+                                    <label>ประเภทสถานที่ <span style="color: var(--status-conflict-fg)">*</span></label>
+                                    <div class="room-type-dropdown" x-data="{ open: false }" @click.outside="open = false" @keydown.escape.window="open = false">
+                                        <input type="hidden" name="location_type_id" x-model="currentRoom.location_type_id">
+                                        <button type="button"
+                                            class="room-type-trigger"
+                                            :class="currentRoom.location_type_id ? '' : 'is-placeholder'"
+                                            @click="open = !open"
+                                            :aria-expanded="open.toString()">
+                                            <span x-text="roomLocationTypeName()"></span>
+                                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="6 9 12 15 18 9"></polyline>
+                                            </svg>
+                                        </button>
+                                        <div class="room-type-menu" x-show="open" x-cloak>
+                                            <button type="button" class="room-type-option is-placeholder"
+                                                @click="currentRoom.location_type_id = ''; open = false">
+                                                -- เลือกประเภท --
+                                            </button>
+                                            @foreach($locationTypes as $type)
+                                                <button type="button" class="room-type-option"
+                                                    :class="String(currentRoom.location_type_id) === '{{ $type->id }}' ? 'is-selected' : ''"
+                                                    @click="currentRoom.location_type_id = '{{ $type->id }}'; open = false">
+                                                    {{ $type->name }}
+                                                </button>
+                                            @endforeach
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="form-group">
                                     <template x-if="!(locTypeMap[currentRoom.location_type_id] ?? true)">
@@ -2066,17 +2112,6 @@
                                     <input type="number" name="capacity" x-model="currentRoom.capacity" min="0"
                                         :required="(locTypeMap[currentRoom.location_type_id] ?? true)">
                                 </div>
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-                                <div class="form-group">
-                                    <label>ประเภทสถานที่ <span style="color: var(--status-conflict-fg)">*</span></label>
-                                    <select name="location_type_id" x-model="currentRoom.location_type_id" required>
-                                        <option value="">-- เลือกประเภท --</option>
-                                        @foreach($locationTypes as $type)
-                                            <option value="{{ $type->id }}">{{ $type->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
                                 <div class="form-group">
                                     <label>สถานะ</label>
                                     <select name="status" x-model="currentRoom.status" required>
@@ -2085,25 +2120,35 @@
                                         <option value="inactive">ไม่พร้อมใช้</option>
                                     </select>
                                 </div>
-                            </div>
-                            <div class="form-group" style="margin-bottom: 20px;">
-                                <label>ครุภัณฑ์ / อุปกรณ์</label>
-                                <input type="text" name="equipment_type" x-model="currentRoom.equipment_type" 
-                                    placeholder="เช่น โปรเจคเตอร์, คอมพิวเตอร์, ไมโครโฟน (คั่นด้วยลูกน้ำ ,)">
-                            </div>
-                            <div class="form-group">
-                                <label>รายละเอียดที่ตั้ง / ที่อยู่ (แหล่งฝึกภายนอก)</label>
-                                <textarea name="address" x-model="currentRoom.address" rows="2" 
-                                    placeholder="เช่น ชั้น 3, โรงพยาบาลศิริราช..."></textarea>
-                            </div>
+                                </div>
+                            </section>
+
+                            <section class="room-form-section">
+                                <div class="room-section-head">
+                                    <div class="room-section-title">รายละเอียดเพิ่มเติม</div>
+                                    <div class="room-section-copy">อุปกรณ์ประจำห้อง และรายละเอียดที่ตั้งสำหรับแหล่งฝึกภายนอก</div>
+                                </div>
+                                <div class="room-form-grid room-form-grid--details">
+                                    <div class="form-group">
+                                        <label>ครุภัณฑ์ / อุปกรณ์</label>
+                                        <input type="text" name="equipment_type" x-model="currentRoom.equipment_type"
+                                            placeholder="เช่น โปรเจคเตอร์, คอมพิวเตอร์, ไมโครโฟน (คั่นด้วยลูกน้ำ ,)">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>รายละเอียดที่ตั้ง / ที่อยู่ (แหล่งฝึกภายนอก)</label>
+                                        <textarea name="address" x-model="currentRoom.address" rows="2"
+                                            placeholder="เช่น ชั้น 3, โรงพยาบาลศิริราช..."></textarea>
+                                    </div>
+                                </div>
+                            </section>
                         </div>
-                        <div class="modal-foot" style="display: flex; justify-content: space-between;">
+                        <div class="modal-foot room-modal-foot">
                             <div>
                                 <button type="button" class="btn btn-ghost" x-show="editRoomMode" @click="confirmDelete('deleteRoomForm', currentRoom.room_name, null)" style="color: var(--status-conflict-fg);">
                                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; display: inline-block; vertical-align: middle;"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg> ลบข้อมูล
                                 </button>
                             </div>
-                            <div style="display: flex; gap: 8px;">
+                            <div class="room-modal-actions">
                                 <button type="button" class="btn btn-ghost" @click="showRoomModal = false">ยกเลิก</button>
                                 <button type="submit" class="btn btn-primary">บันทึกข้อมูล</button>
                             </div>
@@ -3114,6 +3159,177 @@
             cursor: not-allowed;
         }
 
+        .room-modal {
+            width: min(960px, calc(100vw - 48px));
+            max-width: none;
+            max-height: 90vh;
+        }
+
+        .room-modal-body {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            padding: 24px;
+            background: oklch(99% 0.004 220);
+        }
+
+        .room-form-section {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--surface);
+            padding: 18px;
+        }
+
+        .room-section-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 18px;
+            margin-bottom: 14px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .room-section-title {
+            color: var(--fg-1);
+            font-size: 15px;
+            font-weight: 800;
+            line-height: 1.4;
+        }
+
+        .room-section-copy {
+            max-width: 520px;
+            color: var(--fg-3);
+            font-size: 12px;
+            line-height: 1.55;
+            text-align: right;
+        }
+
+        .room-form-grid {
+            display: grid;
+            gap: 16px;
+        }
+
+        .room-form-grid .form-group {
+            min-width: 0;
+            margin-bottom: 0;
+        }
+
+        .room-form-grid--identity {
+            grid-template-columns: minmax(160px, .85fr) minmax(260px, 1.35fr) minmax(220px, 1fr);
+        }
+
+        .room-form-grid--usage {
+            grid-template-columns: minmax(280px, 1.4fr) minmax(160px, .75fr) minmax(200px, .9fr);
+        }
+
+        .room-form-grid--details {
+            grid-template-columns: minmax(280px, 1fr) minmax(320px, 1.2fr);
+        }
+
+        .room-type-dropdown {
+            position: relative;
+        }
+
+        .room-type-trigger {
+            width: 100%;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--surface);
+            color: var(--fg-1);
+            cursor: pointer;
+            font: inherit;
+            font-size: 14px;
+            line-height: 1.4;
+            padding: 8px 11px;
+            text-align: left;
+            transition: border-color 150ms ease, box-shadow 150ms ease;
+        }
+
+        .room-type-trigger.is-placeholder {
+            color: var(--fg-3);
+        }
+
+        .room-type-trigger:hover,
+        .room-type-trigger:focus-visible {
+            border-color: var(--brand-navy);
+            outline: 0;
+            box-shadow: 0 0 0 3px oklch(92% 0.025 250);
+        }
+
+        .room-type-trigger span {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .room-type-trigger svg {
+            flex-shrink: 0;
+            color: var(--fg-3);
+        }
+
+        .room-type-menu {
+            position: absolute;
+            z-index: 80;
+            top: calc(100% + 4px);
+            left: 0;
+            right: 0;
+            max-height: 260px;
+            overflow: auto;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--surface);
+            box-shadow: 0 12px 28px rgba(15, 23, 42, .16);
+        }
+
+        .room-type-option {
+            display: block;
+            width: 100%;
+            border: 0;
+            border-bottom: 1px solid var(--border);
+            background: transparent;
+            color: var(--fg-1);
+            cursor: pointer;
+            font: inherit;
+            font-size: 14px;
+            line-height: 1.45;
+            padding: 10px 12px;
+            text-align: left;
+        }
+
+        .room-type-option:last-child {
+            border-bottom: 0;
+        }
+
+        .room-type-option:hover,
+        .room-type-option:focus-visible,
+        .room-type-option.is-selected {
+            background: var(--bg-2);
+            outline: 0;
+        }
+
+        .room-type-option.is-placeholder {
+            color: var(--fg-3);
+            font-weight: 700;
+        }
+
+        .room-modal-foot {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .room-modal-actions {
+            display: flex;
+            gap: 8px;
+        }
+
         .instructor-modal {
             width: min(1080px, calc(100vw - 48px));
             max-width: none;
@@ -3575,6 +3791,31 @@
         }
 
         @media (max-width: 1024px) {
+            .room-modal {
+                width: min(900px, calc(100vw - 32px));
+            }
+
+            .room-form-grid--identity,
+            .room-form-grid--usage,
+            .room-form-grid--details {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .room-form-grid--identity .form-group:nth-child(2),
+            .room-form-grid--details .form-group {
+                grid-column: span 1;
+            }
+
+            .room-section-head {
+                display: block;
+            }
+
+            .room-section-copy {
+                max-width: none;
+                margin-top: 3px;
+                text-align: left;
+            }
+
             .instructor-modal {
                 width: min(900px, calc(100vw - 32px));
             }
@@ -3627,6 +3868,41 @@
         }
 
         @media (max-width: 760px) {
+            .room-modal {
+                width: calc(100vw - 24px);
+            }
+
+            .room-modal-body {
+                padding: 16px;
+                gap: 12px;
+            }
+
+            .room-form-section {
+                padding: 14px;
+            }
+
+            .room-form-grid--identity,
+            .room-form-grid--usage,
+            .room-form-grid--details {
+                grid-template-columns: 1fr;
+            }
+
+            .room-form-grid--identity .form-group:nth-child(2),
+            .room-form-grid--details .form-group {
+                grid-column: 1 / -1;
+            }
+
+            .room-modal-foot {
+                align-items: stretch;
+                flex-direction: column-reverse;
+                gap: 12px;
+            }
+
+            .room-modal-actions {
+                justify-content: flex-end;
+                flex-wrap: wrap;
+            }
+
             .instructor-modal {
                 width: calc(100vw - 24px);
             }
