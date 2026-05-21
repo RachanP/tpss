@@ -3458,10 +3458,7 @@
         }
 
         .course-section-head {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 18px;
+            display: block;
             margin-bottom: 14px;
             padding-bottom: 12px;
             border-bottom: 1px solid var(--border);
@@ -3475,11 +3472,12 @@
         }
 
         .course-section-copy {
-            max-width: 560px;
+            max-width: 680px;
+            margin-top: 3px;
             color: var(--fg-3);
             font-size: 12px;
             line-height: 1.55;
-            text-align: right;
+            text-align: left;
         }
 
         .course-form-grid {
@@ -3856,14 +3854,8 @@
                 grid-column: span 1;
             }
 
-            .course-section-head {
-                display: block;
-            }
-
             .course-section-copy {
                 max-width: none;
-                margin-top: 3px;
-                text-align: left;
             }
         }
 
