@@ -2473,7 +2473,7 @@
                                         <input type="number" name="capacity" x-model="currentCourse.capacity" min="1" placeholder="เช่น 240" required onwheel="this.blur()">
                                     </div>
                                     <div class="form-group course-rotation-field">
-                                        <label>การวนกลุ่มนักศึกษาระหว่างแหล่งฝึก (Rotation)</label>
+                                        <label>การหมุนเวียนกลุ่มนักศึกษาระหว่างแหล่งฝึก</label>
                                         <select name="requires_practicum_rotation" x-model="currentCourse.requires_practicum_rotation">
                                             <option value="0">ไม่มีการหมุนเวียนแหล่งฝึก</option>
                                             <option value="1">มีการหมุนเวียนแหล่งฝึก</option>
@@ -3437,7 +3437,7 @@
         }
 
         .course-modal {
-            width: min(1080px, calc(100vw - 48px));
+            width: min(1120px, calc(100vw - 48px));
             max-width: none;
             max-height: 90vh;
         }
@@ -3508,7 +3508,7 @@
         }
 
         .course-form-grid--hours {
-            grid-template-columns: repeat(5, minmax(120px, 1fr));
+            grid-template-columns: repeat(4, minmax(130px, 1fr)) minmax(250px, 1.35fr);
             align-items: end;
         }
 
