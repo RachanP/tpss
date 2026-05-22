@@ -1783,7 +1783,7 @@
             scheduleActivity: '',
             scheduleGroup: '',
             scheduleInstructor: '',
-            gridJumpDate: @js($weekStart->toDateString()),
+            gridJumpDate: @js($formatDate($weekStart)),
             createInstructorSearch: '',
             createGroupSearch: '',
             createStartDateDisplay: @js(old('start_date') ? $formatDate(\Carbon\CarbonImmutable::parse(old('start_date'))) : ''),
@@ -1847,11 +1847,31 @@
                 sessionStorage.setItem('tpss-schedule-scroll-y', window.scrollY);
                 window.location.href = url.toString();
             },
-            jumpToGridDate(date) {
-                this.navigateGrid(date, @js($schedulePeriod ?? 'week'));
+            jumpToGridDate(value) {
+                const iso = this.thaiDateToIso(value);
+                if (!iso) return;
+                this.navigateGrid(iso, @js($schedulePeriod ?? 'week'));
             },
             changeGridPeriod(period) {
-                this.navigateGrid(this.gridJumpDate || @js($weekStart->toDateString()), period);
+                const iso = this.thaiDateToIso(this.gridJumpDate) || @js($weekStart->toDateString());
+                this.navigateGrid(iso, period);
+            },
+            // แปลงค่าจากช่อง x-thai-date-input (วว/ดด/พ.ศ.) เป็น ISO Y-m-d ก่อนส่งเข้า URL
+            // mirror logic ของ App\Support\ThaiDate::parseToIso ฝั่ง client
+            thaiDateToIso(value) {
+                const raw = String(value || '').trim();
+                if (!raw) return null;
+                if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+                const parts = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+                if (!parts) return null;
+
+                let year = parseInt(parts[3], 10);
+                if (year >= 2400) year -= 543;
+                const month = parts[2].padStart(2, '0');
+                const day = parts[1].padStart(2, '0');
+
+                return `${year}-${month}-${day}`;
             },
             matchesCreateSearch(text, keyword) {
                 const normalizedKeyword = String(keyword || '').trim().toLowerCase();
@@ -2004,7 +2024,14 @@
             </div>
             <label class="grid-date-jump" x-show="view === 'grid'" x-cloak>
                 <span>ไปยังวันที่</span>
-                <input type="date" x-model="gridJumpDate" @change="jumpToGridDate(gridJumpDate)" aria-label="เลือกวันที่ที่ต้องการดูในตาราง">
+                <x-thai-date-input
+                    name="grid_jump_date"
+                    :helper="false"
+                    :value="$weekStart->toDateString()"
+                    x-model="gridJumpDate"
+                    @change="jumpToGridDate(gridJumpDate)"
+                    @keydown.enter.prevent="jumpToGridDate(gridJumpDate)"
+                    aria-label="เลือกวันที่ที่ต้องการดูในตาราง" />
             </label>
             <div class="period-toggle" aria-label="ช่วงเวลาที่แสดง" x-show="view === 'grid'" x-cloak>
                 <button type="button" data-period-url="{{ $dayViewUrl }}" @click="changeGridPeriod('day')" class="{{ ($schedulePeriod ?? 'week') === 'day' ? 'is-active' : '' }}">วัน</button>
@@ -2256,7 +2283,14 @@
                         <a class="week-btn" href="{{ $previousWeekUrl }}" aria-label="ช่วงก่อนหน้า">‹</a>
                         <label class="grid-date-jump">
                             <span>ไปยังวันที่</span>
-                            <input type="date" x-model="gridJumpDate" @change="jumpToGridDate(gridJumpDate)" aria-label="เลือกวันที่ที่ต้องการดูในตาราง">
+                            <x-thai-date-input
+                                name="grid_jump_date"
+                                :helper="false"
+                                :value="$weekStart->toDateString()"
+                                x-model="gridJumpDate"
+                                @change="jumpToGridDate(gridJumpDate)"
+                                @keydown.enter.prevent="jumpToGridDate(gridJumpDate)"
+                                aria-label="เลือกวันที่ที่ต้องการดูในตาราง" />
                         </label>
                         <a class="week-btn" href="{{ $nextWeekUrl }}" aria-label="ช่วงถัดไป">›</a>
                     </div>
