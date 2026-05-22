@@ -50,6 +50,27 @@ class SchedulingPhaseTest extends TestCase
         ]);
     }
 
+    public function test_open_closes_other_scheduling_windows(): void
+    {
+        $admin = $this->makeAdmin();
+        $head  = $this->makeInstructor();
+        $targetYear = $this->makeYear(['name' => '2569', 'semester' => 2, 'is_active' => true, 'phase' => 'preparation']);
+        $otherSchedulingYear = $this->makeYear(['name' => '2569', 'semester' => 1, 'is_active' => false, 'phase' => 'scheduling']);
+        $publishedYear = $this->makeYear(['name' => '2568', 'semester' => 2, 'is_active' => false, 'phase' => 'published']);
+        $this->makeCourse(['head_instructor_id' => $head->id]);
+
+        $this->seedCriticalsBaseline();
+        $this->actingAsAdmin($admin);
+
+        $this->patch(route('admin.settings.scheduling.open', $targetYear))
+            ->assertRedirect(route('admin.settings', ['tab' => 'academic']))
+            ->assertSessionHas('success');
+
+        $this->assertSame('scheduling', $targetYear->fresh()->phase);
+        $this->assertSame('preparation', $otherSchedulingYear->fresh()->phase);
+        $this->assertSame('published', $publishedYear->fresh()->phase);
+    }
+
     public function test_open_creates_offerings_for_all_active_courses_regardless_of_semester(): void
     {
         // After M2 hardening, the openSchedulingWindow no longer filters by
@@ -172,6 +193,36 @@ class SchedulingPhaseTest extends TestCase
     }
 
     // ── Admin: Close Scheduling Window ───────────────────────────────
+
+    public function test_setting_current_year_closes_previous_scheduling_window(): void
+    {
+        $admin = $this->makeAdmin();
+        $currentYear = $this->makeYear(['name' => '2569', 'semester' => 1, 'is_active' => true, 'phase' => 'scheduling']);
+        $nextYear = $this->makeYear([
+            'name' => '2569',
+            'semester' => 2,
+            'start_date' => '2026-11-01',
+            'end_date' => '2027-03-15',
+            'is_active' => false,
+            'phase' => 'preparation',
+        ]);
+
+        $this->actingAsAdmin($admin);
+
+        $this->put(route('admin.settings.years.update', $nextYear), [
+            'name' => '2569',
+            'semester' => 2,
+            'start_date' => '01/11/2569',
+            'end_date' => '15/03/2570',
+            'is_active' => '1',
+        ])->assertRedirect(route('admin.settings', ['tab' => 'academic']))
+            ->assertSessionHas('success');
+
+        $this->assertFalse((bool) $currentYear->fresh()->is_active);
+        $this->assertSame('preparation', $currentYear->fresh()->phase);
+        $this->assertTrue((bool) $nextYear->fresh()->is_active);
+        $this->assertSame('preparation', $nextYear->fresh()->phase);
+    }
 
     public function test_close_reverts_phase_to_preparation(): void
     {

@@ -96,6 +96,7 @@ class AdminSettingController extends Controller
 
         if ($validated['is_active']) {
             AcademicYear::where('is_active', true)->update(['is_active' => false]);
+            $this->closeAllSchedulingWindows();
 
             // Auto-sync courses status based on default_semester AND curriculum status
             // 1. Force inactive for any course whose curriculum is inactive
@@ -157,6 +158,7 @@ class AdminSettingController extends Controller
 
         if ($validated['is_active']) {
             AcademicYear::where('id', '!=', $year->id)->where('is_active', true)->update(['is_active' => false]);
+            $this->closeSchedulingWindowsExcept($year);
 
             // Auto-sync courses status based on default_semester AND curriculum status
             // 1. Force inactive for any course whose curriculum is inactive
@@ -223,10 +225,13 @@ class AdminSettingController extends Controller
 
         $created = 0;
         $synced = 0;
+        $closedSchedulingWindows = 0;
         $teachingWeeks = (int) SystemSetting::get('teaching_load_weeks', 39);
         $coordinatorRoleId = CourseRole::where('name_th', 'หัวหน้าวิชา')->value('id');
 
-        DB::transaction(function () use ($courses, $year, $teachingWeeks, $coordinatorRoleId, &$created, &$synced) {
+        DB::transaction(function () use ($courses, $year, $teachingWeeks, $coordinatorRoleId, &$created, &$synced, &$closedSchedulingWindows) {
+            $closedSchedulingWindows = $this->closeSchedulingWindowsExcept($year);
+
             foreach ($courses as $course) {
                 $offering = CourseOffering::firstOrCreate(
                     [
@@ -283,7 +288,7 @@ class AdminSettingController extends Controller
             table:       'academic_years',
             recordId:    $year->id,
             oldValues:   ['phase' => 'preparation'],
-            newValues:   ['phase' => 'scheduling', 'offerings_created' => $created, 'offerings_synced' => $synced],
+            newValues:   ['phase' => 'scheduling', 'offerings_created' => $created, 'offerings_synced' => $synced, 'other_scheduling_windows_closed' => $closedSchedulingWindows],
             description: "เปิดช่วงจัดตารางปีการศึกษา {$year->name} ภาค {$year->semester}",
         );
 
@@ -345,6 +350,19 @@ class AdminSettingController extends Controller
     private function settingsRoute(): string
     {
         return request()->routeIs('staff.*') ? 'staff.settings' : 'admin.settings';
+    }
+
+    private function closeAllSchedulingWindows(): int
+    {
+        return AcademicYear::where('phase', 'scheduling')
+            ->update(['phase' => 'preparation']);
+    }
+
+    private function closeSchedulingWindowsExcept(AcademicYear $year): int
+    {
+        return AcademicYear::where('id', '!=', $year->id)
+            ->where('phase', 'scheduling')
+            ->update(['phase' => 'preparation']);
     }
 
     public function updateConstants(Request $request)
