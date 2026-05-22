@@ -67,6 +67,44 @@
         ->sortBy(fn (string $slot) => (int) substr($slot, 0, 2))
         ->values()
         ->all();
+    // ── week-grid: คำนวณจำนวนแถวที่กิจกรรมครอบตาม duration (span) ──
+    $gridSlotCount = count($gridTimeSlots);
+    $gridSlotIndex = [];
+    foreach ($gridTimeSlots as $gridSlotIdx => $gridSlotValue) {
+        $gridSlotIndex[$gridSlotValue] = $gridSlotIdx;
+    }
+    $occurrenceSlotSpan = function ($occurrence) use ($gridTimeSlots, $gridSlotIndex, $gridSlotCount) {
+        $startIdx = $gridSlotIndex[$occurrence['time_slot']] ?? null;
+        if ($startIdx === null) {
+            return 1;
+        }
+        $endTime = (string) $occurrence['schedule']->end_time;
+        $endHour = (int) substr($endTime, 0, 2);
+        $endMinute = (int) substr($endTime, 3, 2);
+        $endCeilHour = $endMinute > 0 ? $endHour + 1 : $endHour;
+        $span = 0;
+        for ($j = $startIdx; $j < $gridSlotCount; $j++) {
+            if ((int) substr($gridTimeSlots[$j], 0, 2) < $endCeilHour) {
+                $span++;
+            } else {
+                break;
+            }
+        }
+        return max(1, min($span, $gridSlotCount - $startIdx));
+    };
+    // เซลล์ (วันที่|ช่วงเวลา) ที่ถูกครอบโดยกิจกรรมที่เริ่มก่อนหน้า — ไม่ต้อง render เซลล์ว่าง
+    $gridCoveredKeys = [];
+    foreach ($gridOccurrences as $gridOccurrence) {
+        $startIdx = $gridSlotIndex[$gridOccurrence['time_slot']] ?? null;
+        if ($startIdx === null) {
+            continue;
+        }
+        $coverSpan = $occurrenceSlotSpan($gridOccurrence);
+        $coverDate = $gridOccurrence['date']->toDateString();
+        for ($j = $startIdx + 1; $j < $startIdx + $coverSpan; $j++) {
+            $gridCoveredKeys[$coverDate . '|' . $gridTimeSlots[$j]] = true;
+        }
+    }
     $thaiDays = [
         1 => 'วันจันทร์',
         2 => 'วันอังคาร',
@@ -1200,37 +1238,48 @@
             box-shadow: 0 1px 4px oklch(0% 0 0 / 0.05);
         }
         .grid-cell {
-            min-height: 64px;
+            min-height: 70px;
             border-right: 1px solid var(--schedule-border);
             border-bottom: 1px solid var(--schedule-border);
-            padding: 8px;
+            padding: 7px;
+            background: oklch(98.6% 0.004 232);
         }
         .grid-head {
-            min-height: 43px;
-            background: oklch(93.5% 0.022 232);
+            min-height: 44px;
+            background: oklch(95.5% 0.016 232);
             color: var(--fg-1);
             text-align: center;
             font-size: 11.5px;
             font-weight: 900;
         }
         .grid-time {
-            background: var(--schedule-soft-strong);
+            background: oklch(97% 0.007 232);
             color: var(--schedule-muted);
             font-size: 11px;
-            font-weight: 900;
+            font-weight: 800;
             text-align: right;
             font-variant-numeric: tabular-nums;
         }
+        .grid-cell-activity {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+        .grid-cell-activity .grid-activity {
+            margin-bottom: 0;
+            flex: 1 1 auto;
+        }
         .grid-activity {
             width: 100%;
-            border: 1px solid color-mix(in oklch, var(--activity-color) 30%, var(--schedule-border));
-            border-radius: 8px;
-            background: color-mix(in oklch, var(--activity-color) 8%, var(--surface));
-            padding: 8px;
+            border: 1px solid color-mix(in oklch, var(--activity-color) 26%, var(--schedule-border));
+            border-left: 3px solid var(--activity-color);
+            border-radius: 7px;
+            background: var(--surface);
+            padding: 8px 9px;
             margin-bottom: 7px;
             font-size: 11px;
             color: var(--fg-2);
-            box-shadow: 0 1px 2px oklch(0% 0 0 / 0.05);
+            box-shadow: 0 1px 3px oklch(0% 0 0 / 0.07);
             cursor: pointer;
             text-align: left;
             font: inherit;
@@ -1282,6 +1331,40 @@
         .grid-activity-meta {
             display: grid;
             gap: 2px;
+        }
+        .grid-activity-meta > div:first-child {
+            color: var(--fg-1);
+            font-weight: 800;
+        }
+        .grid-activity-time {
+            color: var(--fg-1);
+            font-size: 11px;
+            font-weight: 850;
+        }
+        .grid-activity-foot {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            min-width: 0;
+        }
+        .grid-activity-room {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: var(--fg-2);
+            font-size: 10.5px;
+            font-weight: 700;
+        }
+        .grid-activity-groups {
+            flex-shrink: 0;
+            padding: 1px 7px;
+            border-radius: 999px;
+            background: var(--schedule-soft);
+            color: var(--fg-2);
+            font-size: 10px;
+            font-weight: 800;
         }
         .grid-location-name,
         .grid-instructor {
@@ -2558,22 +2641,24 @@
                         </div>
                     @else
                     <div class="schedule-grid" style="grid-template-columns: 74px repeat({{ max(1, $weekDays->count()) }}, minmax(146px, 1fr));">
-                        <div class="grid-cell grid-head"></div>
-                        @foreach($weekDays as $day)
-                            <div class="grid-cell grid-head">
+                        <div class="grid-cell grid-head" style="grid-area:1 / 1;"></div>
+                        @foreach($weekDays as $dayIndex => $day)
+                            <div class="grid-cell grid-head" style="grid-area:1 / {{ $dayIndex + 2 }};">
                                 {{ $thaiDays[$day->dayOfWeekIso] ?? $day->format('l') }}<br>
                                 <span class="caption">{{ $formatDate($day) }}</span>
                             </div>
                         @endforeach
 
-                        @foreach($gridTimeSlots as $slot)
-                            <div class="grid-cell grid-time">{{ $slot }}</div>
-                            @foreach($weekDays as $day)
+                        @foreach($gridTimeSlots as $slotIndex => $slot)
+                            <div class="grid-cell grid-time" style="grid-area:{{ $slotIndex + 2 }} / 1;">{{ $slot }}</div>
+                            @foreach($weekDays as $dayIndex => $day)
                                 @php
                                     $slotOccurrences = $gridOccurrences
                                         ->filter(fn ($occurrence) => $occurrence['date']->toDateString() === $day->toDateString() && $occurrence['time_slot'] === $slot);
+                                    $cellSpan = $slotOccurrences->isEmpty() ? 1 : (int) $slotOccurrences->max($occurrenceSlotSpan);
                                 @endphp
-                                <div class="grid-cell">
+                                @if($slotOccurrences->isNotEmpty())
+                                <div class="grid-cell grid-cell-activity" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $slotIndex + 2 }} / span {{ $cellSpan }};">
                                     @foreach($slotOccurrences as $occurrence)
                                         @php
                                             $schedule = $occurrence['schedule'];
@@ -2589,39 +2674,19 @@
                                         <div role="button" tabindex="0" class="grid-activity" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
                                             <div class="grid-activity-top">
                                                 <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }};">{{ $activity?->name ?? 'กิจกรรม' }}</span>
-                                                @if($offeringCourse?->course_code)
-                                                    <span class="grid-course">{{ $offeringCourse->course_code }}</span>
-                                                @endif
                                             </div>
                                             <div class="grid-activity-title">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
-                                            @if($schedule->topic && $activity?->name)
-                                                <div class="grid-activity-sub">{{ $activity->name }}</div>
-                                            @endif
-                                            <div class="grid-activity-meta">
-                                                <div>{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }} · {{ $formatDuration($occurrence['duration_minutes']) }}</div>
-                                                <div class="grid-instructor">{{ $instructorText }}</div>
-                                                <div>
-                                                    <div class="grid-location-name">{{ $room?->room_name ?? $room?->room_code ?? 'ไม่ระบุสถานที่' }}</div>
-                                                    @if($room?->building)
-                                                        <div class="grid-location-building">{{ $room->building }}</div>
-                                                    @endif
-                                                </div>
+                                            <div class="grid-activity-time">{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }} · {{ $formatDuration($occurrence['duration_minutes']) }}</div>
+                                            <div class="grid-activity-foot">
+                                                <span class="grid-activity-room">{{ $room?->room_name ?? $room?->room_code ?? 'ไม่ระบุสถานที่' }}</span>
+                                                <span class="grid-activity-groups">{{ $schedule->studentGroups->isNotEmpty() ? $schedule->studentGroups->count() . ' กลุ่ม' : 'ไม่มีกลุ่ม' }}</span>
                                             </div>
-                                            @if($schedule->studentGroups->isNotEmpty())
-                                                <div class="grid-groups">
-                                                    @foreach($schedule->studentGroups as $group)
-                                                        <span class="co-group-badge" style="--group-color: {{ $groupTone($group) }};">
-                                                            <span class="co-group-dot" aria-hidden="true"></span>
-                                                            <span>{{ $group->group_code }}</span>
-                                                        </span>
-                                                    @endforeach
-                                                </div>
-                                            @else
-                                                <div class="grid-activity-sub">ไม่มีกลุ่มนักศึกษา</div>
-                                            @endif
                                         </div>
                                     @endforeach
                                 </div>
+                                @elseif(empty($gridCoveredKeys[$day->toDateString() . '|' . $slot]))
+                                <div class="grid-cell" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $slotIndex + 2 }};"></div>
+                                @endif
                             @endforeach
                         @endforeach
                     </div>
