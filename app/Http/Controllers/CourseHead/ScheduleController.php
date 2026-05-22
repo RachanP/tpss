@@ -8,6 +8,7 @@ use App\Models\CourseOffering;
 use App\Models\Room;
 use App\Models\Schedule;
 use App\Services\ScheduleConflictChecker;
+use App\Support\ThaiDate;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Carbon\CarbonPeriod;
@@ -520,6 +521,14 @@ class ScheduleController extends Controller
 
     private function validateSchedule(Request $request, CourseOffering $courseOffering): array
     {
+        // ฟอร์มส่งวันที่เป็น วว/ดด/พ.ศ. (x-thai-date-input) — normalize เป็น ISO ก่อน validate
+        foreach (['start_date', 'end_date'] as $dateField) {
+            $iso = ThaiDate::parseToIso($request->input($dateField));
+            if ($iso !== null) {
+                $request->merge([$dateField => $iso]);
+            }
+        }
+
         $validated = $request->validate([
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],

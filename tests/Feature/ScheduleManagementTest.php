@@ -227,7 +227,7 @@ class ScheduleManagementTest extends TestCase
             ->assertSee('data-testid="schedule-edit-form"', false)
             ->assertSee('action="' . route('maker.course_offerings.schedules.update', [$offering, $schedule]) . '"', false)
             ->assertSee('name="_method" value="PUT"', false)
-            ->assertSee('value="2026-08-03"', false)
+            ->assertSee('value="03/08/2569"', false)
             ->assertSee('value="08:00"', false)
             ->assertSee('Existing schedule')
             ->assertSee('data-testid="schedule-delete-button"', false)
