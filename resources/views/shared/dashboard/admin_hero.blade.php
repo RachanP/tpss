@@ -190,7 +190,7 @@
                 </div>
             @else
                 <div style="font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--status-warning-fg); margin-bottom: 6px;">
-                    ยังไม่ได้ตั้งค่าปีการศึกษาปัจจุบัน
+                    ยังไม่ได้ตั้งค่าปีการศึกษาที่ใช้งาน
                 </div>
                 <div style="font-size: 11.5px; color: var(--fg-3); margin-bottom: 12px;">
                     กรุณาเพิ่มหรือเปิดใช้งานปีการศึกษาในหน้าตั้งค่าระบบ

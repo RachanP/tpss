@@ -6,14 +6,14 @@
         workloadHoursPerWeek: {{ $workloadHoursPerWeek }},
         get totalQuota() { return this.workloadWeeks * this.workloadHoursPerWeek },
         get teachingQuota() { return this.teachingWeeks * this.workloadHoursPerWeek },
-        showModal: {{ $errors->hasAny(['name', 'end_date']) ? 'true' : 'false' }},
-        editMode: {{ ($errors->hasAny(['name', 'end_date'])) && old('_method') === 'PUT' ? 'true' : 'false' }},
+        showModal: {{ $errors->hasAny(['name', 'start_date', 'end_date']) ? 'true' : 'false' }},
+        editMode: {{ ($errors->hasAny(['name', 'start_date', 'end_date'])) && old('_method') === 'PUT' ? 'true' : 'false' }},
         currentYear: {
             id: '{{ old('year_id', '') }}',
             name: '{{ old('name', '') }}',
             semester: '{{ old('semester', '1') }}',
-            start_date: '{{ old('start_date', '') }}',
-            end_date: '{{ old('end_date', '') }}',
+            start_date: {{ Js::from(\App\Support\ThaiDate::formatForInput(old('start_date', ''))) }},
+            end_date: {{ Js::from(\App\Support\ThaiDate::formatForInput(old('end_date', ''))) }},
             is_active: {{ old('is_active') ? 'true' : 'false' }}
         },
         openScheduleConfirmForm: null,
@@ -31,11 +31,28 @@
                 id: year.id,
                 name: year.name,
                 semester: year.semester,
-                start_date: year.start_date.split(' ')[0],
-                end_date: year.end_date.split(' ')[0],
+                start_date: this.thaiDateForInput(year.start_date),
+                end_date: this.thaiDateForInput(year.end_date),
                 is_active: !!year.is_active
             };
             this.showModal = true;
+        },
+        thaiDateForInput(value) {
+            const raw = String(value || '').trim();
+            if (!raw) return '';
+
+            const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (iso) {
+                return iso[3] + '/' + iso[2] + '/' + (parseInt(iso[1], 10) + 543);
+            }
+
+            const display = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+            if (display) {
+                const year = parseInt(display[3], 10);
+                return display[1].padStart(2, '0') + '/' + display[2].padStart(2, '0') + '/' + (year >= 2400 ? year : year + 543);
+            }
+
+            return raw;
         },
         startOpenScheduleCountdown(formId, label) {
             clearInterval(this.openScheduleTimer);
@@ -160,8 +177,8 @@
                                     <td style="font-weight: 600; color: var(--fg-1);">{{ $year->name }}</td>
                                     <td>ภาคเรียนที่ {{ $year->semester }}</td>
                                     <td style="color: var(--fg-2); font-size: 13px;">
-                                        {{ date('d/m/Y', strtotime($year->start_date)) }} -
-                                        {{ date('d/m/Y', strtotime($year->end_date)) }}
+                                        {{ \App\Support\ThaiDate::formatForInput($year->start_date) }} -
+                                        {{ \App\Support\ThaiDate::formatForInput($year->end_date) }}
                                     </td>
                                     <td>
                                         @if($year->is_active)
@@ -316,12 +333,12 @@
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>วันที่เริ่ม</label>
-                                    <input type="date" name="start_date" x-model="currentYear.start_date" required>
+                                    <x-thai-date-input name="start_date" x-model="currentYear.start_date" required />
                                 </div>
                                 <div class="form-group">
                                     <label>วันที่สิ้นสุด</label>
-                                    <input type="date" name="end_date" x-model="currentYear.end_date" required
-                                        style="{{ $errors->has('end_date') ? 'border-color: var(--red, #dc2626);' : '' }}">
+                                    <x-thai-date-input name="end_date" x-model="currentYear.end_date" required
+                                        style="{{ $errors->has('end_date') ? 'border-color: var(--red, #dc2626);' : '' }}" />
                                     @error('end_date')
                                         <span style="color: var(--red, #dc2626); font-size: 12px; margin-top: 4px; display: block;">{{ $message }}</span>
                                     @enderror

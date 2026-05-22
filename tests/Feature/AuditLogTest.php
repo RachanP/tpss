@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\User;
 use App\Models\UserRole;
 use App\Services\AuditLogger;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -167,7 +168,7 @@ class AuditLogTest extends TestCase
 
         foreach (['id', 'action', 'category', 'description', 'actor', 'auditable',
                   'old_values', 'new_values', 'metadata', 'context',
-                  'masked_fields', 'created_at'] as $key) {
+                  'masked_fields', 'created_at', 'display_created_at'] as $key) {
             $this->assertArrayHasKey($key, $payload, "Missing key: {$key}");
         }
     }
@@ -196,6 +197,28 @@ class AuditLogTest extends TestCase
         $this->assertSame('[REDACTED]', $payload['old_values']['password']);
         $this->assertSame('[REDACTED]', $payload['new_values']['password']);
         $this->assertContains('password', $payload['masked_fields']);
+    }
+
+    public function test_detail_modal_created_at_matches_table_display_time(): void
+    {
+        $createdAt = Carbon::create(2026, 5, 21, 10, 30, 0);
+
+        $log = AuditLog::create([
+            'user_id'        => $this->admin->id,
+            'action'         => 'ข้อมูลหลัก.สร้าง',
+            'table_affected' => 'courses',
+            'record_id'      => 1,
+            'old_values'     => null,
+            'new_values'     => [],
+            'category'       => 'ข้อมูลหลัก',
+            'description'    => 'ตรวจเวลา',
+        ]);
+        $log->forceFill(['created_at' => $createdAt])->save();
+
+        $payload = $log->toDetailPayload();
+
+        $this->assertSame('2026-05-21 10:30:00', $payload['created_at']);
+        $this->assertSame('21/05/2569 10:30:00', $payload['display_created_at']);
     }
 
     public function test_bulk_metadata_in_new_values(): void
@@ -291,6 +314,9 @@ class AuditLogTest extends TestCase
         $response->assertSee('@input.debounce.500ms="fetchResults()"', false);
         $response->assertSee('data-testid="audit-logs-filter-action"', false);
         $response->assertSee('@change="fetchResults()"', false);
+        $this->assertMatchesRegularExpression('/type="text"[^>]+name="date_from"/s', $html);
+        $this->assertMatchesRegularExpression('/type="text"[^>]+name="date_to"/s', $html);
+        $response->assertSee('placeholder="วว/ดด/พ.ศ."', false);
         $response->assertSee('ทุกการกระทำ');
         $response->assertSee('ค้นหา');
         $response->assertSee('รีเซต');
@@ -420,6 +446,111 @@ class AuditLogTest extends TestCase
         $response->assertOk();
         $response->assertSee('อยู่ในช่วงวันที่');
         $response->assertDontSee('นอกช่วงวันที่');
+    }
+
+    public function test_date_filter_with_yyyy_mm_dd_still_works(): void
+    {
+        $this->actingAs($this->admin);
+
+        $insideLog = AuditLog::create([
+            'user_id' => $this->admin->id,
+            'action' => 'ข้อมูลหลัก.สร้าง',
+            'table_affected' => 'courses',
+            'record_id' => 1,
+            'old_values' => null,
+            'new_values' => [],
+            'category' => 'ข้อมูลหลัก',
+            'description' => 'รองรับรูปแบบเดิม',
+        ]);
+        $insideLog->forceFill(['created_at' => '2026-05-21 12:00:00'])->save();
+
+        $outsideLog = AuditLog::create([
+            'user_id' => $this->admin->id,
+            'action' => 'ข้อมูลหลัก.สร้าง',
+            'table_affected' => 'courses',
+            'record_id' => 2,
+            'old_values' => null,
+            'new_values' => [],
+            'category' => 'ข้อมูลหลัก',
+            'description' => 'ไม่อยู่ในวันที่กรอง',
+        ]);
+        $outsideLog->forceFill(['created_at' => '2026-05-20 12:00:00'])->save();
+
+        $response = $this
+            ->withHeader('X-Requested-With', 'XMLHttpRequest')
+            ->get(route('admin.audit_logs.index', [
+                'date_from' => '2026-05-21',
+                'date_to' => '2026-05-21',
+                'partial' => 'table',
+            ]));
+
+        $response->assertOk();
+        $response->assertSee('รองรับรูปแบบเดิม');
+        $response->assertDontSee('ไม่อยู่ในวันที่กรอง');
+    }
+
+    public function test_date_filter_startofday_endofday_boundaries(): void
+    {
+        $this->actingAs($this->admin);
+
+        foreach ([
+            ['record_id' => 1, 'description' => 'ต้นวัน', 'created_at' => '2026-05-21 00:00:00'],
+            ['record_id' => 2, 'description' => 'ท้ายวัน', 'created_at' => '2026-05-21 23:59:59'],
+            ['record_id' => 3, 'description' => 'ก่อนวัน', 'created_at' => '2026-05-20 23:59:59'],
+            ['record_id' => 4, 'description' => 'หลังวัน', 'created_at' => '2026-05-22 00:00:00'],
+        ] as $logData) {
+            $createdAt = $logData['created_at'];
+            unset($logData['created_at']);
+
+            $log = AuditLog::create(array_merge([
+                'user_id' => $this->admin->id,
+                'action' => 'ข้อมูลหลัก.สร้าง',
+                'table_affected' => 'courses',
+                'old_values' => null,
+                'new_values' => [],
+                'category' => 'ข้อมูลหลัก',
+            ], $logData));
+            $log->forceFill(['created_at' => $createdAt])->save();
+        }
+
+        $response = $this
+            ->withHeader('X-Requested-With', 'XMLHttpRequest')
+            ->get(route('admin.audit_logs.index', [
+                'date_from' => '21/05/2569',
+                'date_to' => '21/05/2569',
+                'partial' => 'table',
+            ]));
+
+        $response->assertOk();
+        $response->assertSee('ต้นวัน');
+        $response->assertSee('ท้ายวัน');
+        $response->assertDontSee('ก่อนวัน');
+        $response->assertDontSee('หลังวัน');
+    }
+
+    public function test_invalid_date_filter_preserves_input_and_does_not_fail(): void
+    {
+        $this->actingAs($this->admin);
+
+        AuditLog::create([
+            'user_id' => $this->admin->id,
+            'action' => 'ข้อมูลหลัก.สร้าง',
+            'table_affected' => 'courses',
+            'record_id' => 1,
+            'old_values' => null,
+            'new_values' => [],
+            'category' => 'ข้อมูลหลัก',
+            'description' => 'ยังแสดงเมื่อวันที่ไม่ถูกต้อง',
+            'created_at' => '2026-05-21 12:00:00',
+        ]);
+
+        $response = $this->get(route('admin.audit_logs.index', [
+            'date_from' => 'not-a-date',
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('value="not-a-date"', false);
+        $response->assertSee('ยังแสดงเมื่อวันที่ไม่ถูกต้อง');
     }
 
     public function test_audit_log_table_shows_ip_from_context(): void

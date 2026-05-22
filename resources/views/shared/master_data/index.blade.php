@@ -123,6 +123,45 @@
             const query = String(keyword || '').toLowerCase();
             return source.includes(query) || this.normalizeSearch(source).includes(this.normalizeSearch(query));
         },
+        thaiDateForInput(value) {
+            const raw = String(value || '').trim();
+            if (!raw) return '';
+
+            const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (iso) {
+                return iso[3] + '/' + iso[2] + '/' + (parseInt(iso[1], 10) + 543);
+            }
+
+            const display = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+            if (display) {
+                const year = parseInt(display[3], 10);
+                return display[1].padStart(2, '0') + '/' + display[2].padStart(2, '0') + '/' + (year >= 2400 ? year : year + 543);
+            }
+
+            return raw;
+        },
+        thaiDateToIso(value) {
+            const raw = String(value || '').trim();
+            if (!raw) return '';
+
+            const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (iso) return iso[1] + '-' + iso[2] + '-' + iso[3];
+
+            const display = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+            if (display) {
+                let year = parseInt(display[3], 10);
+                if (year >= 2400) year -= 543;
+                if (year < 1900 || year > 2100) return '';
+                return String(year).padStart(4, '0') + '-' + display[2].padStart(2, '0') + '-' + display[1].padStart(2, '0');
+            }
+
+            const digits = raw.replace(/\D/g, '');
+            if (digits.length === 8) {
+                return this.thaiDateToIso(digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4));
+            }
+
+            return '';
+        },
         hasAnyCourseFilter() {
             return Object.values(this.filters.courses).some(value => !!value);
         },
@@ -215,7 +254,7 @@
                 academic_degree: instructor.instructor_profile?.academic_degree || '',
                 department_id: instructor.instructor_profile?.department_id || '',
                 employment_type: instructor.instructor_profile?.employment_type || '',
-                hired_at: instructor.instructor_profile?.hired_at || '',
+                hired_at: this.thaiDateForInput(instructor.instructor_profile?.hired_at || ''),
                 teaching_pct: instructor.instructor_profile?.teaching_pct ?? 0,
                 research_pct: instructor.instructor_profile?.research_pct ?? 0,
                 service_pct:  instructor.instructor_profile?.service_pct  ?? 0,
@@ -273,6 +312,7 @@
 
         // Rooms
         locTypeMap: {{ Js::from($locationTypes->mapWithKeys(fn($t) => [$t->id => (bool) $t->requires_capacity])) }},
+        locTypeOptions: {{ Js::from($locationTypes->map(fn($t) => ['id' => $t->id, 'name' => $t->name])->values()) }},
         showRoomModal: false,
         showImportRoomModal: false,
         showImportCourseModal: false,
@@ -307,6 +347,10 @@
                 equipment_type: Array.isArray(room.equipment_type) ? room.equipment_type.join(', ') : ''
             };
             this.showRoomModal = true;
+        },
+        roomLocationTypeName() {
+            const selected = this.locTypeOptions.find(type => String(type.id) === String(this.currentRoom.location_type_id));
+            return selected ? selected.name : '-- เลือกประเภท --';
         },
 
         // Courses
@@ -577,7 +621,7 @@
         getInstructorPARules() {
             const title  = this.currentInstructor.title;
             const degree = this.currentInstructor.academic_degree;
-            const hiredAt = this.currentInstructor.hired_at;
+            const hiredAt = this.thaiDateToIso(this.currentInstructor.hired_at);
             const isEnglishPassed = this.currentInstructor.is_english_passed;
             const isNote1 = title === 'ผู้ช่วยอาจารย์' && degree === 'ปริญญาเอก' && hiredAt && new Date(hiredAt) < new Date('2016-10-01');
             const useInstructorRules =
@@ -623,8 +667,8 @@
         showInstructorEnglishCriterion() {
             return this.currentInstructor.title === 'ผู้ช่วยอาจารย์'
                 && this.currentInstructor.academic_degree === 'ปริญญาเอก'
-                && this.currentInstructor.hired_at
-                && new Date(this.currentInstructor.hired_at) >= new Date('2016-10-01');
+                && this.thaiDateToIso(this.currentInstructor.hired_at)
+                && new Date(this.thaiDateToIso(this.currentInstructor.hired_at)) >= new Date('2016-10-01');
         },
         get paTotal() {
             return (parseInt(this.currentInstructor.teaching_pct)||0)
@@ -1747,7 +1791,7 @@
         <!-- Edit Instructor Modal -->
         <template x-if="showInstructorModal">
             <div class="overlay" x-cloak>
-                <div class="modal-center" style="max-width: 650px;"
+                <div class="modal-center instructor-modal"
                     x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95"
                     x-transition:enter-end="opacity-100 scale-100">
                     <div class="modal-hdr" style="background: var(--bg-2);">
@@ -1764,10 +1808,14 @@
                         @submit="confirmInstructorSave($event)">
                         @csrf
                         <input type="hidden" name="_method" value="PUT">
-                        <div class="modal-body">
-                            <div
-                                style="display: grid; grid-template-columns: 140px 1fr; gap: 20px; margin-bottom: 20px;">
-                                <div class="form-group">
+                        <div class="modal-body instructor-modal-body">
+                            <section class="instructor-form-section">
+                                <div class="instructor-section-head">
+                                    <div class="instructor-section-title">ข้อมูลบุคคล</div>
+                                    <div class="instructor-section-copy">ชื่อ รหัสพนักงาน และภาควิชาที่สังกัด</div>
+                                </div>
+                                <div class="instructor-form-grid instructor-form-grid--identity">
+                                <div class="form-group instructor-prefix-field">
                                     <label>คำนำหน้า <span style="color:var(--status-conflict-fg)">*</span></label>
                                     <select name="prefix" x-model="currentInstructor.prefix" required>
                                         <option value="นาย">นาย</option>
@@ -1779,9 +1827,7 @@
                                     <label>ชื่อ-นามสกุล <span style="color:var(--status-conflict-fg)">*</span></label>
                                     <input type="text" name="name" x-model="currentInstructor.name" required>
                                 </div>
-                            </div>
 
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                                 <div class="form-group">
                                     <label>รหัสพนักงาน</label>
                                     <input type="text" name="employee_id" x-model="currentInstructor.employee_id"
@@ -1796,9 +1842,15 @@
                                         @endforeach
                                     </select>
                                 </div>
-                            </div>
+                                </div>
+                            </section>
 
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                            <section class="instructor-form-section">
+                                <div class="instructor-section-head">
+                                    <div class="instructor-section-title">ตำแหน่งและคุณสมบัติ</div>
+                                    <div class="instructor-section-copy">ตำแหน่งทางวิชาการ วุฒิการศึกษา ประเภทบุคลากร และเกณฑ์ภาษาอังกฤษ</div>
+                                </div>
+                                <div class="instructor-form-grid instructor-form-grid--profile">
                                 <div class="form-group">
                                     <label>ตำแหน่งทางวิชาการ <span style="color:var(--status-conflict-fg)">*</span></label>
                                     <select name="title" x-model="currentInstructor.title" required>
@@ -1820,9 +1872,7 @@
                                         <option value="ปริญญาตรี">ปริญญาตรี</option>
                                     </select>
                                 </div>
-                            </div>
 
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                                 <div class="form-group">
                                     <label>ประเภทบุคลากร <span style="color:var(--status-conflict-fg)">*</span></label>
                                     <select name="employment_type" x-model="currentInstructor.employment_type" required>
@@ -1831,13 +1881,11 @@
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label>วันบรรจุ
-                                        <span style="font-weight:400;color:var(--fg-3);font-size:11px;margin-left:4px;">(ค.ศ.)</span>
-                                    </label>
-                                    <input type="date" name="hired_at" x-model="currentInstructor.hired_at">
+                                    <label>วันบรรจุ</label>
+                                    <x-thai-date-input name="hired_at" x-model="currentInstructor.hired_at" />
                                 </div>
-                            </div>
-                            <div x-show="showInstructorEnglishCriterion()" x-cloak style="margin-top:15px;margin-bottom:4px;">
+                                </div>
+                            <div class="instructor-english-panel" x-show="showInstructorEnglishCriterion()" x-cloak>
                                 <label style="font-size:13px;font-weight:700;color:var(--fg-2);margin-bottom:10px;display:block;padding-left:2px;">เกณฑ์ภาษาอังกฤษ</label>
                                 <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
                                     <button type="button"
@@ -1863,14 +1911,18 @@
                                 </div>
                             </div>
                             <input type="hidden" name="is_english_passed" :value="currentInstructor.is_english_passed ? 1 : 0">
+                            </section>
                             {{-- PA Ratio Section --}}
-                            <div style="margin-top:20px;padding:16px;background:var(--bg-2);border-radius:var(--r-lg);border:1px solid var(--border);">
-                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-                                    <span style="font-size:13px;font-weight:700;color:var(--fg-1);font-family:var(--font-display);">สัดส่วนการะงาน</span>
+                            <section class="instructor-form-section instructor-pa-section">
+                                <div class="instructor-section-head">
+                                    <div>
+                                        <div class="instructor-section-title">สัดส่วนภาระงาน</div>
+                                        <div class="instructor-section-copy is-left">กำหนดสัดส่วน PA ให้รวมเป็น 100% ตามเกณฑ์ตำแหน่งปัจจุบัน</div>
+                                    </div>
                                     <span :style="paTotal === 100 ? 'color:oklch(45% 0.15 150);font-weight:700;font-size:14px;' : 'color:var(--status-conflict-fg);font-weight:700;font-size:14px;'"
                                         x-text="paTotal + '%'"></span>
                                 </div>
-                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                <div class="instructor-pa-grid">
                                     <div class="form-group" style="margin:0;">
                                         <label style="font-size:12px;">1. ด้านการสอน <span style="color:var(--status-conflict-fg)">*</span>
                                             <span x-text="'(' + getInstructorPARules().teaching.label + ')'" style="font-weight:400;color:var(--fg-3);"></span>
@@ -1932,11 +1984,9 @@
                                     <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                                     สัดส่วนรวมต้องเท่ากับ 100% (ขาด/เกิน <span x-text="100 - paTotal"></span>%)
                                 </div>
-                            </div>
-                            <div style="display:none;">{{-- placeholder to close the grid that was opened above --}}
-                            </div>
+                            </section>
                         </div>
-                        <div class="modal-foot">
+                        <div class="modal-foot instructor-modal-foot">
                             <button type="button" class="btn btn-ghost"
                                 @click="showInstructorModal = false">ยกเลิก</button>
                             <button type="submit" class="btn btn-primary">บันทึกการแก้ไข</button>
@@ -2010,7 +2060,7 @@
         <!-- Add/Edit Modal (Room) -->
         <template x-if="showRoomModal">
             <div class="overlay" x-cloak>
-                <div class="modal-center" style="max-width: 600px;"
+                <div class="modal-center room-modal"
                     x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95"
                     x-transition:enter-end="opacity-100 scale-100">
                     <div class="modal-hdr" style="background: var(--bg-2);">
@@ -2029,8 +2079,13 @@
                         method="POST">
                         @csrf
                         <input type="hidden" name="_method" value="PUT" :disabled="!editRoomMode">
-                        <div class="modal-body">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                        <div class="modal-body room-modal-body">
+                            <section class="room-form-section">
+                                <div class="room-section-head">
+                                    <div class="room-section-title">ข้อมูลห้อง/สถานที่</div>
+                                    <div class="room-section-copy">รหัส ชื่อ และอาคารของสถานที่ที่ใช้จัดตาราง</div>
+                                </div>
+                                <div class="room-form-grid room-form-grid--identity">
                                 <div class="form-group">
                                     <label>รหัสห้อง/สถานที่ <span style="color: var(--status-conflict-fg)">*</span></label>
                                     <input type="text" name="room_code" x-model="currentRoom.room_code" required
@@ -2041,12 +2096,48 @@
                                     <input type="text" name="room_name" x-model="currentRoom.room_name" required
                                         placeholder="เช่น ห้องบรรยาย 1">
                                 </div>
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                                 <div class="form-group">
                                     <label>อาคาร</label>
                                     <input type="text" name="building" x-model="currentRoom.building"
                                         placeholder="เช่น อาคาร 1">
+                                </div>
+                                </div>
+                            </section>
+
+                            <section class="room-form-section">
+                                <div class="room-section-head">
+                                    <div class="room-section-title">ประเภทและการใช้งาน</div>
+                                    <div class="room-section-copy">ประเภทสถานที่ ความจุ และสถานะการใช้งาน</div>
+                                </div>
+                                <div class="room-form-grid room-form-grid--usage">
+                                <div class="form-group">
+                                    <label>ประเภทสถานที่ <span style="color: var(--status-conflict-fg)">*</span></label>
+                                    <div class="room-type-dropdown" x-data="{ open: false }" @click.outside="open = false" @keydown.escape.window="open = false">
+                                        <input type="hidden" name="location_type_id" x-model="currentRoom.location_type_id">
+                                        <button type="button"
+                                            class="room-type-trigger"
+                                            :class="currentRoom.location_type_id ? '' : 'is-placeholder'"
+                                            @click="open = !open"
+                                            :aria-expanded="open.toString()">
+                                            <span x-text="roomLocationTypeName()"></span>
+                                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="6 9 12 15 18 9"></polyline>
+                                            </svg>
+                                        </button>
+                                        <div class="room-type-menu" x-show="open" x-cloak>
+                                            <button type="button" class="room-type-option is-placeholder"
+                                                @click="currentRoom.location_type_id = ''; open = false">
+                                                -- เลือกประเภท --
+                                            </button>
+                                            @foreach($locationTypes as $type)
+                                                <button type="button" class="room-type-option"
+                                                    :class="String(currentRoom.location_type_id) === '{{ $type->id }}' ? 'is-selected' : ''"
+                                                    @click="currentRoom.location_type_id = '{{ $type->id }}'; open = false">
+                                                    {{ $type->name }}
+                                                </button>
+                                            @endforeach
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="form-group">
                                     <template x-if="!(locTypeMap[currentRoom.location_type_id] ?? true)">
@@ -2058,17 +2149,6 @@
                                     <input type="number" name="capacity" x-model="currentRoom.capacity" min="0"
                                         :required="(locTypeMap[currentRoom.location_type_id] ?? true)">
                                 </div>
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-                                <div class="form-group">
-                                    <label>ประเภทสถานที่ <span style="color: var(--status-conflict-fg)">*</span></label>
-                                    <select name="location_type_id" x-model="currentRoom.location_type_id" required>
-                                        <option value="">-- เลือกประเภท --</option>
-                                        @foreach($locationTypes as $type)
-                                            <option value="{{ $type->id }}">{{ $type->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
                                 <div class="form-group">
                                     <label>สถานะ</label>
                                     <select name="status" x-model="currentRoom.status" required>
@@ -2077,25 +2157,35 @@
                                         <option value="inactive">ไม่พร้อมใช้</option>
                                     </select>
                                 </div>
-                            </div>
-                            <div class="form-group" style="margin-bottom: 20px;">
-                                <label>ครุภัณฑ์ / อุปกรณ์</label>
-                                <input type="text" name="equipment_type" x-model="currentRoom.equipment_type" 
-                                    placeholder="เช่น โปรเจคเตอร์, คอมพิวเตอร์, ไมโครโฟน (คั่นด้วยลูกน้ำ ,)">
-                            </div>
-                            <div class="form-group">
-                                <label>รายละเอียดที่ตั้ง / ที่อยู่ (แหล่งฝึกภายนอก)</label>
-                                <textarea name="address" x-model="currentRoom.address" rows="2" 
-                                    placeholder="เช่น ชั้น 3, โรงพยาบาลศิริราช..."></textarea>
-                            </div>
+                                </div>
+                            </section>
+
+                            <section class="room-form-section">
+                                <div class="room-section-head">
+                                    <div class="room-section-title">รายละเอียดเพิ่มเติม</div>
+                                    <div class="room-section-copy">อุปกรณ์ประจำห้อง และรายละเอียดที่ตั้งสำหรับแหล่งฝึกภายนอก</div>
+                                </div>
+                                <div class="room-form-grid room-form-grid--details">
+                                    <div class="form-group">
+                                        <label>ครุภัณฑ์ / อุปกรณ์</label>
+                                        <input type="text" name="equipment_type" x-model="currentRoom.equipment_type"
+                                            placeholder="เช่น โปรเจคเตอร์, คอมพิวเตอร์, ไมโครโฟน (คั่นด้วยลูกน้ำ ,)">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>รายละเอียดที่ตั้ง / ที่อยู่ (แหล่งฝึกภายนอก)</label>
+                                        <textarea name="address" x-model="currentRoom.address" rows="2"
+                                            placeholder="เช่น ชั้น 3, โรงพยาบาลศิริราช..."></textarea>
+                                    </div>
+                                </div>
+                            </section>
                         </div>
-                        <div class="modal-foot" style="display: flex; justify-content: space-between;">
+                        <div class="modal-foot room-modal-foot">
                             <div>
                                 <button type="button" class="btn btn-ghost" x-show="editRoomMode" @click="confirmDelete('deleteRoomForm', currentRoom.room_name, null)" style="color: var(--status-conflict-fg);">
                                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; display: inline-block; vertical-align: middle;"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg> ลบข้อมูล
                                 </button>
                             </div>
-                            <div style="display: flex; gap: 8px;">
+                            <div class="room-modal-actions">
                                 <button type="button" class="btn btn-ghost" @click="showRoomModal = false">ยกเลิก</button>
                                 <button type="submit" class="btn btn-primary">บันทึกข้อมูล</button>
                             </div>
@@ -2112,7 +2202,7 @@
         <!-- Add/Edit Modal (Course) -->
         <template x-if="showCourseModal">
             <div class="overlay" x-cloak>
-                <div class="modal-center" style="max-width: 800px;"
+                <div class="modal-center course-modal"
                     x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95"
                     x-transition:enter-end="opacity-100 scale-100">
                     <div class="modal-hdr" style="background: var(--bg-2);">
@@ -2143,7 +2233,7 @@
                                 <input type="hidden" :name="`instructor_role_ids[${user.id}]`" :value="user.course_role_id" :disabled="courseAssignmentsLocked()">
                             </div>
                         </template>
-                        <div class="modal-body" style="display: flex; flex-direction: column; gap: 0;">
+                        <div class="modal-body course-modal-body">
                             @if($courseFormHasErrors)
                                 <div data-testid="course-form-validation-alert" style="background:color-mix(in oklch,var(--status-conflict-fg) 8%,white);border:1px solid color-mix(in oklch,var(--status-conflict-fg) 28%,white);border-radius:6px;padding:12px 14px;margin-bottom:16px;color:var(--status-conflict-fg);font-size:13px;line-height:1.5;">
                                     <div style="font-weight:700;margin-bottom:6px;">บันทึกรายวิชาไม่สำเร็จ กรุณาตรวจสอบข้อมูลที่ระบุ</div>
@@ -2155,52 +2245,54 @@
                                 </div>
                             @endif
 
-                            {{-- Section: ข้อมูลพื้นฐาน --}}
-                            <div style="display: grid; grid-template-columns: 130px 1fr 1fr; gap: 16px; margin-bottom: 16px;">
-                                <div class="form-group" style="margin-bottom:0;">
-                                    <label>รหัสวิชา <span style="color:var(--status-conflict-fg)">*</span></label>
-                                    <input type="text" name="course_code" data-testid="course-form-code" x-model="currentCourse.course_code" required placeholder="เช่น NSBS 212">
-                                    @error('course_code')
-                                        @if($courseFormHasErrors)
-                                            <div data-testid="course-code-error" style="margin-top:6px;color:var(--status-conflict-fg);font-size:12px;line-height:1.45;">{{ $message }}</div>
-                                        @endif
-                                    @enderror
+                            <section class="course-form-section">
+                                <div class="course-section-head">
+                                    <div class="course-section-title">ข้อมูลรายวิชา</div>
+                                    <div class="course-section-copy">รหัส ชื่อรายวิชา หลักสูตร และหน่วยงานเจ้าของข้อมูล</div>
                                 </div>
-                                <div class="form-group" style="margin-bottom:0;">
-                                    <label>ชื่อวิชา (ไทย) <span style="color:var(--status-conflict-fg)">*</span></label>
-                                    <input type="text" name="name_th" data-testid="course-form-name-th" x-model="currentCourse.name_th" required placeholder="เช่น การพยาบาลเด็ก 1">
+                                <div class="course-form-grid course-form-grid--basic">
+                                    <div class="form-group course-code-field">
+                                        <label>รหัสวิชา <span style="color:var(--status-conflict-fg)">*</span></label>
+                                        <input type="text" name="course_code" data-testid="course-form-code" x-model="currentCourse.course_code" required placeholder="เช่น NSBS 212">
+                                        @error('course_code')
+                                            @if($courseFormHasErrors)
+                                                <div data-testid="course-code-error" style="margin-top:6px;color:var(--status-conflict-fg);font-size:12px;line-height:1.45;">{{ $message }}</div>
+                                            @endif
+                                        @enderror
+                                    </div>
+                                    <div class="form-group">
+                                        <label>ชื่อวิชา (ไทย) <span style="color:var(--status-conflict-fg)">*</span></label>
+                                        <input type="text" name="name_th" data-testid="course-form-name-th" x-model="currentCourse.name_th" required placeholder="เช่น การพยาบาลเด็ก 1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>ชื่อวิชา (อังกฤษ)</label>
+                                        <input type="text" name="name_en" x-model="currentCourse.name_en" placeholder="Pediatric Nursing 1">
+                                    </div>
+                                    <div class="form-group course-wide-field">
+                                        <label>หลักสูตร <span style="color:var(--status-conflict-fg)">*</span></label>
+                                        <select name="curriculum_id" data-testid="course-form-curriculum" x-model="currentCourse.curriculum_id" required>
+                                            <option value="">-- เลือกหลักสูตร --</option>
+                                            @foreach($curriculums as $curr)
+                                                <option value="{{ $curr->id }}">{{ $curr->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="form-group course-wide-field">
+                                        <label>ภาควิชาที่ดูแล <span style="font-weight:400;color:var(--fg-4);font-size:11px;">(วิชาเรียนรวมไม่ต้องระบุ)</span></label>
+                                        <select name="department_id" x-model="currentCourse.department_id">
+                                            <option value="">-- ไม่สังกัดภาควิชา --</option>
+                                            @foreach($departments as $dept)
+                                                <option value="{{ $dept->id }}">{{ $dept->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="form-group course-small-field">
+                                        <label>หน่วยกิต <span style="color:var(--status-conflict-fg)">*</span></label>
+                                        <input type="number" name="credits" x-model="currentCourse.credits" required min="0" placeholder="2">
+                                    </div>
                                 </div>
-                                <div class="form-group" style="margin-bottom:0;">
-                                    <label>ชื่อวิชา (อังกฤษ)</label>
-                                    <input type="text" name="name_en" x-model="currentCourse.name_en" placeholder="Pediatric Nursing 1">
-                                </div>
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr 80px; gap: 16px; margin-bottom: 16px;">
-                                <div class="form-group" style="margin-bottom:0;">
-                                    <label>หลักสูตร <span style="color:var(--status-conflict-fg)">*</span></label>
-                                    <select name="curriculum_id" data-testid="course-form-curriculum" x-model="currentCourse.curriculum_id" required>
-                                        <option value="">-- เลือกหลักสูตร --</option>
-                                        @foreach($curriculums as $curr)
-                                            <option value="{{ $curr->id }}">{{ $curr->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="form-group" style="margin-bottom:0;">
-                                    <label>ภาควิชาที่ดูแล <span style="font-weight:400;color:var(--fg-4);font-size:11px;">(วิชาเรียนรวมไม่ต้องระบุ)</span></label>
-                                    <select name="department_id" x-model="currentCourse.department_id">
-                                        <option value="">-- ไม่สังกัดภาควิชา --</option>
-                                        @foreach($departments as $dept)
-                                            <option value="{{ $dept->id }}">{{ $dept->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="form-group" style="margin-bottom:0;">
-                                    <label>หน่วยกิต <span style="color:var(--status-conflict-fg)">*</span></label>
-                                    <input type="number" name="credits" x-model="currentCourse.credits" required min="0" placeholder="2">
-                                </div>
-                            </div>
-                            {{-- Section: ผู้รับผิดชอบรายวิชา --}}
-                            <div class="course-assignment-panel">
+                            </section>
+                            <section class="course-form-section course-assignment-panel">
                                 <div class="course-assignment-head">
                                     <div>
                                         <div class="course-assignment-title">ผู้รับผิดชอบรายวิชา</div>
@@ -2321,140 +2413,140 @@
                                     </div>
                                     <div class="course-inline-empty" x-show="selectedCourseInstructors.length === 0">ยังไม่มีอาจารย์ผู้สอนในรายวิชานี้</div>
                                 </div>
-                            </div>
+                            </section>
 
-                            {{-- Divider: แผนการเรียน --}}
-                            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-                                <span style="font-size:11px;font-weight:700;color:var(--fg-3);text-transform:uppercase;letter-spacing:.6px;white-space:nowrap;">แผนการเรียน</span>
-                                <div style="flex:1;height:1px;background:var(--border);"></div>
-                            </div>
-                            <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 20px;">
-                                <div class="form-group" style="margin-bottom:0;" x-show="currentCurriculumUsesYearLevel()">
-                                    <label>ชั้นปีตามแผน <span style="color:var(--status-conflict-fg)">*</span></label>
-                                    <select name="default_year_level" x-model="currentCourse.default_year_level" :required="currentCurriculumUsesYearLevel()">
-                                        <option value="">-- เลือกชั้นปี --</option>
-                                        <template x-for="y in currentCurriculumYearOptions()" :key="y">
-                                            <option :value="y" x-text="'ชั้นปีที่ ' + y"></option>
-                                        </template>
-                                    </select>
+                            <section class="course-form-section">
+                                <div class="course-section-head">
+                                    <div class="course-section-title">แผนการเรียนและสถานะ</div>
+                                    <div class="course-section-copy">กำหนดภาคเรียน ประเภทวิชา สถานะ และสีที่ใช้ในตาราง</div>
                                 </div>
-                                <div class="form-group" style="margin-bottom:0;" x-show="!currentCurriculumUsesYearLevel()">
-                                    <label>ชั้นปีตามแผน</label>
-                                    <div style="height:38px;display:flex;align-items:center;padding:0 10px;border:1px dashed var(--border);border-radius:4px;background:var(--bg-2);font-size:12px;color:var(--fg-3);">
-                                        ไม่ใช้ระบบชั้นปี — กำหนดผ่าน prerequisite/หน่วยกิตสะสม
+                                <div class="course-form-grid course-form-grid--plan">
+                                    <div class="form-group" x-show="currentCurriculumUsesYearLevel()">
+                                        <label>ชั้นปีตามแผน <span style="color:var(--status-conflict-fg)">*</span></label>
+                                        <select name="default_year_level" x-model="currentCourse.default_year_level" :required="currentCurriculumUsesYearLevel()">
+                                            <option value="">-- เลือกชั้นปี --</option>
+                                            <template x-for="y in currentCurriculumYearOptions()" :key="y">
+                                                <option :value="y" x-text="'ชั้นปีที่ ' + y"></option>
+                                            </template>
+                                        </select>
                                     </div>
-                                </div>
-                                <div class="form-group" style="margin-bottom:0;">
-                                    <label>ภาคเรียนตามแผน <span style="color:var(--status-conflict-fg)">*</span></label>
-                                    <select name="default_semester" x-model="currentCourse.default_semester" required>
-                                        <option value="">-- เลือกภาคเรียน --</option>
-                                        <option value="1">ภาคเรียนที่ 1</option>
-                                        <option value="2">ภาคเรียนที่ 2</option>
-                                        <option value="3">ภาคฤดูร้อน</option>
-                                    </select>
-                                </div>
-                                <div class="form-group" style="margin-bottom:0;">
-                                    <label>ประเภทวิชา</label>
-                                    <select name="is_required" x-model="currentCourse.is_required">
-                                        <option value="1">วิชาบังคับ</option>
-                                        <option value="0">วิชาเลือก</option>
-                                    </select>
-                                </div>
-                                <div class="form-group" style="margin-bottom:0;">
-                                    <label>สถานะรายวิชา</label>
-                                    <select name="status" x-model="currentCourse.status">
-                                        <option value="active">เปิดสอน</option>
-                                        <option value="inactive">ปิดสอน</option>
-                                    </select>
-                                </div>
-                                <div class="form-group" style="margin-bottom:0;">
-                                    <label>สีประจำวิชา</label>
-                                    <div x-data="{ open: false }" style="position: relative;">
-                                        <button type="button" @click="open = !open"
-                                            style="width:100%;height:38px;border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;gap:10px;padding:0 10px;background:var(--bg-1);cursor:pointer;">
-                                            <span :style="'width:18px;height:18px;border-radius:3px;background:'+currentCourse.color_code+';border:1px solid rgba(0,0,0,.15);flex-shrink:0'"></span>
-                                            <span style="font-size:12px;color:var(--fg-2);font-family:var(--font-mono);" x-text="currentCourse.color_code"></span>
-                                        </button>
-                                        <div x-show="open" @click.outside="open=false" x-cloak
-                                            style="position:absolute;z-index:9999;top:calc(100% + 4px);right:0;background:#ffffff;border:1px solid var(--border);border-radius:6px;padding:12px;box-shadow:0 4px 16px rgba(0,0,0,.15);width:220px;">
-                                            <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-bottom:10px;">
-                                                <template x-for="c in ['#3B82F6','#2563EB','#1D4ED8','#0EA5E9','#06B6D4','#10B981','#059669','#047857','#F59E0B','#EF4444','#DC2626','#8B5CF6','#7C3AED','#EC4899','#F97316','#6B7280']">
-                                                    <button type="button" @click="currentCourse.color_code=c;open=false"
-                                                        :style="'width:20px;height:20px;border-radius:3px;background:'+c+';border:2px solid '+(currentCourse.color_code===c?'var(--brand-navy)':'transparent')+';cursor:pointer'"></button>
-                                                </template>
-                                            </div>
-                                            <div style="display:flex;align-items:center;gap:8px;border-top:1px solid var(--border);padding-top:10px;">
-                                                <input type="color" x-model="currentCourse.color_code"
-                                                    style="width:32px;height:28px;padding:1px;border:1px solid var(--border);border-radius:3px;cursor:pointer;flex-shrink:0;">
-                                                <span style="font-size:12px;color:var(--fg-3);">กำหนดเอง</span>
-                                            </div>
+                                    <div class="form-group" x-show="!currentCurriculumUsesYearLevel()">
+                                        <label>ชั้นปีตามแผน</label>
+                                        <div class="course-disabled-note">
+                                            ไม่ใช้ระบบชั้นปี — กำหนดผ่าน prerequisite/หน่วยกิตสะสม
                                         </div>
-                                        <input type="hidden" name="color_code" x-model="currentCourse.color_code">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>ภาคเรียนตามแผน <span style="color:var(--status-conflict-fg)">*</span></label>
+                                        <select name="default_semester" x-model="currentCourse.default_semester" required>
+                                            <option value="">-- เลือกภาคเรียน --</option>
+                                            <option value="1">ภาคเรียนที่ 1</option>
+                                            <option value="2">ภาคเรียนที่ 2</option>
+                                            <option value="3">ภาคฤดูร้อน</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>ประเภทวิชา</label>
+                                        <select name="is_required" x-model="currentCourse.is_required">
+                                            <option value="1">วิชาบังคับ</option>
+                                            <option value="0">วิชาเลือก</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>สถานะรายวิชา</label>
+                                        <select name="status" x-model="currentCourse.status">
+                                            <option value="active">เปิดสอน</option>
+                                            <option value="inactive">ปิดสอน</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>สีประจำวิชา</label>
+                                        <div x-data="{ open: false }" style="position: relative;">
+                                            <button type="button" @click="open = !open"
+                                                style="width:100%;height:38px;border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;gap:10px;padding:0 10px;background:var(--bg-1);cursor:pointer;">
+                                                <span :style="'width:18px;height:18px;border-radius:3px;background:'+currentCourse.color_code+';border:1px solid rgba(0,0,0,.15);flex-shrink:0'"></span>
+                                                <span style="font-size:12px;color:var(--fg-2);font-family:var(--font-mono);" x-text="currentCourse.color_code"></span>
+                                            </button>
+                                            <div x-show="open" @click.outside="open=false" x-cloak
+                                                style="position:absolute;z-index:9999;top:calc(100% + 4px);right:0;background:#ffffff;border:1px solid var(--border);border-radius:6px;padding:12px;box-shadow:0 4px 16px rgba(0,0,0,.15);width:220px;">
+                                                <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-bottom:10px;">
+                                                    <template x-for="c in ['#3B82F6','#2563EB','#1D4ED8','#0EA5E9','#06B6D4','#10B981','#059669','#047857','#F59E0B','#EF4444','#DC2626','#8B5CF6','#7C3AED','#EC4899','#F97316','#6B7280']">
+                                                        <button type="button" @click="currentCourse.color_code=c;open=false"
+                                                            :style="'width:20px;height:20px;border-radius:3px;background:'+c+';border:2px solid '+(currentCourse.color_code===c?'var(--brand-navy)':'transparent')+';cursor:pointer'"></button>
+                                                    </template>
+                                                </div>
+                                                <div style="display:flex;align-items:center;gap:8px;border-top:1px solid var(--border);padding-top:10px;">
+                                                    <input type="color" x-model="currentCourse.color_code"
+                                                        style="width:32px;height:28px;padding:1px;border:1px solid var(--border);border-radius:3px;cursor:pointer;flex-shrink:0;">
+                                                    <span style="font-size:12px;color:var(--fg-3);">กำหนดเอง</span>
+                                                </div>
+                                            </div>
+                                            <input type="hidden" name="color_code" x-model="currentCourse.color_code">
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            </section>
 
-                            {{-- Divider: ชั่วโมงการสอน --}}
-                            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-                                <span style="font-size:11px;font-weight:700;color:var(--fg-3);text-transform:uppercase;letter-spacing:.6px;white-space:nowrap;">ชั่วโมงการสอน</span>
-                                <div style="flex:1;height:1px;background:var(--border);"></div>
-                            </div>
-                            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px;background:var(--bg-2);padding:14px 16px;border-radius:8px;border:1px solid var(--border);">
-                                <div class="form-group" style="margin-bottom:0;">
-                                    <label>บรรยาย (ชม.) <span style="color:var(--status-conflict-fg)">*</span></label>
-                                    <input type="number" name="lecture_hours" x-model="currentCourse.lecture_hours" min="0" placeholder="0" required>
+                            <section class="course-form-section">
+                                <div class="course-section-head">
+                                    <div class="course-section-title">ชั่วโมงและเงื่อนไข</div>
+                                    <div class="course-section-copy">ชั่วโมงสอน จำนวนรับ การหมุนเวียนแหล่งฝึก และ prerequisite</div>
                                 </div>
-                                <div class="form-group" style="margin-bottom:0;">
-                                    <label>ปฏิบัติ / แล็บ (ชม.) <span style="color:var(--status-conflict-fg)">*</span></label>
-                                    <input type="number" name="lab_hours" x-model="currentCourse.lab_hours" min="0" placeholder="0" required>
-                                </div>
-                                <div class="form-group" style="margin-bottom:0;">
-                                    <label>ศึกษาด้วยตนเอง (ชม.) <span style="color:var(--status-conflict-fg)">*</span></label>
-                                    <input type="number" name="self_study_hours" x-model="currentCourse.self_study_hours" min="0" placeholder="0" required>
-                                </div>
-                            </div>
-
-                            <div class="form-group" style="margin-bottom: 20px;">
-                                <label>จำนวนนักศึกษาสูงสุด (คน) <span style="color:var(--status-conflict-fg)">*</span></label>
-                                <input type="number" name="capacity" x-model="currentCourse.capacity" min="1" placeholder="เช่น 240" required onwheel="this.blur()">
-                            </div>
-
-                            <div class="form-group" style="margin-bottom:0;">
-                                <label>การวนกลุ่มนักศึกษาระหว่างแหล่งฝึก (Rotation)</label>
-                                <select name="requires_practicum_rotation" x-model="currentCourse.requires_practicum_rotation">
-                                    <option value="0">ไม่มีการหมุนเวียนแหล่งฝึก</option>
-                                    <option value="1">มีการหมุนเวียนแหล่งฝึก</option>
-                                </select>
-                            </div>
-
-                            <div style="margin-top:16px;background:var(--surface-1);border:1px solid var(--border);border-radius:8px;padding:14px 16px;">
-                                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:10px;">
-                                    <div>
-                                        <label style="display:block;margin-bottom:3px;">เงื่อนไขรายวิชา <span style="font-weight:400;color:var(--fg-4);font-size:11px;">(ไม่บังคับ)</span></label>
-                                        <div style="font-size:12px;color:var(--fg-3);line-height:1.5;">ระบุรายวิชาที่ควรเรียนมาก่อน ใช้เป็นข้อมูลหลักของรายวิชา ไม่ได้บังคับลำดับในหน้าจัดตาราง</div>
+                                <div class="course-form-grid course-form-grid--hours">
+                                    <div class="form-group">
+                                        <label>บรรยาย (ชม.) <span style="color:var(--status-conflict-fg)">*</span></label>
+                                        <input type="number" name="lecture_hours" x-model="currentCourse.lecture_hours" min="0" placeholder="0" required>
                                     </div>
-                                    <span style="flex-shrink:0;font-size:11px;font-weight:700;color:var(--brand-navy);background:color-mix(in oklch,var(--brand-navy) 8%,white);border:1px solid color-mix(in oklch,var(--brand-navy) 22%,white);border-radius:999px;padding:4px 9px;"
-                                        x-text="(currentCourse.prerequisite_ids || []).length + ' วิชา'"></span>
+                                    <div class="form-group">
+                                        <label>ปฏิบัติ / แล็บ (ชม.) <span style="color:var(--status-conflict-fg)">*</span></label>
+                                        <input type="number" name="lab_hours" x-model="currentCourse.lab_hours" min="0" placeholder="0" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>ศึกษาด้วยตนเอง (ชม.) <span style="color:var(--status-conflict-fg)">*</span></label>
+                                        <input type="number" name="self_study_hours" x-model="currentCourse.self_study_hours" min="0" placeholder="0" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>จำนวนนักศึกษาสูงสุด (คน) <span style="color:var(--status-conflict-fg)">*</span></label>
+                                        <input type="number" name="capacity" x-model="currentCourse.capacity" min="1" placeholder="เช่น 240" required onwheel="this.blur()">
+                                    </div>
+                                    <div class="form-group course-rotation-field">
+                                        <label>การหมุนเวียนกลุ่มนักศึกษาระหว่างแหล่งฝึก</label>
+                                        <select name="requires_practicum_rotation" x-model="currentCourse.requires_practicum_rotation">
+                                            <option value="0">ไม่มีการหมุนเวียนแหล่งฝึก</option>
+                                            <option value="1">มีการหมุนเวียนแหล่งฝึก</option>
+                                        </select>
+                                    </div>
                                 </div>
-                                <select name="prerequisite_ids[]" x-model="currentCourse.prerequisite_ids" multiple size="5"
-                                    style="min-height:132px;background:var(--bg-1);">
-                                    @foreach($courses as $candidateCourse)
-                                        <option value="{{ $candidateCourse->id }}" :disabled="editCourseMode && String(currentCourse.id) === '{{ $candidateCourse->id }}'">
-                                            {{ $candidateCourse->course_code }} - {{ $candidateCourse->name_th ?? $candidateCourse->name_en }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                <div style="margin-top:8px;font-size:11px;color:var(--fg-4);">กด Ctrl หรือ Cmd เพื่อเลือกได้หลายรายวิชา</div>
-                            </div>
+
+                                <div class="course-prerequisite-panel">
+                                    <div class="course-prerequisite-head">
+                                        <div>
+                                            <label style="display:block;margin-bottom:3px;">เงื่อนไขรายวิชา <span style="font-weight:400;color:var(--fg-4);font-size:11px;">(ไม่บังคับ)</span></label>
+                                            <div style="font-size:12px;color:var(--fg-3);line-height:1.5;">ระบุรายวิชาที่ควรเรียนมาก่อน ใช้เป็นข้อมูลหลักของรายวิชา ไม่ได้บังคับลำดับในหน้าจัดตาราง</div>
+                                        </div>
+                                        <span class="course-count-badge"
+                                            x-text="(currentCourse.prerequisite_ids || []).length + ' วิชา'"></span>
+                                    </div>
+                                    <select name="prerequisite_ids[]" x-model="currentCourse.prerequisite_ids" multiple size="5"
+                                        style="min-height:132px;background:var(--bg-1);">
+                                        @foreach($courses as $candidateCourse)
+                                            <option value="{{ $candidateCourse->id }}" :disabled="editCourseMode && String(currentCourse.id) === '{{ $candidateCourse->id }}'">
+                                                {{ $candidateCourse->course_code }} - {{ $candidateCourse->name_th ?? $candidateCourse->name_en }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <div style="margin-top:8px;font-size:11px;color:var(--fg-4);">กด Ctrl หรือ Cmd เพื่อเลือกได้หลายรายวิชา</div>
+                                </div>
+                            </section>
 
                         </div>
-                        <div class="modal-foot" style="display: flex; justify-content: space-between;">
+                        <div class="modal-foot course-modal-foot">
                             <div>
                                 <button type="button" class="btn btn-ghost" x-show="editCourseMode" @click="confirmDelete('deleteCourseForm', currentCourse.name_th + (currentCourse.course_code ? ' (' + currentCourse.course_code + ')' : ''), 'หากมีการผูกตารางสอนแล้วจะไม่สามารถลบได้')" style="color: var(--status-conflict-fg);">
                                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; display: inline-block; vertical-align: middle;"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg> ลบข้อมูล
                                 </button>
                             </div>
-                            <div style="display: flex; gap: 8px;">
+                            <div class="course-modal-actions">
                                 <button type="button" class="btn btn-ghost" @click="showCourseModal = false">ยกเลิก</button>
                                 <button type="submit" data-testid="course-form-submit" class="btn btn-primary">บันทึกข้อมูลวิชา</button>
                             </div>
@@ -3104,12 +3196,405 @@
             cursor: not-allowed;
         }
 
-        .course-assignment-panel {
-            margin-bottom: 20px;
+        .room-modal {
+            width: min(960px, calc(100vw - 48px));
+            max-width: none;
+            max-height: 90vh;
+        }
+
+        .room-modal-body {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            padding: 24px;
+            background: oklch(99% 0.004 220);
+        }
+
+        .room-form-section {
             border: 1px solid var(--border);
             border-radius: 8px;
-            background: var(--surface-1);
-            padding: 16px;
+            background: var(--surface);
+            padding: 18px;
+        }
+
+        .room-section-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 18px;
+            margin-bottom: 14px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .room-section-title {
+            color: var(--fg-1);
+            font-size: 15px;
+            font-weight: 800;
+            line-height: 1.4;
+        }
+
+        .room-section-copy {
+            max-width: 520px;
+            color: var(--fg-3);
+            font-size: 12px;
+            line-height: 1.55;
+            text-align: right;
+        }
+
+        .room-form-grid {
+            display: grid;
+            gap: 16px;
+        }
+
+        .room-form-grid .form-group {
+            min-width: 0;
+            margin-bottom: 0;
+        }
+
+        .room-form-grid--identity {
+            grid-template-columns: minmax(160px, .85fr) minmax(260px, 1.35fr) minmax(220px, 1fr);
+        }
+
+        .room-form-grid--usage {
+            grid-template-columns: minmax(280px, 1.4fr) minmax(160px, .75fr) minmax(200px, .9fr);
+        }
+
+        .room-form-grid--details {
+            grid-template-columns: minmax(280px, 1fr) minmax(320px, 1.2fr);
+        }
+
+        .room-type-dropdown {
+            position: relative;
+        }
+
+        .room-type-trigger {
+            width: 100%;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--surface);
+            color: var(--fg-1);
+            cursor: pointer;
+            font: inherit;
+            font-size: 14px;
+            line-height: 1.4;
+            padding: 8px 11px;
+            text-align: left;
+            transition: border-color 150ms ease, box-shadow 150ms ease;
+        }
+
+        .room-type-trigger.is-placeholder {
+            color: var(--fg-3);
+        }
+
+        .room-type-trigger:hover,
+        .room-type-trigger:focus-visible {
+            border-color: var(--brand-navy);
+            outline: 0;
+            box-shadow: 0 0 0 3px oklch(92% 0.025 250);
+        }
+
+        .room-type-trigger span {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .room-type-trigger svg {
+            flex-shrink: 0;
+            color: var(--fg-3);
+        }
+
+        .room-type-menu {
+            position: absolute;
+            z-index: 80;
+            top: calc(100% + 4px);
+            left: 0;
+            right: 0;
+            max-height: 260px;
+            overflow: auto;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--surface);
+            box-shadow: 0 12px 28px rgba(15, 23, 42, .16);
+        }
+
+        .room-type-option {
+            display: block;
+            width: 100%;
+            border: 0;
+            border-bottom: 1px solid var(--border);
+            background: transparent;
+            color: var(--fg-1);
+            cursor: pointer;
+            font: inherit;
+            font-size: 14px;
+            line-height: 1.45;
+            padding: 10px 12px;
+            text-align: left;
+        }
+
+        .room-type-option:last-child {
+            border-bottom: 0;
+        }
+
+        .room-type-option:hover,
+        .room-type-option:focus-visible,
+        .room-type-option.is-selected {
+            background: var(--bg-2);
+            outline: 0;
+        }
+
+        .room-type-option.is-placeholder {
+            color: var(--fg-3);
+            font-weight: 700;
+        }
+
+        .room-modal-foot {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .room-modal-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .instructor-modal {
+            width: min(1080px, calc(100vw - 48px));
+            max-width: none;
+            max-height: 90vh;
+        }
+
+        .instructor-modal-body {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            padding: 24px;
+            background: oklch(99% 0.004 220);
+        }
+
+        .instructor-form-section {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--surface);
+            padding: 18px;
+        }
+
+        .instructor-section-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 18px;
+            margin-bottom: 14px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .instructor-section-title {
+            color: var(--fg-1);
+            font-size: 15px;
+            font-weight: 800;
+            line-height: 1.4;
+        }
+
+        .instructor-section-copy {
+            max-width: 520px;
+            color: var(--fg-3);
+            font-size: 12px;
+            line-height: 1.55;
+            text-align: right;
+        }
+
+        .instructor-section-copy.is-left {
+            margin-top: 3px;
+            text-align: left;
+        }
+
+        .instructor-form-grid {
+            display: grid;
+            gap: 16px;
+        }
+
+        .instructor-form-grid .form-group,
+        .instructor-pa-grid .form-group {
+            min-width: 0;
+            margin-bottom: 0;
+        }
+
+        .instructor-form-grid--identity {
+            grid-template-columns: 140px minmax(260px, 1.2fr) minmax(180px, .85fr) minmax(260px, 1.2fr);
+        }
+
+        .instructor-form-grid--profile {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .instructor-english-panel {
+            margin-top: 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-2);
+            padding: 14px 16px;
+        }
+
+        .instructor-pa-section {
+            background: var(--surface);
+        }
+
+        .instructor-pa-grid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .instructor-pa-grid .form-group:last-child {
+            grid-column: span 1 !important;
+        }
+
+        .instructor-pa-grid .form-group:last-child input {
+            width: 100%;
+            max-width: none;
+        }
+
+        .instructor-pa-grid label {
+            min-height: 34px;
+            line-height: 1.45;
+        }
+
+        .instructor-modal-foot {
+            justify-content: flex-end;
+        }
+
+        .course-modal {
+            width: min(1120px, calc(100vw - 48px));
+            max-width: none;
+            max-height: 90vh;
+        }
+
+        .course-modal-body {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            padding: 24px;
+            background: oklch(99% 0.004 220);
+        }
+
+        .course-form-section {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--surface);
+            padding: 18px;
+        }
+
+        .course-section-head {
+            display: block;
+            margin-bottom: 14px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .course-section-title {
+            color: var(--fg-1);
+            font-size: 15px;
+            font-weight: 800;
+            line-height: 1.4;
+        }
+
+        .course-section-copy {
+            max-width: 680px;
+            margin-top: 3px;
+            color: var(--fg-3);
+            font-size: 12px;
+            line-height: 1.55;
+            text-align: left;
+        }
+
+        .course-form-grid {
+            display: grid;
+            gap: 16px;
+        }
+
+        .course-form-grid .form-group {
+            min-width: 0;
+            margin-bottom: 0;
+        }
+
+        .course-form-grid--basic {
+            grid-template-columns: repeat(12, minmax(0, 1fr));
+        }
+
+        .course-form-grid--basic > .form-group {
+            grid-column: span 5;
+        }
+
+        .course-form-grid--basic .course-code-field,
+        .course-form-grid--basic .course-small-field {
+            grid-column: span 2;
+        }
+
+        .course-form-grid--plan {
+            grid-template-columns: repeat(5, minmax(130px, 1fr));
+        }
+
+        .course-form-grid--hours {
+            grid-template-columns: repeat(4, minmax(130px, 1fr)) minmax(250px, 1.35fr);
+            align-items: end;
+        }
+
+        .course-rotation-field {
+            grid-column: span 1;
+        }
+
+        .course-disabled-note {
+            min-height: 38px;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            border: 1px dashed var(--border);
+            border-radius: 6px;
+            background: var(--bg-2);
+            color: var(--fg-3);
+            font-size: 12px;
+            line-height: 1.45;
+        }
+
+        .course-prerequisite-panel {
+            margin-top: 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-2);
+            padding: 14px 16px;
+        }
+
+        .course-prerequisite-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 14px;
+            margin-bottom: 10px;
+        }
+
+        .course-modal-foot {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .course-modal-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .course-assignment-panel {
+            background: var(--surface);
         }
 
         .course-assignment-head,
@@ -3340,11 +3825,186 @@
             margin-top: 2px;
         }
 
+        @media (max-width: 1024px) {
+            .room-modal {
+                width: min(900px, calc(100vw - 32px));
+            }
+
+            .room-form-grid--identity,
+            .room-form-grid--usage,
+            .room-form-grid--details {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .room-form-grid--identity .form-group:nth-child(2),
+            .room-form-grid--details .form-group {
+                grid-column: span 1;
+            }
+
+            .room-section-head {
+                display: block;
+            }
+
+            .room-section-copy {
+                max-width: none;
+                margin-top: 3px;
+                text-align: left;
+            }
+
+            .instructor-modal {
+                width: min(900px, calc(100vw - 32px));
+            }
+
+            .instructor-form-grid--identity,
+            .instructor-form-grid--profile,
+            .instructor-pa-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .instructor-prefix-field {
+                max-width: none;
+            }
+
+            .instructor-section-head {
+                display: block;
+            }
+
+            .instructor-section-copy {
+                max-width: none;
+                margin-top: 3px;
+                text-align: left;
+            }
+
+            .course-modal {
+                width: min(920px, calc(100vw - 32px));
+            }
+
+            .course-form-grid--basic,
+            .course-form-grid--plan,
+            .course-form-grid--hours {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .course-form-grid--basic > .form-group,
+            .course-form-grid--basic .course-code-field,
+            .course-form-grid--basic .course-small-field {
+                grid-column: span 1;
+            }
+
+            .course-section-copy {
+                max-width: none;
+            }
+        }
+
         @media (max-width: 760px) {
+            .room-modal {
+                width: calc(100vw - 24px);
+            }
+
+            .room-modal-body {
+                padding: 16px;
+                gap: 12px;
+            }
+
+            .room-form-section {
+                padding: 14px;
+            }
+
+            .room-form-grid--identity,
+            .room-form-grid--usage,
+            .room-form-grid--details {
+                grid-template-columns: 1fr;
+            }
+
+            .room-form-grid--identity .form-group:nth-child(2),
+            .room-form-grid--details .form-group {
+                grid-column: 1 / -1;
+            }
+
+            .room-modal-foot {
+                align-items: stretch;
+                flex-direction: column-reverse;
+                gap: 12px;
+            }
+
+            .room-modal-actions {
+                justify-content: flex-end;
+                flex-wrap: wrap;
+            }
+
+            .instructor-modal {
+                width: calc(100vw - 24px);
+            }
+
+            .instructor-modal-body {
+                padding: 16px;
+                gap: 12px;
+            }
+
+            .instructor-form-section {
+                padding: 14px;
+            }
+
+            .instructor-form-grid--identity,
+            .instructor-form-grid--profile,
+            .instructor-pa-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .instructor-pa-grid .form-group:last-child {
+                grid-column: 1 / -1 !important;
+            }
+
+            .instructor-modal-foot {
+                flex-wrap: wrap;
+                justify-content: flex-end;
+            }
+
+            .course-modal {
+                width: calc(100vw - 24px);
+            }
+
+            .course-modal-body {
+                padding: 16px;
+                gap: 12px;
+            }
+
+            .course-form-section {
+                padding: 14px;
+            }
+
+            .course-form-grid--basic,
+            .course-form-grid--plan,
+            .course-form-grid--hours,
             .course-assignment-grid,
             .course-instructor-search,
             .course-instructor-row {
                 grid-template-columns: 1fr;
+            }
+
+            .course-form-grid--basic > .form-group,
+            .course-form-grid--basic .course-code-field,
+            .course-form-grid--basic .course-small-field,
+            .course-rotation-field {
+                grid-column: 1 / -1;
+            }
+
+            .course-modal-foot {
+                align-items: stretch;
+                flex-direction: column-reverse;
+                gap: 12px;
+            }
+
+            .course-modal-actions {
+                justify-content: flex-end;
+                flex-wrap: wrap;
+            }
+
+            .course-prerequisite-head,
+            .course-assignment-head,
+            .course-instructor-head {
+                flex-direction: column;
+                gap: 8px;
             }
         }
 

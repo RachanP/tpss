@@ -8,6 +8,7 @@ use App\Models\Department;
 use App\Models\InstructorProfile;
 use App\Models\SystemSetting;
 use App\Services\AuditLogger;
+use App\Support\ThaiDate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
@@ -47,6 +48,8 @@ class AdminUserController extends Controller
 
     public function store(Request $request)
     {
+        $this->normalizeThaiDateInput($request, 'instructor_hired_at');
+
         $roles        = $request->input('roles', []);
         $isInstructor = in_array('instructor', $roles);
         $needsDept    = $isInstructor || in_array('course_head', $roles);
@@ -186,6 +189,8 @@ class AdminUserController extends Controller
 
     public function update(Request $request, User $user)
     {
+        $this->normalizeThaiDateInput($request, 'instructor_hired_at');
+
         $roles        = $request->input('roles', []);
         $isInstructor = in_array('instructor', $roles);
         $needsDept    = $isInstructor || in_array('course_head', $roles);
@@ -241,14 +246,17 @@ class AdminUserController extends Controller
             }
         }
 
-        $passwordChanged = $request->filled('password');
+        $passwordChanged = $request->filled('password')
+            && !Hash::check($request->input('password'), $user->password);
 
-        // Snapshot for audit diff — captured before the transaction mutates the record
-        $auditBefore = $user->only(['prefix', 'name', 'username', 'email', 'employee_id', 'is_active']);
-        $beforeRoles = $user->roles()->orderBy('role')->pluck('role')->all();
-        $beforePrimaryRole = $user->roles()->where('is_primary', true)->value('role');
+        // Snapshot for audit diff — captured before the transaction mutates the record.
+        $user->load(['roles', 'instructorProfile', 'headOfDepartments', 'secretaryOfDepartments']);
+        $auditBefore = array_merge(
+            $this->buildUserAuditSnapshot($user),
+            $this->buildInstructorProfileAuditSnapshot($user->instructorProfile, $user),
+        );
 
-        DB::transaction(function () use ($validated, $user, $request, $needsProfile, $isInstructor) {
+        DB::transaction(function () use ($validated, $user, $request, $needsProfile, $isInstructor, $passwordChanged) {
             $user->update([
                 'username'    => $validated['username'],
                 'prefix'      => $validated['prefix'] ?? null,
@@ -258,7 +266,7 @@ class AdminUserController extends Controller
                 'is_active'   => $validated['is_active'],
             ]);
 
-            if ($request->filled('password')) {
+            if ($passwordChanged) {
                 $user->update(['password' => $validated['password']]);
             }
 
@@ -313,20 +321,13 @@ class AdminUserController extends Controller
 
         \App\Http\Controllers\Admin\AlertController::flushCache();
 
-        // Diff user fields + roles; skip audit if truly nothing changed
-        $user->refresh();
-        $auditAfter = $user->only(['prefix', 'name', 'username', 'email', 'employee_id', 'is_active']);
-        $afterRoles = collect($validated['roles'])->sort()->values()->all();
-        $afterPrimaryRole = $validated['primary_role'];
+        // Diff user, role, and profile fields; skip audit if truly nothing changed.
+        $user->refresh()->load(['roles', 'instructorProfile', 'headOfDepartments', 'secretaryOfDepartments']);
+        $auditAfter = array_merge(
+            $this->buildUserAuditSnapshot($user),
+            $this->buildInstructorProfileAuditSnapshot($user->instructorProfile, $user),
+        );
         $diff = AuditLogger::diff($auditBefore, $auditAfter);
-        if ($beforeRoles !== $afterRoles) {
-            $diff['old']['roles'] = $beforeRoles;
-            $diff['new']['roles'] = $afterRoles;
-        }
-        if ($beforePrimaryRole !== $afterPrimaryRole) {
-            $diff['old']['primary_role'] = $beforePrimaryRole;
-            $diff['new']['primary_role'] = $afterPrimaryRole;
-        }
         if (!empty($diff['old']) || !empty($diff['new'])) {
             AuditLogger::log(
                 action:      'ผู้ใช้และสิทธิ์.แก้ไข',
@@ -688,5 +689,87 @@ class AdminUserController extends Controller
     public function settings()
     {
         return view('admin.settings');
+    }
+
+    private function buildUserAuditSnapshot(User $user): array
+    {
+        $roles = $user->relationLoaded('roles') ? $user->roles : $user->roles()->get();
+
+        return [
+            'prefix' => $user->prefix,
+            'name' => $user->name,
+            'username' => $user->username,
+            'email' => $user->email,
+            'employee_id' => $user->employee_id,
+            'is_active' => (bool) $user->is_active,
+            'roles' => $roles->pluck('role')->sort()->values()->all(),
+            'primary_role' => optional($roles->firstWhere('is_primary', true))->role,
+        ];
+    }
+
+    private function buildInstructorProfileAuditSnapshot(?InstructorProfile $profile, User $user): array
+    {
+        return [
+            'title' => $profile?->title,
+            'department_id' => $profile?->department_id,
+            'academic_degree' => $profile?->academic_degree,
+            'employment_type' => $profile?->employment_type,
+            'hired_at' => $this->normalizeAuditDate($profile?->hired_at),
+            'is_english_passed' => $profile ? (bool) $profile->is_english_passed : null,
+            'teaching_pct' => $profile?->teaching_pct === null ? null : (int) $profile->teaching_pct,
+            'research_pct' => $profile?->research_pct === null ? null : (int) $profile->research_pct,
+            'service_pct' => $profile?->service_pct === null ? null : (int) $profile->service_pct,
+            'culture_pct' => $profile?->culture_pct === null ? null : (int) $profile->culture_pct,
+            'other_pct' => $profile?->other_pct === null ? null : (int) $profile->other_pct,
+            'teaching_quota' => $profile?->teaching_quota === null ? null : (int) $profile->teaching_quota,
+            'department_position' => $this->departmentPositionForUser($user),
+        ];
+    }
+
+    private function normalizeAuditDate(mixed $date): ?string
+    {
+        if ($date === null || $date === '') {
+            return null;
+        }
+
+        if ($date instanceof \DateTimeInterface) {
+            return $date->format('Y-m-d');
+        }
+
+        return ThaiDate::parseToIso((string) $date) ?? (string) $date;
+    }
+
+    private function departmentPositionForUser(User $user): ?string
+    {
+        $heads = $user->relationLoaded('headOfDepartments')
+            ? $user->headOfDepartments
+            : $user->headOfDepartments()->get();
+
+        if ($heads->isNotEmpty()) {
+            return 'head';
+        }
+
+        $secretaries = $user->relationLoaded('secretaryOfDepartments')
+            ? $user->secretaryOfDepartments
+            : $user->secretaryOfDepartments()->get();
+
+        return $secretaries->isNotEmpty() ? 'secretary' : null;
+    }
+
+    private function normalizeThaiDateInput(Request $request, string $field): void
+    {
+        if (! $request->has($field)) {
+            return;
+        }
+
+        $value = $request->input($field);
+        if ($value === null || trim((string) $value) === '') {
+            return;
+        }
+
+        $iso = ThaiDate::parseToIso((string) $value);
+        if ($iso) {
+            $request->merge([$field => $iso]);
+        }
     }
 }

@@ -94,6 +94,27 @@ class AdminUserManagementTest extends TestCase
         $this->assertDatabaseHas('user_roles', ['role' => 'instructor', 'is_primary' => false]);
     }
 
+    public function test_admin_user_instructor_hired_date_accepts_thai_buddhist_input(): void
+    {
+        $department = Department::create(['name' => 'Thai Date Department']);
+
+        $this->actingAs($this->admin);
+
+        $response = $this->post('/admin/users', $this->validInstructorPayload($department, [
+            'username' => 'thai-date-inst',
+            'email' => 'thai-date-inst@example.com',
+            'instructor_hired_at' => '23/06/2569',
+        ]));
+
+        $response->assertRedirect('/admin/users');
+
+        $user = User::where('username', 'thai-date-inst')->firstOrFail();
+        $this->assertDatabaseHas('instructor_profiles', [
+            'user_id' => $user->id,
+            'hired_at' => '2026-06-23',
+        ]);
+    }
+
     public function test_admin_can_update_user(): void
     {
         $this->actingAs($this->admin);

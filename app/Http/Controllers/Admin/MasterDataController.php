@@ -12,6 +12,7 @@ use App\Models\CourseRole;
 use App\Models\Curriculum;
 use App\Models\ActivityType;
 use App\Services\AuditLogger;
+use App\Support\ThaiDate;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -265,6 +266,23 @@ class MasterDataController extends Controller
         }
     }
 
+    private function normalizeThaiDateInput(Request $request, string $field): void
+    {
+        if (! $request->has($field)) {
+            return;
+        }
+
+        $value = $request->input($field);
+        if ($value === null || trim((string) $value) === '') {
+            return;
+        }
+
+        $iso = ThaiDate::parseToIso((string) $value);
+        if ($iso) {
+            $request->merge([$field => $iso]);
+        }
+    }
+
     public function storeLocationType(Request $request)
     {
         $validated = $request->validate([
@@ -442,6 +460,8 @@ class MasterDataController extends Controller
 
     public function updateInstructor(Request $request, $id)
     {
+        $this->normalizeThaiDateInput($request, 'hired_at');
+
         $user = User::findOrFail($id);
         $profile = $user->instructorProfile;
 

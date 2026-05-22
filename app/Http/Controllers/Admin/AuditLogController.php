@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Services\AuditLogger;
+use App\Support\ThaiDate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -37,12 +38,21 @@ class AuditLogController extends Controller
             });
         }
 
-        if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
-        }
+        foreach (['date_from', 'date_to'] as $param) {
+            if (! $request->filled($param)) {
+                continue;
+            }
 
-        if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
+            $date = ThaiDate::parseToIso($request->input($param));
+            if (! $date) {
+                continue;
+            }
+
+            $query->where(
+                'created_at',
+                $param === 'date_from' ? '>=' : '<=',
+                $param === 'date_from' ? "{$date} 00:00:00" : "{$date} 23:59:59",
+            );
         }
 
         $logs          = $query->paginate(25)->withQueryString();
@@ -66,6 +76,21 @@ class AuditLogController extends Controller
             return view('admin.audit_logs._table', compact('logs'));
         }
 
-        return view('admin.audit_logs.index', compact('logs', 'categoryLabels', 'actionOptions'));
+        $dateFilterValues = [
+            'date_from' => $this->formatDateFilterInput($request->input('date_from')),
+            'date_to' => $this->formatDateFilterInput($request->input('date_to')),
+        ];
+
+        return view('admin.audit_logs.index', compact('logs', 'categoryLabels', 'actionOptions', 'dateFilterValues'));
+    }
+
+    private function formatDateFilterInput(?string $value): string
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return '';
+        }
+
+        return ThaiDate::formatForInput($value);
     }
 }

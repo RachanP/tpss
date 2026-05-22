@@ -23,6 +23,45 @@
                     const query = String(keyword || '').toLowerCase();
                     return source.includes(query) || this.normalizeSearch(source).includes(this.normalizeSearch(query));
                 },
+                thaiDateForInput(value) {
+                    const raw = String(value || '').trim();
+                    if (!raw) return '';
+
+                    const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                    if (iso) {
+                        return iso[3] + '/' + iso[2] + '/' + (parseInt(iso[1], 10) + 543);
+                    }
+
+                    const display = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+                    if (display) {
+                        const year = parseInt(display[3], 10);
+                        return display[1].padStart(2, '0') + '/' + display[2].padStart(2, '0') + '/' + (year >= 2400 ? year : year + 543);
+                    }
+
+                    return raw;
+                },
+                thaiDateToIso(value) {
+                    const raw = String(value || '').trim();
+                    if (!raw) return '';
+
+                    const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                    if (iso) return iso[1] + '-' + iso[2] + '-' + iso[3];
+
+                    const display = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+                    if (display) {
+                        let year = parseInt(display[3], 10);
+                        if (year >= 2400) year -= 543;
+                        if (year < 1900 || year > 2100) return '';
+                        return String(year).padStart(4, '0') + '-' + display[2].padStart(2, '0') + '-' + display[1].padStart(2, '0');
+                    }
+
+                    const digits = raw.replace(/\D/g, '');
+                    if (digits.length === 8) {
+                        return this.thaiDateToIso(digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4));
+                    }
+
+                    return '';
+                },
                 hasActiveFilters() {
                     return Object.values(this.filters).some(value => String(value || '').trim() !== '');
                 },
@@ -78,7 +117,7 @@
                 get paRules() {
                     const title = this.instructorProfile.title;
                     const degree = this.instructorProfile.academic_degree;
-                    const hiredAt = this.instructorProfile.hired_at;
+                    const hiredAt = this.thaiDateToIso(this.instructorProfile.hired_at);
                     const isEnglishPassed = this.instructorProfile.is_english_passed;
 
                     // หมายเหตุ 1: บรรจุก่อน 1 ต.ค. 2559 และจบปริญญาเอก -> ใช้เกณฑ์อาจารย์
@@ -192,7 +231,7 @@
                         title: profile.title || '',
                         department_id: profile.department_id || '',
                         employment_type: profile.employment_type || 'พนักงานมหาวิทยาลัย',
-                        hired_at: profile.hired_at || '',
+                        hired_at: this.thaiDateForInput(profile.hired_at || ''),
                         academic_degree: profile.academic_degree || '',
                         teaching_pct: profile.teaching_pct || 0,
                         research_pct: profile.research_pct || 0,
@@ -228,7 +267,7 @@
                         title: oldInput.instructor_title ?? this.instructorProfile.title,
                         department_id: oldInput.instructor_department_id ?? this.instructorProfile.department_id,
                         employment_type: oldInput.instructor_employment_type ?? this.instructorProfile.employment_type,
-                        hired_at: oldInput.instructor_hired_at ?? this.instructorProfile.hired_at,
+                        hired_at: this.thaiDateForInput(oldInput.instructor_hired_at ?? this.instructorProfile.hired_at),
                         academic_degree: oldInput.instructor_academic_degree ?? this.instructorProfile.academic_degree,
                         teaching_pct: oldInput.instructor_teaching_pct !== undefined ? Number(oldInput.instructor_teaching_pct) : this.instructorProfile.teaching_pct,
                         research_pct: oldInput.instructor_research_pct !== undefined ? Number(oldInput.instructor_research_pct) : this.instructorProfile.research_pct,
@@ -777,7 +816,7 @@
                                 <div class="form-group">
                                     <label
                                         x-text="editMode ? 'รหัสผ่านใหม่ (เว้นว่างไว้ถ้าไม่เปลี่ยน)' : 'รหัสผ่าน'"></label>
-                                    <input type="password" name="password" data-testid="user-form-password" :required="!editMode" placeholder="********">
+                                    <input type="password" name="password" data-testid="user-form-password" :required="!editMode" autocomplete="new-password" placeholder="กรอกเมื่อต้องการเปลี่ยนรหัสผ่าน">
                                 </div>
                             </div>
 
@@ -802,7 +841,7 @@
                                 <label
                                     style="margin-bottom: 12px; font-weight: 700; color: var(--fg-1); display: block; font-size: 14px;">บทบาทและสิทธิ์การใช้งาน
                                 </label>
-                                <div class="role-grid">
+                                <div class="role-grid users-role-grid-compact">
                                     @foreach(['admin' => 'ผู้ดูแลระบบ', 'staff' => 'เจ้าหน้าที่', 'course_head' => 'หัวหน้าวิชา', 'executive' => 'ผู้บริหาร', 'instructor' => 'อาจารย์ผู้สอน'] as $val => $label)
                                         @php
                                             $icon = [
@@ -969,17 +1008,17 @@
                                             </div>
                                             <div class="form-group">
                                                 <label>วันที่บรรจุเข้าทำงาน <span style="color: #ef4444;">*</span></label>
-                                                <input type="date" name="instructor_hired_at" x-model="instructorProfile.hired_at" :required="hasInstructor">
+                                                <x-thai-date-input name="instructor_hired_at" x-model="instructorProfile.hired_at" x-bind:required="hasInstructor" />
                                             </div>
                                         </div>
-                                        <div x-show='instructorProfile.academic_degree === "ปริญญาเอก" && instructorProfile.hired_at && new Date(instructorProfile.hired_at) < new Date("2016-10-01")'
+                                        <div x-show='instructorProfile.academic_degree === "ปริญญาเอก" && thaiDateToIso(instructorProfile.hired_at) && new Date(thaiDateToIso(instructorProfile.hired_at)) < new Date("2016-10-01")'
                                             style="font-size: 11px; color: var(--fg-3); margin-top: 4px; padding: 6px 10px; background: var(--bg-2); border-radius: 6px;">
                                             เข้าเงื่อนไขหมายเหตุ 1: บรรจุก่อน 2559 และจบ ป.เอก ให้ใช้เกณฑ์ "อาจารย์"
                                         </div>
 
                                             <!-- English Proficiency (Note 2) - Clean Rounded Buttons No Background -->
                                             <div style="margin-top: 15px;" 
-                                                x-show='instructorProfile.title === "ผู้ช่วยอาจารย์" && instructorProfile.academic_degree === "ปริญญาเอก" && instructorProfile.hired_at && new Date(instructorProfile.hired_at) >= new Date("2016-10-01")'>
+                                                x-show='instructorProfile.title === "ผู้ช่วยอาจารย์" && instructorProfile.academic_degree === "ปริญญาเอก" && thaiDateToIso(instructorProfile.hired_at) && new Date(thaiDateToIso(instructorProfile.hired_at)) >= new Date("2016-10-01")'>
                                                 
                                                 <label style="font-size: 13px; font-weight: 700; color: var(--fg-2); margin-bottom: 10px; display: block; padding-left: 2px;">เกณฑ์ภาษาอังกฤษ</label>
                                                 
@@ -1172,6 +1211,52 @@
     </div>
 
     <style>
+        .users-role-grid-compact {
+            gap: 5px;
+        }
+
+        .users-role-grid-compact .role-card {
+            min-height: 46px;
+            gap: 9px;
+            padding: 8px 10px;
+            border-radius: 8px;
+        }
+
+        .users-role-grid-compact .role-check {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+        }
+
+        .users-role-grid-compact .role-check svg {
+            width: 12px;
+            height: 12px;
+        }
+
+        .users-role-grid-compact .role-icon-box {
+            width: 30px;
+            height: 30px;
+            border-radius: 7px;
+        }
+
+        .users-role-grid-compact .role-icon-box svg {
+            width: 17px;
+            height: 17px;
+        }
+
+        .users-role-grid-compact .role-name {
+            font-size: 13px;
+            line-height: 1.35;
+        }
+
+        .users-role-grid-compact .btn-primary-role {
+            padding: 3px 8px;
+            border-radius: 7px;
+            font-size: 10px;
+            letter-spacing: 0;
+            text-transform: none;
+        }
+
         .users-filter-bar {
             display: grid;
             grid-template-columns: minmax(420px, 1.8fr) repeat(4, minmax(150px, .85fr));

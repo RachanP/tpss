@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Admin\AlertController;
 use App\Models\AcademicYear;
+use App\Models\AuditLog;
 use App\Models\Course;
 use App\Models\CourseOffering;
 use App\Models\Curriculum;
@@ -104,7 +105,13 @@ class DashboardController extends Controller
         ['instructors' => $instructors, 'teachingWeeks' => $teachingWeeks, 'hoursPerWeek' => $hoursPerWeek]
             = $this->instructorWorkloadData();
 
-        return view('staff.dashboard', compact('instructors', 'teachingWeeks', 'hoursPerWeek'));
+        $recentAuditLogs = AuditLog::with('user')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->limit(5)
+            ->get();
+
+        return view('staff.dashboard', compact('instructors', 'teachingWeeks', 'hoursPerWeek', 'recentAuditLogs'));
     }
 
     private function instructorWorkloadData(): array

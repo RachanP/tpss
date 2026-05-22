@@ -10,6 +10,7 @@ use App\Models\CourseRole;
 use App\Models\SystemSetting;
 use App\Http\Controllers\Admin\AlertController;
 use App\Services\AuditLogger;
+use App\Support\ThaiDate;
 use Illuminate\Support\Facades\DB;
 
 class AdminSettingController extends Controller
@@ -79,6 +80,8 @@ class AdminSettingController extends Controller
 
     public function storeYear(Request $request)
     {
+        $this->normalizeThaiDateInputs($request, ['start_date', 'end_date']);
+
         $validated = $request->validate([
             'name'       => ['required', 'string', \Illuminate\Validation\Rule::unique('academic_years')->where('semester', $request->integer('semester'))],
             'semester'   => 'required|integer',
@@ -131,6 +134,8 @@ class AdminSettingController extends Controller
 
     public function updateYear(Request $request, AcademicYear $year)
     {
+        $this->normalizeThaiDateInputs($request, ['start_date', 'end_date']);
+
         $validated = $request->validate([
             'name'       => ['required', 'string', \Illuminate\Validation\Rule::unique('academic_years')->where('semester', $request->integer('semester'))->ignore($year->id)],
             'semester'   => 'required|integer',
@@ -421,5 +426,24 @@ class AdminSettingController extends Controller
             'ผู้ช่วยอาจารย์_คลินิก' => ['t' => ['min' => 0,  'max' => 10], 'r' => ['min' => 0,  'max' => 5],  's' => ['min' => 70, 'max' => 80], 'c' => ['min' => 0, 'max' => 5],  'o' => ['min' => 0, 'max' => 10]],
             'ผู้ช่วยอาจารย์_ปฏิบัติ'=> ['t' => ['min' => 0,  'max' => 70], 'r' => ['min' => 0,  'max' => 0],  's' => ['min' => 5,  'max' => 20], 'c' => ['min' => 5, 'max' => 20], 'o' => ['min' => 0, 'max' => 20]],
         ];
+    }
+
+    private function normalizeThaiDateInputs(Request $request, array $fields): void
+    {
+        foreach ($fields as $field) {
+            if (! $request->has($field)) {
+                continue;
+            }
+
+            $value = $request->input($field);
+            if ($value === null || trim((string) $value) === '') {
+                continue;
+            }
+
+            $iso = ThaiDate::parseToIso((string) $value);
+            if ($iso) {
+                $request->merge([$field => $iso]);
+            }
+        }
     }
 }
