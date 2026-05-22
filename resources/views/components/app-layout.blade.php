@@ -18,6 +18,152 @@
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+    <!-- Choices.js for improved select dropdown placement -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+    <style>
+        /* Make Choices look like our native form-control */
+        .choices__inner {
+            height: 44px !important;
+            display: flex !important;
+            align-items: center !important;
+            border: 1px solid oklch(84% 0.022 232) !important;
+            border-radius: 8px !important;
+            background: var(--surface) !important;
+            color: var(--fg-1) !important;
+            padding: 0 12px !important;
+            box-sizing: border-box !important;
+            font: inherit !important;
+            font-size: 14px !important;
+            box-shadow: none !important;
+            line-height: 1 !important;
+        }
+        .choices__list--dropdown {
+            border: 1px solid oklch(84% 0.022 232) !important;
+            box-shadow: 0 8px 20px rgba(15,23,42,0.08) !important;
+            border-radius: 8px !important;
+            background: var(--surface) !important;
+            margin-top: 6px !important;
+            max-height: 44vh !important;
+            overflow: auto !important;
+        }
+        .choices.tpss-choices-bottom .choices__list--dropdown,
+        .choices.tpss-choices-bottom.is-flipped .choices__list--dropdown {
+            top: calc(100% + 6px) !important;
+            bottom: auto !important;
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+            transform-origin: top !important;
+        }
+        .choices.tpss-choices-bottom.is-flipped {
+            overflow: visible !important;
+        }
+        .choices__list--dropdown .choices__item {
+            padding: 12px 14px !important;
+            font-size: 14px !important;
+            color: var(--fg-1) !important;
+        }
+        .choices__list--dropdown .choices__item--highlighted {
+            background: oklch(96.5% 0.014 232) !important;
+        }
+        .choices__inner:focus-within {
+            outline: none !important;
+            border-color: var(--brand-navy) !important;
+            box-shadow: 0 0 0 3px oklch(45% 0.12 250 / 0.12) !important;
+        }
+        .choices__placeholder { color: var(--fg-3) !important; }
+        .choices__list--single .choices__item { display: block !important; width: 100% !important; font-weight: 400 !important; color: var(--fg-1) !important; line-height: 1.4 !important; padding: 0 !important; text-align: left !important; }
+        .choices__single-choice { display: block !important; text-align: left !important; font-weight: 400 !important; line-height: 1.4 !important; }
+        .choices__item--choice { line-height: 1.4 !important; padding: 12px 14px !important; font-weight: 400 !important; }
+        /* Hide the default Choices dropdown arrow and rely on our caret via background if needed */
+        .choices[data-type*="select-one"] .choices__inner::after,
+        .choices__inner .choices__button {
+            display: none !important;
+        }
+        .tpss-native-select {
+            position: absolute !important;
+            width: 1px !important;
+            height: 1px !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+        .tpss-select {
+            position: relative;
+            width: 100%;
+        }
+        .tpss-select-trigger {
+            width: 100%;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            border: 1px solid oklch(84% 0.022 232);
+            border-radius: 8px;
+            background: var(--surface);
+            color: var(--fg-1);
+            padding: 9px 12px;
+            font: inherit;
+            font-size: 14px;
+            text-align: left;
+            cursor: pointer;
+        }
+        .tpss-select-trigger:focus {
+            outline: none;
+            border-color: var(--brand-navy);
+            box-shadow: 0 0 0 3px oklch(45% 0.12 250 / 0.12);
+        }
+        .tpss-select-trigger[disabled] {
+            cursor: not-allowed;
+            opacity: .65;
+        }
+        .tpss-select-label {
+            min-width: 0;
+            flex: 1 1 auto;
+            text-align: left;
+            line-height: 1.35;
+            white-space: normal;
+            word-break: break-word;
+        }
+        .tpss-select-caret {
+            flex: 0 0 auto;
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 6px solid var(--fg-2);
+        }
+        .tpss-select-menu {
+            z-index: 100000;
+            border: 1px solid oklch(84% 0.022 232);
+            border-radius: 8px;
+            background: var(--surface);
+            box-shadow: 0 12px 28px rgba(15,23,42,0.16);
+            overflow-y: auto;
+            overscroll-behavior: contain;
+        }
+        .tpss-select-option {
+            width: 100%;
+            display: block;
+            border: 0;
+            background: transparent;
+            color: var(--fg-1);
+            padding: 12px 14px;
+            font: inherit;
+            font-size: 14px;
+            line-height: 1.4;
+            text-align: left;
+            cursor: pointer;
+        }
+        .tpss-select-option:hover,
+        .tpss-select-option.is-selected {
+            background: oklch(96.5% 0.014 232);
+        }
+        .tpss-select-option.is-placeholder {
+            color: var(--fg-3);
+        }
+    </style>
+
     <!-- Alpine.js (Collapse plugin must load before core) -->
     <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.13.3/dist/cdn.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
@@ -388,6 +534,122 @@
             @if(session('warning'))
                 tpssToast(@json(session('warning')), 'warning');
             @endif
+        });
+        // Expose function to initialize TPSS select dropdowns on-demand (used when modals render dynamically)
+        window.tpssInitChoices = function(root) {
+            try {
+                (root ? root.querySelectorAll('select.tpss-choices') : document.querySelectorAll('select.tpss-choices')).forEach(function(el) {
+                    if (el._tpssSelect) return;
+
+                    var wrapper = document.createElement('div');
+                    var trigger = document.createElement('button');
+                    var label = document.createElement('span');
+                    var caret = document.createElement('span');
+                    var menu = document.createElement('div');
+
+                    wrapper.className = 'tpss-select';
+                    trigger.type = 'button';
+                    trigger.className = 'tpss-select-trigger';
+                    trigger.setAttribute('aria-haspopup', 'listbox');
+                    trigger.setAttribute('aria-expanded', 'false');
+                    label.className = 'tpss-select-label';
+                    caret.className = 'tpss-select-caret';
+                    menu.className = 'tpss-select-menu';
+                    menu.setAttribute('role', 'listbox');
+                    menu.hidden = true;
+
+                    el.classList.add('tpss-native-select');
+                    el.setAttribute('tabindex', '-1');
+                    el.parentNode.insertBefore(wrapper, el.nextSibling);
+                    wrapper.appendChild(el);
+                    wrapper.appendChild(trigger);
+                    trigger.appendChild(label);
+                    trigger.appendChild(caret);
+                    wrapper.appendChild(menu);
+
+                    var close = function() {
+                        menu.hidden = true;
+                        trigger.setAttribute('aria-expanded', 'false');
+                    };
+
+                    var selectedText = function() {
+                        var option = el.options[el.selectedIndex] || el.options[0];
+                        return option ? option.text.trim() : '';
+                    };
+
+                    var positionMenu = function() {
+                        if (menu.hidden) return;
+
+                        var rect = trigger.getBoundingClientRect();
+                        menu.style.position = 'fixed';
+                        menu.style.left = rect.left + 'px';
+                        menu.style.top = (rect.bottom + 6) + 'px';
+                        menu.style.bottom = 'auto';
+                        menu.style.width = rect.width + 'px';
+                        menu.style.maxHeight = Math.max(140, window.innerHeight - rect.bottom - 18) + 'px';
+                    };
+
+                    var sync = function() {
+                        label.textContent = selectedText();
+                        trigger.disabled = el.disabled;
+
+                        Array.prototype.forEach.call(menu.querySelectorAll('.tpss-select-option'), function(optionButton) {
+                            optionButton.classList.toggle('is-selected', optionButton.dataset.value === el.value);
+                        });
+                    };
+
+                    var rebuild = function() {
+                        menu.innerHTML = '';
+                        Array.prototype.forEach.call(el.options, function(option) {
+                            var item = document.createElement('button');
+                            item.type = 'button';
+                            item.className = 'tpss-select-option' + (option.value === '' ? ' is-placeholder' : '');
+                            item.setAttribute('role', 'option');
+                            item.dataset.value = option.value;
+                            item.textContent = option.text.trim();
+                            item.disabled = option.disabled;
+                            item.addEventListener('click', function() {
+                                el.value = option.value;
+                                el.dispatchEvent(new Event('change', { bubbles: true }));
+                                el.dispatchEvent(new Event('input', { bubbles: true }));
+                                close();
+                                sync();
+                            });
+                            menu.appendChild(item);
+                        });
+                        sync();
+                    };
+
+                    trigger.addEventListener('click', function() {
+                        if (el.disabled) return;
+
+                        document.querySelectorAll('.tpss-select-menu').forEach(function(otherMenu) {
+                            if (otherMenu !== menu) otherMenu.hidden = true;
+                        });
+
+                        menu.hidden = !menu.hidden;
+                        trigger.setAttribute('aria-expanded', menu.hidden ? 'false' : 'true');
+                        positionMenu();
+                    });
+
+                    document.addEventListener('click', function(event) {
+                        if (!wrapper.contains(event.target)) close();
+                    });
+                    window.addEventListener('resize', positionMenu);
+                    window.addEventListener('scroll', positionMenu, true);
+                    el.addEventListener('change', sync);
+
+                    el._tpssSelect = { rebuild: rebuild, sync: sync, close: close };
+                    rebuild();
+                });
+            } catch (e) {
+                console.warn('TPSS select init failed', e);
+            }
+        };
+
+        // Initial run on DOM ready
+        document.addEventListener('DOMContentLoaded', function() {
+            window.tpssInitChoices();
         });
     </script>
 </body>

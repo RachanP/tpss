@@ -60,7 +60,7 @@
 
 <x-app-layout title="รายละเอียดรายวิชา">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap;">
-        <div>
+        <div style="background:oklch(88% 0.01 230);padding:12px 16px;border-radius:6px;flex:1;min-width:200px;">
             <a href="{{ route('maker.course_offerings.index') }}" class="body-sm" style="color:var(--brand-navy);text-decoration:none;">← กลับไปรายการรายวิชา</a>
             <h1 class="h1" style="margin:8px 0 6px;">{{ $course?->course_code ?? '-' }} {{ $course?->name_th ?? $course?->name_en ?? '' }}</h1>
             <p class="body-sm" style="margin:0;">

@@ -16,15 +16,16 @@
 
 <style>
     .schedule-form-shell {
-        max-width: 980px;
+        max-width: 1040px;
         margin: 0 auto;
     }
     .schedule-sheet {
-        border: 1px solid var(--border-1);
+        border: 1px solid oklch(84% 0.022 232);
         border-radius: 12px;
         background: var(--surface);
-        box-shadow: 0 12px 36px oklch(0% 0 0 / .08);
-        overflow: hidden;
+        box-shadow: 0 6px 18px oklch(0% 0 0 / .07);
+        /* allow native dropdowns to escape the sheet so they don't get clipped or force upward rendering */
+        overflow: visible;
     }
     .sheet-handle {
         width: 42px;
@@ -34,12 +35,15 @@
         margin: 14px auto 8px;
     }
     .sheet-head {
-        padding: 16px 22px 14px;
-        border-bottom: 1px solid var(--border-1);
+        padding: 18px 24px 16px;
+        border-bottom: 1px solid oklch(84% 0.022 232);
         display: flex;
         justify-content: space-between;
         gap: 12px;
         align-items: flex-start;
+        background: oklch(97% 0.014 232);
+        border-top-left-radius: 12px;
+        border-top-right-radius: 12px;
     }
     .sheet-tag {
         display: inline-flex;
@@ -47,7 +51,7 @@
         min-height: 22px;
         padding: 2px 9px;
         border-radius: 999px;
-        background: oklch(93% 0.05 255);
+        background: oklch(94% 0.035 245);
         color: var(--brand-navy);
         font-size: 12px;
         font-weight: 900;
@@ -55,7 +59,7 @@
     .sheet-title {
         margin-top: 7px;
         color: var(--fg-1);
-        font-size: 22px;
+        font-size: 24px;
         line-height: 1.3;
         font-weight: 900;
     }
@@ -69,14 +73,14 @@
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 10px;
-        padding: 16px 22px;
-        border-bottom: 1px solid var(--border-1);
-        background: oklch(98% 0.006 240);
+        padding: 14px 24px;
+        border-bottom: 1px solid oklch(86% 0.018 232);
+        background: oklch(97% 0.014 232);
     }
     .source-box {
-        border: 1px solid var(--border-1);
+        border: 1px solid oklch(86% 0.018 232);
         border-radius: 8px;
-        background: var(--surface);
+        background: oklch(99% 0.004 232);
         padding: 11px 12px;
     }
     .source-title {
@@ -91,16 +95,16 @@
         line-height: 1.45;
     }
     .form-body {
-        padding: 22px;
+        padding: 24px;
         display: flex;
         flex-direction: column;
-        gap: 18px;
+        gap: 16px;
     }
     .form-section {
-        border: 1px solid var(--border-1);
+        border: 1px solid oklch(86% 0.018 232);
         border-radius: 10px;
-        padding: 16px;
-        background: var(--surface);
+        padding: 18px;
+        background: oklch(99% 0.004 232);
     }
     .form-section-title {
         display: flex;
@@ -119,8 +123,8 @@
         min-height: 22px;
         padding: 2px 8px;
         border-radius: 999px;
-        background: oklch(97% 0.012 240);
-        border: 1px solid var(--border-1);
+        background: oklch(96.5% 0.014 232);
+        border: 1px solid oklch(86% 0.018 232);
         color: var(--fg-2);
         font-size: 11px;
         font-weight: 800;
@@ -129,7 +133,7 @@
     .field-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 14px;
+        gap: 16px;
     }
     .field-grid.single {
         grid-template-columns: 1fr;
@@ -157,14 +161,65 @@
     }
     .form-control {
         width: 100%;
-        min-height: 42px;
-        border: 1px solid var(--border-1);
+        min-height: 44px;
+        border: 1px solid oklch(84% 0.022 232);
         border-radius: 8px;
         background: var(--surface);
         color: var(--fg-1);
         padding: 9px 11px;
         font: inherit;
         font-size: 14px;
+    }
+    .form-control:focus {
+        outline: none;
+        border-color: var(--brand-navy);
+        box-shadow: 0 0 0 3px oklch(45% 0.12 250 / 0.12);
+    }
+    /* ensure select elements render above surrounding panels when opened */
+    select.form-control {
+        position: relative;
+        z-index: 9999;
+        text-align: left;
+        text-align-last: left;
+    }
+    .schedule-sheet .choices,
+    .schedule-sheet .choices__inner,
+    .schedule-sheet .choices__list--single,
+    .schedule-sheet .choices__list--single .choices__item {
+        text-align: left !important;
+        text-align-last: left !important;
+    }
+    .schedule-sheet .choices[data-type*="select-one"] .choices__inner {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        padding-left: 11px !important;
+        padding-right: 34px !important;
+    }
+    .schedule-sheet .choices[data-type*="select-one"] .choices__list--single {
+        display: block !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        text-align: left !important;
+    }
+    .schedule-sheet .choices[data-type*="select-one"] .choices__list--single > .choices__item {
+        display: block !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 26px 0 0 !important;
+        text-align: left !important;
+        text-align-last: left !important;
+        white-space: normal !important;
+        word-break: break-word !important;
+    }
+    .schedule-sheet .choices[data-type*="select-one"] .choices__list--dropdown,
+    .schedule-sheet .choices[data-type*="select-one"].is-flipped .choices__list--dropdown {
+        top: calc(100% + 6px) !important;
+        bottom: auto !important;
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
     }
     textarea.form-control {
         min-height: 76px;
@@ -179,18 +234,22 @@
     .choice-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 9px;
+        gap: 10px;
     }
     .choice-card {
         display: flex;
         align-items: flex-start;
         gap: 10px;
-        min-height: 44px;
-        padding: 10px 12px;
-        border: 1px solid var(--border-1);
+        min-height: 48px;
+        padding: 11px 12px;
+        border: 1px solid oklch(84% 0.022 232);
         border-radius: 8px;
-        background: oklch(99% 0.003 240);
+        background: var(--surface);
         cursor: pointer;
+    }
+    .choice-card:hover {
+        border-color: oklch(74% 0.032 232);
+        background: oklch(96.5% 0.014 232);
     }
     .choice-card input {
         margin-top: 3px;
@@ -210,9 +269,9 @@
         display: flex;
         justify-content: flex-end;
         gap: 10px;
-        padding: 16px 22px 20px;
-        border-top: 1px solid var(--border-1);
-        background: oklch(98% 0.006 240);
+        padding: 16px 24px 20px;
+        border-top: 1px solid oklch(84% 0.022 232);
+        background: oklch(94.5% 0.024 232);
     }
     @media (max-width: 760px) {
         .source-strip,
@@ -242,7 +301,7 @@
         <div class="sheet-handle"></div>
         <div class="sheet-head">
             <div>
-                <span class="sheet-tag">{{ $schedule ? 'แก้ไขกิจกรรม' : 'กิจกรรมใหม่' }}</span>
+                <!-- sheet-tag removed per UI request -->
                 <div class="sheet-title">{{ $schedule ? 'แก้ไขรายละเอียดกิจกรรม' : 'เพิ่มกิจกรรมในตาราง' }}</div>
                 <div class="sheet-sub">
                     {{ $isGlobalCreate ? 'เลือกวิชาที่รับผิดชอบ แล้วกรอกรายละเอียดกิจกรรม' : (($course?->course_code ?? '-') . ' ' . ($course?->name_th ?? $course?->name_en ?? '')) }}
@@ -348,25 +407,21 @@
                 <div class="field-grid">
                     <div class="form-field">
                         <label class="field-label" for="activity_type_id">ประเภทกิจกรรม <span class="required-mark">*</span></label>
-                        <select id="activity_type_id" name="activity_type_id" required class="form-control" data-testid="schedule-activity-type">
+                        <select id="activity_type_id" name="activity_type_id" required class="form-control tpss-choices" data-testid="schedule-activity-type">
                             <option value="">เลือกประเภทกิจกรรม</option>
                             @foreach($activityTypes as $activityType)
-                                <option value="{{ $activityType->id }}" @selected((string) old('activity_type_id', $schedule?->activity_type_id) === (string) $activityType->id)>
-                                    {{ $activityType->name }} · {{ $activityType->category }}
-                                </option>
+                                <option value="{{ $activityType->id }}" @selected((string) old('activity_type_id', $schedule?->activity_type_id) === (string) $activityType->id)>{{ $activityType->name }} · {{ $activityType->category }}</option>
                             @endforeach
                         </select>
                         <div class="field-help">ข้อมูลนี้มาจาก Master Data ประเภทกิจกรรม</div>
                         @error('activity_type_id') <div class="error-msg">{{ $message }}</div> @enderror
                     </div>
                     <div class="form-field">
-                        <label class="field-label" for="room_id">ห้อง/สถานที่ <span class="optional-note">ไม่บังคับ</span></label>
-                        <select id="room_id" name="room_id" class="form-control" data-testid="schedule-room">
+                        <label class="field-label" for="room_id">ห้อง/สถานที่</label>
+                        <select id="room_id" name="room_id" class="form-control tpss-choices" data-testid="schedule-room">
                             <option value="">ไม่ระบุสถานที่</option>
                             @foreach($rooms as $room)
-                                <option value="{{ $room->id }}" @selected((string) old('room_id', $schedule?->room_id) === (string) $room->id)>
-                                    {{ $room->room_code }} · {{ $room->room_name }}{{ $room->building ? ' · ' . $room->building : '' }}{{ $room->capacity ? ' · รองรับ ' . $room->capacity . ' คน' : '' }}
-                                </option>
+                                <option value="{{ $room->id }}" @selected((string) old('room_id', $schedule?->room_id) === (string) $room->id)>{{ $room->room_code }} · {{ $room->room_name }}{{ $room->building ? ' · ' . $room->building : '' }}{{ $room->capacity ? ' · รองรับ ' . $room->capacity . ' คน' : '' }}</option>
                             @endforeach
                         </select>
                         <div class="field-help">เลือกจากห้อง/แหล่งฝึกที่ active ใน Master Data หรือเว้นว่างได้</div>
@@ -382,29 +437,23 @@
                 </div>
                 <div class="field-grid">
                     <div class="form-field" style="grid-column:1 / -1;">
-                        <label class="field-label" for="topic">หัวข้อ <span class="optional-note">ไม่บังคับ</span></label>
-                        <input id="topic" name="topic" type="text" class="form-control" maxlength="255" data-testid="schedule-topic"
-                            value="{{ old('topic', $schedule?->topic) }}" placeholder="เช่น การพยาบาลผู้ป่วยระบบหัวใจและหลอดเลือด">
+                        <label class="field-label" for="topic">หัวข้อกิจกรรม <span class="required">*</span></label>
+                        <input id="topic" name="topic" type="text" class="form-control" maxlength="255" required data-testid="schedule-topic"
+                            value="{{ old('topic', $schedule?->topic) }}" placeholder="เช่น บรรยายเรื่องการประเมินผู้ป่วย">
                         <div class="field-help">ถ้าไม่ระบุ ระบบจะแสดงชื่อประเภทกิจกรรมแทน</div>
                         @error('topic') <div class="error-msg">{{ $message }}</div> @enderror
                     </div>
                     <div class="form-field">
-                        <label class="field-label" for="capacity_required">จำนวนรองรับ <span class="optional-note">ไม่บังคับ</span></label>
+                        <label class="field-label" for="capacity_required">จำนวนที่รองรับ <span class="optional-note">ไม่ระบุ = ไม่จำกัดจำนวน</span></label>
                         <input id="capacity_required" name="capacity_required" type="number" min="1" class="form-control" data-testid="schedule-capacity"
                             value="{{ old('capacity_required', $schedule?->capacity_required) }}" placeholder="เช่น 30">
                         <div class="field-help">ใช้เมื่อต้องการกำหนดจำนวนผู้เรียนเฉพาะกิจกรรมนี้</div>
                         @error('capacity_required') <div class="error-msg">{{ $message }}</div> @enderror
                     </div>
-                    <div class="form-field">
-                        <label class="field-label" for="sub_group_label">ป้ายกลุ่มย่อย <span class="optional-note">ไม่บังคับ</span></label>
-                        <input id="sub_group_label" name="sub_group_label" type="text" maxlength="20" class="form-control" data-testid="schedule-sub-group-label"
-                            value="{{ old('sub_group_label', $schedule?->sub_group_label) }}" placeholder="เช่น a, b, 1, 2">
-                        <div class="field-help">ใช้เมื่อแบ่งกลุ่มหลักเป็นกลุ่มย่อย</div>
-                        @error('sub_group_label') <div class="error-msg">{{ $message }}</div> @enderror
-                    </div>
+                    <!-- Removed sub_group_label field per UI request -->
                     <div class="form-field" style="grid-column:1 / -1;">
-                        <label class="field-label" for="remark">หมายเหตุ <span class="optional-note">ไม่บังคับ</span></label>
-                        <textarea id="remark" name="remark" rows="3" class="form-control" data-testid="schedule-remark" placeholder="หมายเหตุเพิ่มเติม เช่น นักศึกษาต้องเตรียมเอกสารก่อนเข้าเรียน">{{ old('remark', $schedule?->remark) }}</textarea>
+                        <label class="field-label" for="remark">หมายเหตุ</label>
+                        <textarea id="remark" name="remark" rows="3" class="form-control" data-testid="schedule-remark" placeholder="เช่น ให้นักศึกษาเตรียมเอกสารก่อนเข้าเรียน หรือแจ้งอุปกรณ์ที่ต้องใช้">{{ old('remark', $schedule?->remark) }}</textarea>
                         @error('remark') <div class="error-msg">{{ $message }}</div> @enderror
                     </div>
                 </div>
@@ -432,8 +481,8 @@
                 @error('instructor_ids.*') <div class="error-msg">{{ $message }}</div> @enderror
 
                 <div class="form-field" style="margin-top:14px;">
-                    <label class="field-label" for="lead_instructor_id">ผู้สอนหลัก <span class="optional-note">ไม่บังคับ</span></label>
-                    <select id="lead_instructor_id" name="lead_instructor_id" class="form-control" data-testid="schedule-lead-instructor">
+                    <label class="field-label" for="lead_instructor_id">ผู้สอนหลัก</label>
+                    <select id="lead_instructor_id" name="lead_instructor_id" class="form-control tpss-choices" data-testid="schedule-lead-instructor">
                         <option value="">ไม่ระบุ</option>
                         @foreach($courseOffering->instructorPool as $instructor)
                             <option value="{{ $instructor->id }}" @selected((string) $leadInstructorId === (string) $instructor->id)>
