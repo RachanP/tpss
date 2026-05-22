@@ -8,47 +8,29 @@ use App\Models\Course;
 use App\Models\CourseOffering;
 use App\Models\Room;
 use App\Models\Schedule;
+use Carbon\CarbonPeriod;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Seeder ทางเลือก (optional) — ไม่ได้อยู่ใน DatabaseSeeder
+ * Optional seeder for preparing a realistic scheduling flow:
  *
- * พาระบบจาก state หลัง `migrate:fresh --seed` ปกติ (phase = preparation,
- * ไม่มีปีการศึกษาปัจจุบัน, รายวิชา inactive) ไปจนถึง state ที่ "จัดตารางแล้ว":
- *
- *   1. เลือกปีการศึกษาปัจจุบัน + ตั้ง is_active
- *   2. activate รายวิชาที่มีหัวหน้าวิชา
- *   3. เปิดช่วงจัดตาราง (academic_years.phase = 'scheduling') + สร้าง course offerings
- *   4. สร้างกลุ่มนักศึกษาให้ทุก offering (auto-distribution + auto-color)
- *   5. สร้างรายการสอน (schedules) ในสัปดาห์แรกของปีการศึกษา
- *
- * วิธีรัน:
  *   php artisan db:seed --class=ScheduleFlowSeeder
  */
 class ScheduleFlowSeeder extends Seeder
 {
-    /** จำนวนนักศึกษาต่อกลุ่มโดยประมาณ — ใช้คำนวณจำนวนกลุ่ม */
     private const STUDENTS_PER_GROUP = 30;
 
-    /** palette เดียวกับ CourseOfferingController::bulkStoreStudentGroups */
     private const GROUP_COLORS = [
         '#2563eb', '#16a34a', '#ca8a04', '#dc2626', '#7c3aed',
         '#0891b2', '#db2777', '#4f46e5', '#65a30d', '#ea580c',
     ];
 
-    /**
-     * ช่องเวลาแบบไม่ทับกันเลย — 4 ช่อง/วัน × 5 วัน
-     * แต่ละ offering ได้ 2 ช่องติดกัน → กิจกรรมลงในวันเดียวกัน และ
-     * ไม่มี slot ใดซ้ำกันทั้งระบบ → ไม่เกิด conflict ห้อง/ผู้สอน/กลุ่ม
-     */
     private const TIME_SLOTS = ['08:00', '10:00', '13:00', '15:00'];
 
     public function run(): void
     {
-        // ── 1. เลือกปีการศึกษาปัจจุบัน ──────────────────────────────────
-        // ปีที่ยังไม่จบ (end_date >= วันนี้) ที่ใกล้ที่สุด = ปีปัจจุบัน/ถัดไป
         $year = AcademicYear::whereDate('end_date', '>=', Carbon::today())
             ->orderBy('start_date')
             ->first()
@@ -56,6 +38,7 @@ class ScheduleFlowSeeder extends Seeder
 
         if (! $year) {
             $this->command->warn('ScheduleFlowSeeder: ไม่พบปีการศึกษาในระบบ — รัน AcademicYearSeeder ก่อน');
+
             return;
         }
 
@@ -63,18 +46,13 @@ class ScheduleFlowSeeder extends Seeder
         $year->update(['is_active' => true]);
         $this->command->info("ScheduleFlowSeeder: ตั้งปีการศึกษาปัจจุบัน = {$year->name} ภาค {$year->semester}");
 
-        // ── 2. activate รายวิชาที่มีหัวหน้าวิชา ──────────────────────────
         $activated = Course::whereNotNull('head_instructor_id')
             ->where('status', '!=', 'active')
             ->update(['status' => 'active']);
         $this->command->info("ScheduleFlowSeeder: activate รายวิชา {$activated} วิชา");
 
-        // ── 3. เปิดช่วงจัดตาราง + สร้าง course offerings ─────────────────
-        // CourseOfferingSeeder สร้าง offering ให้ทุกวิชา active + sync instructor pool
-        // และตั้ง academic_years.phase = 'scheduling' ให้เอง
         $this->call(CourseOfferingSeeder::class);
 
-        // ── 4. สร้างกลุ่มนักศึกษาให้ทุก offering ที่ยังไม่มีกลุ่ม ─────────
         $offerings = CourseOffering::where('academic_year_id', $year->id)
             ->with('studentGroups')
             ->get();
@@ -84,7 +62,7 @@ class ScheduleFlowSeeder extends Seeder
 
         foreach ($offerings as $offering) {
             if ($offering->studentGroups->isNotEmpty()) {
-                continue; // idempotent — ข้าม offering ที่จัดกลุ่มแล้ว
+                continue;
             }
 
             $total = (int) ($offering->total_student_count ?: 0);
@@ -99,7 +77,6 @@ class ScheduleFlowSeeder extends Seeder
             for ($index = 0; $index < $groupCount; $index++) {
                 $offering->studentGroups()->create([
                     'group_code' => 'A' . ($index + 1),
-                    // กระจายเศษให้กลุ่มแรก ๆ — ตรงกับ logic ของ bulkStoreStudentGroups
                     'student_count' => $baseCount + ($index < $remainder ? 1 : 0),
                     'color_code' => self::GROUP_COLORS[$index % count(self::GROUP_COLORS)],
                 ]);
@@ -111,27 +88,36 @@ class ScheduleFlowSeeder extends Seeder
 
         $this->command->info("ScheduleFlowSeeder: สร้างกลุ่มนักศึกษา {$groupsCreated} กลุ่ม ใน {$offeringsSeeded} รายวิชา");
 
-        // ── 5. สร้างรายการสอนในสัปดาห์แรกของปีการศึกษา ───────────────────
         $this->seedSchedules($year);
 
         $this->command->info('ScheduleFlowSeeder: เสร็จสิ้น — ระบบพร้อมใช้งาน มีรายวิชาในตารางแล้ว');
     }
 
-    /**
-     * สร้างรายการสอน 2 กิจกรรม/รายวิชา ลงในสัปดาห์แรกของปีการศึกษา
-     * ทุกกิจกรรมได้ช่องเวลาที่ไม่ซ้ำกันเลย → ไม่มี conflict
-     */
     private function seedSchedules(AcademicYear $year): void
     {
-        $weekStart = Carbon::parse($year->start_date)->startOfWeek(Carbon::MONDAY);
+        $monthStart = Carbon::parse($year->start_date)->startOfMonth();
+        $monthEnd = $monthStart->copy()->endOfMonth();
+        $teachingWeeks = collect(CarbonPeriod::create($monthStart, $monthEnd))
+            ->map(fn ($date) => Carbon::parse($date))
+            ->filter(fn (Carbon $date) => $date->isWeekday())
+            ->groupBy(fn (Carbon $date) => $date->copy()->startOfWeek(Carbon::MONDAY)->toDateString())
+            ->map(fn ($dates) => collect($dates)->values())
+            ->values();
+
+        if ($teachingWeeks->isEmpty()) {
+            $this->command->warn('ScheduleFlowSeeder: ไม่มีวันทำการในเดือนเริ่มต้นของปีการศึกษา — ข้ามการสร้างรายการสอน');
+
+            return;
+        }
+
         $rooms = Room::where('status', 'active')->orderBy('room_code')->get();
 
         if ($rooms->isEmpty()) {
             $this->command->warn('ScheduleFlowSeeder: ไม่มีห้องที่ใช้งานได้ — ข้ามการสร้างรายการสอน');
+
             return;
         }
 
-        // activity type ตาม category — fallback เป็นตัวแรกในหมวด
         $lectureType = ActivityType::where('name', 'บรรยาย')->first()
             ?? ActivityType::where('category', 'lecture')->first();
         $practicumType = ActivityType::where('name', 'ฝึกปฏิบัติในแหล่งจริง')->first()
@@ -141,6 +127,7 @@ class ScheduleFlowSeeder extends Seeder
 
         if (! $lectureType || ! $practicumType) {
             $this->command->warn('ScheduleFlowSeeder: ไม่พบประเภทกิจกรรม — รัน ActivityTypeSeeder ก่อน');
+
             return;
         }
 
@@ -150,25 +137,18 @@ class ScheduleFlowSeeder extends Seeder
             ->get();
 
         $slotsPerDay = count(self::TIME_SLOTS);
-        $globalSlot = 0; // ช่องเวลาสากล — ไม่ซ้ำกันเลยทั้งระบบ
+        $globalSlot = 0;
         $schedulesCreated = 0;
         $offeringsWithSchedules = 0;
 
         foreach ($offerings as $offering) {
-            if ($offering->schedules()->exists()) {
-                $globalSlot += 2; // ยังกันช่องไว้ เพื่อให้ idempotent ไม่ทับ slot รอบหน้า
-                continue;
-            }
-
             $groupIds = $offering->studentGroups->pluck('id')->all();
             $instructorIds = $offering->instructorPool->pluck('id')->all();
             if (empty($groupIds) || empty($instructorIds)) {
-                continue; // ต้องมีกลุ่มนักศึกษา + ผู้สอนก่อน
+                continue;
             }
 
             $leadId = $offering->coordinator_id ?: $instructorIds[0];
-
-            // กำหนดประเภทกิจกรรมตามลักษณะวิชา
             $hasLecture = (int) $offering->planned_lecture_hours > 0;
             $hasPracticum = (int) $offering->planned_practicum_hours > 0
                 || (int) $offering->planned_lab_hours > 0;
@@ -182,55 +162,80 @@ class ScheduleFlowSeeder extends Seeder
                     'type' => $hasPracticum
                         ? ($offering->requires_practicum_rotation ? $practicumType : $labType)
                         : $seminarType,
-                    'topic' => $hasPracticum ? 'ฝึกปฏิบัติ — สัปดาห์ที่ 1' : 'สัมมนากลุ่มย่อย',
+                    'topic' => $hasPracticum ? 'ฝึกปฏิบัติ — กิจกรรมตามแผนการเรียน' : 'สัมมนากลุ่มย่อย',
                 ],
             ];
 
-            foreach ($activities as $offset => $activity) {
-                $slot = $globalSlot + $offset;
-                $dayOffset = intdiv($slot, $slotsPerDay);
-                $timeIndex = $slot % $slotsPerDay;
-                $date = $weekStart->copy()->addDays($dayOffset)->toDateString();
-                $startTime = self::TIME_SLOTS[$timeIndex];
-                $endTime = Carbon::parse($startTime)->addHours(2)->format('H:i');
+            $createdForOffering = false;
 
-                $room = $rooms[$slot % $rooms->count()];
+            foreach ($teachingWeeks as $weekIndex => $weekDates) {
+                foreach ($activities as $activity) {
+                    $slot = $globalSlot++;
+                    $dayIndex = intdiv($slot, $slotsPerDay) % max(1, $weekDates->count());
+                    $timeIndex = $slot % $slotsPerDay;
+                    $date = $weekDates[$dayIndex]->toDateString();
+                    $startTime = self::TIME_SLOTS[$timeIndex];
+                    $endTime = Carbon::parse($startTime)->addHours(2)->format('H:i');
+                    $room = $rooms[$slot % $rooms->count()];
+                    $topic = $activity['topic'] . ' (สัปดาห์ที่ ' . ((int) $weekIndex + 1) . ')';
 
-                DB::transaction(function () use (
-                    $offering, $activity, $room, $date, $startTime, $endTime,
-                    $instructorIds, $leadId, $groupIds, &$schedulesCreated
-                ): void {
-                    $schedule = Schedule::create([
-                        'course_offering_id' => $offering->id,
-                        'activity_type_id' => $activity['type']->id,
-                        'room_id' => $room->id,
-                        'practicum_series_id' => null,
-                        'start_date' => $date,
-                        'end_date' => $date,
-                        'teaching_date' => $date,
-                        'start_time' => $startTime . ':00',
-                        'end_time' => $endTime . ':00',
-                        'topic' => $activity['topic'],
-                        'capacity_required' => (int) $offering->total_student_count ?: null,
-                        'status' => 'draft',
-                    ]);
+                    $alreadyExists = $offering->schedules()
+                        ->whereDate('start_date', $date)
+                        ->where('start_time', $startTime . ':00')
+                        ->exists();
 
-                    // ผู้สอน: หัวหน้าวิชาเป็น lead — เลือกได้ไม่เกิน 2 คนเพื่อความสมจริง
-                    $payload = [];
-                    foreach (array_slice($instructorIds, 0, 2) as $id) {
-                        $payload[$id] = ['is_lead' => (int) $id === (int) $leadId];
+                    if ($alreadyExists) {
+                        continue;
                     }
-                    $schedule->instructors()->sync($payload);
-                    $schedule->studentGroups()->sync($groupIds);
 
-                    $schedulesCreated++;
-                });
+                    DB::transaction(function () use (
+                        $offering,
+                        $activity,
+                        $room,
+                        $date,
+                        $startTime,
+                        $endTime,
+                        $topic,
+                        $instructorIds,
+                        $leadId,
+                        $groupIds,
+                        &$schedulesCreated
+                    ): void {
+                        $schedule = Schedule::create([
+                            'course_offering_id' => $offering->id,
+                            'activity_type_id' => $activity['type']->id,
+                            'room_id' => $room->id,
+                            'practicum_series_id' => null,
+                            'start_date' => $date,
+                            'end_date' => $date,
+                            'teaching_date' => $date,
+                            'start_time' => $startTime . ':00',
+                            'end_time' => $endTime . ':00',
+                            'topic' => $topic,
+                            'capacity_required' => (int) $offering->total_student_count ?: null,
+                            'status' => 'draft',
+                        ]);
+
+                        $payload = [];
+                        foreach (array_slice($instructorIds, 0, 2) as $id) {
+                            $payload[$id] = ['is_lead' => (int) $id === (int) $leadId];
+                        }
+
+                        $schedule->instructors()->sync($payload);
+                        $schedule->studentGroups()->sync($groupIds);
+
+                        $schedulesCreated++;
+                    });
+
+                    $createdForOffering = true;
+                }
             }
 
-            $globalSlot += 2;
-            $offeringsWithSchedules++;
+            if ($createdForOffering) {
+                $offeringsWithSchedules++;
+            }
         }
 
-        $this->command->info("ScheduleFlowSeeder: สร้างรายการสอน {$schedulesCreated} รายการ ใน {$offeringsWithSchedules} รายวิชา (สัปดาห์ {$weekStart->toDateString()})");
+        $this->command->info("ScheduleFlowSeeder: สร้างรายการสอน {$schedulesCreated} รายการ ใน {$offeringsWithSchedules} รายวิชา (ทั้งเดือน {$monthStart->format('Y-m')})");
     }
 }
