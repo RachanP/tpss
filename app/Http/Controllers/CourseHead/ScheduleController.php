@@ -475,26 +475,6 @@ class ScheduleController extends Controller
         return null;
     }
 
-    private function formData(CourseOffering $courseOffering): array
-    {
-        $courseOffering->load([
-            'course.curriculum',
-            'academicYear',
-            'instructorPool.instructorProfile.department',
-            'studentGroups' => fn ($query) => $query->orderBy('group_code'),
-        ]);
-
-        return [
-            'courseOffering' => $courseOffering,
-            'activityTypes' => ActivityType::orderBy('name')->get(),
-            'rooms' => Room::query()
-                ->with('locationType')
-                ->where('status', 'active')
-                ->orderBy('room_code')
-                ->get(),
-        ];
-    }
-
     private function workspaceRedirectUrl(CourseOffering $courseOffering, string $date): string
     {
         $weekStart = CarbonImmutable::parse($date)->startOfWeek(CarbonInterface::MONDAY);
