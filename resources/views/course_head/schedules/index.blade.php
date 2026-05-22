@@ -1786,10 +1786,8 @@
             gridJumpDate: @js($formatDate($weekStart)),
             createInstructorSearch: '',
             createGroupSearch: '',
-            createStartDateDisplay: @js(old('start_date') ? $formatDate(\Carbon\CarbonImmutable::parse(old('start_date'))) : ''),
-            createEndDateDisplay: @js(old('end_date') ? $formatDate(\Carbon\CarbonImmutable::parse(old('end_date'))) : ''),
-            createStartDateIso: @js(old('start_date', '')),
-            createEndDateIso: @js(old('end_date', '')),
+            createStartDate: @js(old('start_date') ? $formatDate(\Carbon\CarbonImmutable::parse(old('start_date'))) : ''),
+            createEndDate: @js(old('end_date') ? $formatDate(\Carbon\CarbonImmutable::parse(old('end_date'))) : ''),
             init() {
                 this.$watch('view', val => sessionStorage.setItem('tpss-schedule-view', val));
                 this.$watch('selectedOfferingId', () => {
@@ -1886,20 +1884,6 @@
 
                 return items.some((item) => String(item || '').toLowerCase().includes(normalizedKeyword));
             },
-            toIsoDate(value) {
-                const trimmed = String(value || '').trim();
-                const thai = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-                if (thai) {
-                    const day = thai[1].padStart(2, '0');
-                    const month = thai[2].padStart(2, '0');
-                    const rawYear = parseInt(thai[3], 10);
-                    const year = rawYear > 2400 ? rawYear - 543 : rawYear;
-
-                    return `${year}-${month}-${day}`;
-                }
-
-                return trimmed.match(/^\d{4}-\d{2}-\d{2}$/) ? trimmed : '';
-            },
             toThaiDateDisplay(value) {
                 const trimmed = String(value || '').trim();
                 if (!trimmed.match(/^\d{4}-\d{2}-\d{2}$/)) return '';
@@ -1957,17 +1941,13 @@
                     offeringSelect.dispatchEvent(new Event('change', { bubbles: true }));
                 }
                 this.selectedOfferingId = this.initialSelectedOfferingId;
-                this.createStartDateDisplay = '';
-                this.createEndDateDisplay = '';
-                this.createStartDateIso = '';
-                this.createEndDateIso = '';
+                this.createStartDate = '';
+                this.createEndDate = '';
 
                 this.$nextTick(() => {
                     if (date) {
-                        this.createStartDateIso = date;
-                        this.createEndDateIso = date;
-                        this.createStartDateDisplay = this.toThaiDateDisplay(date);
-                        this.createEndDateDisplay = this.toThaiDateDisplay(date);
+                        this.createStartDate = this.toThaiDateDisplay(date);
+                        this.createEndDate = this.toThaiDateDisplay(date);
                     }
                 });
             },
@@ -2817,23 +2797,8 @@
                             x-data="{
                                 startDateDisplay: @js($editDateDisplay('start_date', $schedule->start_date)),
                                 endDateDisplay: @js($editDateDisplay('end_date', $schedule->end_date)),
-                                startDateIso: @js((string) $editOld('start_date', $schedule->start_date?->format('Y-m-d'))),
-                                endDateIso: @js((string) $editOld('end_date', $schedule->end_date?->format('Y-m-d'))),
                                 editInstructorSearch: '',
                                 editGroupSearch: '',
-                                toIsoDate(value) {
-                                    const trimmed = String(value || '').trim();
-                                    const thai = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-                                    if (thai) {
-                                        const day = thai[1].padStart(2, '0');
-                                        const month = thai[2].padStart(2, '0');
-                                        const rawYear = parseInt(thai[3], 10);
-                                        const year = rawYear > 2400 ? rawYear - 543 : rawYear;
-
-                                        return `${year}-${month}-${day}`;
-                                    }
-                                    return trimmed.match(/^\d{4}-\d{2}-\d{2}$/) ? trimmed : '';
-                                }
                             }"
                         >
                             @csrf
@@ -2850,31 +2815,25 @@
                                 <div class="modal-form-grid">
                                     <div>
                                         <label class="modal-label" for="edit_start_date_{{ $schedule->id }}">วันที่เริ่ม <span class="required-mark">*</span></label>
-                                        <input type="hidden" name="start_date" x-model="startDateIso" value="{{ $editOld('start_date', $schedule->start_date?->format('Y-m-d')) }}">
-                                        <input
+                                        <x-thai-date-input
+                                            name="start_date"
+                                            :value="$editOld('start_date', $schedule->start_date?->format('Y-m-d'))"
                                             id="edit_start_date_{{ $schedule->id }}"
-                                            type="text"
-                                            inputmode="numeric"
-                                            required
                                             class="modal-control"
-                                            x-model="startDateDisplay"
-                                            @input="startDateIso = toIsoDate(startDateDisplay)"
-                                            placeholder="dd/mm/yyyy"
-                                        >
+                                            :required="true"
+                                            :helper="false"
+                                            x-model="startDateDisplay" />
                                     </div>
                                     <div>
                                         <label class="modal-label" for="edit_end_date_{{ $schedule->id }}">วันที่สิ้นสุด <span class="required-mark">*</span></label>
-                                        <input type="hidden" name="end_date" x-model="endDateIso" value="{{ $editOld('end_date', $schedule->end_date?->format('Y-m-d')) }}">
-                                        <input
+                                        <x-thai-date-input
+                                            name="end_date"
+                                            :value="$editOld('end_date', $schedule->end_date?->format('Y-m-d'))"
                                             id="edit_end_date_{{ $schedule->id }}"
-                                            type="text"
-                                            inputmode="numeric"
-                                            required
                                             class="modal-control"
-                                            x-model="endDateDisplay"
-                                            @input="endDateIso = toIsoDate(endDateDisplay)"
-                                            placeholder="dd/mm/yyyy"
-                                        >
+                                            :required="true"
+                                            :helper="false"
+                                            x-model="endDateDisplay" />
                                     </div>
                                     <div>
                                         <label class="modal-label" for="edit_start_time_{{ $schedule->id }}">เวลาเริ่ม <span class="required-mark">*</span></label>
@@ -3029,33 +2988,23 @@
 
                                 <div>
                                     <label class="modal-label" for="start_date">วันที่เริ่ม <span class="required-mark">*</span></label>
-                                    <input type="hidden" name="start_date" x-model="createStartDateIso" value="{{ old('start_date') }}">
-                                    <input
-                                        x-ref="startDate"
+                                    <x-thai-date-input
+                                        name="start_date"
                                         id="start_date"
-                                        type="text"
-                                        inputmode="numeric"
-                                        required
                                         class="modal-control"
-                                        x-model="createStartDateDisplay"
-                                        @input="createStartDateIso = toIsoDate(createStartDateDisplay)"
-                                        placeholder="dd/mm/yyyy พ.ศ."
-                                    >
+                                        :required="true"
+                                        :helper="false"
+                                        x-model="createStartDate" />
                                 </div>
                                 <div>
                                     <label class="modal-label" for="end_date">วันที่สิ้นสุด <span class="required-mark">*</span></label>
-                                    <input type="hidden" name="end_date" x-model="createEndDateIso" value="{{ old('end_date') }}">
-                                    <input
-                                        x-ref="endDate"
+                                    <x-thai-date-input
+                                        name="end_date"
                                         id="end_date"
-                                        type="text"
-                                        inputmode="numeric"
-                                        required
                                         class="modal-control"
-                                        x-model="createEndDateDisplay"
-                                        @input="createEndDateIso = toIsoDate(createEndDateDisplay)"
-                                        placeholder="dd/mm/yyyy พ.ศ."
-                                    >
+                                        :required="true"
+                                        :helper="false"
+                                        x-model="createEndDate" />
                                 </div>
                                 <div>
                                     <label class="modal-label" for="start_time">เวลาเริ่ม <span class="required-mark">*</span></label>
