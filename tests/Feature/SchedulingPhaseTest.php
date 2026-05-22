@@ -171,6 +171,43 @@ class SchedulingPhaseTest extends TestCase
             ->assertSee('ตั้งเป็นปีปัจจุบันก่อน');
     }
 
+    public function test_setting_another_current_year_is_blocked_while_scheduling_window_is_open(): void
+    {
+        $admin = $this->makeAdmin();
+        $openYear = $this->makeYear([
+            'name' => '2569',
+            'semester' => 1,
+            'is_active' => true,
+            'phase' => 'scheduling',
+        ]);
+        $targetYear = $this->makeYear([
+            'name' => '2569',
+            'semester' => 2,
+            'is_active' => false,
+            'phase' => 'preparation',
+            'start_date' => '2026-11-01',
+            'end_date' => '2027-03-15',
+        ]);
+
+        $this->actingAsAdmin($admin);
+
+        $this->put(route('admin.settings.years.update', $targetYear), [
+            'year_id' => $targetYear->id,
+            'name' => $targetYear->name,
+            'semester' => $targetYear->semester,
+            'start_date' => '01/11/2569',
+            'end_date' => '15/03/2570',
+            'is_active' => '1',
+        ])
+            ->assertRedirect()
+            ->assertSessionHasErrors('is_active')
+            ->assertSessionHas('error');
+
+        $this->assertTrue((bool) $openYear->fresh()->is_active);
+        $this->assertSame('scheduling', $openYear->fresh()->phase);
+        $this->assertFalse((bool) $targetYear->fresh()->is_active);
+    }
+
     // ── Admin: Close Scheduling Window ───────────────────────────────
 
     public function test_close_reverts_phase_to_preparation(): void
