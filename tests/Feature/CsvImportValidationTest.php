@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Curriculum;
 use App\Models\Department;
+use App\Models\InstructorProfile;
 use App\Models\LocationType;
 use App\Models\User;
 use App\Models\UserRole;
@@ -222,5 +223,126 @@ class CsvImportValidationTest extends TestCase
 
         $response->assertSessionHas('error');
         $this->assertStringContainsString('primary_role', session('error'));
+    }
+
+    public function test_import_users_accepts_buddhist_hired_date_and_stores_iso_date(): void
+    {
+        $admin = $this->makeAdmin();
+        Department::create(['name' => 'CSV Date Dept']);
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        $this->post(route('admin.users.import'), [
+            'csv_file' => $this->csvFile($this->userImportCsv('csv_buddhist_2560', '1/1/2560')),
+        ])->assertSessionMissing('import_errors');
+
+        $user = User::where('username', 'csv_buddhist_2560')->firstOrFail();
+        $this->assertDatabaseHas('instructor_profiles', [
+            'user_id' => $user->id,
+            'hired_at' => '2017-01-01',
+        ]);
+    }
+
+    public function test_import_users_accepts_buddhist_hired_date_with_leading_zeroes(): void
+    {
+        $admin = $this->makeAdmin();
+        Department::create(['name' => 'CSV Date Dept']);
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        $this->post(route('admin.users.import'), [
+            'csv_file' => $this->csvFile($this->userImportCsv('csv_buddhist_2570', '15/01/2570')),
+        ])->assertSessionMissing('import_errors');
+
+        $user = User::where('username', 'csv_buddhist_2570')->firstOrFail();
+        $this->assertDatabaseHas('instructor_profiles', [
+            'user_id' => $user->id,
+            'hired_at' => '2027-01-15',
+        ]);
+    }
+
+    public function test_import_users_accepts_iso_hired_date(): void
+    {
+        $admin = $this->makeAdmin();
+        Department::create(['name' => 'CSV Date Dept']);
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        $this->post(route('admin.users.import'), [
+            'csv_file' => $this->csvFile($this->userImportCsv('csv_iso_date', '2027-01-15')),
+        ])->assertSessionMissing('import_errors');
+
+        $user = User::where('username', 'csv_iso_date')->firstOrFail();
+        $this->assertDatabaseHas('instructor_profiles', [
+            'user_id' => $user->id,
+            'hired_at' => '2027-01-15',
+        ]);
+    }
+
+    public function test_import_users_rejects_invalid_hired_dates_without_creating_profiles(): void
+    {
+        $admin = $this->makeAdmin();
+        Department::create(['name' => 'CSV Date Dept']);
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        foreach ([
+            'csv_bad_short_year' => '10/10/1',
+            'csv_bad_out_of_range' => '10/10/0001',
+            'csv_bad_us_style' => '3/15/2015',
+        ] as $username => $hiredDate) {
+            $this->post(route('admin.users.import'), [
+                'csv_file' => $this->csvFile($this->userImportCsv($username, $hiredDate)),
+            ])->assertSessionHas('import_errors');
+
+            $this->assertDatabaseMissing('users', ['username' => $username]);
+        }
+
+        $this->assertSame(0, InstructorProfile::count());
+    }
+
+    public function test_import_users_invalid_hired_date_does_not_update_existing_profile(): void
+    {
+        $admin = $this->makeAdmin();
+        $department = Department::create(['name' => 'CSV Date Dept']);
+        $user = User::create([
+            'username' => 'csv_existing_date',
+            'name' => 'Existing Date User',
+            'email' => 'csv_existing_date@example.com',
+            'password' => Hash::make('password123'),
+            'employee_id' => 'EMP-EXISTING-DATE',
+            'is_active' => true,
+        ]);
+        UserRole::create(['user_id' => $user->id, 'role' => 'instructor', 'is_primary' => true]);
+        InstructorProfile::create([
+            'user_id' => $user->id,
+            'title' => 'อาจารย์',
+            'department_id' => $department->id,
+            'academic_degree' => 'ปริญญาโท',
+            'employment_type' => 'Full-time',
+            'hired_at' => '2017-01-01',
+            'teaching_pct' => 50,
+            'research_pct' => 25,
+            'service_pct' => 10,
+            'culture_pct' => 10,
+            'other_pct' => 5,
+            'teaching_quota' => 0,
+        ]);
+
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        $this->post(route('admin.users.import'), [
+            'csv_file' => $this->csvFile($this->userImportCsv('csv_existing_date', '10/10/1')),
+            'update_on_duplicate' => '1',
+        ])->assertSessionHas('import_errors');
+
+        $user->refresh();
+        $this->assertSame('Existing Date User', $user->name);
+        $this->assertSame('2017-01-01', $user->instructorProfile()->first()->hired_at);
+    }
+
+    private function userImportCsv(string $username, string $hiredDate): string
+    {
+        return implode("\n", [
+            'prefix,name,email,username,password,roles,primary_role,employee_id,title,academic_degree,department_name,employment_type,hired_date,teaching_pct,research_pct,service_pct,culture_pct,other_pct',
+            "นาย,CSV Date User,{$username}@example.com,{$username},password123,instructor,instructor,EMP-{$username},อาจารย์,ปริญญาโท,CSV Date Dept,Full-time,{$hiredDate},50,25,10,10,5",
+            '',
+        ]);
     }
 }

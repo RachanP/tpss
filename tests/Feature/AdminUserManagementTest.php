@@ -115,6 +115,50 @@ class AdminUserManagementTest extends TestCase
         ]);
     }
 
+    public function test_admin_user_update_rejects_short_hired_date_year_and_reopens_edit_modal(): void
+    {
+        $department = Department::create(['name' => 'Invalid Thai Date Department']);
+        $user = $this->makeInstructorWithProfile($department, [
+            'hired_at' => '2026-01-01',
+        ]);
+
+        $this->actingAs($this->admin);
+
+        $response = $this->from('/admin/users')->put("/admin/users/{$user->id}", $this->validInstructorUpdatePayload($user, [
+            'instructor_hired_at' => '10/10/1',
+            'editing_user_id' => (string) $user->id,
+        ]));
+
+        $response
+            ->assertRedirect('/admin/users')
+            ->assertSessionHasErrors('instructor_hired_at')
+            ->assertSessionHasInput('editing_user_id', (string) $user->id);
+
+        $this->assertSame('2026-01-01', $user->fresh('instructorProfile')->instructorProfile->hired_at);
+    }
+
+    public function test_admin_user_update_rejects_four_digit_out_of_range_hired_date_year(): void
+    {
+        $department = Department::create(['name' => 'Out Of Range Thai Date Department']);
+        $user = $this->makeInstructorWithProfile($department, [
+            'hired_at' => '2026-01-01',
+        ]);
+
+        $this->actingAs($this->admin);
+
+        $response = $this->from('/admin/users')->put("/admin/users/{$user->id}", $this->validInstructorUpdatePayload($user, [
+            'instructor_hired_at' => '10/10/0001',
+            'editing_user_id' => (string) $user->id,
+        ]));
+
+        $response
+            ->assertRedirect('/admin/users')
+            ->assertSessionHasErrors('instructor_hired_at')
+            ->assertSessionHasInput('editing_user_id', (string) $user->id);
+
+        $this->assertSame('2026-01-01', $user->fresh('instructorProfile')->instructorProfile->hired_at);
+    }
+
     public function test_admin_can_update_user(): void
     {
         $this->actingAs($this->admin);
@@ -493,6 +537,38 @@ class AdminUserManagementTest extends TestCase
         return $user;
     }
 
+    private function makeInstructorWithProfile(Department $dept, array $profileOverrides = []): User
+    {
+        $user = User::create([
+            'username' => 'existing-inst-' . random_int(1000, 9999),
+            'name' => 'Existing Instructor',
+            'email' => 'existing-inst-' . random_int(1000, 9999) . '@example.com',
+            'employee_id' => 'EMP' . random_int(10000, 99999),
+            'password' => Hash::make('password123'),
+            'is_active' => true,
+        ]);
+
+        UserRole::create(['user_id' => $user->id, 'role' => 'instructor', 'is_primary' => true]);
+
+        InstructorProfile::create(array_merge([
+            'user_id' => $user->id,
+            'title' => 'อาจารย์',
+            'department_id' => $dept->id,
+            'academic_degree' => 'ปริญญาโท',
+            'employment_type' => 'Full-time',
+            'hired_at' => '2026-01-01',
+            'teaching_pct' => 50,
+            'research_pct' => 25,
+            'service_pct' => 10,
+            'culture_pct' => 10,
+            'other_pct' => 5,
+            'teaching_quota' => 0,
+            'is_english_passed' => false,
+        ], $profileOverrides));
+
+        return $user->fresh(['roles', 'instructorProfile']);
+    }
+
     private function validInstructorPayload(Department $dept, array $overrides = []): array
     {
         return array_merge([
@@ -514,6 +590,35 @@ class AdminUserManagementTest extends TestCase
             'instructor_service_pct' => 10,
             'instructor_culture_pct' => 10,
             'instructor_other_pct' => 5,
+        ], $overrides);
+    }
+
+    private function validInstructorUpdatePayload(User $user, array $overrides = []): array
+    {
+        $user = $user->fresh(['roles', 'instructorProfile']);
+        $profile = $user->instructorProfile;
+
+        return array_merge([
+            'username' => $user->username,
+            'prefix' => $user->prefix,
+            'name' => $user->name,
+            'email' => $user->email,
+            'employee_id' => $user->employee_id,
+            'roles' => ['instructor'],
+            'primary_role' => 'instructor',
+            'is_active' => (bool) $user->is_active,
+            'instructor_title' => $profile->title,
+            'instructor_department_id' => $profile->department_id,
+            'instructor_academic_degree' => $profile->academic_degree,
+            'instructor_employment_type' => $profile->employment_type,
+            'instructor_hired_at' => $profile->hired_at,
+            'instructor_teaching_pct' => $profile->teaching_pct,
+            'instructor_research_pct' => $profile->research_pct,
+            'instructor_service_pct' => $profile->service_pct,
+            'instructor_culture_pct' => $profile->culture_pct,
+            'instructor_other_pct' => $profile->other_pct,
+            'instructor_teaching_quota' => $profile->teaching_quota,
+            'instructor_is_english_passed' => $profile->is_english_passed ? 1 : 0,
         ], $overrides);
     }
 }

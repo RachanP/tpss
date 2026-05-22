@@ -75,7 +75,7 @@ class AdminUserController extends Controller
             'instructor_department_id'   => "$reqDept|integer|exists:departments,id",
             'instructor_academic_degree' => "$reqDegree|string|max:100",
             'instructor_employment_type' => "$reqEmpl|string|max:100",
-            'instructor_hired_at'        => "$reqEmpl|date",
+            'instructor_hired_at'        => $this->strictThaiDateRules($reqEmpl),
             'instructor_teaching_pct'    => "$reqEmpl|integer|min:0|max:100",
             'instructor_research_pct'    => "$reqEmpl|integer|min:0|max:100",
             'instructor_service_pct'     => "$reqEmpl|integer|min:0|max:100",
@@ -216,7 +216,7 @@ class AdminUserController extends Controller
             'instructor_department_id'   => "$reqDept|integer|exists:departments,id",
             'instructor_academic_degree' => "$reqDegree|string|max:100",
             'instructor_employment_type' => "$reqEmpl|string|max:100",
-            'instructor_hired_at'        => "$reqEmpl|date",
+            'instructor_hired_at'        => $this->strictThaiDateRules($reqEmpl),
             'instructor_teaching_pct'    => "$reqEmpl|integer|min:0|max:100",
             'instructor_research_pct'    => "$reqEmpl|integer|min:0|max:100",
             'instructor_service_pct'     => "$reqEmpl|integer|min:0|max:100",
@@ -493,6 +493,12 @@ class AdminUserController extends Controller
                 }
 
                 if ($isInstructor) {
+                    $hiredDate = trim($csv['hired_date'] ?? '');
+                    if ($hiredDate !== '' && ThaiDate::parseToIso($hiredDate) === null) {
+                        $errors[] = "แถว {$row}: hired_date ไม่ถูกต้อง กรุณาใช้รูปแบบ YYYY-MM-DD, วว/ดด/พ.ศ., วว-ดด-พ.ศ. หรือเลข 8 หลัก";
+                        continue;
+                    }
+
                     $t = max(0, min(100, (int)(trim($csv['teaching_pct'] ?? '0') ?: '0')));
                     $r = max(0, min(100, (int)(trim($csv['research_pct'] ?? '0') ?: '0')));
                     $s = max(0, min(100, (int)(trim($csv['service_pct'] ?? '0') ?: '0')));
@@ -660,17 +666,7 @@ class AdminUserController extends Controller
         ];
 
         if ($isInstructor) {
-            $parsedHiredAt = null;
-            if ($hiredAt) {
-                try {
-                    $parsedHiredAt = str_contains($hiredAt, '/')
-                        ? \Carbon\Carbon::createFromFormat('d/m/Y', $hiredAt)->format('Y-m-d')
-                        : \Carbon\Carbon::parse($hiredAt)->format('Y-m-d');
-                } catch (\Exception $e) {
-                    try { $parsedHiredAt = \Carbon\Carbon::parse(str_replace('/', '-', $hiredAt))->format('Y-m-d'); }
-                    catch (\Exception $e2) { $parsedHiredAt = null; }
-                }
-            }
+            $parsedHiredAt = $hiredAt ? ThaiDate::parseToIso($hiredAt) : null;
             $profile += [
                 'employment_type' => trim($csv['employment_type'] ?? '') ?: null,
                 'hired_at'        => $parsedHiredAt,
@@ -771,5 +767,23 @@ class AdminUserController extends Controller
         if ($iso) {
             $request->merge([$field => $iso]);
         }
+    }
+
+    private function strictThaiDateRules(string $requiredRule): array
+    {
+        return [
+            'bail',
+            $requiredRule,
+            'string',
+            function (string $attribute, mixed $value, \Closure $fail): void {
+                if ($value === null || trim((string) $value) === '') {
+                    return;
+                }
+
+                if (ThaiDate::parseToIso((string) $value) === null) {
+                    $fail('กรุณากรอกวันที่เริ่มงานในรูปแบบ วว/ดด/พ.ศ. หรือ YYYY-MM-DD โดยปี พ.ศ. ต้องอยู่ในช่วง 2443-2643');
+                }
+            },
+        ];
     }
 }

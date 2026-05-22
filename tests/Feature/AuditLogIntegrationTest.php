@@ -544,6 +544,26 @@ class AuditLogIntegrationTest extends TestCase
         $this->assertSame('2027-01-15', $log->new_values['hired_at']);
     }
 
+    public function test_admin_update_invalid_hired_at_does_not_create_audit_log(): void
+    {
+        $user = $this->makeInstructorForAdminUpdate([
+            'hired_at' => '2005-10-10',
+        ]);
+
+        $this->actingAsAdmin()
+            ->from(route('admin.users'))
+            ->put(route('admin.users.update', $user), $this->adminInstructorUpdatePayload($user, [
+                'instructor_hired_at' => '10/10/1',
+                'editing_user_id' => (string) $user->id,
+            ]))
+            ->assertRedirect(route('admin.users'))
+            ->assertSessionHasErrors('instructor_hired_at')
+            ->assertSessionHasInput('editing_user_id', (string) $user->id);
+
+        $this->assertSame('2005-10-10', $user->fresh('instructorProfile')->instructorProfile->hired_at);
+        $this->assertDatabaseCount('audit_logs', 0);
+    }
+
     public function test_admin_update_same_hired_at_with_thai_buddhist_equivalent_is_no_op_audit(): void
     {
         $user = $this->makeInstructorForAdminUpdate([
@@ -1291,6 +1311,26 @@ class AuditLogIntegrationTest extends TestCase
             ])
             ->assertSessionHas('error');
 
+        $this->assertDatabaseCount('audit_logs', 0);
+    }
+
+    public function test_user_import_with_invalid_hired_date_does_not_create_audit_log(): void
+    {
+        Department::create(['name' => 'CSV Date Dept']);
+
+        $csv = implode("\n", [
+            'prefix,name,email,username,password,roles,primary_role,employee_id,title,academic_degree,department_name,employment_type,hired_date,teaching_pct,research_pct,service_pct,culture_pct,other_pct',
+            'นาย,Bad CSV Date,bad_csv_date@test.example,bad_csv_date,password123,instructor,instructor,EMP-BADCSV,อาจารย์,ปริญญาโท,CSV Date Dept,Full-time,10/10/1,50,25,10,10,5',
+            '',
+        ]);
+
+        $this->actingAsAdmin()
+            ->post(route('admin.users.import'), [
+                'csv_file' => $this->csvFile($csv),
+            ])
+            ->assertSessionHas('import_errors');
+
+        $this->assertDatabaseMissing('users', ['username' => 'bad_csv_date']);
         $this->assertDatabaseCount('audit_logs', 0);
     }
 
