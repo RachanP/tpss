@@ -49,7 +49,7 @@ class ScheduleManagementTest extends TestCase
             ->assertSee('data-testid="schedule-list-toggle"', false)
             ->assertSee('data-testid="schedule-grid-toggle"', false)
             ->assertSee('data-testid="schedule-list-view"', false)
-            ->assertSee('data-testid="schedule-grid-view"', false)
+            ->assertSee('data-testid="schedule-grid-view-co"', false)
             ->assertSee('Existing schedule')
             ->assertSee('08:00')
             ->assertSee($group->group_code)
@@ -69,14 +69,40 @@ class ScheduleManagementTest extends TestCase
 
         $this->actingAsCourseHead($head);
 
-        $this->get(route('maker.schedules.index', ['week_start' => '2026-05-18']))
+        $this->get(route('maker.course_offerings.schedules.index', [$offering, 'week_start' => '2026-05-18']))
             ->assertOk()
             ->assertSee('data-testid="schedule-list-view"', false)
-            ->assertSee('data-testid="schedule-grid-view"', false)
+            ->assertSee('data-testid="schedule-grid-view-co"', false)
             ->assertSee('18:23-21:19')
             ->assertSee('18:00')
             ->assertSee('Reflection')
             ->assertSee($group->group_code);
+    }
+
+    public function test_schedule_index_supports_day_week_and_month_periods(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'start_date' => '2026-08-17',
+            'end_date' => '2026-08-17',
+            'topic' => 'Monthly schedule item',
+        ]);
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.course_offerings.schedules.index', [
+            $offering,
+            'period' => 'month',
+            'date' => '2026-08-01',
+        ]))
+            ->assertOk()
+            ->assertSee('period=day', false)
+            ->assertSee('period=week', false)
+            ->assertSee('period=month', false)
+            ->assertSee('data-testid="schedule-month-calendar-co"', false)
+            ->assertSee('จันทร์')
+            ->assertSee('อาทิตย์')
+            ->assertSee('Monthly schedule item');
     }
 
     public function test_block_date_schedule_displays_across_matching_week_days(): void
@@ -90,8 +116,8 @@ class ScheduleManagementTest extends TestCase
             ->assertOk()
             ->assertSee('วันจันทร์')
             ->assertSee('วันศุกร์')
-            ->assertSee('03/08/2026')
-            ->assertSee('07/08/2026')
+            ->assertSee('03/08/2569')
+            ->assertSee('07/08/2569')
             ->assertSee('Existing schedule');
     }
 
@@ -131,7 +157,8 @@ class ScheduleManagementTest extends TestCase
 
         $this->actingAsCourseHead($head);
 
-        $this->get(route('maker.schedules.index', ['week_start' => '2026-08-03']))
+        $this->followingRedirects()
+            ->get(route('maker.schedules.index', ['week_start' => '2026-08-03']))
             ->assertOk()
             ->assertSee('data-testid="schedule-list-toggle"', false)
             ->assertSee('data-testid="schedule-grid-toggle"', false)
@@ -152,37 +179,36 @@ class ScheduleManagementTest extends TestCase
 
         $this->actingAsCourseHead($head);
 
-        $this->get(route('maker.schedules.index', ['week_start' => '2026-08-03']))
+        $this->followingRedirects()
+            ->get(route('maker.schedules.index', ['week_start' => '2026-08-03']))
             ->assertOk()
             ->assertSee($offering->course->course_code)
             ->assertSee($secondOffering->course->course_code)
             ->assertDontSee($otherOffering->course->course_code);
     }
 
-    public function test_schedule_workspace_has_no_course_selector_or_course_detail_button(): void
+    public function test_schedule_workspace_redirects_to_first_offering(): void
     {
-        [$head] = $this->makeReadyOffering();
+        [$head, $offering] = $this->makeReadyOffering();
 
         $this->actingAsCourseHead($head);
 
         $this->get(route('maker.schedules.index'))
-            ->assertOk()
-            ->assertDontSee('schedule-offering-select')
-            ->assertDontSee('รายละเอียดรายวิชา');
+            ->assertRedirect(route('maker.course_offerings.schedules.index', $offering));
     }
 
     public function test_schedule_workspace_create_button_opens_create_modal(): void
     {
-        [$head] = $this->makeReadyOffering();
+        [$head, $offering] = $this->makeReadyOffering();
 
         $this->actingAsCourseHead($head);
 
-        $this->get(route('maker.schedules.index', ['week_start' => '2026-08-03']))
+        $this->get(route('maker.course_offerings.schedules.index', [$offering, 'week_start' => '2026-08-03']))
             ->assertOk()
             ->assertSee('data-testid="schedule-create-link"', false)
             ->assertSee('data-testid="schedule-create-modal"', false)
-            ->assertSee('action="' . route('maker.schedules.store') . '"', false)
-            ->assertDontSee('href="' . route('maker.schedules.create', ['week_start' => '2026-08-03']) . '"', false);
+            ->assertSee('action="' . route('maker.course_offerings.schedules.store', $offering) . '"', false)
+            ->assertDontSee('href="' . route('maker.course_offerings.schedules.create', [$offering, 'week_start' => '2026-08-03']) . '"', false);
     }
 
     public function test_activity_cards_open_detail_modal_with_edit_and_delete_actions(): void
@@ -192,7 +218,7 @@ class ScheduleManagementTest extends TestCase
 
         $this->actingAsCourseHead($head);
 
-        $this->get(route('maker.schedules.index', ['week_start' => '2026-08-03']))
+        $this->get(route('maker.course_offerings.schedules.index', [$offering, 'week_start' => '2026-08-03']))
             ->assertOk()
             ->assertSee('data-schedule-modal-trigger', false)
             ->assertSee('data-testid="schedule-detail-modal"', false)
@@ -218,7 +244,7 @@ class ScheduleManagementTest extends TestCase
 
         $this->actingAsCourseHead($head);
 
-        $this->get(route('maker.schedules.index'))
+        $this->get(route('maker.course_offerings.schedules.index', $offering))
             ->assertOk()
             ->assertSee('data-testid="schedule-course-offering"', false)
             ->assertSee($offering->course->course_code)
@@ -245,7 +271,8 @@ class ScheduleManagementTest extends TestCase
 
         $this->actingAsCourseHead($head);
 
-        $this->get(route('maker.schedules.index'))
+        $this->followingRedirects()
+            ->get(route('maker.schedules.index'))
             ->assertOk()
             ->assertSee('href="' . route('maker.schedules.index') . '"', false);
     }
@@ -275,12 +302,15 @@ class ScheduleManagementTest extends TestCase
 
     public function test_global_create_route_redirects_to_workspace_create_modal(): void
     {
-        [$head] = $this->makeReadyOffering();
+        [$head, $offering] = $this->makeReadyOffering();
 
         $this->actingAsCourseHead($head);
 
         $this->get(route('maker.schedules.create'))
-            ->assertRedirect(route('maker.schedules.index', ['modal' => 'create']));
+            ->assertRedirect(route('maker.course_offerings.schedules.index', [
+                $offering,
+                'modal' => 'create',
+            ]));
     }
 
     public function test_global_create_route_preserves_selected_scheduling_offering(): void
@@ -292,9 +322,9 @@ class ScheduleManagementTest extends TestCase
         $this->actingAsCourseHead($head);
 
         $this->get(route('maker.schedules.create', ['course_offering_id' => $offering->id]))
-            ->assertRedirect(route('maker.schedules.index', [
+            ->assertRedirect(route('maker.course_offerings.schedules.index', [
+                $offering,
                 'modal' => 'create',
-                'course_offering_id' => $offering->id,
             ]));
     }
 
@@ -318,7 +348,10 @@ class ScheduleManagementTest extends TestCase
         $this->post(route('maker.schedules.store'), $this->schedulePayload($instructor, $group, $activityType, $room, [
             'course_offering_id' => $offering->id,
         ]))
-            ->assertRedirect(route('maker.schedules.index', ['week_start' => '2026-08-03']))
+            ->assertRedirect(route('maker.course_offerings.schedules.index', [
+                $offering,
+                'week_start' => '2026-08-03',
+            ]))
             ->assertSessionHasNoErrors();
 
         $this->assertDatabaseHas('schedules', [
@@ -354,7 +387,7 @@ class ScheduleManagementTest extends TestCase
         $this->post(route('maker.schedules.store'), $this->schedulePayload($instructor, $group, $activityType, $room, [
             'course_offering_id' => $offering->id,
         ]))
-            ->assertRedirect(route('maker.schedules.index'))
+            ->assertRedirect(route('maker.course_offerings.schedules.index', $offering))
             ->assertSessionHasErrors('schedule');
 
         $this->assertDatabaseCount('schedules', 0);
@@ -399,7 +432,8 @@ class ScheduleManagementTest extends TestCase
 
         $this->actingAsCourseHead($head);
 
-        $this->get(route('maker.schedules.index', ['week_start' => 'not-a-date']))
+        $this->followingRedirects()
+            ->get(route('maker.schedules.index', ['week_start' => 'not-a-date']))
             ->assertOk()
             ->assertSee('Existing schedule');
     }
