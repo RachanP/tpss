@@ -23,9 +23,23 @@ use Illuminate\View\View;
 
 class ScheduleController extends Controller
 {
-    public function workspace(Request $request): View
+    public function workspace(Request $request): View|RedirectResponse
     {
         $offerings = $this->coordinatorScheduleOfferings();
+
+        if ($offerings->isNotEmpty()) {
+            $selectedId = (int) $request->query('course_offering_id');
+            $targetOffering = $selectedId ? $offerings->firstWhere('id', $selectedId) : null;
+            $targetOffering = $targetOffering ?: $offerings->first();
+
+            return redirect()->route('maker.course_offerings.schedules.index', array_filter([
+                'courseOffering' => $targetOffering,
+                'week_start' => $request->query('week_start'),
+                'date' => $request->query('date'),
+                'period' => $request->query('period'),
+                'modal' => $request->query('modal'),
+            ]));
+        }
 
         return view('course_head.schedules.index', $this->schedulePageData(
             request: $request,
@@ -60,11 +74,13 @@ class ScheduleController extends Controller
         }
 
         $selectedOfferingId = (int) old('course_offering_id', $request->query('course_offering_id'));
+        $targetOffering = $selectedOfferingId ? $offerings->firstWhere('id', $selectedOfferingId) : null;
+        $targetOffering = $targetOffering ?: $offerings->first();
 
-        return redirect()->route('maker.schedules.index', array_filter([
+        return redirect()->route('maker.course_offerings.schedules.index', array_filter([
+            'courseOffering' => $targetOffering,
             'modal' => 'create',
             'week_start' => $request->query('week_start'),
-            'course_offering_id' => $selectedOfferingId && $offerings->firstWhere('id', $selectedOfferingId) ? $selectedOfferingId : null,
         ]));
     }
 
@@ -109,15 +125,29 @@ class ScheduleController extends Controller
                 ->orderBy('start_date')
                 ->value('start_date');
 
-        $baseDate = $this->validWeekStart($request)
+        $period = $this->validSchedulePeriod($request);
+        $baseDate = $this->validScheduleDate($request, 'date')
+            ?? $this->validWeekStart($request)
             ?? ($firstScheduleDate ? CarbonImmutable::parse($firstScheduleDate) : null)
             ?? ($courseOffering?->academicYear?->start_date ? CarbonImmutable::parse($courseOffering->academicYear->start_date) : null)
             ?? ($availableOfferings->first()?->academicYear?->start_date ? CarbonImmutable::parse($availableOfferings->first()->academicYear->start_date) : null)
             ?? CarbonImmutable::now();
 
-        $weekStart = CarbonImmutable::parse($baseDate)->startOfWeek(CarbonInterface::MONDAY);
-        $weekEnd = $weekStart->addDays(6);
-        $gridEnd = $weekStart->addDays(4);
+        $periodStart = match ($period) {
+            'day' => CarbonImmutable::parse($baseDate)->startOfDay(),
+            'month' => CarbonImmutable::parse($baseDate)->startOfMonth(),
+            default => CarbonImmutable::parse($baseDate)->startOfWeek(CarbonInterface::MONDAY),
+        };
+        $periodEnd = match ($period) {
+            'day' => $periodStart,
+            'month' => $periodStart->endOfMonth(),
+            default => $periodStart->addDays(6),
+        };
+        $gridEnd = match ($period) {
+            'day' => $periodStart,
+            'month' => $periodEnd,
+            default => $periodStart->addDays(4),
+        };
 
         $schedules = empty($offeringIds)
             ? collect()
@@ -134,26 +164,59 @@ class ScheduleController extends Controller
                     'studentGroups',
                 ])
                 ->whereIn('course_offering_id', $offeringIds)
-                ->whereDate('start_date', '<=', $weekEnd->toDateString())
-                ->whereDate('end_date', '>=', $weekStart->toDateString())
+                ->whereDate('start_date', '<=', $periodEnd->toDateString())
+                ->whereDate('end_date', '>=', $periodStart->toDateString())
                 ->orderBy('start_date')
                 ->orderBy('end_date')
                 ->orderBy('start_time')
                 ->get();
 
-        $weekDays = collect(range(0, 4))
-            ->map(fn (int $offset) => $weekStart->addDays($offset))
+        // All schedules for single-offering list view (no week filter)
+        $allSchedules = (! $isWorkspace && $courseOffering)
+            ? Schedule::query()
+                ->with([
+                    'courseOffering.course.curriculum',
+                    'courseOffering.course.department',
+                    'courseOffering.academicYear',
+                    'courseOffering.instructorPool.instructorProfile.department',
+                    'courseOffering.studentGroups' => fn ($query) => $query->orderBy('group_code'),
+                    'activityType',
+                    'room.locationType',
+                    'instructors.instructorProfile.department',
+                    'studentGroups',
+                ])
+                ->where('course_offering_id', $courseOffering->id)
+                ->orderBy('start_date')
+                ->orderBy('start_time')
+                ->get()
+            : collect();
+
+        $weekDays = collect(CarbonPeriod::create($periodStart, $gridEnd))
+            ->map(fn ($date) => CarbonImmutable::parse($date))
+            ->filter(fn (CarbonImmutable $date) => $period === 'day' || $date->dayOfWeekIso <= 5)
             ->values();
-        $occurrences = $this->scheduleOccurrences($schedules, $weekStart, $gridEnd);
+        $occurrences = $this->scheduleOccurrences($schedules, $periodStart, $gridEnd);
         $timeSlots = $this->scheduleTimeSlots($occurrences);
+        $previousPeriod = match ($period) {
+            'day' => $periodStart->subDay(),
+            'month' => $periodStart->subMonthNoOverflow(),
+            default => $periodStart->subWeek(),
+        };
+        $nextPeriod = match ($period) {
+            'day' => $periodStart->addDay(),
+            'month' => $periodStart->addMonthNoOverflow(),
+            default => $periodStart->addWeek(),
+        };
 
         return [
             'courseOffering' => $courseOffering,
             'availableOfferings' => $availableOfferings,
             'isWorkspace' => $isWorkspace,
             'schedules' => $schedules,
-            'weekStart' => $weekStart,
-            'weekEnd' => $weekEnd,
+            'allSchedules' => $allSchedules,
+            'schedulePeriod' => $period,
+            'weekStart' => $periodStart,
+            'weekEnd' => $periodEnd,
             'weekDays' => $weekDays,
             'occurrences' => $occurrences,
             'timeSlots' => $timeSlots,
@@ -163,8 +226,11 @@ class ScheduleController extends Controller
                 ->where('status', 'active')
                 ->orderBy('room_code')
                 ->get(),
-            'previousWeekUrl' => $this->scheduleWeekUrl($courseOffering, $weekStart->subWeek(), $isWorkspace),
-            'nextWeekUrl' => $this->scheduleWeekUrl($courseOffering, $weekStart->addWeek(), $isWorkspace),
+            'dayViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'day'),
+            'weekViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'week'),
+            'monthViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'month'),
+            'previousWeekUrl' => $this->schedulePeriodUrl($courseOffering, $previousPeriod, $isWorkspace, $period),
+            'nextWeekUrl' => $this->schedulePeriodUrl($courseOffering, $nextPeriod, $isWorkspace, $period),
         ];
     }
 
@@ -182,7 +248,12 @@ class ScheduleController extends Controller
 
     private function validWeekStart(Request $request): ?CarbonImmutable
     {
-        $value = $request->query('week_start');
+        return $this->validScheduleDate($request, 'week_start');
+    }
+
+    private function validScheduleDate(Request $request, string $key): ?CarbonImmutable
+    {
+        $value = $request->query($key);
 
         if (! is_string($value) || trim($value) === '') {
             return null;
@@ -197,6 +268,13 @@ class ScheduleController extends Controller
         return $date instanceof CarbonImmutable && $date->format('Y-m-d') === $value
             ? $date
             : null;
+    }
+
+    private function validSchedulePeriod(Request $request): string
+    {
+        $period = $request->query('period');
+
+        return in_array($period, ['day', 'week', 'month'], true) ? $period : 'week';
     }
 
     private function coordinatorScheduleOfferings(): Collection
@@ -219,16 +297,25 @@ class ScheduleController extends Controller
 
     private function scheduleWeekUrl(?CourseOffering $courseOffering, CarbonImmutable $weekStart, bool $isWorkspace): string
     {
+        return $this->schedulePeriodUrl($courseOffering, $weekStart, $isWorkspace, 'week');
+    }
+
+    private function schedulePeriodUrl(?CourseOffering $courseOffering, CarbonImmutable $date, bool $isWorkspace, string $period): string
+    {
         if ($isWorkspace || ! $courseOffering) {
             return route('maker.schedules.index', array_filter([
                 'course_offering_id' => $courseOffering?->id,
-                'week_start' => $weekStart->toDateString(),
+                'week_start' => $date->toDateString(),
+                'date' => $date->toDateString(),
+                'period' => $period,
             ]));
         }
 
         return route('maker.course_offerings.schedules.index', [
             $courseOffering,
-            'week_start' => $weekStart->toDateString(),
+            'week_start' => $date->toDateString(),
+            'date' => $date->toDateString(),
+            'period' => $period,
         ]);
     }
 
@@ -297,7 +384,7 @@ class ScheduleController extends Controller
         });
 
         return redirect()
-            ->to($redirectToWorkspace ? $this->workspaceRedirectUrl($validated['start_date']) : route('maker.course_offerings.schedules.index', $courseOffering))
+            ->to($redirectToWorkspace ? $this->workspaceRedirectUrl($courseOffering, $validated['start_date']) : route('maker.course_offerings.schedules.index', $courseOffering))
             ->with('success', 'เพิ่มรายการสอนเรียบร้อยแล้ว');
     }
 
@@ -381,7 +468,7 @@ class ScheduleController extends Controller
 
         if ($courseOffering->academicYear?->phase !== 'scheduling') {
             return redirect()
-                ->to($redirectToWorkspace ? route('maker.schedules.index') : route('maker.course_offerings.schedules.index', $courseOffering))
+                ->route('maker.course_offerings.schedules.index', $courseOffering)
                 ->withErrors(['schedule' => 'ยังไม่เปิดช่วงจัดตาราง — Admin ต้องเปิดช่วงจัดตารางก่อน']);
         }
 
@@ -408,11 +495,14 @@ class ScheduleController extends Controller
         ];
     }
 
-    private function workspaceRedirectUrl(string $date): string
+    private function workspaceRedirectUrl(CourseOffering $courseOffering, string $date): string
     {
         $weekStart = CarbonImmutable::parse($date)->startOfWeek(CarbonInterface::MONDAY);
 
-        return route('maker.schedules.index', ['week_start' => $weekStart->toDateString()]);
+        return route('maker.course_offerings.schedules.index', [
+            $courseOffering,
+            'week_start' => $weekStart->toDateString(),
+        ]);
     }
 
     private function scheduleOccurrences($schedules, CarbonImmutable $weekStart, CarbonImmutable $weekEnd)
@@ -450,14 +540,14 @@ class ScheduleController extends Controller
 
     private function validateSchedule(Request $request, CourseOffering $courseOffering): array
     {
-        return $request->validate([
+        $validated = $request->validate([
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
             'start_time' => ['required', 'date_format:H:i'],
-            'end_time' => ['required', 'date_format:H:i', 'after:start_time'],
+            'end_time' => ['required', 'date_format:H:i'],
             'activity_type_id' => ['required', 'integer', 'exists:activity_types,id'],
             'room_id' => ['nullable', 'integer', 'exists:rooms,id'],
-            'topic' => ['nullable', 'string', 'max:255'],
+            'topic' => ['required', 'string', 'max:255'],
             'remark' => ['nullable', 'string'],
             'capacity_required' => ['nullable', 'integer', 'min:1'],
             'sub_group_label' => ['nullable', 'string', 'max:20'],
@@ -476,7 +566,15 @@ class ScheduleController extends Controller
                 Rule::exists('student_groups', 'id')
                     ->where(fn ($query) => $query->where('course_offering_id', $courseOffering->id)),
             ],
-        ], [], [
+        ], [
+            'end_date.after_or_equal' => 'วันที่สิ้นสุดต้องไม่อยู่ก่อนวันที่เริ่ม',
+            'end_time.after' => 'เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่ม',
+            'start_time.date_format' => 'กรุณาระบุเวลาเริ่มในรูปแบบ 24 ชั่วโมง เช่น 10:00',
+            'end_time.date_format' => 'กรุณาระบุเวลาสิ้นสุดในรูปแบบ 24 ชั่วโมง เช่น 12:00',
+            'topic.required' => 'กรุณาระบุหัวข้อกิจกรรม',
+            'instructor_ids.required' => 'กรุณาเลือกผู้สอนอย่างน้อย 1 คน',
+            'student_group_ids.required' => 'กรุณาเลือกกลุ่มนักศึกษาอย่างน้อย 1 กลุ่ม',
+        ], [
             'start_date' => 'วันที่เริ่ม',
             'end_date' => 'วันที่สิ้นสุด',
             'start_time' => 'เวลาเริ่ม',
@@ -493,6 +591,17 @@ class ScheduleController extends Controller
             'student_group_ids' => 'กลุ่มนักศึกษา',
             'student_group_ids.*' => 'กลุ่มนักศึกษา',
         ]);
+
+        if (
+            CarbonImmutable::parse($validated['start_date'])->isSameDay(CarbonImmutable::parse($validated['end_date']))
+            && $validated['end_time'] <= $validated['start_time']
+        ) {
+            throw ValidationException::withMessages([
+                'end_time' => 'เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่มเมื่อจัดรายการในวันเดียวกัน',
+            ]);
+        }
+
+        return $validated;
     }
 
     private function assertLeadInstructorSelected(array $validated): void
