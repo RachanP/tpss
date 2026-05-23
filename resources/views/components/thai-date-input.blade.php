@@ -4,6 +4,10 @@
     'required' => false,
     'helper' => 'กรอกวันที่เป็น วว/ดด/พ.ศ. เช่น 23/06/2569',
     'calendar' => true,
+    'yearPast' => 60,
+    'yearFuture' => 1,
+    'yearStart' => null,
+    'yearEnd' => null,
 ])
 
 @php
@@ -12,6 +16,17 @@
     $tdiMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
     $tdiWeekdays = ['จ','อ','พ','พฤ','ศ','ส','อา'];
     $tdiNowYear = (int) date('Y');
+    $normalizePickerYear = function ($year) {
+        if ($year === null || $year === '') {
+            return null;
+        }
+
+        $year = (int) $year;
+
+        return $year >= 2400 ? $year - 543 : $year;
+    };
+    $tdiYearStart = $normalizePickerYear($yearEnd) ?? ($tdiNowYear + (int) $yearFuture);
+    $tdiYearEnd = $normalizePickerYear($yearStart) ?? ($tdiNowYear - (int) $yearPast);
 @endphp
 
 <div
@@ -46,16 +61,32 @@
                 <button type="button" class="tdi-pop-nav" @click="tdiShiftMonth(-1)" aria-label="เดือนก่อนหน้า">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
                 </button>
-                <select class="tdi-pop-sel tdi-pop-month" x-model.number="calMonth" aria-label="เลือกเดือน">
+                <div class="tdi-pop-select tdi-pop-month" @click.outside="tdiMonthOpen = false">
+                    <button type="button" class="tdi-pop-sel" @click="tdiToggleMonth()" :aria-expanded="tdiMonthOpen" aria-label="เลือกเดือน">
+                        <span class="tdi-pop-sel-label" x-text="@js($tdiMonths)[calMonth]"></span>
+                        <span class="tdi-pop-sel-caret" aria-hidden="true"></span>
+                    </button>
+                    <div class="tdi-pop-menu" x-show="tdiMonthOpen" x-cloak x-transition.opacity>
                     @foreach($tdiMonths as $monthIndex => $monthName)
-                        <option value="{{ $monthIndex }}">{{ $monthName }}</option>
+                            <button type="button"
+                                :class="{ 'is-selected': calMonth === {{ $monthIndex }} }"
+                                @click="tdiPickMonth({{ $monthIndex }})">{{ $monthName }}</button>
                     @endforeach
-                </select>
-                <select class="tdi-pop-sel tdi-pop-year" x-model.number="calYear" aria-label="เลือกปี พ.ศ.">
-                    @for($cy = $tdiNowYear + 1; $cy >= $tdiNowYear - 60; $cy--)
-                        <option value="{{ $cy }}">{{ $cy + 543 }}</option>
+                    </div>
+                </div>
+                <div class="tdi-pop-select tdi-pop-year" @click.outside="tdiYearOpen = false">
+                    <button type="button" class="tdi-pop-sel" @click="tdiToggleYear()" :aria-expanded="tdiYearOpen" aria-label="เลือกปี พ.ศ.">
+                        <span class="tdi-pop-sel-label" x-text="calYear + 543"></span>
+                        <span class="tdi-pop-sel-caret" aria-hidden="true"></span>
+                    </button>
+                    <div class="tdi-pop-menu" x-show="tdiYearOpen" x-cloak x-transition.opacity>
+                    @for($cy = $tdiYearStart; $cy >= $tdiYearEnd; $cy--)
+                            <button type="button"
+                                :class="{ 'is-selected': calYear === {{ $cy }} }"
+                                @click="tdiPickYear({{ $cy }})">{{ $cy + 543 }}</button>
                     @endfor
-                </select>
+                    </div>
+                </div>
                 <button type="button" class="tdi-pop-nav" @click="tdiShiftMonth(1)" aria-label="เดือนถัดไป">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
                 </button>

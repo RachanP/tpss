@@ -19,6 +19,18 @@
     $selectedInstructorIds = collect(old('instructor_ids', []))->map(fn ($id) => (string) $id)->all();
     $selectedGroupIds = collect(old('student_group_ids', []))->map(fn ($id) => (string) $id)->all();
     $leadInstructorId = (string) old('lead_instructor_id', '');
+    $scheduleAlertMessages = function ($errors, ?string $key = null) {
+        $messages = $key && $errors->has($key)
+            ? collect($errors->get($key))
+            : collect($errors->all());
+
+        return $messages
+            ->flatMap(fn ($message) => preg_split('/\s+\/\s+/u', (string) $message) ?: [])
+            ->map(fn ($message) => trim((string) $message))
+            ->filter()
+            ->unique()
+            ->values();
+    };
     $openCreateModal = $canEdit && ! $openEditScheduleId && (
         request('modal') === 'create'
         || $oldModalMode === 'create'
@@ -155,10 +167,22 @@
             ? $color
             : 'var(--schedule-border-strong)';
     };
+    $eligibleScheduleInstructors = function ($offering) {
+        $departmentId = $offering?->course?->department_id;
+        $pool = $offering?->instructorPool ?? collect();
+
+        if (! $departmentId) {
+            return $pool;
+        }
+
+        return $pool
+            ->filter(fn ($instructor) => (int) $instructor->instructorProfile?->department_id === (int) $departmentId)
+            ->values();
+    };
     $singleCourseSchedules = ($allSchedules ?? collect());
     $activityFilterOptions = $singleCourseSchedules->pluck('activityType')->filter()->unique('id')->sortBy('name')->values();
     $groupFilterOptions = $singleCourseSchedules->flatMap->studentGroups->unique('id')->sortBy('group_code')->values();
-    $instructorFilterOptions = ($courseOffering?->instructorPool ?? collect())->sortBy(fn ($instructor) => $instructor->formatted_name ?? $instructor->name);
+    $instructorFilterOptions = $eligibleScheduleInstructors($courseOffering)->sortBy(fn ($instructor) => $instructor->formatted_name ?? $instructor->name);
     $scheduleFilterItems = $singleCourseSchedules->map(function ($schedule) use ($formatDate, $formatTime) {
         return [
             'id' => (string) $schedule->id,
@@ -230,6 +254,10 @@
             align-items: center;
             gap: 6px;
         }
+        .sched-datenav .tdi-wrap {
+            width: 158px;
+            flex: 0 0 158px;
+        }
         .sched-datenav-arrow {
             display: inline-flex;
             align-items: center;
@@ -252,7 +280,7 @@
             height: 17px;
         }
         .sched-datenav-input {
-            width: 138px;
+            width: 100% !important;
             height: 34px;
             border: 1px solid var(--schedule-border-strong);
             border-radius: 8px;
@@ -2116,6 +2144,8 @@
                     name="grid_jump_date"
                     :helper="false"
                     :value="$weekStart->toDateString()"
+                    :year-start="$scheduleDatePickerYearStart"
+                    :year-end="$scheduleDatePickerYearEnd"
                     x-model="gridJumpDate"
                     @change="jumpToGridDate(gridJumpDate)"
                     @keydown.enter.prevent="jumpToGridDate(gridJumpDate)"
@@ -2187,7 +2217,7 @@
                 <div class="course-overview-stats">
                     <span class="course-stat"><strong>{{ $allSchedules->count() }}</strong> รายการสอน</span>
                     <span class="course-stat"><strong>{{ $courseOffering->studentGroups->count() }}</strong> กลุ่มนักศึกษา</span>
-                    <span class="course-stat"><strong>{{ $courseOffering->instructorPool->count() }}</strong> ผู้สอน</span>
+                    <span class="course-stat"><strong>{{ $eligibleScheduleInstructors($courseOffering)->count() }}</strong> ผู้สอน</span>
                 </div>
             </section>
 
@@ -2207,6 +2237,8 @@
                                 name="grid_jump_date"
                                 :helper="false"
                                 :value="$weekStart->toDateString()"
+                                :year-start="$scheduleDatePickerYearStart"
+                                :year-end="$scheduleDatePickerYearEnd"
                                 class="sched-datenav-input"
                                 x-model="gridJumpDate"
                                 @change="jumpToGridDate(gridJumpDate)"
@@ -2491,8 +2523,13 @@
         @endif {{-- end non-workspace --}}
 
         @if($errors->has('schedule') && ! $openCreateModal && ! $openEditScheduleId)
-            <div class="schedule-empty" style="border-color:var(--status-conflict-border);background:var(--status-conflict-bg);color:var(--status-conflict-fg);font-weight:800;">
-                {{ $errors->first('schedule') }}
+            @php
+                $alertMessages = $scheduleAlertMessages($errors, 'schedule');
+            @endphp
+            <div class="schedule-empty" style="border-color:var(--status-conflict-border);background:var(--status-conflict-bg);color:var(--status-conflict-fg);font-weight:800;text-align:left;">
+                @foreach($alertMessages as $message)
+                    <div style="{{ ! $loop->last ? 'margin-bottom:6px;' : '' }}">{{ $message }}</div>
+                @endforeach
             </div>
         @endif
 
@@ -2899,8 +2936,13 @@
                             <input type="hidden" name="edit_schedule_id" value="{{ $schedule->id }}">
                             <div class="modal-form-body">
                                 @if($editUsesOld && $errors->any())
-                                    <div class="schedule-empty" style="margin-bottom:12px;border-color:var(--status-conflict-border);background:var(--status-conflict-bg);color:var(--status-conflict-fg);font-weight:800;">
-                                        {{ $errors->first() }}
+                                    @php
+                                        $alertMessages = $scheduleAlertMessages($errors);
+                                    @endphp
+                                    <div class="schedule-empty" style="margin-bottom:12px;border-color:var(--status-conflict-border);background:var(--status-conflict-bg);color:var(--status-conflict-fg);font-weight:800;text-align:left;">
+                                        @foreach($alertMessages as $message)
+                                            <div style="{{ ! $loop->last ? 'margin-bottom:6px;' : '' }}">{{ $message }}</div>
+                                        @endforeach
                                     </div>
                                 @endif
 
@@ -2914,6 +2956,8 @@
                                             class="modal-control"
                                             :required="true"
                                             :helper="false"
+                                            :year-start="$scheduleDatePickerYearStart"
+                                            :year-end="$scheduleDatePickerYearEnd"
                                             x-model="startDateDisplay" />
                                     </div>
                                     <div>
@@ -2925,6 +2969,8 @@
                                             class="modal-control"
                                             :required="true"
                                             :helper="false"
+                                            :year-start="$scheduleDatePickerYearStart"
+                                            :year-end="$scheduleDatePickerYearEnd"
                                             x-model="endDateDisplay" />
                                     </div>
                                     <div>
@@ -2973,13 +3019,14 @@
                                 <div class="modal-section">
                                     <div class="modal-section-title">ผู้สอน <span class="required-mark">*</span></div>
                                     @php
-                                        $editInstructorSearchItems = $offering->instructorPool
+                                        $editInstructorOptions = $eligibleScheduleInstructors($offering);
+                                        $editInstructorSearchItems = $editInstructorOptions
                                             ->map(fn ($instructor) => mb_strtolower($instructor->formatted_name ?? $instructor->name, 'UTF-8'))
                                             ->values();
                                     @endphp
                                     <input type="search" class="modal-choice-search" x-model="editInstructorSearch" placeholder="ค้นหาชื่อผู้สอน" aria-label="ค้นหาผู้สอน">
                                     <div class="modal-choice-grid">
-                                        @foreach($offering->instructorPool as $instructor)
+                                        @foreach($editInstructorOptions as $instructor)
                                             @php
                                                 $editInstructorSearchText = mb_strtolower($instructor->formatted_name ?? $instructor->name, 'UTF-8');
                                             @endphp
@@ -2996,7 +3043,7 @@
                                     <label class="modal-label" for="edit_lead_instructor_id_{{ $schedule->id }}">ผู้สอนหลัก</label>
                                     <select id="edit_lead_instructor_id_{{ $schedule->id }}" name="lead_instructor_id" class="modal-control">
                                         <option value="">ไม่ระบุ</option>
-                                        @foreach($offering->instructorPool as $instructor)
+                                        @foreach($editInstructorOptions as $instructor)
                                             <option value="{{ $instructor->id }}" @selected($editLeadInstructorId === (string) $instructor->id)>
                                                 {{ $instructor->formatted_name ?? $instructor->name }}
                                             </option>
@@ -3053,8 +3100,13 @@
                         <input type="hidden" name="modal_mode" value="create">
                         <div class="modal-form-body">
                             @if($errors->any())
-                                <div class="schedule-empty" style="margin-bottom:12px;border-color:var(--status-conflict-border);background:var(--status-conflict-bg);color:var(--status-conflict-fg);font-weight:800;">
-                                    {{ $errors->first() }}
+                                @php
+                                    $alertMessages = $scheduleAlertMessages($errors);
+                                @endphp
+                                <div class="schedule-empty" style="margin-bottom:12px;border-color:var(--status-conflict-border);background:var(--status-conflict-bg);color:var(--status-conflict-fg);font-weight:800;text-align:left;">
+                                    @foreach($alertMessages as $message)
+                                        <div style="{{ ! $loop->last ? 'margin-bottom:6px;' : '' }}">{{ $message }}</div>
+                                    @endforeach
                                 </div>
                             @endif
 
@@ -3086,6 +3138,8 @@
                                         class="modal-control"
                                         :required="true"
                                         :helper="false"
+                                        :year-start="$scheduleDatePickerYearStart"
+                                        :year-end="$scheduleDatePickerYearEnd"
                                         x-model="createStartDate" />
                                 </div>
                                 <div>
@@ -3096,6 +3150,8 @@
                                         class="modal-control"
                                         :required="true"
                                         :helper="false"
+                                        :year-start="$scheduleDatePickerYearStart"
+                                        :year-end="$scheduleDatePickerYearEnd"
                                         x-model="createEndDate" />
                                 </div>
                                 <div>
@@ -3147,13 +3203,14 @@
                                     <div class="modal-section">
                                         <div class="modal-section-title">ผู้สอน <span class="required-mark">*</span></div>
                                         @php
-                                            $createInstructorSearchItems = $offeringOption->instructorPool
+                                            $createInstructorOptions = $eligibleScheduleInstructors($offeringOption);
+                                            $createInstructorSearchItems = $createInstructorOptions
                                                 ->map(fn ($instructor) => mb_strtolower($instructor->formatted_name ?? $instructor->name, 'UTF-8'))
                                                 ->values();
                                         @endphp
                                         <input type="search" class="modal-choice-search" x-model="createInstructorSearch" placeholder="ค้นหาชื่อผู้สอน" aria-label="ค้นหาผู้สอน">
                                         <div class="modal-choice-grid">
-                                            @foreach($offeringOption->instructorPool as $instructor)
+                                            @foreach($createInstructorOptions as $instructor)
                                                 @php
                                                     $instructorSearchText = mb_strtolower($instructor->formatted_name ?? $instructor->name, 'UTF-8');
                                                 @endphp
@@ -3170,7 +3227,7 @@
                                         <label class="modal-label" for="lead_instructor_id_{{ $offeringOption->id }}">ผู้สอนหลัก <span class="optional-note">ไม่บังคับ</span></label>
                                         <select id="lead_instructor_id_{{ $offeringOption->id }}" name="lead_instructor_id" class="modal-control" :disabled="selectedOfferingId !== '{{ $offeringOption->id }}'">
                                             <option value="">ไม่ระบุ</option>
-                                            @foreach($offeringOption->instructorPool as $instructor)
+                                            @foreach($createInstructorOptions as $instructor)
                                                 <option value="{{ $instructor->id }}" @selected($leadInstructorId === (string) $instructor->id)>
                                                     {{ $instructor->formatted_name ?? $instructor->name }}
                                                 </option>

@@ -480,6 +480,50 @@ class ScheduleManagementTest extends TestCase
         ]);
     }
 
+    public function test_schedule_rejects_student_groups_over_capacity(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $extraGroup = StudentGroup::create([
+            'course_offering_id' => $offering->id,
+            'group_code' => 'A2',
+            'student_count' => 20,
+        ]);
+
+        $this->actingAsCourseHead($head);
+
+        $this->post(route('maker.course_offerings.schedules.store', $offering), $this->schedulePayload($instructor, $group, $activityType, $room, [
+            'capacity_required' => 30,
+            'student_group_ids' => [$group->id, $extraGroup->id],
+        ]))
+            ->assertStatus(302)
+            ->assertSessionHasErrors('capacity_required');
+
+        $this->assertDatabaseCount('schedules', 0);
+    }
+
+    public function test_schedule_form_excludes_and_rejects_instructors_from_other_departments(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $outsideInstructor = $this->makeUser('instructor');
+        $outsideInstructor->instructorProfile()->update([
+            'department_id' => Department::create(['name' => 'Outside Schedule Department'])->id,
+        ]);
+        $outsideInstructor->refresh();
+        $offering->instructorPool()->attach($outsideInstructor->id, ['role_in_course' => 'instructor']);
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.course_offerings.schedules.index', [$offering, 'modal' => 'create']))
+            ->assertOk()
+            ->assertSee($instructor->name)
+            ->assertDontSee($outsideInstructor->name);
+
+        $this->post(route('maker.course_offerings.schedules.store', $offering), $this->schedulePayload($outsideInstructor, $group, $activityType, $room))
+            ->assertSessionHasErrors('instructor_ids');
+
+        $this->assertDatabaseCount('schedules', 0);
+    }
+
     public function test_course_head_can_update_schedule_and_pivots(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();

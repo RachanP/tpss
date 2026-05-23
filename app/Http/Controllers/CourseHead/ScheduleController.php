@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\CourseHead;
 
 use App\Http\Controllers\Controller;
+use App\Models\AcademicYear;
 use App\Models\ActivityType;
 use App\Models\CourseOffering;
 use App\Models\Room;
@@ -213,6 +214,7 @@ class ScheduleController extends Controller
             'courseOffering' => $courseOffering,
             'availableOfferings' => $availableOfferings,
             'isWorkspace' => $isWorkspace,
+            ...$this->scheduleDatePickerYearRange(),
             'schedules' => $schedules,
             'allSchedules' => $allSchedules,
             'schedulePeriod' => $period,
@@ -232,6 +234,39 @@ class ScheduleController extends Controller
             'monthViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'month'),
             'previousWeekUrl' => $this->schedulePeriodUrl($courseOffering, $previousPeriod, $isWorkspace, $period),
             'nextWeekUrl' => $this->schedulePeriodUrl($courseOffering, $nextPeriod, $isWorkspace, $period),
+        ];
+    }
+
+    private function scheduleDatePickerYearRange(): array
+    {
+        $years = AcademicYear::query()
+            ->get(['name', 'start_date', 'end_date'])
+            ->flatMap(function (AcademicYear $academicYear): array {
+                $values = [];
+
+                foreach (['start_date', 'end_date'] as $field) {
+                    if ($academicYear->{$field}) {
+                        $values[] = CarbonImmutable::parse($academicYear->{$field})->year;
+                    }
+                }
+
+                if (is_numeric($academicYear->name)) {
+                    $year = (int) $academicYear->name;
+                    $values[] = $year >= 2400 ? $year - 543 : $year;
+                }
+
+                return $values;
+            })
+            ->filter()
+            ->values();
+
+        $currentYear = CarbonImmutable::now()->year;
+        $minAcademicYear = (int) ($years->min() ?: $currentYear);
+        $maxAcademicYear = (int) ($years->max() ?: $currentYear);
+
+        return [
+            'scheduleDatePickerYearStart' => min($minAcademicYear - 10, $currentYear - 20),
+            'scheduleDatePickerYearEnd' => max($maxAcademicYear + 5, $currentYear + 1),
         ];
     }
 
@@ -360,6 +395,8 @@ class ScheduleController extends Controller
         if ($redirect = $this->requireSchedulingPhase($courseOffering, $redirectToWorkspace)) return $redirect;
 
         $validated = $this->validateSchedule($request, $courseOffering);
+        $this->assertSelectedGroupsFitCapacity($courseOffering, $validated);
+        $this->assertInstructorsBelongToCourseDepartment($courseOffering, $validated['instructor_ids']);
         $this->assertLeadInstructorSelected($validated);
         $this->assertNoConflicts($conflictChecker, $validated);
 
@@ -414,6 +451,8 @@ class ScheduleController extends Controller
         if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
 
         $validated = $this->validateSchedule($request, $courseOffering);
+        $this->assertSelectedGroupsFitCapacity($courseOffering, $validated);
+        $this->assertInstructorsBelongToCourseDepartment($courseOffering, $validated['instructor_ids']);
         $this->assertLeadInstructorSelected($validated);
         $this->assertNoConflicts($conflictChecker, $validated, $schedule->id);
 
@@ -593,6 +632,25 @@ class ScheduleController extends Controller
         return $validated;
     }
 
+    private function assertSelectedGroupsFitCapacity(CourseOffering $courseOffering, array $validated): void
+    {
+        $capacity = $validated['capacity_required'] ?? null;
+
+        if (! $capacity) {
+            return;
+        }
+
+        $selectedStudentCount = (int) $courseOffering->studentGroups()
+            ->whereIn('id', array_map('intval', $validated['student_group_ids']))
+            ->sum('student_count');
+
+        if ($selectedStudentCount > (int) $capacity) {
+            throw ValidationException::withMessages([
+                'capacity_required' => "จำนวนผู้เรียนที่เลือก ({$selectedStudentCount} คน) เกินจำนวนที่รองรับ ({$capacity} คน)",
+            ]);
+        }
+    }
+
     private function assertLeadInstructorSelected(array $validated): void
     {
         $leadId = $validated['lead_instructor_id'] ?? null;
@@ -603,6 +661,27 @@ class ScheduleController extends Controller
         if (! in_array((int) $leadId, array_map('intval', $validated['instructor_ids']), true)) {
             throw ValidationException::withMessages([
                 'lead_instructor_id' => 'ผู้สอนหลักต้องอยู่ในรายชื่อผู้สอนที่เลือก',
+            ]);
+        }
+    }
+
+    private function assertInstructorsBelongToCourseDepartment(CourseOffering $courseOffering, array $instructorIds): void
+    {
+        $courseOffering->loadMissing('course');
+        $departmentId = $courseOffering->course?->department_id;
+
+        if (! $departmentId) {
+            return;
+        }
+
+        $allowedCount = $courseOffering->instructorPool()
+            ->whereIn('users.id', array_map('intval', $instructorIds))
+            ->whereHas('instructorProfile', fn ($query) => $query->where('department_id', $departmentId))
+            ->count();
+
+        if ($allowedCount !== count(array_unique(array_map('intval', $instructorIds)))) {
+            throw ValidationException::withMessages([
+                'instructor_ids' => 'เลือกได้เฉพาะผู้สอนในภาควิชาของรายวิชานี้',
             ]);
         }
     }
@@ -621,7 +700,7 @@ class ScheduleController extends Controller
 
         if (! empty($conflicts)) {
             throw ValidationException::withMessages([
-                'schedule' => collect($conflicts)->pluck('message')->unique()->implode(' / '),
+                'schedule' => collect($conflicts)->pluck('message')->unique()->values()->all(),
             ]);
         }
     }

@@ -170,8 +170,9 @@
         .tdi-input-cal { padding-right: 38px !important; }
         .tdi-cal-btn {
             position: absolute;
-            top: 7px;
+            top: 50%;
             right: 6px;
+            transform: translateY(-50%);
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -219,9 +220,20 @@
         }
         .tdi-pop-nav:hover { background: var(--bg-2, #f1f5f9); }
         .tdi-pop-nav svg { width: 15px; height: 15px; }
+        .tdi-pop-select {
+            position: relative;
+            min-width: 0;
+        }
+        .tdi-pop-select.tdi-pop-month { flex: 1; }
+        .tdi-pop-select.tdi-pop-year { width: 74px; flex-shrink: 0; }
         .tdi-pop-sel {
             min-width: 0;
+            width: 100%;
             height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
             border: 1px solid var(--border, #d8dee9);
             border-radius: 6px;
             background: #fff;
@@ -229,11 +241,77 @@
             font-size: 12.5px;
             font-weight: 700;
             color: var(--fg-1, #1e293b);
-            padding: 0 2px;
+            padding: 0 8px;
             cursor: pointer;
         }
-        .tdi-pop-sel.tdi-pop-month { flex: 1; }
-        .tdi-pop-sel.tdi-pop-year { width: 74px; flex-shrink: 0; }
+        .tdi-pop-sel:hover { background: var(--bg-2, #f1f5f9); }
+        .tdi-pop-sel:focus {
+            outline: none;
+            border-color: var(--brand-navy, #1e3a5f);
+            box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.12);
+        }
+        .tdi-pop-sel-label {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .tdi-pop-sel-caret {
+            width: 0;
+            height: 0;
+            flex-shrink: 0;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-top: 5px solid var(--fg-2, #475569);
+        }
+        .tdi-pop-menu {
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0;
+            z-index: 1002;
+            width: 100%;
+            max-height: 184px;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            border: 1px solid var(--border, #d8dee9);
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 12px 26px rgba(15, 23, 42, 0.16);
+        }
+        .tdi-pop-year .tdi-pop-menu {
+            width: 100%;
+            max-height: 184px;
+            display: block;
+            scrollbar-gutter: stable;
+        }
+        .tdi-pop-menu button {
+            width: 100%;
+            min-height: 34px;
+            display: block;
+            border: 0;
+            background: #fff;
+            color: var(--fg-1, #1e293b);
+            padding: 8px 10px;
+            font: inherit;
+            font-size: 12.5px;
+            font-weight: 600;
+            line-height: 1.3;
+            text-align: left;
+            cursor: pointer;
+        }
+        .tdi-pop-year .tdi-pop-menu button {
+            min-height: 34px;
+            padding: 8px 10px;
+            text-align: left;
+        }
+        .tdi-pop-menu button:hover,
+        .tdi-pop-menu button.is-selected {
+            background: var(--bg-2, #f1f5f9);
+        }
+        .tdi-pop-menu button.is-selected {
+            color: var(--brand-navy, #1e3a5f);
+            font-weight: 800;
+        }
         .tdi-pop-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
@@ -277,6 +355,8 @@
                 calOpen: false,
                 calYear: new Date().getFullYear(),
                 calMonth: new Date().getMonth(),
+                tdiMonthOpen: false,
+                tdiYearOpen: false,
                 tdiSelectedIso: '',
 
                 // มาส์กข้อความให้เป็นรูปแบบ วว/ดด/พ.ศ.
@@ -324,6 +404,39 @@
                 tdiToggle() {
                     if (!this.calOpen) this.tdiSync();
                     this.calOpen = !this.calOpen;
+                    if (!this.calOpen) this.tdiCloseMenus();
+                },
+                tdiCloseMenus() {
+                    this.tdiMonthOpen = false;
+                    this.tdiYearOpen = false;
+                },
+                tdiToggleMonth() {
+                    this.tdiYearOpen = false;
+                    this.tdiMonthOpen = !this.tdiMonthOpen;
+                    if (this.tdiMonthOpen) this.tdiScrollMenu('month');
+                },
+                tdiToggleYear() {
+                    this.tdiMonthOpen = false;
+                    this.tdiYearOpen = !this.tdiYearOpen;
+                    if (this.tdiYearOpen) this.tdiScrollMenu('year');
+                },
+                tdiScrollMenu(kind) {
+                    this.$nextTick(() => {
+                        const menu = this.$root.querySelector('.tdi-pop-' + kind + ' .tdi-pop-menu');
+                        const selected = menu ? menu.querySelector('.is-selected') : null;
+                        if (!menu || !selected) return;
+
+                        const targetTop = selected.offsetTop - ((menu.clientHeight - selected.offsetHeight) / 2);
+                        menu.scrollTop = Math.max(0, targetTop);
+                    });
+                },
+                tdiPickMonth(month) {
+                    this.calMonth = month;
+                    this.tdiMonthOpen = false;
+                },
+                tdiPickYear(year) {
+                    this.calYear = year;
+                    this.tdiYearOpen = false;
                 },
                 tdiShiftMonth(delta) {
                     let month = this.calMonth + delta;
@@ -332,6 +445,7 @@
                     if (month > 11) { month = 0; year += 1; }
                     this.calMonth = month;
                     this.calYear = year;
+                    this.tdiCloseMenus();
                 },
                 tdiPick(day) {
                     if (!day) return;
@@ -344,6 +458,7 @@
                     input.dispatchEvent(new Event('change', { bubbles: true }));
                     this.tdiSelectedIso = this.tdiDayIso(day);
                     this.calOpen = false;
+                    this.tdiCloseMenus();
                 },
             }));
         });

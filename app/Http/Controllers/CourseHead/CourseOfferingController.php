@@ -123,6 +123,7 @@ class CourseOfferingController extends Controller
     {
         $this->authorizeCourseHeadOffering($courseOffering);
         if ($redirect = $this->requireSchedulingPhase($courseOffering, 'instructors')) return $redirect;
+        $courseOffering->loadMissing('course');
 
         $validated = $request->validate([
             'user_id'        => ['required', 'integer', 'exists:users,id'],
@@ -137,6 +138,19 @@ class CourseOfferingController extends Controller
             }
             return $this->redirectToInstructors($courseOffering)
                 ->withErrors(['user_id' => 'เลือกได้เฉพาะอาจารย์ที่ยังใช้งานอยู่และมีข้อมูลโปรไฟล์อาจารย์'])
+                ->withInput();
+        }
+
+        if (
+            $courseOffering->course?->department_id
+            && (int) $user->instructorProfile->department_id !== (int) $courseOffering->course->department_id
+        ) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'เลือกได้เฉพาะอาจารย์ในภาควิชาของรายวิชานี้'], 422);
+            }
+
+            return $this->redirectToInstructors($courseOffering)
+                ->withErrors(['user_id' => 'เลือกได้เฉพาะอาจารย์ในภาควิชาของรายวิชานี้'])
                 ->withInput();
         }
 
