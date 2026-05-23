@@ -164,6 +164,191 @@
         }
     </style>
 
+    {{-- ปฏิทินเลือกวันที่ พ.ศ. ของ <x-thai-date-input> — ลงทะเบียนที่ layout เพื่อให้ทำงานแม้ component อยู่ใน <template> --}}
+    <style>
+        .tdi-wrap { position: relative; }
+        .tdi-input-cal { padding-right: 38px !important; }
+        .tdi-cal-btn {
+            position: absolute;
+            top: 7px;
+            right: 6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            border: 0;
+            border-radius: 6px;
+            background: transparent;
+            color: var(--fg-3, #6b7280);
+            cursor: pointer;
+        }
+        .tdi-cal-btn:hover { background: var(--bg-2, #f1f5f9); color: var(--brand-navy, #1e3a5f); }
+        .tdi-cal-btn svg { width: 18px; height: 18px; }
+        .tdi-pop {
+            position: absolute;
+            z-index: 1000;
+            top: calc(100% + 6px);
+            left: 0;
+            width: 270px;
+            padding: 12px;
+            background: #fff;
+            border: 1px solid var(--border, #d8dee9);
+            border-radius: 10px;
+            box-shadow: 0 14px 38px rgba(0, 0, 0, 0.18);
+        }
+        .tdi-pop-head {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 9px;
+        }
+        .tdi-pop-nav {
+            flex-shrink: 0;
+            width: 28px;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border, #d8dee9);
+            border-radius: 6px;
+            background: #fff;
+            color: var(--fg-2, #475569);
+            cursor: pointer;
+        }
+        .tdi-pop-nav:hover { background: var(--bg-2, #f1f5f9); }
+        .tdi-pop-nav svg { width: 15px; height: 15px; }
+        .tdi-pop-sel {
+            min-width: 0;
+            height: 32px;
+            border: 1px solid var(--border, #d8dee9);
+            border-radius: 6px;
+            background: #fff;
+            font: inherit;
+            font-size: 12.5px;
+            font-weight: 700;
+            color: var(--fg-1, #1e293b);
+            padding: 0 2px;
+            cursor: pointer;
+        }
+        .tdi-pop-sel.tdi-pop-month { flex: 1; }
+        .tdi-pop-sel.tdi-pop-year { width: 74px; flex-shrink: 0; }
+        .tdi-pop-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+        }
+        .tdi-pop-dow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 24px;
+            font-size: 10.5px;
+            font-weight: 800;
+            color: var(--fg-3, #6b7280);
+        }
+        .tdi-pop-day {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 30px;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            background: transparent;
+            font: inherit;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--fg-1, #1e293b);
+            cursor: pointer;
+        }
+        .tdi-pop-day:hover:not(.is-blank) { background: var(--bg-2, #f1f5f9); }
+        .tdi-pop-day.is-blank { visibility: hidden; cursor: default; }
+        .tdi-pop-day.is-today { border-color: var(--brand-navy, #1e3a5f); font-weight: 800; }
+        .tdi-pop-day.is-selected {
+            background: var(--brand-navy, #1e3a5f);
+            color: #fff;
+            border-color: var(--brand-navy, #1e3a5f);
+        }
+    </style>
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('thaiDateInput', () => ({
+                calOpen: false,
+                calYear: new Date().getFullYear(),
+                calMonth: new Date().getMonth(),
+                tdiSelectedIso: '',
+
+                // มาส์กข้อความให้เป็นรูปแบบ วว/ดด/พ.ศ.
+                maskThaiDate(value) {
+                    const raw = String(value || '').trim();
+                    const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                    if (iso) return iso[3] + '/' + iso[2] + '/' + (parseInt(iso[1], 10) + 543);
+
+                    const digits = raw.replace(/\D/g, '').slice(0, 8);
+                    if (digits.length <= 2) return digits.length === 2 ? digits + '/' : digits;
+                    if (digits.length <= 4) return digits.slice(0, 2) + '/' + digits.slice(2) + (digits.length === 4 ? '/' : '');
+                    return digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4);
+                },
+                get tdiTodayIso() {
+                    const t = new Date();
+                    return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+                },
+                get tdiGrid() {
+                    const firstDow = (new Date(this.calYear, this.calMonth, 1).getDay() + 6) % 7;
+                    const days = new Date(this.calYear, this.calMonth + 1, 0).getDate();
+                    const cells = [];
+                    for (let i = 0; i < firstDow; i++) cells.push({ day: null });
+                    for (let d = 1; d <= days; d++) cells.push({ day: d });
+                    return cells;
+                },
+                tdiDayIso(day) {
+                    return this.calYear + '-' + String(this.calMonth + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+                },
+                // sync เดือน/ปีในปฏิทินจากค่าที่พิมพ์ไว้ในช่อง (วว/ดด/พ.ศ.)
+                tdiSync() {
+                    const parts = String(this.$refs.thaiInput.value || '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+                    if (parts) {
+                        let year = parseInt(parts[3], 10);
+                        if (year >= 2400) year -= 543;
+                        this.calYear = year;
+                        this.calMonth = Math.min(11, Math.max(0, parseInt(parts[2], 10) - 1));
+                        this.tdiSelectedIso = this.tdiDayIso(parseInt(parts[1], 10));
+                    } else {
+                        const t = new Date();
+                        this.calYear = t.getFullYear();
+                        this.calMonth = t.getMonth();
+                        this.tdiSelectedIso = '';
+                    }
+                },
+                tdiToggle() {
+                    if (!this.calOpen) this.tdiSync();
+                    this.calOpen = !this.calOpen;
+                },
+                tdiShiftMonth(delta) {
+                    let month = this.calMonth + delta;
+                    let year = this.calYear;
+                    if (month < 0) { month = 11; year -= 1; }
+                    if (month > 11) { month = 0; year += 1; }
+                    this.calMonth = month;
+                    this.calYear = year;
+                },
+                tdiPick(day) {
+                    if (!day) return;
+                    const thai = String(day).padStart(2, '0')
+                        + '/' + String(this.calMonth + 1).padStart(2, '0')
+                        + '/' + (this.calYear + 543);
+                    const input = this.$refs.thaiInput;
+                    input.value = thai;
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                    this.tdiSelectedIso = this.tdiDayIso(day);
+                    this.calOpen = false;
+                },
+            }));
+        });
+    </script>
+
     <!-- Alpine.js (Collapse plugin must load before core) -->
     <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.13.3/dist/cdn.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>

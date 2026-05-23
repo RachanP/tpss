@@ -114,17 +114,8 @@
         6 => 'วันเสาร์',
         7 => 'วันอาทิตย์',
     ];
-    $formatDate = function ($date) {
-        if (! $date) {
-            return '-';
-        }
-
-        $carbon = $date instanceof \Carbon\CarbonInterface
-            ? \Carbon\CarbonImmutable::instance($date)
-            : \Carbon\CarbonImmutable::parse($date);
-
-        return $carbon->format('d/m/') . ($carbon->year + 543);
-    };
+    // แสดงวันที่ผ่านจุดกลาง — ThaiDate (พ.ศ.)
+    $formatDate = fn ($date) => $date ? \App\Support\ThaiDate::date($date) : '-';
     $monthCalendarStart = \Carbon\CarbonImmutable::parse($weekStart)->startOfWeek(\Carbon\CarbonInterface::MONDAY);
     $monthCalendarEnd = \Carbon\CarbonImmutable::parse($weekEnd)->endOfWeek(\Carbon\CarbonInterface::SUNDAY);
     $monthCalendarDays = collect(\Carbon\CarbonPeriod::create($monthCalendarStart, $monthCalendarEnd))
@@ -260,148 +251,29 @@
             width: 17px;
             height: 17px;
         }
-        .sched-datenav-field {
-            position: relative;
-            display: inline-flex;
-            align-items: center;
-            gap: 2px;
+        .sched-datenav-input {
+            width: 138px;
             height: 34px;
-            padding: 0 8px 0 3px;
             border: 1px solid var(--schedule-border-strong);
             border-radius: 8px;
             background: var(--surface);
-            transition: border-color .12s ease, box-shadow .12s ease;
-        }
-        .sched-datenav-field:focus-within {
-            border-color: var(--brand-navy);
-            box-shadow: 0 0 0 3px oklch(45% 0.12 250 / 0.12);
-        }
-        .sched-datenav-cal-toggle {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 26px;
-            height: 26px;
-            border: 0;
-            border-radius: 6px;
-            background: transparent;
-            color: var(--schedule-muted);
-            cursor: pointer;
-            transition: background .12s ease, color .12s ease;
-        }
-        .sched-datenav-cal-toggle:hover {
-            background: var(--schedule-soft);
-            color: var(--brand-navy);
-        }
-        .sched-datenav-cal-toggle svg {
-            width: 17px;
-            height: 17px;
-        }
-        .sched-datenav-field input {
-            width: 94px;
-            height: 24px;
-            border: 0;
-            background: transparent;
             color: var(--fg-1);
             font: inherit;
             font-size: 13px;
             font-weight: 850;
-            padding: 0 2px;
+            padding-left: 10px;
             box-sizing: border-box;
+            transition: border-color .12s ease, box-shadow .12s ease;
         }
-        .sched-datenav-field input:focus {
+        .sched-datenav-input:focus {
             outline: none;
-        }
-        .sched-cal {
-            position: absolute;
-            top: calc(100% + 7px);
-            right: 0;
-            z-index: 60;
-            width: 256px;
-            padding: 12px;
-            border: 1px solid var(--schedule-border-strong);
-            border-radius: 10px;
-            background: var(--surface);
-            box-shadow: 0 14px 36px oklch(0% 0 0 / 0.18);
-        }
-        .sched-cal-head {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 8px;
-        }
-        .sched-cal-title {
-            font-size: 13.5px;
-            font-weight: 850;
-            color: var(--fg-1);
-        }
-        .sched-cal-nav {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 28px;
-            height: 28px;
-            border: 1px solid var(--schedule-border);
-            border-radius: 6px;
-            background: var(--surface);
-            color: var(--fg-2);
-            cursor: pointer;
-            transition: background .12s ease, color .12s ease;
-        }
-        .sched-cal-nav:hover {
-            background: var(--schedule-soft);
-            color: var(--brand-navy);
-        }
-        .sched-cal-nav svg {
-            width: 15px;
-            height: 15px;
-        }
-        .sched-cal-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 2px;
-        }
-        .sched-cal-dow {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 24px;
-            font-size: 11px;
-            font-weight: 800;
-            color: var(--schedule-muted);
-        }
-        .sched-cal-day {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 30px;
-            border: 1px solid transparent;
-            border-radius: 6px;
-            background: transparent;
-            color: var(--fg-1);
-            font-size: 12.5px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: background .1s ease, border-color .1s ease;
-        }
-        .sched-cal-day:hover:not(.is-blank) {
-            background: var(--schedule-soft);
-            border-color: var(--schedule-border-strong);
-        }
-        .sched-cal-day.is-blank {
-            visibility: hidden;
-            cursor: default;
-        }
-        .sched-cal-day.is-today {
-            color: var(--brand-navy);
-            font-weight: 900;
-            border-color: var(--schedule-border-strong);
-        }
-        .sched-cal-day.is-selected,
-        .sched-cal-day.is-selected:hover {
-            background: var(--brand-navy);
-            color: #fff;
             border-color: var(--brand-navy);
+            box-shadow: 0 0 0 3px oklch(45% 0.12 250 / 0.12);
+        }
+        /* ปฏิทิน popup ของ date-nav ให้กางออกทางซ้าย กันหลุดขอบการ์ด */
+        .sched-datenav .tdi-pop {
+            left: auto;
+            right: 0;
         }
         .week-btn {
             width: 34px;
@@ -2020,13 +1892,6 @@
             scheduleGroup: '',
             scheduleInstructor: '',
             gridJumpDate: @js($formatDate($weekStart)),
-            calendarOpen: false,
-            calendarYear: @js((int) $weekStart->year),
-            calendarMonth: @js((int) $weekStart->month - 1),
-            calendarMonths: @js(['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม']),
-            calendarWeekdays: @js(['จ','อ','พ','พฤ','ศ','ส','อา']),
-            calendarTodayIso: @js(\Carbon\CarbonImmutable::now()->toDateString()),
-            calendarSelectedIso: @js($weekStart->toDateString()),
             createInstructorSearch: '',
             createGroupSearch: '',
             createStartDate: @js(old('start_date') ? $formatDate(\Carbon\CarbonImmutable::parse(old('start_date'))) : ''),
@@ -2113,44 +1978,6 @@
                 const day = parts[1].padStart(2, '0');
 
                 return `${year}-${month}-${day}`;
-            },
-            toggleCalendar() {
-                if (!this.calendarOpen) {
-                    this.calendarYear = @js((int) $weekStart->year);
-                    this.calendarMonth = @js((int) $weekStart->month - 1);
-                }
-                this.calendarOpen = !this.calendarOpen;
-            },
-            calendarShiftMonth(delta) {
-                let month = this.calendarMonth + delta;
-                let year = this.calendarYear;
-                if (month < 0) { month = 11; year -= 1; }
-                if (month > 11) { month = 0; year += 1; }
-                this.calendarMonth = month;
-                this.calendarYear = year;
-            },
-            calendarMonthLabel() {
-                return this.calendarMonths[this.calendarMonth] + ' ' + (this.calendarYear + 543);
-            },
-            calendarGrid() {
-                const firstDow = (new Date(this.calendarYear, this.calendarMonth, 1).getDay() + 6) % 7;
-                const daysInMonth = new Date(this.calendarYear, this.calendarMonth + 1, 0).getDate();
-                const cells = [];
-                for (let i = 0; i < firstDow; i++) {
-                    cells.push({ day: null, iso: '' });
-                }
-                for (let day = 1; day <= daysInMonth; day++) {
-                    const iso = this.calendarYear
-                        + '-' + String(this.calendarMonth + 1).padStart(2, '0')
-                        + '-' + String(day).padStart(2, '0');
-                    cells.push({ day, iso });
-                }
-                return cells;
-            },
-            calendarSelect(cell) {
-                if (!cell.day) return;
-                this.calendarOpen = false;
-                this.navigateGrid(cell.iso, @js($schedulePeriod ?? 'week'));
             },
             matchesCreateSearch(text, keyword) {
                 const normalizedKeyword = String(keyword || '').trim().toLowerCase();
@@ -2376,47 +2203,15 @@
                             <a class="sched-datenav-arrow" href="{{ $previousWeekUrl }}" data-testid="schedule-nav-prev" aria-label="ช่วงก่อนหน้า">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
                             </a>
-                            <div class="sched-datenav-field" @click.outside="calendarOpen = false">
-                                <button type="button" class="sched-datenav-cal-toggle" @click="toggleCalendar()" :aria-expanded="calendarOpen" aria-label="เปิดปฏิทินเลือกวันที่" data-testid="schedule-nav-calendar">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                                        <line x1="16" y1="2" x2="16" y2="6"></line>
-                                        <line x1="8" y1="2" x2="8" y2="6"></line>
-                                        <line x1="3" y1="10" x2="21" y2="10"></line>
-                                    </svg>
-                                </button>
-                                <x-thai-date-input
-                                    name="grid_jump_date"
-                                    :helper="false"
-                                    :value="$weekStart->toDateString()"
-                                    x-model="gridJumpDate"
-                                    @change="jumpToGridDate(gridJumpDate)"
-                                    @keydown.enter.prevent="jumpToGridDate(gridJumpDate)"
-                                    aria-label="พิมพ์วันที่ที่ต้องการดูในตาราง" />
-                                <div class="sched-cal" x-show="calendarOpen" x-cloak x-transition.opacity @keydown.escape.window="calendarOpen = false" role="dialog" aria-label="ปฏิทินเลือกวันที่">
-                                    <div class="sched-cal-head">
-                                        <button type="button" class="sched-cal-nav" @click="calendarShiftMonth(-1)" aria-label="เดือนก่อนหน้า">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                                        </button>
-                                        <span class="sched-cal-title" x-text="calendarMonthLabel()"></span>
-                                        <button type="button" class="sched-cal-nav" @click="calendarShiftMonth(1)" aria-label="เดือนถัดไป">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                                        </button>
-                                    </div>
-                                    <div class="sched-cal-grid">
-                                        <template x-for="dow in calendarWeekdays" :key="dow">
-                                            <span class="sched-cal-dow" x-text="dow"></span>
-                                        </template>
-                                        <template x-for="(cell, index) in calendarGrid()" :key="index">
-                                            <button type="button" class="sched-cal-day"
-                                                :class="{ 'is-blank': !cell.day, 'is-today': cell.iso === calendarTodayIso, 'is-selected': cell.iso === calendarSelectedIso }"
-                                                :disabled="!cell.day"
-                                                @click="calendarSelect(cell)"
-                                                x-text="cell.day || ''"></button>
-                                        </template>
-                                    </div>
-                                </div>
-                            </div>
+                            <x-thai-date-input
+                                name="grid_jump_date"
+                                :helper="false"
+                                :value="$weekStart->toDateString()"
+                                class="sched-datenav-input"
+                                x-model="gridJumpDate"
+                                @change="jumpToGridDate(gridJumpDate)"
+                                @keydown.enter.prevent="jumpToGridDate(gridJumpDate)"
+                                aria-label="พิมพ์วันที่ที่ต้องการดูในตาราง" />
                             <a class="sched-datenav-arrow" href="{{ $nextWeekUrl }}" data-testid="schedule-nav-next" aria-label="ช่วงถัดไป">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
                             </a>

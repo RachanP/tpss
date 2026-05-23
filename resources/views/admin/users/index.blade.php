@@ -1008,7 +1008,7 @@
                                             </div>
                                             <div class="form-group">
                                                 <label>วันที่บรรจุเข้าทำงาน <span style="color: #ef4444;">*</span></label>
-                                                <x-thai-date-input name="instructor_hired_at" x-model="instructorProfile.hired_at" x-bind:required="hasInstructor" />
+                                                <x-thai-date-input name="instructor_hired_at" x-model="instructorProfile.hired_at" x-bind:required="hasInstructor" :calendar="true" />
                                             </div>
                                         </div>
                                         <div x-show='instructorProfile.academic_degree === "ปริญญาเอก" && thaiDateToIso(instructorProfile.hired_at) && new Date(thaiDateToIso(instructorProfile.hired_at)) < new Date("2016-10-01")'

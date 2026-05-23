@@ -80,10 +80,8 @@
                 $action = $displayActionFor($log->action);
                 $categoryStyle = $categoryStyles[$category] ?? ['bg' => 'oklch(96% 0.008 220)', 'fg' => 'oklch(36% 0.03 235)', 'dot' => 'oklch(50% 0.04 235)'];
                 $severity = $severityFor($log);
-                $createdAt = $log->created_at?->copy();
-                $timeText = $createdAt
-                    ? $createdAt->format('d/m/') . ($createdAt->year + 543) . ' ' . $createdAt->format('H:i')
-                    : '-';
+                $createdAt = $log->created_at;
+                $timeText = $createdAt ? \App\Support\ThaiDate::dateTime($createdAt) : '-';
             @endphp
 
             <div data-testid="recent-activity-row"
