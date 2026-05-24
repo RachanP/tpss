@@ -60,8 +60,7 @@
                         $catClass = $categoryColors[$log->category] ?? 'p-neutral';
                         $actionVerb = \Illuminate\Support\Str::after($log->action, '.') ?: $log->action;
                         $actionTone = $actionToneFor($log->action);
-                        $beYear   = ($log->created_at->year + 543);
-                        $dateStr  = $log->created_at->format('d/m/') . $beYear . ' ' . $log->created_at->format('H:i');
+                        $dateStr  = \App\Support\ThaiDate::dateTime($log->created_at);
                         $ipAddress = data_get($log->new_values, 'context.ip_address');
                     @endphp
                     <tr data-testid="audit-logs-row" data-log-id="{{ $log->id }}">
