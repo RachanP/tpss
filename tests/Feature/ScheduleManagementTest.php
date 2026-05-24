@@ -92,6 +92,22 @@ class ScheduleManagementTest extends TestCase
 
         $this->get(route('maker.course_offerings.schedules.index', [
             $offering,
+            'period' => 'day',
+            'date' => '2026-08-03',
+        ]))
+            ->assertOk()
+            ->assertSee('03/08/2569');
+
+        $this->get(route('maker.course_offerings.schedules.index', [
+            $offering,
+            'period' => 'week',
+            'date' => '2026-08-03',
+        ]))
+            ->assertOk()
+            ->assertSee('สัปดาห์ที่ 1');
+
+        $this->get(route('maker.course_offerings.schedules.index', [
+            $offering,
             'period' => 'month',
             'date' => '2026-08-01',
         ]))
@@ -100,9 +116,28 @@ class ScheduleManagementTest extends TestCase
             ->assertSee('period=week', false)
             ->assertSee('period=month', false)
             ->assertSee('data-testid="schedule-month-calendar-co"', false)
+            ->assertSee('สิงหาคม 2569')
             ->assertSee('จันทร์')
             ->assertSee('อาทิตย์')
             ->assertSee('Monthly schedule item');
+
+        $this->get(route('maker.course_offerings.schedules.index', [
+            $offering,
+            'period' => 'week',
+            'date' => '2026-05-18',
+        ]))
+            ->assertOk()
+            ->assertSee('นอกช่วงปีการศึกษา')
+            ->assertDontSee('สัปดาห์ที่ 0');
+
+        $this->get(route('maker.course_offerings.schedules.index', [
+            $offering,
+            'period' => 'month',
+            'date' => '2026-05-01',
+        ]))
+            ->assertOk()
+            ->assertSee('พฤษภาคม 2569')
+            ->assertSee('นอกช่วงปีการศึกษา');
     }
 
     public function test_block_date_schedule_displays_across_matching_week_days(): void
