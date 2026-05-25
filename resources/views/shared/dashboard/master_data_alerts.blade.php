@@ -4,24 +4,15 @@
     $allClear    = !$hasCritical && !$hasWarning;
 @endphp
 
-<div class="card" style="margin-bottom: 1.5rem;">
+<div class="card">
     <div class="card-hdr">
         <div style="display: flex; align-items: center; gap: 10px;">
-            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"
-                 style="color: {{ $hasCritical ? 'var(--status-conflict-fg)' : ($hasWarning ? 'var(--status-warning-fg)' : 'var(--status-success-fg)') }};">
-                @if($allClear)
-                    <polyline points="20 6 9 17 4 12"/>
-                @else
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-                @endif
-            </svg>
-            <div class="card-ttl">ความพร้อม Master Data</div>
+            <div class="card-ttl">ข้อมูลที่ต้องพร้อมก่อนจัดตาราง</div>
             @if($hasCritical)
-                <span class="pill p-conflict">Critical {{ $alerts['critical'] }}</span>
+                <span class="pill p-conflict">ต้องแก้ก่อน {{ $alerts['critical'] }}</span>
             @endif
             @if($hasWarning)
-                <span class="pill p-warning">Warning {{ $alerts['warnings'] }}</span>
+                <span class="pill p-warning">ควรตรวจ {{ $alerts['warnings'] }}</span>
             @endif
             @if($allClear)
                 <span class="pill p-success">พร้อมทั้งหมด</span>
@@ -33,8 +24,7 @@
     </div>
 
     @if($allClear)
-    <div style="padding: 16px 20px; display: flex; align-items: center; gap: 10px; color: var(--status-success-fg); background: color-mix(in oklch, var(--status-success) 5%, white); border-top: 1px solid var(--border);">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+    <div style="padding: 16px 20px; display: flex; align-items: center; gap: 10px; color: var(--status-success-fg); background: color-mix(in oklch, var(--status-success) 5%, var(--surface)); border-top: 1px solid var(--border);">
         <span style="font-size: 13px; font-weight: 600;">ข้อมูลทุกหมวดพร้อมสำหรับการจัดตารางสอน</span>
     </div>
     @else
@@ -42,11 +32,10 @@
 
         {{-- Critical rows --}}
         @if($hasCritical)
-        <div style="padding: 8px 0; background: color-mix(in oklch, var(--status-conflict) 4%, white);">
-            <div style="padding: 4px 16px 6px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--status-conflict-fg);">Critical</div>
+        <div style="padding: 8px 0; background: color-mix(in oklch, var(--status-conflict) 4%, var(--surface));">
+            <div class="admin-alert-group-label is-critical">ต้องแก้ก่อนเปิดจัดตาราง</div>
             @foreach($criticals as $c)
-                <a href="{{ $c['link'] }}" style="text-decoration:none; display:flex; align-items:center; gap:12px; padding:8px 16px; border-left: 3px solid var(--status-conflict);">
-                    <div style="width:6px;height:6px;border-radius:50%;background:var(--status-conflict);flex-shrink:0;"></div>
+                <a href="{{ $c['link'] }}" class="admin-alert-row is-critical">
                     <span style="flex:1;font-size:12.5px;font-weight:600;color:var(--status-conflict-fg);">{{ $c['label'] }}</span>
                     <span style="font-size:11px;color:var(--status-conflict-fg);opacity:.7;">{{ $c['key'] === 'pa_violations' ? 'ดูรายละเอียด →' : 'แก้ไข →' }}</span>
                 </a>
@@ -65,11 +54,10 @@
         @endphp
         @if($hasCritical)<div style="border-top: 1px solid var(--border);"></div>@endif
         <div style="padding: 8px 0;">
-            <div style="padding: 4px 16px 6px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--status-warning-fg);">Warning</div>
+            <div class="admin-alert-group-label is-warning">ควรตรวจสอบเพื่อให้ข้อมูลครบถ้วน</div>
             @foreach($warningItems as $item)
                 @if($item['count'] > 0)
-                <a href="{{ route('admin.alerts') }}" style="text-decoration:none; display:flex; align-items:center; gap:12px; padding:8px 16px; border-left: 3px solid var(--status-warning);">
-                    <div style="width:6px;height:6px;border-radius:50%;background:var(--status-warning);flex-shrink:0;"></div>
+                <a href="{{ route('admin.alerts') }}" class="admin-alert-row is-warning">
                     <span style="flex:1;font-size:12.5px;font-weight:600;color:var(--fg-1);">{{ $item['label'] }}</span>
                     <span class="pill p-warning" style="font-size:11px;">{{ $item['count'] }} {{ $item['unit'] }}</span>
                 </a>
@@ -81,3 +69,54 @@
     </div>
     @endif
 </div>
+
+<style>
+    .admin-alert-group-label {
+        padding: 4px 16px 6px;
+        font-size: 11px;
+        font-weight: 800;
+        line-height: 1.35;
+    }
+
+    .admin-alert-group-label.is-critical {
+        color: var(--status-conflict-fg);
+    }
+
+    .admin-alert-group-label.is-warning {
+        color: var(--status-warning-fg);
+    }
+
+    .admin-alert-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 0 12px 6px;
+        padding: 9px 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--r-sm);
+        text-decoration: none;
+        transition: background var(--dur-fast), border-color var(--dur-fast);
+    }
+
+    .admin-alert-row:hover {
+        background: var(--surface);
+    }
+
+    .admin-alert-row.is-critical {
+        border-color: color-mix(in oklch, var(--status-conflict) 28%, var(--border));
+        background: color-mix(in oklch, var(--status-conflict) 5%, var(--surface));
+    }
+
+    .admin-alert-row.is-critical:hover {
+        border-color: color-mix(in oklch, var(--status-conflict) 42%, var(--border));
+    }
+
+    .admin-alert-row.is-warning {
+        border-color: color-mix(in oklch, var(--status-warning) 30%, var(--border));
+        background: color-mix(in oklch, var(--status-warning) 5%, var(--surface));
+    }
+
+    .admin-alert-row.is-warning:hover {
+        border-color: color-mix(in oklch, var(--status-warning) 44%, var(--border));
+    }
+</style>

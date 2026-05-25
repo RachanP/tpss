@@ -87,282 +87,407 @@
             'label' => 'ปีการศึกษา',
             'meta' => $currentAcademicYear
                 ? $currentAcademicYear->name . ' / เทอม ' . $currentAcademicYear->semester
-                : 'ยังไม่ตั้งค่า',
+                : 'ยังไม่ได้ตั้งค่า',
+            'status' => $currentAcademicYear ? 'พร้อม' : 'ยังไม่ตั้งค่า',
             'tone' => $currentAcademicYear ? 'success' : 'warning',
         ],
         [
             'label' => 'เงื่อนไขสำคัญ',
             'meta' => $criticalCount > 0 ? $criticalCount . ' รายการ' : 'ผ่าน',
+            'status' => $criticalCount > 0 ? 'ต้องแก้ไข' : 'พร้อม',
             'tone' => $criticalCount > 0 ? 'conflict' : 'success',
         ],
         [
-            'label' => 'รายการที่ควรตรวจสอบ',
+            'label' => 'รายการตรวจสอบ',
             'meta' => $warningCount > 0 ? $warningCount . ' รายการ' : 'ไม่มี',
+            'status' => $warningCount > 0 ? 'ควรตรวจสอบ' : 'พร้อม',
             'tone' => $warningCount > 0 ? 'warning' : 'success',
         ],
         [
             'label' => 'รายวิชาเปิดสอน',
             'meta' => number_format($activeCourseCount) . ' วิชา',
+            'status' => in_array('no_active_course', $criticalKeys, true) ? 'ต้องแก้ไข' : 'พร้อม',
             'tone' => in_array('no_active_course', $criticalKeys, true) ? 'conflict' : 'success',
         ],
         [
             'label' => 'หัวหน้าวิชา',
             'meta' => in_array('active_courses_missing_head', $criticalKeys, true) ? 'ยังไม่ครบ' : 'ครบ',
+            'status' => in_array('active_courses_missing_head', $criticalKeys, true) ? 'ต้องแก้ไข' : 'พร้อม',
             'tone' => in_array('active_courses_missing_head', $criticalKeys, true) ? 'conflict' : 'success',
         ],
     ];
 @endphp
 
-<div class="card" data-testid="admin-hero" style="margin-bottom: 18px; border-left: 4px solid var(--brand-navy);">
-    <div style="padding: 22px 24px; display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: center;">
+<div class="card admin-hero-card" data-testid="admin-hero">
+    <div class="admin-hero-top">
+        <div class="admin-hero-copy">
+            <div class="admin-hero-kicker">ภาพรวม / ผู้ดูแลระบบ</div>
+            <h1>ภาพรวมระบบ</h1>
+            <p>สรุปสถานะระบบ ความพร้อมข้อมูลพื้นฐาน และภาระงานสอนของคณะ</p>
+        </div>
 
-        {{-- LEFT: title + system status one-liner --}}
-        <div style="min-width: 0;">
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
-                     style="color: var(--brand-navy);">
-                    <rect x="3" y="3" width="7" height="9"/>
-                    <rect x="14" y="3" width="7" height="5"/>
-                    <rect x="14" y="12" width="7" height="9"/>
-                    <rect x="3" y="16" width="7" height="5"/>
-                </svg>
-                <div style="font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--fg-1); line-height: 1.2;">
-                    ภาพรวมของระบบ
-                </div>
-            </div>
-            <div style="font-size: 13px; color: var(--fg-3); margin-bottom: 14px;">
-                สรุปสถานะระบบ ความพร้อมข้อมูลพื้นฐาน และภาระงานสอนของคณะ
-            </div>
+        <div class="admin-status-control-row">
+            <span class="admin-year-badge {{ $currentAcademicYear ? '' : 'is-warning' }}">
+                @if($currentAcademicYear)
+                    ปีการศึกษา {{ $currentAcademicYear->name }} / เทอม {{ $currentAcademicYear->semester }}
+                @else
+                    ยังไม่ได้ตั้งค่าปีการศึกษา
+                @endif
+            </span>
+            <a href="{{ $systemStatus['actionRoute'] }}"
+               class="btn btn-primary admin-hero-action"
+               data-testid="system-settings-shortcut">
+                จัดการสถานะระบบ
+            </a>
+        </div>
+    </div>
 
-            <div class="admin-status-card is-{{ $systemStatus['tone'] }}">
-                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px;">
-                    <span class="pill {{ $systemStatus['pill'] }}">
-                        <span class="pill-dot"></span>
-                        {{ $systemStatus['label'] }}
-                    </span>
-                    <div style="font-family: var(--font-display); font-size: 20px; font-weight: 800; color: var(--fg-1); line-height: 1.25;">
-                        {{ $systemStatus['title'] }}
+    <div class="admin-status-banner is-{{ $systemStatus['tone'] }}">
+        <div class="admin-status-primary">
+            <div class="admin-status-state">
+                <span class="admin-status-marker" aria-hidden="true"></span>
+                <div class="admin-status-text">
+                    <div class="admin-status-label">สถานะระบบปัจจุบัน</div>
+                    <div class="admin-status-title">{{ $systemStatus['title'] }}</div>
+                    <div class="admin-status-meta">
+                        <span class="pill {{ $phaseMeta['pill'] }}">{{ $phaseMeta['label'] }}</span>
+                        <span>{{ $systemStatus['label'] }}</span>
                     </div>
                 </div>
-                <div style="font-size: 12.5px; color: var(--fg-2); line-height: 1.55;">
-                    {{ $systemStatus['desc'] }}
-                </div>
             </div>
 
-            <div class="admin-readiness-grid" aria-label="สรุปความพร้อมระบบ">
-                @foreach($readinessItems as $item)
-                    <div class="admin-readiness-item is-{{ $item['tone'] }}">
-                        <span class="admin-readiness-dot"></span>
-                        <span class="admin-readiness-text">
-                            <span class="admin-readiness-label">{{ $item['label'] }}</span>
-                            <span class="admin-readiness-meta">{{ $item['meta'] }}</span>
-                        </span>
-                    </div>
-                @endforeach
+            <div class="admin-status-desc">{{ $systemStatus['desc'] }}</div>
+            <div class="admin-status-next">
+                ขั้นตอนถัดไป: {{ $systemStatus['actionLabel'] }} · {{ $nextPhaseLabel }}
             </div>
         </div>
 
-        {{-- RIGHT: academic year + phase + action --}}
-        <div style="border-left: 1px solid var(--border); padding-left: 24px; min-width: 280px;">
-            <div style="font-size: 10.5px; font-weight: 700; color: var(--fg-3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px;">
-                สถานะระบบปัจจุบัน
-            </div>
-
-            @if($currentAcademicYear)
-                <div style="font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--fg-1); margin-bottom: 4px;">
-                    ปีการศึกษา {{ $currentAcademicYear->name }} / เทอม {{ $currentAcademicYear->semester }}
+        <div class="admin-status-summary" aria-label="สรุปความพร้อมระบบ">
+            @foreach(array_slice($readinessItems, 1) as $item)
+                <div class="admin-status-summary-item is-{{ $item['tone'] }}">
+                    <span class="admin-summary-label">{{ $item['label'] }}</span>
+                    <strong>{{ $item['meta'] }}</strong>
+                    <span class="admin-summary-status">{{ $item['status'] }}</span>
                 </div>
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px;">
-                    <span class="pill {{ $phaseMeta['pill'] }}">
-                        <span class="pill-dot"></span>
-                        {{ $phaseMeta['label'] }}
-                    </span>
-                </div>
-                <div style="font-size: 11.5px; color: var(--fg-3); margin-bottom: 12px; line-height: 1.45;">
-                    {{ $phaseMeta['desc'] }}
-                </div>
-                <div class="admin-current-phase is-{{ $systemStatus['tone'] }}" aria-label="สถานะรอบการจัดตารางปัจจุบัน">
-                    <div class="admin-current-phase-row">
-                        <span class="admin-current-phase-dot"></span>
-                        <span>สถานะปัจจุบัน: {{ $phaseMeta['label'] }}</span>
-                    </div>
-                    <div class="admin-current-phase-next">ขั้นตอนถัดไป: {{ $nextPhaseLabel }}</div>
-                </div>
-            @else
-                <div style="font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--status-warning-fg); margin-bottom: 6px;">
-                    ยังไม่ได้ตั้งค่าปีการศึกษาที่ใช้งาน
-                </div>
-                <div style="font-size: 11.5px; color: var(--fg-3); margin-bottom: 12px;">
-                    กรุณาเพิ่มหรือเปิดใช้งานปีการศึกษาในหน้าตั้งค่าระบบ
-                </div>
-            @endif
-
-            <a href="{{ $systemStatus['actionRoute'] }}" class="btn btn-primary"
-               data-testid="system-settings-shortcut" style="text-decoration: none; width: 100%; justify-content: center;">
-                {{ $systemStatus['actionLabel'] }}
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <polyline points="9 18 15 12 9 6"/>
-                </svg>
-            </a>
+            @endforeach
         </div>
     </div>
 </div>
 
 <style>
-    .admin-status-card {
-        border: 1px solid var(--border);
-        border-radius: var(--r-md);
-        padding: 14px 16px;
-        max-width: 760px;
-    }
-    .admin-status-card.is-conflict {
-        border-color: color-mix(in oklch, var(--status-conflict) 35%, var(--border));
-        background: color-mix(in oklch, var(--status-conflict) 7%, var(--surface));
-    }
-    .admin-status-card.is-warning {
-        border-color: color-mix(in oklch, var(--status-warning) 35%, var(--border));
-        background: color-mix(in oklch, var(--status-warning) 8%, var(--surface));
-    }
-    .admin-status-card.is-success {
-        border-color: color-mix(in oklch, var(--status-success) 32%, var(--border));
-        background: color-mix(in oklch, var(--status-success) 7%, var(--surface));
-    }
-    .admin-status-card.is-info {
-        border-color: color-mix(in oklch, var(--status-info) 30%, var(--border));
-        background: color-mix(in oklch, var(--status-info) 7%, var(--surface));
-    }
-    .admin-readiness-grid {
-        display: grid;
-        grid-template-columns: repeat(5, minmax(112px, 1fr));
-        gap: 8px;
-        max-width: 760px;
-        margin-top: 10px;
-    }
-    .admin-readiness-item {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        min-width: 0;
-        padding: 9px 10px;
-        border: 1px solid var(--border);
-        border-radius: var(--r-sm);
+    .admin-hero-card {
+        padding: 24px;
         background: var(--surface);
+        border-color: color-mix(in oklch, var(--brand-navy) 10%, var(--border));
     }
-    .admin-readiness-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: var(--fg-3);
-        flex-shrink: 0;
-    }
-    .admin-readiness-text {
-        display: flex;
-        flex-direction: column;
-        min-width: 0;
-        gap: 1px;
-    }
-    .admin-readiness-label {
-        color: var(--fg-2);
-        font-size: 10.5px;
-        font-weight: 700;
-        line-height: 1.25;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .admin-readiness-meta {
-        color: var(--fg-3);
-        font-size: 11px;
-        line-height: 1.25;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .admin-readiness-item.is-conflict {
-        border-color: color-mix(in oklch, var(--status-conflict) 28%, var(--border));
-        background: color-mix(in oklch, var(--status-conflict) 5%, var(--surface));
-    }
-    .admin-readiness-item.is-conflict .admin-readiness-dot { background: var(--status-conflict); }
-    .admin-readiness-item.is-conflict .admin-readiness-label { color: var(--status-conflict-fg); }
-    .admin-readiness-item.is-warning {
-        border-color: color-mix(in oklch, var(--status-warning) 30%, var(--border));
-        background: color-mix(in oklch, var(--status-warning) 6%, var(--surface));
-    }
-    .admin-readiness-item.is-warning .admin-readiness-dot { background: var(--status-warning); }
-    .admin-readiness-item.is-warning .admin-readiness-label { color: var(--status-warning-fg); }
-    .admin-readiness-item.is-success {
-        border-color: color-mix(in oklch, var(--status-success) 22%, var(--border));
-        background: color-mix(in oklch, var(--status-success) 4%, var(--surface));
-    }
-    .admin-readiness-item.is-success .admin-readiness-dot { background: var(--status-success); }
-    .admin-readiness-item.is-success .admin-readiness-label { color: var(--status-success-fg); }
 
-    .admin-current-phase {
-        margin: 2px 0 14px;
-        padding: 9px 10px;
-        border: 1px solid var(--border);
-        border-radius: var(--r-sm);
-        background: var(--surface);
-    }
-    .admin-current-phase.is-conflict {
-        border-color: color-mix(in oklch, var(--status-conflict) 28%, var(--border));
-        background: color-mix(in oklch, var(--status-conflict) 5%, var(--surface));
-        color: var(--status-conflict-fg);
-    }
-    .admin-current-phase.is-warning {
-        border-color: color-mix(in oklch, var(--status-warning) 30%, var(--border));
-        background: color-mix(in oklch, var(--status-warning) 6%, var(--surface));
-        color: var(--status-warning-fg);
-    }
-    .admin-current-phase.is-success {
-        border-color: color-mix(in oklch, var(--status-success) 28%, var(--border));
-        background: color-mix(in oklch, var(--status-success) 6%, var(--surface));
-        color: var(--status-success-fg);
-    }
-    .admin-current-phase.is-info {
-        border-color: color-mix(in oklch, var(--status-info) 28%, var(--border));
-        background: color-mix(in oklch, var(--status-info) 6%, var(--surface));
-        color: var(--status-info-fg);
-    }
-    .admin-current-phase-row {
+    .admin-hero-top {
         display: flex;
-        align-items: center;
-        gap: 7px;
-        font-size: 11.5px;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 22px;
+    }
+
+    .admin-hero-copy {
+        min-width: 0;
+    }
+
+    .admin-hero-kicker {
+        margin-bottom: 4px;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.35;
+        color: var(--fg-3);
+    }
+
+    .admin-hero-copy h1 {
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: 24px;
         font-weight: 800;
         line-height: 1.25;
+        color: var(--fg-1);
     }
-    .admin-current-phase-dot {
-        width: 7px;
-        height: 7px;
-        border-radius: 50%;
-        background: currentColor;
+
+    .admin-hero-copy p {
+        margin: 8px 0 0;
+        max-width: 760px;
+        font-size: 13px;
+        line-height: 1.65;
+        color: var(--fg-3);
+    }
+
+    .admin-status-banner {
+        display: grid;
+        grid-template-columns: minmax(360px, 1fr) minmax(420px, 0.9fr);
+        gap: 28px;
+        align-items: center;
+        min-height: 126px;
+        padding: 22px 24px;
+        border: 1px solid var(--border);
+        border-radius: var(--r-lg);
+        background: var(--surface);
+    }
+
+    .admin-status-banner.is-conflict {
+        border-color: color-mix(in oklch, var(--status-conflict) 28%, var(--border));
+        background: color-mix(in oklch, var(--status-conflict) 4%, var(--surface));
+    }
+
+    .admin-status-banner.is-warning {
+        border-color: color-mix(in oklch, var(--status-warning) 30%, var(--border));
+        background: color-mix(in oklch, var(--status-warning) 5%, var(--surface));
+    }
+
+    .admin-status-banner.is-success {
+        border-color: color-mix(in oklch, var(--status-success) 24%, var(--border));
+        background: color-mix(in oklch, var(--status-success) 4%, var(--surface));
+    }
+
+    .admin-status-banner.is-info {
+        border-color: color-mix(in oklch, var(--status-info) 24%, var(--border));
+        background: color-mix(in oklch, var(--status-info) 4%, var(--surface));
+    }
+
+    .admin-status-primary {
+        min-width: 0;
+    }
+
+    .admin-status-control-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
         flex-shrink: 0;
     }
-    .admin-current-phase-next {
-        margin-top: 5px;
-        padding-left: 14px;
+
+    .admin-year-badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 36px;
+        padding: 7px 16px;
+        border: 1px solid color-mix(in oklch, var(--brand-navy) 10%, var(--border));
+        border-radius: var(--r-pill);
+        background: color-mix(in oklch, var(--brand-navy) 7%, var(--surface));
+        color: var(--brand-navy);
+        font-size: 13px;
+        font-weight: 800;
+        line-height: 1.2;
+        white-space: nowrap;
+    }
+
+    .admin-year-badge.is-warning {
+        border-color: var(--status-warning-border);
+        background: var(--status-warning-bg);
+        color: var(--status-warning-fg);
+    }
+
+    .admin-hero-action {
+        min-height: 36px;
+        padding-inline: 18px;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    .admin-status-state {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        min-width: 0;
+    }
+
+    .admin-status-marker {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--status-success-fg);
+        box-shadow: 0 0 0 5px color-mix(in oklch, var(--status-success) 13%, transparent);
+        flex-shrink: 0;
+    }
+
+    .admin-status-banner.is-conflict .admin-status-marker {
+        background: var(--status-conflict-fg);
+        box-shadow: 0 0 0 5px color-mix(in oklch, var(--status-conflict) 13%, transparent);
+    }
+
+    .admin-status-banner.is-warning .admin-status-marker {
+        background: var(--status-warning-fg);
+        box-shadow: 0 0 0 5px color-mix(in oklch, var(--status-warning) 15%, transparent);
+    }
+
+    .admin-status-banner.is-info .admin-status-marker {
+        background: var(--status-info-fg);
+        box-shadow: 0 0 0 5px color-mix(in oklch, var(--status-info) 13%, transparent);
+    }
+
+    .admin-status-text {
+        min-width: 0;
+    }
+
+    .admin-status-label {
+        margin-bottom: 2px;
         color: var(--fg-3);
-        font-size: 11px;
+        font-size: 12px;
+        font-weight: 700;
         line-height: 1.35;
     }
 
-    @media (max-width: 900px) {
-        [data-testid="admin-hero"] > div {
-            grid-template-columns: 1fr !important;
-        }
-        [data-testid="admin-hero"] > div > div:last-child {
-            border-left: none !important;
-            border-top: 1px solid var(--border) !important;
-            padding-left: 0 !important;
-            padding-top: 18px !important;
-            min-width: 0 !important;
-        }
+    .admin-status-title {
+        font-family: var(--font-display);
+        color: var(--fg-1);
+        font-size: 21px;
+        font-weight: 800;
+        line-height: 1.25;
     }
+
+    .admin-status-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+        color: var(--fg-3);
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.35;
+    }
+
+    .admin-status-desc {
+        margin-top: 12px;
+        max-width: 68ch;
+        color: var(--fg-2);
+        font-size: 12.5px;
+        line-height: 1.6;
+    }
+
+    .admin-status-next {
+        margin-top: 8px;
+        color: var(--fg-3);
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.45;
+    }
+
+    .admin-status-summary {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(96px, 1fr));
+        gap: 10px;
+        min-width: 0;
+    }
+
+    .admin-status-summary-item {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-width: 0;
+        min-height: 82px;
+        padding: 12px 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--r-sm);
+        background: color-mix(in oklch, var(--bg-2) 78%, var(--surface));
+        text-align: center;
+    }
+
+    .admin-summary-label {
+        color: var(--fg-3);
+        font-size: 11.5px;
+        font-weight: 700;
+        line-height: 1.3;
+    }
+
+    .admin-status-summary-item strong {
+        margin-top: 6px;
+        color: var(--fg-1);
+        font-family: var(--font-display);
+        font-size: 20px;
+        font-weight: 800;
+        line-height: 1.15;
+    }
+
+    .admin-summary-status {
+        margin-top: 5px;
+        color: var(--fg-3);
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 1.3;
+    }
+
+    .admin-status-summary-item.is-conflict strong,
+    .admin-status-summary-item.is-conflict .admin-summary-status {
+        color: var(--status-conflict-fg);
+    }
+
+    .admin-status-summary-item.is-warning strong,
+    .admin-status-summary-item.is-warning .admin-summary-status {
+        color: var(--status-warning-fg);
+    }
+
+    .admin-status-summary-item.is-success strong,
+    .admin-status-summary-item.is-success .admin-summary-status {
+        color: var(--status-success-fg);
+    }
+
     @media (max-width: 1180px) {
-        .admin-readiness-grid { grid-template-columns: repeat(3, minmax(120px, 1fr)); }
+        .admin-status-banner {
+            grid-template-columns: 1fr;
+            gap: 18px;
+        }
     }
-    @media (max-width: 540px) {
-        .admin-readiness-grid { grid-template-columns: 1fr; }
+
+    @media (max-width: 720px) {
+        .admin-hero-card {
+            padding: 18px;
+        }
+
+        .admin-hero-top {
+            flex-direction: column;
+            align-items: stretch;
+            margin-bottom: 16px;
+        }
+
+        .admin-status-control-row {
+            justify-content: flex-start;
+        }
+
+        .admin-hero-copy h1 {
+            font-size: 22px;
+        }
+
+        .admin-status-banner {
+            padding: 16px;
+            min-height: 0;
+        }
+
+        .admin-status-control-row {
+            align-items: stretch;
+        }
+
+        .admin-year-badge,
+        .admin-hero-action {
+            width: 100%;
+            justify-content: center;
+            white-space: normal;
+            text-align: center;
+        }
+
+        .admin-status-state {
+            align-items: flex-start;
+        }
+
+        .admin-status-title {
+            font-size: 19px;
+        }
+
+        .admin-status-summary {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 420px) {
+        .admin-status-summary {
+            grid-template-columns: 1fr;
+        }
     }
 </style>

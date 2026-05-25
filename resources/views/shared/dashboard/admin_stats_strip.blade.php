@@ -11,7 +11,6 @@
             'unit'    => '/ ' . number_format($stats['users']['total']) . ' บัญชี',
             'progress'=> $usersPct,
             'foot'    => $usersPct . '% ของบัญชีทั้งหมดเปิดใช้งาน',
-            'icon'    => '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
             'link'    => route('admin.users'),
         ],
         [
@@ -20,7 +19,6 @@
             'unit'    => '/ ' . number_format($stats['courses']['total']) . ' วิชา',
             'progress'=> $coursesPct,
             'foot'    => $coursesPct . '% ของรายวิชาทั้งหมดเปิดสอน',
-            'icon'    => '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
             'link'    => route('admin.master_data', ['tab' => 'courses']),
         ],
     ];
@@ -33,9 +31,6 @@
         @foreach($cells as $cell)
             <a href="{{ $cell['link'] }}" class="admin-stats-cell" style="text-decoration: none;">
                 <div class="admin-stats-head">
-                    <div class="admin-stats-ico">
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">{!! $cell['icon'] !!}</svg>
-                    </div>
                     <div class="admin-stats-label">{{ $cell['label'] }}</div>
                 </div>
                 <div style="display: flex; align-items: baseline; gap: 6px; margin-bottom: 8px;">
@@ -52,13 +47,6 @@
         {{-- Rooms — by type breakdown --}}
         <a href="{{ route('admin.master_data', ['tab' => 'rooms']) }}" class="admin-stats-cell" style="text-decoration: none;">
             <div class="admin-stats-head">
-                <div class="admin-stats-ico">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="3" width="18" height="18" rx="2"/>
-                        <line x1="3" y1="9" x2="21" y2="9"/>
-                        <line x1="9" y1="21" x2="9" y2="9"/>
-                    </svg>
-                </div>
                 <div class="admin-stats-label">ห้องและสถานที่</div>
             </div>
             <div style="display: flex; align-items: baseline; gap: 6px; margin-bottom: 10px;">
@@ -82,12 +70,6 @@
         {{-- Curriculums — by education level --}}
         <a href="{{ route('admin.master_data', ['tab' => 'curriculums']) }}" class="admin-stats-cell" style="text-decoration: none;">
             <div class="admin-stats-head">
-                <div class="admin-stats-ico">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-                    </svg>
-                </div>
                 <div class="admin-stats-label">หลักสูตร</div>
             </div>
             <div style="display: flex; align-items: baseline; gap: 6px; margin-bottom: 10px;">
@@ -133,13 +115,7 @@
     .admin-stats-cell:hover { background: var(--bg-2); }
 
     .admin-stats-head {
-        display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
-    }
-    .admin-stats-ico {
-        width: 26px; height: 26px; border-radius: 4px;
-        background: color-mix(in oklch, var(--brand-navy) 8%, white);
-        display: flex; align-items: center; justify-content: center;
-        color: var(--brand-navy); flex-shrink: 0;
+        display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px;
     }
     .admin-stats-label {
         font-size: 11.5px; font-weight: 600; color: var(--fg-2);

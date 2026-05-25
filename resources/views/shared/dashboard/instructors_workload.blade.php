@@ -1,6 +1,6 @@
 <div class="card" x-data="{ searchQuery: '' }">
     <div class="card-hdr">
-        <div class="card-ttl">ภาพรวมภาระงานสอนของอาจารย์ทั้งหมด</div>
+        <div class="card-ttl">ภาระงานสอนของอาจารย์</div>
         <div class="card-actions">
             <div class="search-box">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
