@@ -107,8 +107,7 @@ class DashboardController extends Controller
             = $this->instructorWorkloadData();
 
         $recentAuditLogs = AuditLog::with('user')
-            ->orderByDesc('created_at')
-            ->orderByDesc('id')
+            ->orderedForAudit()
             ->limit(5)
             ->get();
 

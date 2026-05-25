@@ -2,8 +2,8 @@
     $recentAuditLogs = isset($recentAuditLogs)
         ? collect($recentAuditLogs)->take(5)
         : \App\Models\AuditLog::query()
-            ->orderByDesc('created_at')
-            ->orderByDesc('id')
+            ->with('user')
+            ->orderedForAudit()
             ->limit(5)
             ->get();
 

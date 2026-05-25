@@ -14,7 +14,7 @@ class AuditLogController extends Controller
 {
     public function index(Request $request): View
     {
-        $query = AuditLog::with('user')->orderByDesc('created_at');
+        $query = AuditLog::with('user')->orderedForAudit();
 
         if ($request->filled('category')) {
             $query->where('category', $request->category);

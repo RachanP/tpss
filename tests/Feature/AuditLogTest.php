@@ -750,7 +750,7 @@ class AuditLogTest extends TestCase
         $createdAt = now()->startOfSecond();
 
         for ($i = 1; $i <= 6; $i++) {
-            AuditLog::create([
+            $log = AuditLog::create([
                 'user_id'        => $this->admin->id,
                 'action'         => 'ข้อมูลหลัก.สร้าง',
                 'table_affected' => 'courses',
@@ -759,8 +759,9 @@ class AuditLogTest extends TestCase
                 'new_values'     => ['name_th' => "Course {$i}"],
                 'category'       => 'ข้อมูลหลัก',
                 'description'    => "กิจกรรมทดสอบ {$i}",
-                'created_at'     => $createdAt->copy()->addSeconds($i),
             ]);
+
+            $log->forceFill(['created_at' => $createdAt->copy()->addSeconds($i)])->save();
         }
 
         $html = view('shared.dashboard.recent-activity')->render();
@@ -773,6 +774,45 @@ class AuditLogTest extends TestCase
         $this->assertStringNotContainsString('กิจกรรมทดสอบ 1', $html);
         $this->assertStringContainsString('กิจกรรมทดสอบ 6', $html);
         $this->assertStringContainsString('Admin Test', $html);
+    }
+
+    public function test_recent_activity_partial_uses_audit_order_when_timestamps_match(): void
+    {
+        $createdAt = Carbon::parse('2026-05-25 15:47:00');
+
+        for ($i = 1; $i <= 6; $i++) {
+            $log = AuditLog::create([
+                'user_id'        => $this->admin->id,
+                'action'         => 'ข้อมูลหลัก.แก้ไข',
+                'table_affected' => 'courses',
+                'record_id'      => $i,
+                'old_values'     => null,
+                'new_values'     => ['name_th' => "Course {$i}"],
+                'category'       => 'ข้อมูลหลัก',
+                'description'    => "Audit tie {$i}",
+            ]);
+
+            $log->forceFill(['created_at' => $createdAt])->save();
+        }
+
+        $expectedDescriptions = AuditLog::query()
+            ->orderedForAudit()
+            ->limit(5)
+            ->pluck('description')
+            ->all();
+
+        $this->assertSame([
+            'Audit tie 1',
+            'Audit tie 2',
+            'Audit tie 3',
+            'Audit tie 4',
+            'Audit tie 5',
+        ], $expectedDescriptions);
+
+        $html = view('shared.dashboard.recent-activity')->render();
+
+        $this->assertStringsAppearInOrder($expectedDescriptions, $html);
+        $this->assertStringNotContainsString('Audit tie 6', $html);
     }
 
     public function test_recent_activity_partial_renders_provided_recent_audit_logs(): void
@@ -902,5 +942,19 @@ class AuditLogTest extends TestCase
             fn (string $value) => trim(preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($value), ENT_QUOTES | ENT_HTML5, 'UTF-8'))),
             $matches[1],
         );
+    }
+
+    private function assertStringsAppearInOrder(array $needles, string $haystack): void
+    {
+        $lastPosition = -1;
+
+        foreach ($needles as $needle) {
+            $position = strpos($haystack, $needle);
+
+            $this->assertNotFalse($position, "Expected [{$needle}] to appear in HTML.");
+            $this->assertGreaterThan($lastPosition, $position, "Expected [{$needle}] to appear after the previous item.");
+
+            $lastPosition = $position;
+        }
     }
 }
