@@ -731,7 +731,7 @@
         <!-- Add/Edit Modal -->
         <template x-if="showModal">
             <div class="overlay" x-cloak>
-                <div class="modal-center" x-transition:enter="transition ease-out duration-300"
+                <div class="modal-center users-modal" x-transition:enter="transition ease-out duration-300"
                     x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
                     <div class="modal-hdr" style="background: var(--bg-2);">
                         <div class="modal-ttl" style="font-family: var(--font-display); letter-spacing: -0.01em;"
@@ -753,7 +753,7 @@
                             <input type="hidden" name="_method" value="PUT">
                         </template>
 
-                        <div class="modal-body">
+                        <div class="modal-body users-modal-body">
                             <!-- Server-side validation errors -->
                             @if($errors->any())
                             <template x-if="hasServerError">
@@ -843,15 +843,6 @@
                                 </label>
                                 <div class="role-grid users-role-grid-compact">
                                     @foreach(['admin' => 'ผู้ดูแลระบบ', 'staff' => 'เจ้าหน้าที่', 'course_head' => 'หัวหน้าวิชา', 'executive' => 'ผู้บริหาร', 'instructor' => 'อาจารย์ผู้สอน'] as $val => $label)
-                                        @php
-                                            $icon = [
-                                                'admin' => '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
-                                                'staff' => '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
-                                                'course_head' => '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
-                                                'executive' => '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
-                                                'instructor' => '<path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>',
-                                            ][$val];
-                                        @endphp
                                         <div class="role-card"
                                             :class="{ 'is-selected': currentUser.roles.includes('{{ $val }}'), 'is-primary': currentUser.primary_role === '{{ $val }}' }"
                                             @click='if(currentUser.roles.includes("{{ $val }}")) { 
@@ -869,14 +860,6 @@
                                                     width="14" height="14" fill="none" stroke="currentColor"
                                                     stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
                                                     <polyline points="20 6 9 17 4 12" />
-                                                </svg>
-                                            </div>
-
-                                            <div class="role-icon-box">
-                                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
-                                                    stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                                    stroke-linejoin="round">
-                                                    {!! $icon !!}
                                                 </svg>
                                             </div>
 
@@ -1068,7 +1051,7 @@
                                             </div>
                                         </div>
 
-                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                                        <div class="users-pa-grid">
                                             <div class="form-group">
                                                 <label style="font-size: 12px; color: var(--fg-2);">
                                                     1. ด้านการสอน (<span x-text="paRuleLabel(paRules.t)"></span>) <span style="color: #ef4444;">*</span>
@@ -1113,7 +1096,7 @@
                                                     <span style="font-size: 13px; color: var(--fg-3); width: 20px;">%</span>
                                                 </div>
                                             </div>
-                                            <div class="form-group" style="grid-column: span 2;">
+                                            <div class="form-group">
                                                 <label style="font-size: 12px; color: var(--fg-2);">
                                                     5. งานอื่นๆ มอบหมาย (<span x-text="paRuleLabel(paRules.o)"></span>) <span style="color: #ef4444;">*</span>
                                                 </label>
@@ -1133,7 +1116,7 @@
                                 </div>
                             </template>
                         </div>
-                        <div class="modal-foot">
+                        <div class="modal-foot users-modal-foot">
                             <button type="button" class="btn btn-ghost" @click="showModal = false">ยกเลิก</button>
                             <button type="submit" data-testid="user-form-submit" class="btn btn-primary">บันทึกข้อมูล</button>
                         </div>
@@ -1211,14 +1194,49 @@
     </div>
 
     <style>
+        .users-modal {
+            width: min(1080px, calc(100vw - 48px));
+            max-width: none;
+            max-height: 90vh;
+        }
+
+        .users-modal > form {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .users-modal-body {
+            min-height: 0;
+            max-height: calc(90vh - 132px);
+            padding: 24px;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            background: oklch(99% 0.004 220);
+        }
+
+        .users-modal-body .form-row {
+            gap: 16px;
+            align-items: flex-start;
+        }
+
+        .users-modal-body .form-row > .form-group {
+            min-width: 0;
+        }
+
+        .users-modal-foot {
+            justify-content: flex-end;
+            flex-shrink: 0;
+        }
+
         .users-role-grid-compact {
             gap: 5px;
         }
 
         .users-role-grid-compact .role-card {
             min-height: 46px;
-            gap: 9px;
-            padding: 8px 10px;
+            gap: 10px;
+            padding: 10px 12px;
             border-radius: 8px;
         }
 
@@ -1233,20 +1251,29 @@
             height: 12px;
         }
 
-        .users-role-grid-compact .role-icon-box {
-            width: 30px;
-            height: 30px;
-            border-radius: 7px;
-        }
-
-        .users-role-grid-compact .role-icon-box svg {
-            width: 17px;
-            height: 17px;
-        }
-
         .users-role-grid-compact .role-name {
             font-size: 13px;
             line-height: 1.35;
+        }
+
+        .users-pa-grid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 18px 20px;
+        }
+
+        .users-pa-grid .form-group {
+            min-width: 0;
+            margin-bottom: 0;
+        }
+
+        .users-pa-grid .form-group > div {
+            min-width: 0;
+        }
+
+        .users-pa-grid input {
+            width: 100%;
+            min-width: 0;
         }
 
         .users-role-grid-compact .btn-primary-role {
@@ -1400,6 +1427,30 @@
         }
 
         @media (max-width: 760px) {
+            .users-modal {
+                width: calc(100vw - 24px);
+                max-height: 92vh;
+            }
+
+            .users-modal-body {
+                max-height: calc(92vh - 128px);
+                padding: 18px;
+            }
+
+            .users-modal-body .form-row {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .users-modal-body .form-row > .form-group {
+                width: 100%;
+                flex-basis: auto !important;
+            }
+
+            .users-pa-grid {
+                grid-template-columns: 1fr;
+            }
+
             .users-filter-bar {
                 display: flex;
                 flex-wrap: wrap;

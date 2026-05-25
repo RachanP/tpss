@@ -32,31 +32,32 @@
 <div
     class="tdi-wrap"
     x-data="thaiDateInput()"
-    @if($calendar) @click.outside="calOpen = false" @keydown.escape="calOpen = false" @endif>
-    <input
-        x-ref="thaiInput"
-        type="text"
-        name="{{ $name }}"
-        value="{{ $displayValue }}"
-        placeholder="วว/ดด/พ.ศ."
-        inputmode="numeric"
-        autocomplete="off"
-        {{ $required ? 'required' : '' }}
-        {{ $calendar ? $attributes->merge(['class' => 'tdi-input-cal']) : $attributes }}
-        @input="$event.target.value = maskThaiDate($event.target.value)"
-        @paste="const el = $event.target; $nextTick(() => { el.value = maskThaiDate(el.value) })">
+    @if($calendar) @click.outside="tdiClose()" @keydown.escape="tdiClose()" @endif>
+    <div class="tdi-control" x-ref="tdiControl">
+        <input
+            x-ref="thaiInput"
+            type="text"
+            name="{{ $name }}"
+            value="{{ $displayValue }}"
+            placeholder="วว/ดด/พ.ศ."
+            inputmode="numeric"
+            autocomplete="off"
+            {{ $required ? 'required' : '' }}
+            {{ $calendar ? $attributes->merge(['class' => 'tdi-input-cal']) : $attributes }}
+            @input="$event.target.value = maskThaiDate($event.target.value)"
+            @paste="const el = $event.target; $nextTick(() => { el.value = maskThaiDate(el.value) })">
 
-    @if($calendar)
-        <button type="button" class="tdi-cal-btn" tabindex="-1"
-            @click="tdiToggle()" :aria-expanded="calOpen" aria-label="เปิดปฏิทินเลือกวันที่">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="16" y1="2" x2="16" y2="6"></line>
-                <line x1="8" y1="2" x2="8" y2="6"></line>
-                <line x1="3" y1="10" x2="21" y2="10"></line>
-            </svg>
-        </button>
-        <div class="tdi-pop" x-show="calOpen" x-cloak x-transition.opacity role="dialog" aria-label="ปฏิทินเลือกวันที่">
+        @if($calendar)
+            <button type="button" class="tdi-cal-btn" tabindex="-1"
+                @click="tdiToggle()" :aria-expanded="calOpen" aria-label="เปิดปฏิทินเลือกวันที่">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+            </button>
+            <div class="tdi-pop" x-show="calOpen" x-cloak x-transition.opacity :style="tdiPopStyle" role="dialog" aria-label="ปฏิทินเลือกวันที่">
             <div class="tdi-pop-head">
                 <button type="button" class="tdi-pop-nav" @click="tdiShiftMonth(-1)" aria-label="เดือนก่อนหน้า">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
@@ -107,8 +108,9 @@
                         x-text="cell.day || ''"></button>
                 </template>
             </div>
-        </div>
-    @endif
+            </div>
+        @endif
+    </div>
 
     @if($helper)
         <p style="font-size:11px;color:var(--fg-3);margin-top:4px;line-height:1.55;">{{ $helper }}</p>
