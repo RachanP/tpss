@@ -128,6 +128,42 @@
     ];
     // แสดงวันที่ผ่านจุดกลาง — ThaiDate (พ.ศ.)
     $formatDate = fn ($date) => $date ? \App\Support\ThaiDate::date($date) : '-';
+    $thaiMonthNames = [
+        1 => 'มกราคม',
+        2 => 'กุมภาพันธ์',
+        3 => 'มีนาคม',
+        4 => 'เมษายน',
+        5 => 'พฤษภาคม',
+        6 => 'มิถุนายน',
+        7 => 'กรกฎาคม',
+        8 => 'สิงหาคม',
+        9 => 'กันยายน',
+        10 => 'ตุลาคม',
+        11 => 'พฤศจิกายน',
+        12 => 'ธันวาคม',
+    ];
+    $academicStartDate = $academicYear?->start_date
+        ? \Carbon\CarbonImmutable::parse($academicYear->start_date)->startOfDay()
+        : null;
+    $academicEndDate = $academicYear?->end_date
+        ? \Carbon\CarbonImmutable::parse($academicYear->end_date)->endOfDay()
+        : null;
+    $calendarPeriodStart = \Carbon\CarbonImmutable::parse($weekStart)->startOfDay();
+    $calendarPeriodEnd = \Carbon\CarbonImmutable::parse($weekEnd)->endOfDay();
+    $calendarOutsideAcademicYear = $academicStartDate && $academicEndDate
+        ? $calendarPeriodEnd->lt($academicStartDate) || $calendarPeriodStart->gt($academicEndDate)
+        : false;
+    $calendarOutsideNote = $calendarOutsideAcademicYear
+        ? 'นอกช่วงปีการศึกษา ' . ($academicYear?->name ?? '-') . ' / เทอม ' . ($academicYear?->semester ?? '-')
+        : null;
+    $weekNumberFromAcademicYear = $academicStartDate
+        ? max(1, (int) floor($academicStartDate->diffInDays(\Carbon\CarbonImmutable::parse($weekStart)->startOfDay(), false) / 7) + 1)
+        : null;
+    $calendarHeadingText = match ($schedulePeriod ?? 'week') {
+        'day' => $formatDate($weekStart),
+        'month' => ($thaiMonthNames[(int) $weekStart->month] ?? '') . ' ' . ((int) $weekStart->year + 543),
+        default => $calendarOutsideAcademicYear ? 'นอกช่วงปีการศึกษา' : 'สัปดาห์ที่ ' . ($weekNumberFromAcademicYear ?? '-'),
+    };
     $monthCalendarStart = \Carbon\CarbonImmutable::parse($weekStart)->startOfWeek(\Carbon\CarbonInterface::MONDAY);
     $monthCalendarEnd = \Carbon\CarbonImmutable::parse($weekEnd)->endOfWeek(\Carbon\CarbonInterface::SUNDAY);
     $monthCalendarDays = collect(\Carbon\CarbonPeriod::create($monthCalendarStart, $monthCalendarEnd))
@@ -207,6 +243,40 @@
 @endphp
 
 <x-app-layout title="ตารางสอน">
+    <script>
+        (() => {
+            const scrollKey = 'tpss-schedule-scroll-y';
+            const heightKey = 'tpss-schedule-scroll-height';
+            const savedScroll = sessionStorage.getItem(scrollKey);
+            const savedHeight = sessionStorage.getItem(heightKey);
+
+            if ('scrollRestoration' in history) {
+                history.scrollRestoration = 'manual';
+            }
+
+            if (savedScroll !== null) {
+                const targetY = Number.parseInt(savedScroll, 10) || 0;
+                const minHeight = Number.parseInt(savedHeight || '0', 10);
+
+                if (minHeight > 0) {
+                    document.documentElement.style.minHeight = `${minHeight}px`;
+                    document.body.style.minHeight = `${minHeight}px`;
+                }
+
+                const restoreScroll = () => window.scrollTo(0, targetY);
+                restoreScroll();
+                requestAnimationFrame(restoreScroll);
+                window.addEventListener('DOMContentLoaded', restoreScroll, { once: true });
+                window.addEventListener('load', () => {
+                    restoreScroll();
+                    sessionStorage.removeItem(scrollKey);
+                    sessionStorage.removeItem(heightKey);
+                    document.documentElement.style.minHeight = '';
+                    document.body.style.minHeight = '';
+                }, { once: true });
+            }
+        })();
+    </script>
     <style>
         .schedule-shell {
             --schedule-border: oklch(86% 0.018 232);
@@ -253,10 +323,116 @@
             display: inline-flex;
             align-items: center;
             gap: 6px;
+            overflow: visible;
+        }
+        .sched-datenav-stack {
+            display: inline-flex;
+            position: relative;
+            align-items: center;
+            height: 34px;
+            padding-bottom: 0;
         }
         .sched-datenav .tdi-wrap {
             width: 158px;
             flex: 0 0 158px;
+        }
+        .sched-datenav-picker {
+            position: relative;
+            width: 158px;
+            flex: 0 0 158px;
+        }
+        .sched-datenav-picker .tdi-wrap {
+            width: 100%;
+            flex: none;
+        }
+        .sched-datenav-picker .tdi-input-cal {
+            color: transparent;
+            text-shadow: none;
+        }
+        .sched-datenav-picker .tdi-input-cal::placeholder {
+            color: transparent;
+        }
+        .sched-datenav-label {
+            position: absolute;
+            inset: 1px 36px 1px 12px;
+            display: flex;
+            align-items: center;
+            min-width: 0;
+            pointer-events: none;
+            color: var(--fg);
+            font-size: 13px;
+            font-weight: 850;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .sched-datenav-note {
+            position: absolute;
+            top: calc(100% + 3px);
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 15px;
+            padding: 0 6px;
+            border: 1px solid var(--status-warning-border);
+            border-radius: 999px;
+            background: var(--status-warning-bg);
+            color: var(--status-warning-fg);
+            font-size: 9px;
+            font-weight: 700;
+            line-height: 1;
+            white-space: nowrap;
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .schedule-caption-line {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+        .schedule-caption-warning {
+            display: inline-flex;
+            align-items: center;
+            min-height: 17px;
+            padding: 0 7px;
+            border: 1px solid var(--status-warning-border);
+            border-radius: 999px;
+            background: var(--status-warning-bg);
+            color: var(--status-warning-fg);
+            font-size: 9.5px;
+            font-weight: 750;
+            line-height: 1;
+            white-space: nowrap;
+        }
+        .schedule-card-hdr {
+            align-items: center;
+        }
+        .schedule-card-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-left: auto;
+        }
+        .schedule-card-actions > [x-cloak] {
+            display: inline-flex !important;
+            visibility: hidden;
+        }
+        .schedule-shell.is-grid-navigating .schedule-card-actions {
+            opacity: .72;
+        }
+        .schedule-shell.is-grid-navigating .schedule-grid-wrap,
+        .schedule-shell.is-grid-navigating .month-calendar,
+        .schedule-shell.is-grid-navigating .schedule-list-table {
+            opacity: .72;
+            transition: opacity .12s ease-out;
         }
         .sched-datenav-arrow {
             display: inline-flex;
@@ -1933,22 +2109,24 @@
 
                 const scrollY = sessionStorage.getItem('tpss-schedule-scroll-y');
                 if (scrollY !== null) {
-                    window.scrollTo(0, parseInt(scrollY, 10));
+                    const restoreY = parseInt(scrollY, 10);
+                    window.scrollTo(0, restoreY);
                     this.$nextTick(() => {
-                        window.scrollTo(0, parseInt(scrollY, 10));
+                        window.scrollTo(0, restoreY);
                     });
-                    sessionStorage.removeItem('tpss-schedule-scroll-y');
                 }
 
                 this.$el.addEventListener('click', (e) => {
                     const link = e.target.closest('a');
                     if (link && link.getAttribute('href') && !link.getAttribute('href').startsWith('#')) {
                         sessionStorage.setItem('tpss-schedule-scroll-y', window.scrollY);
+                        sessionStorage.setItem('tpss-schedule-scroll-height', document.documentElement.scrollHeight);
                     }
                 });
 
                 this.$el.addEventListener('submit', () => {
                     sessionStorage.setItem('tpss-schedule-scroll-y', window.scrollY);
+                    sessionStorage.setItem('tpss-schedule-scroll-height', document.documentElement.scrollHeight);
                 });
 
                 // Re-init Choices when modals open (modal content may be rendered dynamically)
@@ -1979,6 +2157,8 @@
                 url.searchParams.set('week_start', date);
                 url.searchParams.set('period', period);
                 sessionStorage.setItem('tpss-schedule-scroll-y', window.scrollY);
+                sessionStorage.setItem('tpss-schedule-scroll-height', document.documentElement.scrollHeight);
+                this.$el.classList.add('is-grid-navigating');
                 window.location.href = url.toString();
             },
             jumpToGridDate(value) {
@@ -2140,16 +2320,21 @@
             </div>
             <label class="grid-date-jump" x-show="view === 'grid'" x-cloak>
                 <span>ไปยังวันที่</span>
-                <x-thai-date-input
-                    name="grid_jump_date"
-                    :helper="false"
-                    :value="$weekStart->toDateString()"
-                    :year-start="$scheduleDatePickerYearStart"
-                    :year-end="$scheduleDatePickerYearEnd"
-                    x-model="gridJumpDate"
-                    @change="jumpToGridDate(gridJumpDate)"
-                    @keydown.enter.prevent="jumpToGridDate(gridJumpDate)"
-                    aria-label="เลือกวันที่ที่ต้องการดูในตาราง" />
+                <div class="sched-datenav-stack">
+                    <div class="sched-datenav-picker">
+                        <x-thai-date-input
+                            name="grid_jump_date"
+                            :helper="false"
+                            :value="$weekStart->toDateString()"
+                            :year-start="$scheduleDatePickerYearStart"
+                            :year-end="$scheduleDatePickerYearEnd"
+                            x-model="gridJumpDate"
+                            @change="jumpToGridDate(gridJumpDate)"
+                            @keydown.enter.prevent="jumpToGridDate(gridJumpDate)"
+                            aria-label="เลือกวันที่ที่ต้องการดูในตาราง" />
+                        <span class="sched-datenav-label">{{ $calendarHeadingText }}</span>
+                    </div>
+                </div>
             </label>
             <div class="period-toggle" aria-label="ช่วงเวลาที่แสดง" x-show="view === 'grid'" x-cloak>
                 <button type="button" data-period-url="{{ $dayViewUrl }}" @click="changeGridPeriod('day')" class="{{ ($schedulePeriod ?? 'week') === 'day' ? 'is-active' : '' }}">วัน</button>
@@ -2223,27 +2408,37 @@
 
             {{-- ── รายการตารางสอน (Card Layout) ── --}}
             <div class="card">
-                <div class="card-hdr" style="flex-wrap:wrap;gap:12px;">
+                <div class="card-hdr schedule-card-hdr" style="flex-wrap:wrap;gap:12px;">
                     <div>
                         <div class="card-ttl">รายการตารางสอน</div>
-                        <div class="caption" style="margin-top:4px;">เรียงตามช่วงวันที่และเวลา</div>
+                        <div class="schedule-caption-line">
+                            <span class="caption">เรียงตามช่วงวันที่และเวลา</span>
+                            @if($calendarOutsideNote)
+                                <span class="schedule-caption-warning">{{ $calendarOutsideNote }}</span>
+                            @endif
+                        </div>
                     </div>
-                    <div style="margin-left:auto; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                    <div class="schedule-card-actions">
                         <div class="sched-datenav" x-show="view === 'grid'" x-cloak>
                             <a class="sched-datenav-arrow" href="{{ $previousWeekUrl }}" data-testid="schedule-nav-prev" aria-label="ช่วงก่อนหน้า">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
                             </a>
-                            <x-thai-date-input
-                                name="grid_jump_date"
-                                :helper="false"
-                                :value="$weekStart->toDateString()"
-                                :year-start="$scheduleDatePickerYearStart"
-                                :year-end="$scheduleDatePickerYearEnd"
-                                class="sched-datenav-input"
-                                x-model="gridJumpDate"
-                                @change="jumpToGridDate(gridJumpDate)"
-                                @keydown.enter.prevent="jumpToGridDate(gridJumpDate)"
-                                aria-label="พิมพ์วันที่ที่ต้องการดูในตาราง" />
+                            <div class="sched-datenav-stack">
+                                <div class="sched-datenav-picker">
+                                    <x-thai-date-input
+                                        name="grid_jump_date"
+                                        :helper="false"
+                                        :value="$weekStart->toDateString()"
+                                        :year-start="$scheduleDatePickerYearStart"
+                                        :year-end="$scheduleDatePickerYearEnd"
+                                        class="sched-datenav-input"
+                                        x-model="gridJumpDate"
+                                        @change="jumpToGridDate(gridJumpDate)"
+                                        @keydown.enter.prevent="jumpToGridDate(gridJumpDate)"
+                                        aria-label="พิมพ์วันที่ที่ต้องการดูในตาราง" />
+                                    <span class="sched-datenav-label">{{ $calendarHeadingText }}</span>
+                                </div>
+                            </div>
                             <a class="sched-datenav-arrow" href="{{ $nextWeekUrl }}" data-testid="schedule-nav-next" aria-label="ช่วงถัดไป">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
                             </a>
