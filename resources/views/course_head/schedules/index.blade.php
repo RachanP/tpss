@@ -42,7 +42,7 @@
         ? $allSchedules
         : ($schedules ?? collect());
     $gridOccurrences = $gridOccurrenceSource
-        ->flatMap(function ($schedule) use ($weekStart, $weekEnd) {
+        ->flatMap(function ($schedule) use ($weekStart, $weekEnd, $includeWeekends) {
             $startDate = \Carbon\CarbonImmutable::parse($schedule->start_date ?? $schedule->teaching_date);
             $endDate = \Carbon\CarbonImmutable::parse($schedule->end_date ?? $schedule->teaching_date);
             $rangeStart = $startDate->greaterThan($weekStart) ? $startDate : $weekStart;
@@ -58,7 +58,7 @@
                 ->diffInMinutes(\Carbon\CarbonImmutable::createFromFormat('H:i:s', $endTime)));
 
             return collect(\Carbon\CarbonPeriod::create($rangeStart, $rangeEnd))
-                ->filter(fn ($date) => $date->dayOfWeekIso <= 5)
+                ->filter(fn ($date) => $includeWeekends || $date->dayOfWeekIso <= 5)
                 ->map(fn ($date) => [
                     'schedule' => $schedule,
                     'date' => \Carbon\CarbonImmutable::parse($date),
@@ -189,6 +189,8 @@
     $calendarOutsideNote = $calendarOutsideAcademicYear
         ? 'นอกช่วงปีการศึกษา ' . ($academicYear?->name ?? '-') . ' / เทอม ' . ($academicYear?->semester ?? '-')
         : null;
+    $canCreateInCurrentPeriod = $canEdit && ! $calendarOutsideAcademicYear;
+    $outsideCreateHint = 'เลือกวันที่ในช่วงปีการศึกษาก่อนเพิ่มรายการสอน';
     $weekNumberFromAcademicYear = $academicStartDate
         ? max(1, (int) floor($academicStartDate->diffInDays(\Carbon\CarbonImmutable::parse($weekStart)->startOfDay(), false) / 7) + 1)
         : null;
@@ -248,16 +250,39 @@
             ->filter(fn ($instructor) => (int) $instructor->instructorProfile?->department_id === (int) $departmentId)
             ->values();
     };
+    $scheduleDepartmentInstructors = function ($schedule) use ($eligibleScheduleInstructors) {
+        $eligibleIds = $eligibleScheduleInstructors($schedule?->courseOffering)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        return $schedule?->instructors
+            ? $schedule->instructors
+                ->filter(fn ($instructor) => in_array((int) $instructor->id, $eligibleIds, true))
+                ->values()
+            : collect();
+    };
+    $scheduleInstructorText = function ($schedule) use ($scheduleDepartmentInstructors) {
+        $instructors = $scheduleDepartmentInstructors($schedule);
+
+        return $instructors->isNotEmpty()
+            ? ($instructors->count() === 1
+                ? ($instructors->first()->formatted_name ?? $instructors->first()->name)
+                : $instructors->count() . ' ท่าน')
+            : 'ไม่มีผู้สอน';
+    };
     $singleCourseSchedules = ($allSchedules ?? collect());
     $activityFilterOptions = $singleCourseSchedules->pluck('activityType')->filter()->unique('id')->sortBy('name')->values();
     $groupFilterOptions = $singleCourseSchedules->flatMap->studentGroups->unique('id')->sortBy('group_code')->values();
     $instructorFilterOptions = $eligibleScheduleInstructors($courseOffering)->sortBy(fn ($instructor) => $instructor->formatted_name ?? $instructor->name);
-    $scheduleFilterItems = $singleCourseSchedules->map(function ($schedule) use ($formatDate, $formatTime) {
+    $scheduleFilterItems = $singleCourseSchedules->map(function ($schedule) use ($formatDate, $formatTime, $scheduleDepartmentInstructors) {
+        $instructors = $scheduleDepartmentInstructors($schedule);
+
         return [
             'id' => (string) $schedule->id,
             'activity' => (string) $schedule->activity_type_id,
             'groups' => $schedule->studentGroups->pluck('id')->map(fn ($id) => (string) $id)->values(),
-            'instructors' => $schedule->instructors->pluck('id')->map(fn ($id) => (string) $id)->values(),
+            'instructors' => $instructors->pluck('id')->map(fn ($id) => (string) $id)->values(),
             'search' => mb_strtolower(collect([
                 $formatDate($schedule->start_date),
                 $formatDate($schedule->end_date),
@@ -269,7 +294,7 @@
                 $schedule->room?->room_code,
                 $schedule->room?->room_name,
                 $schedule->studentGroups->pluck('group_code')->implode(' '),
-                $schedule->instructors->map(fn ($instructor) => $instructor->formatted_name ?? $instructor->name)->implode(' '),
+                $instructors->map(fn ($instructor) => $instructor->formatted_name ?? $instructor->name)->implode(' '),
             ])->filter()->implode(' '), 'UTF-8'),
         ];
     })->values();
@@ -433,15 +458,17 @@
         .schedule-caption-warning {
             display: inline-flex;
             align-items: center;
-            min-height: 17px;
-            padding: 0 7px;
+            justify-content: center;
+            box-sizing: border-box;
+            min-height: 22px;
+            padding: 2px 8px;
             border: 1px solid var(--status-warning-border);
             border-radius: 999px;
             background: var(--status-warning-bg);
             color: var(--status-warning-fg);
-            font-size: 9.5px;
-            font-weight: 750;
-            line-height: 1;
+            font-size: 10.5px;
+            font-weight: 800;
+            line-height: 1.2;
             white-space: nowrap;
         }
         .schedule-card-hdr {
@@ -648,12 +675,45 @@
             color: var(--fg-1);
             box-shadow: 0 1px 6px oklch(0% 0 0 / 0.11);
         }
+        .weekend-toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 32px;
+            padding: 5px 10px;
+            border: 1px solid var(--schedule-border);
+            border-radius: 8px;
+            background: var(--surface);
+            color: var(--schedule-muted);
+            font: inherit;
+            font-size: 11.5px;
+            font-weight: 850;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .weekend-toggle.is-active {
+            border-color: oklch(77% 0.07 210);
+            background: oklch(94.5% 0.03 220);
+            color: var(--brand-navy);
+        }
         .toolbar-actions {
             margin-left: auto;
             display: flex;
             gap: 8px;
             align-items: center;
             flex-wrap: wrap;
+        }
+        .schedule-shell .btn:disabled,
+        .schedule-shell .btn.is-disabled,
+        .day-add-link:disabled {
+            cursor: not-allowed;
+            opacity: .52;
+            box-shadow: none;
+        }
+        .schedule-shell .btn:disabled:hover,
+        .schedule-shell .btn.is-disabled:hover,
+        .day-add-link:disabled:hover {
+            transform: none;
         }
         .compact-summary {
             color: var(--schedule-muted);
@@ -1395,9 +1455,9 @@
         }
         .schedule-grid.is-precise .grid-cell-activity .grid-activity {
             min-height: 100%;
-            padding: 7px 8px;
-            gap: 4px;
-            overflow: hidden;
+            padding: 8px 9px;
+            gap: 5px;
+            overflow: visible;
             pointer-events: auto;
         }
         .grid-activity {
@@ -1414,9 +1474,18 @@
             cursor: pointer;
             text-align: left;
             font: inherit;
-            display: grid;
+            display: flex;
+            flex-direction: column;
             gap: 5px;
             min-width: 0;
+        }
+        .grid-activity.is-compact {
+            gap: 3px;
+            padding: 6px 7px;
+        }
+        .grid-activity.is-tall {
+            padding: 10px 10px 9px;
+            gap: 7px;
         }
         .grid-activity strong,
         .grid-activity-title {
@@ -1432,6 +1501,16 @@
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
+        }
+        .schedule-grid.is-precise .grid-activity.is-tall .grid-activity-title {
+            font-size: 12.2px;
+            line-height: 1.34;
+            -webkit-line-clamp: 3;
+        }
+        .schedule-grid.is-precise .grid-activity.is-compact .grid-activity-title {
+            font-size: 11px;
+            line-height: 1.22;
+            -webkit-line-clamp: 1;
         }
         .grid-course {
             display: inline-flex;
@@ -1460,6 +1539,11 @@
             font-size: 9.5px;
             line-height: 1.25;
         }
+        .grid-activity.is-compact .activity-tag {
+            min-height: 17px;
+            padding: 1px 5px;
+            font-size: 9px;
+        }
         .grid-activity-sub,
         .grid-activity-meta {
             color: var(--schedule-muted);
@@ -1483,11 +1567,23 @@
             font-size: 10.5px;
             line-height: 1.2;
         }
+        .grid-activity.is-tall .grid-activity-time {
+            margin-top: 2px;
+        }
+        .grid-activity.is-compact .grid-activity-time {
+            font-size: 10px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
         .grid-activity-foot {
             display: flex;
             align-items: center;
+            justify-content: space-between;
             gap: 6px;
             min-width: 0;
+            margin-top: auto;
+            padding-top: 4px;
         }
         .grid-activity-room {
             flex: 1;
@@ -1500,13 +1596,23 @@
             font-weight: 700;
         }
         .grid-activity-groups {
+            position: relative;
             flex-shrink: 0;
-            padding: 0;
-            border-radius: 0;
-            background: transparent;
+            min-height: 19px;
+            padding: 1px 7px;
+            border-radius: 999px;
+            background: oklch(96.5% 0.014 232);
             color: var(--fg-2);
-            font-size: 10.2px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--schedule-border));
+            font-size: 10px;
             font-weight: 700;
+            line-height: 1.45;
+        }
+        .grid-activity-groups.has-tooltip {
+            cursor: help;
+        }
+        .grid-activity.is-compact .grid-activity-foot {
+            display: none;
         }
         .grid-location-name,
         .grid-instructor {
@@ -2035,35 +2141,60 @@
         }
         .modal-section-title {
             margin-bottom: 8px;
-            color: var(--fg-1);        /* ──────────────────────────────────────────────────────────
+            color: var(--fg-1);
+        }
+        /* ──────────────────────────────────────────────────────────
            Offerings Dropdown Panel (workspace top section)
            ────────────────────────────────────────────────────────── */
         .offerings-dropdown-panel {
             display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 8px;
             background: linear-gradient(180deg, oklch(98% 0.01 228), oklch(96% 0.015 228));
             padding: 12px 18px;
             border: 1px solid var(--schedule-border);
             border-radius: 10px;
             box-shadow: 0 1px 3px oklch(0% 0 0 / 0.04);
-            flex-wrap: wrap;
             margin-bottom: 20px;
+        }
+        .offerings-panel-meta {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            flex-wrap: wrap;
+            min-height: 24px;
         }
         .offering-selector-wrapper {
             display: flex;
             align-items: center;
             gap: 12px;
             flex: 1;
-            min-width: 280px;
+            width: 100%;
+            min-width: 0;
         }
         .offering-selector-label {
+            display: inline-flex;
+            align-items: baseline;
             font-size: 13.5px;
+            line-height: 1.25;
             font-weight: 800;
             color: var(--fg-2);
             white-space: nowrap;
             flex-shrink: 0;
+        }
+        .offering-summary-chip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            min-height: 22px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            line-height: 1.25;
+            font-weight: 850;
+            white-space: nowrap;
         }
         .offering-select-control {
             font-family: inherit;
@@ -2075,7 +2206,8 @@
             border-radius: 8px;
             padding: 8px 36px 8px 12px;
             flex: 1;
-            max-width: 580px;
+            width: 100%;
+            max-width: 100%;
             min-width: 200px;
             cursor: pointer;
             box-shadow: 0 1px 2px oklch(0% 0 0 / 0.03);
@@ -2161,7 +2293,10 @@
             scheduleActivity: '',
             scheduleGroup: '',
             scheduleInstructor: '',
-            gridJumpDate: @js($formatDate($weekStart)),
+            schedulePeriod: @js($schedulePeriod ?? 'week'),
+            includeWeekends: @js((bool) ($includeWeekends ?? false)),
+            gridJumpDate: @js($formatDate($selectedScheduleDate ?? $weekStart)),
+            calendarAllowsCreate: @js($canCreateInCurrentPeriod),
             createInstructorSearch: '',
             createGroupSearch: '',
             createStartDate: @js(old('start_date') ? $formatDate(\Carbon\CarbonImmutable::parse(old('start_date'))) : ''),
@@ -2222,6 +2357,11 @@
                 url.searchParams.set('date', date);
                 url.searchParams.set('week_start', date);
                 url.searchParams.set('period', period);
+                if (period === 'week' && this.includeWeekends) {
+                    url.searchParams.set('include_weekends', '1');
+                } else {
+                    url.searchParams.delete('include_weekends');
+                }
                 sessionStorage.setItem('tpss-schedule-scroll-y', window.scrollY);
                 sessionStorage.setItem('tpss-schedule-scroll-height', document.documentElement.scrollHeight);
                 this.$el.classList.add('is-grid-navigating');
@@ -2233,8 +2373,15 @@
                 this.navigateGrid(iso, @js($schedulePeriod ?? 'week'));
             },
             changeGridPeriod(period) {
-                const iso = this.thaiDateToIso(this.gridJumpDate) || @js($weekStart->toDateString());
+                const iso = this.thaiDateToIso(this.gridJumpDate) || @js(($selectedScheduleDate ?? $weekStart)->toDateString());
                 this.navigateGrid(iso, period);
+            },
+            toggleWeekends() {
+                if (this.schedulePeriod !== 'week') return;
+                const url = new URL(@js($weekendToggleUrl), window.location.origin);
+                sessionStorage.setItem('tpss-schedule-scroll-y', window.scrollY);
+                sessionStorage.setItem('tpss-schedule-scroll-height', document.documentElement.scrollHeight);
+                window.location.href = url.toString();
             },
             // แปลงค่าจากช่อง x-thai-date-input (วว/ดด/พ.ศ.) เป็น ISO Y-m-d ก่อนส่งเข้า URL
             // mirror logic ของ App\Support\ThaiDate::parseToIso ฝั่ง client
@@ -2334,6 +2481,8 @@
                 });
             },
             openCreate(date = null) {
+                if (!this.calendarAllowsCreate) return;
+
                 this.detailModal = null;
                 this.editModal = null;
                 this.resetCreateForm(date);
@@ -2350,16 +2499,16 @@
         @keydown.escape.window="detailModal = null; showCreate = false; editModal = null"
     >
         @if($availableOfferings->isNotEmpty())
-            <div class="offerings-dropdown-panel" data-testid="offerings-panel" style="flex-direction: column; align-items: stretch; gap: 8px;">
-                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <div class="offerings-dropdown-panel" data-testid="offerings-panel">
+                <div class="offerings-panel-meta">
                     <label for="offering-selector" class="offering-selector-label">รายวิชาที่รับผิดชอบ:</label>
-                    <span class="badge badge-gray" style="font-weight: 800; font-size: 11px; padding: 2px 8px; border-radius: 999px;">{{ $availableOfferings->count() }} รายวิชา</span>
+                    <span class="badge badge-gray offering-summary-chip">{{ $availableOfferings->count() }} รายวิชา</span>
                     @if($activeOfferingCount > 0)
-                        <span class="badge badge-ok" style="font-weight: 800; font-size: 11px; padding: 2px 8px; border-radius: 999px;">{{ $activeOfferingCount }} เปิดจัดตาราง</span>
+                        <span class="badge badge-ok offering-summary-chip">{{ $activeOfferingCount }} เปิดจัดตาราง</span>
                     @endif
                 </div>
-                <div class="offering-selector-wrapper" style="width: 100%; min-width: 0;">
-                    <select id="offering-selector" class="offering-select-control" style="max-width: 100%; width: 100%;" onchange="sessionStorage.setItem('tpss-schedule-scroll-y', window.scrollY); window.location.href = this.value">
+                <div class="offering-selector-wrapper">
+                    <select id="offering-selector" class="offering-select-control" onchange="sessionStorage.setItem('tpss-schedule-scroll-y', window.scrollY); window.location.href = this.value">
                         @foreach($availableOfferings as $availOffering)
                             @php
                                 $availCourse = $availOffering->course;
@@ -2391,7 +2540,7 @@
                         <x-thai-date-input
                             name="grid_jump_date"
                             :helper="false"
-                            :value="$weekStart->toDateString()"
+                            :value="($selectedScheduleDate ?? $weekStart)->toDateString()"
                             :year-start="$scheduleDatePickerYearStart"
                             :year-end="$scheduleDatePickerYearEnd"
                             x-model="gridJumpDate"
@@ -2407,13 +2556,29 @@
                 <button type="button" data-period-url="{{ $weekViewUrl }}" @click="changeGridPeriod('week')" class="{{ ($schedulePeriod ?? 'week') === 'week' ? 'is-active' : '' }}">สัปดาห์</button>
                 <button type="button" data-period-url="{{ $monthViewUrl }}" @click="changeGridPeriod('month')" class="{{ ($schedulePeriod ?? 'week') === 'month' ? 'is-active' : '' }}">เดือน</button>
             </div>
+            <button
+                type="button"
+                class="weekend-toggle {{ ($includeWeekends ?? false) ? 'is-active' : '' }}"
+                x-show="view === 'grid' && schedulePeriod === 'week'"
+                x-cloak
+                @click="toggleWeekends()"
+                aria-pressed="{{ ($includeWeekends ?? false) ? 'true' : 'false' }}"
+            >เสาร์-อาทิตย์</button>
             <div class="schedule-toggle" role="group" aria-label="รูปแบบการแสดงตาราง">
                 <button type="button" :class="{ 'is-active': view === 'list' }" @click="view = 'list'" data-testid="schedule-list-toggle">แบบรายการ</button>
                 <button type="button" :class="{ 'is-active': view === 'grid' }" @click="view = 'grid'" data-testid="schedule-grid-toggle">แบบตาราง</button>
             </div>
             <div class="toolbar-actions">
                 @if($canEdit)
-                    <button type="button" class="btn btn-primary" data-testid="schedule-create-link" @click="openCreate()">+ เพิ่ม</button>
+                    <button
+                        type="button"
+                        class="btn btn-primary {{ ! $canCreateInCurrentPeriod ? 'is-disabled' : '' }}"
+                        data-testid="schedule-create-link"
+                        @click="openCreate()"
+                        @disabled(! $canCreateInCurrentPeriod)
+                        title="{{ ! $canCreateInCurrentPeriod ? $outsideCreateHint : '' }}"
+                        aria-disabled="{{ ! $canCreateInCurrentPeriod ? 'true' : 'false' }}"
+                    >+ เพิ่ม</button>
                 @else
                     <span class="badge badge-gray">ดูข้อมูลอย่างเดียว</span>
                 @endif
@@ -2462,7 +2627,16 @@
                         <span>รายละเอียดรายวิชา</span>
                     </a>
                     @if($canEdit)
-                        <button type="button" class="btn btn-primary" data-testid="schedule-create-link" @click="openCreate()" style="min-height:34px;padding:6px 12px;font-size:12.5px;">+ เพิ่มรายการสอน</button>
+                        <button
+                            type="button"
+                            class="btn btn-primary {{ ! $canCreateInCurrentPeriod ? 'is-disabled' : '' }}"
+                            data-testid="schedule-create-link"
+                            @click="openCreate()"
+                            @disabled(! $canCreateInCurrentPeriod)
+                            title="{{ ! $canCreateInCurrentPeriod ? $outsideCreateHint : '' }}"
+                            aria-disabled="{{ ! $canCreateInCurrentPeriod ? 'true' : 'false' }}"
+                            style="min-height:34px;padding:6px 12px;font-size:12.5px;"
+                        >+ เพิ่มรายการสอน</button>
                     @endif
                 </div>
                 <div class="course-overview-stats">
@@ -2494,7 +2668,7 @@
                                     <x-thai-date-input
                                         name="grid_jump_date"
                                         :helper="false"
-                                        :value="$weekStart->toDateString()"
+                                        :value="($selectedScheduleDate ?? $weekStart)->toDateString()"
                                         :year-start="$scheduleDatePickerYearStart"
                                         :year-end="$scheduleDatePickerYearEnd"
                                         class="sched-datenav-input"
@@ -2514,6 +2688,14 @@
                             <button type="button" data-period-url="{{ $weekViewUrl }}" @click="changeGridPeriod('week')" class="{{ ($schedulePeriod ?? 'week') === 'week' ? 'is-active' : '' }}">สัปดาห์</button>
                             <button type="button" data-period-url="{{ $monthViewUrl }}" @click="changeGridPeriod('month')" class="{{ ($schedulePeriod ?? 'week') === 'month' ? 'is-active' : '' }}">เดือน</button>
                         </div>
+                        <button
+                            type="button"
+                            class="weekend-toggle {{ ($includeWeekends ?? false) ? 'is-active' : '' }}"
+                            x-show="view === 'grid' && schedulePeriod === 'week'"
+                            x-cloak
+                            @click="toggleWeekends()"
+                            aria-pressed="{{ ($includeWeekends ?? false) ? 'true' : 'false' }}"
+                        >เสาร์-อาทิตย์</button>
                         <div class="schedule-toggle" role="group" aria-label="รูปแบบการแสดงตาราง">
                             <button type="button" :class="{ 'is-active': view === 'list' }" @click="view = 'list'" data-testid="schedule-list-toggle">แบบรายการ</button>
                             <button type="button" :class="{ 'is-active': view === 'grid' }" @click="view = 'grid'" data-testid="schedule-grid-toggle">แบบตาราง</button>
@@ -2593,11 +2775,7 @@
                                                 @php
                                                     $asActivity = $as->activityType;
                                                     $asRoom = $as->room;
-                                                    $asInstructorText = $as->instructors->isNotEmpty()
-                                                        ? ($as->instructors->count() === 1
-                                                            ? ($as->instructors->first()->formatted_name ?? $as->instructors->first()->name)
-                                                            : $as->instructors->count() . ' ท่าน')
-                                                        : 'ไม่มีผู้สอน';
+                                                    $asInstructorText = $scheduleInstructorText($as);
                                                     $asSameDay = $as->start_date?->format('d/m/Y') === $as->end_date?->format('d/m/Y');
 
                                                     $dayOfWeekName = $thaiDays[$as->start_date->dayOfWeekIso] ?? '';
@@ -2702,11 +2880,7 @@
                                                 $schedule = $occurrence['schedule'];
                                                 $activity = $schedule->activityType;
                                                 $room = $schedule->room;
-                                                $instructorText = $schedule->instructors->isNotEmpty()
-                                                    ? ($schedule->instructors->count() === 1
-                                                        ? ($schedule->instructors->first()->formatted_name ?? $schedule->instructors->first()->name)
-                                                        : $schedule->instructors->count() . ' ท่าน')
-                                                    : 'ไม่มีผู้สอน';
+                                                $instructorText = $scheduleInstructorText($schedule);
                                             @endphp
                                             <div role="button" tabindex="0" class="month-activity" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
                                                 <div class="month-activity-time">{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }}</div>
@@ -2728,7 +2902,7 @@
                             @endforeach
                         </div>
                     @else
-                    <div class="schedule-grid is-precise" style="--grid-minute-row-height: {{ $gridMinuteRowHeight }}px; grid-template-columns: 74px repeat({{ max(1, $weekDays->count()) }}, minmax(146px, 1fr)); grid-template-rows: 44px repeat({{ $gridMinuteRowCount }}, var(--grid-minute-row-height));">
+                    <div class="schedule-grid is-precise" style="--grid-minute-row-height: {{ $gridMinuteRowHeight }}px; grid-template-columns: 68px repeat({{ max(1, $weekDays->count()) }}, minmax({{ ($includeWeekends ?? false) && ($schedulePeriod ?? 'week') === 'week' ? 122 : 146 }}px, 1fr)); grid-template-rows: 44px repeat({{ $gridMinuteRowCount }}, var(--grid-minute-row-height));">
                         <div class="grid-cell grid-head" style="grid-area:1 / 1;"></div>
                         @foreach($weekDays as $dayIndex => $day)
                             <div class="grid-cell grid-head" style="grid-area:1 / {{ $dayIndex + 2 }};">
@@ -2758,16 +2932,20 @@
                                             $activity = $schedule->activityType;
                                             $room = $schedule->room;
                                             $offeringCourse = $schedule->courseOffering?->course;
-                                            $instructorText = $schedule->instructors->isNotEmpty()
-                                                ? ($schedule->instructors->count() === 1
-                                                    ? ($schedule->instructors->first()->formatted_name ?? $schedule->instructors->first()->name)
-                                                    : $schedule->instructors->count() . ' ท่าน')
-                                                : 'ไม่มีผู้สอน';
+                                            $instructorText = $scheduleInstructorText($schedule);
                                             $activityRowStart = $gridRowStartForTime((string) $schedule->start_time);
                                             $activityRowSpan = $gridRowSpanForOccurrence($occurrence);
+                                            $activityDuration = (int) $occurrence['duration_minutes'];
+                                            $gridActivitySizeClass = $activityDuration < 75
+                                                ? 'is-compact'
+                                                : ($activityDuration >= 150 ? 'is-tall' : '');
+                                            $groupTooltip = $schedule->studentGroups
+                                                ->pluck('group_code')
+                                                ->filter()
+                                                ->implode(', ');
                                         @endphp
                                 <div class="grid-cell grid-cell-activity" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $activityRowStart }} / span {{ $activityRowSpan }};">
-                                        <div role="button" tabindex="0" class="grid-activity" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
+                                        <div role="button" tabindex="0" class="grid-activity {{ $gridActivitySizeClass }}" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
                                             <div class="grid-activity-top">
                                                 <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }};">{{ $activity?->name ?? 'กิจกรรม' }}</span>
                                             </div>
@@ -2775,7 +2953,9 @@
                                             <div class="grid-activity-time">{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }} · {{ $formatDuration($occurrence['duration_minutes']) }}</div>
                                             <div class="grid-activity-foot">
                                                 <span class="grid-activity-room">{{ $room?->room_name ?? $room?->room_code ?? 'ไม่ระบุสถานที่' }}</span>
-                                                <span class="grid-activity-groups">{{ $schedule->studentGroups->isNotEmpty() ? '· ' . $schedule->studentGroups->count() . ' กลุ่ม' : '· ไม่มีกลุ่ม' }}</span>
+                                                <span class="grid-activity-groups">
+                                                    {{ $schedule->studentGroups->isNotEmpty() ? $schedule->studentGroups->count() . ' กลุ่ม' : 'ไม่มีกลุ่ม' }}
+                                                </span>
                                             </div>
                                         </div>
                                 </div>
@@ -2827,6 +3007,8 @@
                             @foreach($weekDays as $day)
                                 @php
                                     $dayOccurrences = $occurrencesByDate->get($day->toDateString(), collect());
+                                    $canCreateOnDay = $canEdit
+                                        && (! $academicStartDate || ! $academicEndDate || $day->betweenIncluded($academicStartDate, $academicEndDate));
                                 @endphp
                                 <tr class="sched-day">
                                     <td colspan="6">
@@ -2836,7 +3018,14 @@
                                             <span class="sched-day-count">· {{ $dayOccurrences->count() }} รายการ</span>
                                             <span class="sched-day-spacer"></span>
                                             @if($canEdit)
-                                                <button type="button" class="day-add-link" @click="openCreate('{{ $day->toDateString() }}')">+ เพิ่ม</button>
+                                                <button
+                                                    type="button"
+                                                    class="day-add-link"
+                                                    @click="openCreate('{{ $day->toDateString() }}')"
+                                                    @disabled(! $canCreateOnDay)
+                                                    title="{{ ! $canCreateOnDay ? $outsideCreateHint : '' }}"
+                                                    aria-disabled="{{ ! $canCreateOnDay ? 'true' : 'false' }}"
+                                                >+ เพิ่ม</button>
                                             @endif
                                         </div>
                                     </td>
@@ -2849,11 +3038,7 @@
                                         $room = $schedule->room;
                                         $offeringCourse = $schedule->courseOffering?->course;
                                         $timeText = $formatTime($schedule->start_time) . '-' . $formatTime($schedule->end_time);
-                                        $instructorText = $schedule->instructors->isNotEmpty()
-                                            ? ($schedule->instructors->count() === 1
-                                                ? ($schedule->instructors->first()->formatted_name ?? $schedule->instructors->first()->name)
-                                                : $schedule->instructors->count() . ' ท่าน')
-                                            : 'ไม่มีผู้สอน';
+                                        $instructorText = $scheduleInstructorText($schedule);
                                         $status = $statusMeta[$schedule->status] ?? ['label' => $schedule->status, 'class' => 'badge-gray'];
                                     @endphp
                                     <tr role="button" tabindex="0" class="sched-row" style="--activity-color: {{ $activityTone($schedule) }};" data-testid="schedule-row" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
@@ -2930,11 +3115,7 @@
                                             $activity = $schedule->activityType;
                                             $room = $schedule->room;
                                             $offeringCourse = $schedule->courseOffering?->course;
-                                            $instructorText = $schedule->instructors->isNotEmpty()
-                                                ? ($schedule->instructors->count() === 1
-                                                    ? ($schedule->instructors->first()->formatted_name ?? $schedule->instructors->first()->name)
-                                                    : $schedule->instructors->count() . ' ท่าน')
-                                                : 'ไม่มีผู้สอน';
+                                            $instructorText = $scheduleInstructorText($schedule);
                                             $status = $statusMeta[$schedule->status] ?? ['label' => $schedule->status, 'class' => 'badge-gray'];
                                         @endphp
                                         <div role="button" tabindex="0" class="month-activity" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
@@ -2965,7 +3146,7 @@
                         @endforeach
                     </div>
                 @else
-                <div class="schedule-grid is-precise" style="--grid-minute-row-height: {{ $gridMinuteRowHeight }}px; grid-template-columns: 74px repeat({{ max(1, $weekDays->count()) }}, minmax(146px, 1fr)); grid-template-rows: 44px repeat({{ $gridMinuteRowCount }}, var(--grid-minute-row-height));">
+                <div class="schedule-grid is-precise" style="--grid-minute-row-height: {{ $gridMinuteRowHeight }}px; grid-template-columns: 68px repeat({{ max(1, $weekDays->count()) }}, minmax({{ ($includeWeekends ?? false) && ($schedulePeriod ?? 'week') === 'week' ? 122 : 146 }}px, 1fr)); grid-template-rows: 44px repeat({{ $gridMinuteRowCount }}, var(--grid-minute-row-height));">
                     <div class="grid-cell grid-head" style="grid-area:1 / 1;"></div>
                     @foreach($weekDays as $dayIndex => $day)
                         <div class="grid-cell grid-head" style="grid-area:1 / {{ $dayIndex + 2 }};">
@@ -2995,17 +3176,17 @@
                                         $activity = $schedule->activityType;
                                         $room = $schedule->room;
                                         $offeringCourse = $schedule->courseOffering?->course;
-                                        $instructorText = $schedule->instructors->isNotEmpty()
-                                            ? ($schedule->instructors->count() === 1
-                                                ? ($schedule->instructors->first()->formatted_name ?? $schedule->instructors->first()->name)
-                                                : $schedule->instructors->count() . ' ท่าน')
-                                            : 'ไม่มีผู้สอน';
+                                        $instructorText = $scheduleInstructorText($schedule);
                                         $status = $statusMeta[$schedule->status] ?? ['label' => $schedule->status, 'class' => 'badge-gray'];
-                                        $activityRowStart = $gridRowStartForTime((string) $schedule->start_time);
-                                        $activityRowSpan = $gridRowSpanForOccurrence($occurrence);
-                                    @endphp
+                                            $activityRowStart = $gridRowStartForTime((string) $schedule->start_time);
+                                            $activityRowSpan = $gridRowSpanForOccurrence($occurrence);
+                                            $activityDuration = (int) $occurrence['duration_minutes'];
+                                            $gridActivitySizeClass = $activityDuration < 75
+                                                ? 'is-compact'
+                                                : ($activityDuration >= 150 ? 'is-tall' : '');
+                                        @endphp
                             <div class="grid-cell grid-cell-activity" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $activityRowStart }} / span {{ $activityRowSpan }};">
-                                    <div role="button" tabindex="0" class="grid-activity" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
+                                    <div role="button" tabindex="0" class="grid-activity {{ $gridActivitySizeClass }}" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
                                         <div class="grid-activity-top">
                                             @if($offeringCourse?->course_code)
                                                 <span class="grid-course">{{ $offeringCourse->course_code }}</span>
@@ -3065,6 +3246,7 @@
                     ? $formatDate($schedule->start_date)
                     : ($formatDate($schedule->start_date) . ' - ' . $formatDate($schedule->end_date));
                 $scheduleCanEdit = $offering?->academicYear?->phase === 'scheduling';
+                $detailInstructors = $scheduleDepartmentInstructors($schedule);
             @endphp
             <div class="schedule-modal-backdrop" x-show="detailModal === 'schedule-{{ $schedule->id }}'" x-cloak @click.self="detailModal = null" data-testid="schedule-detail-modal">
                 <template x-if="detailModal === 'schedule-{{ $schedule->id }}'">
@@ -3090,9 +3272,9 @@
                             <div class="detail-row" style="align-items:flex-start;">
                                 <div class="detail-row-label" style="padding-top:1px;">ผู้สอน</div>
                                 <div class="detail-row-value">
-                                    @if($schedule->instructors->isNotEmpty())
+                                    @if($detailInstructors->isNotEmpty())
                                         <div style="display:flex;flex-direction:column;gap:3px;">
-                                            @foreach($schedule->instructors as $inst)
+                                            @foreach($detailInstructors as $inst)
                                                 @php
                                                     $roleObj = $inst->pivot?->courseRole;
                                                     $roleName = $roleObj?->name_th ?? 'อาจารย์ผู้สอน';
@@ -3148,6 +3330,7 @@
                             <form id="delete-schedule-{{ $schedule->id }}" method="POST" action="{{ route('maker.course_offerings.schedules.destroy', [$offering, $schedule]) }}" style="display:none;">
                                 @csrf
                                 @method('DELETE')
+                                <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
                             </form>
                             <button type="button" class="btn btn-red" data-form="delete-schedule-{{ $schedule->id }}" data-label="{{ $activity?->name ?? 'รายการสอน' }} {{ $timeText }}" onclick="tpssDelete(this)" data-testid="schedule-delete-button" style="display:inline-flex;align-items:center;gap:5px;">
                                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
@@ -3162,7 +3345,8 @@
             @if($scheduleCanEdit)
                 @php
                     $editUsesOld = (string) old('edit_schedule_id') === (string) $schedule->id;
-                    $editInstructorIds = collect($editUsesOld ? old('instructor_ids', []) : $schedule->instructors->pluck('id')->all())
+                    $editDepartmentInstructors = $scheduleDepartmentInstructors($schedule);
+                    $editInstructorIds = collect($editUsesOld ? old('instructor_ids', []) : $editDepartmentInstructors->pluck('id')->all())
                         ->map(fn ($id) => (string) $id)
                         ->all();
                     $editGroupIds = collect($editUsesOld ? old('student_group_ids', []) : $schedule->studentGroups->pluck('id')->all())
@@ -3170,7 +3354,7 @@
                         ->all();
                     $editLeadInstructorId = (string) ($editUsesOld
                         ? old('lead_instructor_id', '')
-                        : ($schedule->instructors->first(fn ($instructor) => (bool) $instructor->pivot?->is_lead)?->id ?? ''));
+                        : ($editDepartmentInstructors->first(fn ($instructor) => (bool) $instructor->pivot?->is_lead)?->id ?? ''));
                     $editOld = fn (string $key, mixed $default = null) => $editUsesOld ? old($key, $default) : $default;
                     $editDateDisplay = function (string $key, $date) use ($editOld, $formatDate) {
                         $value = (string) $editOld($key, $date?->format('Y-m-d'));
@@ -3208,6 +3392,7 @@
                             @method('PUT')
                             <input type="hidden" name="modal_mode" value="edit">
                             <input type="hidden" name="edit_schedule_id" value="{{ $schedule->id }}">
+                            <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
                             <div class="modal-form-body">
                                 @if($editUsesOld && $errors->any())
                                     @php
@@ -3372,6 +3557,7 @@
                     <form method="POST" action="{{ $createAction }}" data-testid="schedule-form" x-ref="createForm">
                         @csrf
                         <input type="hidden" name="modal_mode" value="create">
+                        <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
                         <div class="modal-form-body">
                             @if($errors->any())
                                 @php

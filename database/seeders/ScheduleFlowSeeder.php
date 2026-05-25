@@ -6,12 +6,16 @@ use App\Models\AcademicYear;
 use App\Models\ActivityType;
 use App\Models\Course;
 use App\Models\CourseOffering;
+use App\Models\InstructorProfile;
 use App\Models\Room;
 use App\Models\Schedule;
+use App\Models\User;
+use App\Models\UserRole;
 use Carbon\CarbonPeriod;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Optional seeder for preparing a realistic scheduling flow:
@@ -28,6 +32,8 @@ class ScheduleFlowSeeder extends Seeder
     ];
 
     private const TIME_SLOTS = ['08:00', '10:00', '13:00', '15:00'];
+
+    private const MIN_INSTRUCTORS_PER_OFFERING = 3;
 
     public function run(): void
     {
@@ -95,9 +101,9 @@ class ScheduleFlowSeeder extends Seeder
 
     private function seedSchedules(AcademicYear $year): void
     {
-        $monthStart = Carbon::parse($year->start_date)->startOfMonth();
-        $monthEnd = $monthStart->copy()->endOfMonth();
-        $teachingWeeks = collect(CarbonPeriod::create($monthStart, $monthEnd))
+        $termStart = Carbon::parse($year->start_date)->startOfDay();
+        $termEnd = Carbon::parse($year->end_date)->endOfDay();
+        $teachingWeeks = collect(CarbonPeriod::create($termStart, $termEnd))
             ->map(fn ($date) => Carbon::parse($date))
             ->filter(fn (Carbon $date) => $date->isWeekday())
             ->groupBy(fn (Carbon $date) => $date->copy()->startOfWeek(Carbon::MONDAY)->toDateString())
@@ -105,7 +111,7 @@ class ScheduleFlowSeeder extends Seeder
             ->values();
 
         if ($teachingWeeks->isEmpty()) {
-            $this->command->warn('ScheduleFlowSeeder: ไม่มีวันทำการในเดือนเริ่มต้นของปีการศึกษา — ข้ามการสร้างรายการสอน');
+            $this->command->warn('ScheduleFlowSeeder: ไม่มีวันทำการในช่วงปีการศึกษา — ข้ามการสร้างรายการสอน');
 
             return;
         }
@@ -132,23 +138,33 @@ class ScheduleFlowSeeder extends Seeder
         }
 
         $offerings = CourseOffering::where('academic_year_id', $year->id)
-            ->with(['course', 'studentGroups', 'instructorPool'])
+            ->with(['course', 'studentGroups', 'instructorPool.instructorProfile'])
             ->orderBy('id')
             ->get();
+
+        $offeringIds = $offerings->pluck('id')->all();
+        $this->resetSeededSchedules($offeringIds);
 
         $slotsPerDay = count(self::TIME_SLOTS);
         $globalSlot = 0;
         $schedulesCreated = 0;
         $offeringsWithSchedules = 0;
+        $skippedActivities = 0;
+        [$occupiedRooms, $occupiedInstructors] = $this->existingScheduleOccupancy($termStart, $termEnd);
 
         foreach ($offerings as $offering) {
+            $this->ensureOfferingInstructors($offering);
+            $offering->load(['course', 'studentGroups', 'instructorPool.instructorProfile']);
+
             $groupIds = $offering->studentGroups->pluck('id')->all();
-            $instructorIds = $offering->instructorPool->pluck('id')->all();
+            $instructorIds = $this->eligibleInstructorIds($offering);
             if (empty($groupIds) || empty($instructorIds)) {
                 continue;
             }
 
-            $leadId = $offering->coordinator_id ?: $instructorIds[0];
+            $leadId = in_array((int) $offering->coordinator_id, $instructorIds, true)
+                ? (int) $offering->coordinator_id
+                : $instructorIds[0];
             $hasLecture = (int) $offering->planned_lecture_hours > 0;
             $hasPracticum = (int) $offering->planned_practicum_hours > 0
                 || (int) $offering->planned_lab_hours > 0;
@@ -171,22 +187,22 @@ class ScheduleFlowSeeder extends Seeder
             foreach ($teachingWeeks as $weekIndex => $weekDates) {
                 foreach ($activities as $activity) {
                     $slot = $globalSlot++;
-                    $dayIndex = intdiv($slot, $slotsPerDay) % max(1, $weekDates->count());
-                    $timeIndex = $slot % $slotsPerDay;
-                    $date = $weekDates[$dayIndex]->toDateString();
-                    $startTime = self::TIME_SLOTS[$timeIndex];
-                    $endTime = Carbon::parse($startTime)->addHours(2)->format('H:i');
-                    $room = $rooms[$slot % $rooms->count()];
-                    $topic = $activity['topic'] . ' (สัปดาห์ที่ ' . ((int) $weekIndex + 1) . ')';
+                    $placement = $this->findAvailablePlacement(
+                        $weekDates,
+                        $rooms,
+                        $instructorIds,
+                        $slot,
+                        $occupiedRooms,
+                        $occupiedInstructors
+                    );
 
-                    $alreadyExists = $offering->schedules()
-                        ->whereDate('start_date', $date)
-                        ->where('start_time', $startTime . ':00')
-                        ->exists();
-
-                    if ($alreadyExists) {
+                    if (! $placement) {
+                        $skippedActivities++;
                         continue;
                     }
+
+                    [$date, $startTime, $endTime, $room, $selectedInstructorIds] = $placement;
+                    $topic = $activity['topic'] . ' (สัปดาห์ที่ ' . ((int) $weekIndex + 1) . ')';
 
                     DB::transaction(function () use (
                         $offering,
@@ -196,7 +212,7 @@ class ScheduleFlowSeeder extends Seeder
                         $startTime,
                         $endTime,
                         $topic,
-                        $instructorIds,
+                        $selectedInstructorIds,
                         $leadId,
                         $groupIds,
                         &$schedulesCreated
@@ -217,7 +233,7 @@ class ScheduleFlowSeeder extends Seeder
                         ]);
 
                         $payload = [];
-                        foreach (array_slice($instructorIds, 0, 2) as $id) {
+                        foreach ($selectedInstructorIds as $id) {
                             $payload[$id] = ['is_lead' => (int) $id === (int) $leadId];
                         }
 
@@ -226,6 +242,8 @@ class ScheduleFlowSeeder extends Seeder
 
                         $schedulesCreated++;
                     });
+
+                    $this->reservePlacement($occupiedRooms, $occupiedInstructors, $date, $startTime, $endTime, $room->id, $selectedInstructorIds);
 
                     $createdForOffering = true;
                 }
@@ -236,6 +254,347 @@ class ScheduleFlowSeeder extends Seeder
             }
         }
 
-        $this->command->info("ScheduleFlowSeeder: สร้างรายการสอน {$schedulesCreated} รายการ ใน {$offeringsWithSchedules} รายวิชา (ทั้งเดือน {$monthStart->format('Y-m')})");
+        $this->command->info("ScheduleFlowSeeder: สร้างรายการสอน {$schedulesCreated} รายการ ใน {$offeringsWithSchedules} รายวิชา (ทั้งเทอม {$termStart->format('Y-m-d')} - {$termEnd->format('Y-m-d')})");
+
+        if ($skippedActivities > 0) {
+            $this->command->warn("ScheduleFlowSeeder: ข้าม {$skippedActivities} กิจกรรม เพราะหาห้องหรือผู้สอนที่ว่างไม่พอ");
+        }
+
+        $this->reportSeededScheduleIntegrity($offeringIds, $termStart, $termEnd);
     }
+
+    /**
+     * @return array<int, int>
+     */
+    private function eligibleInstructorIds(CourseOffering $offering): array
+    {
+        $departmentId = $offering->course?->department_id;
+
+        return $offering->instructorPool
+            ->filter(fn ($instructor) => ! $departmentId
+                || (int) $instructor->instructorProfile?->department_id === (int) $departmentId)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<int, int>  $offeringIds
+     */
+    private function resetSeededSchedules(array $offeringIds): void
+    {
+        if (empty($offeringIds)) {
+            return;
+        }
+
+        Schedule::whereIn('course_offering_id', $offeringIds)->delete();
+    }
+
+    private function ensureOfferingInstructors(CourseOffering $offering): void
+    {
+        $departmentId = $offering->course?->department_id;
+
+        if (! $departmentId) {
+            return;
+        }
+
+        $offering->loadMissing(['course', 'instructorPool.instructorProfile']);
+        $this->detachStaleGeneratedInstructors($offering);
+        $offering->load('instructorPool.instructorProfile');
+
+        $eligibleIds = $this->eligibleInstructorIds($offering);
+
+        while (count($eligibleIds) < self::MIN_INSTRUCTORS_PER_OFFERING) {
+            $instructor = $this->createGeneratedInstructor($offering, $departmentId, count($eligibleIds) + 1);
+
+            $offering->instructorPool()->syncWithoutDetaching([
+                $instructor->id => ['role_in_course' => 'instructor'],
+            ]);
+
+            $offering->course?->instructors()->syncWithoutDetaching([
+                $instructor->id => ['course_role_id' => null],
+            ]);
+
+            $offering->load('instructorPool.instructorProfile');
+            $eligibleIds = $this->eligibleInstructorIds($offering);
+        }
+    }
+
+    private function detachStaleGeneratedInstructors(CourseOffering $offering): void
+    {
+        $currentPrefix = $this->generatedInstructorPrefix($offering);
+
+        $staleIds = $offering->instructorPool
+            ->filter(fn (User $user) => Str::startsWith($user->username, 'schedule_dept_')
+                || (Str::startsWith($user->username, 'schedule_offering_')
+                    && ! Str::startsWith($user->username, $currentPrefix)))
+            ->pluck('id')
+            ->all();
+
+        if (empty($staleIds)) {
+            return;
+        }
+
+        $offering->instructorPool()->detach($staleIds);
+        $offering->course?->instructors()->detach($staleIds);
+    }
+
+    private function createGeneratedInstructor(CourseOffering $offering, int $departmentId, int $sequence): User
+    {
+        $username = $this->generatedInstructorPrefix($offering) . sprintf('%02d', $sequence);
+        $namePool = [
+            'นลินี วิชาการ',
+            'กานต์ธิดา สุขใจ',
+            'ปรียาภรณ์ วัฒนกุล',
+            'ธนวัฒน์ พิพัฒน์สุข',
+            'อรพรรณ ตั้งมั่น',
+            'พีรพล เกื้อกูล',
+        ];
+        $name = $namePool[($sequence - 1) % count($namePool)];
+
+        $user = User::firstOrCreate(
+            ['username' => $username],
+            [
+                'prefix' => $sequence % 2 === 0 ? 'นาย' : 'นางสาว',
+                'employee_id' => sprintf('8%04d%02d', $offering->id, $sequence),
+                'name' => $name,
+                'email' => $username . '@mahidol.edu',
+                'password' => 'password',
+                'is_active' => true,
+            ]
+        );
+
+        UserRole::firstOrCreate(
+            ['user_id' => $user->id, 'role' => 'instructor'],
+            ['is_primary' => true]
+        );
+
+        InstructorProfile::updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'title' => $sequence % 3 === 0 ? 'รองศาสตราจารย์' : 'อาจารย์',
+                'department_id' => $departmentId,
+                'employment_type' => $sequence % 2 === 0 ? 'ข้าราชการ' : 'พนักงานมหาวิทยาลัย',
+                'academic_degree' => $sequence % 2 === 0 ? 'ปริญญาเอก' : 'ปริญญาโท',
+                'hired_at' => '2018-06-01',
+                'teaching_pct' => 50,
+                'research_pct' => 25,
+                'service_pct' => 15,
+                'culture_pct' => 5,
+                'other_pct' => 5,
+            ]
+        );
+
+        return $user->fresh(['instructorProfile']);
+    }
+
+    private function generatedInstructorPrefix(CourseOffering $offering): string
+    {
+        return sprintf('schedule_offering_%d_', $offering->id);
+    }
+
+    /**
+     * @return array{0: array<string, list<array{start: int, end: int}>>, 1: array<int, array<string, list<array{start: int, end: int}>>>}
+     */
+    private function existingScheduleOccupancy(Carbon $termStart, Carbon $termEnd): array
+    {
+        $occupiedRooms = [];
+        $occupiedInstructors = [];
+
+        Schedule::query()
+            ->with('instructors')
+            ->whereDate('start_date', '<=', $termEnd->toDateString())
+            ->whereDate('end_date', '>=', $termStart->toDateString())
+            ->get()
+            ->each(function (Schedule $schedule) use (&$occupiedRooms, &$occupiedInstructors): void {
+                $startDate = Carbon::parse($schedule->start_date);
+                $endDate = Carbon::parse($schedule->end_date);
+                $start = $this->minutes((string) $schedule->start_time);
+                $end = $this->minutes((string) $schedule->end_time);
+
+                foreach (CarbonPeriod::create($startDate, $endDate) as $date) {
+                    $dateKey = Carbon::parse($date)->toDateString();
+
+                    if ($schedule->room_id) {
+                        $occupiedRooms[$dateKey . '|' . $schedule->room_id][] = ['start' => $start, 'end' => $end];
+                    }
+
+                    foreach ($schedule->instructors as $instructor) {
+                        $occupiedInstructors[(int) $instructor->id][$dateKey][] = ['start' => $start, 'end' => $end];
+                    }
+                }
+            });
+
+        return [$occupiedRooms, $occupiedInstructors];
+    }
+
+    private function findAvailablePlacement(
+        $weekDates,
+        $rooms,
+        array $instructorIds,
+        int $seedSlot,
+        array $occupiedRooms,
+        array $occupiedInstructors
+    ): ?array {
+        $weekDateCount = max(1, $weekDates->count());
+        $roomCount = max(1, $rooms->count());
+        $timeSlotCount = count(self::TIME_SLOTS);
+        $attempts = $weekDateCount * $timeSlotCount * $roomCount * max(1, count($instructorIds));
+
+        for ($attempt = 0; $attempt < $attempts; $attempt++) {
+            $cursor = $seedSlot + $attempt;
+            $date = $weekDates[intdiv($cursor, $timeSlotCount) % $weekDateCount]->toDateString();
+            $startTime = self::TIME_SLOTS[$cursor % $timeSlotCount];
+            $endTime = Carbon::parse($startTime)->addHours(2)->format('H:i');
+            $room = $rooms[intdiv($cursor, $timeSlotCount * $weekDateCount) % $roomCount];
+            $selectedInstructorIds = $this->instructorWindow($instructorIds, $cursor);
+
+            if ($this->placementAvailable($occupiedRooms, $occupiedInstructors, $date, $startTime, $endTime, $room->id, $selectedInstructorIds)) {
+                return [$date, $startTime, $endTime, $room, $selectedInstructorIds];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<int, int>  $instructorIds
+     * @return array<int, int>
+     */
+    private function instructorWindow(array $instructorIds, int $cursor): array
+    {
+        $count = count($instructorIds);
+        $take = min(2, $count);
+        $start = $count > 0 ? $cursor % $count : 0;
+        $selected = [];
+
+        for ($i = 0; $i < $take; $i++) {
+            $selected[] = (int) $instructorIds[($start + $i) % $count];
+        }
+
+        return array_values(array_unique($selected));
+    }
+
+    private function placementAvailable(
+        array $occupiedRooms,
+        array $occupiedInstructors,
+        string $date,
+        string $startTime,
+        string $endTime,
+        int $roomId,
+        array $instructorIds
+    ): bool {
+        $start = $this->minutes($startTime);
+        $end = $this->minutes($endTime);
+
+        if ($this->hasOverlap($occupiedRooms[$date . '|' . $roomId] ?? [], $start, $end)) {
+            return false;
+        }
+
+        foreach ($instructorIds as $instructorId) {
+            if ($this->hasOverlap($occupiedInstructors[(int) $instructorId][$date] ?? [], $start, $end)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function reservePlacement(
+        array &$occupiedRooms,
+        array &$occupiedInstructors,
+        string $date,
+        string $startTime,
+        string $endTime,
+        int $roomId,
+        array $instructorIds
+    ): void {
+        $start = $this->minutes($startTime);
+        $end = $this->minutes($endTime);
+        $occupiedRooms[$date . '|' . $roomId][] = ['start' => $start, 'end' => $end];
+
+        foreach ($instructorIds as $instructorId) {
+            $occupiedInstructors[(int) $instructorId][$date][] = ['start' => $start, 'end' => $end];
+        }
+    }
+
+    private function hasOverlap(array $ranges, int $start, int $end): bool
+    {
+        foreach ($ranges as $range) {
+            if ($start < (int) $range['end'] && $end > (int) $range['start']) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<int, int>  $offeringIds
+     */
+    private function reportSeededScheduleIntegrity(array $offeringIds, Carbon $termStart, Carbon $termEnd): void
+    {
+        if (empty($offeringIds)) {
+            return;
+        }
+
+        $schedules = Schedule::query()
+            ->with(['instructors', 'studentGroups'])
+            ->whereIn('course_offering_id', $offeringIds)
+            ->whereDate('start_date', '<=', $termEnd->toDateString())
+            ->whereDate('end_date', '>=', $termStart->toDateString())
+            ->get();
+
+        $withoutInstructors = $schedules->filter(fn (Schedule $schedule) => $schedule->instructors->isEmpty())->count();
+        $withoutGroups = $schedules->filter(fn (Schedule $schedule) => $schedule->studentGroups->isEmpty())->count();
+        $roomOverlaps = 0;
+        $instructorOverlaps = 0;
+        $roomRanges = [];
+        $instructorRanges = [];
+
+        foreach ($schedules as $schedule) {
+            $startDate = Carbon::parse($schedule->start_date);
+            $endDate = Carbon::parse($schedule->end_date);
+            $start = $this->minutes((string) $schedule->start_time);
+            $end = $this->minutes((string) $schedule->end_time);
+
+            foreach (CarbonPeriod::create($startDate, $endDate) as $date) {
+                $dateKey = Carbon::parse($date)->toDateString();
+
+                if ($schedule->room_id) {
+                    $roomKey = $dateKey . '|' . $schedule->room_id;
+                    if ($this->hasOverlap($roomRanges[$roomKey] ?? [], $start, $end)) {
+                        $roomOverlaps++;
+                    }
+                    $roomRanges[$roomKey][] = ['start' => $start, 'end' => $end];
+                }
+
+                foreach ($schedule->instructors as $instructor) {
+                    $instructorKey = $dateKey . '|' . $instructor->id;
+                    if ($this->hasOverlap($instructorRanges[$instructorKey] ?? [], $start, $end)) {
+                        $instructorOverlaps++;
+                    }
+                    $instructorRanges[$instructorKey][] = ['start' => $start, 'end' => $end];
+                }
+            }
+        }
+
+        if ($withoutInstructors > 0 || $withoutGroups > 0 || $roomOverlaps > 0 || $instructorOverlaps > 0) {
+            $this->command->warn(
+                "ScheduleFlowSeeder: ตรวจพบข้อมูลที่ควรทบทวน — ไม่มีผู้สอน {$withoutInstructors} รายการ, "
+                . "ไม่มีกลุ่ม {$withoutGroups} รายการ, ห้องชน {$roomOverlaps} จุด, ผู้สอนชน {$instructorOverlaps} จุด"
+            );
+
+            return;
+        }
+
+        $this->command->info('ScheduleFlowSeeder: ตรวจสอบแล้ว — รายการสอนมีผู้สอน/กลุ่มครบ และไม่มีห้องหรือผู้สอนชนกัน');
+    }
+
+    private function minutes(string $time): int
+    {
+        return ((int) substr($time, 0, 2) * 60) + (int) substr($time, 3, 2);
+    }
+
 }

@@ -515,6 +515,41 @@ class ScheduleManagementTest extends TestCase
         ]);
     }
 
+    public function test_schedule_creation_rejects_dates_outside_academic_year(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+
+        $this->actingAsCourseHead($head);
+
+        $this->post(route('maker.course_offerings.schedules.store', $offering), $this->schedulePayload($instructor, $group, $activityType, $room, [
+            'start_date' => '2026-07-31',
+            'end_date' => '2026-08-01',
+        ]))
+            ->assertSessionHasErrors('schedule');
+
+        $this->assertDatabaseCount('schedules', 0);
+    }
+
+    public function test_schedule_update_rejects_dates_outside_academic_year(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $schedule = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group]);
+
+        $this->actingAsCourseHead($head);
+
+        $this->put(route('maker.course_offerings.schedules.update', [$offering, $schedule]), $this->schedulePayload($instructor, $group, $activityType, $room, [
+            'start_date' => '2026-12-31',
+            'end_date' => '2027-01-01',
+        ]))
+            ->assertSessionHasErrors('schedule');
+
+        $this->assertDatabaseHas('schedules', [
+            'id' => $schedule->id,
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-07',
+        ]);
+    }
+
     public function test_schedule_rejects_student_groups_over_capacity(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
@@ -557,6 +592,25 @@ class ScheduleManagementTest extends TestCase
             ->assertSessionHasErrors('instructor_ids');
 
         $this->assertDatabaseCount('schedules', 0);
+    }
+
+    public function test_schedule_page_hides_existing_schedule_instructors_from_other_departments(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $outsideInstructor = $this->makeUser('instructor');
+        $outsideInstructor->instructorProfile()->update([
+            'department_id' => Department::create(['name' => 'Outside Schedule Detail Department'])->id,
+        ]);
+        $outsideInstructor->refresh();
+        $offering->instructorPool()->attach($outsideInstructor->id, ['role_in_course' => 'instructor']);
+        $this->makeSchedule($offering, $activityType, $room, [$instructor, $outsideInstructor], [$group]);
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.course_offerings.schedules.index', $offering))
+            ->assertOk()
+            ->assertSee($instructor->name)
+            ->assertDontSee($outsideInstructor->name);
     }
 
     public function test_course_head_can_update_schedule_and_pivots(): void
@@ -632,6 +686,21 @@ class ScheduleManagementTest extends TestCase
         $otherGroup = StudentGroup::create(['course_offering_id' => $offering->id, 'group_code' => 'A2', 'student_count' => 10]);
         $offering->instructorPool()->attach($otherInstructor->id, ['role_in_course' => 'instructor']);
         $this->makeSchedule($offering, $activityType, $room, [$otherInstructor], [$otherGroup]);
+
+        $this->actingAsCourseHead($head);
+
+        $this->post(route('maker.course_offerings.schedules.store', $offering), $this->schedulePayload($instructor, $group, $activityType, $room))
+            ->assertSessionHasErrors('schedule');
+
+        $this->assertDatabaseCount('schedules', 1);
+    }
+
+    public function test_room_overlap_blocks_save_across_offerings(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        [, $otherOffering, $otherInstructor, $otherGroup, $otherActivityType] = $this->makeReadyOffering();
+
+        $this->makeSchedule($otherOffering, $otherActivityType, $room, [$otherInstructor], [$otherGroup]);
 
         $this->actingAsCourseHead($head);
 
