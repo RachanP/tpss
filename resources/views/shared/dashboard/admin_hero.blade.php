@@ -150,7 +150,7 @@
                     <div class="admin-status-label">สถานะระบบปัจจุบัน</div>
                     <div class="admin-status-title">{{ $systemStatus['title'] }}</div>
                     <div class="admin-status-meta">
-                        <span class="pill {{ $phaseMeta['pill'] }}">{{ $phaseMeta['label'] }}</span>
+                        <span class="pill {{ $systemStatus['pill'] }}">{{ $phaseMeta['label'] }}</span>
                         <span>{{ $systemStatus['label'] }}</span>
                     </div>
                 </div>
@@ -232,21 +232,29 @@
 
     .admin-status-banner.is-conflict {
         border-color: color-mix(in oklch, var(--status-conflict) 28%, var(--border));
+        border-left-color: var(--status-conflict-fg);
+        border-left-width: 4px;
         background: color-mix(in oklch, var(--status-conflict) 4%, var(--surface));
     }
 
     .admin-status-banner.is-warning {
         border-color: color-mix(in oklch, var(--status-warning) 30%, var(--border));
+        border-left-color: var(--status-warning-fg);
+        border-left-width: 4px;
         background: color-mix(in oklch, var(--status-warning) 5%, var(--surface));
     }
 
     .admin-status-banner.is-success {
         border-color: color-mix(in oklch, var(--status-success) 24%, var(--border));
+        border-left-color: var(--status-success-fg);
+        border-left-width: 4px;
         background: color-mix(in oklch, var(--status-success) 4%, var(--surface));
     }
 
     .admin-status-banner.is-info {
         border-color: color-mix(in oklch, var(--status-info) 24%, var(--border));
+        border-left-color: var(--status-info-fg);
+        border-left-width: 4px;
         background: color-mix(in oklch, var(--status-info) 4%, var(--surface));
     }
 

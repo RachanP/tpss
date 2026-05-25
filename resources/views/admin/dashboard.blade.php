@@ -139,11 +139,59 @@
             color: var(--status-success-fg);
         }
 
-        .admin-dashboard .pill.p-info,
+        .admin-dashboard .pill.p-info {
+            border-color: var(--status-info-border);
+            background: var(--status-info-bg);
+            color: var(--status-info-fg);
+        }
+
         .admin-dashboard .pill.badge-gray {
             border-color: var(--border);
             background: var(--bg-2);
             color: var(--fg-2);
+        }
+
+        /* ---- Pill variants for dashboard widgets (mirror .audit-page definitions) ---- */
+        .admin-dashboard .pill.p-primary {
+            border-color: color-mix(in oklch, var(--brand-navy) 25%, var(--border));
+            background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface));
+            color: var(--brand-navy);
+        }
+
+        .admin-dashboard .pill.p-neutral {
+            border-color: var(--border);
+            background: var(--bg-2);
+            color: var(--fg-2);
+        }
+
+        .admin-dashboard .pill.p-gold {
+            border-color: var(--status-warning-border);
+            background: var(--status-warning-bg);
+            color: var(--status-warning-fg);
+        }
+
+        .admin-dashboard .pill.p-teal {
+            border-color: var(--status-info-border);
+            background: var(--status-info-bg);
+            color: var(--status-info-fg);
+        }
+
+        .admin-dashboard .pill.p-purple {
+            background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface));
+            border-color: color-mix(in oklch, var(--brand-navy) 22%, var(--border));
+            color: var(--brand-navy);
+        }
+
+        /* ดูทั้งหมด — สีดำ/เทา แทนสี brand */
+        .admin-dashboard .ra-view-all {
+            color: var(--fg-1);
+            background: transparent;
+            border-color: var(--border);
+        }
+
+        .admin-dashboard .ra-view-all:hover {
+            background: var(--bg-2);
+            color: var(--fg-1);
         }
 
         .admin-dashboard [data-testid="admin-stats-strip"] {
