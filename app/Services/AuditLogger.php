@@ -30,6 +30,7 @@ class AuditLogger
      * Source of truth for category display in the UI.
      */
     public const CATEGORY_LABELS = [
+        'ระบบ'                   => 'ระบบ',
         'ตารางสอน'               => 'ตารางสอน',
         'การอนุมัติ'              => 'การอนุมัติ',
         'ข้อมูลหลัก'             => 'ข้อมูลหลัก',
@@ -43,6 +44,9 @@ class AuditLogger
      * Auto-generated fallback descriptions per action verb.
      */
     private const ACTION_DESCRIPTIONS = [
+        'เข้าสู่ระบบ'       => 'เข้าสู่ระบบ',
+        'ออกจากระบบ'       => 'ออกจากระบบ',
+        'เปลี่ยนบทบาท'      => 'เปลี่ยนบทบาทการใช้งาน',
         'สร้าง'            => 'สร้างข้อมูลใหม่',
         'แก้ไข'            => 'แก้ไขข้อมูล',
         'ลบ'               => 'ลบข้อมูล',

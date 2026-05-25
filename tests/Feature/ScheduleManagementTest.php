@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\AcademicYear;
 use App\Models\ActivityType;
+use App\Models\AuditLog;
 use App\Models\Course;
 use App\Models\CourseOffering;
 use App\Models\Curriculum;
@@ -754,6 +755,103 @@ class ScheduleManagementTest extends TestCase
             ->assertSessionHasNoErrors();
 
         $this->assertDatabaseHas('schedules', ['id' => $schedule->id, 'topic' => 'Self update']);
+    }
+
+    public function test_create_schedule_creates_audit_log(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+
+        $this->actingAsCourseHead($head);
+
+        $this->post(
+            route('maker.course_offerings.schedules.store', $offering),
+            $this->schedulePayload($instructor, $group, $activityType, $room)
+        )->assertRedirect()->assertSessionHasNoErrors();
+
+        $schedule = Schedule::firstOrFail();
+
+        $log = AuditLog::where('action', 'ตารางสอน.สร้าง')
+            ->where('table_affected', 'schedules')
+            ->where('record_id', $schedule->id)
+            ->first();
+
+        $this->assertNotNull($log, 'Expected audit log for schedule create was not found');
+        $this->assertEquals('ตารางสอน', $log->category);
+        $this->assertNull($log->old_values);
+        $this->assertArrayHasKey('topic',        $log->new_values);
+        $this->assertArrayHasKey('course_code',  $log->new_values);
+        $this->assertArrayHasKey('instructors',  $log->new_values);
+        $this->assertArrayHasKey('student_groups', $log->new_values);
+    }
+
+    public function test_update_schedule_creates_audit_log_with_diff_only(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $schedule = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group]);
+
+        $this->actingAsCourseHead($head);
+
+        $this->put(
+            route('maker.course_offerings.schedules.update', [$offering, $schedule]),
+            $this->schedulePayload($instructor, $group, $activityType, $room, ['topic' => 'Audit updated topic'])
+        )->assertRedirect()->assertSessionHasNoErrors();
+
+        $log = AuditLog::where('action', 'ตารางสอน.แก้ไข')
+            ->where('table_affected', 'schedules')
+            ->where('record_id', $schedule->id)
+            ->first();
+
+        $this->assertNotNull($log, 'Expected audit log for schedule update was not found');
+        // Only changed field (topic) should appear in old/new
+        $this->assertArrayHasKey('topic', $log->old_values);
+        $this->assertArrayHasKey('topic', $log->new_values);
+        $this->assertEquals('Existing schedule',   $log->old_values['topic']);
+        $this->assertEquals('Audit updated topic', $log->new_values['topic']);
+        // Unchanged fields must NOT appear in diff
+        $this->assertArrayNotHasKey('start_date', $log->old_values);
+        $this->assertArrayNotHasKey('start_date', $log->new_values);
+    }
+
+    public function test_delete_schedule_creates_audit_log_with_snapshot(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $schedule = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group]);
+        $scheduleId = $schedule->id;
+
+        $this->actingAsCourseHead($head);
+
+        $this->delete(route('maker.course_offerings.schedules.destroy', [$offering, $schedule]))
+            ->assertRedirect();
+
+        $this->assertDatabaseMissing('schedules', ['id' => $scheduleId]);
+
+        $log = AuditLog::where('action', 'ตารางสอน.ลบ')
+            ->where('table_affected', 'schedules')
+            ->where('record_id', $scheduleId)
+            ->first();
+
+        $this->assertNotNull($log, 'Expected audit log for schedule delete was not found');
+        // new_values only contains the injected 'context' key (logger always adds it)
+        $this->assertArrayHasKey('context', $log->new_values);
+        $this->assertCount(1, $log->new_values);
+        $this->assertArrayHasKey('topic',         $log->old_values);
+        $this->assertArrayHasKey('course_code',   $log->old_values);
+        $this->assertArrayHasKey('student_groups', $log->old_values);
+        $this->assertEquals('Existing schedule',  $log->old_values['topic']);
+    }
+
+    public function test_blocked_store_outside_scheduling_phase_does_not_create_audit_log(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering('preparation');
+
+        $this->actingAsCourseHead($head);
+
+        $this->post(
+            route('maker.course_offerings.schedules.store', $offering),
+            $this->schedulePayload($instructor, $group, $activityType, $room)
+        )->assertRedirect()->assertSessionHasErrors('schedule');
+
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     private function actingAsCourseHead(User $user): void

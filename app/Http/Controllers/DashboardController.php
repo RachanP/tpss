@@ -12,6 +12,7 @@ use App\Models\Room;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Models\UserRole;
+use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -173,7 +174,22 @@ class DashboardController extends Controller
             ->exists();
 
         if ($hasRole) {
-            $request->session()->put('active_role', $request->role);
+            $oldRole = session('active_role');
+            $newRole = $request->role;
+
+            $request->session()->put('active_role', $newRole);
+
+            if ($oldRole !== $newRole) {
+                AuditLogger::log(
+                    action: 'ระบบ.เปลี่ยนบทบาท',
+                    table: 'users',
+                    recordId: $user->id,
+                    oldValues: ['active_role' => $oldRole],
+                    newValues: ['active_role' => $newRole],
+                    category: 'ระบบ',
+                    description: "เปลี่ยนบทบาท: {$oldRole} เป็น {$newRole}",
+                );
+            }
         }
 
         return redirect()->route('dashboard');

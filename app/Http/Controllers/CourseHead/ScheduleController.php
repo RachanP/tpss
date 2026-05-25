@@ -8,6 +8,7 @@ use App\Models\ActivityType;
 use App\Models\CourseOffering;
 use App\Models\Room;
 use App\Models\Schedule;
+use App\Services\AuditLogger;
 use App\Services\ScheduleConflictChecker;
 use App\Support\ThaiDate;
 use Carbon\CarbonImmutable;
@@ -400,7 +401,9 @@ class ScheduleController extends Controller
         $this->assertLeadInstructorSelected($validated);
         $this->assertNoConflicts($conflictChecker, $validated);
 
-        DB::transaction(function () use ($courseOffering, $validated): void {
+        $schedule = null;
+
+        DB::transaction(function () use ($courseOffering, $validated, &$schedule): void {
             $schedule = Schedule::create([
                 'course_offering_id' => $courseOffering->id,
                 'activity_type_id' => $validated['activity_type_id'],
@@ -420,6 +423,23 @@ class ScheduleController extends Controller
             $this->syncInstructors($schedule, $validated);
             $schedule->studentGroups()->sync($validated['student_group_ids']);
         });
+
+        AuditLogger::log(
+            action: 'ตารางสอน.สร้าง',
+            table: 'schedules',
+            recordId: $schedule->id,
+            oldValues: null,
+            newValues: $this->scheduleSnapshot($schedule->fresh([
+                'courseOffering.course.curriculum',
+                'courseOffering.academicYear',
+                'activityType',
+                'room',
+                'instructors',
+                'studentGroups',
+            ])),
+            category: 'ตารางสอน',
+            description: "สร้างตารางสอน: {$schedule->topic}",
+        );
 
         return redirect()
             ->to($redirectToWorkspace ? $this->workspaceRedirectUrl($courseOffering, $validated['start_date']) : route('maker.course_offerings.schedules.index', $courseOffering))
@@ -456,6 +476,17 @@ class ScheduleController extends Controller
         $this->assertLeadInstructorSelected($validated);
         $this->assertNoConflicts($conflictChecker, $validated, $schedule->id);
 
+        // Snapshot before for diffing
+        $schedule->loadMissing([
+            'courseOffering.course.curriculum',
+            'courseOffering.academicYear',
+            'activityType',
+            'room',
+            'instructors',
+            'studentGroups',
+        ]);
+        $snapshotBefore = $this->scheduleSnapshot($schedule);
+
         DB::transaction(function () use ($schedule, $validated): void {
             $schedule->update([
                 'activity_type_id' => $validated['activity_type_id'],
@@ -474,6 +505,29 @@ class ScheduleController extends Controller
             $schedule->studentGroups()->sync($validated['student_group_ids']);
         });
 
+        $snapshotAfter = $this->scheduleSnapshot($schedule->fresh([
+            'courseOffering.course.curriculum',
+            'courseOffering.academicYear',
+            'activityType',
+            'room',
+            'instructors',
+            'studentGroups',
+        ]));
+
+        $diff = AuditLogger::diff($snapshotBefore, $snapshotAfter);
+
+        if (! empty($diff['old']) || ! empty($diff['new'])) {
+            AuditLogger::log(
+                action: 'ตารางสอน.แก้ไข',
+                table: 'schedules',
+                recordId: $schedule->id,
+                oldValues: $diff['old'],
+                newValues: $diff['new'],
+                category: 'ตารางสอน',
+                description: "แก้ไขตารางสอน: {$schedule->topic}",
+            );
+        }
+
         return redirect()
             ->route('maker.course_offerings.schedules.index', $courseOffering)
             ->with('success', 'อัปเดตรายการสอนเรียบร้อยแล้ว');
@@ -485,7 +539,28 @@ class ScheduleController extends Controller
         $this->assertScheduleBelongsToOffering($courseOffering, $schedule);
         if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
 
+        $schedule->loadMissing([
+            'courseOffering.course.curriculum',
+            'courseOffering.academicYear',
+            'activityType',
+            'room',
+            'instructors',
+            'studentGroups',
+        ]);
+        $snapshot = $this->scheduleSnapshot($schedule);
+        $scheduleId = $schedule->id;
+
         $schedule->delete();
+
+        AuditLogger::log(
+            action: 'ตารางสอน.ลบ',
+            table: 'schedules',
+            recordId: $scheduleId,
+            oldValues: $snapshot,
+            newValues: null,
+            category: 'ตารางสอน',
+            description: "ลบตารางสอน: {$snapshot['topic']}",
+        );
 
         return redirect()
             ->route('maker.course_offerings.schedules.index', $courseOffering)
@@ -716,4 +791,53 @@ class ScheduleController extends Controller
 
         $schedule->instructors()->sync($payload);
     }
+
+    /**
+     * Build a flat, serializable snapshot of a schedule for audit logging.
+     * Relations must be loaded by caller before calling this.
+     */
+    private function scheduleSnapshot(Schedule $schedule): array
+    {
+        $co   = $schedule->courseOffering;
+        $year = $co?->academicYear;
+
+        $instructors = $schedule->relationLoaded('instructors')
+            ? $schedule->instructors->map(fn ($u) => [
+                'id'      => $u->id,
+                'name'    => $u->name,
+                'is_lead' => (bool) $u->pivot?->is_lead,
+            ])->toArray()
+            : [];
+
+        $leadInstructor = collect($instructors)->firstWhere('is_lead', true);
+
+        $groups = $schedule->relationLoaded('studentGroups')
+            ? $schedule->studentGroups->map(fn ($g) => [
+                'id'         => $g->id,
+                'group_code' => $g->group_code,
+            ])->toArray()
+            : [];
+
+        return [
+            'course_offering_id' => $co?->id,
+            'course_code'        => $co?->course?->course_code,
+            'course_name_th'     => $co?->course?->name_th,
+            'academic_year'      => $year?->name,
+            'semester'           => $year?->semester,
+            'start_date'         => $schedule->start_date?->toDateString(),
+            'end_date'           => $schedule->end_date?->toDateString(),
+            'start_time'         => (string) $schedule->start_time,
+            'end_time'           => (string) $schedule->end_time,
+            'activity_type'      => $schedule->activityType?->name,
+            'room'               => $schedule->room?->room_code,
+            'topic'              => $schedule->topic,
+            'capacity_required'  => $schedule->capacity_required,
+            'sub_group_label'    => $schedule->sub_group_label,
+            'remark'             => $schedule->remark,
+            'instructors'        => $instructors,
+            'lead_instructor'    => $leadInstructor ? ['id' => $leadInstructor['id'], 'name' => $leadInstructor['name']] : null,
+            'student_groups'     => $groups,
+        ];
+    }
 }
+
