@@ -85,6 +85,39 @@
     foreach ($gridTimeSlots as $gridSlotIdx => $gridSlotValue) {
         $gridSlotIndex[$gridSlotValue] = $gridSlotIdx;
     }
+    $gridMinuteStep = 5;
+    $gridMinuteRowHeight = 8;
+    $gridRowsPerHour = (int) (60 / $gridMinuteStep);
+    $gridStartHour = max(0, min(
+        $gridTimeSlots ? min(array_map(fn ($slot) => (int) substr($slot, 0, 2), $gridTimeSlots)) : 6,
+        6
+    ));
+    $gridEndHour = max(
+        ($gridTimeSlots ? max(array_map(fn ($slot) => (int) substr($slot, 0, 2), $gridTimeSlots)) : 16) + 1,
+        (int) $gridOccurrences->max(function ($occurrence) {
+            $endTime = (string) $occurrence['schedule']->end_time;
+            $hour = (int) substr($endTime, 0, 2);
+            $minute = (int) substr($endTime, 3, 2);
+
+            return $minute > 0 ? $hour + 1 : $hour;
+        }) ?: 17
+    );
+    $gridMinuteRowCount = max($gridRowsPerHour, ($gridEndHour - $gridStartHour) * $gridRowsPerHour);
+    $gridHourSlots = collect(range($gridStartHour, $gridEndHour - 1))
+        ->map(fn (int $hour) => sprintf('%02d:00', $hour))
+        ->all();
+    $gridMinutesFromStart = function (?string $time) use ($gridStartHour) {
+        $time = strlen((string) $time) === 5 ? $time . ':00' : (string) $time;
+        $hour = (int) substr($time, 0, 2);
+        $minute = (int) substr($time, 3, 2);
+
+        return max(0, ($hour * 60 + $minute) - ($gridStartHour * 60));
+    };
+    $gridRowStartForTime = fn (?string $time) => (int) floor($gridMinutesFromStart($time) / $gridMinuteStep) + 2;
+    $gridRowSpanForOccurrence = fn ($occurrence) => max(
+        1,
+        (int) ceil(max(5, (int) $occurrence['duration_minutes']) / $gridMinuteStep)
+    );
     $occurrenceSlotSpan = function ($occurrence) use ($gridTimeSlots, $gridSlotIndex, $gridSlotCount) {
         $startIdx = $gridSlotIndex[$occurrence['time_slot']] ?? null;
         if ($startIdx === null) {
@@ -1313,12 +1346,18 @@
             background: var(--surface);
             box-shadow: 0 1px 4px oklch(0% 0 0 / 0.05);
         }
+        .schedule-grid.is-precise {
+            grid-auto-rows: var(--grid-minute-row-height, 8px);
+        }
         .grid-cell {
             min-height: 70px;
             border-right: 1px solid var(--schedule-border);
             border-bottom: 1px solid var(--schedule-border);
             padding: 7px;
             background: oklch(98.6% 0.004 232);
+        }
+        .schedule-grid.is-precise .grid-cell {
+            min-height: 0;
         }
         .grid-head {
             min-height: 44px;
@@ -1341,9 +1380,25 @@
             flex-direction: column;
             gap: 7px;
         }
+        .schedule-grid.is-precise .grid-cell-activity {
+            padding: 4px 7px;
+            min-height: 0;
+            overflow: visible;
+            z-index: 3;
+            border-bottom: 0;
+            background: transparent;
+            pointer-events: none;
+        }
         .grid-cell-activity .grid-activity {
             margin-bottom: 0;
             flex: 1 1 auto;
+        }
+        .schedule-grid.is-precise .grid-cell-activity .grid-activity {
+            min-height: 100%;
+            padding: 7px 8px;
+            gap: 4px;
+            overflow: hidden;
+            pointer-events: auto;
         }
         .grid-activity {
             width: 100%;
@@ -1370,6 +1425,13 @@
             font-size: 12px;
             line-height: 1.35;
             font-weight: 850;
+        }
+        .schedule-grid.is-precise .grid-activity-title {
+            line-height: 1.25;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
         .grid-course {
             display: inline-flex;
@@ -1417,6 +1479,10 @@
             font-size: 11px;
             font-weight: 850;
         }
+        .schedule-grid.is-precise .grid-activity-time {
+            font-size: 10.5px;
+            line-height: 1.2;
+        }
         .grid-activity-foot {
             display: flex;
             align-items: center;
@@ -1435,12 +1501,12 @@
         }
         .grid-activity-groups {
             flex-shrink: 0;
-            padding: 1px 7px;
-            border-radius: 999px;
-            background: var(--schedule-soft);
+            padding: 0;
+            border-radius: 0;
+            background: transparent;
             color: var(--fg-2);
-            font-size: 10px;
-            font-weight: 800;
+            font-size: 10.2px;
+            font-weight: 700;
         }
         .grid-location-name,
         .grid-instructor {
@@ -2662,7 +2728,7 @@
                             @endforeach
                         </div>
                     @else
-                    <div class="schedule-grid" style="grid-template-columns: 74px repeat({{ max(1, $weekDays->count()) }}, minmax(146px, 1fr));">
+                    <div class="schedule-grid is-precise" style="--grid-minute-row-height: {{ $gridMinuteRowHeight }}px; grid-template-columns: 74px repeat({{ max(1, $weekDays->count()) }}, minmax(146px, 1fr)); grid-template-rows: 44px repeat({{ $gridMinuteRowCount }}, var(--grid-minute-row-height));">
                         <div class="grid-cell grid-head" style="grid-area:1 / 1;"></div>
                         @foreach($weekDays as $dayIndex => $day)
                             <div class="grid-cell grid-head" style="grid-area:1 / {{ $dayIndex + 2 }};">
@@ -2671,17 +2737,22 @@
                             </div>
                         @endforeach
 
-                        @foreach($gridTimeSlots as $slotIndex => $slot)
-                            <div class="grid-cell grid-time" style="grid-area:{{ $slotIndex + 2 }} / 1;">{{ $slot }}</div>
+                        @foreach($gridHourSlots as $slot)
+                            @php
+                                $hourRowStart = $gridRowStartForTime($slot);
+                            @endphp
+                            <div class="grid-cell grid-time" style="grid-column:1; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};">{{ $slot }}</div>
                             @foreach($weekDays as $dayIndex => $day)
-                                @php
-                                    $slotOccurrences = $gridOccurrences
-                                        ->filter(fn ($occurrence) => $occurrence['date']->toDateString() === $day->toDateString() && $occurrence['time_slot'] === $slot);
-                                    $cellSpan = $slotOccurrences->isEmpty() ? 1 : (int) $slotOccurrences->max($occurrenceSlotSpan);
-                                @endphp
-                                @if($slotOccurrences->isNotEmpty())
-                                <div class="grid-cell grid-cell-activity" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $slotIndex + 2 }} / span {{ $cellSpan }};">
-                                    @foreach($slotOccurrences as $occurrence)
+                                <div class="grid-cell" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};"></div>
+                            @endforeach
+                        @endforeach
+
+                        @foreach($weekDays as $dayIndex => $day)
+                            @php
+                                $dayOccurrences = $gridOccurrences
+                                    ->filter(fn ($occurrence) => $occurrence['date']->toDateString() === $day->toDateString());
+                            @endphp
+                            @foreach($dayOccurrences as $occurrence)
                                         @php
                                             $schedule = $occurrence['schedule'];
                                             $activity = $schedule->activityType;
@@ -2692,7 +2763,10 @@
                                                     ? ($schedule->instructors->first()->formatted_name ?? $schedule->instructors->first()->name)
                                                     : $schedule->instructors->count() . ' ท่าน')
                                                 : 'ไม่มีผู้สอน';
+                                            $activityRowStart = $gridRowStartForTime((string) $schedule->start_time);
+                                            $activityRowSpan = $gridRowSpanForOccurrence($occurrence);
                                         @endphp
+                                <div class="grid-cell grid-cell-activity" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $activityRowStart }} / span {{ $activityRowSpan }};">
                                         <div role="button" tabindex="0" class="grid-activity" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
                                             <div class="grid-activity-top">
                                                 <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }};">{{ $activity?->name ?? 'กิจกรรม' }}</span>
@@ -2701,14 +2775,10 @@
                                             <div class="grid-activity-time">{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }} · {{ $formatDuration($occurrence['duration_minutes']) }}</div>
                                             <div class="grid-activity-foot">
                                                 <span class="grid-activity-room">{{ $room?->room_name ?? $room?->room_code ?? 'ไม่ระบุสถานที่' }}</span>
-                                                <span class="grid-activity-groups">{{ $schedule->studentGroups->isNotEmpty() ? $schedule->studentGroups->count() . ' กลุ่ม' : 'ไม่มีกลุ่ม' }}</span>
+                                                <span class="grid-activity-groups">{{ $schedule->studentGroups->isNotEmpty() ? '· ' . $schedule->studentGroups->count() . ' กลุ่ม' : '· ไม่มีกลุ่ม' }}</span>
                                             </div>
                                         </div>
-                                    @endforeach
                                 </div>
-                                @elseif(empty($gridCoveredKeys[$day->toDateString() . '|' . $slot]))
-                                <div class="grid-cell" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $slotIndex + 2 }};"></div>
-                                @endif
                             @endforeach
                         @endforeach
                     </div>
@@ -2895,24 +2965,31 @@
                         @endforeach
                     </div>
                 @else
-                <div class="schedule-grid" style="grid-template-columns: 74px repeat({{ max(1, $weekDays->count()) }}, minmax(146px, 1fr));">
-                    <div class="grid-cell grid-head"></div>
-                    @foreach($weekDays as $day)
-                        <div class="grid-cell grid-head">
+                <div class="schedule-grid is-precise" style="--grid-minute-row-height: {{ $gridMinuteRowHeight }}px; grid-template-columns: 74px repeat({{ max(1, $weekDays->count()) }}, minmax(146px, 1fr)); grid-template-rows: 44px repeat({{ $gridMinuteRowCount }}, var(--grid-minute-row-height));">
+                    <div class="grid-cell grid-head" style="grid-area:1 / 1;"></div>
+                    @foreach($weekDays as $dayIndex => $day)
+                        <div class="grid-cell grid-head" style="grid-area:1 / {{ $dayIndex + 2 }};">
                             {{ $thaiDays[$day->dayOfWeekIso] ?? $day->format('l') }}<br>
                             <span class="caption">{{ $formatDate($day) }}</span>
                         </div>
                     @endforeach
 
-                    @foreach($timeSlots as $slot)
-                        <div class="grid-cell grid-time">{{ $slot }}</div>
-                        @foreach($weekDays as $day)
-                            @php
-                                $slotOccurrences = $occurrences
-                                    ->filter(fn ($occurrence) => $occurrence['date']->toDateString() === $day->toDateString() && $occurrence['time_slot'] === $slot);
-                            @endphp
-                            <div class="grid-cell">
-                                @foreach($slotOccurrences as $occurrence)
+                    @foreach($gridHourSlots as $slot)
+                        @php
+                            $hourRowStart = $gridRowStartForTime($slot);
+                        @endphp
+                        <div class="grid-cell grid-time" style="grid-column:1; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};">{{ $slot }}</div>
+                        @foreach($weekDays as $dayIndex => $day)
+                            <div class="grid-cell" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};"></div>
+                        @endforeach
+                    @endforeach
+
+                    @foreach($weekDays as $dayIndex => $day)
+                        @php
+                            $dayOccurrences = $occurrences
+                                ->filter(fn ($occurrence) => $occurrence['date']->toDateString() === $day->toDateString());
+                        @endphp
+                        @foreach($dayOccurrences as $occurrence)
                                     @php
                                         $schedule = $occurrence['schedule'];
                                         $activity = $schedule->activityType;
@@ -2924,7 +3001,10 @@
                                                 : $schedule->instructors->count() . ' ท่าน')
                                             : 'ไม่มีผู้สอน';
                                         $status = $statusMeta[$schedule->status] ?? ['label' => $schedule->status, 'class' => 'badge-gray'];
+                                        $activityRowStart = $gridRowStartForTime((string) $schedule->start_time);
+                                        $activityRowSpan = $gridRowSpanForOccurrence($occurrence);
                                     @endphp
+                            <div class="grid-cell grid-cell-activity" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $activityRowStart }} / span {{ $activityRowSpan }};">
                                     <div role="button" tabindex="0" class="grid-activity" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
                                         <div class="grid-activity-top">
                                             @if($offeringCourse?->course_code)
@@ -2962,7 +3042,6 @@
                                         @endif
                                         <div><span class="badge {{ $status['class'] }}">{{ $status['label'] }}</span></div>
                                     </div>
-                                @endforeach
                             </div>
                         @endforeach
                     @endforeach
@@ -3170,11 +3249,11 @@
                                     </div>
                                     <div>
                                         <label class="modal-label" for="edit_start_time_{{ $schedule->id }}">เวลาเริ่ม <span class="required-mark">*</span></label>
-                                        <input id="edit_start_time_{{ $schedule->id }}" name="start_time" type="time" required class="modal-control" value="{{ $editOld('start_time', $formatTime($schedule->start_time)) }}">
+                                        <input id="edit_start_time_{{ $schedule->id }}" name="start_time" type="time" step="300" required class="modal-control" value="{{ $editOld('start_time', $formatTime($schedule->start_time)) }}">
                                     </div>
                                     <div>
                                         <label class="modal-label" for="edit_end_time_{{ $schedule->id }}">เวลาสิ้นสุด <span class="required-mark">*</span></label>
-                                        <input id="edit_end_time_{{ $schedule->id }}" name="end_time" type="time" required class="modal-control" value="{{ $editOld('end_time', $formatTime($schedule->end_time)) }}">
+                                        <input id="edit_end_time_{{ $schedule->id }}" name="end_time" type="time" step="300" required class="modal-control" value="{{ $editOld('end_time', $formatTime($schedule->end_time)) }}">
                                     </div>
                                     <div>
                                         <label class="modal-label" for="edit_activity_type_id_{{ $schedule->id }}">ประเภทกิจกรรม <span class="required-mark">*</span></label>
@@ -3351,11 +3430,11 @@
                                 </div>
                                 <div>
                                     <label class="modal-label" for="start_time">เวลาเริ่ม <span class="required-mark">*</span></label>
-                                    <input id="start_time" name="start_time" type="time" required class="modal-control" value="{{ old('start_time') }}">
+                                    <input id="start_time" name="start_time" type="time" step="300" required class="modal-control" value="{{ old('start_time') }}">
                                 </div>
                                 <div>
                                     <label class="modal-label" for="end_time">เวลาสิ้นสุด <span class="required-mark">*</span></label>
-                                    <input id="end_time" name="end_time" type="time" required class="modal-control" value="{{ old('end_time') }}">
+                                    <input id="end_time" name="end_time" type="time" step="300" required class="modal-control" value="{{ old('end_time') }}">
                                 </div>
                                 <div>
                                     <label class="modal-label" for="activity_type_id">ประเภทกิจกรรม <span class="required-mark">*</span></label>
