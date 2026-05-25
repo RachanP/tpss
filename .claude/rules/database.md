@@ -76,6 +76,8 @@
 
 - `schedules.status` = สถานะระดับ **slot** (แต่ละกิจกรรม)
 - `course_offerings.approval_status` = สถานะระดับ **รายวิชาต่อปี**
+- `schedules.capacity_required` — Schedule Suite enforce ว่า sum(`student_groups.student_count`) ของ groups ที่ผูกใน slot ≤ ค่านี้
+- Validation error key `'schedule'` ใน ScheduleController ส่งเป็น **array of messages** (ไม่ใช่ string implode) — UI render bullet list
 
 ## การจัดการวันที่
 

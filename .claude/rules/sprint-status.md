@@ -1,11 +1,11 @@
-# Sprint Status — ณ 19 พ.ค. 2569
+# Sprint Status — ณ 25 พ.ค. 2569
 
 ## Phase Overview
 
 | Phase | ชื่อ | สถานะ |
 |-------|------|-------|
 | Phase 1–3 | Initiation → Design | ✅ เสร็จ |
-| Phase 4–5 | Development | 🟢 Sprint 1+2+3+M7 เสร็จ merge แล้ว, Sprint 4 (M3) เริ่ม |
+| Phase 4–5 | Development | 🟢 Sprint 1+2+3+M7 merge แล้ว, Schedule Suite (M3+M4+M8) Phase A/B/C ส่งบน branch `4-m3-schedule-suite-testPat` |
 | Phase 5 | Testing | 🟡 Internal Testing กำลังดำเนินการ |
 | Phase 6–7 | Deployment → Closure | ยังไม่เริ่ม (4–7 มิ.ย. 2569) |
 
@@ -16,7 +16,7 @@
 | Sprint 1 | 11–12 พ.ค. | M10 Login/RBAC | ✅ 100% |
 | Sprint 2 | 12–15 พ.ค. | M1 Master Data | ✅ 100% |
 | Sprint 3 | 18–19 พ.ค. | M2 Course Management | ✅ merge เข้า sprint แล้ว (18 พ.ค.) |
-| **Sprint 4-6** | **20–26 พ.ค.** | **M3 + M4 + M8 → รวมเป็น Schedule Suite** | **🟡 พร้อมเริ่ม (ดู Schedule Suite plan)** |
+| **Sprint 4–6** | **20–26 พ.ค.** | **M3 + M4 + M8 → Schedule Suite** | **🟢 IN PROGRESS — Phase A/B/C ลงเกือบครบ บน branch `4-m3-schedule-suite-testPat` (Friend 2 = pronpimon) รอ merge เข้า sprint** |
 | Sprint 7 | 20–27 พ.ค. | M7 Search & Filter | ✅ merge เข้า sprint แล้ว (16 พ.ค.) |
 
 ## Sprint 2 (M1) — สิ่งที่เสร็จแล้ว
@@ -77,7 +77,52 @@
 - **CSV importer**: รับ `is_required` column แบบ optional (default true) + preload curriculums (เลิก N+1)
 - **เพิ่ม 4 tests**: master curriculum without year_level, course year_level capped by duration, credit-based requires total_credits, cascade clear on toggle
 
-### Test Coverage (134 tests / 133 passing)
+## Schedule Suite (M3 + M4 บางส่วน + M8) — สิ่งที่เสร็จแล้วบน `4-m3-schedule-suite-testPat`
+
+> งาน Friend 2 (pronpimon013) — commits 22–25 พ.ค. รอ merge เข้า sprint
+
+### M3 — Schedule CRUD
+- `CourseHead\ScheduleController` — index/create/store/update/destroy + workspace mode + per-offering view
+- View ใหม่: `course_head/schedules/index.blade.php` (list + calendar), `_form.blade.php` (modal-based)
+- Realtime conflict checks ผ่าน debounced AJAX (commit `741e51d`)
+- List warning badges (quota / missing info / capacity) (commit `80fd486`)
+- Dashboard widget "ตารางสอนที่กำลังจะถึง" (commit `3026295`)
+- Optional `ScheduleFlowSeeder` (`php artisan db:seed --class=ScheduleFlowSeeder`) — พาระบบจาก fresh seed → state จัดตารางพร้อมข้อมูลตัวอย่าง
+
+### M4 — Conflict & Validation Hardening (ภายในวิชาเท่านั้น — commits `c4eebcd`, `d41055c`)
+- **Instructor / room / group overlap** ภายใน offering เดียวกัน บล็อกบันทึก (severity `conflict`)
+- **Department gate** — อาจารย์ที่เลือกใน slot และที่ add เข้า instructor pool ต้องมี `instructor_profiles.department_id == courses.department_id` (`ScheduleController::assertInstructorsBelongToCourseDepartment`, `CourseHead\CourseOfferingController::storeInstructor`)
+- **Capacity gate** — sum(`student_groups.student_count`) ของ groups ที่เลือก ≤ `capacity_required` (`ScheduleController::assertSelectedGroupsFitCapacity`)
+- Conflict error key `'schedule'` ส่งเป็น **array of messages** (ไม่ใช่ string implode) → UI render เป็น bullet list
+- ⚠️ **Cross-course conflict ยังไม่ทำ** — pronpimon จะทำต่อใน branch แยกหลัง merge ครั้งนี้
+
+### M8 — Calendar Views (commit `96f3fa7`, `7633390`, `e8ea5e1`)
+- Period filters: **day / week / month** — toggle ผ่าน query param `?period=day|week|month&date=YYYY-MM-DD`
+- Date picker year range คำนวณจาก `AcademicYear.start_date/end_date` (`ScheduleController::scheduleDatePickerYearRange`)
+- Label `นอกช่วงปีการศึกษา` เมื่อวันที่ตกนอก start/end ของปีการศึกษาที่ active
+- Month grid testid: `schedule-month-calendar-co`
+- Grid events align ตาม start_time/end_time (commit `e8ea5e1`)
+
+### Settings — Academic Year Activation Lock (commit `4df394c`)
+- `AdminSettingController::storeYear/updateYear` block ตั้งปีอื่น `is_active=true` ถ้ามี `AcademicYear` ใดเหลือ `phase='scheduling'`
+- Error message: "ไม่สามารถตั้งปีการศึกษา ... เป็นปีปัจจุบันได้ เนื่องจากยังมีช่วงจัดตารางที่เปิดใช้งานอยู่"
+
+### Tests เพิ่ม
+- `ScheduleManagementTest::test_schedule_index_supports_day_week_and_month_periods` — period labels (`03/08/2569`, `สัปดาห์ที่ 1`, `สิงหาคม 2569`, `นอกช่วงปีการศึกษา`)
+- `ScheduleManagementTest` capacity + department + conflict-array tests (commit `d41055c`)
+- `SchedulingPhaseTest` — active-year switch lock ระหว่าง scheduling phase
+
+## Post-Merge Branch Split (ตกลง 25 พ.ค.)
+
+หลัง merge `4-m3-schedule-suite-testPat` เข้า sprint แล้ว แตก 3 branch ขนาน:
+
+| คน | งาน | ขอบเขต |
+|----|-----|--------|
+| **Rachan (Lead)** | Course Offering UI fixes | หน้าจัดการ course offering — polish layout/UX ต่อ |
+| **pronpimon** | M4 Cross-Course Conflict Check | ตรวจ conflict ห้อง/ผู้สอนข้ามรายวิชาภายในคณะ (อ้างอิง `instructor_profiles.employee_id` เป็น Global Instructor ID) |
+| **phuwadon** | User Management UX/UI | หน้าจัดการผู้ใช้ — polish + accessibility |
+
+### Test Coverage (134 tests / 133 passing — pre-Schedule Suite)
 - `CoursePoolManagementTest` (18) — CRUD + lock + RBAC
 - `CourseOfferingHardeningTest` (11) — template sync + bulk groups + critical gate
 - `CourseOfferingShowPageTest` (13) — practicum_note override + AJAX flow
