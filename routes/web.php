@@ -33,11 +33,23 @@ Route::middleware(['auth', 'no-back'])->group(function () {
     Route::get('/approver/dashboard', [DashboardController::class, 'approver'])->name('approver.dashboard')->middleware('\App\Http\Middleware\CheckRole:executive');
     Route::get('/lecturer/dashboard', [DashboardController::class, 'lecturer'])->name('lecturer.dashboard')->middleware('\App\Http\Middleware\CheckRole:instructor');
 
+    Route::middleware(['\App\Http\Middleware\CheckRole:course_head'])->group(function () {
+        Route::get('/maker/schedules', [ScheduleController::class, 'workspace'])->name('maker.schedules.index');
+        Route::get('/maker/schedules/create', [ScheduleController::class, 'createGlobal'])->name('maker.schedules.create');
+        Route::post('/maker/schedules', [ScheduleController::class, 'storeGlobal'])->name('maker.schedules.store');
+    });
+
     Route::middleware(['\App\Http\Middleware\CheckRole:course_head'])
         ->prefix('maker/course-offerings')
         ->name('maker.course_offerings.')
         ->group(function () {
             Route::get('/', [CourseOfferingController::class, 'index'])->name('index');
+            Route::get('/{courseOffering}/schedules', [ScheduleController::class, 'index'])->name('schedules.index');
+            Route::get('/{courseOffering}/schedules/create', [ScheduleController::class, 'create'])->name('schedules.create');
+            Route::post('/{courseOffering}/schedules', [ScheduleController::class, 'store'])->name('schedules.store');
+            Route::get('/{courseOffering}/schedules/{schedule}/edit', [ScheduleController::class, 'edit'])->name('schedules.edit');
+            Route::put('/{courseOffering}/schedules/{schedule}', [ScheduleController::class, 'update'])->name('schedules.update');
+            Route::delete('/{courseOffering}/schedules/{schedule}', [ScheduleController::class, 'destroy'])->name('schedules.destroy');
             Route::get('/{courseOffering}', [CourseOfferingController::class, 'show'])->name('show');
             Route::put('/{courseOffering}', [CourseOfferingController::class, 'update'])->name('update');
             Route::post('/{courseOffering}/instructors', [CourseOfferingController::class, 'storeInstructor'])->name('instructors.store');

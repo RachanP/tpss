@@ -18,6 +18,452 @@
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+    <!-- Choices.js for improved select dropdown placement -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+    <style>
+        /* Make Choices look like our native form-control */
+        .choices__inner {
+            height: 44px !important;
+            display: flex !important;
+            align-items: center !important;
+            border: 1px solid oklch(84% 0.022 232) !important;
+            border-radius: 8px !important;
+            background: var(--surface) !important;
+            color: var(--fg-1) !important;
+            padding: 0 12px !important;
+            box-sizing: border-box !important;
+            font: inherit !important;
+            font-size: 14px !important;
+            box-shadow: none !important;
+            line-height: 1 !important;
+        }
+        .choices__list--dropdown {
+            border: 1px solid oklch(84% 0.022 232) !important;
+            box-shadow: 0 8px 20px rgba(15,23,42,0.08) !important;
+            border-radius: 8px !important;
+            background: var(--surface) !important;
+            margin-top: 6px !important;
+            max-height: 44vh !important;
+            overflow: auto !important;
+        }
+        .choices.tpss-choices-bottom .choices__list--dropdown,
+        .choices.tpss-choices-bottom.is-flipped .choices__list--dropdown {
+            top: calc(100% + 6px) !important;
+            bottom: auto !important;
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+            transform-origin: top !important;
+        }
+        .choices.tpss-choices-bottom.is-flipped {
+            overflow: visible !important;
+        }
+        .choices__list--dropdown .choices__item {
+            padding: 12px 14px !important;
+            font-size: 14px !important;
+            color: var(--fg-1) !important;
+        }
+        .choices__list--dropdown .choices__item--highlighted {
+            background: oklch(96.5% 0.014 232) !important;
+        }
+        .choices__inner:focus-within {
+            outline: none !important;
+            border-color: var(--brand-navy) !important;
+            box-shadow: 0 0 0 3px oklch(45% 0.12 250 / 0.12) !important;
+        }
+        .choices__placeholder { color: var(--fg-3) !important; }
+        .choices__list--single .choices__item { display: block !important; width: 100% !important; font-weight: 400 !important; color: var(--fg-1) !important; line-height: 1.4 !important; padding: 0 !important; text-align: left !important; }
+        .choices__single-choice { display: block !important; text-align: left !important; font-weight: 400 !important; line-height: 1.4 !important; }
+        .choices__item--choice { line-height: 1.4 !important; padding: 12px 14px !important; font-weight: 400 !important; }
+        /* Hide the default Choices dropdown arrow and rely on our caret via background if needed */
+        .choices[data-type*="select-one"] .choices__inner::after,
+        .choices__inner .choices__button {
+            display: none !important;
+        }
+        .tpss-native-select {
+            position: absolute !important;
+            width: 1px !important;
+            height: 1px !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+        .tpss-select {
+            position: relative;
+            width: 100%;
+        }
+        .tpss-select-trigger {
+            width: 100%;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            border: 1px solid oklch(84% 0.022 232);
+            border-radius: 8px;
+            background: var(--surface);
+            color: var(--fg-1);
+            padding: 9px 12px;
+            font: inherit;
+            font-size: 14px;
+            text-align: left;
+            cursor: pointer;
+        }
+        .tpss-select-trigger:focus {
+            outline: none;
+            border-color: var(--brand-navy);
+            box-shadow: 0 0 0 3px oklch(45% 0.12 250 / 0.12);
+        }
+        .tpss-select-trigger[disabled] {
+            cursor: not-allowed;
+            opacity: .65;
+        }
+        .tpss-select-label {
+            min-width: 0;
+            flex: 1 1 auto;
+            text-align: left;
+            line-height: 1.35;
+            white-space: normal;
+            word-break: break-word;
+        }
+        .tpss-select-caret {
+            flex: 0 0 auto;
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 6px solid var(--fg-2);
+        }
+        .tpss-select-menu {
+            z-index: 100000;
+            border: 1px solid oklch(84% 0.022 232);
+            border-radius: 8px;
+            background: var(--surface);
+            box-shadow: 0 12px 28px rgba(15,23,42,0.16);
+            overflow-y: auto;
+            overscroll-behavior: contain;
+        }
+        .tpss-select-option {
+            width: 100%;
+            display: block;
+            border: 0;
+            background: transparent;
+            color: var(--fg-1);
+            padding: 12px 14px;
+            font: inherit;
+            font-size: 14px;
+            line-height: 1.4;
+            text-align: left;
+            cursor: pointer;
+        }
+        .tpss-select-option:hover,
+        .tpss-select-option.is-selected {
+            background: oklch(96.5% 0.014 232);
+        }
+        .tpss-select-option.is-placeholder {
+            color: var(--fg-3);
+        }
+    </style>
+
+    {{-- ปฏิทินเลือกวันที่ พ.ศ. ของ <x-thai-date-input> — ลงทะเบียนที่ layout เพื่อให้ทำงานแม้ component อยู่ใน <template> --}}
+    <style>
+        .tdi-wrap { position: relative; }
+        .tdi-input-cal { padding-right: 38px !important; }
+        .tdi-cal-btn {
+            position: absolute;
+            top: 50%;
+            right: 6px;
+            transform: translateY(-50%);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            border: 0;
+            border-radius: 6px;
+            background: transparent;
+            color: var(--fg-3, #6b7280);
+            cursor: pointer;
+        }
+        .tdi-cal-btn:hover { background: var(--bg-2, #f1f5f9); color: var(--brand-navy, #1e3a5f); }
+        .tdi-cal-btn svg { width: 18px; height: 18px; }
+        .tdi-pop {
+            position: absolute;
+            z-index: 1000;
+            top: calc(100% + 6px);
+            left: 0;
+            width: 270px;
+            padding: 12px;
+            background: #fff;
+            border: 1px solid var(--border, #d8dee9);
+            border-radius: 10px;
+            box-shadow: 0 14px 38px rgba(0, 0, 0, 0.18);
+        }
+        .tdi-pop-head {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 9px;
+        }
+        .tdi-pop-nav {
+            flex-shrink: 0;
+            width: 28px;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border, #d8dee9);
+            border-radius: 6px;
+            background: #fff;
+            color: var(--fg-2, #475569);
+            cursor: pointer;
+        }
+        .tdi-pop-nav:hover { background: var(--bg-2, #f1f5f9); }
+        .tdi-pop-nav svg { width: 15px; height: 15px; }
+        .tdi-pop-select {
+            position: relative;
+            min-width: 0;
+        }
+        .tdi-pop-select.tdi-pop-month { flex: 1; }
+        .tdi-pop-select.tdi-pop-year { width: 74px; flex-shrink: 0; }
+        .tdi-pop-sel {
+            min-width: 0;
+            width: 100%;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+            border: 1px solid var(--border, #d8dee9);
+            border-radius: 6px;
+            background: #fff;
+            font: inherit;
+            font-size: 12.5px;
+            font-weight: 700;
+            color: var(--fg-1, #1e293b);
+            padding: 0 8px;
+            cursor: pointer;
+        }
+        .tdi-pop-sel:hover { background: var(--bg-2, #f1f5f9); }
+        .tdi-pop-sel:focus {
+            outline: none;
+            border-color: var(--brand-navy, #1e3a5f);
+            box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.12);
+        }
+        .tdi-pop-sel-label {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .tdi-pop-sel-caret {
+            width: 0;
+            height: 0;
+            flex-shrink: 0;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-top: 5px solid var(--fg-2, #475569);
+        }
+        .tdi-pop-menu {
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0;
+            z-index: 1002;
+            width: 100%;
+            max-height: 184px;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            border: 1px solid var(--border, #d8dee9);
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 12px 26px rgba(15, 23, 42, 0.16);
+        }
+        .tdi-pop-year .tdi-pop-menu {
+            width: 100%;
+            max-height: 184px;
+            display: block;
+            scrollbar-gutter: stable;
+        }
+        .tdi-pop-menu button {
+            width: 100%;
+            min-height: 34px;
+            display: block;
+            border: 0;
+            background: #fff;
+            color: var(--fg-1, #1e293b);
+            padding: 8px 10px;
+            font: inherit;
+            font-size: 12.5px;
+            font-weight: 600;
+            line-height: 1.3;
+            text-align: left;
+            cursor: pointer;
+        }
+        .tdi-pop-year .tdi-pop-menu button {
+            min-height: 34px;
+            padding: 8px 10px;
+            text-align: left;
+        }
+        .tdi-pop-menu button:hover,
+        .tdi-pop-menu button.is-selected {
+            background: var(--bg-2, #f1f5f9);
+        }
+        .tdi-pop-menu button.is-selected {
+            color: var(--brand-navy, #1e3a5f);
+            font-weight: 800;
+        }
+        .tdi-pop-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+        }
+        .tdi-pop-dow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 24px;
+            font-size: 10.5px;
+            font-weight: 800;
+            color: var(--fg-3, #6b7280);
+        }
+        .tdi-pop-day {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 30px;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            background: transparent;
+            font: inherit;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--fg-1, #1e293b);
+            cursor: pointer;
+        }
+        .tdi-pop-day:hover:not(.is-blank) { background: var(--bg-2, #f1f5f9); }
+        .tdi-pop-day.is-blank { visibility: hidden; cursor: default; }
+        .tdi-pop-day.is-today { border-color: var(--brand-navy, #1e3a5f); font-weight: 800; }
+        .tdi-pop-day.is-selected {
+            background: var(--brand-navy, #1e3a5f);
+            color: #fff;
+            border-color: var(--brand-navy, #1e3a5f);
+        }
+    </style>
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('thaiDateInput', () => ({
+                calOpen: false,
+                calYear: new Date().getFullYear(),
+                calMonth: new Date().getMonth(),
+                tdiMonthOpen: false,
+                tdiYearOpen: false,
+                tdiSelectedIso: '',
+
+                // มาส์กข้อความให้เป็นรูปแบบ วว/ดด/พ.ศ.
+                maskThaiDate(value) {
+                    const raw = String(value || '').trim();
+                    const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                    if (iso) return iso[3] + '/' + iso[2] + '/' + (parseInt(iso[1], 10) + 543);
+
+                    const digits = raw.replace(/\D/g, '').slice(0, 8);
+                    if (digits.length <= 2) return digits.length === 2 ? digits + '/' : digits;
+                    if (digits.length <= 4) return digits.slice(0, 2) + '/' + digits.slice(2) + (digits.length === 4 ? '/' : '');
+                    return digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4);
+                },
+                get tdiTodayIso() {
+                    const t = new Date();
+                    return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+                },
+                get tdiGrid() {
+                    const firstDow = (new Date(this.calYear, this.calMonth, 1).getDay() + 6) % 7;
+                    const days = new Date(this.calYear, this.calMonth + 1, 0).getDate();
+                    const cells = [];
+                    for (let i = 0; i < firstDow; i++) cells.push({ day: null });
+                    for (let d = 1; d <= days; d++) cells.push({ day: d });
+                    return cells;
+                },
+                tdiDayIso(day) {
+                    return this.calYear + '-' + String(this.calMonth + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+                },
+                // sync เดือน/ปีในปฏิทินจากค่าที่พิมพ์ไว้ในช่อง (วว/ดด/พ.ศ.)
+                tdiSync() {
+                    const parts = String(this.$refs.thaiInput.value || '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+                    if (parts) {
+                        let year = parseInt(parts[3], 10);
+                        if (year >= 2400) year -= 543;
+                        this.calYear = year;
+                        this.calMonth = Math.min(11, Math.max(0, parseInt(parts[2], 10) - 1));
+                        this.tdiSelectedIso = this.tdiDayIso(parseInt(parts[1], 10));
+                    } else {
+                        const t = new Date();
+                        this.calYear = t.getFullYear();
+                        this.calMonth = t.getMonth();
+                        this.tdiSelectedIso = '';
+                    }
+                },
+                tdiToggle() {
+                    if (!this.calOpen) this.tdiSync();
+                    this.calOpen = !this.calOpen;
+                    if (!this.calOpen) this.tdiCloseMenus();
+                },
+                tdiCloseMenus() {
+                    this.tdiMonthOpen = false;
+                    this.tdiYearOpen = false;
+                },
+                tdiToggleMonth() {
+                    this.tdiYearOpen = false;
+                    this.tdiMonthOpen = !this.tdiMonthOpen;
+                    if (this.tdiMonthOpen) this.tdiScrollMenu('month');
+                },
+                tdiToggleYear() {
+                    this.tdiMonthOpen = false;
+                    this.tdiYearOpen = !this.tdiYearOpen;
+                    if (this.tdiYearOpen) this.tdiScrollMenu('year');
+                },
+                tdiScrollMenu(kind) {
+                    this.$nextTick(() => {
+                        const menu = this.$root.querySelector('.tdi-pop-' + kind + ' .tdi-pop-menu');
+                        const selected = menu ? menu.querySelector('.is-selected') : null;
+                        if (!menu || !selected) return;
+
+                        const targetTop = selected.offsetTop - ((menu.clientHeight - selected.offsetHeight) / 2);
+                        menu.scrollTop = Math.max(0, targetTop);
+                    });
+                },
+                tdiPickMonth(month) {
+                    this.calMonth = month;
+                    this.tdiMonthOpen = false;
+                },
+                tdiPickYear(year) {
+                    this.calYear = year;
+                    this.tdiYearOpen = false;
+                },
+                tdiShiftMonth(delta) {
+                    let month = this.calMonth + delta;
+                    let year = this.calYear;
+                    if (month < 0) { month = 11; year -= 1; }
+                    if (month > 11) { month = 0; year += 1; }
+                    this.calMonth = month;
+                    this.calYear = year;
+                    this.tdiCloseMenus();
+                },
+                tdiPick(day) {
+                    if (!day) return;
+                    const thai = String(day).padStart(2, '0')
+                        + '/' + String(this.calMonth + 1).padStart(2, '0')
+                        + '/' + (this.calYear + 543);
+                    const input = this.$refs.thaiInput;
+                    input.value = thai;
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                    this.tdiSelectedIso = this.tdiDayIso(day);
+                    this.calOpen = false;
+                    this.tdiCloseMenus();
+                },
+            }));
+        });
+    </script>
+
     <!-- Alpine.js (Collapse plugin must load before core) -->
     <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.13.3/dist/cdn.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
@@ -388,6 +834,122 @@
             @if(session('warning'))
                 tpssToast(@json(session('warning')), 'warning');
             @endif
+        });
+        // Expose function to initialize TPSS select dropdowns on-demand (used when modals render dynamically)
+        window.tpssInitChoices = function(root) {
+            try {
+                (root ? root.querySelectorAll('select.tpss-choices') : document.querySelectorAll('select.tpss-choices')).forEach(function(el) {
+                    if (el._tpssSelect) return;
+
+                    var wrapper = document.createElement('div');
+                    var trigger = document.createElement('button');
+                    var label = document.createElement('span');
+                    var caret = document.createElement('span');
+                    var menu = document.createElement('div');
+
+                    wrapper.className = 'tpss-select';
+                    trigger.type = 'button';
+                    trigger.className = 'tpss-select-trigger';
+                    trigger.setAttribute('aria-haspopup', 'listbox');
+                    trigger.setAttribute('aria-expanded', 'false');
+                    label.className = 'tpss-select-label';
+                    caret.className = 'tpss-select-caret';
+                    menu.className = 'tpss-select-menu';
+                    menu.setAttribute('role', 'listbox');
+                    menu.hidden = true;
+
+                    el.classList.add('tpss-native-select');
+                    el.setAttribute('tabindex', '-1');
+                    el.parentNode.insertBefore(wrapper, el.nextSibling);
+                    wrapper.appendChild(el);
+                    wrapper.appendChild(trigger);
+                    trigger.appendChild(label);
+                    trigger.appendChild(caret);
+                    wrapper.appendChild(menu);
+
+                    var close = function() {
+                        menu.hidden = true;
+                        trigger.setAttribute('aria-expanded', 'false');
+                    };
+
+                    var selectedText = function() {
+                        var option = el.options[el.selectedIndex] || el.options[0];
+                        return option ? option.text.trim() : '';
+                    };
+
+                    var positionMenu = function() {
+                        if (menu.hidden) return;
+
+                        var rect = trigger.getBoundingClientRect();
+                        menu.style.position = 'fixed';
+                        menu.style.left = rect.left + 'px';
+                        menu.style.top = (rect.bottom + 6) + 'px';
+                        menu.style.bottom = 'auto';
+                        menu.style.width = rect.width + 'px';
+                        menu.style.maxHeight = Math.max(140, window.innerHeight - rect.bottom - 18) + 'px';
+                    };
+
+                    var sync = function() {
+                        label.textContent = selectedText();
+                        trigger.disabled = el.disabled;
+
+                        Array.prototype.forEach.call(menu.querySelectorAll('.tpss-select-option'), function(optionButton) {
+                            optionButton.classList.toggle('is-selected', optionButton.dataset.value === el.value);
+                        });
+                    };
+
+                    var rebuild = function() {
+                        menu.innerHTML = '';
+                        Array.prototype.forEach.call(el.options, function(option) {
+                            var item = document.createElement('button');
+                            item.type = 'button';
+                            item.className = 'tpss-select-option' + (option.value === '' ? ' is-placeholder' : '');
+                            item.setAttribute('role', 'option');
+                            item.dataset.value = option.value;
+                            item.textContent = option.text.trim();
+                            item.disabled = option.disabled;
+                            item.addEventListener('click', function() {
+                                el.value = option.value;
+                                el.dispatchEvent(new Event('change', { bubbles: true }));
+                                el.dispatchEvent(new Event('input', { bubbles: true }));
+                                close();
+                                sync();
+                            });
+                            menu.appendChild(item);
+                        });
+                        sync();
+                    };
+
+                    trigger.addEventListener('click', function() {
+                        if (el.disabled) return;
+
+                        document.querySelectorAll('.tpss-select-menu').forEach(function(otherMenu) {
+                            if (otherMenu !== menu) otherMenu.hidden = true;
+                        });
+
+                        menu.hidden = !menu.hidden;
+                        trigger.setAttribute('aria-expanded', menu.hidden ? 'false' : 'true');
+                        positionMenu();
+                    });
+
+                    document.addEventListener('click', function(event) {
+                        if (!wrapper.contains(event.target)) close();
+                    });
+                    window.addEventListener('resize', positionMenu);
+                    window.addEventListener('scroll', positionMenu, true);
+                    el.addEventListener('change', sync);
+
+                    el._tpssSelect = { rebuild: rebuild, sync: sync, close: close };
+                    rebuild();
+                });
+            } catch (e) {
+                console.warn('TPSS select init failed', e);
+            }
+        };
+
+        // Initial run on DOM ready
+        document.addEventListener('DOMContentLoaded', function() {
+            window.tpssInitChoices();
         });
     </script>
 </body>

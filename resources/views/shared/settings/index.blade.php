@@ -6,8 +6,8 @@
         workloadHoursPerWeek: {{ $workloadHoursPerWeek }},
         get totalQuota() { return this.workloadWeeks * this.workloadHoursPerWeek },
         get teachingQuota() { return this.teachingWeeks * this.workloadHoursPerWeek },
-        showModal: {{ $errors->hasAny(['name', 'start_date', 'end_date']) ? 'true' : 'false' }},
-        editMode: {{ ($errors->hasAny(['name', 'start_date', 'end_date'])) && old('_method') === 'PUT' ? 'true' : 'false' }},
+        showModal: {{ $errors->hasAny(['name', 'start_date', 'end_date', 'is_active']) ? 'true' : 'false' }},
+        editMode: {{ ($errors->hasAny(['name', 'start_date', 'end_date', 'is_active'])) && old('_method') === 'PUT' ? 'true' : 'false' }},
         currentYear: {
             id: '{{ old('year_id', '') }}',
             name: '{{ old('name', '') }}',
@@ -350,6 +350,9 @@
                                         style="width: 16px; height: 16px; accent-color: var(--brand-navy);">
                                     ตั้งเป็นปีการศึกษาปัจจุบัน (Active)
                                 </label>
+                                @error('is_active')
+                                    <span style="color: var(--red, #dc2626); font-size: 12px; margin-top: 6px; display: block;">{{ $message }}</span>
+                                @enderror
                             </div>
                         </div>
                         <div class="modal-foot">

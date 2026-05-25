@@ -68,6 +68,17 @@ mock/production/
 | `PRODUCT.md` / `DESIGN.md` | Brand/Users context และ Design tokens/rules |
 | `.impeccable.md` | Full Impeccable Design spec |
 
+## Shared Components
+
+### `<x-thai-date-input>` (Schedule Suite — 24 พ.ค.)
+ช่องวันที่ระบบทั้งหมดต้องใช้คอมโพเนนต์นี้ — popup ปฏิทิน พ.ศ., เก็บค่าเป็น ค.ศ. ใน hidden input. Year range สำหรับหน้า schedule คำนวณจาก `AcademicYear.start_date/end_date` (`ScheduleController::scheduleDatePickerYearRange`) — ส่งผ่าน `$scheduleDatePickerYearStart/End` ใน view data
+
+### Schedule Calendar (M8 — 22 พ.ค.)
+- Period filter: `?period=day|week|month&date=YYYY-MM-DD`
+- ป้าย `นอกช่วงปีการศึกษา` เมื่อวันที่ตกนอก `start_date/end_date` ของปีการศึกษา active
+- Month grid testid: `schedule-month-calendar-co`
+- Conflict errors render เป็น bullet list (error bag `schedule` เป็น array)
+
 ## Accordion Drill-Down Pattern (implement แล้ว M1)
 
 - ภาควิชา → อาจารย์ (title, employment_type, academic_degree)

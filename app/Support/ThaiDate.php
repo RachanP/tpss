@@ -65,6 +65,34 @@ class ThaiDate
         return self::formatDisplayDate($date) . ' ' . $date->format('H:i:s');
     }
 
+    /**
+     * แสดงวันที่เป็น พ.ศ. รูปแบบ วว/ดด/พ.ศ. — จุดกลางสำหรับ "แสดงผล" วันที่ทั่วระบบ
+     */
+    public static function date(DateTimeInterface|string|null $date): string
+    {
+        return self::formatForInput($date);
+    }
+
+    /**
+     * แสดงวันที่+เวลาเป็น พ.ศ. รูปแบบ วว/ดด/พ.ศ. ชช:นน (ไม่มีวินาที)
+     */
+    public static function dateTime(DateTimeInterface|string|null $dateTime): string
+    {
+        if ($dateTime === null || $dateTime === '') {
+            return '';
+        }
+
+        try {
+            $date = $dateTime instanceof DateTimeInterface
+                ? Carbon::instance($dateTime)
+                : Carbon::parse((string) $dateTime);
+        } catch (\Throwable) {
+            return trim((string) $dateTime);
+        }
+
+        return self::formatDisplayDate($date) . ' ' . $date->format('H:i');
+    }
+
     private static function isoFromDisplayParts(int $day, int $month, int $year): ?string
     {
         if ($year >= 2400) {

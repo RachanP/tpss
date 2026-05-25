@@ -19,6 +19,20 @@
 4. **Rotation Schedule** — กลุ่มหมุนเวียนระหว่างแหล่งฝึกและประเภทประสบการณ์
 5. **Exception-based** — ตารางเปลี่ยนตามสัปดาห์ มีวันหยุด กิจกรรมพิเศษ
 
+## Schedule Slot Validation Gates (Schedule Suite — 24 พ.ค.)
+
+บังคับใน `CourseHead\ScheduleController` ตอน `store/update` (และ `CourseHead\CourseOfferingController::storeInstructor` สำหรับ pool):
+
+1. **Department gate** — ผู้สอนที่เลือก (ใน slot + ที่เพิ่มเข้า instructor pool) ต้องมี `instructor_profiles.department_id == courses.department_id` เท่านั้น
+2. **Capacity gate** — sum(`student_groups.student_count`) ของ groups ที่ผูกกับ slot ต้อง ≤ `capacity_required` ของ slot
+3. **Lead instructor required** — ต้องมี `lead_instructor_id` 1 คน
+4. **In-course conflict** — instructor/room/group overlap ภายใน offering บล็อกบันทึก (error key `'schedule'` ส่งเป็น array of messages)
+5. **Cross-course conflict** — ⚠️ ยังไม่ implement — pronpimon ทำต่อใน branch แยก โดยอิง `instructor_profiles.employee_id` เป็น Global Instructor ID
+
+## Academic Year Activation Lock (22 พ.ค.)
+
+`AdminSettingController::storeYear/updateYear` block การตั้ง `is_active=true` ของปีการศึกษาใดๆ หากมี `AcademicYear` อื่นเหลือ `phase='scheduling'` — Admin ต้องปิด scheduling window เดิม (phase → `published` หรือกลับ `preparation`) ก่อนสลับปี active เพื่อกัน data drift
+
 ## Instructor & Conflict Logic
 
 1. **Instructor Pool (2-layer — Sprint 3)**:

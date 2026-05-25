@@ -53,6 +53,18 @@ class AdminSettingController extends Controller
         );
     }
 
+    private function schedulingLockMessage(AcademicYear $year): string
+    {
+        return "ไม่สามารถตั้งปีการศึกษา {$year->name} ภาค {$year->semester} เป็นปีปัจจุบันได้ เนื่องจากยังมีช่วงจัดตารางที่เปิดใช้งานอยู่ กรุณาปิดช่วงจัดตารางเดิมก่อน";
+    }
+
+    private function hasOtherOpenSchedulingWindow(AcademicYear $year): bool
+    {
+        return AcademicYear::where('phase', 'scheduling')
+            ->where('id', '!=', $year->id)
+            ->exists();
+    }
+
     public function index()
     {
         $academicYears = AcademicYear::orderBy('name', 'desc')->orderBy('semester', 'desc')->get();
@@ -95,6 +107,18 @@ class AdminSettingController extends Controller
         $validated['is_active'] = $request->has('is_active');
 
         if ($validated['is_active']) {
+            $newYearGuard = new AcademicYear([
+                'name' => $validated['name'],
+                'semester' => $validated['semester'],
+            ]);
+
+            if ($this->hasOtherOpenSchedulingWindow($newYearGuard)) {
+                return back()
+                    ->withInput()
+                    ->withErrors(['is_active' => $this->schedulingLockMessage($newYearGuard)])
+                    ->with('error', $this->schedulingLockMessage($newYearGuard));
+            }
+
             AcademicYear::where('is_active', true)->update(['is_active' => false]);
             $this->closeAllSchedulingWindows();
 
@@ -155,6 +179,15 @@ class AdminSettingController extends Controller
         }
 
         $before = $this->auditSnapshot($year);
+
+        if ($validated['is_active'] && (! $year->is_active || $this->hasOtherOpenSchedulingWindow($year))) {
+            if ($this->hasOtherOpenSchedulingWindow($year)) {
+                return back()
+                    ->withInput()
+                    ->withErrors(['is_active' => $this->schedulingLockMessage($year)])
+                    ->with('error', $this->schedulingLockMessage($year));
+            }
+        }
 
         if ($validated['is_active']) {
             AcademicYear::where('id', '!=', $year->id)->where('is_active', true)->update(['is_active' => false]);
