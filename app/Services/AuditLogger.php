@@ -41,6 +41,26 @@ class AuditLogger
     ];
 
     /**
+     * User-facing action labels available in the audit log filter.
+     * Keep this independent from existing database rows so fresh installs
+     * still show the actions the system can create.
+     */
+    public const ACTION_FILTER_LABELS = [
+        'เข้าสู่ระบบ',
+        'ออกจากระบบ',
+        'เปลี่ยนรหัสผ่าน',
+        'สร้าง',
+        'แก้ไข',
+        'ลบ',
+        'เปลี่ยนสถานะ',
+        'นำเข้า CSV',
+        'คัดลอก',
+        'เปิดช่วงจัดตาราง',
+        'ปิดช่วงจัดตาราง',
+        'ซิงก์ข้อมูล',
+    ];
+
+    /**
      * Auto-generated fallback descriptions per action verb.
      */
     private const ACTION_DESCRIPTIONS = [

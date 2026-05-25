@@ -160,9 +160,10 @@ class AuthTest extends TestCase
 
         $this->assertNotNull($log, 'Expected audit log for logout was not found');
         $this->assertEquals('ระบบ', $log->category);
+        $this->assertEquals('ออกจากระบบ: Test User', $log->description);
     }
 
-    public function test_switch_role_creates_audit_log_when_role_changes(): void
+    public function test_switch_role_does_not_create_audit_log_when_role_changes(): void
     {
         UserRole::create([
             'user_id'    => $this->user->id,
@@ -175,13 +176,8 @@ class AuthTest extends TestCase
             ->post('/switch-role', ['role' => 'instructor'])
             ->assertRedirect();
 
-        $log = AuditLog::where('action', 'ระบบ.เปลี่ยนบทบาท')
-            ->where('record_id', $this->user->id)
-            ->first();
-
-        $this->assertNotNull($log, 'Expected audit log for role switch was not found');
-        $this->assertEquals('staff',      $log->old_values['active_role']);
-        $this->assertEquals('instructor', $log->new_values['active_role']);
+        $this->assertEquals('instructor', session('active_role'));
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'ระบบ.เปลี่ยนบทบาท']);
     }
 
     public function test_switch_role_to_same_role_does_not_create_audit_log(): void

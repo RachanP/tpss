@@ -80,9 +80,10 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        $userId = auth()->id();
+        $user = auth()->user();
+        $userId = $user?->id;
 
-        if ($userId) {
+        if ($user && $userId) {
             AuditLogger::log(
                 action: 'ระบบ.ออกจากระบบ',
                 table: 'users',
@@ -90,7 +91,7 @@ class AuthController extends Controller
                 oldValues: null,
                 newValues: null,
                 category: 'ระบบ',
-                description: "ออกจากระบบ: {$userId}",
+                description: "ออกจากระบบ: {$user->name}",
             );
         }
 

@@ -330,6 +330,11 @@ class AuditLogTest extends TestCase
         $categoryIndex = strpos($html, 'data-testid="audit-logs-filter-category"');
         $this->assertLessThan($categoryIndex, $actorIndex);
         $this->assertStringContainsString('href="' . route('admin.audit_logs.index') . '"', $html);
+
+        $categoryOptions = $this->selectOptionValues($html, 'audit-logs-filter-category');
+        foreach (array_keys(AuditLogger::CATEGORY_LABELS) as $category) {
+            $this->assertContains($category, $categoryOptions);
+        }
     }
 
     public function test_audit_log_partial_request_returns_table_only(): void
@@ -377,34 +382,20 @@ class AuditLogTest extends TestCase
         $response->assertDontSee('ข้อมูลหลัก.สร้าง');
     }
 
-    public function test_audit_log_action_dropdown_shows_unique_user_facing_labels(): void
+    public function test_audit_log_action_dropdown_shows_supported_user_facing_labels_without_database_rows(): void
     {
         $this->actingAs($this->admin);
-
-        AuditLogger::log('ข้อมูลหลัก.แก้ไข', 'courses', 1, null, []);
-        AuditLogger::log('ตารางสอน.แก้ไข', 'schedules', 2, null, []);
-        AuditLogger::log('ข้อมูลหลัก.สร้าง', 'courses', 3, null, []);
 
         $response = $this->get(route('admin.audit_logs.index'));
         $response->assertOk();
 
-        preg_match(
-            '/<select[^>]*data-testid="audit-logs-filter-action"[^>]*>(.*?)<\/select>/s',
-            $response->getContent(),
-            $selectMatch,
-        );
-
-        $this->assertNotEmpty($selectMatch);
-
-        preg_match_all('/<option\b[^>]*value="([^"]*)"[^>]*>(.*?)<\/option>/s', $selectMatch[1], $matches, PREG_SET_ORDER);
-        $actionOptions = collect($matches)
-            ->filter(fn (array $match) => in_array(html_entity_decode($match[1]), ['แก้ไข', 'สร้าง'], true))
-            ->map(fn (array $match) => trim(html_entity_decode(strip_tags($match[2]))))
+        $actionOptions = collect($this->selectOptionValues($response->getContent(), 'audit-logs-filter-action'))
+            ->filter(fn (string $value) => $value !== '')
             ->values()
             ->all();
 
-        $this->assertEqualsCanonicalizing(['สร้าง', 'แก้ไข'], $actionOptions);
-        $this->assertCount(2, $actionOptions);
+        $this->assertSame(AuditLogger::ACTION_FILTER_LABELS, $actionOptions);
+        $this->assertNotContains('เปลี่ยนบทบาท', $actionOptions);
     }
 
     public function test_admin_can_filter_by_date_range(): void
@@ -940,6 +931,24 @@ class AuditLogTest extends TestCase
 
         return array_map(
             fn (string $value) => trim(preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($value), ENT_QUOTES | ENT_HTML5, 'UTF-8'))),
+            $matches[1],
+        );
+    }
+
+    private function selectOptionValues(string $html, string $testId): array
+    {
+        preg_match(
+            '/<select[^>]*data-testid="' . preg_quote($testId, '/') . '"[^>]*>(.*?)<\/select>/s',
+            $html,
+            $selectMatch,
+        );
+
+        $this->assertNotEmpty($selectMatch, "Expected select [{$testId}] to appear in HTML.");
+
+        preg_match_all('/<option\b[^>]*value="([^"]*)"[^>]*>/s', $selectMatch[1], $matches);
+
+        return array_map(
+            fn (string $value) => html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8'),
             $matches[1],
         );
     }
