@@ -31,7 +31,7 @@
         ];
     } elseif ($currentPhase === 'preparation' && $warningCount > 0) {
         $systemStatus = [
-            'title' => 'ข้อมูลหลักเกือบพร้อม',
+            'title' => 'ข้อมูลหลักรอตรวจสอบ',
             'pill' => 'p-warning',
             'label' => 'มีรายการควรตรวจสอบ',
             'desc' => "ตรวจสอบข้อมูล {$warningCount} รายการก่อนเปิดช่วงจัดตาราง หากไม่กระทบการจัดตารางสามารถดำเนินการต่อได้",
