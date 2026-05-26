@@ -285,4 +285,278 @@ class CoursePoolManagementTest extends TestCase
             'is_active' => true,
         ]);
     }
+
+    public function test_instructor_deviation_page_shows_diff_buckets_for_offering(): void
+    {
+        $admin = $this->makeUser('admin');
+        $head = $this->makeUser('course_head');
+        $templateOnly = $this->makeUser('instructor');   // อยู่ใน template แต่ Course Head ไม่ได้ใช้
+        $sharedSame = $this->makeUser('instructor');     // อยู่ทั้งสองฝั่ง role เดียวกัน
+        $sharedDiff = $this->makeUser('instructor');     // อยู่ทั้งสองฝั่ง แต่ role ต่าง
+        $addedOnly = $this->makeUser('instructor');      // Course Head เพิ่มเข้ามาใหม่
+
+        $course = $this->makeCourse(['head_instructor_id' => $head->id, 'course_code' => 'NSBS 999']);
+        $year = $this->makeYear(['phase' => 'scheduling', 'name' => '2569', 'semester' => 1]);
+
+        $instructorRole = CourseRole::where('name_th', 'อาจารย์ผู้สอน')->first();
+        $assistantRole = CourseRole::where('name_th', 'อาจารย์พี่เลี้ยง')->first();
+
+        // Template: templateOnly + sharedSame + sharedDiff (instructor role)
+        $course->instructors()->attach([
+            $templateOnly->id => ['course_role_id' => $instructorRole->id],
+            $sharedSame->id   => ['course_role_id' => $instructorRole->id],
+            $sharedDiff->id   => ['course_role_id' => $instructorRole->id],
+        ]);
+
+        $offering = CourseOffering::create([
+            'course_id' => $course->id,
+            'academic_year_id' => $year->id,
+            'coordinator_id' => $head->id,
+            'approval_status' => 'draft',
+        ]);
+
+        // Actual pool: sharedSame (same role) + sharedDiff (assistant role) + addedOnly
+        $offering->instructorPool()->attach([
+            $head->id        => ['role_in_course' => 'coordinator', 'course_role_id' => null],
+            $sharedSame->id  => ['role_in_course' => 'instructor',  'course_role_id' => $instructorRole->id],
+            $sharedDiff->id  => ['role_in_course' => 'instructor',  'course_role_id' => $assistantRole->id],
+            $addedOnly->id   => ['role_in_course' => 'instructor',  'course_role_id' => $instructorRole->id],
+        ]);
+
+        $this->actingAsRole($admin, 'admin');
+
+        $response = $this->get(route('admin.courses.instructor_deviation', $course));
+
+        $response->assertOk();
+        $response->assertSee('NSBS 999');
+        $response->assertSee('ติดตามการใช้แม่แบบ');
+        $response->assertSee('เพิ่มจากแม่แบบ');
+        $response->assertSee('ไม่ได้ใช้จากแม่แบบ');
+        $response->assertSee('เปลี่ยนบทบาท');
+        $response->assertSee($addedOnly->name);    // โผล่ใน "เพิ่มจากแม่แบบ"
+        $response->assertSee($templateOnly->name); // โผล่ใน "ไม่ได้ใช้จากแม่แบบ" + template panel
+        $response->assertSee($sharedDiff->name);   // โผล่ใน "เปลี่ยนบทบาท" + template panel
+        // หมายเหตุ: $sharedSame อยู่ใน template panel ด้วย เลยไม่ทำ assertDontSee ที่ระดับ page
+        // จะดูว่า diff ถูกหรือไม่ผ่านจำนวน badge ในแถวประวัติ
+        $response->assertSee('แก้ไข 3 รายการ');
+    }
+
+    public function test_instructor_deviation_shows_zero_when_offering_matches_template(): void
+    {
+        $admin = $this->makeUser('admin');
+        $head = $this->makeUser('course_head');
+        $instructor = $this->makeUser('instructor');
+
+        $course = $this->makeCourse(['head_instructor_id' => $head->id]);
+        $year = $this->makeYear(['phase' => 'scheduling']);
+        $role = CourseRole::where('name_th', 'อาจารย์ผู้สอน')->first();
+
+        $course->instructors()->attach($instructor->id, ['course_role_id' => $role->id]);
+
+        $offering = CourseOffering::create([
+            'course_id' => $course->id,
+            'academic_year_id' => $year->id,
+            'coordinator_id' => $head->id,
+            'approval_status' => 'draft',
+        ]);
+        $offering->instructorPool()->attach([
+            $head->id       => ['role_in_course' => 'coordinator', 'course_role_id' => null],
+            $instructor->id => ['role_in_course' => 'instructor',  'course_role_id' => $role->id],
+        ]);
+
+        $this->actingAsRole($admin, 'admin');
+
+        $this->get(route('admin.courses.instructor_deviation', $course))
+            ->assertOk()
+            ->assertSee('ตรงกับแม่แบบ');
+    }
+
+    public function test_master_data_courses_tab_shows_deviation_link_only_for_locked_courses(): void
+    {
+        $admin = $this->makeUser('admin');
+        $head = $this->makeUser('course_head');
+
+        $lockedCourse = $this->makeCourse(['head_instructor_id' => $head->id, 'course_code' => 'LOCK 111']);
+        $unlockedCourse = $this->makeCourse(['head_instructor_id' => $head->id, 'course_code' => 'OPEN 111']);
+
+        // Lock the first course by giving it an offering in scheduling phase
+        $schedulingYear = $this->makeYear(['phase' => 'scheduling']);
+        CourseOffering::create([
+            'course_id' => $lockedCourse->id,
+            'academic_year_id' => $schedulingYear->id,
+            'coordinator_id' => $head->id,
+            'approval_status' => 'draft',
+        ]);
+
+        $this->actingAsRole($admin, 'admin');
+
+        $response = $this->get(route('admin.master_data', ['tab' => 'courses']));
+
+        $response->assertOk();
+        $response->assertSee(route('admin.courses.instructor_deviation', $lockedCourse), false);
+        $response->assertDontSee(route('admin.courses.instructor_deviation', $unlockedCourse), false);
+    }
+
+    public function test_instructor_deviation_includes_all_phases_for_pattern_analysis(): void
+    {
+        // Admin ต้องเห็นทุกรอบ (รวม preparation + เก่า ๆ ที่เผยแพร่แล้ว) เพื่อดู pattern ข้ามปี
+        $admin = $this->makeUser('admin');
+        $head = $this->makeUser('course_head');
+        $course = $this->makeCourse(['head_instructor_id' => $head->id]);
+
+        $prepYear = $this->makeYear(['phase' => 'preparation', 'name' => '2570', 'semester' => 1]);
+        $publishedYear = $this->makeYear(['phase' => 'published', 'name' => '2568', 'semester' => 2]);
+
+        CourseOffering::create([
+            'course_id' => $course->id,
+            'academic_year_id' => $prepYear->id,
+            'coordinator_id' => $head->id,
+            'approval_status' => 'draft',
+        ]);
+        CourseOffering::create([
+            'course_id' => $course->id,
+            'academic_year_id' => $publishedYear->id,
+            'coordinator_id' => $head->id,
+            'approval_status' => 'published',
+        ]);
+
+        $this->actingAsRole($admin, 'admin');
+
+        $this->get(route('admin.courses.instructor_deviation', $course))
+            ->assertOk()
+            ->assertSee('2570')
+            ->assertSee('2568')
+            ->assertSee('เตรียมข้อมูล')
+            ->assertSee('เผยแพร่แล้ว');
+    }
+
+    public function test_instructor_deviation_shows_template_panel_and_course_status(): void
+    {
+        $admin = $this->makeUser('admin');
+        $head = $this->makeUser('course_head');
+        $instructor = $this->makeUser('instructor');
+
+        $course = $this->makeCourse([
+            'head_instructor_id' => $head->id,
+            'course_code' => 'STAT 111',
+            'status' => 'active',
+            'is_required' => true,
+        ]);
+
+        $role = CourseRole::where('name_th', 'อาจารย์ผู้สอน')->first();
+        $course->instructors()->attach($instructor->id, ['course_role_id' => $role->id]);
+
+        $this->actingAsRole($admin, 'admin');
+
+        $this->get(route('admin.courses.instructor_deviation', $course))
+            ->assertOk()
+            ->assertSee('STAT 111')
+            ->assertSee('เปิดสอน')
+            ->assertSee('วิชาบังคับ')
+            ->assertSee('แม่แบบผู้รับผิดชอบ')
+            ->assertSee('แก้ไขแม่แบบ')
+            ->assertSee($head->name)
+            ->assertSee($instructor->name);
+    }
+
+    public function test_master_data_shows_deviation_dot_only_when_course_actually_deviates(): void
+    {
+        $admin = $this->makeUser('admin');
+        $head = $this->makeUser('course_head');
+        $instructor = $this->makeUser('instructor');
+
+        $year = $this->makeYear(['phase' => 'scheduling']);
+        $role = CourseRole::where('name_th', 'อาจารย์ผู้สอน')->first();
+
+        // วิชา A: template ตรงกับ offering ทุกอย่าง → ไม่ควรมี red dot
+        $matchCourse = $this->makeCourse([
+            'head_instructor_id' => $head->id,
+            'course_code' => 'MATCH 1',
+            'requires_practicum_rotation' => false,
+        ]);
+        $matchCourse->instructors()->attach($instructor->id, ['course_role_id' => $role->id]);
+        $matchOffering = CourseOffering::create([
+            'course_id' => $matchCourse->id,
+            'academic_year_id' => $year->id,
+            'coordinator_id' => $head->id,
+            'approval_status' => 'draft',
+            'requires_practicum_rotation' => false,
+        ]);
+        $matchOffering->instructorPool()->attach([
+            $head->id       => ['role_in_course' => 'coordinator', 'course_role_id' => null],
+            $instructor->id => ['role_in_course' => 'instructor',  'course_role_id' => $role->id],
+        ]);
+
+        // วิชา B: rotation override → ควรมี red dot
+        $devCourse = $this->makeCourse([
+            'head_instructor_id' => $head->id,
+            'course_code' => 'DEV 1',
+            'requires_practicum_rotation' => false,
+        ]);
+        $year2 = $this->makeYear(['phase' => 'scheduling']);
+        CourseOffering::create([
+            'course_id' => $devCourse->id,
+            'academic_year_id' => $year2->id,
+            'coordinator_id' => $head->id,
+            'approval_status' => 'draft',
+            'requires_practicum_rotation' => true,
+        ]);
+
+        $this->actingAsRole($admin, 'admin');
+
+        $response = $this->get(route('admin.master_data', ['tab' => 'courses']));
+
+        $response->assertOk();
+        // ทั้งสองวิชาเห็นปุ่ม deviation (locked offering)
+        $response->assertSee(route('admin.courses.instructor_deviation', $matchCourse), false);
+        $response->assertSee(route('admin.courses.instructor_deviation', $devCourse), false);
+        // มี red dot 1 ครั้ง — สำหรับ DEV 1 เท่านั้น
+        $this->assertSame(1, substr_count($response->getContent(), 'data-testid="courses-deviation-dot"'));
+    }
+
+    public function test_instructor_deviation_detects_rotation_override_from_course_head(): void
+    {
+        $admin = $this->makeUser('admin');
+        $head = $this->makeUser('course_head');
+
+        $course = $this->makeCourse([
+            'head_instructor_id' => $head->id,
+            'course_code' => 'ROT 111',
+            'requires_practicum_rotation' => false, // แม่แบบ: ไม่หมุนเวียน
+        ]);
+        $year = $this->makeYear(['phase' => 'scheduling']);
+
+        // Offering override เป็น "มีการหมุนเวียน" + แนบเหตุผล
+        CourseOffering::create([
+            'course_id' => $course->id,
+            'academic_year_id' => $year->id,
+            'coordinator_id' => $head->id,
+            'approval_status' => 'draft',
+            'requires_practicum_rotation' => true,
+            'practicum_note' => 'ปีนี้ต้องหมุนเวียนเพราะแหล่งฝึกใหม่',
+        ]);
+
+        $this->actingAsRole($admin, 'admin');
+
+        $response = $this->get(route('admin.courses.instructor_deviation', $course));
+
+        $response->assertOk();
+        $response->assertSee('การตั้งค่าระดับรอบเปิดสอนต่างจากแม่แบบ');
+        $response->assertSee('การหมุนเวียนแหล่งฝึก');
+        $response->assertSee('ปีนี้ต้องหมุนเวียนเพราะแหล่งฝึกใหม่');
+        $response->assertSee('แก้ไข 1 รายการ');
+    }
+
+    public function test_instructor_deviation_shows_empty_state_when_no_offerings_at_all(): void
+    {
+        $admin = $this->makeUser('admin');
+        $head = $this->makeUser('course_head');
+        $course = $this->makeCourse(['head_instructor_id' => $head->id]);
+
+        $this->actingAsRole($admin, 'admin');
+
+        $this->get(route('admin.courses.instructor_deviation', $course))
+            ->assertOk()
+            ->assertSee('ยังไม่มีรอบเปิดสอนของวิชานี้');
+    }
 }

@@ -68,7 +68,7 @@ class CourseOfferingManagementTest extends TestCase
         $response->assertOk();
         $this->assertSame(
             1,
-            substr_count($response->getContent(), $this->offeringPath($offering))
+            substr_count($response->getContent(), $this->offeringShowHrefNeedle($offering))
         );
         $response->assertSee('2 กลุ่ม');
     }
@@ -102,7 +102,7 @@ class CourseOfferingManagementTest extends TestCase
         $this->get(route('maker.course_offerings.index'))
             ->assertOk()
             ->assertSee('FULL101')
-            ->assertSee('กลุ่มเต็ม')
+            ->assertSee('จัดสรรครบ')
             ->assertSee('จัดแล้ว 60/60 คน')
             ->assertDontSee($unrelated->course->course_code);
     }
@@ -181,20 +181,27 @@ class CourseOfferingManagementTest extends TestCase
 
         $this->actingAsCourseHead($head);
 
-        $response = $this->get(route('maker.course_offerings.index'));
-
-        $response->assertOk();
+        // Index ใหม่กรองตามปีการศึกษา (default = ปี scheduling) → ยิง index ต่อปีเพื่อเช็คทั้งสอง offering
+        $firstResponse = $this->get(route('maker.course_offerings.index', ['year' => $firstOffering->academic_year_id]));
+        $firstResponse->assertOk();
         $this->assertSame(
             1,
-            substr_count($response->getContent(), $this->offeringPath($firstOffering))
-        );
-        $this->assertSame(
-            1,
-            substr_count($response->getContent(), $this->offeringPath($secondOffering))
+            substr_count($firstResponse->getContent(), $this->offeringShowHrefNeedle($firstOffering))
         );
         $this->assertSame(
             0,
-            substr_count($response->getContent(), $this->offeringPath($unrelated))
+            substr_count($firstResponse->getContent(), $this->offeringShowHrefNeedle($unrelated))
+        );
+
+        $secondResponse = $this->get(route('maker.course_offerings.index', ['year' => $secondOffering->academic_year_id]));
+        $secondResponse->assertOk();
+        $this->assertSame(
+            1,
+            substr_count($secondResponse->getContent(), $this->offeringShowHrefNeedle($secondOffering))
+        );
+        $this->assertSame(
+            0,
+            substr_count($secondResponse->getContent(), $this->offeringShowHrefNeedle($unrelated))
         );
     }
 
@@ -413,8 +420,7 @@ class CourseOfferingManagementTest extends TestCase
         $response->assertOk();
         $response->assertSee('NUR303');
         $response->assertSee('ข้อมูลรายวิชา');
-        $response->assertSee('ชั่วโมงบรรยาย');
-        $response->assertSee('ชั่วโมงปฏิบัติการ');
+        $response->assertSee('ชั่วโมงเรียน (บรรยาย / ปฏิบัติ)');
     }
 
     public function test_student_group_code_is_unique_within_offering_and_reusable_across_offerings(): void
@@ -879,6 +885,12 @@ class CourseOfferingManagementTest extends TestCase
     private function offeringPath(CourseOffering $offering): string
     {
         return parse_url(route('maker.course_offerings.show', $offering), PHP_URL_PATH);
+    }
+
+    private function offeringShowHrefNeedle(CourseOffering $offering): string
+    {
+        // Trailing `"` boundary — แยกจาก nested routes เช่น /{offering}/schedules ที่ใช้ใน "จัดตาราง" link
+        return $this->offeringPath($offering) . '"';
     }
 
     private function studentGroupsUrl(CourseOffering $offering): string

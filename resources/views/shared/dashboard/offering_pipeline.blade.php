@@ -20,9 +20,9 @@
         ],
         [
             'key'    => 'published',
-            'label'  => 'เผยแพร่แล้ว',
+            'label'  => 'อนุมัติแล้ว',
             'count'  => $pipeline['published'],
-            'desc'   => 'อนุมัติและเผยแพร่',
+            'desc'   => 'ผู้บริหารอนุมัติแล้ว',
             'color'  => 'var(--status-success-fg)',
             'bar'    => 'var(--status-success)',
             'bg'     => 'color-mix(in oklch, var(--status-success) 3%, white)',

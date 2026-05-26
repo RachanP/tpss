@@ -1479,13 +1479,37 @@
                                         @endif
                                     </td>
                                     <td style="text-align: center;">
-                                        <button class="action-btn" title="แก้ไข" @click="openEditCourse({{ Js::from($course) }})">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                                stroke-linecap="round" stroke-linejoin="round">
-                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                            </svg>
-                                        </button>
+                                        <div style="display:inline-flex;gap:6px;align-items:center;">
+                                            @if($isAdmin && $course->has_locked_offering)
+                                                <a
+                                                    href="{{ route('admin.courses.instructor_deviation', $course) }}"
+                                                    class="action-btn"
+                                                    data-testid="courses-deviation-button"
+                                                    title="{{ ($course->has_deviation ?? false) ? 'มีการเปลี่ยนแปลงนอกเหนือจากแม่แบบ — กดดูรายละเอียด' : 'ดูการใช้งานจริงของแม่แบบผู้สอน' }}"
+                                                    style="position:relative;color:var(--brand-navy);text-decoration:none;"
+                                                >
+                                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                        <line x1="18" y1="20" x2="18" y2="10"/>
+                                                        <line x1="12" y1="20" x2="12" y2="4"/>
+                                                        <line x1="6" y1="20" x2="6" y2="14"/>
+                                                    </svg>
+                                                    @if($course->has_deviation ?? false)
+                                                        <span
+                                                            data-testid="courses-deviation-dot"
+                                                            aria-label="มีการเปลี่ยนแปลงนอกเหนือจากแม่แบบ"
+                                                            style="position:absolute;top:-2px;right:-2px;width:9px;height:9px;background:var(--status-warning-fg, #d97706);border:2px solid var(--bg-1, #fff);border-radius:50%;"
+                                                        ></span>
+                                                    @endif
+                                                </a>
+                                            @endif
+                                            <button class="action-btn" title="แก้ไข" @click="openEditCourse({{ Js::from($course) }})">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                    stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             @empty
@@ -2302,7 +2326,18 @@
                                 </div>
 
                                 <div class="course-lock-note" x-show="courseAssignmentsLocked()">
-                                    แม่แบบผู้รับผิดชอบถูกล็อกแล้ว เพราะรายวิชานี้มี Course Offering ที่อยู่ในช่วงจัดตารางหรือเผยแพร่แล้ว แก้ชุดผู้สอนในหน้า Course Offering ของรอบนั้น
+                                    <div>แม่แบบผู้รับผิดชอบถูกล็อกแล้ว เพราะรายวิชานี้มี Course Offering ที่อยู่ในช่วงจัดตารางหรือเผยแพร่แล้ว แก้ชุดผู้สอนในหน้า Course Offering ของรอบนั้น</div>
+                                    @if($isAdmin ?? true)
+                                        <a x-show="currentCourse.course_code"
+                                            :href="'{{ url('/admin/master-data/courses') }}/' + encodeURIComponent(currentCourse.course_code) + '/instructor-deviation'"
+                                            data-testid="course-deviation-link"
+                                            style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:0.8125rem;font-weight:600;color:var(--brand-navy);text-decoration:underline;">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M14 3h7v7"/><line x1="10" y1="14" x2="21" y2="3"/><path d="M21 14v7H3V3h7"/>
+                                            </svg>
+                                            ดูการใช้งานจริงของแม่แบบในแต่ละรอบเปิดสอน
+                                        </a>
+                                    @endif
                                 </div>
 
                                 <div class="course-assignment-grid">
