@@ -2811,10 +2811,26 @@
                 if (!stack) return;
 
                 this.$nextTick(() => {
-                    stack.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'center',
-                        inline: 'nearest',
+                    window.requestAnimationFrame(() => {
+                        const visibleCards = Array.from(stack.querySelectorAll('[data-stack-card]'))
+                            .filter((card) => card.offsetParent !== null);
+                        const targetCards = visibleCards.length ? visibleCards : [stack];
+                        const bounds = targetCards.reduce((range, card) => {
+                            const rect = card.getBoundingClientRect();
+                            return {
+                                top: Math.min(range.top, rect.top),
+                                bottom: Math.max(range.bottom, rect.bottom),
+                            };
+                        }, { top: Number.POSITIVE_INFINITY, bottom: Number.NEGATIVE_INFINITY });
+
+                        if (!Number.isFinite(bounds.top) || !Number.isFinite(bounds.bottom)) return;
+
+                        const targetCenter = bounds.top + ((bounds.bottom - bounds.top) / 2);
+                        const viewportCenter = window.innerHeight / 2;
+                        window.scrollBy({
+                            top: targetCenter - viewportCenter,
+                            behavior: 'smooth',
+                        });
                     });
                 });
             },
@@ -3566,6 +3582,7 @@
                                                         zIndex: 10 + ({{ $idx }} - page * 3)
                                                     }"
                                                     x-show="{{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3"
+                                                    data-stack-card
                                                     data-schedule-modal-trigger
                                                     @click="detailModal = 'schedule-{{ $schedule->id }}'"
                                                     @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'"
@@ -3934,6 +3951,7 @@
                                                     zIndex: 10 + ({{ $idx }} - page * 3)
                                                 }"
                                                 x-show="{{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3"
+                                                data-stack-card
                                                 data-schedule-modal-trigger
                                                 @click="detailModal = 'schedule-{{ $schedule->id }}'"
                                                 @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'"
