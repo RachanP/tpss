@@ -1601,6 +1601,7 @@
             flex: 1 1 auto;
         }
         .schedule-grid.is-precise .grid-cell-activity .grid-activity {
+            height: 100%;
             min-height: 100%;
             padding: 8px 9px;
             gap: 5px;
@@ -1633,6 +1634,9 @@
         .grid-activity.is-tall {
             padding: 10px 10px 9px;
             gap: 7px;
+        }
+        .schedule-grid.is-precise .grid-activity.is-tall .grid-activity-foot {
+            margin-top: auto;
         }
         .grid-activity strong,
         .grid-activity-title {
@@ -1808,15 +1812,133 @@
             display: flex;
             padding-top: 2px;
         }
-        .grid-activity-card.is-stacked-card:not(:has(.stack-indicator)) {
-            padding-bottom: 32px !important;
+        .grid-activity-card.is-stacked-card {
+            padding: 9px 10px !important;
+            gap: 5px;
+            overflow: hidden;
         }
-        .grid-activity-card.is-stacked-card:not(:has(.stack-indicator)) .grid-activity-foot {
+        .grid-activity-card.is-stacked-card .grid-activity-top {
+            min-height: 0;
+        }
+        .grid-activity-card.is-stacked-card .grid-activity-title {
+            font-size: 12px;
+            line-height: 1.42;
+            margin-top: 0;
+            word-break: normal;
+            overflow-wrap: normal;
+        }
+        .grid-activity-card.is-stacked-card .grid-activity-time {
+            font-size: 10.8px;
+            line-height: 1.25;
+        }
+        .grid-activity-card.is-stacked-card .grid-activity-foot {
+            min-height: 22px;
+            align-items: flex-end;
+            margin-top: auto;
+            padding-top: 2px;
+        }
+        .grid-activity-card.is-stacked-card.has-no-visible-stack-switcher {
+            padding-bottom: 9px !important;
+        }
+        .grid-activity-card.is-stacked-card.has-no-visible-stack-switcher {
+            justify-content: flex-start;
+        }
+        .grid-activity-card.is-stacked-card.has-no-visible-stack-switcher .grid-activity-foot {
+            margin-top: auto;
+            padding-top: 8px;
+        }
+        .grid-activity-card.is-stacked-card:not(.is-compact).has-no-visible-stack-switcher {
+            padding-bottom: 40px !important;
+        }
+        .grid-activity-card.is-stacked-card:not(.is-compact).has-no-visible-stack-switcher .grid-activity-foot {
             position: absolute;
             left: 10px;
             right: 10px;
-            bottom: 8px;
+            bottom: 10px;
             padding-top: 0;
+        }
+        .grid-activity-card.is-stacked-card.has-visible-stack-switcher .grid-activity-foot {
+            padding-right: 0;
+        }
+        .grid-activity-card.is-stacked-card.has-visible-stack-switcher {
+            gap: 4px;
+            padding-bottom: 36px !important;
+        }
+        .grid-activity-card.is-stacked-card.has-visible-stack-switcher .grid-activity-top {
+            min-height: 0;
+        }
+        .grid-activity-card.is-stacked-card.has-visible-stack-switcher .grid-activity-title {
+            line-height: 1.42;
+            -webkit-line-clamp: 1;
+        }
+        .grid-activity-card.is-stacked-card.has-visible-stack-switcher .grid-activity-time {
+            font-size: 10.5px;
+            line-height: 1.2;
+        }
+        .grid-activity-card.is-stacked-card.is-stack-back {
+            gap: 4px;
+            overflow: hidden;
+        }
+        .grid-activity-card.is-stacked-card.is-stack-back .grid-activity-top {
+            min-height: 0;
+        }
+        .grid-activity-card.is-stacked-card.is-stack-back .grid-activity-title {
+            font-size: 11.2px;
+            line-height: 1.36;
+            -webkit-line-clamp: 1;
+        }
+        .grid-activity-card.is-stacked-card.is-stack-back .grid-activity-sub,
+        .grid-activity-card.is-stacked-card.is-stack-back .grid-activity-meta,
+        .grid-activity-card.is-stacked-card.is-stack-back .grid-groups,
+        .grid-activity-card.is-stacked-card.is-stack-back .grid-location-name,
+        .grid-activity-card.is-stacked-card.is-stack-back .grid-location-building,
+        .grid-activity-card.is-stacked-card.is-stack-back .grid-instructor,
+        .grid-activity-card.is-stacked-card.is-stack-back .badge {
+            display: none;
+        }
+        .grid-activity-card.is-stacked-card.is-stack-back .grid-activity-time {
+            font-size: 10px;
+            line-height: 1.2;
+        }
+        .grid-activity-card.is-stacked-card.is-compact .grid-activity-time {
+            display: block;
+            font-size: 10.2px;
+            line-height: 1.18;
+        }
+        .schedule-grid.is-precise .grid-activity-card.is-stacked-card.is-compact .grid-activity-title {
+            display: block;
+            min-height: 17px;
+            font-size: 11px;
+            line-height: 1.5;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            -webkit-line-clamp: initial;
+            -webkit-box-orient: initial;
+        }
+        .grid-activity-card.is-stacked-card.is-compact .grid-activity-top {
+            min-height: 21px;
+            flex: 0 0 auto;
+        }
+        .grid-activity-card.is-stacked-card.is-compact .schedule-conflict-pill {
+            min-height: 19px;
+            padding: 1px 7px;
+            line-height: 1.25;
+        }
+        .grid-activity-card.is-stacked-card.is-stack-back.is-compact .grid-activity-title {
+            margin-top: 1px;
+        }
+        .grid-activity-card.is-stacked-card.is-compact .grid-activity-room {
+            display: none;
+        }
+        .grid-activity-card.is-stacked-card.is-stack-back.is-compact .grid-activity-time {
+            display: none;
+        }
+        .grid-activity-card.is-stacked-card.is-stack-back .grid-activity-foot {
+            justify-content: flex-end;
+        }
+        .grid-activity-card.is-stacked-card.is-stack-front .grid-activity-room {
+            max-width: calc(100% - 64px);
         }
         .grid-location-name,
         .grid-instructor {
@@ -2661,7 +2783,7 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
             z-index: 10;
         }
-        .grid-activity-card:has(.stack-indicator) {
+        .grid-activity-card.has-visible-stack-switcher {
             padding-bottom: 34px !important;
         }
         .grid-activity-card:hover {
@@ -2695,6 +2817,9 @@
         .stack-indicator:hover {
             background: color-mix(in oklch, var(--brand-navy) 85%, #000);
             transform: translateY(-1px);
+        }
+        .stack-indicator.is-stack-count {
+            display: none;
         }
         .stack-sync-icon {
             width: 12px;
@@ -3581,6 +3706,12 @@
                                                         width: (100 - (Math.min(3, count - page * 3) - 1) * 12) + '%',
                                                         zIndex: 10 + ({{ $idx }} - page * 3)
                                                     }"
+                                                    :class="{
+                                                        'is-stack-front': {{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1),
+                                                        'is-stack-back': {{ $idx }} !== Math.min((page + 1) * 3 - 1, count - 1),
+                                                        'has-visible-stack-switcher': count > 3 && {{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1),
+                                                        'has-no-visible-stack-switcher': count <= 3 || {{ $idx }} !== Math.min((page + 1) * 3 - 1, count - 1)
+                                                    }"
                                                     x-show="{{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3"
                                                     data-stack-card
                                                     data-schedule-modal-trigger
@@ -3604,7 +3735,7 @@
 
                                                     @if($stackCount > 1)
                                                         <div
-                                                            class="stack-indicator"
+                                                            class="stack-indicator {{ $stackCount > 3 ? 'is-stack-switcher' : 'is-stack-count' }}"
                                                             x-show="{{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1)"
                                                             @if($stackCount > 3)
                                                                 @click.stop="page = (page + 1) % Math.ceil(count / 3); centerStackCard($el)"
@@ -3950,6 +4081,12 @@
                                                     width: (100 - (Math.min(3, count - page * 3) - 1) * 12) + '%',
                                                     zIndex: 10 + ({{ $idx }} - page * 3)
                                                 }"
+                                                :class="{
+                                                    'is-stack-front': {{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1),
+                                                    'is-stack-back': {{ $idx }} !== Math.min((page + 1) * 3 - 1, count - 1),
+                                                    'has-visible-stack-switcher': count > 3 && {{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1),
+                                                    'has-no-visible-stack-switcher': count <= 3 || {{ $idx }} !== Math.min((page + 1) * 3 - 1, count - 1)
+                                                }"
                                                 x-show="{{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3"
                                                 data-stack-card
                                                 data-schedule-modal-trigger
@@ -3997,7 +4134,7 @@
 
                                                 @if($stackCount > 1)
                                                     <div
-                                                        class="stack-indicator"
+                                                        class="stack-indicator {{ $stackCount > 3 ? 'is-stack-switcher' : 'is-stack-count' }}"
                                                         x-show="{{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1)"
                                                         @if($stackCount > 3)
                                                             @click.stop="page = (page + 1) % Math.ceil(count / 3); centerStackCard($el)"
