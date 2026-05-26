@@ -305,6 +305,40 @@
             ])->filter()->implode(' '), 'UTF-8'),
         ];
     })->values();
+
+    $groupOccurrencesIntoStacks = function($dayOccurrences) {
+        $stacks = [];
+        if (!$dayOccurrences || $dayOccurrences->isEmpty()) {
+            return $stacks;
+        }
+        $sortedOccurrences = $dayOccurrences->sortBy(fn($occ) => $occ['schedule']->start_time)->values();
+
+        foreach ($sortedOccurrences as $occ) {
+            $inserted = false;
+            foreach ($stacks as &$stack) {
+                $overlaps = false;
+                foreach ($stack as $existing) {
+                    $s1 = $occ['schedule']->start_time;
+                    $e1 = $occ['schedule']->end_time;
+                    $s2 = $existing['schedule']->start_time;
+                    $e2 = $existing['schedule']->end_time;
+                    if ($s1 < $e2 && $s2 < $e1) {
+                        $overlaps = true;
+                        break;
+                    }
+                }
+                if ($overlaps) {
+                    $stack[] = $occ;
+                    $inserted = true;
+                    break;
+                }
+            }
+            if (!$inserted) {
+                $stacks[] = [$occ];
+            }
+        }
+        return $stacks;
+    };
 @endphp
 
 <x-app-layout title="ตารางสอน">
@@ -2575,6 +2609,80 @@
             user-select: none;
             flex-shrink: 0;
         }
+        /* Custom overlapping card stacks styling */
+        .activity-stack {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            min-height: 80px;
+        }
+        .grid-activity-card {
+            position: absolute !important;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            margin-bottom: 0 !important;
+            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, box-shadow 0.25s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .grid-activity-card.stack-active {
+            opacity: 1;
+            transform: translate(0, 0) scale(1);
+        }
+        .grid-activity-card.stack-behind-1 {
+            opacity: 0.9;
+            transform: translate(6px, 6px) scale(0.97);
+            cursor: pointer;
+        }
+        .grid-activity-card.stack-behind-1:hover {
+            transform: translate(6px, 4px) scale(0.98);
+        }
+        .grid-activity-card.stack-behind-2 {
+            opacity: 0.75;
+            transform: translate(12px, 12px) scale(0.94);
+            cursor: pointer;
+        }
+        .grid-activity-card.stack-behind-2:hover {
+            transform: translate(12px, 10px) scale(0.95);
+        }
+        .grid-activity-card.stack-hidden {
+            opacity: 0;
+            transform: translate(18px, 18px) scale(0.91);
+            pointer-events: none;
+        }
+        .stack-indicator {
+            position: absolute;
+            bottom: 6px;
+            right: 6px;
+            z-index: 25;
+            background: var(--brand-navy);
+            color: #fff;
+            border-radius: 999px;
+            padding: 3px 8px;
+            font-size: 10px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+            user-select: none;
+            pointer-events: auto;
+            line-height: 1;
+        }
+        .stack-indicator:hover {
+            background: color-mix(in oklch, var(--brand-navy) 85%, #000);
+            transform: scale(1.05);
+        }
+        .stack-sync-icon {
+            animation: spin-slow 8s linear infinite;
+            flex-shrink: 0;
+        }
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
     </style>
 
     <div
@@ -2819,6 +2927,29 @@
         }"
         @keydown.escape.window="detailModal = null; showCreate = false; editModal = null"
     >
+        @if($errors->has('schedule') && ! $openCreateModal && ! $openEditScheduleId)
+            @php
+                $alertMessages = $scheduleAlertMessages($errors, 'schedule');
+            @endphp
+            <div class="schedule-empty" style="border-color:var(--status-conflict-border);background:var(--status-conflict-bg);color:var(--status-conflict-fg);font-weight:800;text-align:left;margin-bottom:14px;">
+                @foreach($alertMessages as $message)
+                    <div style="{{ ! $loop->last ? 'margin-bottom:6px;' : '' }}">{{ $message }}</div>
+                @endforeach
+            </div>
+        @endif
+
+        @if(session('schedule_conflict_warning'))
+            <div class="schedule-empty" style="border-color:var(--status-conflict-border);background:var(--status-conflict-bg);color:var(--status-conflict-fg);font-weight:800;text-align:left;margin-bottom:14px;" data-testid="schedule-conflict-save-warning">
+                <div style="margin-bottom:6px;">บันทึกแล้ว แต่พบการชน ต้องแก้ไขก่อนส่งอนุมัติ</div>
+                @foreach(collect(session('schedule_conflict_warning'))->take(4) as $message)
+                    <div style="font-weight:700;">{{ $message }}</div>
+                @endforeach
+                <div style="margin-top:10px;">
+                    <a href="{{ route('maker.schedule_conflicts.index') }}" class="btn btn-secondary" style="text-decoration:none;">ดูการแจ้งเตือนการชน</a>
+                </div>
+            </div>
+        @endif
+
         @if($availableOfferings->isNotEmpty())
             <div class="offerings-dropdown-panel" data-testid="offerings-panel">
                 <div class="offerings-panel-meta">
@@ -3308,27 +3439,41 @@
                             @php
                                 $dayOccurrences = $gridOccurrences
                                     ->filter(fn ($occurrence) => $occurrence['date']->toDateString() === $day->toDateString());
+                                $dayStacks = $groupOccurrencesIntoStacks($dayOccurrences);
                             @endphp
-                            @foreach($dayOccurrences as $occurrence)
+                            @foreach($dayStacks as $stack)
+                                @php
+                                    $minStart = null;
+                                    $maxEnd = null;
+                                    foreach ($stack as $occ) {
+                                        $st = (string) $occ['schedule']->start_time;
+                                        $et = (string) $occ['schedule']->end_time;
+                                        if ($minStart === null || $st < $minStart) $minStart = $st;
+                                        if ($maxEnd === null || $et > $maxEnd) $maxEnd = $et;
+                                    }
+                                    
+                                    $startCarbon = \Carbon\CarbonImmutable::createFromFormat('H:i:s', strlen($minStart) === 5 ? $minStart . ':00' : $minStart);
+                                    $endCarbon = \Carbon\CarbonImmutable::createFromFormat('H:i:s', strlen($maxEnd) === 5 ? $maxEnd . ':00' : $maxEnd);
+                                    $stackDuration = (int) max(0, $startCarbon->diffInMinutes($endCarbon));
+                                    
+                                    $activityRowStart = $gridRowStartForTime($minStart);
+                                    $activityRowSpan = max(1, (int) ceil(max(5, $stackDuration) / $gridMinuteStep));
+                                @endphp
+                                <div class="grid-cell grid-cell-activity" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $activityRowStart }} / span {{ $activityRowSpan }};">
+                                    @if(count($stack) === 1)
                                         @php
+                                            $occurrence = $stack[0];
                                             $schedule = $occurrence['schedule'];
                                             $activity = $schedule->activityType;
                                             $room = $schedule->room;
                                             $offeringCourse = $schedule->courseOffering?->course;
                                             $instructorText = $scheduleInstructorText($schedule);
                                             $itemConflicts = $scheduleConflicts->get($schedule->id, collect());
-                                            $activityRowStart = $gridRowStartForTime((string) $schedule->start_time);
-                                            $activityRowSpan = $gridRowSpanForOccurrence($occurrence);
                                             $activityDuration = (int) $occurrence['duration_minutes'];
                                             $gridActivitySizeClass = $activityDuration < 75
                                                 ? 'is-compact'
                                                 : ($activityDuration >= 150 ? 'is-tall' : '');
-                                            $groupTooltip = $schedule->studentGroups
-                                                ->pluck('group_code')
-                                                ->filter()
-                                                ->implode(', ');
                                         @endphp
-                                <div class="grid-cell grid-cell-activity" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $activityRowStart }} / span {{ $activityRowSpan }};">
                                         <div role="button" tabindex="0" class="grid-activity {{ $gridActivitySizeClass }}" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
                                             <div class="grid-activity-top">
                                                 <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }};">{{ $activity?->name ?? 'กิจกรรม' }}</span>
@@ -3345,6 +3490,62 @@
                                                 </span>
                                             </div>
                                         </div>
+                                    @else
+                                        <div class="activity-stack" x-data="{ activeIndex: 0, count: {{ count($stack) }} }">
+                                            @foreach($stack as $idx => $occurrence)
+                                                @php
+                                                    $schedule = $occurrence['schedule'];
+                                                    $activity = $schedule->activityType;
+                                                    $room = $schedule->room;
+                                                    $offeringCourse = $schedule->courseOffering?->course;
+                                                    $instructorText = $scheduleInstructorText($schedule);
+                                                    $itemConflicts = $scheduleConflicts->get($schedule->id, collect());
+                                                    $activityDuration = (int) $occurrence['duration_minutes'];
+                                                    $gridActivitySizeClass = $activityDuration < 75
+                                                        ? 'is-compact'
+                                                        : ($activityDuration >= 150 ? 'is-tall' : '');
+                                                @endphp
+                                                <div 
+                                                    role="button" 
+                                                    tabindex="0" 
+                                                    class="grid-activity {{ $gridActivitySizeClass }} grid-activity-card" 
+                                                    :class="{
+                                                        'stack-active': activeIndex === {{ $idx }},
+                                                        'stack-behind-1': ({{ $idx }} - activeIndex + count) % count === 1,
+                                                        'stack-behind-2': ({{ $idx }} - activeIndex + count) % count === 2,
+                                                        'stack-hidden': ({{ $idx }} - activeIndex + count) % count > 2
+                                                    }"
+                                                    :style="{
+                                                        zIndex: activeIndex === {{ $idx }} ? 10 : (10 - (({{ $idx }} - activeIndex + count) % count))
+                                                    }"
+                                                    style="--activity-color: {{ $activityTone($schedule) }};" 
+                                                    data-schedule-modal-trigger 
+                                                    @click.stop="if (activeIndex !== {{ $idx }}) { activeIndex = {{ $idx }}; } else { detailModal = 'schedule-{{ $schedule->id }}'; }"
+                                                    @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" 
+                                                    @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'"
+                                                >
+                                                    <div class="grid-activity-top">
+                                                        <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }};">{{ $activity?->name ?? 'กิจกรรม' }}</span>
+                                                        @if($itemConflicts->isNotEmpty())
+                                                            <span class="schedule-conflict-pill" title="{{ $itemConflicts->pluck('message')->implode(' / ') }}">ชน {{ $itemConflicts->count() }}</span>
+                                                        @endif
+                                                    </div>
+                                                    <div class="grid-activity-title">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
+                                                    <div class="grid-activity-time">{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }} · {{ $formatDuration($occurrence['duration_minutes']) }}</div>
+                                                    <div class="grid-activity-foot">
+                                                        <span class="grid-activity-room">{{ $room?->room_name ?? $room?->room_code ?? 'ไม่ระบุสถานที่' }}</span>
+                                                        <span class="grid-activity-groups">
+                                                            {{ $schedule->studentGroups->isNotEmpty() ? $schedule->studentGroups->count() . ' กลุ่ม' : 'ไม่มีกลุ่ม' }}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                            <div class="stack-indicator" @click.stop="activeIndex = (activeIndex + 1) % count">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="stack-sync-icon"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                                                <span x-text="(activeIndex + 1) + '/' + count"></span>
+                                            </div>
+                                        </div>
+                                    @endif
                                 </div>
                             @endforeach
                         @endforeach
@@ -3353,29 +3554,6 @@
                 </div>
             </div>
         @endif {{-- end non-workspace --}}
-
-        @if($errors->has('schedule') && ! $openCreateModal && ! $openEditScheduleId)
-            @php
-                $alertMessages = $scheduleAlertMessages($errors, 'schedule');
-            @endphp
-            <div class="schedule-empty" style="border-color:var(--status-conflict-border);background:var(--status-conflict-bg);color:var(--status-conflict-fg);font-weight:800;text-align:left;">
-                @foreach($alertMessages as $message)
-                    <div style="{{ ! $loop->last ? 'margin-bottom:6px;' : '' }}">{{ $message }}</div>
-                @endforeach
-            </div>
-        @endif
-
-        @if(session('schedule_conflict_warning'))
-            <div class="schedule-empty" style="border-color:var(--status-conflict-border);background:var(--status-conflict-bg);color:var(--status-conflict-fg);font-weight:800;text-align:left;" data-testid="schedule-conflict-save-warning">
-                <div style="margin-bottom:6px;">บันทึกแล้ว แต่พบการชน ต้องแก้ไขก่อนส่งอนุมัติ</div>
-                @foreach(collect(session('schedule_conflict_warning'))->take(4) as $message)
-                    <div style="font-weight:700;">{{ $message }}</div>
-                @endforeach
-                <div style="margin-top:10px;">
-                    <a href="{{ route('maker.schedule_conflicts.index') }}" class="btn btn-secondary" style="text-decoration:none;">ดูการแจ้งเตือนการชน</a>
-                </div>
-            </div>
-        @endif
 
         @if($isWorkspace)
             @if($availableOfferings->isEmpty())
@@ -3576,9 +3754,30 @@
                         @php
                             $dayOccurrences = $occurrences
                                 ->filter(fn ($occurrence) => $occurrence['date']->toDateString() === $day->toDateString());
+                            $dayStacks = $groupOccurrencesIntoStacks($dayOccurrences);
                         @endphp
-                        @foreach($dayOccurrences as $occurrence)
+                        @foreach($dayStacks as $stack)
+                            @php
+                                $minStart = null;
+                                $maxEnd = null;
+                                foreach ($stack as $occ) {
+                                    $st = (string) $occ['schedule']->start_time;
+                                    $et = (string) $occ['schedule']->end_time;
+                                    if ($minStart === null || $st < $minStart) $minStart = $st;
+                                    if ($maxEnd === null || $et > $maxEnd) $maxEnd = $et;
+                                }
+                                
+                                $startCarbon = \Carbon\CarbonImmutable::createFromFormat('H:i:s', strlen($minStart) === 5 ? $minStart . ':00' : $minStart);
+                                $endCarbon = \Carbon\CarbonImmutable::createFromFormat('H:i:s', strlen($maxEnd) === 5 ? $maxEnd . ':00' : $maxEnd);
+                                $stackDuration = (int) max(0, $startCarbon->diffInMinutes($endCarbon));
+                                
+                                $activityRowStart = $gridRowStartForTime($minStart);
+                                $activityRowSpan = max(1, (int) ceil(max(5, $stackDuration) / $gridMinuteStep));
+                            @endphp
+                            <div class="grid-cell grid-cell-activity" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $activityRowStart }} / span {{ $activityRowSpan }};">
+                                @if(count($stack) === 1)
                                     @php
+                                        $occurrence = $stack[0];
                                         $schedule = $occurrence['schedule'];
                                         $activity = $schedule->activityType;
                                         $room = $schedule->room;
@@ -3586,14 +3785,11 @@
                                         $instructorText = $scheduleInstructorText($schedule);
                                         $status = $statusMeta[$schedule->status] ?? ['label' => $schedule->status, 'class' => 'badge-gray'];
                                         $itemConflicts = $scheduleConflicts->get($schedule->id, collect());
-                                            $activityRowStart = $gridRowStartForTime((string) $schedule->start_time);
-                                            $activityRowSpan = $gridRowSpanForOccurrence($occurrence);
-                                            $activityDuration = (int) $occurrence['duration_minutes'];
-                                            $gridActivitySizeClass = $activityDuration < 75
-                                                ? 'is-compact'
-                                                : ($activityDuration >= 150 ? 'is-tall' : '');
-                                        @endphp
-                            <div class="grid-cell grid-cell-activity" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $activityRowStart }} / span {{ $activityRowSpan }};">
+                                        $activityDuration = (int) $occurrence['duration_minutes'];
+                                        $gridActivitySizeClass = $activityDuration < 75
+                                            ? 'is-compact'
+                                            : ($activityDuration >= 150 ? 'is-tall' : '');
+                                    @endphp
                                     <div role="button" tabindex="0" class="grid-activity {{ $gridActivitySizeClass }}" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
                                         <div class="grid-activity-top">
                                             @if($offeringCourse?->course_code)
@@ -3634,6 +3830,87 @@
                                         @endif
                                         <div><span class="badge {{ $status['class'] }}">{{ $status['label'] }}</span></div>
                                     </div>
+                                @else
+                                    <div class="activity-stack" x-data="{ activeIndex: 0, count: {{ count($stack) }} }">
+                                        @foreach($stack as $idx => $occurrence)
+                                            @php
+                                                $schedule = $occurrence['schedule'];
+                                                $activity = $schedule->activityType;
+                                                $room = $schedule->room;
+                                                $offeringCourse = $schedule->courseOffering?->course;
+                                                $instructorText = $scheduleInstructorText($schedule);
+                                                $status = $statusMeta[$schedule->status] ?? ['label' => $schedule->status, 'class' => 'badge-gray'];
+                                                $itemConflicts = $scheduleConflicts->get($schedule->id, collect());
+                                                $activityDuration = (int) $occurrence['duration_minutes'];
+                                                $gridActivitySizeClass = $activityDuration < 75
+                                                    ? 'is-compact'
+                                                    : ($activityDuration >= 150 ? 'is-tall' : '');
+                                            @endphp
+                                            <div 
+                                                role="button" 
+                                                tabindex="0" 
+                                                class="grid-activity {{ $gridActivitySizeClass }} grid-activity-card" 
+                                                :class="{
+                                                    'stack-active': activeIndex === {{ $idx }},
+                                                    'stack-behind-1': ({{ $idx }} - activeIndex + count) % count === 1,
+                                                    'stack-behind-2': ({{ $idx }} - activeIndex + count) % count === 2,
+                                                    'stack-hidden': ({{ $idx }} - activeIndex + count) % count > 2
+                                                }"
+                                                :style="{
+                                                    zIndex: activeIndex === {{ $idx }} ? 10 : (10 - (({{ $idx }} - activeIndex + count) % count))
+                                                }"
+                                                style="--activity-color: {{ $activityTone($schedule) }};" 
+                                                data-schedule-modal-trigger 
+                                                @click.stop="if (activeIndex !== {{ $idx }}) { activeIndex = {{ $idx }}; } else { detailModal = 'schedule-{{ $schedule->id }}'; }"
+                                                @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" 
+                                                @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'"
+                                            >
+                                                <div class="grid-activity-top">
+                                                    @if($offeringCourse?->course_code)
+                                                        <span class="grid-course">{{ $offeringCourse->course_code }}</span>
+                                                    @endif
+                                                    <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }};">{{ $activity?->name ?? 'กิจกรรม' }}</span>
+                                                    @if($itemConflicts->isNotEmpty())
+                                                        <span class="schedule-conflict-pill" title="{{ $itemConflicts->pluck('message')->implode(' / ') }}">ชน {{ $itemConflicts->count() }}</span>
+                                                    @endif
+                                                </div>
+                                                <div class="grid-activity-title">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
+                                                @if($isWorkspace && ($offeringCourse?->name_th || $offeringCourse?->name_en))
+                                                    <div class="grid-activity-sub">{{ $offeringCourse?->name_th ?? $offeringCourse?->name_en }}</div>
+                                                @elseif($schedule->topic && $activity?->name)
+                                                    <div class="grid-activity-sub">{{ $activity->name }}</div>
+                                                @endif
+                                                <div class="grid-activity-meta">
+                                                    <div>{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }} · {{ $formatDuration($occurrence['duration_minutes']) }}</div>
+                                                    <div class="grid-instructor">{{ $instructorText }}</div>
+                                                    <div>
+                                                        <div class="grid-location-name">{{ $room?->room_name ?? $room?->room_code ?? 'ไม่ระบุสถานที่' }}</div>
+                                                        @if($room?->building)
+                                                            <div class="grid-location-building">{{ $room->building }}</div>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                                @if($schedule->studentGroups->isNotEmpty())
+                                                    <div class="grid-groups">
+                                                        @foreach($schedule->studentGroups as $group)
+                                                            <span class="co-group-badge" style="--group-color: {{ $groupTone($group) }};">
+                                                                <span class="co-group-dot" aria-hidden="true"></span>
+                                                                <span>{{ $group->group_code }}</span>
+                                                            </span>
+                                                        @endforeach
+                                                    </div>
+                                                @else
+                                                    <div class="grid-activity-sub">ไม่มีกลุ่มนักศึกษา</div>
+                                                @endif
+                                                <div><span class="badge {{ $status['class'] }}">{{ $status['label'] }}</span></div>
+                                            </div>
+                                        @endforeach
+                                        <div class="stack-indicator" @click.stop="activeIndex = (activeIndex + 1) % count">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="stack-sync-icon"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                                            <span x-text="(activeIndex + 1) + '/' + count"></span>
+                                        </div>
+                                    </div>
+                                @endif
                             </div>
                         @endforeach
                     @endforeach
