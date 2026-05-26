@@ -196,13 +196,13 @@
         display: flex;
         align-items: flex-start;
         justify-content: space-between;
-        gap: 24px;
-        flex-wrap: wrap;
+        gap: 16px;
+        flex-wrap: nowrap;
         margin-bottom: 22px;
     }
 
     .admin-hero-copy {
-        flex: 1 1 360px;
+        flex: 1 1 0;
         min-width: 0;
     }
 
@@ -300,8 +300,9 @@
         gap: 12px;
         flex-wrap: wrap;
         justify-content: flex-end;
-        flex: 0 1 430px;
+        flex: 0 0 auto;
         min-width: 0;
+        align-self: flex-start;
     }
 
     .admin-year-badge {
@@ -518,11 +519,6 @@
             grid-template-columns: 1fr;
             gap: 18px;
         }
-
-        .admin-status-control-row {
-            flex: 1 1 100%;
-            justify-content: flex-start;
-        }
     }
 
     @media (max-width: 720px) {
@@ -537,7 +533,9 @@
         }
 
         .admin-status-control-row {
+            flex: 1 1 100%;
             justify-content: flex-start;
+            align-self: auto;
         }
 
         .admin-hero-copy h1 {
