@@ -51,6 +51,13 @@
 
     <div class="table-responsive">
         <table>
+            <colgroup>
+                <col class="workload-col-code">
+                <col class="workload-col-name">
+                <col class="workload-col-department">
+                <col class="workload-col-hours">
+                <col class="workload-col-quota">
+            </colgroup>
             <thead>
                 <tr>
                     <th>รหัส</th>
@@ -63,16 +70,16 @@
             <tbody>
                 <template x-for="row in pagedRows" :key="row.id">
                     <tr>
-                        <td style="font-weight: 600; color: var(--fg-2);" x-text="row.employeeId"></td>
-                        <td>
-                            <div style="font-weight: 600; color: var(--fg-1);" x-text="row.name"></div>
+                        <td class="workload-code-cell" style="font-weight: 600; color: var(--fg-2);" x-text="row.employeeId"></td>
+                        <td class="workload-name-cell">
+                            <div class="workload-primary-text" style="font-weight: 600; color: var(--fg-1);" x-text="row.name"></div>
                             <template x-if="row.employmentType">
-                                <div style="font-size: 11px; color: var(--fg-3); margin-top: 2px;" x-text="row.employmentType"></div>
+                                <div class="workload-sub-text" style="font-size: 11px; color: var(--fg-3); margin-top: 2px;" x-text="row.employmentType"></div>
                             </template>
                         </td>
-                        <td style="color: var(--fg-2); font-size: 13px;" x-text="row.department"></td>
+                        <td class="workload-department-cell" style="color: var(--fg-2); font-size: 13px;" x-text="row.department"></td>
                         <td style="text-align: right; font-weight: 700; color: var(--fg-3);" x-text="row.teachingHours"></td>
-                        <td style="text-align: right; padding-right: 24px;">
+                        <td class="workload-quota-cell" style="text-align: right; padding-right: 24px;">
                             <template x-if="row.hasQuota">
                                 <div>
                                     <div style="font-weight: 700; color: var(--brand-navy); font-size: 14px;" x-text="row.quota"></div>
@@ -197,6 +204,9 @@
 
 <style>
     .workload-card {
+        --workload-head-height: 58px;
+        --workload-row-height: 89px;
+        --workload-visible-rows: 5;
         overflow: hidden;
     }
 
@@ -218,11 +228,48 @@
     .workload-card .table-responsive {
         width: 100%;
         max-width: 100%;
+        min-height: calc(var(--workload-head-height) + (var(--workload-row-height) * var(--workload-visible-rows)));
         overflow-x: auto;
     }
 
     .workload-card table {
+        table-layout: fixed;
         min-width: 760px;
+    }
+
+    .workload-card thead tr {
+        height: var(--workload-head-height);
+    }
+
+    .workload-card tbody tr {
+        height: var(--workload-row-height);
+    }
+
+    .workload-card th,
+    .workload-card td {
+        overflow: hidden;
+        vertical-align: middle;
+    }
+
+    .workload-col-code { width: 10%; }
+    .workload-col-name { width: 23%; }
+    .workload-col-department { width: 33%; }
+    .workload-col-hours { width: 16%; }
+    .workload-col-quota { width: 18%; }
+
+    .workload-code-cell,
+    .workload-name-cell,
+    .workload-department-cell,
+    .workload-quota-cell {
+        min-width: 0;
+    }
+
+    .workload-primary-text,
+    .workload-sub-text,
+    .workload-department-cell {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .workload-pagination {
