@@ -2,6 +2,27 @@
 
 namespace App\Providers;
 
+use App\Models\AcademicYear;
+use App\Models\ActivityType;
+use App\Models\Course;
+use App\Models\CourseOffering;
+use App\Models\CourseRole;
+use App\Models\Curriculum;
+use App\Models\Department;
+use App\Models\InstructorProfile;
+use App\Models\LocationType;
+use App\Models\Room;
+use App\Models\Schedule;
+use App\Models\StudentGroup;
+use App\Models\SystemSetting;
+use App\Models\User;
+use App\Models\UserRole;
+use App\Observers\PerformanceCacheObserver;
+use App\Services\NavigationBadgeService;
+use App\Services\ReferenceDataCache;
+use App\Services\ScheduleConflictIndex;
+use App\Services\ScheduleConflictPolicy;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -11,7 +32,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->scoped(ReferenceDataCache::class);
+        $this->app->scoped(ScheduleConflictPolicy::class);
+        $this->app->scoped(ScheduleConflictIndex::class);
     }
 
     /**
@@ -19,6 +42,36 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        $observer = PerformanceCacheObserver::class;
+
+        foreach ([
+            AcademicYear::class,
+            ActivityType::class,
+            Course::class,
+            CourseOffering::class,
+            CourseRole::class,
+            Curriculum::class,
+            Department::class,
+            InstructorProfile::class,
+            LocationType::class,
+            Room::class,
+            Schedule::class,
+            StudentGroup::class,
+            SystemSetting::class,
+            User::class,
+            UserRole::class,
+        ] as $model) {
+            $model::observe($observer);
+        }
+
+        View::composer('components.sidebar', function ($view): void {
+            $user = auth()->user();
+            $activeRole = session('active_role', 'staff');
+
+            $view->with('sidebarBadges', app(NavigationBadgeService::class)->forRole(
+                is_string($activeRole) ? $activeRole : null,
+                $user?->id,
+            ));
+        });
     }
 }

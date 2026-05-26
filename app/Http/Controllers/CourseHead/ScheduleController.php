@@ -4,12 +4,12 @@ namespace App\Http\Controllers\CourseHead;
 
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
-use App\Models\ActivityType;
 use App\Models\CourseOffering;
-use App\Models\Room;
 use App\Models\Schedule;
 use App\Services\AuditLogger;
+use App\Services\ReferenceDataCache;
 use App\Services\ScheduleConflictChecker;
+use App\Services\ScheduleConflictIndex;
 use App\Support\ThaiDate;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -19,6 +19,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Arr;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
@@ -28,15 +29,9 @@ class ScheduleController extends Controller
 {
     public function workspace(Request $request): View|RedirectResponse
     {
-        $offerings = $this->coordinatorScheduleOfferings();
-
-        if ($offerings->isNotEmpty()) {
-            $selectedId = (int) $request->query('course_offering_id');
-            $targetOffering = $selectedId ? $offerings->firstWhere('id', $selectedId) : null;
-            $targetOffering = $targetOffering ?: $offerings->first();
-
+        if ($targetOfferingId = $this->coordinatorScheduleOfferingRedirectTarget($request)) {
             return redirect()->route('maker.course_offerings.schedules.index', array_filter([
-                'courseOffering' => $targetOffering,
+                'courseOffering' => $targetOfferingId,
                 'week_start' => $request->query('week_start'),
                 'date' => $request->query('date'),
                 'period' => $request->query('period'),
@@ -44,6 +39,8 @@ class ScheduleController extends Controller
                 'modal' => $request->query('modal'),
             ]));
         }
+
+        $offerings = $this->coordinatorScheduleOfferings(includeSchedulingData: false);
 
         return view('course_head.schedules.index', $this->schedulePageData(
             request: $request,
@@ -53,44 +50,33 @@ class ScheduleController extends Controller
         ));
     }
 
-    public function conflicts(Request $request, ScheduleConflictChecker $conflictChecker): View
+    public function conflicts(): View
     {
-        $offerings = $this->coordinatorScheduleOfferings();
-        $offeringIds = $offerings->pluck('id')->all();
+        $result = app(ScheduleConflictIndex::class)->conflictsForCoordinator((int) Auth::id());
+        $schedules = $result['schedules'];
+        $conflictMap = $result['conflictMap'];
 
-        $schedules = empty($offeringIds)
-            ? collect()
-            : Schedule::query()
-                ->with($this->scheduleRelations())
-                ->whereIn('course_offering_id', $offeringIds)
-                ->orderBy('start_date')
-                ->orderBy('start_time')
-                ->get();
-
-        $conflictMap = $this->scheduleConflictMap($schedules, $conflictChecker);
-        $conflictGroups = $offerings
-            ->map(function (CourseOffering $offering) use ($schedules, $conflictMap) {
-                $offeringSchedules = $schedules
-                    ->where('course_offering_id', $offering->id)
-                    ->filter(fn (Schedule $schedule) => $conflictMap->get($schedule->id, collect())->isNotEmpty())
-                    ->values();
+        $conflictGroups = $schedules
+            ->groupBy('course_offering_id')
+            ->map(function (Collection $offeringSchedules) use ($conflictMap) {
+                /** @var Schedule $firstSchedule */
+                $firstSchedule = $offeringSchedules->first();
 
                 return [
-                    'offering' => $offering,
-                    'schedules' => $offeringSchedules,
+                    'offering' => $firstSchedule->courseOffering,
+                    'schedules' => $offeringSchedules->values(),
                     'conflict_count' => $offeringSchedules->sum(
                         fn (Schedule $schedule) => $conflictMap->get($schedule->id, collect())->count()
                     ),
                 ];
             })
-            ->filter(fn (array $group) => $group['schedules']->isNotEmpty())
             ->values();
 
         return view('course_head.schedule_conflicts.index', [
-            'offerings' => $offerings,
+            'offerings' => collect(),
             'conflictGroups' => $conflictGroups,
             'conflictMap' => $conflictMap,
-            'totalConflictCount' => $conflictMap->sum(fn (Collection $conflicts) => $conflicts->count()),
+            'totalConflictCount' => $result['total'],
         ]);
     }
 
@@ -102,7 +88,7 @@ class ScheduleController extends Controller
             request: $request,
             courseOffering: $courseOffering,
             isWorkspace: false,
-            availableOfferings: $this->coordinatorScheduleOfferings(),
+            availableOfferings: $this->coordinatorScheduleOfferings(includeSchedulingData: false),
         ));
     }
 
@@ -167,11 +153,7 @@ class ScheduleController extends Controller
 
         $firstScheduleDate = empty($offeringIds)
             ? null
-            : Schedule::query()
-                ->whereIn('course_offering_id', $offeringIds)
-                ->whereNotNull('start_date')
-                ->orderBy('start_date')
-                ->value('start_date');
+            : $this->firstScheduleDate($offeringIds);
 
         $period = $this->validSchedulePeriod($request);
         $includeWeekends = $request->boolean('include_weekends');
@@ -202,25 +184,20 @@ class ScheduleController extends Controller
 
         $schedules = empty($offeringIds)
             ? collect()
-            : Schedule::query()
-                ->with($scheduleRelations)
-                ->whereIn('course_offering_id', $offeringIds)
-                ->whereDate('start_date', '<=', $periodEnd->toDateString())
-                ->whereDate('end_date', '>=', $periodStart->toDateString())
-                ->orderBy('start_date')
-                ->orderBy('end_date')
-                ->orderBy('start_time')
-                ->get();
+            : $this->orderSchedulesByDate(
+                $this->filterSchedulesByDateRange(
+                    Schedule::query()
+                        ->with($scheduleRelations)
+                        ->whereIn('course_offering_id', $offeringIds),
+                    $periodStart->toDateString(),
+                    $periodEnd->toDateString()
+                )
+            )->get();
 
-        // All assigned schedules for filters/list context (no period filter)
-        $allSchedules = ! empty($offeringIds)
-            ? Schedule::query()
-                ->with($scheduleRelations)
-                ->whereIn('course_offering_id', $offeringIds)
-                ->orderBy('start_date')
-                ->orderBy('start_time')
-                ->get()
-            : collect();
+        $totalScheduleCount = empty($offeringIds)
+            ? 0
+            : Schedule::query()->whereIn('course_offering_id', $offeringIds)->count();
+        $allSchedules = $schedules;
 
         $weekDays = collect(CarbonPeriod::create($periodStart, $gridEnd))
             ->map(fn ($date) => CarbonImmutable::parse($date))
@@ -228,6 +205,8 @@ class ScheduleController extends Controller
             ->values();
         $occurrences = $this->scheduleOccurrences($schedules, $periodStart, $gridEnd, $includeWeekends);
         $timeSlots = $this->scheduleTimeSlots($occurrences);
+        $occurrencesByDate = $occurrences->groupBy(fn ($item) => $item['date']->toDateString());
+        $groupedSchedules = $allSchedules->groupBy(fn (Schedule $schedule) => $schedule->start_date?->dayOfWeekIso);
         $selectedDate = CarbonImmutable::parse($baseDate)->startOfDay();
         $previousPeriod = match ($period) {
             'day' => $selectedDate->subDay(),
@@ -247,6 +226,7 @@ class ScheduleController extends Controller
             ...$this->scheduleDatePickerYearRange(),
             'schedules' => $schedules,
             'allSchedules' => $allSchedules,
+            'totalScheduleCount' => $totalScheduleCount,
             'schedulePeriod' => $period,
             'includeWeekends' => $includeWeekends,
             'selectedScheduleDate' => $selectedDate,
@@ -254,14 +234,13 @@ class ScheduleController extends Controller
             'weekEnd' => $periodEnd,
             'weekDays' => $weekDays,
             'occurrences' => $occurrences,
-            'scheduleConflicts' => $this->scheduleConflictMap($allSchedules, app(ScheduleConflictChecker::class)),
+            'occurrencesByDate' => $occurrencesByDate,
+            'gridOccurrencesByDate' => $occurrencesByDate,
+            'groupedSchedules' => $groupedSchedules,
+            'scheduleConflicts' => $this->scheduleConflictMap($schedules),
             'timeSlots' => $timeSlots,
-            'activityTypes' => ActivityType::orderBy('name')->get(),
-            'rooms' => Room::query()
-                ->with('locationType')
-                ->where('status', 'active')
-                ->orderBy('room_code')
-                ->get(),
+            'activityTypes' => app(ReferenceDataCache::class)->activityTypes(),
+            'rooms' => app(ReferenceDataCache::class)->activeRooms(),
             'dayViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'day', $includeWeekends),
             'weekViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'week', $includeWeekends),
             'monthViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'month', $includeWeekends),
@@ -319,24 +298,67 @@ class ScheduleController extends Controller
         ];
     }
 
-    private function scheduleConflictMap(Collection $schedules, ScheduleConflictChecker $conflictChecker): Collection
+    private function hasScheduleBlockDates(): bool
     {
-        return $schedules->mapWithKeys(function (Schedule $schedule) use ($conflictChecker) {
-            $conflicts = $conflictChecker->check(
-                [
-                    'start_date' => $schedule->start_date?->toDateString(),
-                    'end_date' => $schedule->end_date?->toDateString(),
-                    'start_time' => substr((string) $schedule->start_time, 0, 5),
-                    'end_time' => substr((string) $schedule->end_time, 0, 5),
-                    'room_id' => $schedule->room_id,
-                ],
-                $schedule->instructors->pluck('id')->map(fn ($id) => (int) $id)->all(),
-                $schedule->studentGroups->pluck('id')->map(fn ($id) => (int) $id)->all(),
-                $schedule->id
-            );
+        return Schema::hasColumn('schedules', 'start_date') && Schema::hasColumn('schedules', 'end_date');
+    }
 
-            return [$schedule->id => collect($conflicts)];
-        });
+    private function firstScheduleDate(array $offeringIds): ?string
+    {
+        $column = $this->hasScheduleBlockDates() ? 'start_date' : 'teaching_date';
+
+        return Schedule::query()
+            ->whereIn('course_offering_id', $offeringIds)
+            ->whereNotNull($column)
+            ->orderBy($column)
+            ->value($column);
+    }
+
+    private function filterSchedulesByDateRange($query, string $startDate, string $endDate)
+    {
+        if ($this->hasScheduleBlockDates()) {
+            return $query
+                ->whereDate('start_date', '<=', $endDate)
+                ->whereDate('end_date', '>=', $startDate);
+        }
+
+        return $query
+            ->whereDate('teaching_date', '>=', $startDate)
+            ->whereDate('teaching_date', '<=', $endDate);
+    }
+
+    private function orderSchedulesByDate($query)
+    {
+        if ($this->hasScheduleBlockDates()) {
+            return $query
+                ->orderBy('start_date')
+                ->orderBy('end_date')
+                ->orderBy('start_time');
+        }
+
+        return $query
+            ->orderBy('teaching_date')
+            ->orderBy('start_time');
+    }
+
+    private function scheduleDatePayload(array $validated): array
+    {
+        if ($this->hasScheduleBlockDates()) {
+            return [
+                'start_date' => $validated['start_date'],
+                'end_date' => $validated['end_date'],
+                'teaching_date' => null,
+            ];
+        }
+
+        return [
+            'teaching_date' => $validated['start_date'],
+        ];
+    }
+
+    private function scheduleConflictMap(Collection $schedules): Collection
+    {
+        return app(ScheduleConflictIndex::class)->conflictsFor($schedules);
     }
 
     private function scheduleTimeSlots(Collection $occurrences): array
@@ -382,16 +404,43 @@ class ScheduleController extends Controller
         return in_array($period, ['day', 'week', 'month'], true) ? $period : 'week';
     }
 
-    private function coordinatorScheduleOfferings(): Collection
+    private function coordinatorScheduleOfferingRedirectTarget(Request $request): ?int
     {
-        return CourseOffering::query()
-            ->with([
-                'course.curriculum',
-                'course.department',
-                'academicYear',
+        $query = CourseOffering::query()
+            ->where('coordinator_id', Auth::id());
+
+        $selectedId = (int) $request->query('course_offering_id');
+
+        if ($selectedId && (clone $query)->whereKey($selectedId)->exists()) {
+            return $selectedId;
+        }
+
+        return (clone $query)
+            ->select('course_offerings.id')
+            ->leftJoin('academic_years', 'academic_years.id', '=', 'course_offerings.academic_year_id')
+            ->orderByRaw("CASE WHEN academic_years.phase = 'scheduling' THEN 1 ELSE 0 END DESC")
+            ->orderByDesc('course_offerings.updated_at')
+            ->value('course_offerings.id');
+    }
+
+    private function coordinatorScheduleOfferings(bool $includeSchedulingData = true): Collection
+    {
+        $relations = [
+            'course.curriculum',
+            'course.department',
+            'academicYear',
+        ];
+
+        if ($includeSchedulingData) {
+            $relations = [
+                ...$relations,
                 'instructorPool.instructorProfile.department',
                 'studentGroups' => fn ($query) => $query->orderBy('group_code'),
-            ])
+            ];
+        }
+
+        return CourseOffering::query()
+            ->with($relations)
             ->withCount(['schedules', 'studentGroups', 'instructorPool'])
             ->where('coordinator_id', Auth::id())
             ->latest('updated_at')
@@ -474,6 +523,7 @@ class ScheduleController extends Controller
         if ($redirect = $this->requireSchedulingPhase($courseOffering, $redirectToWorkspace)) return $redirect;
 
         $validated = $this->validateSchedule($request, $courseOffering);
+        $validated['course_offering_id'] = $courseOffering->id;
         $this->assertScheduleWithinAcademicYear($courseOffering, $validated);
         $this->assertSelectedGroupsFitCapacity($courseOffering, $validated);
         $this->assertInstructorsBelongToCourseDepartment($courseOffering, $validated['instructor_ids']);
@@ -488,8 +538,7 @@ class ScheduleController extends Controller
                 'activity_type_id' => $validated['activity_type_id'],
                 'room_id' => $validated['room_id'] ?? null,
                 'practicum_series_id' => null,
-                'start_date' => $validated['start_date'],
-                'end_date' => $validated['end_date'],
+                ...$this->scheduleDatePayload($validated),
                 'start_time' => $validated['start_time'],
                 'end_time' => $validated['end_time'],
                 'topic' => $validated['topic'] ?? null,
@@ -502,6 +551,8 @@ class ScheduleController extends Controller
             $this->syncInstructors($schedule, $validated);
             $schedule->studentGroups()->sync($validated['student_group_ids']);
         });
+
+        \App\Services\NavigationBadgeService::flushCourseHead((int) $courseOffering->coordinator_id);
 
         AuditLogger::log(
             action: 'ตารางสอน.สร้าง',
@@ -551,6 +602,7 @@ class ScheduleController extends Controller
         if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
 
         $validated = $this->validateSchedule($request, $courseOffering);
+        $validated['course_offering_id'] = $courseOffering->id;
         $this->assertScheduleWithinAcademicYear($courseOffering, $validated);
         $this->assertSelectedGroupsFitCapacity($courseOffering, $validated);
         $this->assertInstructorsBelongToCourseDepartment($courseOffering, $validated['instructor_ids']);
@@ -572,8 +624,7 @@ class ScheduleController extends Controller
             $schedule->update([
                 'activity_type_id' => $validated['activity_type_id'],
                 'room_id' => $validated['room_id'] ?? null,
-                'start_date' => $validated['start_date'],
-                'end_date' => $validated['end_date'],
+                ...$this->scheduleDatePayload($validated),
                 'start_time' => $validated['start_time'],
                 'end_time' => $validated['end_time'],
                 'topic' => $validated['topic'] ?? null,
@@ -585,6 +636,8 @@ class ScheduleController extends Controller
             $this->syncInstructors($schedule, $validated);
             $schedule->studentGroups()->sync($validated['student_group_ids']);
         });
+
+        \App\Services\NavigationBadgeService::flushCourseHead((int) $courseOffering->coordinator_id);
 
         $snapshotAfter = $this->scheduleSnapshot($schedule->fresh([
             'courseOffering.course.curriculum',
@@ -633,6 +686,8 @@ class ScheduleController extends Controller
         $scheduleId = $schedule->id;
 
         $schedule->delete();
+
+        \App\Services\NavigationBadgeService::flushCourseHead((int) $courseOffering->coordinator_id);
 
         AuditLogger::log(
             action: 'ตารางสอน.ลบ',
@@ -908,7 +963,10 @@ class ScheduleController extends Controller
         ?int $ignoreScheduleId = null
     ): array {
         return $conflictChecker->check(
-            Arr::only($validated, ['start_date', 'end_date', 'start_time', 'end_time', 'room_id']),
+            [
+                'course_offering_id' => $validated['course_offering_id'] ?? null,
+                ...Arr::only($validated, ['activity_type_id', 'start_date', 'end_date', 'start_time', 'end_time', 'room_id', 'sub_group_label']),
+            ],
             array_map('intval', $validated['instructor_ids']),
             array_map('intval', $validated['student_group_ids']),
             $ignoreScheduleId
@@ -975,4 +1033,3 @@ class ScheduleController extends Controller
         ];
     }
 }
-

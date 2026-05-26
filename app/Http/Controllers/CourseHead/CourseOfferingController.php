@@ -10,6 +10,8 @@ use App\Models\StudentGroup;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\NavigationBadgeService;
+use App\Services\ReferenceDataCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -90,9 +92,10 @@ class CourseOfferingController extends Controller
             ->get();
 
         // Roles ที่เลือกได้ในชุดผู้สอน — ซ่อน "หัวหน้าวิชา" (auto-assigned ให้ coordinator)
-        $courseRoles = CourseRole::orderBy('sort_order')
-            ->where('name_th', '!=', 'หัวหน้าวิชา')
-            ->get();
+        $courseRoles = app(ReferenceDataCache::class)
+            ->courseRoles()
+            ->filter(fn ($role) => $role->name_th !== 'หัวหน้าวิชา')
+            ->values();
 
         return view('course_head.course_offerings.show', [
             'courseOffering' => $courseOffering,
@@ -220,6 +223,7 @@ class CourseOfferingController extends Controller
             'role_in_course' => 'instructor',
             'course_role_id' => $roleId,
         ]);
+        NavigationBadgeService::flushCourseHead((int) $courseOffering->coordinator_id);
 
         $this->logCourseManagementCreate(
             table: 'course_offering_instructors',
@@ -269,6 +273,7 @@ class CourseOfferingController extends Controller
         $courseOffering->instructorPool()->updateExistingPivot($user->id, [
             'course_role_id' => $newRoleId,
         ]);
+        NavigationBadgeService::flushCourseHead((int) $courseOffering->coordinator_id);
 
         if ($oldRoleId !== $newRoleId) {
             $this->logCourseManagementUpdate(
@@ -311,6 +316,7 @@ class CourseOfferingController extends Controller
         $oldRoleId = $currentInstructor?->pivot?->course_role_id ? (int) $currentInstructor->pivot->course_role_id : null;
 
         $detached = $courseOffering->instructorPool()->detach($user->id);
+        NavigationBadgeService::flushCourseHead((int) $courseOffering->coordinator_id);
 
         if ($detached > 0) {
             $this->logCourseManagementDelete(
@@ -353,6 +359,7 @@ class CourseOfferingController extends Controller
         }
 
         $studentGroup = $courseOffering->studentGroups()->create($validated);
+        NavigationBadgeService::flushCourseHead((int) $courseOffering->coordinator_id);
 
         $this->logCourseManagementCreate(
             table: 'student_groups',
@@ -448,6 +455,7 @@ class CourseOfferingController extends Controller
                 ]);
             }
         });
+        NavigationBadgeService::flushCourseHead((int) $courseOffering->coordinator_id);
 
         $this->logCourseManagementCreate(
             table: 'student_groups',
@@ -514,6 +522,7 @@ class CourseOfferingController extends Controller
         $auditBefore = $this->auditModelSnapshot($studentGroup, $auditFields);
 
         $studentGroup->update($validated);
+        NavigationBadgeService::flushCourseHead((int) $courseOffering->coordinator_id);
 
         $auditAfter = $this->auditModelSnapshot($studentGroup->fresh(), $auditFields);
         $diff = AuditLogger::diff($auditBefore, $auditAfter);
@@ -604,6 +613,7 @@ class CourseOfferingController extends Controller
             ] + $this->offeringAuditContext($courseOffering),
             description: "ลบกลุ่มนักศึกษา {$deletedCount} กลุ่ม ใน {$this->offeringCourseLabel($courseOffering)}",
         );
+        NavigationBadgeService::flushCourseHead((int) $courseOffering->coordinator_id);
 
         return $this->redirectToStudentGroups($courseOffering)
             ->with('warning', "ลบกลุ่มนักศึกษา {$deletedCount} กลุ่มเรียบร้อยแล้ว");
@@ -664,6 +674,7 @@ class CourseOfferingController extends Controller
 
         $auditValues = $this->studentGroupAuditValues($courseOffering, $studentGroup);
         $studentGroup->delete();
+        NavigationBadgeService::flushCourseHead((int) $courseOffering->coordinator_id);
 
         $this->logCourseManagementDelete(
             table: 'student_groups',

@@ -13,10 +13,12 @@ use App\Models\CourseRole;
 use App\Models\Curriculum;
 use App\Models\ActivityType;
 use App\Services\AuditLogger;
+use App\Services\ReferenceDataCache;
 use App\Support\ThaiDate;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class MasterDataController extends Controller
@@ -48,10 +50,63 @@ class MasterDataController extends Controller
         $users = User::with(['instructorProfile', 'roles'])->where('is_active', true)->orderBy('name')->get();
 
         // Location Types
-        $locationTypes = LocationType::withCount('rooms')->with('rooms')->get();
+        $locationTypes = LocationType::query()
+            ->withCount('rooms')
+            ->with(['rooms:id,location_type_id,room_code,room_name,building,capacity,equipment_type,address,status'])
+            ->get();
+        $locationTypes->each(function (LocationType $type): void {
+            $rooms = $type->rooms->sortBy('room_name')->values();
+            $statusCounts = $rooms->countBy('status');
+
+            $type->setRelation('rooms', $rooms);
+            $type->room_status_counts = [
+                'active' => (int) ($statusCounts['active'] ?? 0),
+                'inactive' => (int) ($statusCounts['inactive'] ?? 0),
+                'maintenance' => (int) ($statusCounts['maintenance'] ?? 0),
+            ];
+            $type->room_statuses = $rooms->pluck('status')->unique()->join(' ');
+            $type->room_search_haystack = Str::lower(collect([
+                $type->name,
+                $type->rooms_count,
+                'แห่ง',
+                $type->room_status_counts['active'],
+                'ใช้งาน',
+                $type->room_status_counts['maintenance'],
+                'ซ่อมบำรุง',
+                $type->room_status_counts['inactive'],
+                'ปิดใช้งาน',
+                $rooms->pluck('room_code')->join(' '),
+                $rooms->pluck('room_name')->join(' '),
+                $rooms->pluck('building')->join(' '),
+                $rooms->pluck('capacity')->join(' '),
+            ])->filter()->join(' '));
+
+            $rooms->each(function (Room $room): void {
+                $statusMap = [
+                    'active' => 'ใช้งาน',
+                    'inactive' => 'ปิดใช้งาน',
+                    'maintenance' => 'ซ่อมบำรุง',
+                ];
+
+                $room->search_haystack = Str::lower(collect([
+                    $room->room_code,
+                    $room->room_name,
+                    $room->building,
+                    $room->capacity,
+                    'คน',
+                    $room->address,
+                    is_array($room->equipment_type) ? implode(' ', $room->equipment_type) : $room->equipment_type,
+                    $room->status,
+                    $statusMap[$room->status] ?? '',
+                ])->filter()->join(' '));
+            });
+        });
 
         // Rooms with their types
-        $rooms = Room::with('locationType')->get();
+        $rooms = Room::query()
+            ->select(['id', 'location_type_id', 'room_code', 'room_name', 'building', 'capacity', 'equipment_type', 'address', 'status'])
+            ->with('locationType:id,name,requires_capacity')
+            ->get();
 
         // Staff users for assigned_staff dropdown
         $staffUsers = User::whereHas('roles', function ($q) {
@@ -104,9 +159,10 @@ class MasterDataController extends Controller
             }
         }
 
-        $courseRoles = CourseRole::orderBy('sort_order')
-            ->where('name_th', '!=', 'หัวหน้าวิชา')
-            ->get();
+        $courseRoles = app(ReferenceDataCache::class)
+            ->courseRoles()
+            ->filter(fn ($role) => $role->name_th !== 'หัวหน้าวิชา')
+            ->values();
 
         $courseInstructorUsers = User::query()
             ->with('instructorProfile.department')
@@ -120,7 +176,7 @@ class MasterDataController extends Controller
         $curriculums = Curriculum::withCount('courses')->with(['courses' => fn($q) => $q->orderBy('course_code')])->get();
 
         // Activity Types
-        $activityTypes = ActivityType::orderBy('name')->get();
+        $activityTypes = app(ReferenceDataCache::class)->activityTypes();
 
         // Pre-flight counts for import warnings
         $usersWithEmployeeIdCount = User::whereNotNull('employee_id')->where('employee_id', '!=', '')->count();

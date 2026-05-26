@@ -1179,17 +1179,16 @@
                 <div x-data="{ expandedType: null }" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 8px;">
                     @forelse($locationTypes as $type)
                         @php
-                            $statusCounts = $type->rooms->groupBy('status');
-                            $activeCount = $statusCounts->get('active', collect())->count();
-                            $inactiveCount = $statusCounts->get('inactive', collect())->count();
-                            $maintenanceCount = $statusCounts->get('maintenance', collect())->count();
+                            $activeCount = $type->room_status_counts['active'] ?? 0;
+                            $inactiveCount = $type->room_status_counts['inactive'] ?? 0;
+                            $maintenanceCount = $type->room_status_counts['maintenance'] ?? 0;
                         @endphp
 
                         {{-- Card wrapper --}}
                         <div
                             data-location-type-id="{{ $type->id }}"
-                            data-statuses="{{ $type->rooms->pluck('status')->unique()->join(' ') }}"
-                            data-search="{{ Str::lower($type->name . ' ' . $type->rooms_count . ' แห่ง ' . $activeCount . ' ใช้งาน ' . $maintenanceCount . ' ซ่อมบำรุง ' . $inactiveCount . ' ปิดใช้งาน ' . $type->rooms->pluck('room_code')->join(' ') . ' ' . $type->rooms->pluck('room_name')->join(' ') . ' ' . $type->rooms->pluck('building')->join(' ') . ' ' . $type->rooms->pluck('capacity')->join(' ')) }}"
+                            data-statuses="{{ $type->room_statuses }}"
+                            data-search="{{ $type->room_search_haystack }}"
                             x-show="(filters.location_types.location_type_id === '' || $el.dataset.locationTypeId == filters.location_types.location_type_id) && (filters.location_types.status === '' || $el.dataset.statuses.includes(filters.location_types.status)) && includesText($el.dataset.search, filters.location_types.keyword)"
                             style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
 
@@ -1276,10 +1275,10 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            @foreach($type->rooms->sortBy('room_name') as $room)
+                                            @foreach($type->rooms as $room)
                                                 @php $statusMap = ['active' => ['ใช้งาน', '#059669', '#d1fae5'], 'inactive' => ['ปิดใช้งาน', '#6b7280', '#f3f4f6'], 'maintenance' => ['ซ่อมบำรุง', '#d97706', '#fef3c7']]; $s = $statusMap[$room->status] ?? $statusMap['active']; @endphp
                                                 <tr
-                                                    data-search="{{ Str::lower(($room->room_code ?? '') . ' ' . $room->room_name . ' ' . ($room->building ?? '') . ' ' . ($room->capacity ?? '') . ' คน ' . ($room->address ?? '') . ' ' . (is_array($room->equipment_type) ? implode(' ', $room->equipment_type) : ($room->equipment_type ?? '')) . ' ' . $room->status . ' ' . ($s[0] ?? '')) }}"
+                                                    data-search="{{ $room->search_haystack }}"
                                                     data-status="{{ $room->status }}"
                                                     x-show="(filters.location_types.status === '' || $el.dataset.status == filters.location_types.status) && includesText($el.dataset.search, filters.location_types.keyword)"
                                                     style="border-top: 1px solid var(--border); transition: background 0.1s;"

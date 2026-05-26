@@ -32,6 +32,20 @@ class Schedule extends Model
         'capacity_required' => 'integer',
     ];
 
+    public function getStartDateAttribute($value)
+    {
+        $value ??= $this->attributes['teaching_date'] ?? null;
+
+        return $value ? $this->asDateTime($value)->startOfDay() : null;
+    }
+
+    public function getEndDateAttribute($value)
+    {
+        $value ??= $this->attributes['teaching_date'] ?? null;
+
+        return $value ? $this->asDateTime($value)->startOfDay() : null;
+    }
+
     public function courseOffering(): BelongsTo
     {
         return $this->belongsTo(CourseOffering::class);
