@@ -38,40 +38,9 @@
         || old('start_date')
         || old('course_offering_id')
     );
-    $occurrencesByDate = $occurrences->groupBy(fn ($item) => $item['date']->toDateString());
-    $gridOccurrenceSource = (! $isWorkspace && ($allSchedules ?? collect())->isNotEmpty())
-        ? $allSchedules
-        : ($schedules ?? collect());
-    $gridOccurrences = $gridOccurrenceSource
-        ->flatMap(function ($schedule) use ($weekStart, $weekEnd, $includeWeekends) {
-            $startDate = \Carbon\CarbonImmutable::parse($schedule->start_date ?? $schedule->teaching_date);
-            $endDate = \Carbon\CarbonImmutable::parse($schedule->end_date ?? $schedule->teaching_date);
-            $rangeStart = $startDate->greaterThan($weekStart) ? $startDate : $weekStart;
-            $rangeEnd = $endDate->lessThan($weekEnd) ? $endDate : $weekEnd;
-
-            if ($rangeStart->greaterThan($rangeEnd)) {
-                return collect();
-            }
-
-            $startTime = strlen((string) $schedule->start_time) === 5 ? $schedule->start_time . ':00' : (string) $schedule->start_time;
-            $endTime = strlen((string) $schedule->end_time) === 5 ? $schedule->end_time . ':00' : (string) $schedule->end_time;
-            $durationMinutes = (int) max(0, \Carbon\CarbonImmutable::createFromFormat('H:i:s', $startTime)
-                ->diffInMinutes(\Carbon\CarbonImmutable::createFromFormat('H:i:s', $endTime)));
-
-            return collect(\Carbon\CarbonPeriod::create($rangeStart, $rangeEnd))
-                ->filter(fn ($date) => $includeWeekends || $date->dayOfWeekIso <= 5)
-                ->map(fn ($date) => [
-                    'schedule' => $schedule,
-                    'date' => \Carbon\CarbonImmutable::parse($date),
-                    'duration_minutes' => $durationMinutes,
-                    'time_slot' => substr((string) $schedule->start_time, 0, 2) . ':00',
-                ]);
-        })
-        ->sortBy(fn ($item) => $item['date']->toDateString()
-            . ' ' . substr((string) $item['schedule']->start_time, 0, 8)
-            . ' ' . str_pad((string) $item['schedule']->id, 10, '0', STR_PAD_LEFT))
-        ->values();
-    $gridOccurrencesByDate = $gridOccurrences->groupBy(fn ($item) => $item['date']->toDateString());
+    $occurrencesByDate = $occurrencesByDate ?? $occurrences->groupBy(fn ($item) => $item['date']->toDateString());
+    $gridOccurrences = $occurrences ?? collect();
+    $gridOccurrencesByDate = $gridOccurrencesByDate ?? $gridOccurrences->groupBy(fn ($item) => $item['date']->toDateString());
     $gridTimeSlots = collect(range(6, 16))
         ->map(fn (int $hour) => sprintf('%02d:00', $hour))
         ->merge($gridOccurrences->pluck('time_slot'))
@@ -138,19 +107,6 @@
         }
         return max(1, min($span, $gridSlotCount - $startIdx));
     };
-    // เซลล์ (วันที่|ช่วงเวลา) ที่ถูกครอบโดยกิจกรรมที่เริ่มก่อนหน้า — ไม่ต้อง render เซลล์ว่าง
-    $gridCoveredKeys = [];
-    foreach ($gridOccurrences as $gridOccurrence) {
-        $startIdx = $gridSlotIndex[$gridOccurrence['time_slot']] ?? null;
-        if ($startIdx === null) {
-            continue;
-        }
-        $coverSpan = $occurrenceSlotSpan($gridOccurrence);
-        $coverDate = $gridOccurrence['date']->toDateString();
-        for ($j = $startIdx + 1; $j < $startIdx + $coverSpan; $j++) {
-            $gridCoveredKeys[$coverDate . '|' . $gridTimeSlots[$j]] = true;
-        }
-    }
     $thaiDays = [
         1 => 'วันจันทร์',
         2 => 'วันอังคาร',
@@ -2765,7 +2721,7 @@
                     @endif
                 </div>
                 <div class="course-overview-stats">
-                    <span class="course-stat"><strong>{{ $allSchedules->count() }}</strong> รายการสอน</span>
+                    <span class="course-stat"><strong>{{ $totalScheduleCount ?? $allSchedules->count() }}</strong> รายการสอน</span>
                     <span class="course-stat"><strong>{{ $courseOffering->studentGroups->count() }}</strong> กลุ่มนักศึกษา</span>
                     <span class="course-stat"><strong>{{ $eligibleScheduleInstructors($courseOffering)->count() }}</strong> ผู้สอน</span>
                 </div>
@@ -2869,9 +2825,6 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @php
-                                    $groupedSchedules = $allSchedules->groupBy(fn ($s) => $s->start_date?->dayOfWeekIso);
-                                @endphp
                                 @if($allSchedules->isEmpty())
                                     <tr>
                                         <td colspan="6" style="padding:32px 16px;text-align:center;color:var(--fg-3);font-size:14px;">

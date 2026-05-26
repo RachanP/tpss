@@ -2,6 +2,7 @@
     $user = auth()->user();
     $activeRole = session('active_role', 'staff');
     $roles = $user ? $user->roles : collect();
+    $sidebarBadges = $sidebarBadges ?? [];
 
     $roleNames = [
         'admin' => 'ผู้ดูแลระบบ',
@@ -179,25 +180,7 @@
 
         @elseif($activeRole === 'course_head')
             @php
-                $makerConflictSchedules = \App\Models\Schedule::query()
-                    ->with(['instructors', 'studentGroups'])
-                    ->whereHas('courseOffering', fn ($query) => $query->where('coordinator_id', $user?->id))
-                    ->get();
-                $makerConflictChecker = app(\App\Services\ScheduleConflictChecker::class);
-                $makerConflictCount = $makerConflictSchedules->sum(function ($schedule) use ($makerConflictChecker) {
-                    return count($makerConflictChecker->check(
-                        [
-                            'start_date' => $schedule->start_date?->toDateString(),
-                            'end_date' => $schedule->end_date?->toDateString(),
-                            'start_time' => substr((string) $schedule->start_time, 0, 5),
-                            'end_time' => substr((string) $schedule->end_time, 0, 5),
-                            'room_id' => $schedule->room_id,
-                        ],
-                        $schedule->instructors->pluck('id')->map(fn ($id) => (int) $id)->all(),
-                        $schedule->studentGroups->pluck('id')->map(fn ($id) => (int) $id)->all(),
-                        $schedule->id
-                    ));
-                });
+                $makerConflictCount = (int) ($sidebarBadges['maker_conflict_count'] ?? 0);
             @endphp
             <div class="sb-sec">เมนูหลัก</div>
             <!-- Maker Menus -->
@@ -309,7 +292,7 @@
 
         @elseif($activeRole === 'admin')
             @php
-                $alertSummary = \App\Http\Controllers\Admin\AlertController::getSummary();
+                $alertSummary = $sidebarBadges['admin_alert_summary'] ?? ['critical' => 0, 'warnings' => 0];
                 $alertCritical = $alertSummary['critical'];
                 $alertWarnings = $alertSummary['warnings'];
             @endphp

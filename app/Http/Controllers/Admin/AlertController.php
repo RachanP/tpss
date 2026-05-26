@@ -17,7 +17,7 @@ use Illuminate\Http\Request;
 
 class AlertController extends Controller
 {
-    private static ?array $paCache = null;
+    private const PA_VIOLATIONS_INSTANCE_KEY = 'tpss.pa_violations';
 
     public function index()
     {
@@ -129,12 +129,13 @@ class AlertController extends Controller
     public static function flushCache(): void
     {
         cache()->forget('tpss_alert_summary');
-        self::$paCache = null;
+        \App\Services\NavigationBadgeService::flushAdmin();
+        app()->forgetInstance(self::PA_VIOLATIONS_INSTANCE_KEY);
     }
 
     public static function getSummary(): array
     {
-        return cache()->remember('tpss_alert_summary', 300, function () {
+        return cache()->remember('tpss_alert_summary', 120, function () {
             $criticalCount = count(self::getCriticals());
 
             $deptCount = Department::where(function ($q) {
@@ -171,7 +172,9 @@ class AlertController extends Controller
 
     public static function getPaViolations(): array
     {
-        if (self::$paCache !== null) return self::$paCache;
+        if (app()->bound(self::PA_VIOLATIONS_INSTANCE_KEY)) {
+            return app(self::PA_VIOLATIONS_INSTANCE_KEY);
+        }
 
         $criteria = json_decode(SystemSetting::get('pa_criteria_config', '{}'), true);
         $firstGroup = !empty($criteria) ? reset($criteria) : null;
@@ -220,7 +223,9 @@ class AlertController extends Controller
                 }
             });
 
-        return self::$paCache = $violations;
+        app()->instance(self::PA_VIOLATIONS_INSTANCE_KEY, $violations);
+
+        return $violations;
     }
 
     public static function paGroup(string $title, string $degree): string

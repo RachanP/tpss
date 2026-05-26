@@ -16,6 +16,7 @@ use App\Models\Schedule;
 use App\Models\StudentGroup;
 use App\Models\User;
 use App\Models\UserRole;
+use App\Services\ScheduleConflictIndex;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -976,6 +977,77 @@ class ScheduleManagementTest extends TestCase
         $this->assertDatabaseCount('audit_logs', 0);
     }
 
+    public function test_conflict_index_suppresses_team_supervision_instructor_overlap(): void
+    {
+        [, $offering, $instructor, $firstGroup, , $firstRoom] = $this->makeReadyOffering();
+        $secondGroup = StudentGroup::create([
+            'course_offering_id' => $offering->id,
+            'group_code' => 'A2',
+            'student_count' => 15,
+        ]);
+        $secondRoom = $this->makeRoom();
+        $practicum = $this->makePracticumActivityType();
+
+        $first = $this->makeSchedule($offering, $practicum, $firstRoom, [$instructor], [$firstGroup]);
+        $second = $this->makeSchedule($offering, $practicum, $secondRoom, [$instructor], [$secondGroup]);
+
+        $conflicts = app(ScheduleConflictIndex::class)->conflictsFor(
+            Schedule::with(['activityType', 'courseOffering.course', 'room', 'instructors.instructorProfile', 'studentGroups'])
+                ->whereIn('id', [$first->id, $second->id])
+                ->get()
+        );
+
+        $this->assertTrue($conflicts->get($first->id)->isEmpty());
+        $this->assertTrue($conflicts->get($second->id)->isEmpty());
+    }
+
+    public function test_conflict_index_suppresses_subgroup_practicum_split_group_overlap(): void
+    {
+        [, $offering, $firstInstructor, $group, , $firstRoom] = $this->makeReadyOffering();
+        $secondInstructor = $this->makeUser('instructor');
+        $secondRoom = $this->makeRoom();
+        $practicum = $this->makePracticumActivityType();
+
+        $first = $this->makeSchedule($offering, $practicum, $firstRoom, [$firstInstructor], [$group], [
+            'sub_group_label' => 'A1a',
+        ]);
+        $second = $this->makeSchedule($offering, $practicum, $secondRoom, [$secondInstructor], [$group], [
+            'sub_group_label' => 'A1b',
+        ]);
+
+        $conflicts = app(ScheduleConflictIndex::class)->conflictsFor(
+            Schedule::with(['activityType', 'courseOffering.course', 'room', 'instructors.instructorProfile', 'studentGroups'])
+                ->whereIn('id', [$first->id, $second->id])
+                ->get()
+        );
+
+        $this->assertTrue($conflicts->get($first->id)->isEmpty());
+        $this->assertTrue($conflicts->get($second->id)->isEmpty());
+    }
+
+    public function test_conflict_policy_does_not_suppress_room_overlap(): void
+    {
+        [, $offering, $instructor, $firstGroup, , $room] = $this->makeReadyOffering();
+        $secondGroup = StudentGroup::create([
+            'course_offering_id' => $offering->id,
+            'group_code' => 'A2',
+            'student_count' => 15,
+        ]);
+        $practicum = $this->makePracticumActivityType();
+
+        $first = $this->makeSchedule($offering, $practicum, $room, [$instructor], [$firstGroup]);
+        $second = $this->makeSchedule($offering, $practicum, $room, [$instructor], [$secondGroup]);
+
+        $conflicts = app(ScheduleConflictIndex::class)->conflictsFor(
+            Schedule::with(['activityType', 'courseOffering.course', 'room', 'instructors.instructorProfile', 'studentGroups'])
+                ->whereIn('id', [$first->id, $second->id])
+                ->get()
+        );
+
+        $this->assertTrue($conflicts->get($first->id)->contains(fn (array $conflict) => $conflict['type'] === 'room_overlap'));
+        $this->assertFalse($conflicts->get($first->id)->contains(fn (array $conflict) => $conflict['type'] === 'instructor_overlap'));
+    }
+
     private function actingAsCourseHead(User $user): void
     {
         $this->actingAs($user);
@@ -1074,6 +1146,17 @@ class ScheduleManagementTest extends TestCase
             'name' => "Lecture {$number}",
             'color_code' => '#2563eb',
             'category' => 'lecture',
+        ]);
+    }
+
+    private function makePracticumActivityType(): ActivityType
+    {
+        $number = $this->sequence++;
+
+        return ActivityType::create([
+            'name' => "Practicum {$number}",
+            'color_code' => '#16a34a',
+            'category' => 'practicum',
         ]);
     }
 
