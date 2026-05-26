@@ -97,7 +97,7 @@
 <style>
     .admin-stats-strip {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: var(--r-lg);
@@ -110,6 +110,7 @@
         border-right: 1px solid var(--border);
         transition: background 120ms;
         min-height: 156px;
+        min-width: 0;
     }
     .admin-stats-cell:last-child { border-right: none; }
     .admin-stats-cell:hover { background: var(--bg-2); }
@@ -120,10 +121,11 @@
     .admin-stats-label {
         font-size: 11.5px; font-weight: 600; color: var(--fg-2);
         text-transform: uppercase; letter-spacing: 0.04em;
+        overflow-wrap: anywhere;
     }
     .admin-stats-value {
         font-family: var(--font-display);
-        font-size: 30px; font-weight: 800; color: var(--fg-1);
+        font-size: clamp(24px, 2.4vw, 30px); font-weight: 800; color: var(--fg-1);
         line-height: 1; font-variant-numeric: tabular-nums;
     }
     .admin-stats-bar {
@@ -137,7 +139,7 @@
     .admin-stats-foot {
         font-size: 11px; color: var(--fg-3); line-height: 1.4;
     }
-    @media (max-width: 900px) {
+    @media (max-width: 1100px) {
         .admin-stats-strip { grid-template-columns: repeat(2, 1fr); }
         .admin-stats-cell:nth-child(2) { border-right: none; }
         .admin-stats-cell:nth-child(1), .admin-stats-cell:nth-child(2) { border-bottom: 1px solid var(--border); }

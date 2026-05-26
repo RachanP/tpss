@@ -196,6 +196,35 @@
 </script>
 
 <style>
+    .workload-card {
+        overflow: hidden;
+    }
+
+    .workload-card .card-hdr {
+        flex-wrap: wrap;
+        gap: 10px 14px;
+    }
+
+    .workload-card .card-actions {
+        flex: 0 1 320px;
+        min-width: 220px;
+    }
+
+    .workload-card .search-box {
+        width: 100%;
+        max-width: 320px;
+    }
+
+    .workload-card .table-responsive {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+    }
+
+    .workload-card table {
+        min-width: 760px;
+    }
+
     .workload-pagination {
         display: flex;
         align-items: center;
@@ -269,9 +298,27 @@
     }
 
     @media (max-width: 720px) {
+        .workload-card .card-actions,
+        .workload-card .search-box {
+            flex-basis: 100%;
+            max-width: none;
+            min-width: 0;
+        }
+
+        .workload-card table {
+            min-width: 680px;
+        }
+
         .workload-pagination {
             align-items: flex-start;
+            justify-content: flex-start;
             padding: 12px 14px;
+        }
+    }
+
+    @media (max-width: 540px) {
+        .workload-pagination-nav {
+            width: 100%;
         }
     }
 </style>

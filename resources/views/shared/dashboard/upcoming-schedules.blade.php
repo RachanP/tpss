@@ -18,3 +18,20 @@
         </div>
     </div>
 </div>
+
+<style>
+    [data-testid="dashboard-upcoming-schedules"] {
+        overflow: hidden;
+    }
+
+    [data-testid="dashboard-upcoming-schedules"] .card-hdr > div {
+        min-width: 0;
+        flex-wrap: wrap;
+    }
+
+    @media (max-width: 540px) {
+        [data-testid="dashboard-upcoming-schedules"] > div:last-child {
+            padding: 16px !important;
+        }
+    }
+</style>

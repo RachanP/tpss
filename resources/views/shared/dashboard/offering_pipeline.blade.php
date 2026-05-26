@@ -95,6 +95,12 @@
         flex-direction: column;
         border-top: 1px solid var(--border);
     }
+
+    [data-testid="offering-pipeline"] .card-hdr > div:first-child {
+        flex-wrap: wrap;
+        min-width: 0;
+    }
+
     .offering-pipeline-row {
         display: flex;
         align-items: center;
@@ -106,6 +112,7 @@
     }
     .offering-pipeline-row:last-child { border-bottom: none; }
     .offering-pipeline-main {
+        flex: 1 1 auto;
         min-width: 0;
     }
     .offering-pipeline-title-row {
@@ -149,6 +156,16 @@
     @media (max-width: 540px) {
         .offering-pipeline-row {
             align-items: flex-start;
+            flex-direction: column;
+            gap: 10px;
+            padding: 12px 14px;
+        }
+
+        .offering-pipeline-count {
+            flex-direction: row;
+            align-items: baseline;
+            justify-content: space-between;
+            width: 100%;
         }
     }
 </style>

@@ -53,16 +53,20 @@
 
     <style>
         .admin-dashboard {
-            padding: 24px 28px 32px;
+            width: 100%;
+            max-width: 100%;
+            padding: clamp(14px, 2vw, 28px) clamp(14px, 2vw, 28px) clamp(22px, 2.4vw, 32px);
             display: flex;
             flex-direction: column;
-            gap: 24px;
+            gap: clamp(18px, 1.8vw, 24px);
+            overflow-x: hidden;
         }
 
         .admin-section {
             display: flex;
             flex-direction: column;
             gap: 12px;
+            min-width: 0;
         }
 
         .admin-section-head {
@@ -71,6 +75,11 @@
             justify-content: space-between;
             gap: 16px;
             padding: 0 2px;
+            min-width: 0;
+        }
+
+        .admin-section-head > div {
+            min-width: 0;
         }
 
         .admin-section-head h2 {
@@ -94,16 +103,37 @@
         .admin-secondary-grid {
             display: grid;
             grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-            gap: 18px;
+            gap: clamp(12px, 1.4vw, 18px);
+            min-width: 0;
         }
 
         .admin-dashboard .card {
             margin-bottom: 0;
             border-color: var(--border);
+            min-width: 0;
         }
 
         .admin-dashboard .card-hdr {
             min-height: 54px;
+            flex-wrap: wrap;
+            gap: 10px 14px;
+            min-width: 0;
+        }
+
+        .admin-dashboard .card-ttl {
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
+        .admin-dashboard .card-actions {
+            min-width: 0;
+            flex-wrap: wrap;
+        }
+
+        .admin-dashboard .table-responsive {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: auto;
         }
 
         .admin-dashboard .pill {
@@ -118,7 +148,8 @@
             font-size: 11px;
             font-weight: 800;
             line-height: 1;
-            white-space: nowrap;
+            text-align: center;
+            white-space: normal;
         }
 
         .admin-dashboard .pill.p-conflict {
@@ -203,10 +234,30 @@
             align-self: stretch;
         }
 
+        @media (max-width: 1280px) {
+            .admin-dashboard {
+                padding-inline: 18px;
+            }
+
+            .admin-section-head {
+                align-items: flex-start;
+            }
+        }
+
         @media (max-width: 1100px) {
             .admin-action-grid,
             .admin-secondary-grid {
                 grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .admin-dashboard {
+                padding-inline: 16px;
+            }
+
+            .admin-section-head {
+                flex-direction: column;
             }
         }
 
@@ -226,6 +277,21 @@
 
             .admin-section-head p {
                 font-size: 12px;
+            }
+
+            .admin-dashboard .card-hdr {
+                align-items: flex-start;
+            }
+
+            .admin-dashboard .card-actions,
+            .admin-dashboard .search-box {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 540px) {
+            .admin-dashboard {
+                padding: 12px;
             }
         }
     </style>
