@@ -1681,12 +1681,20 @@
             min-width: 0;
         }
         .grid-activity .activity-tag {
+            justify-content: center;
+            width: 72px;
+            max-width: 72px;
             min-height: 18px;
             padding: 1px 6px;
             font-size: 9.5px;
             line-height: 1.25;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         .grid-activity.is-compact .activity-tag {
+            width: 64px;
+            max-width: 64px;
             min-height: 17px;
             padding: 1px 5px;
             font-size: 9px;
@@ -1718,10 +1726,18 @@
             margin-top: 2px;
         }
         .grid-activity.is-compact .grid-activity-time {
-            font-size: 10px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            display: none;
+        }
+        .grid-activity.is-compact .grid-activity-sub,
+        .grid-activity.is-compact .grid-activity-meta,
+        .grid-activity.is-compact .grid-groups,
+        .grid-activity.is-compact .grid-location-name,
+        .grid-activity.is-compact .grid-location-building,
+        .grid-activity.is-compact .grid-instructor,
+        .grid-activity.is-compact .co-group-badge,
+        .grid-activity.is-compact .group-chip,
+        .grid-activity.is-compact .badge {
+            display: none;
         }
         .schedule-conflict-pill {
             display: inline-flex;
@@ -2618,64 +2634,47 @@
         }
         .grid-activity-card {
             position: absolute !important;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            min-height: 0 !important;
             margin-bottom: 0 !important;
-            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, box-shadow 0.25s ease;
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease, opacity 0.2s ease;
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            z-index: 10;
         }
-        .grid-activity-card.stack-active {
-            opacity: 1;
-            transform: translate(0, 0) scale(1);
-        }
-        .grid-activity-card.stack-behind-1 {
-            opacity: 0.9;
-            transform: translate(6px, 6px) scale(0.97);
-            cursor: pointer;
-        }
-        .grid-activity-card.stack-behind-1:hover {
-            transform: translate(6px, 4px) scale(0.98);
-        }
-        .grid-activity-card.stack-behind-2 {
-            opacity: 0.75;
-            transform: translate(12px, 12px) scale(0.94);
-            cursor: pointer;
-        }
-        .grid-activity-card.stack-behind-2:hover {
-            transform: translate(12px, 10px) scale(0.95);
-        }
-        .grid-activity-card.stack-hidden {
-            opacity: 0;
-            transform: translate(18px, 18px) scale(0.91);
-            pointer-events: none;
+        .grid-activity-card:hover {
+            z-index: 50 !important;
+            transform: translateY(-1px);
+            box-shadow: 0 10px 24px rgba(0,0,0,0.16);
+            opacity: 1 !important;
         }
         .stack-indicator {
-            position: absolute;
-            bottom: 6px;
-            right: 6px;
-            z-index: 25;
+            position: static;
+            width: fit-content;
+            max-width: 100%;
+            margin-top: auto;
+            margin-left: auto;
+            z-index: 1;
             background: var(--brand-navy);
             color: #fff;
             border-radius: 999px;
-            padding: 3px 8px;
+            padding: 3px 7px;
             font-size: 10px;
             font-weight: 800;
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 5px;
             cursor: pointer;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.22);
             user-select: none;
             pointer-events: auto;
             line-height: 1;
         }
         .stack-indicator:hover {
             background: color-mix(in oklch, var(--brand-navy) 85%, #000);
-            transform: scale(1.05);
+            transform: translateY(-1px);
         }
         .stack-sync-icon {
+            width: 12px;
+            height: 12px;
             animation: spin-slow 8s linear infinite;
             flex-shrink: 0;
         }
@@ -3491,7 +3490,10 @@
                                             </div>
                                         </div>
                                     @else
-                                        <div class="activity-stack" x-data="{ activeIndex: 0, count: {{ count($stack) }} }">
+                                        @php
+                                            $stackCount = count($stack);
+                                        @endphp
+                                        <div class="activity-stack" x-data="{ page: 0, count: {{ $stackCount }} }">
                                             @foreach($stack as $idx => $occurrence)
                                                 @php
                                                     $schedule = $occurrence['schedule'];
@@ -3504,24 +3506,33 @@
                                                     $gridActivitySizeClass = $activityDuration < 75
                                                         ? 'is-compact'
                                                         : ($activityDuration >= 150 ? 'is-tall' : '');
+
+                                                    // Calculate relative top offset and height percentages inside the stack
+                                                    $occStart = (string) $schedule->start_time;
+                                                    $occEnd = (string) $schedule->end_time;
+                                                    $occStartCarbon = \Carbon\CarbonImmutable::createFromFormat('H:i:s', strlen($occStart) === 5 ? $occStart . ':00' : $occStart);
+                                                    $occEndCarbon = \Carbon\CarbonImmutable::createFromFormat('H:i:s', strlen($occEnd) === 5 ? $occEnd . ':00' : $occEnd);
+
+                                                    $topOffset = (int) max(0, $startCarbon->diffInMinutes($occStartCarbon));
+                                                    $occDuration = (int) max(0, $occStartCarbon->diffInMinutes($occEndCarbon));
+
+                                                    $topPercent = $stackDuration > 0 ? ($topOffset / $stackDuration) * 100 : 0;
+                                                    $heightPercent = $stackDuration > 0 ? ($occDuration / $stackDuration) * 100 : 100;
                                                 @endphp
-                                                <div 
-                                                    role="button" 
-                                                    tabindex="0" 
-                                                    class="grid-activity {{ $gridActivitySizeClass }} grid-activity-card" 
-                                                    :class="{
-                                                        'stack-active': activeIndex === {{ $idx }},
-                                                        'stack-behind-1': ({{ $idx }} - activeIndex + count) % count === 1,
-                                                        'stack-behind-2': ({{ $idx }} - activeIndex + count) % count === 2,
-                                                        'stack-hidden': ({{ $idx }} - activeIndex + count) % count > 2
-                                                    }"
+                                                <div
+                                                    role="button"
+                                                    tabindex="0"
+                                                    class="grid-activity {{ $gridActivitySizeClass }} grid-activity-card"
+                                                    style="--activity-color: {{ $activityTone($schedule) }}; top: {{ round($topPercent, 4) }}%; height: {{ round($heightPercent, 4) }}%;"
                                                     :style="{
-                                                        zIndex: activeIndex === {{ $idx }} ? 10 : (10 - (({{ $idx }} - activeIndex + count) % count))
+                                                        left: (({{ $idx }} - page * 3) * 12) + '%',
+                                                        width: (100 - (Math.min(3, count - page * 3) - 1) * 12) + '%',
+                                                        zIndex: 10 + ({{ $idx }} - page * 3)
                                                     }"
-                                                    style="--activity-color: {{ $activityTone($schedule) }};" 
-                                                    data-schedule-modal-trigger 
-                                                    @click.stop="if (activeIndex !== {{ $idx }}) { activeIndex = {{ $idx }}; } else { detailModal = 'schedule-{{ $schedule->id }}'; }"
-                                                    @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" 
+                                                    x-show="{{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3"
+                                                    data-schedule-modal-trigger
+                                                    @click="detailModal = 'schedule-{{ $schedule->id }}'"
+                                                    @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'"
                                                     @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'"
                                                 >
                                                     <div class="grid-activity-top">
@@ -3532,18 +3543,34 @@
                                                     </div>
                                                     <div class="grid-activity-title">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
                                                     <div class="grid-activity-time">{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }} · {{ $formatDuration($occurrence['duration_minutes']) }}</div>
-                                                    <div class="grid-activity-foot">
+                                                    <div class="grid-activity-foot" :style="{{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1) ? 'padding-right: ' + (count > 3 ? '76px' : '48px') : ''">
                                                         <span class="grid-activity-room">{{ $room?->room_name ?? $room?->room_code ?? 'ไม่ระบุสถานที่' }}</span>
                                                         <span class="grid-activity-groups">
                                                             {{ $schedule->studentGroups->isNotEmpty() ? $schedule->studentGroups->count() . ' กลุ่ม' : 'ไม่มีกลุ่ม' }}
                                                         </span>
                                                     </div>
+
+                                                    @if($stackCount > 1)
+                                                        <div
+                                                            class="stack-indicator"
+                                                            x-show="{{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1)"
+                                                            @if($stackCount > 3)
+                                                                @click.stop="page = (page + 1) % Math.ceil(count / 3)"
+                                                                title="คลิกเพื่อดูการ์ดถัดไป"
+                                                            @endif
+                                                        >
+                                                            @if($stackCount > 3)
+                                                                <svg class="stack-sync-icon" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                                                </svg>
+                                                                <span x-text="((page * 3) + 1) + '-' + Math.min((page + 1) * 3, count) + ' จาก ' + count + ' ใบ'"></span>
+                                                            @else
+                                                                <span>{{ $stackCount }} ใบ</span>
+                                                            @endif
+                                                        </div>
+                                                    @endif
                                                 </div>
                                             @endforeach
-                                            <div class="stack-indicator" @click.stop="activeIndex = (activeIndex + 1) % count">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="stack-sync-icon"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-                                                <span x-text="(activeIndex + 1) + '/' + count"></span>
-                                            </div>
                                         </div>
                                     @endif
                                 </div>
@@ -3831,7 +3858,10 @@
                                         <div><span class="badge {{ $status['class'] }}">{{ $status['label'] }}</span></div>
                                     </div>
                                 @else
-                                    <div class="activity-stack" x-data="{ activeIndex: 0, count: {{ count($stack) }} }">
+                                    @php
+                                        $stackCount = count($stack);
+                                    @endphp
+                                    <div class="activity-stack" x-data="{ page: 0, count: {{ $stackCount }} }">
                                         @foreach($stack as $idx => $occurrence)
                                             @php
                                                 $schedule = $occurrence['schedule'];
@@ -3845,24 +3875,33 @@
                                                 $gridActivitySizeClass = $activityDuration < 75
                                                     ? 'is-compact'
                                                     : ($activityDuration >= 150 ? 'is-tall' : '');
+
+                                                // Calculate relative top offset and height percentages inside the stack
+                                                $occStart = (string) $schedule->start_time;
+                                                $occEnd = (string) $schedule->end_time;
+                                                $occStartCarbon = \Carbon\CarbonImmutable::createFromFormat('H:i:s', strlen($occStart) === 5 ? $occStart . ':00' : $occStart);
+                                                $occEndCarbon = \Carbon\CarbonImmutable::createFromFormat('H:i:s', strlen($occEnd) === 5 ? $occEnd . ':00' : $occEnd);
+
+                                                $topOffset = (int) max(0, $startCarbon->diffInMinutes($occStartCarbon));
+                                                $occDuration = (int) max(0, $occStartCarbon->diffInMinutes($occEndCarbon));
+
+                                                $topPercent = $stackDuration > 0 ? ($topOffset / $stackDuration) * 100 : 0;
+                                                $heightPercent = $stackDuration > 0 ? ($occDuration / $stackDuration) * 100 : 100;
                                             @endphp
-                                            <div 
-                                                role="button" 
-                                                tabindex="0" 
-                                                class="grid-activity {{ $gridActivitySizeClass }} grid-activity-card" 
-                                                :class="{
-                                                    'stack-active': activeIndex === {{ $idx }},
-                                                    'stack-behind-1': ({{ $idx }} - activeIndex + count) % count === 1,
-                                                    'stack-behind-2': ({{ $idx }} - activeIndex + count) % count === 2,
-                                                    'stack-hidden': ({{ $idx }} - activeIndex + count) % count > 2
-                                                }"
+                                            <div
+                                                role="button"
+                                                tabindex="0"
+                                                class="grid-activity {{ $gridActivitySizeClass }} grid-activity-card"
+                                                style="--activity-color: {{ $activityTone($schedule) }}; top: {{ round($topPercent, 4) }}%; height: {{ round($heightPercent, 4) }}%;"
                                                 :style="{
-                                                    zIndex: activeIndex === {{ $idx }} ? 10 : (10 - (({{ $idx }} - activeIndex + count) % count))
+                                                    left: (({{ $idx }} - page * 3) * 12) + '%',
+                                                    width: (100 - (Math.min(3, count - page * 3) - 1) * 12) + '%',
+                                                    zIndex: 10 + ({{ $idx }} - page * 3)
                                                 }"
-                                                style="--activity-color: {{ $activityTone($schedule) }};" 
-                                                data-schedule-modal-trigger 
-                                                @click.stop="if (activeIndex !== {{ $idx }}) { activeIndex = {{ $idx }}; } else { detailModal = 'schedule-{{ $schedule->id }}'; }"
-                                                @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" 
+                                                x-show="{{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3"
+                                                data-schedule-modal-trigger
+                                                @click="detailModal = 'schedule-{{ $schedule->id }}'"
+                                                @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'"
                                                 @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'"
                                             >
                                                 <div class="grid-activity-top">
@@ -3891,7 +3930,7 @@
                                                     </div>
                                                 </div>
                                                 @if($schedule->studentGroups->isNotEmpty())
-                                                    <div class="grid-groups">
+                                                    <div class="grid-groups" :style="{{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1) ? 'padding-right: ' + (count > 3 ? '76px' : '48px') : ''">
                                                         @foreach($schedule->studentGroups as $group)
                                                             <span class="co-group-badge" style="--group-color: {{ $groupTone($group) }};">
                                                                 <span class="co-group-dot" aria-hidden="true"></span>
@@ -3900,15 +3939,31 @@
                                                         @endforeach
                                                     </div>
                                                 @else
-                                                    <div class="grid-activity-sub">ไม่มีกลุ่มนักศึกษา</div>
+                                                    <div class="grid-activity-sub" :style="{{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1) ? 'padding-right: ' + (count > 3 ? '76px' : '48px') : ''">ไม่มีกลุ่มนักศึกษา</div>
                                                 @endif
-                                                <div><span class="badge {{ $status['class'] }}">{{ $status['label'] }}</span></div>
+                                                <div :style="{{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1) ? 'padding-right: ' + (count > 3 ? '76px' : '48px') : ''"><span class="badge {{ $status['class'] }}">{{ $status['label'] }}</span></div>
+
+                                                @if($stackCount > 1)
+                                                    <div
+                                                        class="stack-indicator"
+                                                        x-show="{{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1)"
+                                                        @if($stackCount > 3)
+                                                            @click.stop="page = (page + 1) % Math.ceil(count / 3)"
+                                                            title="คลิกเพื่อดูการ์ดถัดไป"
+                                                        @endif
+                                                    >
+                                                        @if($stackCount > 3)
+                                                            <svg class="stack-sync-icon" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                                            </svg>
+                                                            <span x-text="((page * 3) + 1) + '-' + Math.min((page + 1) * 3, count) + ' จาก ' + count + ' ใบ'"></span>
+                                                        @else
+                                                            <span>{{ $stackCount }} ใบ</span>
+                                                        @endif
+                                                    </div>
+                                                @endif
                                             </div>
                                         @endforeach
-                                        <div class="stack-indicator" @click.stop="activeIndex = (activeIndex + 1) % count">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="stack-sync-icon"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-                                            <span x-text="(activeIndex + 1) + '/' + count"></span>
-                                        </div>
                                     </div>
                                 @endif
                             </div>
