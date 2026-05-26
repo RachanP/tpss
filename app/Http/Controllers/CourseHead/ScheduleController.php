@@ -67,7 +67,7 @@ class ScheduleController extends Controller
                 ->orderBy('start_time')
                 ->get();
 
-        $conflictMap = $this->scheduleConflictMap($schedules, $conflictChecker);
+        $conflictMap = $this->buildOwnedConflictMap($schedules, $conflictChecker);
         $conflictGroups = $offerings
             ->map(function (CourseOffering $offering) use ($schedules, $conflictMap) {
                 $offeringSchedules = $schedules
@@ -200,19 +200,7 @@ class ScheduleController extends Controller
 
         $scheduleRelations = $this->scheduleRelations();
 
-        $schedules = empty($offeringIds)
-            ? collect()
-            : Schedule::query()
-                ->with($scheduleRelations)
-                ->whereIn('course_offering_id', $offeringIds)
-                ->whereDate('start_date', '<=', $periodEnd->toDateString())
-                ->whereDate('end_date', '>=', $periodStart->toDateString())
-                ->orderBy('start_date')
-                ->orderBy('end_date')
-                ->orderBy('start_time')
-                ->get();
-
-        // All assigned schedules for filters/list context (no period filter)
+        // Fetch all schedules ONCE — derive period-filtered subset in PHP to save a DB query + relation cascade
         $allSchedules = ! empty($offeringIds)
             ? Schedule::query()
                 ->with($scheduleRelations)
@@ -221,6 +209,16 @@ class ScheduleController extends Controller
                 ->orderBy('start_time')
                 ->get()
             : collect();
+
+        $periodStartStr = $periodStart->toDateString();
+        $periodEndStr = $periodEnd->toDateString();
+        $schedules = $allSchedules->filter(function (Schedule $s) use ($periodStartStr, $periodEndStr) {
+            $sd = $s->start_date?->toDateString();
+            $ed = $s->end_date?->toDateString();
+            return $sd && $ed && $sd <= $periodEndStr && $ed >= $periodStartStr;
+        })
+            ->sortBy(fn (Schedule $s) => [$s->start_date?->toDateString(), $s->end_date?->toDateString(), $s->start_time])
+            ->values();
 
         $weekDays = collect(CarbonPeriod::create($periodStart, $gridEnd))
             ->map(fn ($date) => CarbonImmutable::parse($date))
@@ -254,7 +252,7 @@ class ScheduleController extends Controller
             'weekEnd' => $periodEnd,
             'weekDays' => $weekDays,
             'occurrences' => $occurrences,
-            'scheduleConflicts' => $this->scheduleConflictMap($allSchedules, app(ScheduleConflictChecker::class)),
+            'scheduleConflicts' => $this->buildOwnedConflictMap($allSchedules, app(ScheduleConflictChecker::class)),
             'timeSlots' => $timeSlots,
             'activityTypes' => ActivityType::orderBy('name')->get(),
             'rooms' => Room::query()
@@ -319,24 +317,40 @@ class ScheduleController extends Controller
         ];
     }
 
-    private function scheduleConflictMap(Collection $schedules, ScheduleConflictChecker $conflictChecker): Collection
+    /**
+     * Build a conflict map for the OWNED schedules — includes cross-course conflicts
+     * (owned vs. anyone else's overlapping schedule). Single fetch of all overlapping
+     * schedules in the relevant date range, then in-memory pairwise comparison.
+     */
+    private function buildOwnedConflictMap(Collection $ownedSchedules, ScheduleConflictChecker $conflictChecker): Collection
     {
-        return $schedules->mapWithKeys(function (Schedule $schedule) use ($conflictChecker) {
-            $conflicts = $conflictChecker->check(
-                [
-                    'start_date' => $schedule->start_date?->toDateString(),
-                    'end_date' => $schedule->end_date?->toDateString(),
-                    'start_time' => substr((string) $schedule->start_time, 0, 5),
-                    'end_time' => substr((string) $schedule->end_time, 0, 5),
-                    'room_id' => $schedule->room_id,
-                ],
-                $schedule->instructors->pluck('id')->map(fn ($id) => (int) $id)->all(),
-                $schedule->studentGroups->pluck('id')->map(fn ($id) => (int) $id)->all(),
-                $schedule->id
-            );
+        if ($ownedSchedules->isEmpty()) {
+            return collect();
+        }
 
-            return [$schedule->id => collect($conflicts)];
-        });
+        $ownedIds = $ownedSchedules->pluck('id')->map(fn ($v) => (int) $v)->all();
+        $minStart = $ownedSchedules->pluck('start_date')->filter()->min();
+        $maxEnd   = $ownedSchedules->pluck('end_date')->filter()->max();
+
+        if (! $minStart || ! $maxEnd) {
+            return collect();
+        }
+
+        // Fetch all schedules system-wide that could overlap any owned schedule's date window.
+        // Reuse owned schedules' loaded relations to avoid re-querying them.
+        $otherSchedules = Schedule::query()
+            ->with($this->scheduleRelations())
+            ->whereNotIn('id', $ownedIds)
+            ->whereDate('start_date', '<=', $maxEnd)
+            ->whereDate('end_date', '>=', $minStart)
+            ->get();
+
+        $candidates = $ownedSchedules->concat($otherSchedules);
+
+        // Bulk pairwise comparison; output map keyed by every schedule id involved.
+        return $conflictChecker
+            ->bulkConflictMap($candidates)
+            ->only($ownedIds);
     }
 
     private function scheduleTimeSlots(Collection $occurrences): array
