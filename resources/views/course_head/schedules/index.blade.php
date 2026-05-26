@@ -2,9 +2,10 @@
     $availableOfferings = ($availableOfferings ?? collect())->filter(fn ($offering) => $offering->academicYear?->phase === 'scheduling')->values();
     $activityTypes = $activityTypes ?? collect();
     $rooms = $rooms ?? collect();
+    $scheduleConflicts = $scheduleConflicts ?? collect();
     $isWorkspace = (bool) ($isWorkspace ?? false);
     $activeOfferingCount = $availableOfferings->filter(fn ($offering) => $offering->academicYear?->phase === 'scheduling')->count();
-    $academicYear = $courseOffering?->academicYear;
+    $academicYear = $courseOffering?->academicYear ?? $availableOfferings->first()?->academicYear;
     $canEdit = $isWorkspace ? $activeOfferingCount > 0 : ($courseOffering && $academicYear?->phase === 'scheduling');
     $schedulingOfferings = ($isWorkspace ? $availableOfferings : collect($courseOffering ? [$courseOffering] : []))
         ->filter(fn ($offering) => $offering?->academicYear?->phase === 'scheduling')
@@ -274,7 +275,13 @@
     $singleCourseSchedules = ($allSchedules ?? collect());
     $activityFilterOptions = $singleCourseSchedules->pluck('activityType')->filter()->unique('id')->sortBy('name')->values();
     $groupFilterOptions = $singleCourseSchedules->flatMap->studentGroups->unique('id')->sortBy('group_code')->values();
-    $instructorFilterOptions = $eligibleScheduleInstructors($courseOffering)->sortBy(fn ($instructor) => $instructor->formatted_name ?? $instructor->name);
+    $instructorFilterOptions = $isWorkspace
+        ? $singleCourseSchedules
+            ->flatMap(fn ($schedule) => $scheduleDepartmentInstructors($schedule))
+            ->unique('id')
+            ->sortBy(fn ($instructor) => $instructor->formatted_name ?? $instructor->name)
+            ->values()
+        : $eligibleScheduleInstructors($courseOffering)->sortBy(fn ($instructor) => $instructor->formatted_name ?? $instructor->name);
     $scheduleFilterItems = $singleCourseSchedules->map(function ($schedule) use ($formatDate, $formatTime, $scheduleDepartmentInstructors) {
         $instructors = $scheduleDepartmentInstructors($schedule);
 
@@ -351,10 +358,10 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            padding: 12px 14px;
+            padding: 16px 18px;
             border: 1px solid var(--schedule-border);
             border-radius: 10px;
-            background: var(--schedule-panel);
+            background: var(--surface);
             box-shadow: 0 1px 3px oklch(0% 0 0 / 0.05);
             flex-wrap: wrap;
         }
@@ -362,8 +369,48 @@
             font-size: 16px;
             font-weight: 900;
             color: var(--fg-1);
-            padding-right: 8px;
-            border-right: 1px solid var(--schedule-border);
+            margin-right: auto;
+            padding-right: 18px;
+        }
+        .schedule-toolbar .week-nav {
+            display: none !important;
+        }
+        .schedule-toolbar .grid-date-jump {
+            height: 34px;
+            padding: 0;
+            border: 0;
+            background: transparent;
+        }
+        .schedule-toolbar .grid-date-jump > span {
+            display: none;
+        }
+        .schedule-toolbar .grid-date-jump .sched-datenav-stack {
+            height: 34px;
+        }
+        .schedule-toolbar .grid-date-jump .sched-datenav-picker {
+            width: 178px;
+            flex-basis: 178px;
+        }
+        .schedule-toolbar .grid-date-jump .tdi-wrap,
+        .schedule-toolbar .grid-date-jump .tdi-input-cal {
+            width: 100% !important;
+        }
+        .schedule-toolbar .grid-date-jump .tdi-input-cal {
+            height: 34px;
+            border: 1px solid var(--schedule-border-strong);
+            border-radius: 8px;
+            background: var(--surface);
+            box-shadow: none;
+        }
+        .schedule-toolbar .grid-date-jump .tdi-cal-btn {
+            right: 7px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        .schedule-toolbar .toolbar-actions {
+            display: inline-flex;
+            align-items: center;
+            margin-left: 0;
         }
         .week-nav {
             display: flex;
@@ -1011,10 +1058,10 @@
             background: var(--surface);
         }
         .sched-list thead th {
-            background: oklch(96% 0.012 232);
+            background: oklch(93.5% 0.022 232);
             color: oklch(35% 0.035 232);
             text-align: left;
-            font-size: 11px;
+            font-size: 12px;
             font-weight: 800;
             padding: 10px 14px;
             border-bottom: 1px solid oklch(88% 0.015 232);
@@ -1064,7 +1111,7 @@
         }
         .sched-row > td {
             border-bottom: 1px solid oklch(94% 0.01 232);
-            padding: 9px 14px;
+            padding: 10px 14px;
             vertical-align: middle;
             font-size: 12.5px;
         }
@@ -1072,8 +1119,7 @@
             background: oklch(98.5% 0.006 232);
         }
         .sched-row > td:first-child {
-            box-shadow: inset 4px 0 0 var(--activity-color);
-            background: oklch(98% 0.008 232);
+            background: var(--surface);
         }
         .sched-row:hover > td,
         .sched-row:focus-visible > td {
@@ -1093,9 +1139,9 @@
         .sched-time-block {
             display: inline-grid;
             gap: 1px;
-            padding: 5px 8px 5px 11px;
+            padding: 6px 10px;
             border-radius: 8px;
-            background: oklch(96% 0.014 232);
+            background: oklch(96.5% 0.014 232);
             border: 1px solid var(--schedule-border);
         }
         .sched-duration {
@@ -1402,7 +1448,8 @@
             grid-template-columns: 74px repeat(5, minmax(146px, 1fr));
             border: 1px solid var(--schedule-border-strong);
             border-radius: 10px;
-            overflow: auto;
+            overflow-x: auto;
+            overflow-y: visible;
             background: var(--surface);
             box-shadow: 0 1px 4px oklch(0% 0 0 / 0.05);
         }
@@ -1576,6 +1623,26 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
+        .schedule-conflict-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            min-height: 20px;
+            padding: 2px 7px;
+            border: 1px solid var(--status-conflict-border);
+            border-radius: 999px;
+            background: var(--status-conflict-bg);
+            color: var(--status-conflict-fg);
+            font-size: 10px;
+            font-weight: 850;
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+        .schedule-conflict-pill svg {
+            width: 12px;
+            height: 12px;
+            flex: 0 0 auto;
+        }
         .grid-activity-foot {
             display: flex;
             align-items: center;
@@ -1636,6 +1703,34 @@
             min-height: 19px;
             padding: 1px 6px;
             font-size: 10px;
+        }
+        [data-testid="schedule-grid-view"] .grid-activity {
+            gap: 4px;
+            padding: 8px;
+        }
+        [data-testid="schedule-grid-view"] .grid-activity-sub {
+            display: none;
+        }
+        [data-testid="schedule-grid-view"] .grid-activity-meta {
+            gap: 1px;
+        }
+        [data-testid="schedule-grid-view"] .grid-instructor,
+        [data-testid="schedule-grid-view"] .grid-location-building,
+        [data-testid="schedule-grid-view"] .grid-groups {
+            display: none;
+        }
+        [data-testid="schedule-grid-view"] .grid-activity > div:last-child {
+            display: none;
+        }
+        [data-testid="schedule-grid-view"] .grid-location-name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        [data-testid="schedule-grid-view"] .grid-course {
+            background: oklch(94.5% 0.028 245);
+            border-color: color-mix(in oklch, var(--brand-navy) 32%, var(--schedule-border));
+            font-size: 9.5px;
         }
         .month-calendar {
             display: grid;
@@ -1771,6 +1866,25 @@
             font-size: 11px;
             font-weight: 650;
             padding: 8px 2px;
+        }
+        [data-testid="schedule-month-calendar"] .month-calendar-day {
+            min-height: 132px;
+        }
+        [data-testid="schedule-month-calendar"] .month-empty {
+            display: none;
+        }
+        [data-testid="schedule-month-calendar"] .month-activity {
+            padding: 6px;
+        }
+        [data-testid="schedule-month-calendar"] .month-activity-title {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            font-size: 10.8px;
+        }
+        [data-testid="schedule-month-calendar"] .month-activity .badge {
+            display: none;
         }
         .schedule-modal-backdrop {
             position: fixed;
@@ -2509,11 +2623,23 @@
                 </div>
                 <div class="offering-selector-wrapper">
                     <select id="offering-selector" class="offering-select-control" onchange="sessionStorage.setItem('tpss-schedule-scroll-y', window.scrollY); window.location.href = this.value">
+                        @php
+                            $selectorDate = ($selectedScheduleDate ?? $weekStart)->toDateString();
+                            $selectorPeriod = $schedulePeriod ?? 'week';
+                            $selectorQuery = array_filter([
+                                'date' => $selectorDate,
+                                'period' => $selectorPeriod,
+                                'include_weekends' => ($selectorPeriod === 'week' && ($includeWeekends ?? false)) ? 1 : null,
+                            ]);
+                        @endphp
                         @foreach($availableOfferings as $availOffering)
                             @php
                                 $availCourse = $availOffering->course;
                                 $isSelected = ! $isWorkspace && $courseOffering && $courseOffering->id === $availOffering->id;
-                                $optUrl = route('maker.course_offerings.schedules.index', $availOffering);
+                                $optUrl = route('maker.course_offerings.schedules.index', array_filter([
+                                    $availOffering,
+                                    ...$selectorQuery,
+                                ]));
                             @endphp
                             <option value="{{ $optUrl }}" {{ $isSelected ? 'selected' : '' }}>
                                 {{ $availCourse?->course_code ?? '-' }} - {{ $availCourse?->name_th ?? $availCourse?->name_en ?? 'ไม่มีชื่อรายวิชา' }}
@@ -2524,7 +2650,7 @@
             </div>
         @endif
 
-        @if($isWorkspace)
+        @if($isWorkspace && $availableOfferings->isNotEmpty())
         <div class="schedule-toolbar">
             <div class="schedule-title">ตารางสอน</div>
             <div class="week-nav" x-show="view === 'grid'" x-cloak>
@@ -2543,6 +2669,7 @@
                             :value="($selectedScheduleDate ?? $weekStart)->toDateString()"
                             :year-start="$scheduleDatePickerYearStart"
                             :year-end="$scheduleDatePickerYearEnd"
+                            class="sched-datenav-input"
                             x-model="gridJumpDate"
                             @change="jumpToGridDate(gridJumpDate)"
                             @keydown.enter.prevent="jumpToGridDate(gridJumpDate)"
@@ -2568,8 +2695,8 @@
                 <button type="button" :class="{ 'is-active': view === 'list' }" @click="view = 'list'" data-testid="schedule-list-toggle">แบบรายการ</button>
                 <button type="button" :class="{ 'is-active': view === 'grid' }" @click="view = 'grid'" data-testid="schedule-grid-toggle">แบบตาราง</button>
             </div>
-            <div class="toolbar-actions">
-                @if($canEdit)
+            @if($canEdit)
+                <div class="toolbar-actions">
                     <button
                         type="button"
                         class="btn btn-primary {{ ! $canCreateInCurrentPeriod ? 'is-disabled' : '' }}"
@@ -2579,10 +2706,8 @@
                         title="{{ ! $canCreateInCurrentPeriod ? $outsideCreateHint : '' }}"
                         aria-disabled="{{ ! $canCreateInCurrentPeriod ? 'true' : 'false' }}"
                     >+ เพิ่ม</button>
-                @else
-                    <span class="badge badge-gray">ดูข้อมูลอย่างเดียว</span>
-                @endif
-            </div>
+                </div>
+            @endif
         </div>
         @endif
 
@@ -2776,6 +2901,7 @@
                                                     $asActivity = $as->activityType;
                                                     $asRoom = $as->room;
                                                     $asInstructorText = $scheduleInstructorText($as);
+                                                    $asConflicts = $scheduleConflicts->get($as->id, collect());
                                                     $asSameDay = $as->start_date?->format('d/m/Y') === $as->end_date?->format('d/m/Y');
 
                                                     $dayOfWeekName = $thaiDays[$as->start_date->dayOfWeekIso] ?? '';
@@ -2811,6 +2937,14 @@
                                                             </div>
                                                         @else
                                                             <div class="co-activity-topic-main">{{ $asActivity?->name ?? 'กิจกรรม' }}</div>
+                                                        @endif
+                                                        @if($asConflicts->isNotEmpty())
+                                                            <div style="margin-top:6px;">
+                                                                <span class="schedule-conflict-pill" title="{{ $asConflicts->pluck('message')->implode(' / ') }}">
+                                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                                                    ชน {{ $asConflicts->count() }} รายการ
+                                                                </span>
+                                                            </div>
                                                         @endif
                                                     </td>
                                                     <td class="co-col-groups">
@@ -2881,6 +3015,7 @@
                                                 $activity = $schedule->activityType;
                                                 $room = $schedule->room;
                                                 $instructorText = $scheduleInstructorText($schedule);
+                                                $itemConflicts = $scheduleConflicts->get($schedule->id, collect());
                                             @endphp
                                             <div role="button" tabindex="0" class="month-activity" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
                                                 <div class="month-activity-time">{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }}</div>
@@ -2889,6 +3024,9 @@
                                                     <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }};">{{ $activity?->name ?? 'กิจกรรม' }}</span>
                                                     @if($schedule->studentGroups->isNotEmpty())
                                                         <span class="month-group-summary">{{ $schedule->studentGroups->count() }} กลุ่ม</span>
+                                                    @endif
+                                                    @if($itemConflicts->isNotEmpty())
+                                                        <span class="schedule-conflict-pill" title="{{ $itemConflicts->pluck('message')->implode(' / ') }}">ชน {{ $itemConflicts->count() }}</span>
                                                     @endif
                                                 </div>
                                             </div>
@@ -2933,6 +3071,7 @@
                                             $room = $schedule->room;
                                             $offeringCourse = $schedule->courseOffering?->course;
                                             $instructorText = $scheduleInstructorText($schedule);
+                                            $itemConflicts = $scheduleConflicts->get($schedule->id, collect());
                                             $activityRowStart = $gridRowStartForTime((string) $schedule->start_time);
                                             $activityRowSpan = $gridRowSpanForOccurrence($occurrence);
                                             $activityDuration = (int) $occurrence['duration_minutes'];
@@ -2948,6 +3087,9 @@
                                         <div role="button" tabindex="0" class="grid-activity {{ $gridActivitySizeClass }}" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
                                             <div class="grid-activity-top">
                                                 <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }};">{{ $activity?->name ?? 'กิจกรรม' }}</span>
+                                                @if($itemConflicts->isNotEmpty())
+                                                    <span class="schedule-conflict-pill" title="{{ $itemConflicts->pluck('message')->implode(' / ') }}">ชน {{ $itemConflicts->count() }}</span>
+                                                @endif
                                             </div>
                                             <div class="grid-activity-title">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
                                             <div class="grid-activity-time">{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }} · {{ $formatDuration($occurrence['duration_minutes']) }}</div>
@@ -2975,6 +3117,18 @@
                 @foreach($alertMessages as $message)
                     <div style="{{ ! $loop->last ? 'margin-bottom:6px;' : '' }}">{{ $message }}</div>
                 @endforeach
+            </div>
+        @endif
+
+        @if(session('schedule_conflict_warning'))
+            <div class="schedule-empty" style="border-color:var(--status-conflict-border);background:var(--status-conflict-bg);color:var(--status-conflict-fg);font-weight:800;text-align:left;" data-testid="schedule-conflict-save-warning">
+                <div style="margin-bottom:6px;">บันทึกแล้ว แต่พบการชน ต้องแก้ไขก่อนส่งอนุมัติ</div>
+                @foreach(collect(session('schedule_conflict_warning'))->take(4) as $message)
+                    <div style="font-weight:700;">{{ $message }}</div>
+                @endforeach
+                <div style="margin-top:10px;">
+                    <a href="{{ route('maker.schedule_conflicts.index') }}" class="btn btn-secondary" style="text-decoration:none;">ดูการแจ้งเตือนการชน</a>
+                </div>
             </div>
         @endif
 
@@ -3040,6 +3194,7 @@
                                         $timeText = $formatTime($schedule->start_time) . '-' . $formatTime($schedule->end_time);
                                         $instructorText = $scheduleInstructorText($schedule);
                                         $status = $statusMeta[$schedule->status] ?? ['label' => $schedule->status, 'class' => 'badge-gray'];
+                                        $itemConflicts = $scheduleConflicts->get($schedule->id, collect());
                                     @endphp
                                     <tr role="button" tabindex="0" class="sched-row" style="--activity-color: {{ $activityTone($schedule) }};" data-testid="schedule-row" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
                                         <td>
@@ -3055,6 +3210,9 @@
                                                 <span class="sched-activity-course" style="margin-left:0; font-size: 10.5px;">{{ $offeringCourse?->course_code ?? '-' }}</span>
                                                 @if($isWorkspace && ($offeringCourse?->name_th || $offeringCourse?->name_en))
                                                     <span class="sched-muted" style="font-size: 10.5px;">· {{ $offeringCourse?->name_th ?? $offeringCourse?->name_en }}</span>
+                                                @endif
+                                                @if($itemConflicts->isNotEmpty())
+                                                    <span class="schedule-conflict-pill" title="{{ $itemConflicts->pluck('message')->implode(' / ') }}">ชน {{ $itemConflicts->count() }}</span>
                                                 @endif
                                             </div>
                                         </td>
@@ -3117,13 +3275,14 @@
                                             $offeringCourse = $schedule->courseOffering?->course;
                                             $instructorText = $scheduleInstructorText($schedule);
                                             $status = $statusMeta[$schedule->status] ?? ['label' => $schedule->status, 'class' => 'badge-gray'];
+                                            $itemConflicts = $scheduleConflicts->get($schedule->id, collect());
                                         @endphp
                                         <div role="button" tabindex="0" class="month-activity" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
                                             <div class="month-activity-time">{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }}</div>
                                             <div class="month-activity-title">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
                                             <div class="month-activity-meta">
                                                 @if($offeringCourse?->course_code)
-                                                    {{ $offeringCourse->course_code }}
+                                                    <span class="grid-course">{{ $offeringCourse->course_code }}</span>
                                                 @else
                                                     {{ $room?->room_name ?? $room?->room_code ?? 'ไม่ระบุสถานที่' }}
                                                 @endif
@@ -3132,6 +3291,9 @@
                                                 <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }};">{{ $activity?->name ?? 'กิจกรรม' }}</span>
                                                 @if($schedule->studentGroups->isNotEmpty())
                                                     <span class="month-group-summary">{{ $schedule->studentGroups->count() }} กลุ่ม</span>
+                                                @endif
+                                                @if($itemConflicts->isNotEmpty())
+                                                    <span class="schedule-conflict-pill" title="{{ $itemConflicts->pluck('message')->implode(' / ') }}">ชน {{ $itemConflicts->count() }}</span>
                                                 @endif
                                                 <span class="badge {{ $status['class'] }}">{{ $status['label'] }}</span>
                                             </div>
@@ -3178,6 +3340,7 @@
                                         $offeringCourse = $schedule->courseOffering?->course;
                                         $instructorText = $scheduleInstructorText($schedule);
                                         $status = $statusMeta[$schedule->status] ?? ['label' => $schedule->status, 'class' => 'badge-gray'];
+                                        $itemConflicts = $scheduleConflicts->get($schedule->id, collect());
                                             $activityRowStart = $gridRowStartForTime((string) $schedule->start_time);
                                             $activityRowSpan = $gridRowSpanForOccurrence($occurrence);
                                             $activityDuration = (int) $occurrence['duration_minutes'];
@@ -3192,6 +3355,9 @@
                                                 <span class="grid-course">{{ $offeringCourse->course_code }}</span>
                                             @endif
                                             <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }};">{{ $activity?->name ?? 'กิจกรรม' }}</span>
+                                            @if($itemConflicts->isNotEmpty())
+                                                <span class="schedule-conflict-pill" title="{{ $itemConflicts->pluck('message')->implode(' / ') }}">ชน {{ $itemConflicts->count() }}</span>
+                                            @endif
                                         </div>
                                         <div class="grid-activity-title">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
                                         @if($isWorkspace && ($offeringCourse?->name_th || $offeringCourse?->name_en))

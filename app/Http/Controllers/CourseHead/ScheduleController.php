@@ -52,6 +52,47 @@ class ScheduleController extends Controller
         ));
     }
 
+    public function conflicts(Request $request, ScheduleConflictChecker $conflictChecker): View
+    {
+        $offerings = $this->coordinatorScheduleOfferings();
+        $offeringIds = $offerings->pluck('id')->all();
+
+        $schedules = empty($offeringIds)
+            ? collect()
+            : Schedule::query()
+                ->with($this->scheduleRelations())
+                ->whereIn('course_offering_id', $offeringIds)
+                ->orderBy('start_date')
+                ->orderBy('start_time')
+                ->get();
+
+        $conflictMap = $this->scheduleConflictMap($schedules, $conflictChecker);
+        $conflictGroups = $offerings
+            ->map(function (CourseOffering $offering) use ($schedules, $conflictMap) {
+                $offeringSchedules = $schedules
+                    ->where('course_offering_id', $offering->id)
+                    ->filter(fn (Schedule $schedule) => $conflictMap->get($schedule->id, collect())->isNotEmpty())
+                    ->values();
+
+                return [
+                    'offering' => $offering,
+                    'schedules' => $offeringSchedules,
+                    'conflict_count' => $offeringSchedules->sum(
+                        fn (Schedule $schedule) => $conflictMap->get($schedule->id, collect())->count()
+                    ),
+                ];
+            })
+            ->filter(fn (array $group) => $group['schedules']->isNotEmpty())
+            ->values();
+
+        return view('course_head.schedule_conflicts.index', [
+            'offerings' => $offerings,
+            'conflictGroups' => $conflictGroups,
+            'conflictMap' => $conflictMap,
+            'totalConflictCount' => $conflictMap->sum(fn (Collection $conflicts) => $conflicts->count()),
+        ]);
+    }
+
     public function index(Request $request, CourseOffering $courseOffering): View
     {
         $this->authorizeCourseHeadOffering($courseOffering);
@@ -156,20 +197,12 @@ class ScheduleController extends Controller
             default => $includeWeekends ? $periodEnd : $periodStart->addDays(4),
         };
 
+        $scheduleRelations = $this->scheduleRelations();
+
         $schedules = empty($offeringIds)
             ? collect()
             : Schedule::query()
-                ->with([
-                    'courseOffering.course.curriculum',
-                    'courseOffering.course.department',
-                    'courseOffering.academicYear',
-                    'courseOffering.instructorPool.instructorProfile.department',
-                    'courseOffering.studentGroups' => fn ($query) => $query->orderBy('group_code'),
-                    'activityType',
-                    'room.locationType',
-                    'instructors.instructorProfile.department',
-                    'studentGroups',
-                ])
+                ->with($scheduleRelations)
                 ->whereIn('course_offering_id', $offeringIds)
                 ->whereDate('start_date', '<=', $periodEnd->toDateString())
                 ->whereDate('end_date', '>=', $periodStart->toDateString())
@@ -178,21 +211,11 @@ class ScheduleController extends Controller
                 ->orderBy('start_time')
                 ->get();
 
-        // All schedules for single-offering list view (no week filter)
-        $allSchedules = (! $isWorkspace && $courseOffering)
+        // All assigned schedules for filters/list context (no period filter)
+        $allSchedules = ! empty($offeringIds)
             ? Schedule::query()
-                ->with([
-                    'courseOffering.course.curriculum',
-                    'courseOffering.course.department',
-                    'courseOffering.academicYear',
-                    'courseOffering.instructorPool.instructorProfile.department',
-                    'courseOffering.studentGroups' => fn ($query) => $query->orderBy('group_code'),
-                    'activityType',
-                    'room.locationType',
-                    'instructors.instructorProfile.department',
-                    'studentGroups',
-                ])
-                ->where('course_offering_id', $courseOffering->id)
+                ->with($scheduleRelations)
+                ->whereIn('course_offering_id', $offeringIds)
                 ->orderBy('start_date')
                 ->orderBy('start_time')
                 ->get()
@@ -230,6 +253,7 @@ class ScheduleController extends Controller
             'weekEnd' => $periodEnd,
             'weekDays' => $weekDays,
             'occurrences' => $occurrences,
+            'scheduleConflicts' => $this->scheduleConflictMap($allSchedules, app(ScheduleConflictChecker::class)),
             'timeSlots' => $timeSlots,
             'activityTypes' => ActivityType::orderBy('name')->get(),
             'rooms' => Room::query()
@@ -277,6 +301,41 @@ class ScheduleController extends Controller
             'scheduleDatePickerYearStart' => min($minAcademicYear - 10, $currentYear - 20),
             'scheduleDatePickerYearEnd' => max($maxAcademicYear + 5, $currentYear + 1),
         ];
+    }
+
+    private function scheduleRelations(): array
+    {
+        return [
+            'courseOffering.course.curriculum',
+            'courseOffering.course.department',
+            'courseOffering.academicYear',
+            'courseOffering.instructorPool.instructorProfile.department',
+            'courseOffering.studentGroups' => fn ($query) => $query->orderBy('group_code'),
+            'activityType',
+            'room.locationType',
+            'instructors.instructorProfile.department',
+            'studentGroups',
+        ];
+    }
+
+    private function scheduleConflictMap(Collection $schedules, ScheduleConflictChecker $conflictChecker): Collection
+    {
+        return $schedules->mapWithKeys(function (Schedule $schedule) use ($conflictChecker) {
+            $conflicts = $conflictChecker->check(
+                [
+                    'start_date' => $schedule->start_date?->toDateString(),
+                    'end_date' => $schedule->end_date?->toDateString(),
+                    'start_time' => substr((string) $schedule->start_time, 0, 5),
+                    'end_time' => substr((string) $schedule->end_time, 0, 5),
+                    'room_id' => $schedule->room_id,
+                ],
+                $schedule->instructors->pluck('id')->map(fn ($id) => (int) $id)->all(),
+                $schedule->studentGroups->pluck('id')->map(fn ($id) => (int) $id)->all(),
+                $schedule->id
+            );
+
+            return [$schedule->id => collect($conflicts)];
+        });
     }
 
     private function scheduleTimeSlots(Collection $occurrences): array
@@ -418,7 +477,7 @@ class ScheduleController extends Controller
         $this->assertSelectedGroupsFitCapacity($courseOffering, $validated);
         $this->assertInstructorsBelongToCourseDepartment($courseOffering, $validated['instructor_ids']);
         $this->assertLeadInstructorSelected($validated);
-        $this->assertNoConflicts($conflictChecker, $validated);
+        $conflicts = $this->detectConflicts($conflictChecker, $validated);
 
         DB::transaction(function () use ($courseOffering, $validated): void {
             $schedule = Schedule::create([
@@ -443,7 +502,8 @@ class ScheduleController extends Controller
 
         return redirect()
             ->to($this->scheduleReturnUrl($request, $courseOffering, $validated['start_date'], $redirectToWorkspace))
-            ->with('success', 'เพิ่มรายการสอนเรียบร้อยแล้ว');
+            ->with('success', 'เพิ่มรายการสอนเรียบร้อยแล้ว')
+            ->with('schedule_conflict_warning', collect($conflicts)->pluck('message')->unique()->values()->all());
     }
 
     public function edit(CourseOffering $courseOffering, Schedule $schedule): View|RedirectResponse
@@ -475,7 +535,7 @@ class ScheduleController extends Controller
         $this->assertSelectedGroupsFitCapacity($courseOffering, $validated);
         $this->assertInstructorsBelongToCourseDepartment($courseOffering, $validated['instructor_ids']);
         $this->assertLeadInstructorSelected($validated);
-        $this->assertNoConflicts($conflictChecker, $validated, $schedule->id);
+        $conflicts = $this->detectConflicts($conflictChecker, $validated, $schedule->id);
 
         DB::transaction(function () use ($schedule, $validated): void {
             $schedule->update([
@@ -497,7 +557,8 @@ class ScheduleController extends Controller
 
         return redirect()
             ->to($this->scheduleReturnUrl($request, $courseOffering, $validated['start_date']))
-            ->with('success', 'อัปเดตรายการสอนเรียบร้อยแล้ว');
+            ->with('success', 'อัปเดตรายการสอนเรียบร้อยแล้ว')
+            ->with('schedule_conflict_warning', collect($conflicts)->pluck('message')->unique()->values()->all());
     }
 
     public function destroy(Request $request, CourseOffering $courseOffering, Schedule $schedule): RedirectResponse
@@ -766,23 +827,17 @@ class ScheduleController extends Controller
         }
     }
 
-    private function assertNoConflicts(
+    private function detectConflicts(
         ScheduleConflictChecker $conflictChecker,
         array $validated,
         ?int $ignoreScheduleId = null
-    ): void {
-        $conflicts = $conflictChecker->check(
+    ): array {
+        return $conflictChecker->check(
             Arr::only($validated, ['start_date', 'end_date', 'start_time', 'end_time', 'room_id']),
             array_map('intval', $validated['instructor_ids']),
             array_map('intval', $validated['student_group_ids']),
             $ignoreScheduleId
         );
-
-        if (! empty($conflicts)) {
-            throw ValidationException::withMessages([
-                'schedule' => collect($conflicts)->pluck('message')->unique()->values()->all(),
-            ]);
-        }
     }
 
     private function syncInstructors(Schedule $schedule, array $validated): void

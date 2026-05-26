@@ -35,6 +35,7 @@ Route::middleware(['auth', 'no-back'])->group(function () {
 
     Route::middleware(['\App\Http\Middleware\CheckRole:course_head'])->group(function () {
         Route::get('/maker/schedules', [ScheduleController::class, 'workspace'])->name('maker.schedules.index');
+        Route::get('/maker/schedule-conflicts', [ScheduleController::class, 'conflicts'])->name('maker.schedule_conflicts.index');
         Route::get('/maker/schedules/create', [ScheduleController::class, 'createGlobal'])->name('maker.schedules.create');
         Route::post('/maker/schedules', [ScheduleController::class, 'storeGlobal'])->name('maker.schedules.store');
     });

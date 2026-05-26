@@ -256,11 +256,95 @@ class ScheduleFlowSeeder extends Seeder
 
         $this->command->info("ScheduleFlowSeeder: สร้างรายการสอน {$schedulesCreated} รายการ ใน {$offeringsWithSchedules} รายวิชา (ทั้งเทอม {$termStart->format('Y-m-d')} - {$termEnd->format('Y-m-d')})");
 
+        $demoConflictsCreated = $this->seedDemoConflicts($offerings, $lectureType);
+
+        if ($demoConflictsCreated > 0) {
+            $this->command->info("ScheduleFlowSeeder: สร้างรายการชนตัวอย่าง {$demoConflictsCreated} รายการ สำหรับทดสอบหน้าการแจ้งเตือนการชน");
+        }
+
         if ($skippedActivities > 0) {
             $this->command->warn("ScheduleFlowSeeder: ข้าม {$skippedActivities} กิจกรรม เพราะหาห้องหรือผู้สอนที่ว่างไม่พอ");
         }
 
         $this->reportSeededScheduleIntegrity($offeringIds, $termStart, $termEnd);
+    }
+
+    private function seedDemoConflicts($offerings, ActivityType $activityType): int
+    {
+        $sourceSchedule = Schedule::query()
+            ->with(['courseOffering.course', 'instructors', 'studentGroups'])
+            ->whereIn('course_offering_id', $offerings->pluck('id')->all())
+            ->whereNotNull('room_id')
+            ->whereHas('instructors')
+            ->orderBy('start_date')
+            ->orderBy('start_time')
+            ->first();
+
+        if (! $sourceSchedule) {
+            return 0;
+        }
+
+        $targetOffering = $offerings
+            ->filter(fn (CourseOffering $offering) => (int) $offering->id !== (int) $sourceSchedule->course_offering_id
+                && $offering->studentGroups->isNotEmpty())
+            ->sortBy('id')
+            ->first();
+
+        if (! $targetOffering) {
+            return 0;
+        }
+
+        $targetOffering->load(['course', 'studentGroups', 'instructorPool.instructorProfile']);
+        $targetInstructorIds = $this->eligibleInstructorIds($targetOffering);
+
+        if (empty($targetInstructorIds)) {
+            $this->ensureOfferingInstructors($targetOffering);
+            $targetOffering->load(['course', 'studentGroups', 'instructorPool.instructorProfile']);
+            $targetInstructorIds = $this->eligibleInstructorIds($targetOffering);
+        }
+
+        $targetGroupIds = $targetOffering->studentGroups->pluck('id')->all();
+
+        if (empty($targetInstructorIds) || empty($targetGroupIds)) {
+            return 0;
+        }
+
+        $selectedInstructorIds = $this->instructorWindow($targetInstructorIds, (int) $targetOffering->id);
+        $leadId = $selectedInstructorIds[0] ?? null;
+
+        DB::transaction(function () use (
+            $targetOffering,
+            $sourceSchedule,
+            $activityType,
+            $selectedInstructorIds,
+            $leadId,
+            $targetGroupIds
+        ): void {
+            $schedule = Schedule::create([
+                'course_offering_id' => $targetOffering->id,
+                'activity_type_id' => $activityType->id,
+                'room_id' => $sourceSchedule->room_id,
+                'practicum_series_id' => null,
+                'start_date' => $sourceSchedule->start_date,
+                'end_date' => $sourceSchedule->end_date,
+                'teaching_date' => $sourceSchedule->teaching_date ?? $sourceSchedule->start_date,
+                'start_time' => $sourceSchedule->start_time,
+                'end_time' => $sourceSchedule->end_time,
+                'topic' => 'รายการสอนทดสอบการชน - ห้องซ้อนกับรายวิชาอื่น',
+                'capacity_required' => (int) $targetOffering->total_student_count ?: null,
+                'status' => 'draft',
+            ]);
+
+            $payload = [];
+            foreach ($selectedInstructorIds as $id) {
+                $payload[$id] = ['is_lead' => (int) $id === (int) $leadId];
+            }
+
+            $schedule->instructors()->sync($payload);
+            $schedule->studentGroups()->sync($targetGroupIds);
+        });
+
+        return 1;
     }
 
     /**
@@ -343,27 +427,27 @@ class ScheduleFlowSeeder extends Seeder
     private function createGeneratedInstructor(CourseOffering $offering, int $departmentId, int $sequence): User
     {
         $username = $this->generatedInstructorPrefix($offering) . sprintf('%02d', $sequence);
-        $namePool = [
-            'นลินี วิชาการ',
-            'กานต์ธิดา สุขใจ',
-            'ปรียาภรณ์ วัฒนกุล',
-            'ธนวัฒน์ พิพัฒน์สุข',
-            'อรพรรณ ตั้งมั่น',
-            'พีรพล เกื้อกูล',
-        ];
-        $name = $namePool[($sequence - 1) % count($namePool)];
+        $identity = $this->generatedInstructorIdentity($offering, $sequence);
 
         $user = User::firstOrCreate(
             ['username' => $username],
             [
-                'prefix' => $sequence % 2 === 0 ? 'นาย' : 'นางสาว',
+                'prefix' => $identity['prefix'],
                 'employee_id' => sprintf('8%04d%02d', $offering->id, $sequence),
-                'name' => $name,
+                'name' => $identity['name'],
                 'email' => $username . '@mahidol.edu',
                 'password' => 'password',
                 'is_active' => true,
             ]
         );
+
+        $user->forceFill([
+            'prefix' => $identity['prefix'],
+            'employee_id' => sprintf('8%04d%02d', $offering->id, $sequence),
+            'name' => $identity['name'],
+            'email' => $username . '@mahidol.edu',
+            'is_active' => true,
+        ])->save();
 
         UserRole::firstOrCreate(
             ['user_id' => $user->id, 'role' => 'instructor'],
@@ -392,6 +476,79 @@ class ScheduleFlowSeeder extends Seeder
     private function generatedInstructorPrefix(CourseOffering $offering): string
     {
         return sprintf('schedule_offering_%d_', $offering->id);
+    }
+
+    /**
+     * @return array{prefix: string, name: string}
+     */
+    private function generatedInstructorIdentity(CourseOffering $offering, int $sequence): array
+    {
+        $givenNames = [
+            ['prefix' => 'นางสาว', 'name' => 'นลินี'],
+            ['prefix' => 'นางสาว', 'name' => 'กานต์ธิดา'],
+            ['prefix' => 'นางสาว', 'name' => 'ปรียาภรณ์'],
+            ['prefix' => 'นาย', 'name' => 'ธนวัฒน์'],
+            ['prefix' => 'นางสาว', 'name' => 'อรพรรณ'],
+            ['prefix' => 'นาย', 'name' => 'พีรพล'],
+            ['prefix' => 'นางสาว', 'name' => 'พิมพ์ชนก'],
+            ['prefix' => 'นาย', 'name' => 'ศรัณย์'],
+            ['prefix' => 'นางสาว', 'name' => 'วราภรณ์'],
+            ['prefix' => 'นาย', 'name' => 'ณัฐภัทร'],
+            ['prefix' => 'นางสาว', 'name' => 'สุชาดา'],
+            ['prefix' => 'นาย', 'name' => 'กิตติพงศ์'],
+            ['prefix' => 'นางสาว', 'name' => 'มนัสนันท์'],
+            ['prefix' => 'นาย', 'name' => 'ปกรณ์'],
+            ['prefix' => 'นางสาว', 'name' => 'ชุติมา'],
+            ['prefix' => 'นาย', 'name' => 'ธีรภัทร'],
+            ['prefix' => 'นางสาว', 'name' => 'ภาวิณี'],
+            ['prefix' => 'นาย', 'name' => 'ภาสกร'],
+            ['prefix' => 'นางสาว', 'name' => 'อัจฉรา'],
+            ['prefix' => 'นาย', 'name' => 'วรุตม์'],
+            ['prefix' => 'นางสาว', 'name' => 'เมธาวี'],
+            ['prefix' => 'นาย', 'name' => 'ชยพล'],
+            ['prefix' => 'นางสาว', 'name' => 'รัตนา'],
+        ];
+
+        $familyNames = [
+            'วิชาการ',
+            'สุขใจ',
+            'วัฒนกุล',
+            'พิพัฒน์สุข',
+            'ตั้งมั่น',
+            'เกื้อกูล',
+            'ศรีสวัสดิ์',
+            'จิตต์มั่น',
+            'อรุณรักษ์',
+            'ธำรงเวช',
+            'อินทรสุข',
+            'วรสิทธิ์',
+            'สุนทรกิจ',
+            'ศิริวงศ์',
+            'ปัญญาพูล',
+            'กุลประเสริฐ',
+            'รัตนานนท์',
+            'บูรณศิลป์',
+            'ธรรมวัฒน์',
+            'เพชรประภา',
+            'เลิศวิทยา',
+            'ภักดีสุข',
+            'จันทร์ฉาย',
+            'สร้อยสน',
+            'ทวีวัฒน์',
+            'คงสมบัติ',
+            'แสงอรุณ',
+            'เวชภิบาล',
+            'มิ่งขวัญ',
+        ];
+
+        $index = max(0, ((int) $offering->id - 1) * self::MIN_INSTRUCTORS_PER_OFFERING + ($sequence - 1));
+        $given = $givenNames[$index % count($givenNames)];
+        $familyName = $familyNames[$index % count($familyNames)];
+
+        return [
+            'prefix' => $given['prefix'],
+            'name' => "{$given['name']} {$familyName}",
+        ];
     }
 
     /**
@@ -580,10 +737,18 @@ class ScheduleFlowSeeder extends Seeder
             }
         }
 
-        if ($withoutInstructors > 0 || $withoutGroups > 0 || $roomOverlaps > 0 || $instructorOverlaps > 0) {
+        if ($withoutInstructors > 0 || $withoutGroups > 0) {
             $this->command->warn(
                 "ScheduleFlowSeeder: ตรวจพบข้อมูลที่ควรทบทวน — ไม่มีผู้สอน {$withoutInstructors} รายการ, "
                 . "ไม่มีกลุ่ม {$withoutGroups} รายการ, ห้องชน {$roomOverlaps} จุด, ผู้สอนชน {$instructorOverlaps} จุด"
+            );
+
+            return;
+        }
+
+        if ($roomOverlaps > 0 || $instructorOverlaps > 0) {
+            $this->command->info(
+                "ScheduleFlowSeeder: ตรวจสอบแล้ว - รายการสอนมีผู้สอน/กลุ่มครบ และมีรายการชนตัวอย่าง ห้องชน {$roomOverlaps} จุด, ผู้สอนชน {$instructorOverlaps} จุด"
             );
 
             return;
