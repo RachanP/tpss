@@ -261,6 +261,40 @@
             ])->filter()->implode(' '), 'UTF-8'),
         ];
     })->values();
+
+    $groupOccurrencesIntoStacks = function($dayOccurrences) {
+        $stacks = [];
+        if (!$dayOccurrences || $dayOccurrences->isEmpty()) {
+            return $stacks;
+        }
+        $sortedOccurrences = $dayOccurrences->sortBy(fn($occ) => $occ['schedule']->start_time)->values();
+
+        foreach ($sortedOccurrences as $occ) {
+            $inserted = false;
+            foreach ($stacks as &$stack) {
+                $overlaps = false;
+                foreach ($stack as $existing) {
+                    $s1 = $occ['schedule']->start_time;
+                    $e1 = $occ['schedule']->end_time;
+                    $s2 = $existing['schedule']->start_time;
+                    $e2 = $existing['schedule']->end_time;
+                    if ($s1 < $e2 && $s2 < $e1) {
+                        $overlaps = true;
+                        break;
+                    }
+                }
+                if ($overlaps) {
+                    $stack[] = $occ;
+                    $inserted = true;
+                    break;
+                }
+            }
+            if (!$inserted) {
+                $stacks[] = [$occ];
+            }
+        }
+        return $stacks;
+    };
 @endphp
 
 <x-app-layout title="ตารางสอน">
@@ -717,6 +751,72 @@
         .schedule-shell .btn.is-disabled:hover,
         .day-add-link:disabled:hover {
             transform: none;
+        }
+        .floating-create-button {
+            position: fixed;
+            right: 28px;
+            bottom: 24px;
+            z-index: 55;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 46px;
+            padding: 10px 16px;
+            border: 1px solid var(--brand-navy);
+            border-radius: 999px;
+            background: var(--brand-navy);
+            color: oklch(98% 0.004 240);
+            box-shadow: 0 10px 24px oklch(0% 0 0 / 0.18);
+            font: inherit;
+            font-size: 14px;
+            font-weight: 900;
+            cursor: pointer;
+            transition: transform .18s ease, box-shadow .18s ease, opacity .18s ease, padding .18s ease, width .18s ease, height .18s ease;
+            will-change: transform, opacity;
+        }
+        .floating-create-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 12px 28px oklch(0% 0 0 / 0.22);
+        }
+        .floating-create-button:focus-visible {
+            outline: 3px solid color-mix(in oklch, var(--brand-navy) 28%, transparent);
+            outline-offset: 3px;
+        }
+        /* Compact state while scrolling: small circular button, faded */
+        .floating-create-button.compact {
+            padding: 8px;
+            min-height: 40px;
+            width: 40px;
+            border-radius: 999px;
+            gap: 0;
+            opacity: .66;
+            transform: translateY(0) scale(.98);
+            box-shadow: 0 6px 12px oklch(0% 0 0 / 0.12);
+        }
+        .floating-create-button.compact span:not(.floating-create-icon) {
+            display: none;
+        }
+        .floating-create-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            border-radius: 999px;
+            background: oklch(98% 0.004 240 / 0.16);
+            font-size: 18px;
+            line-height: 1;
+            transition: background .18s ease, width .18s ease, height .18s ease;
+        }
+        @media (max-width: 760px) {
+            .floating-create-button {
+                right: 16px;
+                bottom: 16px;
+                min-height: 44px;
+                padding: 9px 14px;
+                font-size: 13px;
+            }
         }
         .compact-summary {
             color: var(--schedule-muted);
@@ -1457,6 +1557,7 @@
             flex: 1 1 auto;
         }
         .schedule-grid.is-precise .grid-cell-activity .grid-activity {
+            height: 100%;
             min-height: 100%;
             padding: 8px 9px;
             gap: 5px;
@@ -1489,6 +1590,9 @@
         .grid-activity.is-tall {
             padding: 10px 10px 9px;
             gap: 7px;
+        }
+        .schedule-grid.is-precise .grid-activity.is-tall .grid-activity-foot {
+            margin-top: auto;
         }
         .grid-activity strong,
         .grid-activity-title {
@@ -1537,12 +1641,26 @@
             min-width: 0;
         }
         .grid-activity .activity-tag {
+            display: inline-grid;
+            place-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            flex: 0 0 96px;
+            width: 96px;
+            max-width: 96px;
             min-height: 18px;
             padding: 1px 6px;
             font-size: 9.5px;
             line-height: 1.25;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            text-align: center;
         }
         .grid-activity.is-compact .activity-tag {
+            flex-basis: 96px;
+            width: 96px;
+            max-width: 96px;
             min-height: 17px;
             padding: 1px 5px;
             font-size: 9px;
@@ -1574,10 +1692,18 @@
             margin-top: 2px;
         }
         .grid-activity.is-compact .grid-activity-time {
-            font-size: 10px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            display: none;
+        }
+        .grid-activity.is-compact .grid-activity-sub,
+        .grid-activity.is-compact .grid-activity-meta,
+        .grid-activity.is-compact .grid-groups,
+        .grid-activity.is-compact .grid-location-name,
+        .grid-activity.is-compact .grid-location-building,
+        .grid-activity.is-compact .grid-instructor,
+        .grid-activity.is-compact .co-group-badge,
+        .grid-activity.is-compact .group-chip,
+        .grid-activity.is-compact .badge {
+            display: none;
         }
         .schedule-conflict-pill {
             display: inline-flex;
@@ -1608,6 +1734,9 @@
             margin-top: auto;
             padding-top: 4px;
         }
+        .grid-activity-foot:has(.grid-activity-groups) {
+            justify-content: flex-end;
+        }
         .grid-activity-room {
             flex: 1;
             min-width: 0;
@@ -1621,6 +1750,7 @@
         .grid-activity-groups {
             position: relative;
             flex-shrink: 0;
+            margin-left: auto;
             min-height: 19px;
             padding: 1px 7px;
             border-radius: 999px;
@@ -1635,7 +1765,136 @@
             cursor: help;
         }
         .grid-activity.is-compact .grid-activity-foot {
+            display: flex;
+            padding-top: 2px;
+        }
+        .grid-activity-card.is-stacked-card {
+            padding: 9px 10px !important;
+            gap: 5px;
+            overflow: hidden;
+        }
+        .grid-activity-card.is-stacked-card .grid-activity-top {
+            min-height: 0;
+        }
+        .grid-activity-card.is-stacked-card .grid-activity-title {
+            font-size: 12px;
+            line-height: 1.42;
+            margin-top: 0;
+            word-break: normal;
+            overflow-wrap: normal;
+        }
+        .grid-activity-card.is-stacked-card .grid-activity-time {
+            font-size: 10.8px;
+            line-height: 1.25;
+        }
+        .grid-activity-card.is-stacked-card .grid-activity-foot {
+            min-height: 22px;
+            align-items: flex-end;
+            margin-top: auto;
+            padding-top: 2px;
+        }
+        .grid-activity-card.is-stacked-card.has-no-visible-stack-switcher {
+            padding-bottom: 9px !important;
+        }
+        .grid-activity-card.is-stacked-card.has-no-visible-stack-switcher {
+            justify-content: flex-start;
+        }
+        .grid-activity-card.is-stacked-card.has-no-visible-stack-switcher .grid-activity-foot {
+            margin-top: auto;
+            padding-top: 8px;
+        }
+        .grid-activity-card.is-stacked-card:not(.is-compact).has-no-visible-stack-switcher {
+            padding-bottom: 40px !important;
+        }
+        .grid-activity-card.is-stacked-card:not(.is-compact).has-no-visible-stack-switcher .grid-activity-foot {
+            position: absolute;
+            left: 10px;
+            right: 10px;
+            bottom: 10px;
+            padding-top: 0;
+        }
+        .grid-activity-card.is-stacked-card.has-visible-stack-switcher .grid-activity-foot {
+            padding-right: 0;
+        }
+        .grid-activity-card.is-stacked-card.has-visible-stack-switcher {
+            gap: 4px;
+            padding-bottom: 36px !important;
+        }
+        .grid-activity-card.is-stacked-card.has-visible-stack-switcher .grid-activity-top {
+            min-height: 0;
+        }
+        .grid-activity-card.is-stacked-card.has-visible-stack-switcher .grid-activity-title {
+            line-height: 1.42;
+            -webkit-line-clamp: 1;
+        }
+        .grid-activity-card.is-stacked-card.has-visible-stack-switcher .grid-activity-time {
+            font-size: 10.5px;
+            line-height: 1.2;
+        }
+        .grid-activity-card.is-stacked-card.is-stack-back {
+            gap: 4px;
+            overflow: hidden;
+        }
+        .grid-activity-card.is-stacked-card.is-stack-back .grid-activity-top {
+            min-height: 0;
+        }
+        .grid-activity-card.is-stacked-card.is-stack-back .grid-activity-title {
+            font-size: 11.2px;
+            line-height: 1.36;
+            -webkit-line-clamp: 1;
+        }
+        .grid-activity-card.is-stacked-card.is-stack-back .grid-activity-sub,
+        .grid-activity-card.is-stacked-card.is-stack-back .grid-activity-meta,
+        .grid-activity-card.is-stacked-card.is-stack-back .grid-groups,
+        .grid-activity-card.is-stacked-card.is-stack-back .grid-location-name,
+        .grid-activity-card.is-stacked-card.is-stack-back .grid-location-building,
+        .grid-activity-card.is-stacked-card.is-stack-back .grid-instructor,
+        .grid-activity-card.is-stacked-card.is-stack-back .badge {
             display: none;
+        }
+        .grid-activity-card.is-stacked-card.is-stack-back .grid-activity-time {
+            font-size: 10px;
+            line-height: 1.2;
+        }
+        .grid-activity-card.is-stacked-card.is-compact .grid-activity-time {
+            display: block;
+            font-size: 10.2px;
+            line-height: 1.18;
+        }
+        .schedule-grid.is-precise .grid-activity-card.is-stacked-card.is-compact .grid-activity-title {
+            display: block;
+            min-height: 17px;
+            font-size: 11px;
+            line-height: 1.5;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            -webkit-line-clamp: initial;
+            -webkit-box-orient: initial;
+        }
+        .grid-activity-card.is-stacked-card.is-compact .grid-activity-top {
+            min-height: 21px;
+            flex: 0 0 auto;
+        }
+        .grid-activity-card.is-stacked-card.is-compact .schedule-conflict-pill {
+            min-height: 19px;
+            padding: 1px 7px;
+            line-height: 1.25;
+        }
+        .grid-activity-card.is-stacked-card.is-stack-back.is-compact .grid-activity-title {
+            margin-top: 1px;
+        }
+        .grid-activity-card.is-stacked-card.is-compact .grid-activity-room {
+            display: none;
+        }
+        .grid-activity-card.is-stacked-card.is-stack-back.is-compact .grid-activity-time {
+            display: none;
+        }
+        .grid-activity-card.is-stacked-card.is-stack-back .grid-activity-foot {
+            justify-content: flex-end;
+        }
+        .grid-activity-card.is-stacked-card.is-stack-front .grid-activity-room {
+            max-width: calc(100% - 64px);
         }
         .grid-location-name,
         .grid-instructor {
@@ -2347,6 +2606,187 @@
                 gap: 16px !important;
             }
         }
+        .time-picker-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .time-unit {
+            font-size: 14.5px;
+            font-weight: 700;
+            color: var(--fg-2);
+            user-select: none;
+        }
+        .time-picker {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--schedule-border);
+            border-radius: 8px;
+            background: var(--surface);
+            height: 38px;
+            padding: 0 12px;
+            box-sizing: border-box;
+            width: 150px;
+            gap: 6px;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            transition: border-color 0.15s, box-shadow 0.15s;
+            position: relative;
+        }
+        .time-picker:focus,
+        .time-picker.tp-active {
+            outline: none;
+            border-color: var(--brand-navy);
+            box-shadow: 0 0 0 3px oklch(45% 0.12 250 / 0.12);
+        }
+        .time-picker:hover {
+            border-color: var(--schedule-border-strong);
+            background: color-mix(in oklch, var(--brand-navy) 3%, transparent);
+        }
+        .tp-val {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--fg-1);
+            letter-spacing: 0.04em;
+        }
+        .tp-drop {
+            position: fixed;
+            background: var(--surface, #fff);
+            border: 1px solid var(--schedule-border, #e2e8f0);
+            border-radius: 8px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.13);
+            z-index: 10000;
+            display: none;
+            overflow: hidden;
+        }
+        .tp-drop.tp-open {
+            display: block;
+        }
+        .tp-drop-columns {
+            display: flex;
+            height: 200px;
+            width: 100%;
+            background: var(--surface);
+        }
+        .tp-col {
+            flex: 1;
+            overflow-y: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            padding: 4px 0;
+            display: flex;
+            flex-direction: column;
+        }
+        .tp-col::-webkit-scrollbar {
+            display: none;
+        }
+        .tp-col-divider {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            color: var(--fg-3);
+            user-select: none;
+            width: 10px;
+        }
+        .tp-col ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            width: 100%;
+        }
+        .tp-col li {
+            padding: 6px 0;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            text-align: center;
+            color: var(--fg-1, #1e293b);
+            transition: background 0.08s, color 0.08s;
+            border-radius: 4px;
+            margin: 2px 4px;
+            white-space: nowrap;
+        }
+        .tp-col li:hover {
+            background: color-mix(in oklch, var(--brand-navy, #1e3a5f) 8%, transparent);
+        }
+        .tp-col li.tp-sel {
+            background: var(--brand-navy, #1e3a5f);
+            color: #fff;
+            font-weight: 700;
+        }
+        .time-separator {
+            font-weight: 800;
+            color: var(--fg-3);
+            padding: 0 1px;
+            user-select: none;
+            flex-shrink: 0;
+        }
+        /* Custom overlapping card stacks styling */
+        .activity-stack {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            min-height: 80px;
+        }
+        .grid-activity-card {
+            position: absolute !important;
+            min-height: 0 !important;
+            margin-bottom: 0 !important;
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease, opacity 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            z-index: 10;
+        }
+        .grid-activity-card.has-visible-stack-switcher {
+            padding-bottom: 34px !important;
+        }
+        .grid-activity-card:hover {
+            z-index: 50 !important;
+            transform: translateY(-1px);
+            box-shadow: 0 10px 24px rgba(0,0,0,0.16);
+            opacity: 1 !important;
+        }
+        .stack-indicator {
+            position: absolute;
+            right: 8px;
+            bottom: 7px;
+            width: fit-content;
+            max-width: 100%;
+            z-index: 2;
+            background: var(--brand-navy);
+            color: #fff;
+            border-radius: 999px;
+            padding: 3px 7px;
+            font-size: 10px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.22);
+            user-select: none;
+            pointer-events: auto;
+            line-height: 1;
+        }
+        .stack-indicator:hover {
+            background: color-mix(in oklch, var(--brand-navy) 85%, #000);
+            transform: translateY(-1px);
+        }
+        .stack-indicator.is-stack-count {
+            display: none;
+        }
+        .stack-sync-icon {
+            width: 12px;
+            height: 12px;
+            animation: spin-slow 8s linear infinite;
+            flex-shrink: 0;
+        }
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
     </style>
 
     <div
@@ -2366,6 +2806,7 @@
             schedulePeriod: @js($schedulePeriod ?? 'week'),
             includeWeekends: @js((bool) ($includeWeekends ?? false)),
             gridJumpDate: @js($formatDate($selectedScheduleDate ?? $weekStart)),
+            defaultCreateDate: @js(($schedulePeriod ?? 'week') === 'day' ? ($selectedScheduleDate ?? $weekStart)->toDateString() : null),
             calendarAllowsCreate: @js($canCreateInCurrentPeriod),
             createInstructorSearch: '',
             createGroupSearch: '',
@@ -2445,6 +2886,34 @@
             changeGridPeriod(period) {
                 const iso = this.thaiDateToIso(this.gridJumpDate) || @js(($selectedScheduleDate ?? $weekStart)->toDateString());
                 this.navigateGrid(iso, period);
+            },
+            centerStackCard(el) {
+                const stack = el?.closest('.activity-stack');
+                if (!stack) return;
+
+                this.$nextTick(() => {
+                    window.requestAnimationFrame(() => {
+                        const visibleCards = Array.from(stack.querySelectorAll('[data-stack-card]'))
+                            .filter((card) => card.offsetParent !== null);
+                        const targetCards = visibleCards.length ? visibleCards : [stack];
+                        const bounds = targetCards.reduce((range, card) => {
+                            const rect = card.getBoundingClientRect();
+                            return {
+                                top: Math.min(range.top, rect.top),
+                                bottom: Math.max(range.bottom, rect.bottom),
+                            };
+                        }, { top: Number.POSITIVE_INFINITY, bottom: Number.NEGATIVE_INFINITY });
+
+                        if (!Number.isFinite(bounds.top) || !Number.isFinite(bounds.bottom)) return;
+
+                        const targetCenter = bounds.top + ((bounds.bottom - bounds.top) / 2);
+                        const viewportCenter = window.innerHeight / 2;
+                        window.scrollBy({
+                            top: targetCenter - viewportCenter,
+                            behavior: 'smooth',
+                        });
+                    });
+                });
             },
             toggleWeekends() {
                 if (this.schedulePeriod !== 'week') return;
@@ -2534,6 +3003,28 @@
                     select.selectedIndex = 0;
                     select.dispatchEvent(new Event('change', { bubbles: true }));
                 });
+                // reset custom time pickers
+                const resetTp = (hiddenId, hVal, mVal) => {
+                    const picker = form.querySelector(`.time-picker[data-tp-hidden='${hiddenId}']`);
+                    if (!picker) return;
+                    picker.querySelector('.tp-val-hour').textContent = hVal;
+                    picker.querySelector('.tp-val-min').textContent = mVal;
+                    const drop = picker.querySelector('.tp-drop');
+                    if (drop) {
+                        drop.querySelectorAll('.tp-hour-item').forEach(li => {
+                            li.classList.toggle('tp-sel', li.dataset.val === hVal);
+                        });
+                        drop.querySelectorAll('.tp-min-item').forEach(li => {
+                            li.classList.toggle('tp-sel', li.dataset.val === mVal);
+                        });
+                    }
+                    const hidden = document.getElementById(hiddenId);
+                    if (hidden) {
+                        hidden.value = hVal + ':' + mVal;
+                    }
+                };
+                resetTp('start_time', '08', '00');
+                resetTp('end_time',   '09', '00');
                 const offeringSelect = form.querySelector('[name=course_offering_id]');
                 if (offeringSelect && this.initialSelectedOfferingId) {
                     offeringSelect.value = this.initialSelectedOfferingId;
@@ -2555,7 +3046,7 @@
 
                 this.detailModal = null;
                 this.editModal = null;
-                this.resetCreateForm(date);
+                this.resetCreateForm(date || this.defaultCreateDate);
                 this.showCreate = true;
             },
             openEdit(id) {
@@ -2568,6 +3059,29 @@
         }"
         @keydown.escape.window="detailModal = null; showCreate = false; editModal = null"
     >
+        @if($errors->has('schedule') && ! $openCreateModal && ! $openEditScheduleId)
+            @php
+                $alertMessages = $scheduleAlertMessages($errors, 'schedule');
+            @endphp
+            <div class="schedule-empty" style="border-color:var(--status-conflict-border);background:var(--status-conflict-bg);color:var(--status-conflict-fg);font-weight:800;text-align:left;margin-bottom:14px;">
+                @foreach($alertMessages as $message)
+                    <div style="{{ ! $loop->last ? 'margin-bottom:6px;' : '' }}">{{ $message }}</div>
+                @endforeach
+            </div>
+        @endif
+
+        @if(session('schedule_conflict_warning'))
+            <div class="schedule-empty" style="border-color:var(--status-conflict-border);background:var(--status-conflict-bg);color:var(--status-conflict-fg);font-weight:800;text-align:left;margin-bottom:14px;" data-testid="schedule-conflict-save-warning">
+                <div style="margin-bottom:6px;">บันทึกแล้ว แต่พบการชน ต้องแก้ไขก่อนส่งอนุมัติ</div>
+                @foreach(collect(session('schedule_conflict_warning'))->take(4) as $message)
+                    <div style="font-weight:700;">{{ $message }}</div>
+                @endforeach
+                <div style="margin-top:10px;">
+                    <a href="{{ route('maker.schedule_conflicts.index') }}" class="btn btn-secondary" style="text-decoration:none;">ดูการแจ้งเตือนการชน</a>
+                </div>
+            </div>
+        @endif
+
         @if($availableOfferings->isNotEmpty())
             <div class="offerings-dropdown-panel" data-testid="offerings-panel">
                 <div class="offerings-panel-meta">
@@ -2605,6 +3119,44 @@
                 </div>
             </div>
         @endif
+
+        <script>
+            (function () {
+                // Toggle compact state on scroll, restore after user stops scrolling.
+                const btnSelector = '.floating-create-button';
+                let timer = null;
+                let lastScrollY = 0;
+                const COMPACT_CLASS = 'compact';
+
+                function onScroll() {
+                    const btn = document.querySelector(btnSelector);
+                    if (!btn) return;
+
+                    // add compact while scrolling
+                    btn.classList.add(COMPACT_CLASS);
+
+                    // clear previous timer
+                    if (timer) clearTimeout(timer);
+
+                    // set timer to remove compact state after 220ms of no scroll
+                    timer = setTimeout(() => {
+                        btn.classList.remove(COMPACT_CLASS);
+                        timer = null;
+                    }, 220);
+                }
+
+                // Listen with passive for performance
+                window.addEventListener('scroll', onScroll, { passive: true });
+
+                // Also shrink if touchmove (mobile)
+                window.addEventListener('touchmove', onScroll, { passive: true });
+
+                // Clean up on page hide
+                window.addEventListener('beforeunload', () => {
+                    if (timer) clearTimeout(timer);
+                });
+            })();
+        </script>
 
         @if($isWorkspace && $availableOfferings->isNotEmpty())
         <div class="schedule-toolbar">
@@ -3016,27 +3568,41 @@
                             @php
                                 $dayOccurrences = $gridOccurrences
                                     ->filter(fn ($occurrence) => $occurrence['date']->toDateString() === $day->toDateString());
+                                $dayStacks = $groupOccurrencesIntoStacks($dayOccurrences);
                             @endphp
-                            @foreach($dayOccurrences as $occurrence)
+                            @foreach($dayStacks as $stack)
+                                @php
+                                    $minStart = null;
+                                    $maxEnd = null;
+                                    foreach ($stack as $occ) {
+                                        $st = (string) $occ['schedule']->start_time;
+                                        $et = (string) $occ['schedule']->end_time;
+                                        if ($minStart === null || $st < $minStart) $minStart = $st;
+                                        if ($maxEnd === null || $et > $maxEnd) $maxEnd = $et;
+                                    }
+                                    
+                                    $startCarbon = \Carbon\CarbonImmutable::createFromFormat('H:i:s', strlen($minStart) === 5 ? $minStart . ':00' : $minStart);
+                                    $endCarbon = \Carbon\CarbonImmutable::createFromFormat('H:i:s', strlen($maxEnd) === 5 ? $maxEnd . ':00' : $maxEnd);
+                                    $stackDuration = (int) max(0, $startCarbon->diffInMinutes($endCarbon));
+                                    
+                                    $activityRowStart = $gridRowStartForTime($minStart);
+                                    $activityRowSpan = max(1, (int) ceil(max(5, $stackDuration) / $gridMinuteStep));
+                                @endphp
+                                <div class="grid-cell grid-cell-activity" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $activityRowStart }} / span {{ $activityRowSpan }};">
+                                    @if(count($stack) === 1)
                                         @php
+                                            $occurrence = $stack[0];
                                             $schedule = $occurrence['schedule'];
                                             $activity = $schedule->activityType;
                                             $room = $schedule->room;
                                             $offeringCourse = $schedule->courseOffering?->course;
                                             $instructorText = $scheduleInstructorText($schedule);
                                             $itemConflicts = $scheduleConflicts->get($schedule->id, collect());
-                                            $activityRowStart = $gridRowStartForTime((string) $schedule->start_time);
-                                            $activityRowSpan = $gridRowSpanForOccurrence($occurrence);
                                             $activityDuration = (int) $occurrence['duration_minutes'];
                                             $gridActivitySizeClass = $activityDuration < 75
                                                 ? 'is-compact'
                                                 : ($activityDuration >= 150 ? 'is-tall' : '');
-                                            $groupTooltip = $schedule->studentGroups
-                                                ->pluck('group_code')
-                                                ->filter()
-                                                ->implode(', ');
                                         @endphp
-                                <div class="grid-cell grid-cell-activity" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $activityRowStart }} / span {{ $activityRowSpan }};">
                                         <div role="button" tabindex="0" class="grid-activity {{ $gridActivitySizeClass }}" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
                                             <div class="grid-activity-top">
                                                 <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }};">{{ $activity?->name ?? 'กิจกรรม' }}</span>
@@ -3053,6 +3619,96 @@
                                                 </span>
                                             </div>
                                         </div>
+                                    @else
+                                        @php
+                                            $stackCount = count($stack);
+                                        @endphp
+                                        <div class="activity-stack" x-data="{ page: 0, count: {{ $stackCount }} }">
+                                            @foreach($stack as $idx => $occurrence)
+                                                @php
+                                                    $schedule = $occurrence['schedule'];
+                                                    $activity = $schedule->activityType;
+                                                    $room = $schedule->room;
+                                                    $offeringCourse = $schedule->courseOffering?->course;
+                                                    $instructorText = $scheduleInstructorText($schedule);
+                                                    $itemConflicts = $scheduleConflicts->get($schedule->id, collect());
+                                                    $activityDuration = (int) $occurrence['duration_minutes'];
+                                                    $gridActivitySizeClass = $activityDuration < 75
+                                                        ? 'is-compact'
+                                                        : ($activityDuration >= 150 ? 'is-tall' : '');
+
+                                                    // Calculate relative top offset and height percentages inside the stack
+                                                    $occStart = (string) $schedule->start_time;
+                                                    $occEnd = (string) $schedule->end_time;
+                                                    $occStartCarbon = \Carbon\CarbonImmutable::createFromFormat('H:i:s', strlen($occStart) === 5 ? $occStart . ':00' : $occStart);
+                                                    $occEndCarbon = \Carbon\CarbonImmutable::createFromFormat('H:i:s', strlen($occEnd) === 5 ? $occEnd . ':00' : $occEnd);
+
+                                                    $topOffset = (int) max(0, $startCarbon->diffInMinutes($occStartCarbon));
+                                                    $occDuration = (int) max(0, $occStartCarbon->diffInMinutes($occEndCarbon));
+
+                                                    $topPercent = $stackDuration > 0 ? ($topOffset / $stackDuration) * 100 : 0;
+                                                    $heightPercent = $stackDuration > 0 ? ($occDuration / $stackDuration) * 100 : 100;
+                                                @endphp
+                                                <div
+                                                    role="button"
+                                                    tabindex="0"
+                                                    class="grid-activity {{ $gridActivitySizeClass }} grid-activity-card is-stacked-card"
+                                                    style="--activity-color: {{ $activityTone($schedule) }}; top: {{ round($topPercent, 4) }}%; height: {{ round($heightPercent, 4) }}%;"
+                                                    :style="{
+                                                        left: (({{ $idx }} - page * 3) * 12) + '%',
+                                                        width: (100 - (Math.min(3, count - page * 3) - 1) * 12) + '%',
+                                                        zIndex: 10 + ({{ $idx }} - page * 3)
+                                                    }"
+                                                    :class="{
+                                                        'is-stack-front': {{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1),
+                                                        'is-stack-back': {{ $idx }} !== Math.min((page + 1) * 3 - 1, count - 1),
+                                                        'has-visible-stack-switcher': count > 3 && {{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1),
+                                                        'has-no-visible-stack-switcher': count <= 3 || {{ $idx }} !== Math.min((page + 1) * 3 - 1, count - 1)
+                                                    }"
+                                                    x-show="{{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3"
+                                                    data-stack-card
+                                                    data-schedule-modal-trigger
+                                                    @click="detailModal = 'schedule-{{ $schedule->id }}'"
+                                                    @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'"
+                                                    @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'"
+                                                >
+                                                    @if($itemConflicts->isNotEmpty())
+                                                        <div class="grid-activity-top">
+                                                            <span class="schedule-conflict-pill" title="{{ $itemConflicts->pluck('message')->implode(' / ') }}">ชน {{ $itemConflicts->count() }}</span>
+                                                        </div>
+                                                    @endif
+                                                    <div class="grid-activity-title">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
+                                                    <div class="grid-activity-time">{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }} · {{ $formatDuration($occurrence['duration_minutes']) }}</div>
+                                                    <div class="grid-activity-foot">
+                                                        <span class="grid-activity-room">{{ $room?->room_name ?? $room?->room_code ?? 'ไม่ระบุสถานที่' }}</span>
+                                                        <span class="grid-activity-groups">
+                                                            {{ $schedule->studentGroups->isNotEmpty() ? $schedule->studentGroups->count() . ' กลุ่ม' : 'ไม่มีกลุ่ม' }}
+                                                        </span>
+                                                    </div>
+
+                                                    @if($stackCount > 1)
+                                                        <div
+                                                            class="stack-indicator {{ $stackCount > 3 ? 'is-stack-switcher' : 'is-stack-count' }}"
+                                                            x-show="{{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1)"
+                                                            @if($stackCount > 3)
+                                                                @click.stop="page = (page + 1) % Math.ceil(count / 3); centerStackCard($el)"
+                                                                title="คลิกเพื่อดูการ์ดถัดไป"
+                                                            @endif
+                                                        >
+                                                            @if($stackCount > 3)
+                                                                <svg class="stack-sync-icon" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                                                </svg>
+                                                                <span x-text="((page * 3) + 1) + '-' + Math.min((page + 1) * 3, count) + ' จาก ' + count + ' ใบ'"></span>
+                                                            @else
+                                                                <span>{{ $stackCount }} ใบ</span>
+                                                            @endif
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endif
                                 </div>
                             @endforeach
                         @endforeach
@@ -3061,29 +3717,6 @@
                 </div>
             </div>
         @endif {{-- end non-workspace --}}
-
-        @if($errors->has('schedule') && ! $openCreateModal && ! $openEditScheduleId)
-            @php
-                $alertMessages = $scheduleAlertMessages($errors, 'schedule');
-            @endphp
-            <div class="schedule-empty" style="border-color:var(--status-conflict-border);background:var(--status-conflict-bg);color:var(--status-conflict-fg);font-weight:800;text-align:left;">
-                @foreach($alertMessages as $message)
-                    <div style="{{ ! $loop->last ? 'margin-bottom:6px;' : '' }}">{{ $message }}</div>
-                @endforeach
-            </div>
-        @endif
-
-        @if(session('schedule_conflict_warning'))
-            <div class="schedule-empty" style="border-color:var(--status-conflict-border);background:var(--status-conflict-bg);color:var(--status-conflict-fg);font-weight:800;text-align:left;" data-testid="schedule-conflict-save-warning">
-                <div style="margin-bottom:6px;">บันทึกแล้ว แต่พบการชน ต้องแก้ไขก่อนส่งอนุมัติ</div>
-                @foreach(collect(session('schedule_conflict_warning'))->take(4) as $message)
-                    <div style="font-weight:700;">{{ $message }}</div>
-                @endforeach
-                <div style="margin-top:10px;">
-                    <a href="{{ route('maker.schedule_conflicts.index') }}" class="btn btn-secondary" style="text-decoration:none;">ดูการแจ้งเตือนการชน</a>
-                </div>
-            </div>
-        @endif
 
         @if($isWorkspace)
             @if($availableOfferings->isEmpty())
@@ -3284,9 +3917,30 @@
                         @php
                             $dayOccurrences = $occurrences
                                 ->filter(fn ($occurrence) => $occurrence['date']->toDateString() === $day->toDateString());
+                            $dayStacks = $groupOccurrencesIntoStacks($dayOccurrences);
                         @endphp
-                        @foreach($dayOccurrences as $occurrence)
+                        @foreach($dayStacks as $stack)
+                            @php
+                                $minStart = null;
+                                $maxEnd = null;
+                                foreach ($stack as $occ) {
+                                    $st = (string) $occ['schedule']->start_time;
+                                    $et = (string) $occ['schedule']->end_time;
+                                    if ($minStart === null || $st < $minStart) $minStart = $st;
+                                    if ($maxEnd === null || $et > $maxEnd) $maxEnd = $et;
+                                }
+                                
+                                $startCarbon = \Carbon\CarbonImmutable::createFromFormat('H:i:s', strlen($minStart) === 5 ? $minStart . ':00' : $minStart);
+                                $endCarbon = \Carbon\CarbonImmutable::createFromFormat('H:i:s', strlen($maxEnd) === 5 ? $maxEnd . ':00' : $maxEnd);
+                                $stackDuration = (int) max(0, $startCarbon->diffInMinutes($endCarbon));
+                                
+                                $activityRowStart = $gridRowStartForTime($minStart);
+                                $activityRowSpan = max(1, (int) ceil(max(5, $stackDuration) / $gridMinuteStep));
+                            @endphp
+                            <div class="grid-cell grid-cell-activity" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $activityRowStart }} / span {{ $activityRowSpan }};">
+                                @if(count($stack) === 1)
                                     @php
+                                        $occurrence = $stack[0];
                                         $schedule = $occurrence['schedule'];
                                         $activity = $schedule->activityType;
                                         $room = $schedule->room;
@@ -3294,14 +3948,11 @@
                                         $instructorText = $scheduleInstructorText($schedule);
                                         $status = $statusMeta[$schedule->status] ?? ['label' => $schedule->status, 'class' => 'badge-gray'];
                                         $itemConflicts = $scheduleConflicts->get($schedule->id, collect());
-                                            $activityRowStart = $gridRowStartForTime((string) $schedule->start_time);
-                                            $activityRowSpan = $gridRowSpanForOccurrence($occurrence);
-                                            $activityDuration = (int) $occurrence['duration_minutes'];
-                                            $gridActivitySizeClass = $activityDuration < 75
-                                                ? 'is-compact'
-                                                : ($activityDuration >= 150 ? 'is-tall' : '');
-                                        @endphp
-                            <div class="grid-cell grid-cell-activity" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $activityRowStart }} / span {{ $activityRowSpan }};">
+                                        $activityDuration = (int) $occurrence['duration_minutes'];
+                                        $gridActivitySizeClass = $activityDuration < 75
+                                            ? 'is-compact'
+                                            : ($activityDuration >= 150 ? 'is-tall' : '');
+                                    @endphp
                                     <div role="button" tabindex="0" class="grid-activity {{ $gridActivitySizeClass }}" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
                                         <div class="grid-activity-top">
                                             @if($offeringCourse?->course_code)
@@ -3342,6 +3993,121 @@
                                         @endif
                                         <div><span class="badge {{ $status['class'] }}">{{ $status['label'] }}</span></div>
                                     </div>
+                                @else
+                                    @php
+                                        $stackCount = count($stack);
+                                    @endphp
+                                    <div class="activity-stack" x-data="{ page: 0, count: {{ $stackCount }} }">
+                                        @foreach($stack as $idx => $occurrence)
+                                            @php
+                                                $schedule = $occurrence['schedule'];
+                                                $activity = $schedule->activityType;
+                                                $room = $schedule->room;
+                                                $offeringCourse = $schedule->courseOffering?->course;
+                                                $instructorText = $scheduleInstructorText($schedule);
+                                                $status = $statusMeta[$schedule->status] ?? ['label' => $schedule->status, 'class' => 'badge-gray'];
+                                                $itemConflicts = $scheduleConflicts->get($schedule->id, collect());
+                                                $activityDuration = (int) $occurrence['duration_minutes'];
+                                                $gridActivitySizeClass = $activityDuration < 75
+                                                    ? 'is-compact'
+                                                    : ($activityDuration >= 150 ? 'is-tall' : '');
+
+                                                // Calculate relative top offset and height percentages inside the stack
+                                                $occStart = (string) $schedule->start_time;
+                                                $occEnd = (string) $schedule->end_time;
+                                                $occStartCarbon = \Carbon\CarbonImmutable::createFromFormat('H:i:s', strlen($occStart) === 5 ? $occStart . ':00' : $occStart);
+                                                $occEndCarbon = \Carbon\CarbonImmutable::createFromFormat('H:i:s', strlen($occEnd) === 5 ? $occEnd . ':00' : $occEnd);
+
+                                                $topOffset = (int) max(0, $startCarbon->diffInMinutes($occStartCarbon));
+                                                $occDuration = (int) max(0, $occStartCarbon->diffInMinutes($occEndCarbon));
+
+                                                $topPercent = $stackDuration > 0 ? ($topOffset / $stackDuration) * 100 : 0;
+                                                $heightPercent = $stackDuration > 0 ? ($occDuration / $stackDuration) * 100 : 100;
+                                            @endphp
+                                            <div
+                                                role="button"
+                                                tabindex="0"
+                                                class="grid-activity {{ $gridActivitySizeClass }} grid-activity-card is-stacked-card"
+                                                style="--activity-color: {{ $activityTone($schedule) }}; top: {{ round($topPercent, 4) }}%; height: {{ round($heightPercent, 4) }}%;"
+                                                :style="{
+                                                    left: (({{ $idx }} - page * 3) * 12) + '%',
+                                                    width: (100 - (Math.min(3, count - page * 3) - 1) * 12) + '%',
+                                                    zIndex: 10 + ({{ $idx }} - page * 3)
+                                                }"
+                                                :class="{
+                                                    'is-stack-front': {{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1),
+                                                    'is-stack-back': {{ $idx }} !== Math.min((page + 1) * 3 - 1, count - 1),
+                                                    'has-visible-stack-switcher': count > 3 && {{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1),
+                                                    'has-no-visible-stack-switcher': count <= 3 || {{ $idx }} !== Math.min((page + 1) * 3 - 1, count - 1)
+                                                }"
+                                                x-show="{{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3"
+                                                data-stack-card
+                                                data-schedule-modal-trigger
+                                                @click="detailModal = 'schedule-{{ $schedule->id }}'"
+                                                @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'"
+                                                @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'"
+                                            >
+                                                <div class="grid-activity-top">
+                                                    @if($offeringCourse?->course_code)
+                                                        <span class="grid-course">{{ $offeringCourse->course_code }}</span>
+                                                    @endif
+                                                    @if($itemConflicts->isNotEmpty())
+                                                        <span class="schedule-conflict-pill" title="{{ $itemConflicts->pluck('message')->implode(' / ') }}">ชน {{ $itemConflicts->count() }}</span>
+                                                    @endif
+                                                </div>
+                                                <div class="grid-activity-title">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
+                                                @if($isWorkspace && ($offeringCourse?->name_th || $offeringCourse?->name_en))
+                                                    <div class="grid-activity-sub">{{ $offeringCourse?->name_th ?? $offeringCourse?->name_en }}</div>
+                                                @elseif($schedule->topic && $activity?->name)
+                                                    <div class="grid-activity-sub">{{ $activity->name }}</div>
+                                                @endif
+                                                <div class="grid-activity-meta">
+                                                    <div>{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }} · {{ $formatDuration($occurrence['duration_minutes']) }}</div>
+                                                    <div class="grid-instructor">{{ $instructorText }}</div>
+                                                    <div>
+                                                        <div class="grid-location-name">{{ $room?->room_name ?? $room?->room_code ?? 'ไม่ระบุสถานที่' }}</div>
+                                                        @if($room?->building)
+                                                            <div class="grid-location-building">{{ $room->building }}</div>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                                @if($schedule->studentGroups->isNotEmpty())
+                                                    <div class="grid-groups">
+                                                        @foreach($schedule->studentGroups as $group)
+                                                            <span class="co-group-badge" style="--group-color: {{ $groupTone($group) }};">
+                                                                <span class="co-group-dot" aria-hidden="true"></span>
+                                                                <span>{{ $group->group_code }}</span>
+                                                            </span>
+                                                        @endforeach
+                                                    </div>
+                                                @else
+                                                    <div class="grid-activity-sub">ไม่มีกลุ่มนักศึกษา</div>
+                                                @endif
+                                                <div><span class="badge {{ $status['class'] }}">{{ $status['label'] }}</span></div>
+
+                                                @if($stackCount > 1)
+                                                    <div
+                                                        class="stack-indicator {{ $stackCount > 3 ? 'is-stack-switcher' : 'is-stack-count' }}"
+                                                        x-show="{{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1)"
+                                                        @if($stackCount > 3)
+                                                            @click.stop="page = (page + 1) % Math.ceil(count / 3); centerStackCard($el)"
+                                                            title="คลิกเพื่อดูการ์ดถัดไป"
+                                                        @endif
+                                                    >
+                                                        @if($stackCount > 3)
+                                                            <svg class="stack-sync-icon" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                                            </svg>
+                                                            <span x-text="((page * 3) + 1) + '-' + Math.min((page + 1) * 3, count) + ' จาก ' + count + ' ใบ'"></span>
+                                                        @else
+                                                            <span>{{ $stackCount }} ใบ</span>
+                                                        @endif
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @endif
                             </div>
                         @endforeach
                     @endforeach
@@ -3553,11 +4319,77 @@
                                     </div>
                                     <div>
                                         <label class="modal-label" for="edit_start_time_{{ $schedule->id }}">เวลาเริ่ม <span class="required-mark">*</span></label>
-                                        <input id="edit_start_time_{{ $schedule->id }}" name="start_time" type="time" step="300" required class="modal-control" value="{{ $editOld('start_time', $formatTime($schedule->start_time)) }}">
+                                            @php
+                                                $editStart = $editOld('start_time', $formatTime($schedule->start_time));
+                                                [$editStartHour, $editStartMin] = $editStart ? explode(':', $editStart) : ['08','00'];
+                                            @endphp
+                                            <input type="hidden" id="edit_start_time_{{ $schedule->id }}" name="start_time" value="{{ $editStart }}">
+                                            <div class="time-picker-group">
+                                                <div class="time-picker" id="tp_edit_start_{{ $schedule->id }}" data-tp-hidden="edit_start_time_{{ $schedule->id }}" tabindex="0">
+                                                    <span class="tp-val tp-val-hour">{{ $editStartHour ?? '08' }}</span>
+                                                    <span class="time-separator">:</span>
+                                                    <span class="tp-val tp-val-min">{{ $editStartMin ?? '00' }}</span>
+                                                    <div class="tp-drop">
+                                                        <div class="tp-drop-columns">
+                                                            <div class="tp-col tp-col-hour">
+                                                                <ul>
+                                                                    @for($h = 0; $h < 24; $h++)
+                                                                        @php $hh = sprintf('%02d', $h); @endphp
+                                                                        <li data-val="{{ $hh }}" class="tp-hour-item {{ $hh === ($editStartHour ?? '08') ? 'tp-sel' : '' }}">{{ $hh }}</li>
+                                                                    @endfor
+                                                                </ul>
+                                                            </div>
+                                                            <div class="tp-col-divider">:</div>
+                                                            <div class="tp-col tp-col-min">
+                                                                <ul>
+                                                                    @foreach(range(0,59) as $m)
+                                                                        @php $mm = sprintf('%02d', $m); @endphp
+                                                                        <li data-val="{{ $mm }}" class="tp-min-item {{ $mm === ($editStartMin ?? '00') ? 'tp-sel' : '' }}">{{ $mm }}</li>
+                                                                    @endforeach
+                                                                </ul>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <span class="time-unit">น.</span>
+                                            </div>
                                     </div>
                                     <div>
                                         <label class="modal-label" for="edit_end_time_{{ $schedule->id }}">เวลาสิ้นสุด <span class="required-mark">*</span></label>
-                                        <input id="edit_end_time_{{ $schedule->id }}" name="end_time" type="time" step="300" required class="modal-control" value="{{ $editOld('end_time', $formatTime($schedule->end_time)) }}">
+                                        @php
+                                            $editEnd = $editOld('end_time', $formatTime($schedule->end_time));
+                                            [$editEndHour, $editEndMin] = $editEnd ? explode(':', $editEnd) : ['09','00'];
+                                        @endphp
+                                        <input type="hidden" id="edit_end_time_{{ $schedule->id }}" name="end_time" value="{{ $editEnd }}">
+                                        <div class="time-picker-group">
+                                            <div class="time-picker" id="tp_edit_end_{{ $schedule->id }}" data-tp-hidden="edit_end_time_{{ $schedule->id }}" tabindex="0">
+                                                <span class="tp-val tp-val-hour">{{ $editEndHour ?? '09' }}</span>
+                                                <span class="time-separator">:</span>
+                                                <span class="tp-val tp-val-min">{{ $editEndMin ?? '00' }}</span>
+                                                <div class="tp-drop">
+                                                    <div class="tp-drop-columns">
+                                                        <div class="tp-col tp-col-hour">
+                                                            <ul>
+                                                                @for($h = 0; $h < 24; $h++)
+                                                                    @php $hh = sprintf('%02d', $h); @endphp
+                                                                    <li data-val="{{ $hh }}" class="tp-hour-item {{ $hh === ($editEndHour ?? '09') ? 'tp-sel' : '' }}">{{ $hh }}</li>
+                                                                @endfor
+                                                            </ul>
+                                                        </div>
+                                                        <div class="tp-col-divider">:</div>
+                                                        <div class="tp-col tp-col-min">
+                                                            <ul>
+                                                                @foreach(range(0,59) as $m)
+                                                                    @php $mm = sprintf('%02d', $m); @endphp
+                                                                    <li data-val="{{ $mm }}" class="tp-min-item {{ $mm === ($editEndMin ?? '00') ? 'tp-sel' : '' }}">{{ $mm }}</li>
+                                                                @endforeach
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <span class="time-unit">น.</span>
+                                        </div>
                                     </div>
                                     <div>
                                         <label class="modal-label" for="edit_activity_type_id_{{ $schedule->id }}">ประเภทกิจกรรม <span class="required-mark">*</span></label>
@@ -3662,6 +4494,20 @@
             @endif
         @endforeach
 
+        @if($canCreateInCurrentPeriod)
+            <button
+                type="button"
+                class="floating-create-button"
+                data-testid="schedule-floating-create-link"
+                x-show="!showCreate && !editModal && !detailModal"
+                x-cloak
+                @click="openCreate()"
+            >
+                <span class="floating-create-icon" aria-hidden="true">+</span>
+                <span>เพิ่มรายการสอน</span>
+            </button>
+        @endif
+
         @if($canEdit)
             <div class="schedule-modal-backdrop" x-show="showCreate" x-cloak @click.self="closeCreate()" data-testid="schedule-create-modal">
                 <section class="schedule-modal is-form" role="dialog" aria-modal="true" aria-labelledby="schedule-create-title">
@@ -3735,11 +4581,77 @@
                                 </div>
                                 <div>
                                     <label class="modal-label" for="start_time">เวลาเริ่ม <span class="required-mark">*</span></label>
-                                    <input id="start_time" name="start_time" type="time" step="300" required class="modal-control" value="{{ old('start_time') }}">
+                                    @php
+                                        $oldStart = old('start_time');
+                                        [$oldStartHour, $oldStartMin] = $oldStart ? explode(':', $oldStart) : ['08','00'];
+                                    @endphp
+                                    <input type="hidden" id="start_time" name="start_time" value="{{ $oldStart }}">
+                                    <div class="time-picker-group">
+                                        <div class="time-picker" id="tp_start" data-tp-hidden="start_time" tabindex="0">
+                                            <span class="tp-val tp-val-hour">{{ $oldStartHour ?? '08' }}</span>
+                                            <span class="time-separator">:</span>
+                                            <span class="tp-val tp-val-min">{{ $oldStartMin ?? '00' }}</span>
+                                            <div class="tp-drop">
+                                                <div class="tp-drop-columns">
+                                                    <div class="tp-col tp-col-hour">
+                                                        <ul>
+                                                            @for($h = 0; $h < 24; $h++)
+                                                                @php $hh = sprintf('%02d', $h); @endphp
+                                                                <li data-val="{{ $hh }}" class="tp-hour-item {{ $hh === ($oldStartHour ?? '08') ? 'tp-sel' : '' }}">{{ $hh }}</li>
+                                                            @endfor
+                                                        </ul>
+                                                    </div>
+                                                    <div class="tp-col-divider">:</div>
+                                                    <div class="tp-col tp-col-min">
+                                                        <ul>
+                                                            @foreach(range(0,59) as $m)
+                                                                @php $mm = sprintf('%02d', $m); @endphp
+                                                                <li data-val="{{ $mm }}" class="tp-min-item {{ $mm === ($oldStartMin ?? '00') ? 'tp-sel' : '' }}">{{ $mm }}</li>
+                                                            @endforeach
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <span class="time-unit">น.</span>
+                                    </div>
                                 </div>
                                 <div>
                                     <label class="modal-label" for="end_time">เวลาสิ้นสุด <span class="required-mark">*</span></label>
-                                    <input id="end_time" name="end_time" type="time" step="300" required class="modal-control" value="{{ old('end_time') }}">
+                                    @php
+                                        $oldEnd = old('end_time');
+                                        [$oldEndHour, $oldEndMin] = $oldEnd ? explode(':', $oldEnd) : ['09','00'];
+                                    @endphp
+                                    <input type="hidden" id="end_time" name="end_time" value="{{ $oldEnd }}">
+                                    <div class="time-picker-group">
+                                        <div class="time-picker" id="tp_end" data-tp-hidden="end_time" tabindex="0">
+                                            <span class="tp-val tp-val-hour">{{ $oldEndHour ?? '09' }}</span>
+                                            <span class="time-separator">:</span>
+                                            <span class="tp-val tp-val-min">{{ $oldEndMin ?? '00' }}</span>
+                                            <div class="tp-drop">
+                                                <div class="tp-drop-columns">
+                                                    <div class="tp-col tp-col-hour">
+                                                        <ul>
+                                                            @for($h = 0; $h < 24; $h++)
+                                                                @php $hh = sprintf('%02d', $h); @endphp
+                                                                <li data-val="{{ $hh }}" class="tp-hour-item {{ $hh === ($oldEndHour ?? '09') ? 'tp-sel' : '' }}">{{ $hh }}</li>
+                                                            @endfor
+                                                        </ul>
+                                                    </div>
+                                                    <div class="tp-col-divider">:</div>
+                                                    <div class="tp-col tp-col-min">
+                                                        <ul>
+                                                            @foreach(range(0,59) as $m)
+                                                                @php $mm = sprintf('%02d', $m); @endphp
+                                                                <li data-val="{{ $mm }}" class="tp-min-item {{ $mm === ($oldEndMin ?? '00') ? 'tp-sel' : '' }}">{{ $mm }}</li>
+                                                            @endforeach
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <span class="time-unit">น.</span>
+                                    </div>
                                 </div>
                                 <div>
                                     <label class="modal-label" for="activity_type_id">ประเภทกิจกรรม <span class="required-mark">*</span></label>
@@ -3848,3 +4760,167 @@
         @endif
     </div>
 </x-app-layout>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    // ── Custom time-picker engine ───────────────────────────────────────────
+    var _openDrop = null; // currently open .tp-drop
+
+    function openDrop(drop, picker) {
+        if (_openDrop && _openDrop !== drop) closeDrop(_openDrop);
+        _openDrop = drop;
+
+        // position the dropdown fixed below the spin trigger, clamped to viewport
+        var rect = picker.getBoundingClientRect();
+        var vpH = window.innerHeight;
+        var dropH = Math.min(220, vpH - rect.bottom - 8);
+        drop.style.maxHeight = Math.max(100, dropH) + 'px';
+        drop.style.left = rect.left + 'px';
+        drop.style.top  = (rect.bottom + 2) + 'px';
+        drop.style.minWidth = Math.max(rect.width, 64) + 'px';
+        drop.classList.add('tp-open');
+
+        // scroll selected hour and minute to the top of their columns
+        var selHour = drop.querySelector('.tp-hour-item.tp-sel');
+        if (selHour) {
+            var col = selHour.closest('.tp-col');
+            if (col) col.scrollTop = selHour.offsetTop;
+        }
+
+        var selMin = drop.querySelector('.tp-min-item.tp-sel');
+        if (selMin) {
+            var col = selMin.closest('.tp-col');
+            if (col) col.scrollTop = selMin.offsetTop;
+        }
+
+        picker.classList.add('tp-active');
+    }
+
+    function closeDrop(drop) {
+        if (!drop) return;
+        drop.classList.remove('tp-open');
+        var picker = drop.closest('.time-picker');
+        if (picker) {
+            picker.classList.remove('tp-active');
+        }
+        if (_openDrop === drop) _openDrop = null;
+    }
+
+    function selectTimePart(li, part, picker, drop) {
+        var val = li.dataset.val;
+        var hiddenId = picker.dataset.tpHidden;
+        var hidden = document.getElementById(hiddenId);
+        if (!hidden) return;
+
+        var parts = (hidden.value || '08:00').split(':');
+        if (part === 'hour') {
+            parts[0] = val;
+            picker.querySelector('.tp-val-hour').textContent = val;
+            drop.querySelectorAll('.tp-hour-item').forEach(function(el) { el.classList.remove('tp-sel'); });
+        } else {
+            parts[1] = val;
+            picker.querySelector('.tp-val-min').textContent = val;
+            drop.querySelectorAll('.tp-min-item').forEach(function(el) { el.classList.remove('tp-sel'); });
+        }
+        li.classList.add('tp-sel');
+        hidden.value = parts.join(':');
+
+        hidden.dispatchEvent(new Event('change', { bubbles: true }));
+        hidden.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    function initTimePickers() {
+        document.querySelectorAll('.time-picker').forEach(function(picker) {
+            var drop = picker.querySelector('.tp-drop');
+            if (!drop || picker._tpInited) return;
+            picker._tpInited = true;
+
+            var hiddenId = picker.dataset.tpHidden;
+            var hidden = document.getElementById(hiddenId);
+            if (hidden) {
+                if (hidden.value) {
+                    var parts = hidden.value.split(':');
+                    var h = parts[0] || '08';
+                    var m = parts[1] || '00';
+                    picker.querySelector('.tp-val-hour').textContent = h;
+                    picker.querySelector('.tp-val-min').textContent = m;
+
+                    drop.querySelectorAll('.tp-hour-item').forEach(function(li) {
+                        li.classList.toggle('tp-sel', li.dataset.val === h);
+                    });
+                    drop.querySelectorAll('.tp-min-item').forEach(function(li) {
+                        li.classList.toggle('tp-sel', li.dataset.val === m);
+                    });
+                } else {
+                    var h = picker.querySelector('.tp-val-hour').textContent.trim();
+                    var m = picker.querySelector('.tp-val-min').textContent.trim();
+                    hidden.value = h + ':' + m;
+                }
+            }
+
+            picker.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (drop.classList.contains('tp-open')) {
+                    if (!drop.contains(e.target)) closeDrop(drop);
+                } else {
+                    openDrop(drop, picker);
+                }
+            });
+
+            picker.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    if (drop.classList.contains('tp-open')) closeDrop(drop);
+                    else openDrop(drop, picker);
+                } else if (e.key === 'Escape') {
+                    closeDrop(drop);
+                }
+            });
+
+            drop.querySelectorAll('.tp-hour-item').forEach(function(li) {
+                li.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    selectTimePart(li, 'hour', picker, drop);
+                });
+            });
+
+            drop.querySelectorAll('.tp-min-item').forEach(function(li) {
+                li.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    selectTimePart(li, 'min', picker, drop);
+                });
+            });
+        });
+    }
+
+    // close on outside click or scroll
+    document.addEventListener('click', function(e) {
+        if (_openDrop && !_openDrop.contains(e.target) && !e.target.closest('.time-picker')) {
+            closeDrop(_openDrop);
+        }
+    });
+    document.addEventListener('scroll', function(e) {
+        if (_openDrop && !_openDrop.contains(e.target)) {
+            closeDrop(_openDrop);
+        }
+    }, true);
+
+    // init on load
+    initTimePickers();
+
+    // re-init when Alpine opens an edit modal (new .time-picker may appear)
+    document.addEventListener('tpss:edit-opened', initTimePickers);
+    // also observe DOM additions for dynamically revealed modals
+    var _tpObserver = new MutationObserver(function(muts) {
+        var needInit = muts.some(function(m) {
+            return Array.from(m.addedNodes).some(function(n) {
+                return n.nodeType === 1 && (n.classList && n.classList.contains('time-picker') || n.querySelector && n.querySelector('.time-picker'));
+            });
+        });
+        if (needInit) initTimePickers();
+    });
+    _tpObserver.observe(document.body, { childList: true, subtree: true });
+
+});
+</script>

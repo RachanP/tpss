@@ -246,6 +246,7 @@ class ScheduleManagementTest extends TestCase
         $this->get(route('maker.course_offerings.schedules.index', [$offering, 'week_start' => '2026-08-03']))
             ->assertOk()
             ->assertSee('data-testid="schedule-create-link"', false)
+            ->assertSee('data-testid="schedule-floating-create-link"', false)
             ->assertSee('data-testid="schedule-create-modal"', false)
             ->assertSee('action="' . route('maker.course_offerings.schedules.store', $offering) . '"', false)
             ->assertDontSee('href="' . route('maker.course_offerings.schedules.create', [$offering, 'week_start' => '2026-08-03']) . '"', false);
@@ -304,6 +305,7 @@ class ScheduleManagementTest extends TestCase
             ->assertOk()
             ->assertSee('ยังไม่มีรายวิชาที่ต้องจัดตาราง')
             ->assertDontSee('data-testid="schedule-create-link"', false)
+            ->assertDontSee('data-testid="schedule-floating-create-link"', false)
             ->assertDontSee('data-testid="schedule-list-toggle"', false)
             ->assertDontSee('data-testid="schedule-grid-toggle"', false)
             ->assertDontSee('ดูข้อมูลอย่างเดียว')
