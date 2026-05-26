@@ -30,6 +30,7 @@ async function globalSetup() {
   runArtisan(['view:clear']);
   runArtisan(['config:clear']);
   runArtisan(['migrate:fresh', '--seed', '--force']);
+  runArtisan(['db:seed', '--class=E2ECourseOfferingSeeder', '--force']);
 }
 
 export default globalSetup;

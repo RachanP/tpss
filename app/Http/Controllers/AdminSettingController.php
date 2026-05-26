@@ -180,7 +180,7 @@ class AdminSettingController extends Controller
 
         $before = $this->auditSnapshot($year);
 
-        if ($validated['is_active'] && $request->filled('year_id') && (! $year->is_active || $this->hasOtherOpenSchedulingWindow($year))) {
+        if ($validated['is_active'] && (! $year->is_active || $this->hasOtherOpenSchedulingWindow($year))) {
             if ($this->hasOtherOpenSchedulingWindow($year)) {
                 return back()
                     ->withInput()

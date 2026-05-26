@@ -231,10 +231,12 @@ class SchedulingPhaseTest extends TestCase
 
     // ── Admin: Close Scheduling Window ───────────────────────────────
 
-    public function test_setting_current_year_closes_previous_scheduling_window(): void
+    public function test_setting_current_year_deactivates_previous_active_year(): void
     {
+        // หลัง activation lock (22 พ.ค.) admin ต้องปิด scheduling window เก่าก่อนสลับปี active
+        // เคสนี้คือสลับปี active ตอนปีเก่าอยู่ใน phase=preparation (ไม่มี scheduling lock)
         $admin = $this->makeAdmin();
-        $currentYear = $this->makeYear(['name' => '2569', 'semester' => 1, 'is_active' => true, 'phase' => 'scheduling']);
+        $currentYear = $this->makeYear(['name' => '2569', 'semester' => 1, 'is_active' => true, 'phase' => 'preparation']);
         $nextYear = $this->makeYear([
             'name' => '2569',
             'semester' => 2,
@@ -259,6 +261,36 @@ class SchedulingPhaseTest extends TestCase
         $this->assertSame('preparation', $currentYear->fresh()->phase);
         $this->assertTrue((bool) $nextYear->fresh()->is_active);
         $this->assertSame('preparation', $nextYear->fresh()->phase);
+    }
+
+    public function test_setting_another_current_year_is_blocked_even_when_year_id_not_in_request(): void
+    {
+        // Regression guard: activation lock ต้องบังคับใช้ผ่านทุก request shape
+        // ไม่พึ่ง $request->filled('year_id') ที่อาจหายไปใน path อื่น
+        $admin = $this->makeAdmin();
+        $openYear = $this->makeYear([
+            'name' => '2569', 'semester' => 1, 'is_active' => true, 'phase' => 'scheduling',
+        ]);
+        $targetYear = $this->makeYear([
+            'name' => '2569', 'semester' => 2, 'is_active' => false, 'phase' => 'preparation',
+            'start_date' => '2026-11-01', 'end_date' => '2027-03-15',
+        ]);
+
+        $this->actingAsAdmin($admin);
+
+        // ส่ง PUT โดยไม่ใส่ year_id (จำลอง path อื่นที่ไม่ใช่ modal edit)
+        $this->put(route('admin.settings.years.update', $targetYear), [
+            'name' => $targetYear->name,
+            'semester' => $targetYear->semester,
+            'start_date' => '01/11/2569',
+            'end_date' => '15/03/2570',
+            'is_active' => '1',
+        ])
+            ->assertSessionHasErrors('is_active');
+
+        $this->assertTrue((bool) $openYear->fresh()->is_active);
+        $this->assertSame('scheduling', $openYear->fresh()->phase);
+        $this->assertFalse((bool) $targetYear->fresh()->is_active);
     }
 
     public function test_close_reverts_phase_to_preparation(): void

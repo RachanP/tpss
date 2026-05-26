@@ -172,9 +172,7 @@ class DashboardController extends Controller
             ->exists();
 
         if ($hasRole) {
-            $newRole = $request->role;
-
-            $request->session()->put('active_role', $newRole);
+            $request->session()->put('active_role', $request->role);
         }
 
         return redirect()->route('dashboard');

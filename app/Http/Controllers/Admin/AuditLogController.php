@@ -56,7 +56,7 @@ class AuditLogController extends Controller
 
         $logs          = $query->paginate(25)->withQueryString();
         $categoryLabels = AuditLogger::CATEGORY_LABELS;
-        $actionOptions = collect(AuditLogger::ACTION_FILTER_LABELS)
+        $actionOptions = collect(AuditLogger::actionFilterLabels())
             ->map(fn (string $actionLabel) => [
                 'value' => $actionLabel,
                 'label' => $actionLabel,
