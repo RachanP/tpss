@@ -314,6 +314,10 @@ class AuditLogTest extends TestCase
         $response->assertSee('@input.debounce.500ms="fetchResults()"', false);
         $response->assertSee('data-testid="audit-logs-filter-action"', false);
         $response->assertSee('@change="fetchResults()"', false);
+        $this->assertMatchesRegularExpression('/<select[^>]*class="[^"]*tpss-choices[^"]*"[^>]*data-testid="audit-logs-filter-category"/s', $html);
+        $this->assertMatchesRegularExpression('/<select[^>]*class="[^"]*tpss-choices[^"]*"[^>]*data-testid="audit-logs-filter-action"/s', $html);
+        $this->assertStringContainsString('max-height: 220px !important', $html);
+        $this->assertStringContainsString('scrollbar-gutter: stable', $html);
         $this->assertMatchesRegularExpression('/type="text"[^>]+name="date_from"/s', $html);
         $this->assertMatchesRegularExpression('/type="text"[^>]+name="date_to"/s', $html);
         $response->assertSee('placeholder="วว/ดด/พ.ศ."', false);

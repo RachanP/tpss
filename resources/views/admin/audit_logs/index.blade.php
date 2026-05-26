@@ -41,7 +41,7 @@
 
             <div class="audit-filter-field">
                 <label>หมวดหมู่</label>
-                <select name="category" class="form-ctrl" data-testid="audit-logs-filter-category" @change="fetchResults()">
+                <select name="category" class="form-ctrl tpss-choices" data-testid="audit-logs-filter-category" @change="fetchResults()">
                     <option value="">ทุกหมวดหมู่</option>
                     @foreach($categoryLabels as $key => $label)
                         <option value="{{ $key }}" {{ request('category') === $key ? 'selected' : '' }}>
@@ -53,7 +53,7 @@
 
             <div class="audit-filter-field">
                 <label>การกระทำ</label>
-                <select name="action" class="form-ctrl" data-testid="audit-logs-filter-action" @change="fetchResults()">
+                <select name="action" class="form-ctrl tpss-choices" data-testid="audit-logs-filter-action" @change="fetchResults()">
                     <option value="">ทุกการกระทำ</option>
                     @foreach($actionOptions as $option)
                         <option value="{{ $option['value'] }}" {{ request('action') === $option['value'] ? 'selected' : '' }}>
@@ -179,6 +179,9 @@ function auditLogPage() {
         resetFilters() {
             this.$refs.filterForm.querySelectorAll('input, select').forEach((field) => {
                 field.value = '';
+                if (field._tpssSelect) {
+                    field._tpssSelect.sync();
+                }
             });
             this.fetchUrl(this.baseUrl);
         },
@@ -280,6 +283,17 @@ function auditLogPage() {
         height: 40px;
         min-height: 40px;
         font-size: 13px;
+    }
+    .audit-filter-field .tpss-select-trigger {
+        min-height: 40px;
+        padding-top: 8px;
+        padding-bottom: 8px;
+        font-size: 13px;
+    }
+    .audit-filter-field .tpss-select-menu {
+        z-index: 100000;
+        max-height: 220px !important;
+        scrollbar-gutter: stable;
     }
     .audit-filter-field .audit-date-input + p {
         min-height: 34px;
