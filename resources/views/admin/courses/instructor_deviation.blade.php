@@ -531,8 +531,11 @@
     /* KPI strip */
     .dash-kpis {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
         gap: 12px;
+    }
+    @media (max-width: 720px) {
+        .dash-kpis { grid-template-columns: repeat(2, 1fr); }
     }
     .kpi-card {
         padding: 16px 18px;
@@ -727,6 +730,14 @@
         font-family: inherit;
         color: var(--fg-1);
         transition: background 0.15s;
+    }
+    @media (max-width: 560px) {
+        .history-row-btn {
+            grid-template-columns: 80px 1fr;
+            gap: 10px;
+            padding: 12px 14px;
+        }
+        .history-row-btn .history-chevron { display: none; }
     }
     .history-row-btn:disabled {
         cursor: default;

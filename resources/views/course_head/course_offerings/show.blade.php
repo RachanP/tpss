@@ -160,6 +160,16 @@
                 border-color: var(--status-success-fg);
                 background: var(--status-success-fg);
             }
+            /* Narrow viewport — hide sub-text so banner stays single-row */
+            @media (max-width: 1024px) {
+                .offering-edit-banner-sub {
+                    display: none;
+                }
+                .offering-edit-banner-btn {
+                    padding: 7px 14px;
+                    font-size: 0.8125rem;
+                }
+            }
         </style>
     @endif
 
@@ -254,7 +264,7 @@
             ],
         ];
     @endphp
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px;">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px;">
         @foreach($summaryStrip as $item)
             <a href="{{ $item['href'] ?? '#' }}" style="
                 display:flex;align-items:center;gap:12px;
@@ -506,7 +516,7 @@
                 }
             </script>
             @else
-            <div style="border-top:1px solid var(--border-1);padding-top:20px;display:grid;grid-template-columns:repeat(2,1fr);gap:16px;">
+            <div style="border-top:1px solid var(--border-1);padding-top:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">
                 <div>
                     <div class="caption">การจัดรอบฝึกปฏิบัติ</div>
                     <div style="font-weight:600;margin-top:4px;">{{ $courseOffering->requires_practicum_rotation ? 'มีการหมุนเวียนแหล่งฝึก' : 'ไม่มีการหมุนเวียนแหล่งฝึก' }}</div>
@@ -1606,6 +1616,31 @@
                 justify-content: flex-start;
             }
         }
+
+        /* Narrow laptop (1280-1440px content area) — reduce paddings + group editor stacking */
+        @media (max-width: 1280px) {
+            .group-builder-fields {
+                grid-template-columns: 110px 110px 1fr;
+                gap: 10px;
+            }
+            .instructor-search-input,
+            .course-instructor-search input {
+                font-size: 13px;
+            }
+        }
+
+        /* Inline student group editor — at narrow widths fold to simpler 2-col layout */
+        @media (max-width: 900px) {
+            .student-group-editor-row {
+                grid-template-columns: 28px 32px 1fr 90px 28px !important;
+                gap: 8px !important;
+                padding: 10px 12px !important;
+            }
+            .student-group-editor-row input[type="text"],
+            .student-group-editor-row input[type="number"] {
+                font-size: 13px;
+            }
+        }
     </style>
 
     <div class="card" id="student-groups" style="scroll-margin-top:72px;">
@@ -2006,7 +2041,7 @@
                 :inert="!$store.offeringPage.editing"
                 style="background:var(--bg-1);border:1px solid var(--border-1);border-radius:10px;overflow:visible;">
                     {{-- Column header --}}
-                    <div style="display:grid;grid-template-columns:32px 36px 1fr 110px 32px;align-items:center;gap:12px;padding:10px 16px;background:var(--bg-2);border-bottom:1px solid var(--border-1);font-size:0.7rem;font-weight:700;color:var(--fg-3);letter-spacing:0.04em;text-transform:uppercase;">
+                    <div class="student-group-editor-row" style="display:grid;grid-template-columns:32px 36px 1fr 110px 32px;align-items:center;gap:12px;padding:10px 16px;background:var(--bg-2);border-bottom:1px solid var(--border-1);font-size:0.7rem;font-weight:700;color:var(--fg-3);letter-spacing:0.04em;text-transform:uppercase;">
                         <div></div>
                         <div>สี</div>
                         <div>รหัสกลุ่ม</div>
@@ -2018,7 +2053,7 @@
                     <template x-for="(row, idx) in rows" :key="row.id">
                         <div :data-testid="'student-group-row'"
                              :style="{ background: row.confirmDelete ? 'var(--status-conflict-bg)' : '' }"
-                             style="display:grid;grid-template-columns:32px 36px 1fr 110px 32px;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border-1);position:relative;transition:background 0.15s;"
+                             class="student-group-editor-row" style="display:grid;grid-template-columns:32px 36px 1fr 110px 32px;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border-1);position:relative;transition:background 0.15s;"
                              @mouseenter="row.hover = true"
                              @mouseleave="row.hover = false">
 

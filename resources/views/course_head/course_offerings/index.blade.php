@@ -48,7 +48,8 @@
                         -webkit-appearance:none;
                         -moz-appearance:none;
                         padding:8px 38px 8px 14px;
-                        min-width:200px;
+                        min-width:160px;
+                        max-width:240px;
                         background:transparent;
                         color:var(--fg-1);
                         font-size:0.875rem;
@@ -82,7 +83,7 @@
                 ['key' => 'rejected',  'label' => 'ตีกลับ',             'hint' => 'ต้องแก้ไขและส่งใหม่',   'tone' => 'conflict',  'active' => $summary['rejected'] > 0],
             ];
         @endphp
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:20px;" data-testid="offering-summary">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:20px;" data-testid="offering-summary">
             @foreach($summaryCards as $c)
                 @php
                     $tone = $c['tone'];
@@ -253,8 +254,8 @@
                             <td>
                                 <span class="badge {{ $approvalMeta['badge'] }}">{{ $approvalMeta['label'] }}</span>
                             </td>
-                            <td style="text-align:right;white-space:nowrap;">
-                                <div style="display:inline-flex;gap:6px;">
+                            <td style="text-align:right;">
+                                <div style="display:inline-flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
                                     @if($phase === 'scheduling')
                                         <a data-testid="course-offering-schedule-link" href="{{ route('maker.course_offerings.schedules.index', $offering) }}" style="
                                             display:inline-flex;align-items:center;gap:6px;
