@@ -20,6 +20,10 @@
         openScheduleConfirmLabel: '',
         openScheduleCountdown: 0,
         openScheduleTimer: null,
+        closeScheduleConfirmForm: null,
+        closeScheduleConfirmLabel: '',
+        closeScheduleCountdown: 0,
+        closeScheduleTimer: null,
         openAddModal() {
             this.editMode = false;
             this.currentYear = { id: '', name: '', semester: '1', start_date: '', end_date: '', is_active: false };
@@ -75,6 +79,28 @@
         confirmOpenSchedule() {
             if (this.openScheduleCountdown > 0 || !this.openScheduleConfirmForm) return;
             document.getElementById(this.openScheduleConfirmForm)?.submit();
+        },
+        startCloseScheduleConfirm(formId, label) {
+            clearInterval(this.closeScheduleTimer);
+            this.closeScheduleConfirmForm = formId;
+            this.closeScheduleConfirmLabel = label;
+            this.closeScheduleCountdown = 3;
+            this.closeScheduleTimer = setInterval(() => {
+                this.closeScheduleCountdown = Math.max(0, this.closeScheduleCountdown - 1);
+                if (this.closeScheduleCountdown === 0) {
+                    clearInterval(this.closeScheduleTimer);
+                }
+            }, 1000);
+        },
+        cancelCloseScheduleConfirm() {
+            clearInterval(this.closeScheduleTimer);
+            this.closeScheduleConfirmForm = null;
+            this.closeScheduleConfirmLabel = '';
+            this.closeScheduleCountdown = 0;
+        },
+        confirmCloseSchedule() {
+            if (this.closeScheduleCountdown > 0 || !this.closeScheduleConfirmForm) return;
+            document.getElementById(this.closeScheduleConfirmForm)?.submit();
         }
     }">
 
@@ -232,11 +258,13 @@
                                                         </button>
                                                     </form>
                                                 @elseif($year->phase === 'scheduling')
-                                                    <form method="POST" action="{{ route('admin.settings.scheduling.close', $year) }}" style="margin:0;">
+                                                    <form id="close-scheduling-{{ $year->id }}" method="POST" action="{{ route('admin.settings.scheduling.close', $year) }}" style="margin:0;">
                                                         @csrf
                                                         @method('PATCH')
-                                                        <button type="submit" class="btn btn-ghost" style="font-size: 13px; padding: 6px 14px; border: 1px solid var(--border);"
-                                                            onclick="return confirm('ปิดช่วงจัดตารางสำหรับปีการศึกษา {{ $year->name }} ภาค {{ $year->semester }}?')">
+                                                        <button type="button"
+                                                            class="btn btn-ghost"
+                                                            style="font-size: 13px; padding: 6px 14px; border: 1px solid var(--border);"
+                                                            @click="startCloseScheduleConfirm('close-scheduling-{{ $year->id }}', 'ปีการศึกษา {{ $year->name }} ภาค {{ $year->semester }}')">
                                                             ปิดช่วงจัดตาราง
                                                         </button>
                                                     </form>
@@ -277,6 +305,35 @@
                                 <button type="button" class="btn btn-ghost" @click="cancelOpenScheduleCountdown()">ยกเลิก</button>
                                 <button type="button" class="btn btn-primary" :disabled="openScheduleCountdown > 0" :style="openScheduleCountdown > 0 ? 'opacity:.55;cursor:not-allowed;' : ''" @click="confirmOpenSchedule()">
                                     ยืนยันเปิดช่วงจัดตาราง
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div x-show="closeScheduleConfirmForm" x-cloak
+                    style="position:fixed;inset:0;z-index:80;background:rgba(15,23,42,.36);"
+                    @keydown.escape.window="cancelCloseScheduleConfirm()">
+                    <div style="min-height:100vh;width:100%;display:flex;align-items:center;justify-content:center;padding:20px;">
+                        <div style="width:min(520px,100%);background:oklch(99% 0.006 235);border:1px solid var(--border);border-radius:10px;box-shadow:0 24px 70px rgba(15,23,42,.24);overflow:hidden;">
+                            <div style="padding:18px 20px;border-bottom:1px solid var(--border);background:oklch(98% 0.025 85);">
+                                <div style="font-weight:800;color:var(--fg-1);font-size:16px;">ยืนยันปิดช่วงจัดตาราง</div>
+                                <div style="font-size:13px;color:var(--fg-3);margin-top:4px;" x-text="closeScheduleConfirmLabel"></div>
+                            </div>
+                            <div style="padding:18px 20px;background:oklch(99% 0.006 235);">
+                                <div style="font-size:14px;color:var(--fg-2);line-height:1.65;">
+                                    ระบบจะเปลี่ยนสถานะกลับเป็น <strong style="color:var(--fg-1);">เตรียมข้อมูล</strong> และหัวหน้าวิชาจะไม่สามารถจัดหรือแก้ไขตารางในรอบนี้ต่อได้ จนกว่า Admin จะเปิดช่วงจัดตารางอีกครั้ง
+                                </div>
+                                <div style="margin-top:14px;padding:12px 14px;border:1px solid oklch(82% 0.055 235);border-radius:8px;background:oklch(97% 0.018 235);color:oklch(32% 0.075 245);font-size:13px;font-weight:700;line-height:1.55;">
+                                    ข้อมูลตารางที่จัดไว้แล้วจะยังอยู่ (ระบบจะปิดเฉพาะสิทธิ์การจัด/แก้ไขตารางชั่วคราว)
+                                </div>
+                                <div style="margin-top:10px;padding:12px 14px;border:1px solid oklch(84% 0.08 80);border-radius:8px;background:oklch(98% 0.025 85);color:oklch(38% 0.08 75);font-size:13px;font-weight:700;"
+                                    x-text="closeScheduleCountdown > 0 ? 'รอ ' + closeScheduleCountdown + ' วินาที ก่อนยืนยัน' : 'พร้อมยืนยันปิดช่วงจัดตาราง'"></div>
+                            </div>
+                            <div style="display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--border);background:oklch(98% 0.008 235);">
+                                <button type="button" class="btn btn-ghost" @click="cancelCloseScheduleConfirm()">ยกเลิก</button>
+                                <button type="button" class="btn btn-primary" :disabled="closeScheduleCountdown > 0" :style="closeScheduleCountdown > 0 ? 'opacity:.55;cursor:not-allowed;' : ''" @click="confirmCloseSchedule()">
+                                    ยืนยันปิดช่วงจัดตาราง
                                 </button>
                             </div>
                         </div>
