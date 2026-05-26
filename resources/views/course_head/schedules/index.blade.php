@@ -1681,9 +1681,13 @@
             min-width: 0;
         }
         .grid-activity .activity-tag {
+            display: inline-grid;
+            place-items: center;
             justify-content: center;
-            width: 72px;
-            max-width: 72px;
+            box-sizing: border-box;
+            flex: 0 0 96px;
+            width: 96px;
+            max-width: 96px;
             min-height: 18px;
             padding: 1px 6px;
             font-size: 9.5px;
@@ -1691,10 +1695,12 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            text-align: center;
         }
         .grid-activity.is-compact .activity-tag {
-            width: 64px;
-            max-width: 64px;
+            flex-basis: 96px;
+            width: 96px;
+            max-width: 96px;
             min-height: 17px;
             padding: 1px 5px;
             font-size: 9px;
@@ -1768,6 +1774,9 @@
             margin-top: auto;
             padding-top: 4px;
         }
+        .grid-activity-foot:has(.grid-activity-groups) {
+            justify-content: flex-end;
+        }
         .grid-activity-room {
             flex: 1;
             min-width: 0;
@@ -1781,6 +1790,7 @@
         .grid-activity-groups {
             position: relative;
             flex-shrink: 0;
+            margin-left: auto;
             min-height: 19px;
             padding: 1px 7px;
             border-radius: 999px;
