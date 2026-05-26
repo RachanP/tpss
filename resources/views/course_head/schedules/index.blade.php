@@ -2410,6 +2410,7 @@
             schedulePeriod: @js($schedulePeriod ?? 'week'),
             includeWeekends: @js((bool) ($includeWeekends ?? false)),
             gridJumpDate: @js($formatDate($selectedScheduleDate ?? $weekStart)),
+            defaultCreateDate: @js(($schedulePeriod ?? 'week') === 'day' ? ($selectedScheduleDate ?? $weekStart)->toDateString() : null),
             calendarAllowsCreate: @js($canCreateInCurrentPeriod),
             createInstructorSearch: '',
             createGroupSearch: '',
@@ -2599,7 +2600,7 @@
 
                 this.detailModal = null;
                 this.editModal = null;
-                this.resetCreateForm(date);
+                this.resetCreateForm(date || this.defaultCreateDate);
                 this.showCreate = true;
             },
             openEdit(id) {
