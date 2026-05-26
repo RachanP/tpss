@@ -35,9 +35,15 @@
         <div style="padding: 8px 0; background: color-mix(in oklch, var(--status-conflict) 4%, var(--surface));">
             <div class="admin-alert-group-label is-critical">ต้องแก้ก่อนเปิดจัดตาราง</div>
             @foreach($criticals as $c)
-                <a href="{{ $c['link'] }}" class="admin-alert-row is-critical">
-                    <span style="flex:1;font-size:12.5px;font-weight:600;color:var(--status-conflict-fg);">{{ $c['label'] }}</span>
-                    <span style="font-size:11px;color:var(--status-conflict-fg);opacity:.7;">{{ $c['key'] === 'pa_violations' ? 'ดูรายละเอียด →' : 'แก้ไข →' }}</span>
+                @php
+                    $criticalAction = ($c['key'] ?? null) === 'pa_violations'
+                        ? 'ดูรายละเอียด'
+                        : ($c['linkTxt'] ?? 'ไปแก้ไขข้อมูล');
+                @endphp
+                <a href="{{ $c['link'] }}" class="admin-alert-row is-critical" aria-label="{{ $criticalAction }}">
+                    <span class="admin-alert-main">{{ $c['label'] }}</span>
+                    <span class="admin-alert-action">{{ $criticalAction }}</span>
+                    <span class="admin-alert-status is-critical" aria-hidden="true">แก้ไข</span>
                 </a>
             @endforeach
         </div>
@@ -152,6 +158,26 @@
         white-space: nowrap;
     }
 
+    .admin-alert-status {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 24px;
+        padding: 4px 9px;
+        border-radius: var(--r-pill);
+        border: 1px solid var(--border);
+        font-size: 11px;
+        font-weight: 800;
+        line-height: 1;
+        white-space: nowrap;
+    }
+
+    .admin-alert-status.is-critical {
+        border-color: var(--status-conflict-border);
+        background: var(--status-conflict-bg);
+        color: var(--status-conflict-fg);
+    }
+
     .admin-alert-row:hover .admin-alert-action,
     .admin-alert-row:focus-visible .admin-alert-action {
         opacity: 1;
@@ -161,6 +187,11 @@
     .admin-alert-row.is-critical {
         border-color: var(--border);
         background: color-mix(in oklch, var(--status-conflict) 5%, var(--surface));
+    }
+
+    .admin-alert-row.is-critical .admin-alert-main,
+    .admin-alert-row.is-critical .admin-alert-action {
+        color: var(--status-conflict-fg);
     }
 
     .admin-alert-row.is-critical:hover,
@@ -190,6 +221,10 @@
             width: 100%;
             opacity: 1;
             transform: none;
+        }
+
+        .admin-alert-status {
+            order: 2;
         }
     }
 </style>
