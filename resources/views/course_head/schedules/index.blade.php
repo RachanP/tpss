@@ -1805,7 +1805,18 @@
             cursor: help;
         }
         .grid-activity.is-compact .grid-activity-foot {
-            display: none;
+            display: flex;
+            padding-top: 2px;
+        }
+        .grid-activity-card.is-stacked-card:not(:has(.stack-indicator)) {
+            padding-bottom: 32px !important;
+        }
+        .grid-activity-card.is-stacked-card:not(:has(.stack-indicator)) .grid-activity-foot {
+            position: absolute;
+            left: 10px;
+            right: 10px;
+            bottom: 8px;
+            padding-top: 0;
         }
         .grid-location-name,
         .grid-instructor {
@@ -2650,6 +2661,9 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
             z-index: 10;
         }
+        .grid-activity-card:has(.stack-indicator) {
+            padding-bottom: 34px !important;
+        }
         .grid-activity-card:hover {
             z-index: 50 !important;
             transform: translateY(-1px);
@@ -2657,12 +2671,12 @@
             opacity: 1 !important;
         }
         .stack-indicator {
-            position: static;
+            position: absolute;
+            right: 8px;
+            bottom: 7px;
             width: fit-content;
             max-width: 100%;
-            margin-top: auto;
-            margin-left: auto;
-            z-index: 1;
+            z-index: 2;
             background: var(--brand-navy);
             color: #fff;
             border-radius: 999px;
@@ -3532,7 +3546,7 @@
                                                 <div
                                                     role="button"
                                                     tabindex="0"
-                                                    class="grid-activity {{ $gridActivitySizeClass }} grid-activity-card"
+                                                    class="grid-activity {{ $gridActivitySizeClass }} grid-activity-card is-stacked-card"
                                                     style="--activity-color: {{ $activityTone($schedule) }}; top: {{ round($topPercent, 4) }}%; height: {{ round($heightPercent, 4) }}%;"
                                                     :style="{
                                                         left: (({{ $idx }} - page * 3) * 12) + '%',
@@ -3545,15 +3559,14 @@
                                                     @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'"
                                                     @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'"
                                                 >
-                                                    <div class="grid-activity-top">
-                                                        <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }};">{{ $activity?->name ?? 'กิจกรรม' }}</span>
-                                                        @if($itemConflicts->isNotEmpty())
+                                                    @if($itemConflicts->isNotEmpty())
+                                                        <div class="grid-activity-top">
                                                             <span class="schedule-conflict-pill" title="{{ $itemConflicts->pluck('message')->implode(' / ') }}">ชน {{ $itemConflicts->count() }}</span>
-                                                        @endif
-                                                    </div>
+                                                        </div>
+                                                    @endif
                                                     <div class="grid-activity-title">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
                                                     <div class="grid-activity-time">{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }} · {{ $formatDuration($occurrence['duration_minutes']) }}</div>
-                                                    <div class="grid-activity-foot" :style="{{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1) ? 'padding-right: ' + (count > 3 ? '76px' : '48px') : ''">
+                                                    <div class="grid-activity-foot">
                                                         <span class="grid-activity-room">{{ $room?->room_name ?? $room?->room_code ?? 'ไม่ระบุสถานที่' }}</span>
                                                         <span class="grid-activity-groups">
                                                             {{ $schedule->studentGroups->isNotEmpty() ? $schedule->studentGroups->count() . ' กลุ่ม' : 'ไม่มีกลุ่ม' }}
@@ -3901,7 +3914,7 @@
                                             <div
                                                 role="button"
                                                 tabindex="0"
-                                                class="grid-activity {{ $gridActivitySizeClass }} grid-activity-card"
+                                                class="grid-activity {{ $gridActivitySizeClass }} grid-activity-card is-stacked-card"
                                                 style="--activity-color: {{ $activityTone($schedule) }}; top: {{ round($topPercent, 4) }}%; height: {{ round($heightPercent, 4) }}%;"
                                                 :style="{
                                                     left: (({{ $idx }} - page * 3) * 12) + '%',
@@ -3918,7 +3931,6 @@
                                                     @if($offeringCourse?->course_code)
                                                         <span class="grid-course">{{ $offeringCourse->course_code }}</span>
                                                     @endif
-                                                    <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }};">{{ $activity?->name ?? 'กิจกรรม' }}</span>
                                                     @if($itemConflicts->isNotEmpty())
                                                         <span class="schedule-conflict-pill" title="{{ $itemConflicts->pluck('message')->implode(' / ') }}">ชน {{ $itemConflicts->count() }}</span>
                                                     @endif
@@ -3940,7 +3952,7 @@
                                                     </div>
                                                 </div>
                                                 @if($schedule->studentGroups->isNotEmpty())
-                                                    <div class="grid-groups" :style="{{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1) ? 'padding-right: ' + (count > 3 ? '76px' : '48px') : ''">
+                                                    <div class="grid-groups">
                                                         @foreach($schedule->studentGroups as $group)
                                                             <span class="co-group-badge" style="--group-color: {{ $groupTone($group) }};">
                                                                 <span class="co-group-dot" aria-hidden="true"></span>
@@ -3949,9 +3961,9 @@
                                                         @endforeach
                                                     </div>
                                                 @else
-                                                    <div class="grid-activity-sub" :style="{{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1) ? 'padding-right: ' + (count > 3 ? '76px' : '48px') : ''">ไม่มีกลุ่มนักศึกษา</div>
+                                                    <div class="grid-activity-sub">ไม่มีกลุ่มนักศึกษา</div>
                                                 @endif
-                                                <div :style="{{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1) ? 'padding-right: ' + (count > 3 ? '76px' : '48px') : ''"><span class="badge {{ $status['class'] }}">{{ $status['label'] }}</span></div>
+                                                <div><span class="badge {{ $status['class'] }}">{{ $status['label'] }}</span></div>
 
                                                 @if($stackCount > 1)
                                                     <div
