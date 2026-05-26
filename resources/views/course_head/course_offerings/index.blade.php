@@ -77,7 +77,7 @@
         @php
             $summaryCards = [
                 ['key' => 'total',     'label' => 'รายวิชาทั้งหมด',     'hint' => 'ในภาคการศึกษานี้',     'tone' => null,        'active' => true],
-                ['key' => 'draft',     'label' => 'แบบร่าง · ยังไม่ส่ง', 'hint' => 'รอคุณส่งขออนุมัติ',     'tone' => 'neutral',   'active' => $summary['draft'] > 0],
+                ['key' => 'draft',     'label' => 'แบบร่าง',            'hint' => 'รอคุณส่งขออนุมัติ',     'tone' => 'neutral',   'active' => $summary['draft'] > 0],
                 ['key' => 'pending',   'label' => 'รออนุมัติ',          'hint' => 'รอผู้บริหารพิจารณา',    'tone' => 'info',      'active' => $summary['pending'] > 0],
                 ['key' => 'published', 'label' => 'อนุมัติแล้ว',        'hint' => 'ผ่านอนุมัติเรียบร้อย',  'tone' => 'success',   'active' => $summary['published'] > 0],
                 ['key' => 'rejected',  'label' => 'ตีกลับ',             'hint' => 'ต้องแก้ไขและส่งใหม่',   'tone' => 'conflict',  'active' => $summary['rejected'] > 0],
@@ -112,8 +112,8 @@
                     border-radius:10px;
                     overflow:hidden;
                 ">
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-                        <div style="font-size:0.8125rem;font-weight:700;color:{{ $labelColor }};letter-spacing:0.01em;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;">
+                        <div style="font-size:0.8125rem;font-weight:700;color:{{ $labelColor }};letter-spacing:0.01em;min-width:0;overflow-wrap:break-word;">
                             {{ $c['label'] }}
                         </div>
                         <span style="display:inline-block;width:10px;height:10px;background:{{ $accent }};border-radius:50%;flex-shrink:0;opacity:{{ $dotOpacity }};"></span>

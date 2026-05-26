@@ -361,6 +361,42 @@ class ScheduleController extends Controller
         return app(ScheduleConflictIndex::class)->conflictsFor($schedules);
     }
 
+    /**
+     * Build a conflict map for the OWNED schedules — includes cross-course conflicts
+     * (owned vs. anyone else's overlapping schedule). Single fetch of all overlapping
+     * schedules in the relevant date range, then in-memory pairwise comparison.
+     */
+    private function buildOwnedConflictMap(Collection $ownedSchedules, ScheduleConflictChecker $conflictChecker): Collection
+    {
+        if ($ownedSchedules->isEmpty()) {
+            return collect();
+        }
+
+        $ownedIds = $ownedSchedules->pluck('id')->map(fn ($v) => (int) $v)->all();
+        $minStart = $ownedSchedules->pluck('start_date')->filter()->min();
+        $maxEnd   = $ownedSchedules->pluck('end_date')->filter()->max();
+
+        if (! $minStart || ! $maxEnd) {
+            return collect();
+        }
+
+        // Fetch all schedules system-wide that could overlap any owned schedule's date window.
+        // Reuse owned schedules' loaded relations to avoid re-querying them.
+        $otherSchedules = Schedule::query()
+            ->with($this->scheduleRelations())
+            ->whereNotIn('id', $ownedIds)
+            ->whereDate('start_date', '<=', $maxEnd)
+            ->whereDate('end_date', '>=', $minStart)
+            ->get();
+
+        $candidates = $ownedSchedules->concat($otherSchedules);
+
+        // Bulk pairwise comparison; output map keyed by every schedule id involved.
+        return $conflictChecker
+            ->bulkConflictMap($candidates)
+            ->only($ownedIds);
+    }
+
     private function scheduleTimeSlots(Collection $occurrences): array
     {
         return collect(range(6, 16))
