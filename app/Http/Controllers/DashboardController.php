@@ -106,8 +106,7 @@ class DashboardController extends Controller
             = $this->instructorWorkloadData();
 
         $recentAuditLogs = AuditLog::with('user')
-            ->orderByDesc('created_at')
-            ->orderByDesc('id')
+            ->orderedForAudit()
             ->limit(5)
             ->get();
 
@@ -173,7 +172,9 @@ class DashboardController extends Controller
             ->exists();
 
         if ($hasRole) {
-            $request->session()->put('active_role', $request->role);
+            $newRole = $request->role;
+
+            $request->session()->put('active_role', $newRole);
         }
 
         return redirect()->route('dashboard');

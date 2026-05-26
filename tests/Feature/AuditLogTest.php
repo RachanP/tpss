@@ -314,6 +314,10 @@ class AuditLogTest extends TestCase
         $response->assertSee('@input.debounce.500ms="fetchResults()"', false);
         $response->assertSee('data-testid="audit-logs-filter-action"', false);
         $response->assertSee('@change="fetchResults()"', false);
+        $this->assertMatchesRegularExpression('/<select[^>]*class="[^"]*tpss-choices[^"]*"[^>]*data-testid="audit-logs-filter-category"/s', $html);
+        $this->assertMatchesRegularExpression('/<select[^>]*class="[^"]*tpss-choices[^"]*"[^>]*data-testid="audit-logs-filter-action"/s', $html);
+        $this->assertStringContainsString('max-height: 220px !important', $html);
+        $this->assertStringContainsString('scrollbar-gutter: stable', $html);
         $this->assertMatchesRegularExpression('/type="text"[^>]+name="date_from"/s', $html);
         $this->assertMatchesRegularExpression('/type="text"[^>]+name="date_to"/s', $html);
         $response->assertSee('placeholder="วว/ดด/พ.ศ."', false);
@@ -330,6 +334,11 @@ class AuditLogTest extends TestCase
         $categoryIndex = strpos($html, 'data-testid="audit-logs-filter-category"');
         $this->assertLessThan($categoryIndex, $actorIndex);
         $this->assertStringContainsString('href="' . route('admin.audit_logs.index') . '"', $html);
+
+        $categoryOptions = $this->selectOptionValues($html, 'audit-logs-filter-category');
+        foreach (array_keys(AuditLogger::CATEGORY_LABELS) as $category) {
+            $this->assertContains($category, $categoryOptions);
+        }
     }
 
     public function test_audit_log_partial_request_returns_table_only(): void
@@ -377,34 +386,20 @@ class AuditLogTest extends TestCase
         $response->assertDontSee('ข้อมูลหลัก.สร้าง');
     }
 
-    public function test_audit_log_action_dropdown_shows_unique_user_facing_labels(): void
+    public function test_audit_log_action_dropdown_shows_supported_user_facing_labels_without_database_rows(): void
     {
         $this->actingAs($this->admin);
-
-        AuditLogger::log('ข้อมูลหลัก.แก้ไข', 'courses', 1, null, []);
-        AuditLogger::log('ตารางสอน.แก้ไข', 'schedules', 2, null, []);
-        AuditLogger::log('ข้อมูลหลัก.สร้าง', 'courses', 3, null, []);
 
         $response = $this->get(route('admin.audit_logs.index'));
         $response->assertOk();
 
-        preg_match(
-            '/<select[^>]*data-testid="audit-logs-filter-action"[^>]*>(.*?)<\/select>/s',
-            $response->getContent(),
-            $selectMatch,
-        );
-
-        $this->assertNotEmpty($selectMatch);
-
-        preg_match_all('/<option\b[^>]*value="([^"]*)"[^>]*>(.*?)<\/option>/s', $selectMatch[1], $matches, PREG_SET_ORDER);
-        $actionOptions = collect($matches)
-            ->filter(fn (array $match) => in_array(html_entity_decode($match[1]), ['แก้ไข', 'สร้าง'], true))
-            ->map(fn (array $match) => trim(html_entity_decode(strip_tags($match[2]))))
+        $actionOptions = collect($this->selectOptionValues($response->getContent(), 'audit-logs-filter-action'))
+            ->filter(fn (string $value) => $value !== '')
             ->values()
             ->all();
 
-        $this->assertEqualsCanonicalizing(['สร้าง', 'แก้ไข'], $actionOptions);
-        $this->assertCount(2, $actionOptions);
+        $this->assertSame(AuditLogger::ACTION_FILTER_LABELS, $actionOptions);
+        $this->assertNotContains('เปลี่ยนบทบาท', $actionOptions);
     }
 
     public function test_admin_can_filter_by_date_range(): void
@@ -750,7 +745,7 @@ class AuditLogTest extends TestCase
         $createdAt = now()->startOfSecond();
 
         for ($i = 1; $i <= 6; $i++) {
-            AuditLog::create([
+            $log = AuditLog::create([
                 'user_id'        => $this->admin->id,
                 'action'         => 'ข้อมูลหลัก.สร้าง',
                 'table_affected' => 'courses',
@@ -759,8 +754,9 @@ class AuditLogTest extends TestCase
                 'new_values'     => ['name_th' => "Course {$i}"],
                 'category'       => 'ข้อมูลหลัก',
                 'description'    => "กิจกรรมทดสอบ {$i}",
-                'created_at'     => $createdAt->copy()->addSeconds($i),
             ]);
+
+            $log->forceFill(['created_at' => $createdAt->copy()->addSeconds($i)])->save();
         }
 
         $html = view('shared.dashboard.recent-activity')->render();
@@ -773,6 +769,45 @@ class AuditLogTest extends TestCase
         $this->assertStringNotContainsString('กิจกรรมทดสอบ 1', $html);
         $this->assertStringContainsString('กิจกรรมทดสอบ 6', $html);
         $this->assertStringContainsString('Admin Test', $html);
+    }
+
+    public function test_recent_activity_partial_uses_audit_order_when_timestamps_match(): void
+    {
+        $createdAt = Carbon::parse('2026-05-25 15:47:00');
+
+        for ($i = 1; $i <= 6; $i++) {
+            $log = AuditLog::create([
+                'user_id'        => $this->admin->id,
+                'action'         => 'ข้อมูลหลัก.แก้ไข',
+                'table_affected' => 'courses',
+                'record_id'      => $i,
+                'old_values'     => null,
+                'new_values'     => ['name_th' => "Course {$i}"],
+                'category'       => 'ข้อมูลหลัก',
+                'description'    => "Audit tie {$i}",
+            ]);
+
+            $log->forceFill(['created_at' => $createdAt])->save();
+        }
+
+        $expectedDescriptions = AuditLog::query()
+            ->orderedForAudit()
+            ->limit(5)
+            ->pluck('description')
+            ->all();
+
+        $this->assertSame([
+            'Audit tie 1',
+            'Audit tie 2',
+            'Audit tie 3',
+            'Audit tie 4',
+            'Audit tie 5',
+        ], $expectedDescriptions);
+
+        $html = view('shared.dashboard.recent-activity')->render();
+
+        $this->assertStringsAppearInOrder($expectedDescriptions, $html);
+        $this->assertStringNotContainsString('Audit tie 6', $html);
     }
 
     public function test_recent_activity_partial_renders_provided_recent_audit_logs(): void
@@ -902,5 +937,37 @@ class AuditLogTest extends TestCase
             fn (string $value) => trim(preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($value), ENT_QUOTES | ENT_HTML5, 'UTF-8'))),
             $matches[1],
         );
+    }
+
+    private function selectOptionValues(string $html, string $testId): array
+    {
+        preg_match(
+            '/<select[^>]*data-testid="' . preg_quote($testId, '/') . '"[^>]*>(.*?)<\/select>/s',
+            $html,
+            $selectMatch,
+        );
+
+        $this->assertNotEmpty($selectMatch, "Expected select [{$testId}] to appear in HTML.");
+
+        preg_match_all('/<option\b[^>]*value="([^"]*)"[^>]*>/s', $selectMatch[1], $matches);
+
+        return array_map(
+            fn (string $value) => html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+            $matches[1],
+        );
+    }
+
+    private function assertStringsAppearInOrder(array $needles, string $haystack): void
+    {
+        $lastPosition = -1;
+
+        foreach ($needles as $needle) {
+            $position = strpos($haystack, $needle);
+
+            $this->assertNotFalse($position, "Expected [{$needle}] to appear in HTML.");
+            $this->assertGreaterThan($lastPosition, $position, "Expected [{$needle}] to appear after the previous item.");
+
+            $lastPosition = $position;
+        }
     }
 }

@@ -166,7 +166,11 @@
 
     {{-- ปฏิทินเลือกวันที่ พ.ศ. ของ <x-thai-date-input> — ลงทะเบียนที่ layout เพื่อให้ทำงานแม้ component อยู่ใน <template> --}}
     <style>
-        .tdi-wrap { position: relative; }
+        .tdi-wrap { width: 100%; }
+        .tdi-control {
+            position: relative;
+            width: 100%;
+        }
         .tdi-input-cal { padding-right: 38px !important; }
         .tdi-cal-btn {
             position: absolute;
@@ -188,16 +192,19 @@
         .tdi-cal-btn:hover { background: var(--bg-2, #f1f5f9); color: var(--brand-navy, #1e3a5f); }
         .tdi-cal-btn svg { width: 18px; height: 18px; }
         .tdi-pop {
-            position: absolute;
-            z-index: 1000;
-            top: calc(100% + 6px);
+            position: fixed;
+            z-index: 10000;
+            top: 0;
             left: 0;
-            width: 270px;
+            width: 292px;
+            max-width: calc(100vw - 24px);
+            max-height: calc(100vh - 24px);
             padding: 12px;
             background: #fff;
             border: 1px solid var(--border, #d8dee9);
             border-radius: 10px;
             box-shadow: 0 14px 38px rgba(0, 0, 0, 0.18);
+            overflow: visible;
         }
         .tdi-pop-head {
             display: flex;
@@ -358,6 +365,8 @@
                 tdiMonthOpen: false,
                 tdiYearOpen: false,
                 tdiSelectedIso: '',
+                tdiPopStyle: '',
+                tdiPositionHandler: null,
 
                 // มาส์กข้อความให้เป็นรูปแบบ วว/ดด/พ.ศ.
                 maskThaiDate(value) {
@@ -402,13 +411,114 @@
                     }
                 },
                 tdiToggle() {
-                    if (!this.calOpen) this.tdiSync();
-                    this.calOpen = !this.calOpen;
-                    if (!this.calOpen) this.tdiCloseMenus();
+                    if (!this.calOpen) {
+                        this.tdiSync();
+                        this.calOpen = true;
+                        this.tdiCloseMenus();
+                        this.tdiPositionPop();
+                        this.tdiAttachPositionListeners();
+                        return;
+                    }
+
+                    this.tdiClose();
+                },
+                tdiClose() {
+                    this.calOpen = false;
+                    this.tdiCloseMenus();
+                    this.tdiDetachPositionListeners();
                 },
                 tdiCloseMenus() {
                     this.tdiMonthOpen = false;
                     this.tdiYearOpen = false;
+                },
+                tdiPositionPop() {
+                    this.$nextTick(() => {
+                        const control = this.$refs.tdiControl;
+                        const pop = control ? control.querySelector('.tdi-pop') : null;
+                        if (!control || !pop) return;
+
+                        const gap = 12;
+                        const rect = control.getBoundingClientRect();
+                        const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+                        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+
+                        if (!this.tdiIsControlVisible(rect, viewportWidth, viewportHeight)) {
+                            this.tdiClose();
+                            return;
+                        }
+
+                        const preferredWidth = Math.max(270, Math.min(300, rect.width));
+                        const width = Math.min(preferredWidth, Math.max(220, viewportWidth - (gap * 2)));
+                        const desiredLeft = rect.width > width + 24 ? rect.right - width : rect.left;
+                        const left = Math.min(
+                            Math.max(gap, desiredLeft),
+                            Math.max(gap, viewportWidth - width - gap)
+                        );
+
+                        const popHeight = Math.min(pop.offsetHeight || 320, Math.max(220, viewportHeight - (gap * 2)));
+                        const belowTop = rect.bottom + 6;
+                        const spaceBelow = viewportHeight - belowTop - gap;
+                        const spaceAbove = rect.top - gap;
+                        const openAbove = spaceBelow < popHeight && spaceAbove > spaceBelow;
+                        const top = openAbove
+                            ? Math.max(gap, rect.top - popHeight - 6)
+                            : Math.min(belowTop, Math.max(gap, viewportHeight - popHeight - gap));
+
+                        this.tdiPopStyle = [
+                            'position: fixed',
+                            `top: ${top}px`,
+                            `left: ${left}px`,
+                            `width: ${width}px`,
+                            `max-height: ${Math.max(220, viewportHeight - (gap * 2))}px`,
+                        ].join('; ');
+                    });
+                },
+                tdiIsControlVisible(rect, viewportWidth, viewportHeight) {
+                    if (rect.bottom <= 0 || rect.top >= viewportHeight || rect.right <= 0 || rect.left >= viewportWidth) {
+                        return false;
+                    }
+
+                    let clipTop = 0;
+                    let clipRight = viewportWidth;
+                    let clipBottom = viewportHeight;
+                    let clipLeft = 0;
+                    let node = this.$refs.tdiControl ? this.$refs.tdiControl.parentElement : null;
+
+                    while (node && node !== document.body && node !== document.documentElement) {
+                        const style = window.getComputedStyle(node);
+                        const overflow = `${style.overflow} ${style.overflowX} ${style.overflowY}`;
+
+                        if (/(auto|scroll|hidden|clip)/.test(overflow)) {
+                            const clip = node.getBoundingClientRect();
+                            clipTop = Math.max(clipTop, clip.top);
+                            clipRight = Math.min(clipRight, clip.right);
+                            clipBottom = Math.min(clipBottom, clip.bottom);
+                            clipLeft = Math.max(clipLeft, clip.left);
+                        }
+
+                        node = node.parentElement;
+                    }
+
+                    return rect.bottom > clipTop
+                        && rect.top < clipBottom
+                        && rect.right > clipLeft
+                        && rect.left < clipRight;
+                },
+                tdiAttachPositionListeners() {
+                    if (this.tdiPositionHandler) return;
+
+                    this.tdiPositionHandler = () => {
+                        if (this.calOpen) this.tdiPositionPop();
+                    };
+                    window.addEventListener('resize', this.tdiPositionHandler, { passive: true });
+                    window.addEventListener('scroll', this.tdiPositionHandler, true);
+                },
+                tdiDetachPositionListeners() {
+                    if (!this.tdiPositionHandler) return;
+
+                    window.removeEventListener('resize', this.tdiPositionHandler);
+                    window.removeEventListener('scroll', this.tdiPositionHandler, true);
+                    this.tdiPositionHandler = null;
                 },
                 tdiToggleMonth() {
                     this.tdiYearOpen = false;
@@ -446,6 +556,7 @@
                     this.calMonth = month;
                     this.calYear = year;
                     this.tdiCloseMenus();
+                    this.tdiPositionPop();
                 },
                 tdiPick(day) {
                     if (!day) return;
@@ -457,8 +568,7 @@
                     input.dispatchEvent(new Event('input', { bubbles: true }));
                     input.dispatchEvent(new Event('change', { bubbles: true }));
                     this.tdiSelectedIso = this.tdiDayIso(day);
-                    this.calOpen = false;
-                    this.tdiCloseMenus();
+                    this.tdiClose();
                 },
             }));
         });

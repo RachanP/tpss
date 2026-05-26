@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AuditLog;
 use App\Models\User;
 use App\Models\UserRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -98,5 +99,94 @@ class AuthTest extends TestCase
 
         $response->assertRedirect('/login');
         $this->assertGuest();
+    }
+
+    public function test_successful_login_creates_audit_log(): void
+    {
+        $response = $this->post('/login', [
+            'username' => 'testuser',
+            'password' => 'password123',
+        ]);
+
+        $response->assertRedirect('/dashboard');
+
+        $log = AuditLog::where('action', 'ระบบ.เข้าสู่ระบบ')
+            ->where('table_affected', 'users')
+            ->where('record_id', $this->user->id)
+            ->first();
+
+        $this->assertNotNull($log, 'Expected audit log for login was not found');
+        $this->assertEquals('ระบบ', $log->category);
+        $this->assertArrayHasKey('username', $log->new_values);
+        $this->assertArrayHasKey('login_via', $log->new_values);
+        $this->assertEquals('username', $log->new_values['login_via']);
+    }
+
+    public function test_login_via_email_records_email_field(): void
+    {
+        $this->post('/login', [
+            'username' => 'test@example.com',
+            'password' => 'password123',
+        ])->assertRedirect('/dashboard');
+
+        $log = AuditLog::where('action', 'ระบบ.เข้าสู่ระบบ')
+            ->where('record_id', $this->user->id)
+            ->first();
+
+        $this->assertNotNull($log);
+        $this->assertEquals('email', $log->new_values['login_via']);
+    }
+
+    public function test_failed_login_does_not_create_audit_log(): void
+    {
+        $this->post('/login', [
+            'username' => 'testuser',
+            'password' => 'wrong-password',
+        ])->assertSessionHasErrors('username');
+
+        $this->assertDatabaseCount('audit_logs', 0);
+    }
+
+    public function test_logout_creates_audit_log(): void
+    {
+        $this->actingAs($this->user);
+
+        $this->post('/logout')->assertRedirect('/login');
+
+        $log = AuditLog::where('action', 'ระบบ.ออกจากระบบ')
+            ->where('table_affected', 'users')
+            ->where('record_id', $this->user->id)
+            ->first();
+
+        $this->assertNotNull($log, 'Expected audit log for logout was not found');
+        $this->assertEquals('ระบบ', $log->category);
+        $this->assertEquals('ออกจากระบบ: Test User', $log->description);
+    }
+
+    public function test_switch_role_does_not_create_audit_log_when_role_changes(): void
+    {
+        UserRole::create([
+            'user_id'    => $this->user->id,
+            'role'       => 'instructor',
+            'is_primary' => false,
+        ]);
+
+        $this->actingAs($this->user)
+            ->withSession(['active_role' => 'staff'])
+            ->post('/switch-role', ['role' => 'instructor'])
+            ->assertRedirect();
+
+        $this->assertEquals('instructor', session('active_role'));
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'ระบบ.เปลี่ยนบทบาท']);
+    }
+
+    public function test_switch_role_to_same_role_does_not_create_audit_log(): void
+    {
+        $this->actingAs($this->user)
+            ->withSession(['active_role' => 'staff'])
+            ->post('/switch-role', ['role' => 'staff'])
+            ->assertRedirect();
+
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'ระบบ.เปลี่ยนบทบาท']);
     }
 }

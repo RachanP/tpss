@@ -7,14 +7,13 @@ use App\Models\AuditLog;
 use App\Services\AuditLogger;
 use App\Support\ThaiDate;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class AuditLogController extends Controller
 {
     public function index(Request $request): View
     {
-        $query = AuditLog::with('user')->orderByDesc('created_at');
+        $query = AuditLog::with('user')->orderedForAudit();
 
         if ($request->filled('category')) {
             $query->where('category', $request->category);
@@ -57,15 +56,7 @@ class AuditLogController extends Controller
 
         $logs          = $query->paginate(25)->withQueryString();
         $categoryLabels = AuditLogger::CATEGORY_LABELS;
-        $actionOptions = AuditLog::query()
-            ->select('action')
-            ->whereNotNull('action')
-            ->distinct()
-            ->orderBy('action')
-            ->pluck('action')
-            ->map(fn (string $action) => Str::after($action, '.') ?: $action)
-            ->unique()
-            ->values()
+        $actionOptions = collect(AuditLogger::ACTION_FILTER_LABELS)
             ->map(fn (string $actionLabel) => [
                 'value' => $actionLabel,
                 'label' => $actionLabel,

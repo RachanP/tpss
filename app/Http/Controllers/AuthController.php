@@ -55,6 +55,21 @@ class AuthController extends Controller
                 }
             }
 
+            AuditLogger::log(
+                action: 'ระบบ.เข้าสู่ระบบ',
+                table: 'users',
+                recordId: $user->id,
+                oldValues: null,
+                newValues: [
+                    'username'    => $user->username,
+                    'email'       => $user->email,
+                    'active_role' => session('active_role'),
+                    'login_via'   => $field,
+                ],
+                category: 'ระบบ',
+                description: "เข้าสู่ระบบ: {$user->name}",
+            );
+
             return redirect('/dashboard');
         }
 
@@ -65,6 +80,21 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
+        $user = auth()->user();
+        $userId = $user?->id;
+
+        if ($user && $userId) {
+            AuditLogger::log(
+                action: 'ระบบ.ออกจากระบบ',
+                table: 'users',
+                recordId: $userId,
+                oldValues: null,
+                newValues: null,
+                category: 'ระบบ',
+                description: "ออกจากระบบ: {$user->name}",
+            );
+        }
+
         Auth::logout();
 
         $request->session()->invalidate();
