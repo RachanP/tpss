@@ -23,20 +23,48 @@ class CourseOfferingController extends Controller
 {
     private const AUDIT_CATEGORY = 'รายวิชาและผู้รับผิดชอบ';
 
-    public function index(): View
+    public function index(Request $request): View
     {
+        $coordinatorId = Auth::id();
+
+        $availableYears = \App\Models\AcademicYear::query()
+            ->whereIn('id', CourseOffering::query()
+                ->where('coordinator_id', $coordinatorId)
+                ->select('academic_year_id'))
+            ->orderByDesc('name')
+            ->orderByDesc('semester')
+            ->get();
+
+        $activeYear = \App\Models\AcademicYear::where('is_active', true)->first();
+        $schedulingYear = $availableYears->firstWhere('phase', 'scheduling');
+        $defaultYearId = $request->integer('year')
+            ?: ($schedulingYear?->id
+                ?? ($activeYear && $availableYears->contains('id', $activeYear->id) ? $activeYear->id : $availableYears->first()?->id));
+
         $offerings = CourseOffering::query()
             ->select('course_offerings.*')
             ->distinct()
             ->with(['course.curriculum', 'course.department', 'academicYear'])
             ->withCount(['studentGroups', 'instructorPool'])
             ->withSum('studentGroups as allocated_student_count', 'student_count')
-            ->where('coordinator_id', Auth::id())
+            ->where('coordinator_id', $coordinatorId)
+            ->when($defaultYearId, fn ($q) => $q->where('academic_year_id', $defaultYearId))
             ->latest('updated_at')
             ->get();
 
+        $summary = [
+            'total'     => $offerings->count(),
+            'draft'     => $offerings->where('approval_status', 'draft')->count(),
+            'pending'   => $offerings->where('approval_status', 'pending')->count(),
+            'published' => $offerings->where('approval_status', 'published')->count(),
+            'rejected'  => $offerings->where('approval_status', 'rejected')->count(),
+        ];
+
         return view('course_head.course_offerings.index', [
-            'offerings' => $offerings,
+            'offerings'       => $offerings,
+            'availableYears'  => $availableYears,
+            'selectedYearId'  => $defaultYearId,
+            'summary'         => $summary,
         ]);
     }
 
@@ -51,7 +79,7 @@ class CourseOfferingController extends Controller
             'coordinator',
             'studentGroups' => fn ($query) => $query->orderBy('group_code'),
             'instructorPool.instructorProfile.department',
-        ]);
+        ])->loadCount('schedules');
 
         $availableInstructors = User::query()
             ->with('instructorProfile.department')
@@ -74,27 +102,42 @@ class CourseOfferingController extends Controller
         ]);
     }
 
-    public function update(Request $request, CourseOffering $courseOffering): RedirectResponse
+    public function update(Request $request, CourseOffering $courseOffering): RedirectResponse|JsonResponse
     {
         $this->authorizeCourseHeadOffering($courseOffering);
-        if ($redirect = $this->requireSchedulingPhase($courseOffering, 'course-info')) return $redirect;
+        if ($redirect = $this->requireSchedulingPhase($courseOffering, 'course-info')) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'ยังไม่เปิดช่วงจัดตาราง'], 403);
+            }
+            return $redirect;
+        }
 
         $courseOffering->loadMissing('course');
         $requestedRotation = $request->boolean('requires_practicum_rotation');
         $defaultRotation = (bool) $courseOffering->course?->requires_practicum_rotation;
         $isRotationOverride = $requestedRotation !== $defaultRotation;
 
-        $request->validate([
-            'requires_practicum_rotation' => ['nullable', 'boolean'],
-            'practicum_note' => [
-                Rule::requiredIf($isRotationOverride),
-                'nullable',
-                'string',
-                'max:1000',
-            ],
-        ], [
-            'practicum_note.required' => 'กรุณาระบุหมายเหตุเมื่อการหมุนเวียนแหล่งฝึกของรอบนี้ต่างจากค่าเริ่มต้นใน Master Data',
-        ]);
+        try {
+            $request->validate([
+                'requires_practicum_rotation' => ['nullable', 'boolean'],
+                'practicum_note' => [
+                    Rule::requiredIf($isRotationOverride),
+                    'nullable',
+                    'string',
+                    'max:1000',
+                ],
+            ], [
+                'practicum_note.required' => 'กรุณาระบุหมายเหตุเมื่อการหมุนเวียนแหล่งฝึกของรอบนี้ต่างจากค่าเริ่มต้นใน Master Data',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => collect($e->errors())->flatten()->first() ?? 'ข้อมูลไม่ถูกต้อง',
+                    'errors'  => $e->errors(),
+                ], 422);
+            }
+            throw $e;
+        }
 
         $auditFields = ['requires_practicum_rotation', 'practicum_note'];
         $auditBefore = $this->auditModelSnapshot($courseOffering, $auditFields);
@@ -113,6 +156,14 @@ class CourseOfferingController extends Controller
             newValues: $diff['new'] + $this->offeringAuditContext($courseOffering),
             description: "แก้ไขข้อมูลฝึกปฏิบัติของ {$this->offeringCourseLabel($courseOffering)}",
         );
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'บันทึกแล้ว',
+                'requires_practicum_rotation' => $courseOffering->requires_practicum_rotation,
+                'practicum_note' => $courseOffering->practicum_note,
+            ]);
+        }
 
         return redirect()
             ->to(route('maker.course_offerings.show', $courseOffering) . '#course-info')
@@ -413,29 +464,47 @@ class CourseOfferingController extends Controller
         Request $request,
         CourseOffering $courseOffering,
         StudentGroup $studentGroup
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         $this->authorizeCourseHeadOffering($courseOffering);
-        if ($redirect = $this->requireSchedulingPhase($courseOffering, 'student-groups')) return $redirect;
+        if ($redirect = $this->requireSchedulingPhase($courseOffering, 'student-groups')) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'ยังไม่เปิดช่วงจัดตาราง'], 403);
+            }
+            return $redirect;
+        }
         $this->assertStudentGroupBelongsToOffering($courseOffering, $studentGroup);
 
-        $validated = $request->validate([
-            'group_code' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('student_groups', 'group_code')
-                    ->where(fn ($query) => $query->where('course_offering_id', $courseOffering->id))
-                    ->ignore($studentGroup->id),
-            ],
-            'student_count' => ['required', 'integer', 'min:1', 'max:9999'],
-            'color_code' => ['nullable', 'string', 'max:10'],
-        ]);
+        try {
+            $validated = $request->validate([
+                'group_code' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('student_groups', 'group_code')
+                        ->where(fn ($query) => $query->where('course_offering_id', $courseOffering->id))
+                        ->ignore($studentGroup->id),
+                ],
+                'student_count' => ['required', 'integer', 'min:1', 'max:9999'],
+                'color_code' => ['nullable', 'string', 'max:10'],
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => collect($e->errors())->flatten()->first() ?? 'ข้อมูลไม่ถูกต้อง',
+                    'errors'  => $e->errors(),
+                ], 422);
+            }
+            throw $e;
+        }
 
         if ($message = $this->studentCountLimitError(
             $courseOffering,
             (int) $validated['student_count'],
             $studentGroup
         )) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $message, 'errors' => ['student_count' => [$message]]], 422);
+            }
             return $this->redirectToStudentGroups($courseOffering)
                 ->withErrors(['student_count' => $message])
                 ->withInput();
@@ -455,6 +524,18 @@ class CourseOfferingController extends Controller
             newValues: $diff['new'] + $this->offeringAuditContext($courseOffering),
             description: "แก้ไขกลุ่มนักศึกษา {$studentGroup->group_code} ใน {$this->offeringCourseLabel($courseOffering)}",
         );
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'บันทึกแล้ว',
+                'group' => [
+                    'id' => $studentGroup->id,
+                    'group_code' => $studentGroup->group_code,
+                    'student_count' => $studentGroup->student_count,
+                    'color_code' => $studentGroup->color_code,
+                ],
+            ]);
+        }
 
         return $this->redirectToStudentGroups($courseOffering)
             ->with('success', 'อัปเดตกลุ่มนักศึกษาเรียบร้อยแล้ว');
@@ -562,16 +643,23 @@ class CourseOfferingController extends Controller
         return $blocked->unique()->values()->all();
     }
 
-    public function destroyStudentGroup(CourseOffering $courseOffering, StudentGroup $studentGroup): RedirectResponse
+    public function destroyStudentGroup(Request $request, CourseOffering $courseOffering, StudentGroup $studentGroup): RedirectResponse|JsonResponse
     {
         $this->authorizeCourseHeadOffering($courseOffering);
-        if ($redirect = $this->requireSchedulingPhase($courseOffering, 'student-groups')) return $redirect;
+        if ($redirect = $this->requireSchedulingPhase($courseOffering, 'student-groups')) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'ยังไม่เปิดช่วงจัดตาราง'], 403);
+            }
+            return $redirect;
+        }
         $this->assertStudentGroupBelongsToOffering($courseOffering, $studentGroup);
 
         if ($this->studentGroupHasDownstreamReferences($studentGroup)) {
-            return $this->redirectToStudentGroups($courseOffering)->withErrors([
-                'student_groups' => 'ไม่สามารถลบกลุ่มที่ถูกอ้างอิงในตารางสอนได้ กรุณาจัดการตารางสอนที่เกี่ยวข้องก่อน',
-            ]);
+            $msg = 'ไม่สามารถลบกลุ่มที่ถูกอ้างอิงในตารางสอนได้ กรุณาจัดการตารางสอนที่เกี่ยวข้องก่อน';
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $msg], 422);
+            }
+            return $this->redirectToStudentGroups($courseOffering)->withErrors(['student_groups' => $msg]);
         }
 
         $auditValues = $this->studentGroupAuditValues($courseOffering, $studentGroup);
@@ -584,6 +672,10 @@ class CourseOfferingController extends Controller
             newValues: $this->offeringAuditContext($courseOffering),
             description: "ลบกลุ่มนักศึกษา {$auditValues['group_code']} ใน {$this->offeringCourseLabel($courseOffering)}",
         );
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'ลบกลุ่มแล้ว']);
+        }
 
         return $this->redirectToStudentGroups($courseOffering)
             ->with('warning', 'ลบกลุ่มนักศึกษาเรียบร้อยแล้ว');

@@ -99,6 +99,84 @@ class Course extends Model
         return $this->hasMany(CourseOffering::class);
     }
 
+    /**
+     * เทียบ instructor pool ของ offering กับ template ของรายวิชา (live compare).
+     * Coordinator (head_instructor_id) ถูก exclude จากทั้งสองฝั่ง — auto-assigned, ไม่นับเป็น choice ของ Course Head.
+     *
+     * @return array{added: array<int,array{user_id:int,role_id:?int}>, removed: array<int,array{user_id:int,role_id:?int}>, role_changed: array<int,array{user_id:int,template_role_id:?int,offering_role_id:?int}>}
+     */
+    public function instructorPoolDeviationFor(CourseOffering $offering): array
+    {
+        $coordinatorId = (int) ($this->head_instructor_id ?? 0);
+
+        // ใช้ relation cache ถ้า caller eager-loaded มาแล้ว — กัน N+1 ใน controller ที่ loop หลาย offering
+        $templateUsers = $this->relationLoaded('instructors')
+            ? $this->getRelation('instructors')
+            : $this->instructors()->get();
+        $actualUsers = $offering->relationLoaded('instructorPool')
+            ? $offering->getRelation('instructorPool')
+            : $offering->instructorPool()->get();
+
+        $template = $templateUsers
+            ->filter(fn ($u) => (int) $u->id !== $coordinatorId)
+            ->mapWithKeys(fn ($u) => [(int) $u->id => (int) ($u->pivot->course_role_id ?? 0) ?: null]);
+
+        $actual = $actualUsers
+            ->filter(fn ($u) => (int) $u->id !== $coordinatorId)
+            ->mapWithKeys(fn ($u) => [(int) $u->id => (int) ($u->pivot->course_role_id ?? 0) ?: null]);
+
+        $added = [];
+        foreach ($actual as $userId => $roleId) {
+            if (!$template->has($userId)) {
+                $added[] = ['user_id' => (int) $userId, 'role_id' => $roleId];
+            }
+        }
+
+        $removed = [];
+        foreach ($template as $userId => $roleId) {
+            if (!$actual->has($userId)) {
+                $removed[] = ['user_id' => (int) $userId, 'role_id' => $roleId];
+            }
+        }
+
+        $roleChanged = [];
+        foreach ($actual as $userId => $offeringRoleId) {
+            if ($template->has($userId) && $template[$userId] !== $offeringRoleId) {
+                $roleChanged[] = [
+                    'user_id' => (int) $userId,
+                    'template_role_id' => $template[$userId],
+                    'offering_role_id' => $offeringRoleId,
+                ];
+            }
+        }
+
+        return ['added' => $added, 'removed' => $removed, 'role_changed' => $roleChanged];
+    }
+
+    /**
+     * เปรียบเทียบค่า "ระดับรอบเปิดสอน" ที่ Course Head override ได้ vs ค่าใน Master Data.
+     * คืน array ของ field ที่ต่าง — ถ้าไม่ต่างคืน array ว่าง
+     *
+     * @return array<string, array{template: mixed, offering: mixed, note?: ?string}>
+     */
+    public function offeringDetailsDeviationFor(CourseOffering $offering): array
+    {
+        $diff = [];
+
+        // requires_practicum_rotation — Course Head ปรับ override ได้ + แนบเหตุผลใน practicum_note
+        $templateRotation = (bool) ($this->requires_practicum_rotation ?? false);
+        $offeringRotation = (bool) ($offering->requires_practicum_rotation ?? false);
+        if ($templateRotation !== $offeringRotation) {
+            $diff['rotation'] = [
+                'template' => $templateRotation,
+                'offering' => $offeringRotation,
+                'note'     => $offering->practicum_note,
+            ];
+        }
+
+        return $diff;
+    }
+
     public function prerequisites(): BelongsToMany
     {
         return $this->belongsToMany(

@@ -2429,7 +2429,7 @@
                 $approvalMeta = [
                     'draft' => ['label' => 'แบบร่าง', 'class' => 'badge-gray'],
                     'pending' => ['label' => 'รออนุมัติ', 'class' => 'badge-warn'],
-                    'published' => ['label' => 'เผยแพร่แล้ว', 'class' => 'badge-ok'],
+                    'published' => ['label' => 'อนุมัติแล้ว', 'class' => 'badge-ok'],
                     'rejected' => ['label' => 'ส่งกลับแก้ไข', 'class' => 'badge-err'],
                 ][$courseOffering->approval_status ?? 'draft'] ?? ['label' => $courseOffering->approval_status ?? 'แบบร่าง', 'class' => 'badge-gray'];
             @endphp
