@@ -513,7 +513,7 @@
         color: var(--status-success-fg);
     }
 
-    @media (max-width: 1180px) {
+    @media (max-width: 1600px) {
         .admin-status-banner {
             grid-template-columns: 1fr;
             gap: 18px;
