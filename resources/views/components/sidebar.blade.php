@@ -178,6 +178,27 @@
             </a>
 
         @elseif($activeRole === 'course_head')
+            @php
+                $makerConflictSchedules = \App\Models\Schedule::query()
+                    ->with(['instructors', 'studentGroups'])
+                    ->whereHas('courseOffering', fn ($query) => $query->where('coordinator_id', $user?->id))
+                    ->get();
+                $makerConflictChecker = app(\App\Services\ScheduleConflictChecker::class);
+                $makerConflictCount = $makerConflictSchedules->sum(function ($schedule) use ($makerConflictChecker) {
+                    return count($makerConflictChecker->check(
+                        [
+                            'start_date' => $schedule->start_date?->toDateString(),
+                            'end_date' => $schedule->end_date?->toDateString(),
+                            'start_time' => substr((string) $schedule->start_time, 0, 5),
+                            'end_time' => substr((string) $schedule->end_time, 0, 5),
+                            'room_id' => $schedule->room_id,
+                        ],
+                        $schedule->instructors->pluck('id')->map(fn ($id) => (int) $id)->all(),
+                        $schedule->studentGroups->pluck('id')->map(fn ($id) => (int) $id)->all(),
+                        $schedule->id
+                    ));
+                });
+            @endphp
             <div class="sb-sec">เมนูหลัก</div>
             <!-- Maker Menus -->
             <a href="#" class="nv {{ str_contains($currentPath, 'dashboard') ? 'on' : '' }}">
@@ -197,6 +218,19 @@
                     <line x1="3" y1="10" x2="21" y2="10"></line>
                 </svg>
                 ตารางสอน
+            </a>
+            <a href="{{ route('maker.schedule_conflicts.index') }}" class="nv {{ Request::routeIs('maker.schedule_conflicts.*') ? 'on' : '' }}">
+                <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+                <span>การแจ้งเตือนการชน</span>
+                @if($makerConflictCount > 0)
+                    <span class="nv-alert-badges">
+                        <span class="nv-bd nv-bd-red" title="{{ $makerConflictCount }} รายการชน">{{ $makerConflictCount }}</span>
+                    </span>
+                @endif
             </a>
             <a href="{{ route('maker.course_offerings.index') }}" class="nv {{ Request::routeIs('maker.course_offerings.*') && ! Request::routeIs('maker.course_offerings.schedules.*') ? 'on' : '' }}">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
