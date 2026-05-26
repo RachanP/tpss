@@ -1,4 +1,38 @@
-<div class="card" x-data="{ searchQuery: '' }">
+@php
+    $workloadRows = $instructors->values()->map(function ($instructor) use ($teachingWeeks, $hoursPerWeek) {
+        $profile = $instructor->instructorProfile;
+        $employmentType = $profile?->employment_type;
+        $hasQuota = $profile && $profile->teaching_pct;
+        $quota = null;
+        $period = null;
+
+        if ($hasQuota) {
+            $isGov = $employmentType === 'ข้าราชการ';
+            $base = $isGov ? ($teachingWeeks * $hoursPerWeek / 2) : ($teachingWeeks * $hoursPerWeek);
+            $period = $isGov ? '6 เดือน' : 'ปี';
+            $quota = number_format(($base * $profile->teaching_pct) / 100, 1);
+        }
+
+        return [
+            'id' => $instructor->id,
+            'employeeId' => $instructor->employee_id ?: '-',
+            'name' => $instructor->formatted_name,
+            'employmentType' => $employmentType,
+            'department' => $profile?->department?->name ?: '-',
+            'teachingHours' => '0.0',
+            'hasQuota' => (bool) $hasQuota,
+            'quota' => $quota,
+            'period' => $period,
+            'searchText' => mb_strtolower(trim(($instructor->employee_id ?? '') . ' ' . $instructor->formatted_name)),
+        ];
+    });
+
+    $workloadPagerEnabled = isset($workloadPageSize);
+    $workloadPageSize = (int) ($workloadPageSize ?? max($workloadRows->count(), 1));
+@endphp
+
+<div class="card workload-card"
+     x-data="instructorsWorkloadWidget({ rows: {{ Js::from($workloadRows) }}, perPage: {{ $workloadPageSize }} })">
     <div class="card-hdr">
         <div class="card-ttl">ภาระงานสอนของอาจารย์</div>
         <div class="card-actions">
@@ -7,10 +41,14 @@
                     <circle cx="11" cy="11" r="8" />
                     <line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
-                <input type="text" x-model="searchQuery" placeholder="ค้นหารหัสหรือชื่ออาจารย์...">
+                <input type="text"
+                       x-model="searchQuery"
+                       @input="resetPage()"
+                       placeholder="ค้นหารหัสหรือชื่ออาจารย์...">
             </div>
         </div>
     </div>
+
     <div class="table-responsive">
         <table>
             <thead>
@@ -23,54 +61,217 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach($instructors as $instructor)
-                    @php
-                        $searchText = trim(($instructor->employee_id ?? '') . ' ' . $instructor->formatted_name);
-                    @endphp
-                    <tr x-show="!searchQuery || {{ Js::from($searchText) }}.toLowerCase().includes(searchQuery.toLowerCase())">
-                        <td style="font-weight: 600; color: var(--fg-2);">
-                            {{ $instructor->employee_id ?? '-' }}
-                        </td>
-                        <td>
-                            <div style="font-weight: 600; color: var(--fg-1);">
-                                {{ $instructor->formatted_name }}
-                            </div>
-                            @if($instructor->instructorProfile && $instructor->instructorProfile->employment_type)
-                            <div style="font-size: 11px; color: var(--fg-3); margin-top: 2px;">
-                                {{ $instructor->instructorProfile->employment_type }}
-                            </div>
-                            @endif
-                        </td>
-                        <td style="color: var(--fg-2); font-size: 13px;">
-                            {{ $instructor->instructorProfile->department->name ?? '-' }}
-                        </td>
-                        <td style="text-align: right; font-weight: 700; color: var(--fg-3);">
-                            0.0
-                        </td>
-                        <td style="text-align: right; padding-right: 24px;">
-                            @if($instructor->instructorProfile && $instructor->instructorProfile->teaching_pct)
-                                @php
-                                    $isGov = ($instructor->instructorProfile->employment_type === 'ข้าราชการ');
-                                    $base = $isGov ? ($teachingWeeks * $hoursPerWeek / 2) : ($teachingWeeks * $hoursPerWeek);
-                                    $period = $isGov ? '6 เดือน' : 'ปี';
-                                    $quota = ($base * $instructor->instructorProfile->teaching_pct) / 100;
-                                @endphp
-                                <div style="font-weight: 700; color: var(--brand-navy); font-size: 14px;">
-                                    {{ number_format($quota, 1) }}
-                                </div>
-                                <div style="font-size: 11px; color: var(--fg-3);">ชั่วโมงทำการ / {{ $period }}</div>
-                            @else
-                                <span style="color: var(--fg-3); font-style: italic;">- ไม่ระบุ -</span>
-                            @endif
-                        </td>
-                    </tr>
-                @endforeach
-                @if($instructors->isEmpty())
+                <template x-for="row in pagedRows" :key="row.id">
                     <tr>
-                        <td colspan="5" style="text-align: center; padding: 40px; color: var(--fg-3);">ไม่พบข้อมูลอาจารย์</td>
+                        <td style="font-weight: 600; color: var(--fg-2);" x-text="row.employeeId"></td>
+                        <td>
+                            <div style="font-weight: 600; color: var(--fg-1);" x-text="row.name"></div>
+                            <template x-if="row.employmentType">
+                                <div style="font-size: 11px; color: var(--fg-3); margin-top: 2px;" x-text="row.employmentType"></div>
+                            </template>
+                        </td>
+                        <td style="color: var(--fg-2); font-size: 13px;" x-text="row.department"></td>
+                        <td style="text-align: right; font-weight: 700; color: var(--fg-3);" x-text="row.teachingHours"></td>
+                        <td style="text-align: right; padding-right: 24px;">
+                            <template x-if="row.hasQuota">
+                                <div>
+                                    <div style="font-weight: 700; color: var(--brand-navy); font-size: 14px;" x-text="row.quota"></div>
+                                    <div style="font-size: 11px; color: var(--fg-3);">
+                                        ชั่วโมงทำการ / <span x-text="row.period"></span>
+                                    </div>
+                                </div>
+                            </template>
+                            <template x-if="!row.hasQuota">
+                                <span style="color: var(--fg-3); font-style: italic;">- ไม่ระบุ -</span>
+                            </template>
+                        </td>
                     </tr>
-                @endif
+                </template>
+
+                <tr x-show="filteredRows.length === 0">
+                    <td colspan="5" style="text-align: center; padding: 40px; color: var(--fg-3);">
+                        ไม่พบข้อมูลอาจารย์
+                    </td>
+                </tr>
             </tbody>
         </table>
     </div>
+
+    <div class="workload-pagination" x-show="{{ $workloadPagerEnabled ? 'rows.length > 0' : 'false' }}">
+        <span class="workload-pagination-summary">
+            แสดง <span x-text="rangeStart"></span>–<span x-text="rangeEnd"></span> จาก <span x-text="filteredRows.length.toLocaleString()"></span> รายการ
+        </span>
+
+        <nav class="workload-pagination-nav" aria-label="Pagination" x-show="totalPages > 1">
+            <button type="button"
+                    class="workload-page-btn"
+                    :disabled="currentPage === 1"
+                    @click.prevent="goToPage(currentPage - 1)"
+                    aria-label="หน้าก่อนหน้า">&lt;</button>
+
+            <template x-for="(page, index) in pageNumbers" :key="`${page}-${index}`">
+                <span class="workload-page-slot">
+                    <span x-show="page === '...'" class="workload-page-gap">...</span>
+                    <button type="button"
+                            class="workload-page-btn"
+                            x-show="page !== '...'"
+                            :class="{ 'is-current': page === currentPage }"
+                            :aria-current="page === currentPage ? 'page' : null"
+                            @click.prevent="goToPage(page)"
+                            x-text="page"></button>
+                </span>
+            </template>
+
+            <button type="button"
+                    class="workload-page-btn"
+                    :disabled="currentPage === totalPages"
+                    @click.prevent="goToPage(currentPage + 1)"
+                    aria-label="หน้าถัดไป">&gt;</button>
+        </nav>
+    </div>
 </div>
+
+<script>
+    window.instructorsWorkloadWidget = function(config) {
+        return {
+            rows: config.rows || [],
+            searchQuery: '',
+            currentPage: 1,
+            perPage: Math.max(Number(config.perPage || 5), 1),
+
+            get filteredRows() {
+                const query = this.searchQuery.trim().toLowerCase();
+                if (!query) return this.rows;
+
+                return this.rows.filter((row) => String(row.searchText || '').includes(query));
+            },
+
+            get totalPages() {
+                return Math.max(1, Math.ceil(this.filteredRows.length / this.perPage));
+            },
+
+            get pagedRows() {
+                if (this.currentPage > this.totalPages) this.currentPage = this.totalPages;
+                const start = (this.currentPage - 1) * this.perPage;
+                return this.filteredRows.slice(start, start + this.perPage);
+            },
+
+            get rangeStart() {
+                if (this.filteredRows.length === 0) return 0;
+                return ((this.currentPage - 1) * this.perPage) + 1;
+            },
+
+            get rangeEnd() {
+                return Math.min(this.currentPage * this.perPage, this.filteredRows.length);
+            },
+
+            get pageNumbers() {
+                const total = this.totalPages;
+                if (total <= 7) {
+                    return Array.from({ length: total }, (_, index) => index + 1);
+                }
+
+                const pages = [1];
+                const start = Math.max(2, this.currentPage - 1);
+                const end = Math.min(total - 1, this.currentPage + 1);
+
+                if (start > 2) pages.push('...');
+                for (let page = start; page <= end; page += 1) pages.push(page);
+                if (end < total - 1) pages.push('...');
+                pages.push(total);
+
+                return pages;
+            },
+
+            resetPage() {
+                this.currentPage = 1;
+            },
+
+            goToPage(page) {
+                if (page === '...') return;
+                this.currentPage = Math.min(Math.max(Number(page), 1), this.totalPages);
+            },
+        };
+    };
+</script>
+
+<style>
+    .workload-pagination {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        padding: 12px 20px;
+        border-top: 1px solid var(--border);
+    }
+
+    .workload-pagination-summary {
+        color: var(--fg-3);
+        font-size: 12px;
+        line-height: 1.45;
+    }
+
+    .workload-pagination-nav {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex-wrap: wrap;
+    }
+
+    .workload-page-slot {
+        display: contents;
+    }
+
+    .workload-page-btn,
+    .workload-page-gap {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 32px;
+        height: 32px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--surface);
+        color: var(--fg-2);
+        font-size: 13px;
+        text-decoration: none;
+    }
+
+    .workload-page-btn {
+        cursor: pointer;
+    }
+
+    .workload-page-btn:hover:not(:disabled):not(.is-current),
+    .workload-page-btn:focus-visible:not(:disabled):not(.is-current) {
+        border-color: color-mix(in oklch, var(--brand-navy) 24%, var(--border));
+        background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
+        outline: none;
+    }
+
+    .workload-page-btn.is-current {
+        border-color: var(--fg-1);
+        background: var(--fg-1);
+        color: var(--surface);
+        cursor: default;
+    }
+
+    .workload-page-btn:disabled {
+        color: var(--fg-3);
+        cursor: default;
+        opacity: .55;
+    }
+
+    .workload-page-gap {
+        border-color: transparent;
+        background: transparent;
+        color: var(--fg-3);
+    }
+
+    @media (max-width: 720px) {
+        .workload-pagination {
+            align-items: flex-start;
+            padding: 12px 14px;
+        }
+    }
+</style>

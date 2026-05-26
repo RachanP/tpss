@@ -34,7 +34,7 @@
                     <p>ตรวจรายชื่ออาจารย์ ภาควิชา และเกณฑ์ชั่วโมงสอนก่อนเริ่มจัดตารางจริง</p>
                 </div>
             </div>
-            @include('shared.dashboard.instructors_workload')
+            @include('shared.dashboard.instructors_workload', ['workloadPageSize' => 5])
         </section>
 
         <section class="admin-section">
