@@ -121,3 +121,25 @@
         @endforelse
     </div>
 </div>
+
+<style>
+    [data-testid="recent-activity-widget"] {
+        overflow: hidden;
+    }
+
+    [data-testid="recent-activity-widget"] .card-hdr {
+        flex-wrap: wrap;
+        gap: 10px 14px;
+    }
+
+    [data-testid="recent-activity-widget"] [data-testid="recent-activity-row"] {
+        min-width: 0;
+    }
+
+    @media (max-width: 540px) {
+        [data-testid="recent-activity-widget"] .ra-view-all {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>

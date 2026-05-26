@@ -31,7 +31,7 @@
         ];
     } elseif ($currentPhase === 'preparation' && $warningCount > 0) {
         $systemStatus = [
-            'title' => 'ข้อมูลหลักเกือบพร้อม',
+            'title' => 'ข้อมูลหลักรอตรวจสอบ',
             'pill' => 'p-warning',
             'label' => 'มีรายการควรตรวจสอบ',
             'desc' => "ตรวจสอบข้อมูล {$warningCount} รายการก่อนเปิดช่วงจัดตาราง หากไม่กระทบการจัดตารางสามารถดำเนินการต่อได้",
@@ -189,6 +189,7 @@
         padding: 24px;
         background: var(--surface);
         border-color: color-mix(in oklch, var(--brand-navy) 10%, var(--border));
+        overflow: hidden;
     }
 
     .admin-hero-top {
@@ -196,10 +197,12 @@
         align-items: flex-start;
         justify-content: space-between;
         gap: 24px;
+        flex-wrap: wrap;
         margin-bottom: 22px;
     }
 
     .admin-hero-copy {
+        flex: 1 1 360px;
         min-width: 0;
     }
 
@@ -232,7 +235,7 @@
         display: grid;
         position: relative;
         overflow: hidden;
-        grid-template-columns: minmax(360px, 1fr) minmax(420px, 0.9fr);
+        grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
         gap: 28px;
         align-items: center;
         min-height: 126px;
@@ -297,7 +300,8 @@
         gap: 12px;
         flex-wrap: wrap;
         justify-content: flex-end;
-        flex-shrink: 0;
+        flex: 0 1 430px;
+        min-width: 0;
     }
 
     .admin-year-badge {
@@ -312,7 +316,8 @@
         font-size: 13px;
         font-weight: 800;
         line-height: 1.2;
-        white-space: nowrap;
+        white-space: normal;
+        text-align: center;
     }
 
     .admin-year-badge.is-warning {
@@ -325,7 +330,8 @@
         min-height: 36px;
         padding-inline: 18px;
         text-decoration: none;
-        white-space: nowrap;
+        white-space: normal;
+        text-align: center;
     }
 
     .admin-status-state {
@@ -409,7 +415,7 @@
 
     .admin-status-summary {
         display: grid;
-        grid-template-columns: repeat(4, minmax(96px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
         gap: 10px;
         min-width: 0;
     }
@@ -478,9 +484,10 @@
         margin-top: 6px;
         color: var(--fg-1);
         font-family: var(--font-display);
-        font-size: 20px;
+        font-size: clamp(17px, 1.6vw, 20px);
         font-weight: 800;
         line-height: 1.15;
+        overflow-wrap: anywhere;
     }
 
     .admin-summary-status {
@@ -510,6 +517,11 @@
         .admin-status-banner {
             grid-template-columns: 1fr;
             gap: 18px;
+        }
+
+        .admin-status-control-row {
+            flex: 1 1 100%;
+            justify-content: flex-start;
         }
     }
 
@@ -559,6 +571,17 @@
 
         .admin-status-summary {
             grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 540px) {
+        .admin-hero-card {
+            padding: 14px;
+        }
+
+        .admin-status-summary-item {
+            min-height: 74px;
+            padding: 10px 8px;
         }
     }
 

@@ -100,6 +100,11 @@
         border: 1px solid var(--border);
     }
 
+    .admin-alert-card .card-hdr > div:first-child {
+        flex-wrap: wrap;
+        min-width: 0;
+    }
+
     .admin-alert-group-label {
         padding: 4px 16px 6px;
         font-size: 11px;
@@ -155,7 +160,8 @@
         opacity: 0;
         transform: translateX(-4px);
         transition: opacity var(--dur-fast), transform var(--dur-fast);
-        white-space: nowrap;
+        text-align: right;
+        white-space: normal;
     }
 
     .admin-alert-status {
@@ -210,6 +216,12 @@
         background: color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
     }
 
+    @media (max-width: 900px) {
+        .admin-alert-card .card-hdr {
+            align-items: flex-start;
+        }
+    }
+
     @media (max-width: 720px) {
         .admin-alert-row {
             align-items: flex-start;
@@ -225,6 +237,17 @@
 
         .admin-alert-status {
             order: 2;
+        }
+    }
+
+    @media (max-width: 540px) {
+        .admin-alert-row {
+            margin-inline: 10px;
+            padding: 9px;
+        }
+
+        .admin-alert-main {
+            flex-basis: 100%;
         }
     }
 </style>

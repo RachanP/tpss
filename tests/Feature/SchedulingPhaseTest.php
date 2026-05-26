@@ -307,6 +307,41 @@ class SchedulingPhaseTest extends TestCase
         $this->assertSame('preparation', $year->fresh()->phase);
     }
 
+    public function test_settings_page_uses_modal_confirmation_for_closing_scheduling_window(): void
+    {
+        $admin = $this->makeAdmin();
+        $year = $this->makeYear([
+            'name' => '2568',
+            'semester' => 2,
+            'is_active' => true,
+            'phase' => 'scheduling',
+        ]);
+
+        $this->actingAsAdmin($admin);
+
+        $response = $this->get(route('admin.settings', ['tab' => 'academic']));
+        $html = $response->getContent();
+
+        $response
+            ->assertOk()
+            ->assertSee('close-scheduling-' . $year->id, false)
+            ->assertSee("startCloseScheduleConfirm('close-scheduling-{$year->id}', 'ปีการศึกษา 2568 ภาค 2')", false)
+            ->assertSee('ยืนยันปิดช่วงจัดตาราง')
+            ->assertSee('ข้อมูลตารางที่จัดไว้แล้วจะยังอยู่')
+            ->assertSee('ระบบจะปิดเฉพาะสิทธิ์การจัด/แก้ไขตารางชั่วคราว')
+            ->assertSee('หัวหน้าวิชาจะไม่สามารถจัดหรือแก้ไขตารางในรอบนี้ต่อได้')
+            ->assertSee('closeScheduleCountdown')
+            ->assertSee('รอ ', false)
+            ->assertSee('พร้อมยืนยันปิดช่วงจัดตาราง')
+            ->assertSee(':disabled="closeScheduleCountdown > 0"', false);
+
+        $this->assertStringNotContainsString('onclick="return confirm', $html);
+        $this->assertMatchesRegularExpression(
+            '/<button[^>]*type="button"[^>]*@click="startCloseScheduleConfirm/s',
+            $html,
+        );
+    }
+
     public function test_close_blocked_for_inactive_year(): void
     {
         $admin = $this->makeAdmin();
