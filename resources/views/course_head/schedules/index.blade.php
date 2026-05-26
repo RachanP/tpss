@@ -2806,6 +2806,18 @@
                 const iso = this.thaiDateToIso(this.gridJumpDate) || @js(($selectedScheduleDate ?? $weekStart)->toDateString());
                 this.navigateGrid(iso, period);
             },
+            centerStackCard(el) {
+                const stack = el?.closest('.activity-stack');
+                if (!stack) return;
+
+                this.$nextTick(() => {
+                    stack.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center',
+                        inline: 'nearest',
+                    });
+                });
+            },
             toggleWeekends() {
                 if (this.schedulePeriod !== 'week') return;
                 const url = new URL(@js($weekendToggleUrl), window.location.origin);
@@ -3578,7 +3590,7 @@
                                                             class="stack-indicator"
                                                             x-show="{{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1)"
                                                             @if($stackCount > 3)
-                                                                @click.stop="page = (page + 1) % Math.ceil(count / 3)"
+                                                                @click.stop="page = (page + 1) % Math.ceil(count / 3); centerStackCard($el)"
                                                                 title="คลิกเพื่อดูการ์ดถัดไป"
                                                             @endif
                                                         >
@@ -3970,7 +3982,7 @@
                                                         class="stack-indicator"
                                                         x-show="{{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1)"
                                                         @if($stackCount > 3)
-                                                            @click.stop="page = (page + 1) % Math.ceil(count / 3)"
+                                                            @click.stop="page = (page + 1) % Math.ceil(count / 3); centerStackCard($el)"
                                                             title="คลิกเพื่อดูการ์ดถัดไป"
                                                         @endif
                                                     >
