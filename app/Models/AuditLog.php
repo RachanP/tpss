@@ -39,7 +39,8 @@ class AuditLog extends Model
 
     public function scopeOrderedForAudit(Builder $query): Builder
     {
-        return $query->orderByDesc('created_at');
+        // Primary: latest first. Secondary (tied timestamps): chronological insertion order (id ASC)
+        return $query->orderByDesc('created_at')->orderBy('id');
     }
 
     /**

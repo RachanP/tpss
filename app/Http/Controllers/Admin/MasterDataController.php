@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\LocationType;
 use App\Models\Room;
 use App\Models\Course;
+use App\Models\CourseOffering;
 use App\Models\CourseRole;
 use App\Models\Curriculum;
 use App\Models\ActivityType;
@@ -74,6 +75,34 @@ class MasterDataController extends Controller
             ])
             ->orderBy('course_code')
             ->get();
+
+        // คำนวณว่าวิชาไหนมี deviation จากแม่แบบบ้าง (สำหรับ red dot บนปุ่ม report)
+        // โหลด offerings + pool เฉพาะวิชาที่ locked เพื่อ minimize query
+        // หมายเหตุ: `instructors` ถูก eager-loaded ไปแล้วใน with() ด้านบน → deviation helper จะใช้ cache
+        $lockedCourseIds = $courses->where('has_locked_offering', true)->pluck('id');
+        if ($lockedCourseIds->isNotEmpty()) {
+            $offeringsForDiff = CourseOffering::with(['instructorPool', 'academicYear'])
+                ->whereIn('course_id', $lockedCourseIds)
+                ->whereHas('academicYear', fn ($q) => $q->whereIn('phase', ['scheduling', 'published']))
+                ->get()
+                ->groupBy('course_id');
+
+            foreach ($courses as $course) {
+                $course->has_deviation = false;
+                if (! $course->has_locked_offering) continue;
+
+                foreach ($offeringsForDiff[$course->id] ?? [] as $offering) {
+                    $instructorDiff = $course->instructorPoolDeviationFor($offering);
+                    $detailsDiff = $course->offeringDetailsDeviationFor($offering);
+                    $hasAny = count($instructorDiff['added']) + count($instructorDiff['removed'])
+                        + count($instructorDiff['role_changed']) + count($detailsDiff);
+                    if ($hasAny > 0) {
+                        $course->has_deviation = true;
+                        break;
+                    }
+                }
+            }
+        }
 
         $courseRoles = CourseRole::orderBy('sort_order')
             ->where('name_th', '!=', 'หัวหน้าวิชา')
@@ -1021,6 +1050,58 @@ class MasterDataController extends Controller
         } catch (\Illuminate\Database\QueryException $e) {
             return redirect()->back()->with('error', 'ไม่สามารถลบได้เนื่องจากมีข้อมูลผูกพันอยู่');
         }
+    }
+
+    public function courseInstructorDeviation(Course $course)
+    {
+        // Include offerings ทุก phase — admin ใช้ดู pattern ข้ามปีเพื่อตัดสินใจ template รอบหน้า
+        $offerings = $course->courseOfferings()
+            ->with(['academicYear', 'coordinator', 'instructorPool.instructorProfile.department'])
+            ->get()
+            ->sortByDesc(fn ($o) => [$o->academicYear?->name, $o->academicYear?->semester]);
+
+        $course->load([
+            'instructors.instructorProfile.department',
+            'headInstructor.instructorProfile',
+            'department',
+            'curriculum',
+        ]);
+
+        $userIds = collect();
+        $deviations = $offerings->mapWithKeys(function ($offering) use ($course, &$userIds) {
+            $diff = $course->instructorPoolDeviationFor($offering);
+            foreach (['added', 'removed', 'role_changed'] as $bucket) {
+                foreach ($diff[$bucket] as $entry) {
+                    $userIds->push($entry['user_id']);
+                }
+            }
+            return [$offering->id => $diff];
+        });
+
+        $detailsDeviations = $offerings->mapWithKeys(function ($offering) use ($course) {
+            return [$offering->id => $course->offeringDetailsDeviationFor($offering)];
+        });
+
+        $users = User::whereIn('id', $userIds->unique()->values())
+            ->with('instructorProfile.department')
+            ->get()
+            ->keyBy('id');
+
+        $courseRoles = CourseRole::orderBy('sort_order')->get()->keyBy('id');
+
+        $templateUpdatedAt = \Illuminate\Support\Facades\DB::table('course_instructors')
+            ->where('course_id', $course->id)
+            ->max('updated_at');
+
+        return view('admin.courses.instructor_deviation', [
+            'course'             => $course,
+            'offerings'          => $offerings,
+            'deviations'         => $deviations,
+            'detailsDeviations'  => $detailsDeviations,
+            'users'              => $users,
+            'courseRoles'        => $courseRoles,
+            'templateUpdatedAt'  => $templateUpdatedAt,
+        ]);
     }
 
     public function destroyCourse(Course $course)

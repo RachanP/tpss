@@ -223,14 +223,17 @@ class ScheduleManagementTest extends TestCase
             ->assertDontSee($otherOffering->course->course_code);
     }
 
-    public function test_schedule_workspace_redirects_to_first_offering(): void
+    public function test_schedule_workspace_redirects_to_first_offering_without_overview_option(): void
     {
         [$head, $offering] = $this->makeReadyOffering();
 
         $this->actingAsCourseHead($head);
 
-        $this->get(route('maker.schedules.index'))
-            ->assertRedirect(route('maker.course_offerings.schedules.index', $offering));
+        $this->followingRedirects()
+            ->get(route('maker.schedules.index'))
+            ->assertOk()
+            ->assertSee($offering->course->course_code)
+            ->assertDontSee('ภาพรวมตารางสอนที่รับผิดชอบ');
     }
 
     public function test_schedule_workspace_create_button_opens_create_modal(): void
@@ -298,7 +301,12 @@ class ScheduleManagementTest extends TestCase
 
         $this->get(route('maker.schedules.index'))
             ->assertOk()
-            ->assertSee('ยังไม่มีรายวิชาที่ต้องจัดตาราง');
+            ->assertSee('ยังไม่มีรายวิชาที่ต้องจัดตาราง')
+            ->assertDontSee('data-testid="schedule-create-link"', false)
+            ->assertDontSee('data-testid="schedule-list-toggle"', false)
+            ->assertDontSee('data-testid="schedule-grid-toggle"', false)
+            ->assertDontSee('ดูข้อมูลอย่างเดียว')
+            ->assertDontSee('class="schedule-title">ตารางสอน', false);
     }
 
     public function test_sidebar_schedule_link_points_to_workspace(): void
@@ -313,6 +321,19 @@ class ScheduleManagementTest extends TestCase
             ->assertSee('href="' . route('maker.schedules.index') . '"', false);
     }
 
+    public function test_sidebar_conflict_link_points_to_conflict_alerts(): void
+    {
+        [$head] = $this->makeReadyOffering();
+
+        $this->actingAsCourseHead($head);
+
+        $this->followingRedirects()
+            ->get(route('maker.schedules.index'))
+            ->assertOk()
+            ->assertSee('การแจ้งเตือนการชน')
+            ->assertSee('href="' . route('maker.schedule_conflicts.index') . '"', false);
+    }
+
     public function test_nested_schedule_routes_activate_schedule_sidebar_item(): void
     {
         [$head, $offering] = $this->makeReadyOffering();
@@ -323,6 +344,26 @@ class ScheduleManagementTest extends TestCase
             ->assertOk()
             ->assertSee('href="' . route('maker.schedules.index') . '" class="nv on"', false)
             ->assertDontSee('href="' . route('maker.course_offerings.index') . '" class="nv on"', false);
+    }
+
+    public function test_conflict_alert_page_lists_owned_schedule_conflicts_with_edit_links(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        [, $otherOffering, , $otherGroup, $otherActivityType, $otherRoom] = $this->makeReadyOffering();
+        $otherOffering->instructorPool()->attach($instructor->id, ['role_in_course' => 'instructor']);
+        $this->makeSchedule($otherOffering, $otherActivityType, $otherRoom, [$instructor], [$otherGroup]);
+        $schedule = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group]);
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.schedule_conflicts.index'))
+            ->assertOk()
+            ->assertSee('data-testid="maker-conflict-total"', false)
+            ->assertSee('data-testid="maker-conflict-item"', false)
+            ->assertSee($offering->course->course_code)
+            ->assertSee('Existing schedule')
+            ->assertSee('edit_schedule_id=' . $schedule->id, false)
+            ->assertSee('week_start=2026-08-03', false);
     }
 
     public function test_course_offering_detail_no_longer_shows_prominent_schedule_button(): void
@@ -516,6 +557,41 @@ class ScheduleManagementTest extends TestCase
         ]);
     }
 
+    public function test_schedule_creation_rejects_dates_outside_academic_year(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+
+        $this->actingAsCourseHead($head);
+
+        $this->post(route('maker.course_offerings.schedules.store', $offering), $this->schedulePayload($instructor, $group, $activityType, $room, [
+            'start_date' => '2026-07-31',
+            'end_date' => '2026-08-01',
+        ]))
+            ->assertSessionHasErrors('schedule');
+
+        $this->assertDatabaseCount('schedules', 0);
+    }
+
+    public function test_schedule_update_rejects_dates_outside_academic_year(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $schedule = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group]);
+
+        $this->actingAsCourseHead($head);
+
+        $this->put(route('maker.course_offerings.schedules.update', [$offering, $schedule]), $this->schedulePayload($instructor, $group, $activityType, $room, [
+            'start_date' => '2026-12-31',
+            'end_date' => '2027-01-01',
+        ]))
+            ->assertSessionHasErrors('schedule');
+
+        $this->assertDatabaseHas('schedules', [
+            'id' => $schedule->id,
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-07',
+        ]);
+    }
+
     public function test_schedule_rejects_student_groups_over_capacity(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
@@ -558,6 +634,25 @@ class ScheduleManagementTest extends TestCase
             ->assertSessionHasErrors('instructor_ids');
 
         $this->assertDatabaseCount('schedules', 0);
+    }
+
+    public function test_schedule_page_hides_existing_schedule_instructors_from_other_departments(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $outsideInstructor = $this->makeUser('instructor');
+        $outsideInstructor->instructorProfile()->update([
+            'department_id' => Department::create(['name' => 'Outside Schedule Detail Department'])->id,
+        ]);
+        $outsideInstructor->refresh();
+        $offering->instructorPool()->attach($outsideInstructor->id, ['role_in_course' => 'instructor']);
+        $this->makeSchedule($offering, $activityType, $room, [$instructor, $outsideInstructor], [$group]);
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.course_offerings.schedules.index', $offering))
+            ->assertOk()
+            ->assertSee($instructor->name)
+            ->assertDontSee($outsideInstructor->name);
     }
 
     public function test_course_head_can_update_schedule_and_pivots(): void
@@ -611,7 +706,7 @@ class ScheduleManagementTest extends TestCase
         $this->assertDatabaseMissing('schedule_student_groups', ['schedule_id' => $schedule->id]);
     }
 
-    public function test_instructor_overlap_blocks_save_across_offerings(): void
+    public function test_instructor_overlap_allows_save_and_marks_conflict_across_offerings(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
         [, $otherOffering, , $otherGroup, $otherActivityType, $otherRoom] = $this->makeReadyOffering();
@@ -621,12 +716,14 @@ class ScheduleManagementTest extends TestCase
         $this->actingAsCourseHead($head);
 
         $this->post(route('maker.course_offerings.schedules.store', $offering), $this->schedulePayload($instructor, $group, $activityType, $room))
-            ->assertSessionHasErrors('schedule');
+            ->assertRedirect(route('maker.course_offerings.schedules.index', $offering))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('schedule_conflict_warning');
 
-        $this->assertDatabaseCount('schedules', 1);
+        $this->assertDatabaseCount('schedules', 2);
     }
 
-    public function test_room_overlap_blocks_save(): void
+    public function test_room_overlap_allows_save_and_marks_conflict(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
         $otherInstructor = $this->makeUser('instructor');
@@ -637,12 +734,31 @@ class ScheduleManagementTest extends TestCase
         $this->actingAsCourseHead($head);
 
         $this->post(route('maker.course_offerings.schedules.store', $offering), $this->schedulePayload($instructor, $group, $activityType, $room))
-            ->assertSessionHasErrors('schedule');
+            ->assertRedirect(route('maker.course_offerings.schedules.index', $offering))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('schedule_conflict_warning');
 
-        $this->assertDatabaseCount('schedules', 1);
+        $this->assertDatabaseCount('schedules', 2);
     }
 
-    public function test_student_group_overlap_blocks_save(): void
+    public function test_room_overlap_allows_save_and_marks_conflict_across_offerings(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        [, $otherOffering, $otherInstructor, $otherGroup, $otherActivityType] = $this->makeReadyOffering();
+
+        $this->makeSchedule($otherOffering, $otherActivityType, $room, [$otherInstructor], [$otherGroup]);
+
+        $this->actingAsCourseHead($head);
+
+        $this->post(route('maker.course_offerings.schedules.store', $offering), $this->schedulePayload($instructor, $group, $activityType, $room))
+            ->assertRedirect(route('maker.course_offerings.schedules.index', $offering))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('schedule_conflict_warning');
+
+        $this->assertDatabaseCount('schedules', 2);
+    }
+
+    public function test_student_group_overlap_allows_save_and_marks_conflict(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
         $otherInstructor = $this->makeUser('instructor');
@@ -653,9 +769,11 @@ class ScheduleManagementTest extends TestCase
         $this->actingAsCourseHead($head);
 
         $this->post(route('maker.course_offerings.schedules.store', $offering), $this->schedulePayload($instructor, $group, $activityType, $room))
-            ->assertSessionHasErrors('schedule');
+            ->assertRedirect(route('maker.course_offerings.schedules.index', $offering))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('schedule_conflict_warning');
 
-        $this->assertDatabaseCount('schedules', 1);
+        $this->assertDatabaseCount('schedules', 2);
     }
 
     public function test_adjacent_time_does_not_conflict(): void
@@ -675,7 +793,7 @@ class ScheduleManagementTest extends TestCase
         $this->assertDatabaseCount('schedules', 2);
     }
 
-    public function test_partial_time_overlap_blocks_save(): void
+    public function test_partial_time_overlap_allows_save_and_marks_conflict(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
         $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group]);
@@ -686,12 +804,14 @@ class ScheduleManagementTest extends TestCase
             'start_time' => '09:30',
             'end_time' => '10:30',
         ]))
-            ->assertSessionHasErrors('schedule');
+            ->assertRedirect(route('maker.course_offerings.schedules.index', $offering))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('schedule_conflict_warning');
 
-        $this->assertDatabaseCount('schedules', 1);
+        $this->assertDatabaseCount('schedules', 2);
     }
 
-    public function test_block_date_range_overlap_blocks_save(): void
+    public function test_block_date_range_overlap_allows_save_and_marks_conflict(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
         $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group]);
@@ -702,9 +822,11 @@ class ScheduleManagementTest extends TestCase
             'start_date' => '2026-08-07',
             'end_date' => '2026-08-10',
         ]))
-            ->assertSessionHasErrors('schedule');
+            ->assertRedirect(route('maker.course_offerings.schedules.index', $offering))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('schedule_conflict_warning');
 
-        $this->assertDatabaseCount('schedules', 1);
+        $this->assertDatabaseCount('schedules', 2);
     }
 
     public function test_block_date_range_non_overlap_does_not_conflict(): void

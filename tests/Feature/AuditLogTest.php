@@ -398,8 +398,9 @@ class AuditLogTest extends TestCase
             ->values()
             ->all();
 
-        $this->assertSame(AuditLogger::ACTION_FILTER_LABELS, $actionOptions);
-        $this->assertNotContains('เปลี่ยนบทบาท', $actionOptions);
+        $this->assertSame(array_keys(AuditLogger::ACTION_DESCRIPTIONS), AuditLogger::actionFilterLabels());
+        $this->assertSame(AuditLogger::actionFilterLabels(), $actionOptions);
+        $this->assertContains('เปลี่ยนบทบาท', $actionOptions);
     }
 
     public function test_admin_can_filter_by_date_range(): void

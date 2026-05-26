@@ -81,13 +81,12 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         $user = auth()->user();
-        $userId = $user?->id;
 
-        if ($user && $userId) {
+        if ($user) {
             AuditLogger::log(
                 action: 'ระบบ.ออกจากระบบ',
                 table: 'users',
-                recordId: $userId,
+                recordId: $user->id,
                 oldValues: null,
                 newValues: null,
                 category: 'ระบบ',

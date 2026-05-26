@@ -35,6 +35,7 @@ Route::middleware(['auth', 'no-back'])->group(function () {
 
     Route::middleware(['\App\Http\Middleware\CheckRole:course_head'])->group(function () {
         Route::get('/maker/schedules', [ScheduleController::class, 'workspace'])->name('maker.schedules.index');
+        Route::get('/maker/schedule-conflicts', [ScheduleController::class, 'conflicts'])->name('maker.schedule_conflicts.index');
         Route::get('/maker/schedules/create', [ScheduleController::class, 'createGlobal'])->name('maker.schedules.create');
         Route::post('/maker/schedules', [ScheduleController::class, 'storeGlobal'])->name('maker.schedules.store');
     });
@@ -97,6 +98,7 @@ Route::middleware(['auth', 'no-back'])->group(function () {
         Route::post('/admin/master-data/courses/import', 'App\Http\Controllers\Admin\MasterDataController@importCourses')->name('admin.courses.import');
         Route::put('/admin/master-data/courses/{course}', 'App\Http\Controllers\Admin\MasterDataController@updateCourse')->name('admin.courses.update');
         Route::delete('/admin/master-data/courses/{course}', 'App\Http\Controllers\Admin\MasterDataController@destroyCourse')->name('admin.courses.destroy');
+        Route::get('/admin/master-data/courses/{course}/instructor-deviation', 'App\Http\Controllers\Admin\MasterDataController@courseInstructorDeviation')->name('admin.courses.instructor_deviation');
         Route::post('/admin/master-data/curriculums', 'App\Http\Controllers\Admin\MasterDataController@storeCurriculum')->name('admin.curriculums.store');
         Route::put('/admin/master-data/curriculums/{curriculum}', 'App\Http\Controllers\Admin\MasterDataController@updateCurriculum')->name('admin.curriculums.update');
         Route::post('/admin/master-data/curriculums/{curriculum}/clone', 'App\Http\Controllers\Admin\MasterDataController@cloneCurriculum')->name('admin.curriculums.clone');

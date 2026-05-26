@@ -22,9 +22,9 @@
         ],
         [
             'key'    => 'published',
-            'label'  => 'เผยแพร่แล้ว',
+            'label'  => 'อนุมัติแล้ว',
             'count'  => $pipeline['published'],
-            'desc'   => 'อนุมัติและเผยแพร่ให้ใช้งานแล้ว',
+            'desc'   => 'ผู้บริหารอนุมัติและเผยแพร่ให้ใช้งานแล้ว',
             'action' => 'เรียบร้อย',
             'color'  => 'var(--status-success-fg)',
             'pill'   => 'p-success',
