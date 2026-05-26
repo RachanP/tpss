@@ -96,24 +96,32 @@
             'meta' => $criticalCount > 0 ? $criticalCount . ' รายการ' : 'ผ่าน',
             'status' => $criticalCount > 0 ? 'ต้องแก้ไข' : 'พร้อม',
             'tone' => $criticalCount > 0 ? 'conflict' : 'success',
+            'href' => route('admin.alerts'),
+            'action' => 'ไปดูเงื่อนไขสำคัญ',
         ],
         [
             'label' => 'รายการตรวจสอบ',
             'meta' => $warningCount > 0 ? $warningCount . ' รายการ' : 'ไม่มี',
             'status' => $warningCount > 0 ? 'ควรตรวจสอบ' : 'พร้อม',
             'tone' => $warningCount > 0 ? 'warning' : 'success',
+            'href' => route('admin.alerts'),
+            'action' => 'ไปดูรายการตรวจสอบ',
         ],
         [
             'label' => 'รายวิชาเปิดสอน',
             'meta' => number_format($activeCourseCount) . ' วิชา',
             'status' => in_array('no_active_course', $criticalKeys, true) ? 'ต้องแก้ไข' : 'พร้อม',
             'tone' => in_array('no_active_course', $criticalKeys, true) ? 'conflict' : 'success',
+            'href' => route('admin.master_data') . '?tab=courses',
+            'action' => 'ไปจัดการรายวิชาเปิดสอน',
         ],
         [
             'label' => 'หัวหน้าวิชา',
             'meta' => in_array('active_courses_missing_head', $criticalKeys, true) ? 'ยังไม่ครบ' : 'ครบ',
             'status' => in_array('active_courses_missing_head', $criticalKeys, true) ? 'ต้องแก้ไข' : 'พร้อม',
             'tone' => in_array('active_courses_missing_head', $criticalKeys, true) ? 'conflict' : 'success',
+            'href' => route('admin.master_data') . '?tab=courses',
+            'action' => 'ไปจัดการหัวหน้าวิชา',
         ],
     ];
 @endphp
@@ -164,11 +172,13 @@
 
         <div class="admin-status-summary" aria-label="สรุปความพร้อมระบบ">
             @foreach(array_slice($readinessItems, 1) as $item)
-                <div class="admin-status-summary-item is-{{ $item['tone'] }}">
+                <a href="{{ $item['href'] }}"
+                   class="admin-status-summary-item is-{{ $item['tone'] }}"
+                   aria-label="{{ $item['action'] }}">
                     <span class="admin-summary-label">{{ $item['label'] }}</span>
                     <strong>{{ $item['meta'] }}</strong>
                     <span class="admin-summary-status">{{ $item['status'] }}</span>
-                </div>
+                </a>
             @endforeach
         </div>
     </div>
@@ -220,42 +230,61 @@
 
     .admin-status-banner {
         display: grid;
+        position: relative;
+        overflow: hidden;
         grid-template-columns: minmax(360px, 1fr) minmax(420px, 0.9fr);
         gap: 28px;
         align-items: center;
         min-height: 126px;
-        padding: 22px 24px;
+        padding: 22px 24px 22px 34px;
         border: 1px solid var(--border);
         border-radius: var(--r-lg);
         background: var(--surface);
     }
 
+    .admin-status-banner::before {
+        content: "";
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 5px;
+        background: var(--border);
+        pointer-events: none;
+    }
+
     .admin-status-banner.is-conflict {
-        border-color: color-mix(in oklch, var(--status-conflict) 28%, var(--border));
-        border-left-color: var(--status-conflict-fg);
-        border-left-width: 4px;
+        border-color: var(--status-conflict-border);
         background: color-mix(in oklch, var(--status-conflict) 4%, var(--surface));
     }
 
+    .admin-status-banner.is-conflict::before {
+        background: var(--status-conflict-fg);
+    }
+
     .admin-status-banner.is-warning {
-        border-color: color-mix(in oklch, var(--status-warning) 30%, var(--border));
-        border-left-color: var(--status-warning-fg);
-        border-left-width: 4px;
+        border-color: var(--status-warning-border);
         background: color-mix(in oklch, var(--status-warning) 5%, var(--surface));
     }
 
+    .admin-status-banner.is-warning::before {
+        background: var(--status-warning-fg);
+    }
+
     .admin-status-banner.is-success {
-        border-color: color-mix(in oklch, var(--status-success) 24%, var(--border));
-        border-left-color: var(--status-success-fg);
-        border-left-width: 4px;
+        border-color: var(--status-success-border);
         background: color-mix(in oklch, var(--status-success) 4%, var(--surface));
     }
 
+    .admin-status-banner.is-success::before {
+        background: var(--status-success-fg);
+    }
+
     .admin-status-banner.is-info {
-        border-color: color-mix(in oklch, var(--status-info) 24%, var(--border));
-        border-left-color: var(--status-info-fg);
-        border-left-width: 4px;
+        border-color: var(--status-info-border);
         background: color-mix(in oklch, var(--status-info) 4%, var(--surface));
+    }
+
+    .admin-status-banner.is-info::before {
+        background: var(--status-info-fg);
     }
 
     .admin-status-primary {
@@ -396,6 +425,46 @@
         border-radius: var(--r-sm);
         background: color-mix(in oklch, var(--bg-2) 78%, var(--surface));
         text-align: center;
+        text-decoration: none;
+        cursor: pointer;
+        transition:
+            transform 160ms ease,
+            border-color 160ms ease,
+            background 160ms ease,
+            box-shadow 160ms ease;
+    }
+
+    .admin-status-summary-item:hover,
+    .admin-status-summary-item:focus-visible {
+        transform: translateY(-1px);
+        border-color: color-mix(in oklch, var(--brand-navy) 22%, var(--border));
+        background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
+        box-shadow: 0 10px 22px color-mix(in oklch, var(--brand-navy) 10%, transparent);
+        outline: none;
+    }
+
+    .admin-status-summary-item.is-conflict:hover,
+    .admin-status-summary-item.is-conflict:focus-visible {
+        border-color: var(--status-conflict-border);
+        background: color-mix(in oklch, var(--status-conflict) 7%, var(--surface));
+    }
+
+    .admin-status-summary-item.is-warning:hover,
+    .admin-status-summary-item.is-warning:focus-visible {
+        border-color: var(--status-warning-border);
+        background: color-mix(in oklch, var(--status-warning) 8%, var(--surface));
+    }
+
+    .admin-status-summary-item.is-success:hover,
+    .admin-status-summary-item.is-success:focus-visible {
+        border-color: var(--status-success-border);
+        background: color-mix(in oklch, var(--status-success) 7%, var(--surface));
+    }
+
+    .admin-status-summary-item.is-info:hover,
+    .admin-status-summary-item.is-info:focus-visible {
+        border-color: var(--status-info-border);
+        background: color-mix(in oklch, var(--status-info) 7%, var(--surface));
     }
 
     .admin-summary-label {
@@ -464,7 +533,7 @@
         }
 
         .admin-status-banner {
-            padding: 16px;
+            padding: 16px 16px 16px 26px;
             min-height: 0;
         }
 
