@@ -762,6 +762,55 @@
         .day-add-link:disabled:hover {
             transform: none;
         }
+        .floating-create-button {
+            position: fixed;
+            right: 28px;
+            bottom: 24px;
+            z-index: 55;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 46px;
+            padding: 10px 16px;
+            border: 1px solid var(--brand-navy);
+            border-radius: 999px;
+            background: var(--brand-navy);
+            color: oklch(98% 0.004 240);
+            box-shadow: 0 10px 24px oklch(0% 0 0 / 0.18);
+            font: inherit;
+            font-size: 14px;
+            font-weight: 900;
+            cursor: pointer;
+        }
+        .floating-create-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 12px 28px oklch(0% 0 0 / 0.22);
+        }
+        .floating-create-button:focus-visible {
+            outline: 3px solid color-mix(in oklch, var(--brand-navy) 28%, transparent);
+            outline-offset: 3px;
+        }
+        .floating-create-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            border-radius: 999px;
+            background: oklch(98% 0.004 240 / 0.16);
+            font-size: 18px;
+            line-height: 1;
+        }
+        @media (max-width: 760px) {
+            .floating-create-button {
+                right: 16px;
+                bottom: 16px;
+                min-height: 44px;
+                padding: 9px 14px;
+                font-size: 13px;
+            }
+        }
         .compact-summary {
             color: var(--schedule-muted);
             font-size: 12px;
@@ -3709,6 +3758,20 @@
                 </div>
             @endif
         @endforeach
+
+        @if($canCreateInCurrentPeriod)
+            <button
+                type="button"
+                class="floating-create-button"
+                data-testid="schedule-floating-create-link"
+                x-show="!showCreate && !editModal && !detailModal"
+                x-cloak
+                @click="openCreate()"
+            >
+                <span class="floating-create-icon" aria-hidden="true">+</span>
+                <span>เพิ่มรายการสอน</span>
+            </button>
+        @endif
 
         @if($canEdit)
             <div class="schedule-modal-backdrop" x-show="showCreate" x-cloak @click.self="closeCreate()" data-testid="schedule-create-modal">
