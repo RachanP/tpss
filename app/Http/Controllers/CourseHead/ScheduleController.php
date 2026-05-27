@@ -693,6 +693,10 @@ class ScheduleController extends Controller
     ): string {
         $returnUrl = (string) $request->input('return_url', '');
 
+        if ($request->boolean('return_to_conflicts')) {
+            return route('maker.schedule_conflicts.index');
+        }
+
         if ($this->isScheduleReturnUrl($request, $returnUrl)) {
             return $returnUrl;
         }

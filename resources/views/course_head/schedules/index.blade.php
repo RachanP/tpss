@@ -4517,6 +4517,9 @@
                             <input type="hidden" name="modal_mode" value="edit">
                             <input type="hidden" name="edit_schedule_id" value="{{ $schedule->id }}">
                             <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
+                            @if(request()->boolean('from_conflict'))
+                                <input type="hidden" name="return_to_conflicts" value="1">
+                            @endif
                             <div class="modal-form-body">
                                 @if($editUsesOld && $errors->any())
                                     @php

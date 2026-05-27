@@ -395,6 +395,23 @@ class ScheduleManagementTest extends TestCase
             ->assertSee('modal-field-has-conflict', false);
     }
 
+    public function test_conflict_edit_returns_to_conflict_alerts_after_update(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $schedule = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group]);
+
+        $this->actingAsCourseHead($head);
+
+        $payload = $this->schedulePayload($instructor, $group, $activityType, $room, [
+            'topic' => 'Resolved from conflict alert',
+            'return_to_conflicts' => '1',
+        ]);
+
+        $this->put(route('maker.course_offerings.schedules.update', [$offering, $schedule]), $payload)
+            ->assertRedirect(route('maker.schedule_conflicts.index'))
+            ->assertSessionHasNoErrors();
+    }
+
     public function test_course_offering_detail_no_longer_shows_prominent_schedule_button(): void
     {
         [$head, $offering] = $this->makeReadyOffering();
