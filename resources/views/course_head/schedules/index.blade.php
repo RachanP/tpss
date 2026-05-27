@@ -24,22 +24,23 @@
         'room_overlap' => 'ห้อง/สถานที่ชน',
         'group_overlap' => 'กลุ่มนักศึกษาชน',
     ];
-    $conflictFieldNote = function ($conflicts, array $types) use ($conflictFieldLabels) {
-        $messages = collect($conflicts)
+    $conflictFieldNote = function ($conflicts, array $types, string $fieldLabel) use ($conflictFieldLabels) {
+        $items = collect($conflicts)
             ->filter(fn ($conflict) => in_array($conflict['type'] ?? '', $types, true))
-            ->map(function ($conflict) use ($conflictFieldLabels) {
-                $type = $conflict['type'] ?? '';
-                $label = $conflictFieldLabels[$type] ?? 'ตารางชน';
-                $resource = trim((string) ($conflict['resource_label'] ?? ''));
-                $target = trim((string) ($conflict['schedule_label'] ?? ''));
-
-                return trim($label . ($resource ? ': ' . $resource : '') . ($target ? ' ชนกับ ' . $target : ''));
-            })
-            ->filter()
-            ->unique()
             ->values();
 
-        return $messages->isEmpty() ? null : $messages->implode(' / ');
+        if ($items->isEmpty()) {
+            return null;
+        }
+
+        $typeLabels = $items
+            ->pluck('type')
+            ->unique()
+            ->map(fn ($type) => $conflictFieldLabels[$type] ?? 'ตารางชน')
+            ->values()
+            ->implode(', ');
+
+        return $fieldLabel . 'มีข้อมูลซ้อนกับรายการอื่น ' . $items->count() . ' จุด' . ($typeLabels ? ' (' . $typeLabels . ')' : '');
     };
     $selectedInstructorIds = collect(old('instructor_ids', []))->map(fn ($id) => (string) $id)->all();
     $selectedGroupIds = collect(old('student_group_ids', []))->map(fn ($id) => (string) $id)->all();
@@ -4504,10 +4505,10 @@
                     };
                     $editConflicts = $scheduleConflicts->get($schedule->id, collect());
                     $showConflictHints = $fromConflictAlert && (string) $schedule->id === $focusedScheduleId && $editConflicts->isNotEmpty();
-                    $dateTimeConflictNote = $showConflictHints ? $conflictFieldNote($editConflicts, ['instructor_overlap', 'room_overlap', 'group_overlap']) : null;
-                    $roomConflictNote = $showConflictHints ? $conflictFieldNote($editConflicts, ['room_overlap']) : null;
-                    $instructorConflictNote = $showConflictHints ? $conflictFieldNote($editConflicts, ['instructor_overlap']) : null;
-                    $groupConflictNote = $showConflictHints ? $conflictFieldNote($editConflicts, ['group_overlap']) : null;
+                    $dateTimeConflictNote = $showConflictHints ? $conflictFieldNote($editConflicts, ['instructor_overlap', 'room_overlap', 'group_overlap'], 'วันและเวลา') : null;
+                    $roomConflictNote = $showConflictHints ? $conflictFieldNote($editConflicts, ['room_overlap'], 'ห้อง/สถานที่') : null;
+                    $instructorConflictNote = $showConflictHints ? $conflictFieldNote($editConflicts, ['instructor_overlap'], 'ผู้สอน') : null;
+                    $groupConflictNote = $showConflictHints ? $conflictFieldNote($editConflicts, ['group_overlap'], 'กลุ่มนักศึกษา') : null;
                 @endphp
                 <div class="schedule-modal-backdrop" x-show="editModal === 'schedule-{{ $schedule->id }}'" x-cloak @click.self="closeEdit()" data-testid="schedule-edit-modal">
                     <template x-if="editModal === 'schedule-{{ $schedule->id }}'">
@@ -4539,7 +4540,7 @@
                             <div class="modal-form-body">
                                 @if($showConflictHints)
                                     <div class="modal-conflict-summary" data-testid="schedule-edit-conflict-focus">
-                                        รายการนี้มีการชนอยู่ กรุณาตรวจช่องที่พื้นหลังสีแดงจางๆ ก่อนส่งอนุมัติ
+                                        พบข้อมูลซ้อนกับรายการอื่น แก้ไขช่องที่ไฮไลต์ก่อนส่งอนุมัติ
                                     </div>
                                 @endif
 
