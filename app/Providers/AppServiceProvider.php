@@ -17,11 +17,14 @@ use App\Models\StudentGroup;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Models\UserRole;
+use App\Observers\ScheduleConflictInvalidationObserver;
 use App\Observers\PerformanceCacheObserver;
+use App\Services\ScheduleConflictInvalidationService;
 use App\Services\NavigationBadgeService;
 use App\Services\ReferenceDataCache;
 use App\Services\ScheduleConflictIndex;
 use App\Services\ScheduleConflictPolicy;
+use App\Services\ScheduleConflictReadRepository;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -35,6 +38,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(ReferenceDataCache::class);
         $this->app->scoped(ScheduleConflictPolicy::class);
         $this->app->scoped(ScheduleConflictIndex::class);
+        $this->app->scoped(ScheduleConflictInvalidationService::class);
+        $this->app->scoped(ScheduleConflictReadRepository::class);
     }
 
     /**
@@ -63,6 +68,8 @@ class AppServiceProvider extends ServiceProvider
         ] as $model) {
             $model::observe($observer);
         }
+
+        Schedule::observe(ScheduleConflictInvalidationObserver::class);
 
         View::composer('components.sidebar', function ($view): void {
             $user = auth()->user();

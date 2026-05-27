@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Models\UserRole;
 use App\Services\ScheduleConflictIndex;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
@@ -367,6 +368,83 @@ class ScheduleManagementTest extends TestCase
             ->assertSee('Existing schedule')
             ->assertSee('edit_schedule_id=' . $schedule->id, false)
             ->assertSee('week_start=2026-08-03', false);
+    }
+
+    public function test_conflict_alert_page_defaults_to_current_scheduling_academic_year(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'topic' => 'Current term source',
+        ]);
+        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'topic' => 'Current term overlap',
+        ]);
+
+        [, $oldOffering, $oldInstructor, $oldGroup, $oldActivityType, $oldRoom] = $this->makeReadyOffering('published');
+        $oldOffering->forceFill(['coordinator_id' => $head->id])->save();
+        $this->makeSchedule($oldOffering, $oldActivityType, $oldRoom, [$oldInstructor], [$oldGroup], [
+            'topic' => 'Old term source',
+        ]);
+        $this->makeSchedule($oldOffering, $oldActivityType, $oldRoom, [$oldInstructor], [$oldGroup], [
+            'topic' => 'Old term overlap',
+        ]);
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.schedule_conflicts.index'))
+            ->assertOk()
+            ->assertSee('Current term source')
+            ->assertSee('Current term overlap')
+            ->assertDontSee('Old term source')
+            ->assertDontSee('Old term overlap');
+    }
+
+    public function test_conflict_alert_page_can_filter_to_selected_academic_year(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'topic' => 'Current term source',
+        ]);
+        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'topic' => 'Current term overlap',
+        ]);
+
+        [, $oldOffering, $oldInstructor, $oldGroup, $oldActivityType, $oldRoom] = $this->makeReadyOffering('published');
+        $oldOffering->forceFill(['coordinator_id' => $head->id])->save();
+        $this->makeSchedule($oldOffering, $oldActivityType, $oldRoom, [$oldInstructor], [$oldGroup], [
+            'topic' => 'Old term source',
+        ]);
+        $this->makeSchedule($oldOffering, $oldActivityType, $oldRoom, [$oldInstructor], [$oldGroup], [
+            'topic' => 'Old term overlap',
+        ]);
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.schedule_conflicts.index', [
+            'academic_year_id' => $oldOffering->academic_year_id,
+        ]))
+            ->assertOk()
+            ->assertSee('Old term source')
+            ->assertSee('Old term overlap')
+            ->assertDontSee('Current term source')
+            ->assertDontSee('Current term overlap');
+    }
+
+    public function test_conflict_alert_page_warms_course_head_sidebar_badge_cache(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group]);
+        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'topic' => 'Overlap schedule',
+        ]);
+        Cache::forget("sidebar.badges.course_head.{$head->id}");
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.schedule_conflicts.index'))->assertOk();
+
+        $this->assertTrue(Cache::has("sidebar.badges.course_head.{$head->id}"));
+        $this->assertGreaterThan(0, Cache::get("sidebar.badges.course_head.{$head->id}"));
     }
 
     public function test_course_offering_detail_no_longer_shows_prominent_schedule_button(): void

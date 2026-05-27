@@ -6,10 +6,14 @@ use App\Models\AcademicYear;
 use App\Models\Course;
 use App\Models\CourseOffering;
 use App\Models\Schedule;
+use App\Models\ScheduleConflictRun;
 use App\Models\User;
+use App\Models\UserRole;
 use App\Services\ScheduleConflictChecker;
 use Database\Seeders\ScheduleFlowSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class DatabaseSeederBaselineTest extends TestCase
@@ -31,6 +35,9 @@ class DatabaseSeederBaselineTest extends TestCase
 
     public function test_schedule_flow_seed_creates_unique_generated_instructors_and_demo_conflicts(): void
     {
+        config(['conflicts.async_reads' => false]);
+        Cache::flush();
+
         $this->seed();
         $this->seed(ScheduleFlowSeeder::class);
 
@@ -63,5 +70,52 @@ class DatabaseSeederBaselineTest extends TestCase
             });
 
         $this->assertGreaterThan(0, $conflictingSchedules->count());
+
+        $activeYear = AcademicYear::where('is_active', true)->firstOrFail();
+        $coordinatorIds = CourseOffering::where('academic_year_id', $activeYear->id)
+            ->pluck('coordinator_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        $this->assertGreaterThan(0, $coordinatorIds->count());
+        $this->assertTrue($coordinatorIds->every(fn (int $id) => Cache::has("sidebar.badges.course_head.{$id}")));
+        $badgeCounts = $coordinatorIds->mapWithKeys(fn (int $id) => [
+            $id => (int) Cache::get("sidebar.badges.course_head.{$id}", 0),
+        ]);
+
+        $this->assertGreaterThan(0, $badgeCounts->max());
+
+        $visibleCoordinatorId = (int) $badgeCounts->sortDesc()->keys()->first();
+        UserRole::query()->firstOrCreate(
+            ['user_id' => $visibleCoordinatorId, 'role' => 'course_head'],
+            ['is_primary' => true]
+        );
+
+        $this->actingAs(User::findOrFail($visibleCoordinatorId))
+            ->withSession(['active_role' => 'course_head'])
+            ->get(route('maker.dashboard'))
+            ->assertOk()
+            ->assertSee((string) $badgeCounts->get($visibleCoordinatorId), false);
+    }
+
+    public function test_schedule_flow_seed_warms_async_conflict_read_model(): void
+    {
+        config(['conflicts.async_reads' => true]);
+        Cache::flush();
+        Queue::fake();
+
+        $this->seed();
+        $this->seed(ScheduleFlowSeeder::class);
+
+        $activeYear = AcademicYear::where('is_active', true)->firstOrFail();
+        $latestRun = ScheduleConflictRun::query()
+            ->where('academic_year_id', $activeYear->id)
+            ->orderByDesc('generation')
+            ->firstOrFail();
+
+        $this->assertSame('ready', $latestRun->status);
+        $this->assertGreaterThan(0, $latestRun->result_count);
     }
 }

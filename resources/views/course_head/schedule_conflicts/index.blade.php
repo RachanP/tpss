@@ -6,6 +6,10 @@
         'room_overlap' => 'ห้อง/สถานที่ชน',
         'group_overlap' => 'กลุ่มนักศึกษาชน',
     ];
+    $conflictRunStatus = $conflictStatus['status'] ?? 'ready';
+    $conflictStatusLabel = $conflictRunStatus === 'failed'
+        ? 'ตรวจสอบรายการชนไม่สำเร็จ'
+        : 'กำลังตรวจสอบ';
 @endphp
 
 <x-app-layout title="การแจ้งเตือนการชน">
@@ -70,6 +74,23 @@
             font-size: 13px;
             line-height: 1.55;
         }
+        .conflict-filter {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            margin-top: 12px;
+        }
+        .conflict-filter select {
+            min-width: 210px;
+            border: 1px solid var(--bd);
+            border-radius: 8px;
+            background: var(--surface);
+            color: var(--fg-1);
+            padding: 8px 10px;
+            font-size: 13px;
+            font-weight: 700;
+        }
         .conflict-total {
             display: inline-flex;
             align-items: center;
@@ -96,6 +117,15 @@
             margin-top: 0;
             font-size: 11px;
             font-weight: 800;
+        }
+        .conflict-status {
+            border: 1px solid var(--status-conflict-border);
+            border-radius: 8px;
+            background: color-mix(in oklch, var(--status-conflict) 6%, var(--surface));
+            color: var(--status-conflict-fg);
+            padding: 10px 12px;
+            font-size: 13px;
+            font-weight: 750;
         }
         .conflict-offering {
             overflow: hidden;
@@ -220,6 +250,11 @@
             color: var(--fg-2);
             font-weight: 800;
         }
+        .conflict-pagination {
+            display: flex;
+            justify-content: center;
+            padding: 6px 0 2px;
+        }
         @media (max-width: 760px) {
             .conflict-hero,
             .conflict-item {
@@ -247,16 +282,37 @@
                 <div class="conflict-copy">
                     แสดงรายการชนของทุกวิชาที่คุณรับผิดชอบ สามารถบันทึกรายการที่ชนไว้ก่อนเพื่อรอประสานกับหัวหน้าวิชาอื่นได้ แต่ต้องแก้ให้ไม่ชนก่อนส่งอนุมัติ
                 </div>
+                @if(($availableYears ?? collect())->isNotEmpty())
+                    <form class="conflict-filter" method="GET" action="{{ route('maker.schedule_conflicts.index') }}">
+                        <select name="academic_year_id" onchange="this.form.submit()" aria-label="Academic year">
+                            @foreach($availableYears as $year)
+                                <option value="{{ $year->id }}" @selected((int) $selectedAcademicYearId === (int) $year->id)>
+                                    {{ $year->name }} / {{ $year->semester }} @if($year->phase === 'scheduling') - scheduling @elseif($year->is_active) - active @endif
+                                </option>
+                            @endforeach
+                        </select>
+                    </form>
+                @endif
             </div>
             <div class="conflict-total" data-testid="maker-conflict-total">
-                <strong>{{ $totalConflictCount }}</strong>
+                <strong>{{ $totalConflictCount ?? '...' }}</strong>
                 <span>รายการชนที่ต้องแก้</span>
             </div>
         </section>
 
-        @if($conflictGroups->isEmpty())
+        @if(($asyncConflictReads ?? false) && $conflictRunStatus !== 'ready')
+            <div class="conflict-status" data-testid="maker-conflict-status">
+                {{ $conflictStatusLabel }}
+            </div>
+        @endif
+
+        @if($conflictGroups->isEmpty() && $conflictRunStatus === 'ready')
             <div class="conflict-empty" data-testid="maker-conflict-empty">
                 ยังไม่พบการชนในรายวิชาที่รับผิดชอบ
+            </div>
+        @elseif($conflictGroups->isEmpty())
+            <div class="conflict-empty" data-testid="maker-conflict-pending">
+                {{ $conflictStatusLabel }}
             </div>
         @else
             @foreach($conflictGroups as $group)
@@ -309,6 +365,12 @@
                     </div>
                 </section>
             @endforeach
+
+            @if(($conflictSchedules ?? null) && $conflictSchedules->hasPages())
+                <div class="conflict-pagination">
+                    {{ $conflictSchedules->links() }}
+                </div>
+            @endif
         @endif
     </div>
 </x-app-layout>

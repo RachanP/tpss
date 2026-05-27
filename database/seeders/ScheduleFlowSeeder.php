@@ -11,9 +11,11 @@ use App\Models\Room;
 use App\Models\Schedule;
 use App\Models\User;
 use App\Models\UserRole;
+use App\Services\NavigationBadgeService;
 use Carbon\CarbonPeriod;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -95,6 +97,7 @@ class ScheduleFlowSeeder extends Seeder
         $this->command->info("ScheduleFlowSeeder: สร้างกลุ่มนักศึกษา {$groupsCreated} กลุ่ม ใน {$offeringsSeeded} รายวิชา");
 
         $this->seedSchedules($year);
+        $this->refreshConflictReadState($year);
 
         $this->command->info('ScheduleFlowSeeder: เสร็จสิ้น — ระบบพร้อมใช้งาน มีรายวิชาในตารางแล้ว');
     }
@@ -345,6 +348,41 @@ class ScheduleFlowSeeder extends Seeder
         });
 
         return 1;
+    }
+
+    private function refreshConflictReadState(AcademicYear $year): void
+    {
+        $coordinatorIds = CourseOffering::query()
+            ->where('academic_year_id', $year->id)
+            ->pluck('coordinator_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($coordinatorIds->isEmpty()) {
+            return;
+        }
+
+        if (config('conflicts.async_reads')) {
+            Artisan::call('conflicts:recompute', [
+                '--academic-year' => $year->id,
+                '--sync' => true,
+            ]);
+
+            $this->command->info("ScheduleFlowSeeder: คำนวณ conflict read model สำหรับปี {$year->name} ภาค {$year->semester} แล้ว");
+
+            return;
+        }
+
+        $badges = app(NavigationBadgeService::class);
+
+        $coordinatorIds->each(fn (int $coordinatorId) => $badges->refreshCourseHeadConflictCount(
+            $coordinatorId,
+            (int) $year->id
+        ));
+
+        $this->command->info("ScheduleFlowSeeder: อัปเดต badge การชนให้หัวหน้าวิชา {$coordinatorIds->count()} คนแล้ว");
     }
 
     /**

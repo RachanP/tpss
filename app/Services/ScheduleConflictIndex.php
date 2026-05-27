@@ -79,9 +79,9 @@ class ScheduleConflictIndex
         ]);
     }
 
-    public function countForCoordinator(int $userId): int
+    public function countForCoordinator(int $userId, ?int $academicYearId = null): int
     {
-        return $this->conflictsForCoordinator($userId)['total'];
+        return $this->conflictsForCoordinator($userId, $academicYearId)['total'];
     }
 
     /**
@@ -91,11 +91,13 @@ class ScheduleConflictIndex
      *     total: int
      * }
      */
-    public function conflictsForCoordinator(int $userId): array
+    public function conflictsForCoordinator(int $userId, ?int $academicYearId = null): array
     {
         $schedules = $this->orderSchedulesByDate(
             $this->baseScheduleQuery()
-                ->whereHas('courseOffering', fn (Builder $query) => $query->where('coordinator_id', $userId))
+                ->whereHas('courseOffering', fn (Builder $query) => $query
+                    ->where('coordinator_id', $userId)
+                    ->when($academicYearId, fn (Builder $query) => $query->where('academic_year_id', $academicYearId)))
         )->get();
 
         $conflictMap = $this->conflictsFor($schedules);
