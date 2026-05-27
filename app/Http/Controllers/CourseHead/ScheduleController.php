@@ -7,9 +7,12 @@ use App\Models\AcademicYear;
 use App\Models\CourseOffering;
 use App\Models\Schedule;
 use App\Services\AuditLogger;
+use App\Services\NavigationBadgeService;
 use App\Services\ReferenceDataCache;
 use App\Services\ScheduleConflictChecker;
+use App\Services\ScheduleConflictInvalidationService;
 use App\Services\ScheduleConflictIndex;
+use App\Services\ScheduleConflictReadRepository;
 use App\Support\ThaiDate;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -23,6 +26,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Arr;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
 
 class ScheduleController extends Controller
@@ -50,10 +54,37 @@ class ScheduleController extends Controller
         ));
     }
 
-    public function conflicts(): View
+    public function conflicts(Request $request): View
     {
-        $result = app(ScheduleConflictIndex::class)->conflictsForCoordinator((int) Auth::id());
-        $schedules = $result['schedules'];
+        $userId = (int) Auth::id();
+        $availableYears = $this->coordinatorAcademicYears($userId);
+        $defaultAcademicYear = $this->defaultConflictAcademicYear($availableYears);
+        $selectedAcademicYear = $this->selectedConflictAcademicYear($request, $availableYears, $defaultAcademicYear);
+        $selectedAcademicYearId = $selectedAcademicYear?->id ? (int) $selectedAcademicYear->id : null;
+
+        if (config('conflicts.async_reads')) {
+            return $this->asyncConflicts($request, $userId, $availableYears, $selectedAcademicYear, $selectedAcademicYearId);
+        }
+
+        $result = app(ScheduleConflictIndex::class)->conflictsForCoordinator($userId, $selectedAcademicYearId);
+
+        if ($defaultAcademicYear && (int) $selectedAcademicYearId === (int) $defaultAcademicYear->id) {
+            app(NavigationBadgeService::class)->putCourseHeadConflictCount($userId, $result['total']);
+        }
+
+        $page = max(1, (int) $request->query('page', 1));
+        $perPage = 50;
+        $conflictSchedules = new LengthAwarePaginator(
+            $result['schedules']->forPage($page, $perPage)->values(),
+            $result['schedules']->count(),
+            $perPage,
+            $page,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]
+        );
+        $schedules = $conflictSchedules->getCollection();
         $conflictMap = $result['conflictMap'];
 
         $conflictGroups = $schedules
@@ -74,10 +105,138 @@ class ScheduleController extends Controller
 
         return view('course_head.schedule_conflicts.index', [
             'offerings' => collect(),
+            'availableYears' => $availableYears,
+            'selectedAcademicYear' => $selectedAcademicYear,
+            'selectedAcademicYearId' => $selectedAcademicYearId,
+            'conflictSchedules' => $conflictSchedules,
             'conflictGroups' => $conflictGroups,
             'conflictMap' => $conflictMap,
             'totalConflictCount' => $result['total'],
+            'conflictStatus' => ['status' => 'ready'],
+            'asyncConflictReads' => false,
         ]);
+    }
+
+    private function asyncConflicts(
+        Request $request,
+        int $userId,
+        Collection $availableYears,
+        ?AcademicYear $selectedAcademicYear,
+        ?int $selectedAcademicYearId
+    ): View {
+        $repository = app(ScheduleConflictReadRepository::class);
+        $page = max(1, (int) $request->query('page', 1));
+        $conflictStatus = $repository->getStatusForUser($userId, $selectedAcademicYearId);
+        $resultPage = $repository->getPageForUser($userId, $selectedAcademicYearId, $page);
+        [$conflictGroups, $conflictMap] = $this->conflictGroupsFromStoredResults($resultPage->getCollection());
+
+        return view('course_head.schedule_conflicts.index', [
+            'offerings' => collect(),
+            'availableYears' => $availableYears,
+            'selectedAcademicYear' => $selectedAcademicYear,
+            'selectedAcademicYearId' => $selectedAcademicYearId,
+            'conflictSchedules' => $resultPage,
+            'conflictGroups' => $conflictGroups,
+            'conflictMap' => $conflictMap,
+            'totalConflictCount' => $repository->getCountForUser($userId, $selectedAcademicYearId),
+            'conflictStatus' => $conflictStatus,
+            'asyncConflictReads' => true,
+        ]);
+    }
+
+    private function conflictGroupsFromStoredResults(Collection $storedResults): array
+    {
+        $conflictMap = collect();
+        $schedules = collect();
+
+        foreach ($storedResults as $result) {
+            /** @var Schedule|null $schedule */
+            $schedule = $result->getRelation('sourceSchedule');
+
+            if (! $schedule) {
+                continue;
+            }
+
+            $schedules->put($schedule->id, $schedule);
+            $conflicts = $conflictMap->get($schedule->id, collect());
+            $conflicts->push([
+                'type' => $result->conflict_type,
+                'message' => $result->message,
+                'schedule_id' => (int) $result->conflicting_schedule_id,
+            ]);
+            $conflictMap->put($schedule->id, $conflicts);
+        }
+
+        $conflictGroups = $schedules
+            ->values()
+            ->groupBy('course_offering_id')
+            ->map(function (Collection $offeringSchedules) use ($conflictMap) {
+                /** @var Schedule $firstSchedule */
+                $firstSchedule = $offeringSchedules->first();
+
+                return [
+                    'offering' => $firstSchedule->courseOffering,
+                    'schedules' => $offeringSchedules->values(),
+                    'conflict_count' => $offeringSchedules->sum(
+                        fn (Schedule $schedule) => $conflictMap->get($schedule->id, collect())->count()
+                    ),
+                ];
+            })
+            ->values();
+
+        return [$conflictGroups, $conflictMap];
+    }
+
+    /**
+     * @return Collection<int, AcademicYear>
+     */
+    private function coordinatorAcademicYears(int $userId): Collection
+    {
+        return AcademicYear::query()
+            ->select(['id', 'name', 'semester', 'start_date', 'end_date', 'is_active', 'phase'])
+            ->whereIn('id', CourseOffering::query()
+                ->select('academic_year_id')
+                ->where('coordinator_id', $userId))
+            ->orderByDesc('start_date')
+            ->orderByDesc('semester')
+            ->orderByDesc('id')
+            ->get();
+    }
+
+    /**
+     * @param  Collection<int, AcademicYear>  $availableYears
+     */
+    private function selectedConflictAcademicYear(
+        Request $request,
+        Collection $availableYears,
+        ?AcademicYear $defaultAcademicYear
+    ): ?AcademicYear
+    {
+        if ($availableYears->isEmpty()) {
+            return null;
+        }
+
+        $requestedYearId = (int) $request->query('academic_year_id', 0);
+
+        if ($requestedYearId > 0) {
+            $requestedYear = $availableYears->firstWhere('id', $requestedYearId);
+
+            if ($requestedYear) {
+                return $requestedYear;
+            }
+        }
+
+        return $defaultAcademicYear;
+    }
+
+    /**
+     * @param  Collection<int, AcademicYear>  $availableYears
+     */
+    private function defaultConflictAcademicYear(Collection $availableYears): ?AcademicYear
+    {
+        return $availableYears->firstWhere('phase', 'scheduling')
+            ?: $availableYears->firstWhere('is_active', true)
+            ?: $availableYears->first();
     }
 
     public function index(Request $request, CourseOffering $courseOffering): View
@@ -589,6 +748,7 @@ class ScheduleController extends Controller
         });
 
         \App\Services\NavigationBadgeService::flushCourseHead((int) $courseOffering->coordinator_id);
+        app(ScheduleConflictInvalidationService::class)->markScheduleDirty($schedule, 'pivot');
 
         AuditLogger::log(
             action: 'ตารางสอน.สร้าง',
@@ -674,6 +834,7 @@ class ScheduleController extends Controller
         });
 
         \App\Services\NavigationBadgeService::flushCourseHead((int) $courseOffering->coordinator_id);
+        app(ScheduleConflictInvalidationService::class)->markScheduleDirty($schedule, 'pivot');
 
         $snapshotAfter = $this->scheduleSnapshot($schedule->fresh([
             'courseOffering.course.curriculum',

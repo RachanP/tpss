@@ -12,6 +12,7 @@ use App\Models\Room;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Models\UserRole;
+use App\Services\ScheduleConflictReadRepository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -97,7 +98,11 @@ class DashboardController extends Controller
             'rejected'  => $pipelineCounts['rejected']  ?? 0,
         ];
 
-        return view('admin.dashboard', compact('instructors', 'teachingWeeks', 'hoursPerWeek', 'alerts', 'criticals', 'currentAcademicYear', 'stats', 'pipeline'));
+        $conflictSummary = config('conflicts.async_reads') && $currentAcademicYear
+            ? app(ScheduleConflictReadRepository::class)->getGlobalSummary((int) $currentAcademicYear->id)
+            : ['status' => config('conflicts.async_reads') ? 'missing' : 'disabled', 'generation' => null, 'total' => null, 'by_type' => []];
+
+        return view('admin.dashboard', compact('instructors', 'teachingWeeks', 'hoursPerWeek', 'alerts', 'criticals', 'currentAcademicYear', 'stats', 'pipeline', 'conflictSummary'));
     }
 
     public function staff()
@@ -130,7 +135,17 @@ class DashboardController extends Controller
 
     public function approver()
     {
-        return view('executive.dashboard');
+        $currentAcademicYear = AcademicYear::where('is_active', true)
+            ->orWhere('phase', 'scheduling')
+            ->orderByDesc('is_active')
+            ->orderByDesc('start_date')
+            ->orderByDesc('semester')
+            ->first();
+        $conflictSummary = config('conflicts.async_reads') && $currentAcademicYear
+            ? app(ScheduleConflictReadRepository::class)->getExecutiveSummary((int) $currentAcademicYear->id)
+            : ['status' => config('conflicts.async_reads') ? 'missing' : 'disabled', 'generation' => null, 'total' => null, 'by_type' => []];
+
+        return view('executive.dashboard', compact('currentAcademicYear', 'conflictSummary'));
     }
 
     public function lecturer()

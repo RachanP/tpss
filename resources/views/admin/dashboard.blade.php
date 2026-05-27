@@ -14,6 +14,7 @@
             <div class="admin-action-grid">
                 @include('shared.dashboard.master_data_alerts')
                 @include('shared.dashboard.offering_pipeline')
+                @include('shared.dashboard.conflict_summary')
             </div>
         </section>
 

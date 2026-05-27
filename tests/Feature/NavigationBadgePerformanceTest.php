@@ -3,7 +3,11 @@
 namespace Tests\Feature;
 
 use App\Http\Controllers\Admin\AlertController;
+use App\Services\NavigationBadgeService;
+use App\Services\ScheduleConflictIndex;
+use App\Services\ScheduleConflictReadRepository;
 use Illuminate\Support\Facades\Cache;
+use Mockery;
 use Tests\TestCase;
 
 class NavigationBadgePerformanceTest extends TestCase
@@ -24,5 +28,29 @@ class NavigationBadgePerformanceTest extends TestCase
         AlertController::flushCache();
 
         $this->assertFalse(Cache::has('sidebar.badges.admin'));
+    }
+
+    public function test_course_head_badge_cache_miss_does_not_compute_conflicts(): void
+    {
+        Cache::forget('sidebar.badges.course_head.123');
+        $index = Mockery::mock(ScheduleConflictIndex::class);
+        $index->shouldNotReceive('countForCoordinator');
+        $repository = Mockery::mock(ScheduleConflictReadRepository::class);
+
+        $service = new NavigationBadgeService($index, $repository);
+
+        $this->assertSame(0, $service->courseHeadConflictCount(123));
+    }
+
+    public function test_course_head_badge_uses_cached_value_without_compute(): void
+    {
+        Cache::put('sidebar.badges.course_head.123', 7, 300);
+        $index = Mockery::mock(ScheduleConflictIndex::class);
+        $index->shouldNotReceive('countForCoordinator');
+        $repository = Mockery::mock(ScheduleConflictReadRepository::class);
+
+        $service = new NavigationBadgeService($index, $repository);
+
+        $this->assertSame(7, $service->courseHeadConflictCount(123));
     }
 }

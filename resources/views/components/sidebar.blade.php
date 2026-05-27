@@ -180,7 +180,9 @@
 
         @elseif($activeRole === 'course_head')
             @php
-                $makerConflictCount = (int) ($sidebarBadges['maker_conflict_count'] ?? 0);
+                $makerConflictCount = $sidebarBadges['maker_conflict_count'] ?? 0;
+                $makerConflictStatus = $sidebarBadges['maker_conflict_status'] ?? 'ready';
+                $makerConflictPending = (bool) ($sidebarBadges['maker_conflict_pending'] ?? false);
             @endphp
             <div class="sb-sec">เมนูหลัก</div>
             <!-- Maker Menus -->
@@ -209,9 +211,13 @@
                     <line x1="12" y1="17" x2="12.01" y2="17"></line>
                 </svg>
                 <span>การแจ้งเตือนการชน</span>
-                @if($makerConflictCount > 0)
+                @if(is_numeric($makerConflictCount) && (int) $makerConflictCount > 0)
                     <span class="nv-alert-badges">
                         <span class="nv-bd nv-bd-red" title="{{ $makerConflictCount }} รายการชน">{{ $makerConflictCount }}</span>
+                    </span>
+                @elseif($makerConflictPending)
+                    <span class="nv-alert-badges">
+                        <span class="nv-bd nv-bd-red" title="Conflict results {{ $makerConflictStatus }}">!</span>
                     </span>
                 @endif
             </a>
