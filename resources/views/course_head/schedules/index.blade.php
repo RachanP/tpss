@@ -2897,12 +2897,14 @@
             width: 100%;
             height: 100%;
             min-height: 80px;
+            /* overflow visible so ghost peek cards can show slightly outside */
+            overflow: visible;
         }
         .grid-activity-card {
             position: absolute !important;
             min-height: 0 !important;
             margin-bottom: 0 !important;
-            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease, opacity 0.2s ease;
+            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease, opacity 0.25s ease, left 0.25s cubic-bezier(0.4, 0, 0.2, 1), width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
             z-index: 10;
         }
@@ -2914,6 +2916,28 @@
             transform: translateY(-1px);
             box-shadow: 0 10px 24px rgba(0,0,0,0.16);
             opacity: 1 !important;
+        }
+        /* Ghost/peek cards — cards outside the current page shown as faint background hints */
+        .grid-activity-card.is-ghost-peek {
+            pointer-events: none;
+            z-index: 5 !important;
+            filter: saturate(0.3);
+        }
+        /* ซ่อนเนื้อหาข้างในการ์ด ghost — ให้เห็นแค่กรอบสี */
+        .grid-activity-card.is-ghost-peek > * {
+            visibility: hidden !important;
+        }
+        .grid-activity-card.is-ghost-peek:hover {
+            transform: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .grid-activity-card.is-ghost-prev {
+            /* Ghost card peeking from the TOP-LEFT */
+            transform-origin: top left;
+        }
+        .grid-activity-card.is-ghost-next {
+            /* Ghost card peeking from the BOTTOM-RIGHT */
+            transform-origin: bottom right;
         }
         .stack-indicator {
             position: absolute;
@@ -3107,9 +3131,10 @@
 
                 this.$nextTick(() => {
                     window.requestAnimationFrame(() => {
-                        const visibleCards = Array.from(stack.querySelectorAll('[data-stack-card]'))
-                            .filter((card) => card.offsetParent !== null);
-                        const targetCards = visibleCards.length ? visibleCards : [stack];
+                        // กรอง ghost card ออก — นับเฉพาะการ์ดที่อยู่ใน page ปัจจุบัน
+                        const activeCards = Array.from(stack.querySelectorAll('[data-stack-card]'))
+                            .filter((card) => !card.classList.contains('is-ghost-peek'));
+                        const targetCards = activeCards.length ? activeCards : [stack];
                         const bounds = targetCards.reduce((range, card) => {
                             const rect = card.getBoundingClientRect();
                             return {
@@ -3879,25 +3904,69 @@
                                                     tabindex="0"
                                                     class="grid-activity {{ $gridActivitySizeClass }} grid-activity-card is-stacked-card"
                                                     style="--activity-color: {{ $activityTone($schedule) }}; top: {{ round($topPercent, 4) }}%; height: {{ round($heightPercent, 4) }}%;"
-                                                    :style="{
-                                                        left: (({{ $idx }} - page * 3) * 12) + '%',
-                                                        width: (100 - (Math.min(3, count - page * 3) - 1) * 12) + '%',
-                                                        zIndex: 10 + ({{ $idx }} - page * 3)
-                                                    }"
+                                                    :style="(function(){
+                                                        const idx = {{ $idx }};
+                                                        const inPage = idx >= page * 3 && idx < (page + 1) * 3;
+                                                        if (inPage) {
+                                                            return {
+                                                                left: ((idx - page * 3) * 12) + '%',
+                                                                width: (100 - (Math.min(3, count - page * 3) - 1) * 12) + '%',
+                                                                zIndex: 10 + (idx - page * 3),
+                                                                opacity: 1,
+                                                                pointerEvents: 'auto',
+                                                                display: 'flex',
+                                                                transform: 'none'
+                                                            };
+                                                        } else if (idx < page * 3) {
+                                                            /* Ghost cards BEFORE current page — peek from left, stacked by distance */
+                                                            const dist = page * 3 - idx; /* 1 = closest */
+                                                            const baseOpacity = Math.max(0.12, 0.45 - (dist - 1) * 0.08);
+                                                            const scale = Math.max(0.84, 0.95 - (dist - 1) * 0.04);
+                                                            const leftOffset = (-6 - (dist - 1) * 4);
+                                                            return {
+                                                                left: leftOffset + '%',
+                                                                width: '78%',
+                                                                zIndex: 6 - dist,
+                                                                opacity: baseOpacity,
+                                                                pointerEvents: 'none',
+                                                                display: 'flex',
+                                                                transform: 'scale(' + scale + ')',
+                                                                transformOrigin: 'top left'
+                                                            };
+                                                        } else {
+                                                            /* Ghost cards AFTER current page — peek from right, stacked by distance */
+                                                            const dist = idx - (page + 1) * 3 + 1; /* 1 = closest */
+                                                            const baseOpacity = Math.max(0.12, 0.45 - (dist - 1) * 0.08);
+                                                            const scale = Math.max(0.84, 0.95 - (dist - 1) * 0.04);
+                                                            const leftOffset = (28 + (dist - 1) * 4);
+                                                            return {
+                                                                left: leftOffset + '%',
+                                                                width: '78%',
+                                                                zIndex: 6 - dist,
+                                                                opacity: baseOpacity,
+                                                                pointerEvents: 'none',
+                                                                display: 'flex',
+                                                                transform: 'scale(' + scale + ')',
+                                                                transformOrigin: 'bottom right'
+                                                            };
+                                                        }
+                                                    })()"
                                                     :class="{
                                                         'is-stack-front': {{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1),
-                                                        'is-stack-back': {{ $idx }} !== Math.min((page + 1) * 3 - 1, count - 1),
+                                                        'is-stack-back': {{ $idx }} >= page * 3 && {{ $idx }} !== Math.min((page + 1) * 3 - 1, count - 1),
                                                         'has-visible-stack-switcher': count > 3 && {{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1),
                                                         'has-no-visible-stack-switcher': count <= 3 || {{ $idx }} !== Math.min((page + 1) * 3 - 1, count - 1),
+                                                        'is-ghost-peek': !({{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3),
+                                                        'is-ghost-prev': {{ $idx }} < page * 3,
+                                                        'is-ghost-next': {{ $idx }} >= (page + 1) * 3,
                                                         'schedule-conflict-focus': isFocusedSchedule('{{ $schedule->id }}')
                                                     }"
-                                                    x-show="{{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3"
                                                     data-stack-card
                                                     data-schedule-id="{{ $schedule->id }}"
                                                     data-schedule-modal-trigger
-                                                    @click="detailModal = 'schedule-{{ $schedule->id }}'"
-                                                    @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'"
-                                                    @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'"
+                                                    @click="if({{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3) detailModal = 'schedule-{{ $schedule->id }}'"
+                                                    @keydown.enter.prevent="if({{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3) detailModal = 'schedule-{{ $schedule->id }}'"
+                                                    @keydown.space.prevent="if({{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3) detailModal = 'schedule-{{ $schedule->id }}'"
                                                 >
                                                     @if($itemConflicts->isNotEmpty())
                                                         <div class="grid-activity-top">
@@ -4262,25 +4331,69 @@
                                                 tabindex="0"
                                                 class="grid-activity {{ $gridActivitySizeClass }} grid-activity-card is-stacked-card"
                                                 style="--activity-color: {{ $activityTone($schedule) }}; top: {{ round($topPercent, 4) }}%; height: {{ round($heightPercent, 4) }}%;"
-                                                :style="{
-                                                    left: (({{ $idx }} - page * 3) * 12) + '%',
-                                                    width: (100 - (Math.min(3, count - page * 3) - 1) * 12) + '%',
-                                                    zIndex: 10 + ({{ $idx }} - page * 3)
-                                                }"
+                                                :style="(function(){
+                                                    const idx = {{ $idx }};
+                                                    const inPage = idx >= page * 3 && idx < (page + 1) * 3;
+                                                    if (inPage) {
+                                                        return {
+                                                            left: ((idx - page * 3) * 12) + '%',
+                                                            width: (100 - (Math.min(3, count - page * 3) - 1) * 12) + '%',
+                                                            zIndex: 10 + (idx - page * 3),
+                                                            opacity: 1,
+                                                            pointerEvents: 'auto',
+                                                            display: 'flex',
+                                                            transform: 'none'
+                                                        };
+                                                    } else if (idx < page * 3) {
+                                                        /* Ghost cards BEFORE current page — peek from left, stacked by distance */
+                                                        const dist = page * 3 - idx; /* 1 = closest */
+                                                        const baseOpacity = Math.max(0.12, 0.45 - (dist - 1) * 0.08);
+                                                        const scale = Math.max(0.84, 0.95 - (dist - 1) * 0.04);
+                                                        const leftOffset = (-6 - (dist - 1) * 4);
+                                                        return {
+                                                            left: leftOffset + '%',
+                                                            width: '78%',
+                                                            zIndex: 6 - dist,
+                                                            opacity: baseOpacity,
+                                                            pointerEvents: 'none',
+                                                            display: 'flex',
+                                                            transform: 'scale(' + scale + ')',
+                                                            transformOrigin: 'top left'
+                                                        };
+                                                    } else {
+                                                        /* Ghost cards AFTER current page — peek from right, stacked by distance */
+                                                        const dist = idx - (page + 1) * 3 + 1; /* 1 = closest */
+                                                        const baseOpacity = Math.max(0.12, 0.45 - (dist - 1) * 0.08);
+                                                        const scale = Math.max(0.84, 0.95 - (dist - 1) * 0.04);
+                                                        const leftOffset = (28 + (dist - 1) * 4);
+                                                        return {
+                                                            left: leftOffset + '%',
+                                                            width: '78%',
+                                                            zIndex: 6 - dist,
+                                                            opacity: baseOpacity,
+                                                            pointerEvents: 'none',
+                                                            display: 'flex',
+                                                            transform: 'scale(' + scale + ')',
+                                                            transformOrigin: 'bottom right'
+                                                        };
+                                                    }
+                                                })()"
                                                 :class="{
                                                     'is-stack-front': {{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1),
-                                                    'is-stack-back': {{ $idx }} !== Math.min((page + 1) * 3 - 1, count - 1),
+                                                    'is-stack-back': {{ $idx }} >= page * 3 && {{ $idx }} !== Math.min((page + 1) * 3 - 1, count - 1),
                                                     'has-visible-stack-switcher': count > 3 && {{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1),
                                                     'has-no-visible-stack-switcher': count <= 3 || {{ $idx }} !== Math.min((page + 1) * 3 - 1, count - 1),
+                                                    'is-ghost-peek': !({{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3),
+                                                    'is-ghost-prev': {{ $idx }} < page * 3,
+                                                    'is-ghost-next': {{ $idx }} >= (page + 1) * 3,
                                                     'schedule-conflict-focus': isFocusedSchedule('{{ $schedule->id }}')
                                                 }"
-                                                x-show="{{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3"
                                                 data-stack-card
                                                 data-schedule-id="{{ $schedule->id }}"
                                                 data-schedule-modal-trigger
-                                                @click="detailModal = 'schedule-{{ $schedule->id }}'"
-                                                @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'"
-                                                @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'"
+                                                @click="if({{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3) detailModal = 'schedule-{{ $schedule->id }}'"
+                                                @keydown.enter.prevent="if({{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3) detailModal = 'schedule-{{ $schedule->id }}'"
+                                                @keydown.space.prevent="if({{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3) detailModal = 'schedule-{{ $schedule->id }}'"
                                             >
                                                 <div class="grid-activity-top">
                                                     @if($offeringCourse?->course_code)
