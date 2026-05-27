@@ -135,6 +135,43 @@
             padding: 14px 16px;
             border-bottom: 1px solid var(--schedule-border);
             background: var(--schedule-soft);
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.15s ease;
+        }
+        .conflict-offering-head:hover {
+            background: oklch(94% 0.018 228);
+        }
+        .conflict-offering-head[aria-expanded="true"] {
+            border-bottom-color: var(--schedule-border);
+        }
+        .conflict-offering-head[aria-expanded="false"] {
+            border-bottom: none;
+        }
+        .conflict-chevron {
+            flex-shrink: 0;
+            margin-left: auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            color: var(--schedule-muted);
+            transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .conflict-offering-head[aria-expanded="true"] .conflict-chevron {
+            transform: rotate(180deg);
+        }
+        .conflict-list-wrapper {
+            display: grid;
+            grid-template-rows: 0fr;
+            transition: grid-template-rows 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .conflict-list-wrapper.is-open {
+            grid-template-rows: 1fr;
+        }
+        .conflict-list-inner {
+            overflow: hidden;
         }
         .conflict-course {
             min-width: 0;
@@ -259,6 +296,11 @@
             font-size: 12px;
             font-weight: 850;
             cursor: pointer;
+            transition: background 0.15s ease, border-color 0.15s ease;
+        }
+        .conflict-detail-toggle:hover:not(:disabled) {
+            background: var(--schedule-soft);
+            border-color: var(--brand-navy);
         }
         .conflict-detail-toggle:disabled {
             cursor: wait;
@@ -268,6 +310,7 @@
             color: var(--schedule-muted);
             font-size: 12px;
             font-weight: 700;
+            transition: opacity 0.15s ease;
         }
         .conflict-messages {
             display: none;
@@ -339,7 +382,26 @@
                     });
                 });
 
+                // ── Fix 3: Offering header collapse / expand ──────────────────
+                document.querySelectorAll('[data-offering-toggle]').forEach((header) => {
+                    const offering = header.closest('.conflict-offering');
+                    const wrapper = offering?.querySelector('.conflict-list-wrapper');
+
+                    if (!wrapper) return;
+
+                    // All collapsed by default — consistent UX regardless of count
+                    header.setAttribute('aria-expanded', 'false');
+
+                    header.addEventListener('click', () => {
+                        const expanded = header.getAttribute('aria-expanded') === 'true';
+                        header.setAttribute('aria-expanded', String(!expanded));
+                        wrapper.classList.toggle('is-open', !expanded);
+                    });
+                });
+
+                // ── Fix 1 & 2: Detail toggle — true two-way toggle ────────────
                 const detailCache = new Map();
+                const previewCache = new Map();
                 const pendingCards = new Set();
                 const queue = [];
                 let activeRequests = 0;
@@ -364,24 +426,44 @@
                 };
 
                 document.querySelectorAll('[data-conflict-detail-toggle]').forEach((button) => {
-                    button.addEventListener('click', () => {
-                        const item = button.closest('[data-conflict-item]');
-                        const detailUrl = item?.getAttribute('data-conflict-detail-url');
-                        const target = item?.querySelector('[data-conflict-detail-target]');
+                    const item = button.closest('[data-conflict-item]');
+                    const detailUrl = item?.getAttribute('data-conflict-detail-url');
+                    const target = item?.querySelector('[data-conflict-detail-target]');
+                    const note = item?.querySelector('[data-conflict-detail-note]');
+                    const originalLabel = button.textContent.trim();
+                    let isExpanded = false;
 
-                        if (!item || !detailUrl || !target || pendingCards.has(detailUrl)) {
+                    if (!item || !detailUrl || !target) return;
+
+                    // Cache the initial preview HTML so we can restore it on collapse
+                    previewCache.set(detailUrl, target.innerHTML);
+
+                    button.addEventListener('click', () => {
+                        // ── Collapse: restore preview ──
+                        if (isExpanded) {
+                            target.innerHTML = previewCache.get(detailUrl) ?? '';
+                            button.textContent = originalLabel;
+                            if (note) note.style.display = '';
+                            isExpanded = false;
                             return;
                         }
 
+                        // ── Already fetched: show full detail ──
                         if (detailCache.has(detailUrl)) {
                             target.innerHTML = detailCache.get(detailUrl);
-                            button.remove();
+                            button.textContent = 'ยุบรายละเอียด';
+                            if (note) note.style.display = 'none';
+                            isExpanded = true;
                             return;
                         }
+
+                        // ── Fetch full detail ──
+                        if (pendingCards.has(detailUrl)) return;
 
                         pendingCards.add(detailUrl);
                         button.disabled = true;
-                        button.textContent = 'กำลังโหลด';
+                        button.textContent = 'กำลังโหลด…';
+                        if (note) note.style.display = 'none';
 
                         enqueue(async () => {
                             try {
@@ -399,14 +481,15 @@
                                 const payload = await response.json();
                                 detailCache.set(detailUrl, payload.html || '');
                                 target.innerHTML = payload.html || '';
-                                button.remove();
+                                button.disabled = false;
+                                button.textContent = 'ยุบรายละเอียด';
+                                isExpanded = true;
                             } catch (error) {
                                 button.disabled = false;
                                 button.textContent = 'ลองอีกครั้ง';
-                                const note = item.querySelector('[data-conflict-detail-note]');
-
                                 if (note) {
                                     note.textContent = 'โหลดรายละเอียดไม่สำเร็จ';
+                                    note.style.display = '';
                                 }
                             } finally {
                                 pendingCards.delete(detailUrl);
@@ -467,13 +550,18 @@
                     $course = $offering->course;
                 @endphp
                 <section class="conflict-offering" data-testid="maker-conflict-offering">
-                    <div class="conflict-offering-head">
+                    <div class="conflict-offering-head" data-offering-toggle aria-expanded="false"
+                         role="button" tabindex="0"
+                         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                         <div class="conflict-course">
                             <div class="conflict-course-code">{{ $course?->course_code ?? '-' }}</div>
                             <div class="conflict-course-name">{{ $course?->name_th ?? $course?->name_en ?? 'ไม่ระบุชื่อรายวิชา' }}</div>
                         </div>
                         <span class="conflict-count">{{ $group['conflict_count'] }} รายการชน</span>
+                        <svg class="conflict-chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
                     </div>
+                    <div class="conflict-list-wrapper">
+                    <div class="conflict-list-inner">
                     <div class="conflict-list">
                         @foreach($group['schedules'] as $scheduleEntry)
                             @php
@@ -542,6 +630,8 @@
                                 </div>
                             </article>
                         @endforeach
+                    </div>
+                    </div>
                     </div>
                 </section>
             @endforeach
