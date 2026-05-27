@@ -4676,9 +4676,6 @@
 
                                 <div class="modal-section {{ $instructorConflictNote ? 'modal-field-has-conflict' : '' }}">
                                     <div class="modal-section-title">ผู้สอน <span class="required-mark">*</span></div>
-                                    @if($instructorConflictNote)
-                                        <div class="modal-conflict-field" style="margin-bottom:8px;">{{ $instructorConflictNote }}</div>
-                                    @endif
                                     @php
                                         $editInstructorOptions = $eligibleScheduleInstructors($offering);
                                         $editInstructorSearchItems = $editInstructorOptions
@@ -4698,6 +4695,9 @@
                                         @endforeach
                                     </div>
                                     <div class="modal-choice-empty" x-show="hasCreateSearch(editInstructorSearch) && !hasCreateSearchMatches(@js($editInstructorSearchItems), editInstructorSearch)" x-cloak>ไม่พบข้อมูลที่ค้นหา</div>
+                                    @if($instructorConflictNote)
+                                        <div class="modal-conflict-field">{{ $instructorConflictNote }}</div>
+                                    @endif
                                 </div>
 
                                 <div class="modal-section">
@@ -4714,9 +4714,6 @@
 
                                 <div class="modal-section {{ $groupConflictNote ? 'modal-field-has-conflict' : '' }}">
                                     <div class="modal-section-title">กลุ่มนักศึกษา <span class="required-mark">*</span></div>
-                                    @if($groupConflictNote)
-                                        <div class="modal-conflict-field" style="margin-bottom:8px;">{{ $groupConflictNote }}</div>
-                                    @endif
                                     @php
                                         $editGroupSearchItems = $offering->studentGroups
                                             ->map(fn ($group) => mb_strtolower($group->group_code . ' ' . $group->student_count . ' คน', 'UTF-8'))
@@ -4735,6 +4732,9 @@
                                         @endforeach
                                     </div>
                                     <div class="modal-choice-empty" x-show="hasCreateSearch(editGroupSearch) && !hasCreateSearchMatches(@js($editGroupSearchItems), editGroupSearch)" x-cloak>ไม่พบข้อมูลที่ค้นหา</div>
+                                    @if($groupConflictNote)
+                                        <div class="modal-conflict-field">{{ $groupConflictNote }}</div>
+                                    @endif
                                 </div>
                             </div>
                             <div class="modal-actions">
