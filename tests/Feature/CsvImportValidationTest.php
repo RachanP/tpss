@@ -102,6 +102,30 @@ class CsvImportValidationTest extends TestCase
         $this->assertDatabaseHas('rooms', ['room_code' => 'RM-01']);
     }
 
+    public function test_import_rooms_accepts_excel_template_csv_with_hint_row_and_required_markers(): void
+    {
+        $admin = $this->makeAdmin();
+        LocationType::create(['name' => 'Classroom']);
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        $csv = implode("\n", [
+            'Template Rooms,,,,,,,',
+            '# TPSS room import template',
+            ',required,required',
+            'room_code*,room_name*,location_type_name*',
+            'RM-XLSX,Excel Template Room,Classroom',
+            '',
+        ]);
+
+        $this->post(route('admin.rooms.import'), ['csv_file' => $this->csvFile($csv)])
+            ->assertSessionMissing('import_errors');
+
+        $this->assertDatabaseHas('rooms', [
+            'room_code' => 'RM-XLSX',
+            'room_name' => 'Excel Template Room',
+        ]);
+    }
+
     // ── importCourses ─────────────────────────────────────────────────
 
     public function test_import_courses_missing_required_header_returns_error(): void
@@ -193,6 +217,30 @@ class CsvImportValidationTest extends TestCase
         $this->assertDatabaseHas('courses', ['course_code' => 'NSBS_301-A']);
     }
 
+    public function test_import_courses_accepts_excel_template_csv_with_hint_row_and_required_markers(): void
+    {
+        $admin = $this->makeAdmin();
+        $this->seedExcelCourseImportLookups();
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        $csv = implode("\n", [
+            'Template Courses,,,,,,,,,,,,,,,,,',
+            '# TPSS course import template',
+            ',required,,required,,required,,required,,,,required,required,required,,',
+            'course_code*,name_th*,name_en,curriculum_name*,department_name,head_instructor_employee_id*,course_type,credits*,lecture_hours,lab_hours,self_study_hours,capacity*,default_year_level*,default_semester*,requires_practicum_rotation,status',
+            'NSBS-XLSX,Excel Template Course,Excel Template Course EN,XLSX Curriculum,XLSX Department,MU-XLSX,theory,3,3,0,6,30,1,1,0,active',
+            '',
+        ]);
+
+        $this->post(route('admin.courses.import'), ['csv_file' => $this->csvFile($csv)])
+            ->assertSessionMissing('import_errors');
+
+        $this->assertDatabaseHas('courses', [
+            'course_code' => 'NSBS-XLSX',
+            'name_th' => 'Excel Template Course',
+        ]);
+    }
+
     private function seedCourseImportLookups(): void
     {
         Curriculum::create([
@@ -207,6 +255,25 @@ class CsvImportValidationTest extends TestCase
             'email' => 'head_csv@example.com',
             'password' => Hash::make('password'),
             'employee_id' => 'MU999',
+        ]);
+    }
+
+    private function seedExcelCourseImportLookups(): void
+    {
+        Curriculum::create([
+            'name' => 'XLSX Curriculum',
+            'effective_year' => 2567,
+            'duration_years' => 4,
+            'uses_year_level' => true,
+            'is_active' => true,
+        ]);
+        Department::create(['name' => 'XLSX Department']);
+        User::create([
+            'username' => 'head_xlsx',
+            'name' => 'Head XLSX',
+            'email' => 'head_xlsx@example.com',
+            'password' => Hash::make('password'),
+            'employee_id' => 'MU-XLSX',
         ]);
     }
 
@@ -335,6 +402,31 @@ class CsvImportValidationTest extends TestCase
         $user->refresh();
         $this->assertSame('Existing Date User', $user->name);
         $this->assertSame('2017-01-01', $user->instructorProfile()->first()->hired_at);
+    }
+
+    public function test_import_users_accepts_excel_template_csv_with_hint_row_and_required_markers(): void
+    {
+        $admin = $this->makeAdmin();
+        Department::create(['name' => 'XLSX Dept']);
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        $csv = implode("\n", [
+            'Template Users,,,,,,,,,,,,,,,,,',
+            '# TPSS user import template',
+            '# rows that begin with # are ignored',
+            ',required,required,required,required,required,required,required for instructors,,,,,,,,,,',
+            'prefix,name*,email*,username*,password*,roles*,primary_role*,employee_id,title,academic_degree,department_name,employment_type,hired_date,teaching_pct,research_pct,service_pct,culture_pct,other_pct',
+            'Mr.,Excel Template User,xlsx_user@example.com,xlsx_user,password123,instructor,instructor,EMP-XLSX,Instructor,Master,XLSX Dept,Full-time,2026-01-15,50,25,10,10,5',
+            '',
+        ]);
+
+        $this->post(route('admin.users.import'), ['csv_file' => $this->csvFile($csv)])
+            ->assertSessionMissing('import_errors');
+
+        $this->assertDatabaseHas('users', [
+            'username' => 'xlsx_user',
+            'email' => 'xlsx_user@example.com',
+        ]);
     }
 
     private function userImportCsv(string $username, string $hiredDate): string

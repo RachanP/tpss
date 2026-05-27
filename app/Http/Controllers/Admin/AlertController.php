@@ -52,6 +52,12 @@ class AlertController extends Controller
         $coursesWithoutStaff = Course::doesntHave('assignedStaff')
             ->with(['curriculum', 'department'])->get();
 
+        $activeCoursesMissingHead = Course::where('status', 'active')
+            ->whereNull('head_instructor_id')
+            ->with(['curriculum', 'department'])
+            ->orderBy('course_code')
+            ->get();
+
         $dismissedWarnings = self::getDismissedWarnings();
 
         return view('admin.alerts.index', compact(
@@ -60,6 +66,7 @@ class AlertController extends Controller
             'departmentsWithIssues',
             'roomsWithIssues',
             'coursesWithoutStaff',
+            'activeCoursesMissingHead',
             'dismissedWarnings',
         ));
     }
@@ -109,8 +116,8 @@ class AlertController extends Controller
             $criticals[] = [
                 'key'     => 'active_courses_missing_head',
                 'label'   => 'รายวิชาที่เปิดสอนยังไม่มีหัวหน้าวิชา (' . $coursesMissingHeadCount . ' วิชา)',
-                'link'    => route('admin.master_data', ['tab' => 'courses']),
-                'linkTxt' => 'ตั้งค่าหัวหน้าวิชา',
+                'link'    => route('admin.alerts') . '#active-courses-missing-head',
+                'linkTxt' => 'ดูรายละเอียด',
             ];
         }
 
@@ -119,7 +126,7 @@ class AlertController extends Controller
             $criticals[] = [
                 'key'     => 'pa_violations',
                 'label'   => 'สัดส่วน PA ไม่อยู่ในเกณฑ์ (' . count($paViolations) . ' ท่าน)',
-                'link'    => route('admin.alerts') . '#pa-violations',
+                'link'    => route('admin.users'),
                 'linkTxt' => 'ดูรายละเอียด',
             ];
         }

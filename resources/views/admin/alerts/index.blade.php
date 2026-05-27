@@ -114,7 +114,7 @@
                 <div style="display: flex; align-items: center; gap: 14px; padding: 13px 18px; background: color-mix(in oklch, var(--status-conflict) 5%, white); {{ !$loop->last ? 'border-bottom: 1px solid color-mix(in oklch, var(--status-conflict) 18%, white);' : '' }}">
                     <div style="width: 6px; height: 6px; border-radius: 50%; background: var(--status-conflict); flex-shrink: 0;"></div>
                     <span style="flex: 1; font-size: 13px; font-weight: 600; color: var(--status-conflict-fg);">{{ $c['label'] }}</span>
-                    <a href="{{ $c['link'] }}" class="btn btn-primary" style="font-size: 12px; white-space: nowrap; padding: 5px 12px;">{{ $c['linkTxt'] }}</a>
+                    <a href="{{ $c['link'] }}" class="btn btn-primary" style="font-size: 12px; white-space: nowrap; width: 138px; min-height: 36px; padding: 7px 12px; justify-content: center;">{{ $c['linkTxt'] }}</a>
                 </div>
                 @endforeach
             </div>
@@ -123,6 +123,47 @@
         <div style="display: flex; align-items: center; gap: 10px; padding: 11px 16px; background: color-mix(in oklch, var(--status-success) 6%, white); border: 1px solid color-mix(in oklch, var(--status-success) 25%, white); border-radius: 4px; margin-bottom: 1.5rem;">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" style="color: var(--status-success-fg);"><polyline points="20 6 9 17 4 12"/></svg>
             <span style="font-size: 13px; font-weight: 600; color: var(--status-success-fg);">ไม่มีปัญหา Critical — ระบบพร้อมใช้งาน</span>
+        </div>
+        @endif
+
+        @if($activeCoursesMissingHead->count() > 0)
+        <div id="active-courses-missing-head" style="margin-bottom: 1.5rem;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" style="color: var(--status-conflict-fg);">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                </svg>
+                <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--status-conflict-fg);">รายละเอียด - รายวิชาที่ยังไม่มีหัวหน้าวิชา</span>
+                <span style="font-size: 11px; background: var(--status-conflict); color: #fff; padding: 1px 7px; border-radius: 10px; font-weight: 700;">{{ $activeCoursesMissingHead->count() }} วิชา</span>
+            </div>
+            <div style="border: 1.5px solid color-mix(in oklch, var(--status-conflict) 30%, white); border-radius: 4px; overflow: hidden;">
+                <div class="table-responsive" style="margin: 0;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>รหัส</th>
+                                <th>ชื่อวิชา</th>
+                                <th>หลักสูตร/ภาควิชา</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($activeCoursesMissingHead as $course)
+                            <tr>
+                                <td style="font-weight:600;color:var(--fg-2);white-space:nowrap;">{{ $course->course_code }}</td>
+                                <td style="font-weight:600;color:var(--fg-1);">{{ $course->name_th }}</td>
+                                <td style="font-size:12px;color:var(--fg-3);">
+                                    {{ $course->curriculum->name ?? '-' }}
+                                    <div>{{ $course->department->name ?? 'ไม่สังกัดภาควิชา' }}</div>
+                                </td>
+                                <td style="text-align:right;white-space:nowrap;">
+                                    <a href="{{ route('admin.master_data', ['tab' => 'courses', 'edit_course' => $course->id]) }}" class="btn btn-ghost" style="font-size: 12px; padding: 4px 10px;">แก้ไข</a>
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
         @endif
 
@@ -161,7 +202,7 @@
                                     @endforeach
                                 </td>
                                 <td style="text-align: right; white-space: nowrap;">
-                                    <a href="{{ route('admin.master_data') }}?tab=instructors" class="btn btn-ghost" style="font-size: 12px; padding: 4px 10px;">แก้ไข</a>
+                                    <a href="{{ route('admin.master_data', ['tab' => 'instructors', 'edit_instructor' => $v['user']->id]) }}" class="btn btn-ghost" style="font-size: 12px; padding: 4px 10px;">แก้ไข</a>
                                 </td>
                             </tr>
                             @endforeach
@@ -273,12 +314,15 @@
                     <div class="table-responsive" style="margin: 0; max-height: 260px; overflow-y: auto;">
                         @if($sec['key'] === 'departments')
                         <table>
-                            <thead><tr><th>ภาควิชา</th><th>ขาด</th></tr></thead>
+                            <thead><tr><th>ภาควิชา</th><th style="min-width: 210px;">สิ่งที่ขาด</th><th></th></tr></thead>
                             <tbody>
                                 @foreach($departmentsWithIssues as $item)
                                 <tr>
                                     <td style="font-weight:600;color:var(--fg-1);">{{ $item['dept']->name }}</td>
-                                    <td>@foreach($item['missing'] as $m)<span class="pill p-warning" style="margin-right:4px;">{{ $m }}</span>@endforeach</td>
+                                    <td style="white-space: nowrap;">@foreach($item['missing'] as $m)<span class="pill p-warning" style="margin-right:4px;font-size:11px;white-space:nowrap;">{{ $m }}</span>@endforeach</td>
+                                    <td style="text-align:right;white-space:nowrap;">
+                                        <a href="{{ route('admin.master_data', ['tab' => 'departments', 'edit_department' => $item['dept']->id]) }}" class="btn btn-ghost" style="font-size: 12px; padding: 4px 10px;">แก้ไข</a>
+                                    </td>
                                 </tr>
                                 @endforeach
                             </tbody>
@@ -286,7 +330,7 @@
 
                         @elseif($sec['key'] === 'rooms')
                         <table>
-                            <thead><tr><th>ห้อง</th><th>ประเภท</th><th>ขาด</th></tr></thead>
+                            <thead><tr><th>ห้อง</th><th>ประเภท</th><th>สิ่งที่ขาด</th><th></th></tr></thead>
                             <tbody>
                                 @foreach($roomsWithIssues as $room)
                                 <tr>
@@ -296,6 +340,9 @@
                                         @if(empty($room->room_name))<span class="pill p-conflict" style="margin-right:3px;">ไม่มีชื่อ</span>@endif
                                         @if(empty($room->capacity)||$room->capacity==0)<span class="pill p-warning">ความจุ 0</span>@endif
                                     </td>
+                                    <td style="text-align:right;white-space:nowrap;">
+                                        <a href="{{ route('admin.master_data', ['tab' => 'location_types', 'edit_room' => $room->id]) }}" class="btn btn-ghost" style="font-size: 12px; padding: 4px 10px;">แก้ไข</a>
+                                    </td>
                                 </tr>
                                 @endforeach
                             </tbody>
@@ -303,13 +350,16 @@
 
                         @elseif($sec['key'] === 'course_staff')
                         <table>
-                            <thead><tr><th>รหัส</th><th>ชื่อวิชา</th><th>ขาด</th></tr></thead>
+                            <thead><tr><th>รหัส</th><th>ชื่อวิชา</th><th>ขาด</th><th></th></tr></thead>
                             <tbody>
                                 @foreach($coursesWithoutStaff as $course)
                                 <tr>
                                     <td style="font-weight:600;color:var(--fg-2);white-space:nowrap;">{{ $course->course_code }}</td>
                                     <td style="font-weight:600;color:var(--fg-1);">{{ $course->name_th }}</td>
                                     <td><span class="pill p-warning">ไม่มีเจ้าหน้าที่</span></td>
+                                    <td style="text-align:right;white-space:nowrap;">
+                                        <a href="{{ route('admin.master_data', ['tab' => 'courses', 'edit_course' => $course->id]) }}" class="btn btn-ghost" style="font-size: 12px; padding: 4px 10px;">แก้ไข</a>
+                                    </td>
                                 </tr>
                                 @endforeach
                             </tbody>
