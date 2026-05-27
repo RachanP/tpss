@@ -1861,7 +1861,7 @@
             position: absolute;
             left: 10px;
             right: 10px;
-            bottom: 33px;
+            bottom: 10px;
             margin-top: 0;
             padding-top: 0;
         }
@@ -1910,6 +1910,16 @@
             font-size: 10.2px;
             line-height: 1.18;
         }
+        .grid-activity-card.is-stacked-card.is-compact.has-visible-stack-switcher .grid-activity-time {
+            max-width: calc(100% - 70px);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .grid-activity-card.is-stacked-card.is-compact.has-visible-stack-switcher .grid-activity-foot {
+            left: auto;
+            max-width: 64px;
+        }
         .schedule-grid.is-precise .grid-activity-card.is-stacked-card.is-compact .grid-activity-title {
             display: block;
             min-height: 17px;
@@ -1935,16 +1945,6 @@
         }
         .grid-activity-card.is-stacked-card.is-compact .grid-activity-room {
             display: none;
-        }
-        .grid-activity-card.is-stacked-card.is-compact.has-visible-stack-switcher .grid-activity-foot {
-            left: auto;
-            right: 10px;
-            top: 8px;
-            bottom: auto;
-            min-height: 0;
-        }
-        .grid-activity-card.is-stacked-card.is-compact.has-visible-stack-switcher .grid-activity-top {
-            padding-right: 58px;
         }
         .grid-activity-card.is-stacked-card.is-stack-back.is-compact .grid-activity-time {
             display: none;
@@ -2076,14 +2076,14 @@
         }
         .month-day-items {
             display: grid;
-            gap: 6px;
+            gap: 4px;
         }
         .month-activity {
             width: 100%;
             border: 1px solid color-mix(in oklch, var(--activity-color) 30%, var(--schedule-border));
-            border-radius: 8px;
+            border-radius: 6px;
             background: color-mix(in oklch, var(--activity-color) 7%, var(--surface));
-            padding: 7px;
+            padding: 5px 6px;
             cursor: pointer;
             text-align: left;
             font: inherit;
@@ -2094,28 +2094,29 @@
         }
         .month-activity-time {
             color: var(--brand-navy);
-            font-size: 10.5px;
+            font-size: 10px;
             font-weight: 900;
             font-variant-numeric: tabular-nums;
+            line-height: 1.2;
         }
         .month-activity-title {
-            margin-top: 2px;
+            margin-top: 1px;
             color: var(--fg-1);
-            font-size: 11.2px;
+            font-size: 10.6px;
             font-weight: 850;
-            line-height: 1.35;
+            line-height: 1.25;
         }
         .month-activity-meta {
-            margin-top: 2px;
+            margin-top: 1px;
             color: var(--schedule-muted);
-            font-size: 10px;
-            line-height: 1.35;
+            font-size: 9.5px;
+            line-height: 1.25;
         }
         .month-activity-tags {
             display: flex;
             flex-wrap: wrap;
             gap: 3px;
-            margin-top: 5px;
+            margin-top: 3px;
         }
         .month-group-summary {
             display: inline-flex;
@@ -2148,14 +2149,27 @@
             display: none;
         }
         [data-testid="schedule-month-calendar"] .month-activity {
-            padding: 6px;
+            padding: 5px 6px;
+        }
+        [data-testid="schedule-month-calendar"] .month-activity-meta,
+        [data-testid="schedule-month-calendar"] .month-activity .activity-tag,
+        [data-testid="schedule-month-calendar"] .month-activity .month-group-summary,
+        [data-testid="schedule-month-calendar-co"] .month-activity .activity-tag,
+        [data-testid="schedule-month-calendar-co"] .month-activity .month-group-summary {
+            display: none;
         }
         [data-testid="schedule-month-calendar"] .month-activity-title {
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
+            display: block;
             overflow: hidden;
-            font-size: 10.8px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 10.5px;
+        }
+        [data-testid="schedule-month-calendar-co"] .month-activity-title {
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         [data-testid="schedule-month-calendar"] .month-activity .badge {
             display: none;
@@ -2828,6 +2842,32 @@
             user-select: none;
             pointer-events: auto;
             line-height: 1;
+        }
+        .stack-switcher-zone {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 34px;
+            z-index: 1;
+            pointer-events: auto;
+        }
+        .stack-switcher-top-zone {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            bottom: 34px;
+            z-index: 1;
+            pointer-events: auto;
+        }
+        .grid-activity-card.has-visible-stack-switcher .stack-switcher-top-zone:hover ~ .stack-indicator.is-stack-switcher {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .grid-activity-card.has-visible-stack-switcher .stack-switcher-zone:hover ~ .stack-indicator.is-stack-switcher {
+            opacity: 1;
+            pointer-events: auto;
         }
         .stack-indicator:hover {
             background: color-mix(in oklch, var(--brand-navy) 85%, #000);
@@ -3749,6 +3789,10 @@
                                                     </div>
 
                                                     @if($stackCount > 1)
+                                                        @if($stackCount > 3)
+                                                            <div class="stack-switcher-top-zone" aria-hidden="true"></div>
+                                                            <div class="stack-switcher-zone" aria-hidden="true"></div>
+                                                        @endif
                                                         <div
                                                             class="stack-indicator {{ $stackCount > 3 ? 'is-stack-switcher' : 'is-stack-count' }}"
                                                             x-show="{{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1)"
@@ -4148,6 +4192,10 @@
                                                 <div><span class="badge {{ $status['class'] }}">{{ $status['label'] }}</span></div>
 
                                                 @if($stackCount > 1)
+                                                    @if($stackCount > 3)
+                                                        <div class="stack-switcher-top-zone" aria-hidden="true"></div>
+                                                        <div class="stack-switcher-zone" aria-hidden="true"></div>
+                                                    @endif
                                                     <div
                                                         class="stack-indicator {{ $stackCount > 3 ? 'is-stack-switcher' : 'is-stack-count' }}"
                                                         x-show="{{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1)"
