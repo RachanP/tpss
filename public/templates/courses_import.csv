@@ -1,4 +1,36 @@
-﻿course_code,name_th,name_en,curriculum_name,department_name,head_instructor_employee_id,course_type,credits,lecture_hours,lab_hours,self_study_hours,capacity,default_year_level,default_semester,requires_practicum_rotation,is_required,color_code,status
-NSBS 111,กระบวนการพยาบาล 1,Nursing Process 1,หลักสูตรพยาบาลศาสตรบัณฑิต 2565,ภาควิชาการพยาบาลรากฐาน,MU002,theory,2,2,0,4,252,1,1,0,1,#3B82F6,active
-NSBS 221,การพยาบาลเด็ก 2,Pediatric Nursing 2,หลักสูตรพยาบาลศาสตรบัณฑิต 2565,ภาควิชาการพยาบาลรากฐาน,MU002,theory_practicum,2,0,2,4,240,2,2,1,1,#10B981,active
-NSBS 311,การพยาบาลผู้ใหญ่ 1 ภาคปฏิบัติ,Adult Nursing Practicum 1,หลักสูตรพยาบาลศาสตรบัณฑิต 2565,ภาควิชาการพยาบาลรากฐาน,MU002,practicum,3,0,3,6,240,3,1,1,1,#EF4444,active
+# ===== แม่แบบ (Template) นำเข้ารายวิชา — ระบบ TPSS =====
+# วิธีใช้: กรอกข้อมูลใต้แถวหัวตาราง (บรรทัดที่ขึ้นต้นด้วย # จะถูกข้ามอัตโนมัติ)
+# การเข้ารหัสไฟล์: UTF-8 เท่านั้น | ขนาดไม่เกิน 5 MB
+# ⚠ ต้องมีหลักสูตร (Curriculums) และผู้ใช้ที่มีรหัสพนักงาน ในระบบก่อนนำเข้า
+#
+# ─── คำอธิบาย Column ───────────────────────────────────────────────────────────
+# course_code          [บังคับ]    รหัสวิชา เช่น NSBS 111 (ตัวอักษร ตัวเลข เว้นวรรค และ - . เท่านั้น)
+# name_th              [บังคับ]    ชื่อรายวิชาภาษาไทย
+# name_en              [ไม่บังคับ] ชื่อรายวิชาภาษาอังกฤษ
+# curriculum_name      [บังคับ]    ชื่อหลักสูตร ต้องตรงกับชื่อในระบบ เช่น หลักสูตรพยาบาลศาสตรบัณฑิต 2565
+# department_name      [ไม่บังคับ] ชื่อภาควิชา ต้องตรงกับชื่อในระบบ (เว้นว่างสำหรับวิชาเรียนรวม)
+# head_instructor_employee_id [บังคับ] รหัสพนักงานของหัวหน้าวิชา ต้องมีในระบบ เช่น MU002
+# course_type          [บังคับ]    ประเภทรายวิชา — ค่าที่รับได้: theory | practicum | theory_practicum
+# credits              [บังคับ]    จำนวนหน่วยกิต เช่น 2 หรือ 3
+# lecture_hours        [บังคับ]    ชั่วโมงบรรยายต่อสัปดาห์ (0 ถ้าเป็น practicum ล้วน)
+# lab_hours            [บังคับ]    ชั่วโมงปฏิบัติต่อสัปดาห์ (0 ถ้าเป็น theory ล้วน)
+# self_study_hours     [บังคับ]    ชั่วโมงศึกษาด้วยตนเองต่อสัปดาห์
+# capacity             [บังคับ]    จำนวนนักศึกษาสูงสุด ≥ 1
+# default_year_level   [บังคับถ้าหลักสูตรใช้ระบบชั้นปี] ชั้นปีตามแผน เช่น 1 | 2 | 3 | 4
+# default_semester     [บังคับ]    ภาคเรียนตามแผน — ค่าที่รับได้: 1 | 2
+# requires_practicum_rotation [บังคับสำหรับ practicum/theory_practicum]
+#                      หมุนเวียนกลุ่มปฏิบัติ — ค่าที่รับได้: 0 (ไม่หมุนเวียน) | 1 (หมุนเวียน)
+# is_required          [บังคับ]    ประเภทวิชา — ค่าที่รับได้: 1 (วิชาบังคับ) | 0 (วิชาเลือก)
+# color_code           [ไม่บังคับ] สีของรายวิชา รูปแบบ HEX เช่น #3B82F6 (เว้นว่างให้ระบบเลือกเอง)
+# status               [บังคับ]    สถานะ — ค่าที่รับได้: active | inactive
+#
+# ─── หมายเหตุ ─────────────────────────────────────────────────────────────────
+# * ถ้า course_code + curriculum_name ซ้ำ → ขึ้นกับตัวเลือก "อัปเดตข้อมูลถ้าซ้ำ" ในหน้านำเข้า
+# * ชั่วโมง: lecture_hours + lab_hours + self_study_hours ไม่จำเป็นต้องรวมเท่ากับ credits
+# * หลักสูตร ป.โท/ป.เอก มักไม่ใช้ระบบชั้นปี → เว้นว่าง default_year_level ได้
+course_code,name_th,name_en,curriculum_name,department_name,head_instructor_employee_id,course_type,credits,lecture_hours,lab_hours,self_study_hours,capacity,default_year_level,default_semester,requires_practicum_rotation,is_required,color_code,status
+NSBS 111,กระบวนการพยาบาล 1,Nursing Process 1,หลักสูตรพยาบาลศาสตรบัณฑิต 2565,การพยาบาลรากฐาน,MU002,theory,2,2,0,4,252,1,1,0,1,#3B82F6,active
+NSBS 221,การพยาบาลเด็ก 2,Pediatric Nursing 2,หลักสูตรพยาบาลศาสตรบัณฑิต 2565,การพยาบาลรากฐาน,MU002,theory_practicum,2,0,2,4,240,2,2,1,1,#10B981,active
+NSBS 311,การพยาบาลผู้ใหญ่ 1 ภาคปฏิบัติ,Adult Nursing Practicum 1,หลักสูตรพยาบาลศาสตรบัณฑิต 2565,การพยาบาลรากฐาน,MU002,practicum,3,0,3,6,240,3,1,1,1,#EF4444,active
+NSBS 401,วิจัยทางการพยาบาล,Nursing Research,หลักสูตรพยาบาลศาสตรบัณฑิต 2565,การพยาบาลรากฐาน,MU002,theory,2,2,0,4,252,4,2,0,1,#8B5CF6,active
+NSBS 490,วิชาเลือก: การดูแลผู้ป่วยวิกฤต,,หลักสูตรพยาบาลศาสตรบัณฑิต 2565,,MU007,theory,2,2,0,4,80,4,1,0,0,#F59E0B,active

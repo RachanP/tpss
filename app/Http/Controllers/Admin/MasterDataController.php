@@ -1400,6 +1400,7 @@ class MasterDataController extends Controller
         while (($data = fgetcsv($handle)) !== false) {
             $row++;
             if (!$this->csvRowHasData($data)) continue;
+            if ($this->isCsvCommentRow($data)) continue;
 
             $csv = $this->combineCsvRow($header, $data, $row, $errors);
             if ($csv === null) continue;
@@ -1523,6 +1524,7 @@ class MasterDataController extends Controller
         while (($data = fgetcsv($handle)) !== false) {
             $row++;
             if (!$this->csvRowHasData($data)) continue;
+            if ($this->isCsvCommentRow($data)) continue;
 
             $csv = $this->combineCsvRow($header, $data, $row, $errors);
             if ($csv === null) continue;

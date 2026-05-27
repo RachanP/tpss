@@ -42,6 +42,15 @@ abstract class Controller
         return count(array_filter($data, fn($v) => trim((string) $v) !== '')) > 0;
     }
 
+    /**
+     * Returns true if the CSV row is a comment/instruction line (first cell starts with '#').
+     * Template files use # comment rows to describe columns; parsers should skip them.
+     */
+    protected function isCsvCommentRow(array $data): bool
+    {
+        return isset($data[0]) && str_starts_with(trim((string) $data[0]), '#');
+    }
+
     protected function combineCsvRow(array $header, array $data, int $row, array &$errors): ?array
     {
         $headerCount = count($header);
