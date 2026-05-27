@@ -5,6 +5,8 @@ namespace App\Jobs;
 use App\Models\Schedule;
 use App\Models\ScheduleConflictResult;
 use App\Models\ScheduleConflictRun;
+use App\Models\CourseOffering;
+use App\Services\NavigationBadgeService;
 use App\Services\ScheduleConflictInvalidationService;
 use App\Services\ScheduleConflictIndex;
 use Illuminate\Bus\Queueable;
@@ -63,7 +65,9 @@ class ConflictRecomputeJob implements ShouldQueue, ShouldBeUnique
                 'result_count' => $resultCount,
             ])->save();
             $invalidation->clearDirty($this->academicYearId);
+            $this->flushCourseHeadBadges($sourceSchedules);
         } catch (Throwable $exception) {
+            $this->cleanupPartialResults();
             ScheduleConflictRun::query()
                 ->whereKey($this->runId)
                 ->update([
@@ -72,6 +76,7 @@ class ConflictRecomputeJob implements ShouldQueue, ShouldBeUnique
                     'error_message' => $exception->getMessage(),
                 ]);
             $invalidation->clearDirty($this->academicYearId);
+            $this->flushCourseHeadBadgesForAcademicYear();
 
             throw $exception;
         }
@@ -144,7 +149,7 @@ class ConflictRecomputeJob implements ShouldQueue, ShouldBeUnique
                 'instructors.instructorProfile:id,user_id,title,academic_degree',
                 'studentGroups:id,course_offering_id,group_code,color_code',
             ])
-            ->whereHas('courseOffering');
+            ->whereHas('courseOffering', fn (Builder $query) => $query->withActiveCourse());
     }
 
     /**
@@ -162,8 +167,9 @@ class ConflictRecomputeJob implements ShouldQueue, ShouldBeUnique
             $run->scopes()->delete();
             $run->results()->delete();
 
-            $resultCount = 0;
+            $resultRows = [];
             $seen = [];
+            $now = now();
 
             foreach ($sourceSchedules as $sourceSchedule) {
                 $conflicts = $conflictMap->get($sourceSchedule->id, collect());
@@ -188,7 +194,7 @@ class ConflictRecomputeJob implements ShouldQueue, ShouldBeUnique
 
                     $seen[$seenKey] = true;
 
-                    $result = ScheduleConflictResult::query()->create([
+                    $resultRows[] = [
                         'run_id' => $run->id,
                         'academic_year_id' => $this->academicYearId,
                         'schedule_id' => $sourceSchedule->id,
@@ -198,14 +204,34 @@ class ConflictRecomputeJob implements ShouldQueue, ShouldBeUnique
                         'resource_id' => $resource['id'],
                         'message' => mb_substr($conflict['message'], 0, 255),
                         'pair_key' => $pairKey,
-                    ]);
-
-                    $result->scopes()->createMany($this->scopeRows($run, $result, $sourceSchedule));
-                    $resultCount++;
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
                 }
             }
 
-            return $resultCount;
+            collect($resultRows)
+                ->chunk(500)
+                ->each(fn (Collection $rows) => ScheduleConflictResult::query()->insert($rows->all()));
+
+            $sourceMap = $sourceSchedules->keyBy('id');
+            $scopeRows = ScheduleConflictResult::query()
+                ->where('run_id', $run->id)
+                ->get(['id', 'schedule_id'])
+                ->flatMap(function (ScheduleConflictResult $result) use ($run, $sourceMap) {
+                    $sourceSchedule = $sourceMap->get((int) $result->schedule_id);
+
+                    return $sourceSchedule
+                        ? $this->scopeRows($run, (int) $result->id, $sourceSchedule)
+                        : [];
+                })
+                ->values();
+
+            $scopeRows
+                ->chunk(500)
+                ->each(fn (Collection $rows) => DB::table('schedule_conflict_result_scopes')->insert($rows->all()));
+
+            return count($resultRows);
         });
     }
 
@@ -214,9 +240,10 @@ class ConflictRecomputeJob implements ShouldQueue, ShouldBeUnique
      */
     private function scopeRows(
         ScheduleConflictRun $run,
-        ScheduleConflictResult $result,
+        int $resultId,
         Schedule $sourceSchedule
     ): array {
+        $now = now();
         $courseOfferingId = (int) $sourceSchedule->course_offering_id;
         $coordinatorId = $sourceSchedule->courseOffering?->coordinator_id
             ? (int) $sourceSchedule->courseOffering->coordinator_id
@@ -225,34 +252,80 @@ class ConflictRecomputeJob implements ShouldQueue, ShouldBeUnique
         $rows = [
             [
                 'run_id' => $run->id,
+                'result_id' => $resultId,
                 'academic_year_id' => $this->academicYearId,
                 'scope_type' => 'admin_global',
                 'user_id' => null,
                 'role' => 'admin',
                 'course_offering_id' => $courseOfferingId,
+                'created_at' => $now,
+                'updated_at' => $now,
             ],
             [
                 'run_id' => $run->id,
+                'result_id' => $resultId,
                 'academic_year_id' => $this->academicYearId,
                 'scope_type' => 'executive_academic_year',
                 'user_id' => null,
                 'role' => 'executive',
                 'course_offering_id' => $courseOfferingId,
+                'created_at' => $now,
+                'updated_at' => $now,
             ],
         ];
 
         if ($coordinatorId) {
             $rows[] = [
                 'run_id' => $run->id,
+                'result_id' => $resultId,
                 'academic_year_id' => $this->academicYearId,
                 'scope_type' => 'course_head_user',
                 'user_id' => $coordinatorId,
                 'role' => 'course_head',
                 'course_offering_id' => $courseOfferingId,
+                'created_at' => $now,
+                'updated_at' => $now,
             ];
         }
 
         return $rows;
+    }
+
+    private function cleanupPartialResults(): void
+    {
+        DB::transaction(function (): void {
+            DB::table('schedule_conflict_result_scopes')
+                ->where('run_id', $this->runId)
+                ->delete();
+            DB::table('schedule_conflict_results')
+                ->where('run_id', $this->runId)
+                ->delete();
+        });
+    }
+
+    /**
+     * @param  Collection<int, Schedule>  $sourceSchedules
+     */
+    private function flushCourseHeadBadges(Collection $sourceSchedules): void
+    {
+        $sourceSchedules
+            ->map(fn (Schedule $schedule) => $schedule->courseOffering?->coordinator_id)
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->each(fn (int $userId) => NavigationBadgeService::flushCourseHead($userId));
+    }
+
+    private function flushCourseHeadBadgesForAcademicYear(): void
+    {
+        CourseOffering::query()
+            ->withActiveCourse()
+            ->where('academic_year_id', $this->academicYearId)
+            ->pluck('coordinator_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->each(fn (int $userId) => NavigationBadgeService::flushCourseHead($userId));
     }
 
     /**

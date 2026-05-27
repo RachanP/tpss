@@ -16,10 +16,13 @@ use App\Models\Schedule;
 use App\Models\StudentGroup;
 use App\Models\User;
 use App\Models\UserRole;
+use App\Jobs\ConflictRecomputeJob;
 use App\Services\ScheduleConflictIndex;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Queue;
+use Mockery;
 use Tests\TestCase;
 
 class ScheduleManagementTest extends TestCase
@@ -27,6 +30,13 @@ class ScheduleManagementTest extends TestCase
     use RefreshDatabase;
 
     private int $sequence = 1;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['conflicts.async_reads' => false]);
+    }
 
     public function test_course_head_can_access_own_offering_schedules(): void
     {
@@ -363,6 +373,7 @@ class ScheduleManagementTest extends TestCase
 
     public function test_conflict_alert_page_lists_owned_schedule_conflicts_with_edit_links(): void
     {
+        config(['conflicts.async_reads' => false]);
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
         [, $otherOffering, , $otherGroup, $otherActivityType, $otherRoom] = $this->makeReadyOffering();
         $otherOffering->instructorPool()->attach($instructor->id, ['role_in_course' => 'instructor']);
@@ -411,6 +422,25 @@ class ScheduleManagementTest extends TestCase
             ->assertSee('modal-field-has-conflict', false);
     }
 
+    public function test_async_conflict_alert_page_starts_recompute_without_sync_index(): void
+    {
+        config(['conflicts.async_reads' => true]);
+        Cache::flush();
+        Queue::fake();
+        [$head] = $this->makeReadyOffering();
+        $index = Mockery::mock(ScheduleConflictIndex::class);
+        $index->shouldNotReceive('conflictsForCoordinator');
+        $this->app->instance(ScheduleConflictIndex::class, $index);
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.schedule_conflicts.index'))
+            ->assertOk()
+            ->assertSee('data-testid="maker-conflict-pending"', false);
+
+        Queue::assertPushed(ConflictRecomputeJob::class);
+    }
+
     public function test_conflict_edit_returns_to_conflict_alerts_after_update(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
@@ -430,6 +460,7 @@ class ScheduleManagementTest extends TestCase
 
     public function test_conflict_alert_page_defaults_to_current_scheduling_academic_year(): void
     {
+        config(['conflicts.async_reads' => false]);
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
         $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
             'topic' => 'Current term source',
@@ -459,6 +490,7 @@ class ScheduleManagementTest extends TestCase
 
     public function test_conflict_alert_page_can_filter_to_selected_academic_year(): void
     {
+        config(['conflicts.async_reads' => false]);
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
         $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
             'topic' => 'Current term source',
@@ -490,6 +522,7 @@ class ScheduleManagementTest extends TestCase
 
     public function test_conflict_alert_page_warms_course_head_sidebar_badge_cache(): void
     {
+        config(['conflicts.async_reads' => false]);
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
         $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group]);
         $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [

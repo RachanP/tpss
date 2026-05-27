@@ -96,7 +96,15 @@ class ScheduleFlowSeeder extends Seeder
 
         $this->command->info("ScheduleFlowSeeder: สร้างกลุ่มนักศึกษา {$groupsCreated} กลุ่ม ใน {$offeringsSeeded} รายวิชา");
 
-        $this->seedSchedules($year);
+        $asyncReads = config('conflicts.async_reads');
+        config(['conflicts.async_reads' => false]);
+
+        try {
+            $this->seedSchedules($year);
+        } finally {
+            config(['conflicts.async_reads' => $asyncReads]);
+        }
+
         $this->refreshConflictReadState($year);
 
         $this->command->info('ScheduleFlowSeeder: เสร็จสิ้น — ระบบพร้อมใช้งาน มีรายวิชาในตารางแล้ว');

@@ -7,9 +7,11 @@
         'group_overlap' => 'กลุ่มนักศึกษาชน',
     ];
     $conflictRunStatus = $conflictStatus['status'] ?? 'ready';
-    $conflictStatusLabel = $conflictRunStatus === 'failed'
-        ? 'ตรวจสอบรายการชนไม่สำเร็จ'
-        : 'กำลังตรวจสอบ';
+    $conflictStatusLabel = match ($conflictRunStatus) {
+        'failed' => 'ตรวจสอบรายการชนไม่สำเร็จ ระบบจะแสดงผลล่าสุดที่พร้อมใช้งานถ้ามี',
+        'ready' => 'ผลตรวจสอบพร้อมใช้งาน',
+        default => 'กำลังตรวจสอบรายการชน',
+    };
 @endphp
 
 <x-app-layout title="การแจ้งเตือนการชน">
@@ -19,7 +21,6 @@
             --schedule-border-strong: oklch(76% 0.03 232);
             --schedule-muted: oklch(42% 0.032 238);
             --schedule-soft: oklch(97% 0.014 228);
-            --schedule-soft-strong: oklch(94% 0.026 228);
             display: flex;
             flex-direction: column;
             gap: 14px;
@@ -38,7 +39,6 @@
             align-items: center;
             padding: 16px 18px;
             border-color: var(--schedule-border-strong);
-            background: var(--surface);
         }
         .conflict-heading-row {
             display: flex;
@@ -96,7 +96,6 @@
             align-items: center;
             justify-content: center;
             gap: 9px;
-            min-width: unset;
             min-height: 40px;
             padding: 7px 13px;
             border: 1px solid var(--status-conflict-border);
@@ -114,15 +113,14 @@
         }
         .conflict-total span {
             display: block;
-            margin-top: 0;
             font-size: 11px;
             font-weight: 800;
         }
         .conflict-status {
-            border: 1px solid var(--status-conflict-border);
+            border: 1px solid var(--status-warning-border, var(--schedule-border-strong));
             border-radius: 8px;
-            background: color-mix(in oklch, var(--status-conflict) 6%, var(--surface));
-            color: var(--status-conflict-fg);
+            background: var(--status-warning-bg, var(--schedule-soft));
+            color: var(--status-warning-fg, var(--fg-1));
             padding: 10px 12px;
             font-size: 13px;
             font-weight: 750;
@@ -208,12 +206,6 @@
             color: var(--fg-1);
             line-height: 1.4;
         }
-        .conflict-messages {
-            display: none;
-            flex-direction: column;
-            gap: 6px;
-            margin-top: 8px;
-        }
         .conflict-compare {
             display: grid;
             gap: 7px;
@@ -231,11 +223,17 @@
             font-weight: 850;
             line-height: 1.35;
         }
-        .conflict-reasons {
+        .conflict-reasons,
+        .conflict-detail-actions {
             display: flex;
             flex-wrap: wrap;
+            align-items: center;
             gap: 5px;
             margin-top: 6px;
+        }
+        .conflict-detail-actions {
+            gap: 8px;
+            margin-top: 8px;
         }
         .conflict-reason {
             display: inline-flex;
@@ -251,21 +249,28 @@
             font-weight: 800;
             line-height: 1.25;
         }
-        .conflict-message {
-            display: flex;
-            align-items: flex-start;
-            gap: 7px;
-            color: var(--status-conflict-fg);
+        .conflict-detail-toggle {
+            min-height: 30px;
+            border: 1px solid var(--schedule-border-strong);
+            border-radius: 8px;
+            background: var(--surface);
+            color: var(--brand-navy);
+            padding: 5px 10px;
             font-size: 12px;
-            line-height: 1.5;
+            font-weight: 850;
+            cursor: pointer;
         }
-        .conflict-dot {
-            width: 5px;
-            height: 5px;
-            margin-top: 6px;
-            border-radius: 999px;
-            background: var(--status-conflict);
-            flex: 0 0 auto;
+        .conflict-detail-toggle:disabled {
+            cursor: wait;
+            opacity: .65;
+        }
+        .conflict-detail-note {
+            color: var(--schedule-muted);
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .conflict-messages {
+            display: none;
         }
         .conflict-actions {
             display: flex;
@@ -301,10 +306,12 @@
                 font-size: 22px;
             }
             .conflict-total {
+                justify-content: flex-start;
                 text-align: left;
             }
             .conflict-actions {
                 align-items: flex-start;
+                justify-content: flex-start;
             }
         }
     </style>
@@ -331,6 +338,82 @@
                         sessionStorage.setItem(scrollKey, String(window.scrollY));
                     });
                 });
+
+                const detailCache = new Map();
+                const pendingCards = new Set();
+                const queue = [];
+                let activeRequests = 0;
+                const maxRequests = 3;
+
+                const runNext = () => {
+                    if (activeRequests >= maxRequests || queue.length === 0) {
+                        return;
+                    }
+
+                    activeRequests += 1;
+                    const task = queue.shift();
+                    task().finally(() => {
+                        activeRequests -= 1;
+                        runNext();
+                    });
+                };
+
+                const enqueue = (task) => {
+                    queue.push(task);
+                    runNext();
+                };
+
+                document.querySelectorAll('[data-conflict-detail-toggle]').forEach((button) => {
+                    button.addEventListener('click', () => {
+                        const item = button.closest('[data-conflict-item]');
+                        const detailUrl = item?.getAttribute('data-conflict-detail-url');
+                        const target = item?.querySelector('[data-conflict-detail-target]');
+
+                        if (!item || !detailUrl || !target || pendingCards.has(detailUrl)) {
+                            return;
+                        }
+
+                        if (detailCache.has(detailUrl)) {
+                            target.innerHTML = detailCache.get(detailUrl);
+                            button.remove();
+                            return;
+                        }
+
+                        pendingCards.add(detailUrl);
+                        button.disabled = true;
+                        button.textContent = 'กำลังโหลด';
+
+                        enqueue(async () => {
+                            try {
+                                const response = await fetch(detailUrl, {
+                                    headers: {
+                                        'Accept': 'application/json',
+                                        'X-Requested-With': 'XMLHttpRequest',
+                                    },
+                                });
+
+                                if (!response.ok) {
+                                    throw new Error('detail-load-failed');
+                                }
+
+                                const payload = await response.json();
+                                detailCache.set(detailUrl, payload.html || '');
+                                target.innerHTML = payload.html || '';
+                                button.remove();
+                            } catch (error) {
+                                button.disabled = false;
+                                button.textContent = 'ลองอีกครั้ง';
+                                const note = item.querySelector('[data-conflict-detail-note]');
+
+                                if (note) {
+                                    note.textContent = 'โหลดรายละเอียดไม่สำเร็จ';
+                                }
+                            } finally {
+                                pendingCards.delete(detailUrl);
+                            }
+                        });
+                    });
+                });
             });
         })();
     </script>
@@ -343,7 +426,7 @@
                 </div>
                 <div class="conflict-title">การแจ้งเตือนการชน</div>
                 <div class="conflict-copy">
-                    แสดงรายการชนของทุกวิชาที่คุณรับผิดชอบ สามารถบันทึกรายการที่ชนไว้ก่อนเพื่อรอประสานกับหัวหน้าวิชาอื่นได้ แต่ต้องแก้ให้ไม่ชนก่อนส่งอนุมัติ
+                    แสดงรายการชนของทุกรายวิชาที่คุณรับผิดชอบ ระบบจะแสดงข้อมูลสรุปก่อนและโหลดรายละเอียดทั้งหมดเมื่อกดดูเพิ่มเติม
                 </div>
                 @if(($availableYears ?? collect())->isNotEmpty())
                     <form class="conflict-filter" method="GET" action="{{ route('maker.schedule_conflicts.index') }}">
@@ -392,37 +475,21 @@
                         <span class="conflict-count">{{ $group['conflict_count'] }} รายการชน</span>
                     </div>
                     <div class="conflict-list">
-                        @foreach($group['schedules'] as $schedule)
+                        @foreach($group['schedules'] as $scheduleEntry)
                             @php
-                                $conflicts = $conflictMap->get($schedule->id, collect());
-                                $conflictSets = $conflicts
-                                    ->groupBy('schedule_id')
-                                    ->map(function ($items) use ($conflictTypeLabels) {
-                                        $first = $items->first();
-
-                                        return [
-                                            'label' => $first['schedule_label'] ?? '',
-                                            'reasons' => $items
-                                                ->groupBy('type')
-                                                ->map(function ($typedItems, $type) use ($conflictTypeLabels) {
-                                                    $resources = $typedItems
-                                                        ->pluck('resource_label')
-                                                        ->filter()
-                                                        ->flatMap(fn ($value) => collect(explode(',', (string) $value))->map(fn ($item) => trim($item)))
-                                                        ->filter()
-                                                        ->unique()
-                                                        ->values()
-                                                        ->implode(', ');
-
-                                                    return [
-                                                        'label' => $conflictTypeLabels[$type] ?? 'ตารางชน',
-                                                        'resources' => $resources,
-                                                    ];
-                                                })
-                                                ->values(),
-                                        ];
-                                    })
-                                    ->values();
+                                $summary = is_array($scheduleEntry) ? $scheduleEntry : null;
+                                $schedule = $summary['schedule'] ?? $scheduleEntry;
+                                $conflicts = $summary
+                                    ? collect($summary['preview_conflicts'] ?? [])
+                                    : $conflictMap->get($schedule->id, collect());
+                                $hasMoreConflicts = (bool) ($summary['has_more'] ?? false);
+                                $conflictCount = (int) ($summary['conflict_count'] ?? $conflicts->count());
+                                $detailUrl = $summary
+                                    ? route('schedule_conflicts.details', [
+                                        $schedule,
+                                        'academic_year_id' => $selectedAcademicYearId,
+                                    ])
+                                    : null;
                                 $editUrl = route('maker.course_offerings.schedules.index', [
                                     $offering,
                                     'edit_schedule_id' => $schedule->id,
@@ -433,35 +500,39 @@
                                     'period' => 'day',
                                 ]);
                             @endphp
-                            <article class="conflict-item" data-testid="maker-conflict-item">
+                            <article
+                                class="conflict-item"
+                                data-testid="maker-conflict-item"
+                                data-conflict-item
+                                @if($detailUrl) data-conflict-detail-url="{{ $detailUrl }}" @endif
+                            >
                                 <div class="conflict-time">
                                     <div>{{ $formatDate($schedule->start_date) }} @if($schedule->end_date && !$schedule->start_date?->isSameDay($schedule->end_date)) - {{ $formatDate($schedule->end_date) }} @endif</div>
                                     <div>{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }}</div>
                                 </div>
                                 <div>
                                     <div class="conflict-topic">{{ $schedule->topic ?: ($schedule->activityType?->name ?? 'รายการสอน') }}</div>
-                                    <div class="conflict-compare">
-                                        @foreach($conflictSets as $conflictSet)
-                                            <div class="conflict-compare-card">
-                                                <div class="conflict-compare-title">ชนกับ {{ $conflictSet['label'] ?: 'รายการสอนอื่น' }}</div>
-                                                <div class="conflict-reasons">
-                                                    @foreach($conflictSet['reasons'] as $reason)
-                                                        <span class="conflict-reason">
-                                                            {{ $reason['label'] }}@if($reason['resources']): {{ $reason['resources'] }}@endif
-                                                        </span>
-                                                    @endforeach
-                                                </div>
-                                            </div>
-                                        @endforeach
+                                    <div data-conflict-detail-target>
+                                        @include('course_head.schedule_conflicts._conflict_sets', [
+                                            'conflicts' => $conflicts,
+                                            'conflictTypeLabels' => $conflictTypeLabels,
+                                        ])
                                     </div>
+                                    @if($hasMoreConflicts)
+                                        <div class="conflict-detail-actions">
+                                            <button type="button" class="conflict-detail-toggle" data-conflict-detail-toggle>
+                                                ดูทั้งหมด {{ $conflictCount }} รายการ
+                                            </button>
+                                            <span class="conflict-detail-note" data-conflict-detail-note>
+                                                แสดงตัวอย่าง 3 รายการ
+                                            </span>
+                                        </div>
+                                    @endif
                                     <div class="conflict-messages">
                                         @foreach($conflicts as $conflict)
                                             <div class="conflict-message">
-                                                <span class="conflict-dot" aria-hidden="true"></span>
-                                                <span>
-                                                    <strong>{{ $conflictTypeLabels[$conflict['type']] ?? 'ตารางชน' }}:</strong>
-                                                    {{ $conflict['message'] }}
-                                                </span>
+                                                <strong>{{ $conflictTypeLabels[$conflict['type']] ?? 'ตารางชน' }}:</strong>
+                                                {{ $conflict['message'] }}
                                             </div>
                                         @endforeach
                                     </div>

@@ -30,6 +30,13 @@ class ConflictRecomputeJobTest extends TestCase
 
     private int $sequence = 1;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['conflicts.async_reads' => false]);
+    }
+
     public function test_recompute_command_creates_pending_run_and_dispatches_job(): void
     {
         Queue::fake();
@@ -119,6 +126,122 @@ class ConflictRecomputeJobTest extends TestCase
         $this->assertSame(6, $repository->getCountForUser($firstHead->id, $year->id));
         $this->assertSame(6, $repository->getCountForUser($secondHead->id, $year->id));
         $this->assertNull($repository->getCountForUser($this->makeUser('Outside')->id, $year->id));
+    }
+
+    public function test_conflict_detail_endpoint_enforces_scope_and_academic_year(): void
+    {
+        $year = AcademicYear::query()->create([
+            'name' => '2572',
+            'semester' => 1,
+            'start_date' => '2028-08-01',
+            'end_date' => '2028-12-31',
+            'is_active' => true,
+            'phase' => 'scheduling',
+        ]);
+        [$year, $firstHead, , $firstSchedule] = $this->makeConflictDataset($year, 'First');
+        [$year, $secondHead, , $secondSchedule] = $this->makeConflictDataset($year, 'Second');
+        $otherYear = AcademicYear::query()->create([
+            'name' => '2572',
+            'semester' => 2,
+            'start_date' => '2029-01-01',
+            'end_date' => '2029-05-31',
+            'is_active' => false,
+            'phase' => 'published',
+        ]);
+
+        $this->artisan('conflicts:recompute', [
+            '--academic-year' => $year->id,
+            '--sync' => true,
+        ])->assertExitCode(0);
+
+        $this->actingAs($firstHead)
+            ->withSession(['active_role' => 'course_head'])
+            ->getJson(route('schedule_conflicts.details', [
+                $firstSchedule,
+                'academic_year_id' => $year->id,
+            ]))
+            ->assertOk()
+            ->assertJsonPath('total', 3);
+
+        $this->actingAs($firstHead)
+            ->withSession(['active_role' => 'course_head'])
+            ->getJson(route('schedule_conflicts.details', [
+                $secondSchedule,
+                'academic_year_id' => $year->id,
+            ]))
+            ->assertForbidden();
+
+        $admin = $this->makeUser('Admin');
+        UserRole::query()->create(['user_id' => $admin->id, 'role' => 'admin', 'is_primary' => true]);
+
+        $this->actingAs($admin)
+            ->withSession(['active_role' => 'admin'])
+            ->getJson(route('schedule_conflicts.details', [
+                $secondSchedule,
+                'academic_year_id' => $year->id,
+            ]))
+            ->assertOk();
+
+        $this->actingAs($firstHead)
+            ->withSession(['active_role' => 'course_head'])
+            ->getJson(route('schedule_conflicts.details', [
+                $firstSchedule,
+                'academic_year_id' => $otherYear->id,
+            ]))
+            ->assertNotFound();
+    }
+
+    public function test_schedule_summary_page_limits_rows_and_preview_conflicts(): void
+    {
+        [$year, $head, $offering, $instructor, $group] = $this->makeReadyOffering();
+        $activityType = $this->makeActivityType('lecture');
+        $room = $this->makeRoom();
+
+        for ($i = 0; $i < 30; $i++) {
+            $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+                'topic' => "Conflict row {$i}",
+            ]);
+        }
+
+        $this->artisan('conflicts:recompute', [
+            '--academic-year' => $year->id,
+            '--sync' => true,
+        ])->assertExitCode(0);
+
+        $page = app(ScheduleConflictReadRepository::class)
+            ->getScheduleSummaryPageForUser($head->id, $year->id, 1);
+
+        $this->assertCount(25, $page->items());
+        $this->assertLessThanOrEqual(3, $page->getCollection()->first()['preview_conflicts']->count());
+        $this->assertTrue($page->getCollection()->first()['has_more']);
+    }
+
+    public function test_failed_new_run_does_not_hide_latest_ready_results(): void
+    {
+        [$year, $head] = $this->makeConflictDataset();
+
+        $this->artisan('conflicts:recompute', [
+            '--academic-year' => $year->id,
+            '--sync' => true,
+        ])->assertExitCode(0);
+
+        ScheduleConflictRun::query()->create([
+            'academic_year_id' => $year->id,
+            'status' => 'failed',
+            'generation' => 2,
+            'source' => 'manual',
+            'requested_at' => now(),
+            'started_at' => now(),
+            'failed_at' => now(),
+            'error_message' => 'bulk insert failed',
+            'result_count' => 0,
+        ]);
+
+        $repository = app(ScheduleConflictReadRepository::class);
+
+        $this->assertSame('failed', $repository->getStatusForUser($head->id, $year->id)['status']);
+        $this->assertSame(6, $repository->getCountForUser($head->id, $year->id));
+        $this->assertGreaterThan(0, $repository->getScheduleSummaryPageForUser($head->id, $year->id, 1)->count());
     }
 
     public function test_async_sidebar_badge_shows_pending_indicator_instead_of_zero(): void
@@ -395,7 +518,7 @@ class ConflictRecomputeJobTest extends TestCase
     }
 
     /**
-     * @return array{AcademicYear, User}
+     * @return array{AcademicYear, User, CourseOffering, Schedule, Schedule}
      */
     private function makeConflictDataset(?AcademicYear $year = null, string $label = ''): array
     {
@@ -403,12 +526,12 @@ class ConflictRecomputeJobTest extends TestCase
         $activityType = $this->makeActivityType('lecture');
         $room = $this->makeRoom();
 
-        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group]);
-        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+        $first = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group]);
+        $second = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
             'topic' => 'Overlapping schedule',
         ]);
 
-        return [$year, $head];
+        return [$year, $head, $offering, $first, $second];
     }
 
     /**

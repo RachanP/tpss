@@ -66,6 +66,7 @@ class NavigationBadgePerformanceTest extends TestCase
     public function test_async_course_head_badge_reads_repository_without_conflict_index(): void
     {
         config(['conflicts.async_reads' => true]);
+        Cache::flush();
         [$year, $head] = $this->makeCourseHeadOffering();
         $index = Mockery::mock(ScheduleConflictIndex::class);
         $index->shouldNotReceive('countForCoordinator');

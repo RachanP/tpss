@@ -12,6 +12,8 @@ class NavigationBadgeService
     private const ADMIN_CACHE_KEY = 'sidebar.badges.admin';
     private const ADMIN_TTL = 120;
     private const COURSE_HEAD_TTL = 300;
+    private const ASYNC_READY_TTL = 90;
+    private const ASYNC_PENDING_TTL = 10;
 
     public function __construct(
         private ScheduleConflictIndex $conflictIndex,
@@ -53,6 +55,24 @@ class NavigationBadgeService
             ];
         }
 
+        $cached = Cache::get(self::courseHeadAsyncCacheKey($userId));
+
+        if (is_array($cached)) {
+            return $cached;
+        }
+
+        $badge = $this->uncachedAsyncCourseHeadConflictBadge($userId);
+        Cache::put(
+            self::courseHeadAsyncCacheKey($userId),
+            $badge,
+            ($badge['maker_conflict_pending'] ?? true) ? self::ASYNC_PENDING_TTL : self::ASYNC_READY_TTL
+        );
+
+        return $badge;
+    }
+
+    private function uncachedAsyncCourseHeadConflictBadge(int $userId): array
+    {
         $academicYearId = $this->defaultAcademicYearIdForCourseHead($userId);
         $status = $this->conflictReadRepository->getStatusForUser($userId, $academicYearId);
 
@@ -143,11 +163,17 @@ class NavigationBadgeService
     {
         if ($userId) {
             Cache::forget(self::courseHeadCacheKey($userId));
+            Cache::forget(self::courseHeadAsyncCacheKey($userId));
         }
     }
 
     private static function courseHeadCacheKey(int $userId): string
     {
         return "sidebar.badges.course_head.{$userId}";
+    }
+
+    private static function courseHeadAsyncCacheKey(int $userId): string
+    {
+        return "sidebar.badges.course_head.async.{$userId}";
     }
 }

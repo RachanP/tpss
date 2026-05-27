@@ -18,6 +18,7 @@ use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Carbon\CarbonPeriod;
 use Illuminate\Support\Collection;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -127,8 +128,13 @@ class ScheduleController extends Controller
         $repository = app(ScheduleConflictReadRepository::class);
         $page = max(1, (int) $request->query('page', 1));
         $conflictStatus = $repository->getStatusForUser($userId, $selectedAcademicYearId);
-        $resultPage = $repository->getPageForUser($userId, $selectedAcademicYearId, $page);
-        [$conflictGroups, $conflictMap] = $this->conflictGroupsFromStoredResults($resultPage->getCollection());
+
+        if (($conflictStatus['status'] ?? 'missing') === 'missing' && $selectedAcademicYearId) {
+            app(ScheduleConflictInvalidationService::class)->markDirty($selectedAcademicYearId, 'manual');
+        }
+
+        $resultPage = $repository->getScheduleSummaryPageForUser($userId, $selectedAcademicYearId, $page);
+        $conflictGroups = $this->conflictGroupsFromSummaries($resultPage->getCollection());
 
         return view('course_head.schedule_conflicts.index', [
             'offerings' => collect(),
@@ -137,11 +143,79 @@ class ScheduleController extends Controller
             'selectedAcademicYearId' => $selectedAcademicYearId,
             'conflictSchedules' => $resultPage,
             'conflictGroups' => $conflictGroups,
-            'conflictMap' => $conflictMap,
+            'conflictMap' => collect(),
             'totalConflictCount' => $repository->getCountForUser($userId, $selectedAcademicYearId),
             'conflictStatus' => $conflictStatus,
             'asyncConflictReads' => true,
         ]);
+    }
+
+    public function conflictDetails(Request $request, Schedule $schedule): JsonResponse
+    {
+        $validated = $request->validate([
+            'academic_year_id' => ['required', 'integer', 'exists:academic_years,id'],
+        ]);
+        $academicYearId = (int) $validated['academic_year_id'];
+
+        $schedule->loadMissing('courseOffering:id,course_id,academic_year_id,coordinator_id');
+
+        abort_unless(
+            $schedule->courseOffering && (int) $schedule->courseOffering->academic_year_id === $academicYearId,
+            404
+        );
+
+        $role = session('active_role');
+        abort_unless(in_array($role, ['admin', 'course_head'], true), 403);
+
+        $repository = app(ScheduleConflictReadRepository::class);
+        $userId = (int) Auth::id();
+
+        abort_unless(
+            $repository->canReadScheduleDetails($schedule, $userId, $academicYearId, (string) $role),
+            403
+        );
+
+        $conflicts = $repository->getDetailsForSchedule($schedule, $userId, $academicYearId, (string) $role);
+        $typeCounts = $conflicts
+            ->groupBy('type')
+            ->map(fn (Collection $items) => $items->count())
+            ->all();
+
+        return response()->json([
+            'html' => view('course_head.schedule_conflicts._conflict_sets', [
+                'conflicts' => $conflicts,
+                'conflictTypeLabels' => $this->conflictTypeLabels(),
+            ])->render(),
+            'total' => $conflicts->count(),
+            'type_counts' => $typeCounts,
+        ]);
+    }
+
+    private function conflictGroupsFromSummaries(Collection $summaries): Collection
+    {
+        return $summaries
+            ->groupBy(fn (array $summary) => (int) $summary['schedule']->course_offering_id)
+            ->map(function (Collection $offeringSummaries) {
+                $firstSummary = $offeringSummaries->first();
+                /** @var Schedule $firstSchedule */
+                $firstSchedule = $firstSummary['schedule'];
+
+                return [
+                    'offering' => $firstSchedule->courseOffering,
+                    'schedules' => $offeringSummaries->values(),
+                    'conflict_count' => $offeringSummaries->sum(fn (array $summary) => (int) $summary['conflict_count']),
+                ];
+            })
+            ->values();
+    }
+
+    private function conflictTypeLabels(): array
+    {
+        return [
+            'instructor_overlap' => 'ผู้สอนชน',
+            'room_overlap' => 'ห้อง/สถานที่ชน',
+            'group_overlap' => 'กลุ่มนักศึกษาชน',
+        ];
     }
 
     private function conflictGroupsFromStoredResults(Collection $storedResults): array
