@@ -19,24 +19,24 @@ class CheckRole
         }
 
         $activeRole = $request->session()->get('active_role');
+        $userRoles = UserRole::where('user_id', $user->id)->pluck('role');
 
-        if (!is_string($activeRole) || $activeRole === '') {
-            abort(403, 'ไม่มีสิทธิ์เข้าถึงส่วนนี้');
+        if (
+            is_string($activeRole)
+            && $activeRole !== ''
+            && $userRoles->contains($activeRole)
+            && in_array($activeRole, $roles, true)
+        ) {
+            return $next($request);
         }
 
-        // ยืนยันว่า user ถือ role นั้นจริงใน DB (ป้องกัน session tampering)
-        $hasRole = UserRole::where('user_id', $user->id)
-            ->where('role', $activeRole)
-            ->exists();
+        $allowedRole = collect($roles)->first(fn ($role) => $userRoles->contains($role));
 
-        if (!$hasRole) {
-            abort(403, 'ไม่มีสิทธิ์เข้าถึงส่วนนี้');
+        if ($allowedRole) {
+            $request->session()->put('active_role', $allowedRole);
+            return $next($request);
         }
 
-        if (!in_array($activeRole, $roles, true)) {
-            abort(403, 'ไม่มีสิทธิ์เข้าถึงส่วนนี้');
-        }
-
-        return $next($request);
+        abort(403, 'ไม่มีสิทธิ์เข้าถึงส่วนนี้');
     }
 }

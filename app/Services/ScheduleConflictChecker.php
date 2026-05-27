@@ -156,7 +156,7 @@ class ScheduleConflictChecker
     private function overlappingSchedules(array $data, ?int $ignoreScheduleId): Builder
     {
         $query = Schedule::query()
-            ->whereHas('courseOffering')
+            ->whereHas('courseOffering', fn (Builder $query) => $query->withActiveCourse())
             ->when($ignoreScheduleId, fn (Builder $query) => $query->whereKeyNot($ignoreScheduleId));
 
         if (Schema::hasColumn('schedules', 'start_date') && Schema::hasColumn('schedules', 'end_date')) {

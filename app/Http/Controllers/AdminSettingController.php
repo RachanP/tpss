@@ -312,7 +312,7 @@ class AdminSettingController extends Controller
             $year->update(['phase' => 'scheduling']);
         });
 
-        $total = CourseOffering::where('academic_year_id', $year->id)->count();
+        $total = CourseOffering::withActiveCourse()->where('academic_year_id', $year->id)->count();
         $newMsg = $created > 0 ? "สร้างใหม่ {$created} รายวิชา" : "ไม่มีรายวิชาใหม่";
         $syncMsg = $synced > 0 ? "ซิงก์แม่แบบ {$synced} รายวิชา" : "ไม่พบรายวิชาเดิมที่ต้องซิงก์";
 

@@ -31,6 +31,7 @@ class CourseOfferingController extends Controller
 
         $availableYears = \App\Models\AcademicYear::query()
             ->whereIn('id', CourseOffering::query()
+                ->withActiveCourse()
                 ->where('coordinator_id', $coordinatorId)
                 ->select('academic_year_id'))
             ->orderByDesc('name')
@@ -49,6 +50,7 @@ class CourseOfferingController extends Controller
             ->with(['course.curriculum', 'course.department', 'academicYear'])
             ->withCount(['studentGroups', 'instructorPool'])
             ->withSum('studentGroups as allocated_student_count', 'student_count')
+            ->withActiveCourse()
             ->where('coordinator_id', $coordinatorId)
             ->when($defaultYearId, fn ($q) => $q->where('academic_year_id', $defaultYearId))
             ->latest('updated_at')
@@ -694,7 +696,9 @@ class CourseOfferingController extends Controller
 
     private function authorizeCourseHeadOffering(CourseOffering $courseOffering): void
     {
+        $courseOffering->loadMissing('course');
         abort_unless((int) $courseOffering->coordinator_id === (int) Auth::id(), 403);
+        abort_unless($courseOffering->course?->status === 'active', 403);
     }
 
     private function requireSchedulingPhase(CourseOffering $courseOffering, string $section = 'course-info'): ?RedirectResponse

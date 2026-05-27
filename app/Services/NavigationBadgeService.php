@@ -112,6 +112,7 @@ class NavigationBadgeService
     private function defaultAcademicYearIdForCourseHead(int $userId): ?int
     {
         $availableYearIds = CourseOffering::query()
+            ->withActiveCourse()
             ->where('coordinator_id', $userId)
             ->pluck('academic_year_id')
             ->map(fn ($id) => (int) $id)

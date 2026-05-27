@@ -196,6 +196,7 @@ class ScheduleController extends Controller
             ->select(['id', 'name', 'semester', 'start_date', 'end_date', 'is_active', 'phase'])
             ->whereIn('id', CourseOffering::query()
                 ->select('academic_year_id')
+                ->withActiveCourse()
                 ->where('coordinator_id', $userId))
             ->orderByDesc('start_date')
             ->orderByDesc('semester')
@@ -602,6 +603,7 @@ class ScheduleController extends Controller
     private function coordinatorScheduleOfferingRedirectTarget(Request $request): ?int
     {
         $query = CourseOffering::query()
+            ->withActiveCourse()
             ->where('coordinator_id', Auth::id());
 
         $selectedId = (int) $request->query('course_offering_id');
@@ -637,6 +639,7 @@ class ScheduleController extends Controller
         return CourseOffering::query()
             ->with($relations)
             ->withCount(['schedules', 'studentGroups', 'instructorPool'])
+            ->withActiveCourse()
             ->where('coordinator_id', Auth::id())
             ->get()
             ->sortBy(fn (CourseOffering $offering) => implode('|', [
@@ -906,7 +909,9 @@ class ScheduleController extends Controller
 
     private function authorizeCourseHeadOffering(CourseOffering $courseOffering): void
     {
+        $courseOffering->loadMissing('course');
         abort_unless((int) $courseOffering->coordinator_id === (int) Auth::id(), 403);
+        abort_unless($courseOffering->course?->status === 'active', 403);
     }
 
     private function assertScheduleBelongsToOffering(CourseOffering $courseOffering, Schedule $schedule): void

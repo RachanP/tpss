@@ -39,6 +39,42 @@ class CourseOfferingManagementTest extends TestCase
         $response->assertDontSee($other->course->course_code);
     }
 
+    public function test_course_head_does_not_see_offerings_for_inactive_courses(): void
+    {
+        $head = $this->makeUser('course_head');
+
+        $active = $this->makeOffering($head, [
+            'course_code' => 'NSBS111',
+            'status' => 'active',
+        ]);
+        $inactive = $this->makeOffering($head, [
+            'course_code' => 'NSBS231',
+            'status' => 'inactive',
+            'academic_year_id' => $active->academic_year_id,
+        ]);
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.course_offerings.index'))
+            ->assertOk()
+            ->assertSee($active->course->course_code)
+            ->assertDontSee($inactive->course->course_code);
+    }
+
+    public function test_course_head_cannot_open_inactive_course_offering_directly(): void
+    {
+        $head = $this->makeUser('course_head');
+        $inactive = $this->makeOffering($head, [
+            'course_code' => 'NSBS231',
+            'status' => 'inactive',
+        ]);
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.course_offerings.show', $inactive))
+            ->assertForbidden();
+    }
+
     public function test_course_head_index_shows_offering_once_with_multiple_instructors_and_groups(): void
     {
         $head = $this->makeUser('course_head');
@@ -793,6 +829,7 @@ class CourseOfferingManagementTest extends TestCase
                 'course_type' => $overrides['course_type'] ?? 'theory_practicum',
                 'lecture_hours' => $overrides['lecture_hours'] ?? 2,
                 'lab_hours' => $overrides['lab_hours'] ?? 1,
+                'status' => $overrides['status'] ?? 'active',
             ])->id;
         }
 

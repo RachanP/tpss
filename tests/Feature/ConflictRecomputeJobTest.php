@@ -350,7 +350,20 @@ class ConflictRecomputeJobTest extends TestCase
         Queue::assertPushed(ConflictRecomputeJob::class, 2);
     }
 
-    public function test_admin_and_executive_dashboard_widgets_read_stored_summary_when_async_reads_enabled(): void
+    public function test_admin_dashboard_hides_conflict_summary_for_phase_one(): void
+    {
+        config(['conflicts.async_reads' => true]);
+
+        $admin = $this->makeUser('Admin');
+        UserRole::query()->create(['user_id' => $admin->id, 'role' => 'admin', 'is_primary' => true]);
+
+        $this->actingAs($admin)->withSession(['active_role' => 'admin'])
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertDontSee('data-testid="dashboard-conflict-summary"', false);
+    }
+
+    public function test_executive_dashboard_widget_reads_stored_summary_when_async_reads_enabled(): void
     {
         config(['conflicts.async_reads' => true]);
         $year = AcademicYear::query()->create([
@@ -371,14 +384,6 @@ class ConflictRecomputeJobTest extends TestCase
             'finished_at' => now(),
             'result_count' => 0,
         ]);
-
-        $admin = $this->makeUser('Admin');
-        UserRole::query()->create(['user_id' => $admin->id, 'role' => 'admin', 'is_primary' => true]);
-        $this->actingAs($admin)->withSession(['active_role' => 'admin'])
-            ->get(route('admin.dashboard'))
-            ->assertOk()
-            ->assertSee('data-testid="dashboard-conflict-summary"', false)
-            ->assertSee('ready');
 
         $executive = $this->makeUser('Executive');
         UserRole::query()->create(['user_id' => $executive->id, 'role' => 'executive', 'is_primary' => true]);

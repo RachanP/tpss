@@ -14,7 +14,6 @@
             <div class="admin-action-grid">
                 @include('shared.dashboard.master_data_alerts')
                 @include('shared.dashboard.offering_pipeline')
-                @include('shared.dashboard.conflict_summary')
             </div>
         </section>
 
@@ -105,7 +104,24 @@
             display: grid;
             grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
             gap: clamp(12px, 1.4vw, 18px);
+            align-items: stretch;
             min-width: 0;
+        }
+
+        .admin-secondary-grid > .card {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .admin-secondary-grid > .card > .card-hdr {
+            flex: 0 0 70px;
+            min-height: 70px;
+            box-sizing: border-box;
+        }
+
+        .admin-secondary-grid > .card > :not(.card-hdr) {
+            flex: 1 1 auto;
         }
 
         .admin-dashboard .card {
@@ -230,11 +246,6 @@
             margin-bottom: 0 !important;
         }
 
-        .admin-dashboard [data-testid="recent-activity-widget"],
-        .admin-dashboard [data-testid="dashboard-upcoming-schedules"] {
-            align-self: stretch;
-        }
-
         @media (max-width: 1280px) {
             .admin-dashboard {
                 padding-inline: 18px;
@@ -249,6 +260,15 @@
             .admin-action-grid,
             .admin-secondary-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .admin-secondary-grid > .card {
+                height: auto;
+            }
+
+            .admin-secondary-grid > .card > .card-hdr {
+                flex-basis: auto;
+                min-height: 54px;
             }
         }
 

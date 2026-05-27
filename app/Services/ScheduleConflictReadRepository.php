@@ -179,6 +179,7 @@ class ScheduleConflictReadRepository
     private function userHasAcademicYearScope(int $userId, int $academicYearId): bool
     {
         return CourseOffering::query()
+            ->withActiveCourse()
             ->where('coordinator_id', $userId)
             ->where('academic_year_id', $academicYearId)
             ->exists();

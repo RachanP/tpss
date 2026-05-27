@@ -83,4 +83,22 @@ class RoleSwitchTest extends TestCase
         // Role should still be staff
         $this->assertEquals('staff', session('active_role'));
     }
+
+    public function test_deep_link_auto_switches_to_allowed_route_role(): void
+    {
+        UserRole::create([
+            'user_id' => $this->user->id,
+            'role' => 'course_head',
+            'is_primary' => false,
+        ]);
+
+        $this
+            ->withSession(['active_role' => 'staff'])
+            ->actingAs($this->user);
+
+        $response = $this->get(route('maker.course_offerings.index'));
+
+        $response->assertOk();
+        $this->assertEquals('course_head', session('active_role'));
+    }
 }

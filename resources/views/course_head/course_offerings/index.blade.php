@@ -146,7 +146,7 @@
         </div>
 
         <div class="table-responsive">
-            <table>
+            <table class="course-offerings-table">
                 <thead>
                     <tr>
                         <th>รายวิชา</th>
@@ -175,7 +175,7 @@
                             $studentLimit = (int) ($studentTotal ?? 0);
                             $remainingStudents = $hasStudentTotal ? max(0, $studentLimit - $allocatedStudents) : null;
                         @endphp
-                        <tr>
+                        <tr class="course-offering-row">
                             <td>
                                 <div style="font-weight:700;color:var(--fg-1);">{{ $course?->course_code ?? '-' }}</div>
                                 <div class="body-sm" style="margin-top:3px;">{{ $course?->name_th ?? $course?->name_en ?? '-' }}</div>
@@ -254,20 +254,10 @@
                             <td style="white-space:nowrap;">
                                 <span class="badge {{ $approvalMeta['badge'] }}" style="white-space:nowrap;">{{ $approvalMeta['label'] }}</span>
                             </td>
-                            <td style="text-align:right;">
-                                <div style="display:inline-flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+                            <td class="course-offering-action-cell">
+                                <div class="course-offering-actions">
                                     @if($phase === 'scheduling')
-                                        <a data-testid="course-offering-schedule-link" href="{{ route('maker.course_offerings.schedules.index', $offering) }}" style="
-                                            display:inline-flex;align-items:center;gap:6px;
-                                            padding:7px 14px;
-                                            background:var(--brand-navy);
-                                            color:#fff;
-                                            font-size:0.8125rem;font-weight:600;
-                                            border:1px solid var(--brand-navy);
-                                            border-radius:6px;
-                                            text-decoration:none;
-                                            line-height:1.2;
-                                        ">
+                                        <a class="course-offering-action-link is-primary" data-testid="course-offering-schedule-link" href="{{ route('maker.course_offerings.schedules.index', $offering) }}">
                                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                                 <rect x="3" y="4" width="18" height="18" rx="2"/>
                                                 <line x1="3" y1="10" x2="21" y2="10"/>
@@ -275,17 +265,7 @@
                                             จัดตาราง
                                         </a>
                                     @endif
-                                    <a data-testid="course-offering-show-link" href="{{ route('maker.course_offerings.show', $offering) }}" style="
-                                        display:inline-flex;align-items:center;
-                                        padding:7px 14px;
-                                        background:var(--bg-1);
-                                        color:var(--fg-1);
-                                        font-size:0.8125rem;font-weight:600;
-                                        border:1px solid var(--border);
-                                        border-radius:6px;
-                                        text-decoration:none;
-                                        line-height:1.2;
-                                    ">
+                                    <a class="course-offering-action-link is-secondary" data-testid="course-offering-show-link" href="{{ route('maker.course_offerings.show', $offering) }}">
                                         รายละเอียด
                                     </a>
                                 </div>
@@ -302,4 +282,66 @@
             </table>
         </div>
     </div>
+
+    <style>
+        .course-offerings-table {
+            table-layout: auto;
+        }
+
+        .course-offering-row {
+            height: 104px;
+        }
+
+        .course-offering-row > td {
+            vertical-align: middle;
+        }
+
+        .course-offering-action-cell {
+            width: 148px;
+            text-align: right;
+        }
+
+        .course-offering-actions {
+            min-height: 76px;
+            display: inline-flex;
+            flex-direction: column;
+            align-items: stretch;
+            justify-content: center;
+            gap: 8px;
+            width: 120px;
+        }
+
+        .course-offering-action-link {
+            min-height: 38px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 7px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.8125rem;
+            font-weight: 600;
+            line-height: 1.2;
+            text-decoration: none;
+            white-space: nowrap;
+            box-sizing: border-box;
+        }
+
+        .course-offering-action-link svg {
+            flex: 0 0 auto;
+        }
+
+        .course-offering-action-link.is-primary {
+            background: var(--brand-navy);
+            color: #fff;
+            border-color: var(--brand-navy);
+        }
+
+        .course-offering-action-link.is-secondary {
+            background: var(--bg-1);
+            color: var(--fg-1);
+            border-color: var(--border);
+        }
+    </style>
 </x-app-layout>

@@ -881,8 +881,8 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="table-responsive">
-                    <table>
+                <div class="table-responsive instructor-table-wrap">
+                    <table class="instructor-table">
                         <thead>
                             <tr>
                                 <th>รหัส</th>
@@ -898,31 +898,31 @@
                                     data-search="{{ Str::lower($instructor->formatted_name . ' ' . ($instructor->employee_id ?? '') . ' ' . ($instructor->email ?? '') . ' ' . ($instructor->instructorProfile->title ?? '') . ' ' . ($instructor->instructorProfile->academic_degree ?? '') . ' ' . ($instructor->instructorProfile->employment_type ?? '') . ' ' . ($instructor->instructorProfile->department->name ?? '') . ' ' . ($instructor->instructorProfile->teaching_pct ?? '') . ' ' . ($instructor->instructorProfile->research_pct ?? '') . ' ' . ($instructor->instructorProfile->service_pct ?? '') . ' ' . ($instructor->instructorProfile->culture_pct ?? '') . ' ' . ($instructor->instructorProfile->other_pct ?? '') . ' ' . ($instructor->instructorProfile->teaching_quota ?? '')) }}"
                                     data-department-id="{{ $instructor->instructorProfile->department_id ?? '' }}"
                                     x-show="includesText($el.dataset.search, filters.instructors.keyword) && (filters.instructors.department_id === '' || $el.dataset.departmentId == filters.instructors.department_id)">
-                                    <td style="font-weight: 600; color: var(--fg-2);">
+                                    <td class="instructor-code-cell" data-label="รหัส" style="font-weight: 600; color: var(--fg-2);">
                                         {{ $instructor->employee_id ?? '-' }}
                                     </td>
-                                    <td>
-                                        <div style="font-weight: 600; color: var(--fg-1);">
+                                    <td class="instructor-name-cell" data-label="ชื่อ-นามสกุล">
+                                        <div class="instructor-name-text" style="font-weight: 600; color: var(--fg-1);">
                                             {{ $instructor->formatted_name }}
                                         </div>
                                         @if($instructor->instructorProfile && $instructor->instructorProfile->employment_type)
-                                        <div style="font-size: 11px; color: var(--fg-3); margin-top: 2px;">
+                                        <div class="instructor-meta-text" style="font-size: 11px; color: var(--fg-3); margin-top: 2px;">
                                             {{ $instructor->instructorProfile->employment_type }}
                                         </div>
                                         @endif
                                     </td>
-                                    <td style="color: var(--fg-2); font-size: 13px;">
+                                    <td class="instructor-title-cell" data-label="ตำแหน่งทางวิชาการ" style="color: var(--fg-2); font-size: 13px;">
                                         {{ $instructor->instructorProfile->title ?? '-' }}
                                         @if($instructor->instructorProfile && $instructor->instructorProfile->academic_degree)
                                             <span
                                                 style="color: var(--fg-3);">({{ $instructor->instructorProfile->academic_degree }})</span>
                                         @endif
                                     </td>
-                                    <td style="color: var(--fg-2); font-size: 13px;">
+                                    <td class="instructor-department-cell" data-label="ภาควิชา" style="color: var(--fg-2); font-size: 13px;">
                                         {{ $instructor->instructorProfile->department->name ?? '-' }}
                                     </td>
                                     @if($isAdmin)
-                                    <td style="text-align: center;">
+                                    <td class="instructor-action-cell" data-label="จัดการ" style="text-align: center;">
                                         <button type="button" class="action-btn" title="แก้ไขข้อมูลอาจารย์"
                                             @click="openEditInstructor({{ Js::from($instructor) }})">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -1560,9 +1560,10 @@
                     </select>
                 </div>
 
-                <div x-data="{ expandedCurriculum: null }" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 8px;">
+                <div class="curriculum-list" x-data="{ expandedCurriculum: null }" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 8px;">
                     @forelse($curriculums as $curr)
                         <div
+                            class="curriculum-list-item"
                             data-search="{{ Str::lower($curr->name . ' ' . ($curr->effective_year ?? '') . ' ' . ($curr->is_active ? 'กำลังใช้งาน active' : 'ปิดใช้งาน inactive') . ' ' . $curr->courses_count . ' วิชา ' . $curr->courses->pluck('course_code')->join(' ') . ' ' . $curr->courses->pluck('name_th')->join(' ') . ' ' . $curr->courses->pluck('name_en')->join(' ') . ' ' . $curr->courses->pluck('credits')->join(' ') . ' ' . $curr->courses->pluck('default_year_level')->join(' ') . ' ' . $curr->courses->pluck('default_semester')->join(' ')) }}"
                             data-is-active="{{ $curr->is_active ? '1' : '0' }}"
                             x-show="includesText($el.dataset.search, filters.curriculums.keyword) && (filters.curriculums.is_active === '' || $el.dataset.isActive == filters.curriculums.is_active)"
@@ -1572,10 +1573,10 @@
                             <div @click="expandedCurriculum = expandedCurriculum === {{ $curr->id }} ? null : {{ $curr->id }}"
                                 style="cursor: pointer; user-select: none; transition: background 0.15s;"
                                 :style="expandedCurriculum === {{ $curr->id }} ? 'background: #f0f4ff;' : 'background: #fff;'">
-                            <div style="display: flex; align-items: center; gap: 16px; padding: 14px 16px;">
+                            <div class="curriculum-card-head" style="display: flex; align-items: center; gap: 16px; padding: 14px 16px;">
 
                                 {{-- Chevron --}}
-                                <div style="flex-shrink: 0; width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: background 0.15s;"
+                                <div class="curriculum-card-chevron" style="flex-shrink: 0; width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: background 0.15s;"
                                     :style="expandedCurriculum === {{ $curr->id }} ? 'background: var(--brand-navy);' : 'background: var(--bg-3);'">
                                     <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
                                         style="transition: transform 0.2s;"
@@ -1585,32 +1586,32 @@
                                 </div>
 
                                 {{-- Name + year --}}
-                                <div style="flex: 1; min-width: 0;">
-                                    <div style="font-weight: 600; font-size: 14px; color: var(--fg-1);">{{ $curr->name }}</div>
-                                    <div style="margin-top: 3px; font-size: 12px; color: var(--fg-3);">
+                                <div class="curriculum-card-title-block" style="flex: 1; min-width: 0;">
+                                    <div class="curriculum-card-title" style="font-weight: 600; font-size: 14px; color: var(--fg-1);">{{ $curr->name }}</div>
+                                    <div class="curriculum-card-year" style="margin-top: 3px; font-size: 12px; color: var(--fg-3);">
                                         ปีที่เริ่มใช้: {{ $curr->effective_year ?? '-' }}
                                     </div>
                                 </div>
 
                                 {{-- Status badge --}}
                                 @if($curr->is_active)
-                                    <span style="flex-shrink:0; background:#e6fffa; color:#047481; border:1px solid #b2f5ea; padding:3px 10px; border-radius:99px; font-size:11px; font-weight:700;">กำลังใช้งาน</span>
+                                    <span class="curriculum-card-status" style="flex-shrink:0; background:#e6fffa; color:#047481; border:1px solid #b2f5ea; padding:3px 10px; border-radius:99px; font-size:11px; font-weight:700;">กำลังใช้งาน</span>
                                 @else
-                                    <span style="flex-shrink:0; background:#f7fafc; color:#4a5568; border:1px solid #edf2f7; padding:3px 10px; border-radius:99px; font-size:11px; font-weight:700;">ปิดใช้งาน</span>
+                                    <span class="curriculum-card-status" style="flex-shrink:0; background:#f7fafc; color:#4a5568; border:1px solid #edf2f7; padding:3px 10px; border-radius:99px; font-size:11px; font-weight:700;">ปิดใช้งาน</span>
                                 @endif
 
                                 {{-- Course count --}}
                                 @if($curr->courses_count > 0)
-                                <div style="flex-shrink: 0; background: var(--bg-3); border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 700; color: var(--fg-2);">
+                                <div class="curriculum-card-count" style="flex-shrink: 0; background: var(--bg-3); border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 700; color: var(--fg-2);">
                                     {{ $curr->courses_count }} วิชา
                                 </div>
                                 @else
-                                <div style="flex-shrink: 0; font-size: 12px; color: var(--fg-4, #94a3b8);">ยังไม่มีวิชา</div>
+                                <div class="curriculum-card-count" style="flex-shrink: 0; font-size: 12px; color: var(--fg-4, #94a3b8);">ยังไม่มีวิชา</div>
                                 @endif
 
                                 {{-- Actions (admin only) --}}
                                 @if($isAdmin)
-                                <div @click.stop style="flex-shrink: 0; display: flex; gap: 4px;">
+                                <div class="curriculum-card-actions" @click.stop style="flex-shrink: 0; display: flex; gap: 4px;">
                                     <button class="action-btn" title="แก้ไขชื่อ/ปี" data-testid="curriculum-edit-button" data-curriculum-id="{{ $curr->id }}" @click.stop="openEditCurriculum({{ Js::from($curr) }})">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -3170,6 +3171,34 @@
             max-width: 130px;
         }
 
+        .curriculum-list-item {
+            min-width: 0;
+        }
+
+        .curriculum-card-head {
+            min-width: 0;
+        }
+
+        .curriculum-card-title {
+            line-height: 1.5;
+            overflow-wrap: anywhere;
+            word-break: normal;
+        }
+
+        .curriculum-card-year,
+        .curriculum-card-status,
+        .curriculum-card-count {
+            line-height: 1.45;
+        }
+
+        .instructor-name-text,
+        .instructor-title-cell,
+        .instructor-department-cell {
+            overflow-wrap: normal;
+            word-break: keep-all;
+            line-break: strict;
+        }
+
         @media (max-width: 1280px) {
             .m7-filter-bar.is-course {
                 grid-template-columns: minmax(360px, 1.4fr) repeat(3, minmax(140px, .7fr));
@@ -3195,6 +3224,130 @@
                 flex: 1 1 100%;
                 width: 100%;
                 max-width: none;
+            }
+
+            .curriculum-list {
+                padding: 12px !important;
+            }
+
+            .curriculum-card-head {
+                display: grid !important;
+                grid-template-columns: 28px minmax(0, 1fr);
+                align-items: start !important;
+                gap: 10px 12px !important;
+                padding: 14px !important;
+                height: auto !important;
+                min-height: 0;
+            }
+
+            .curriculum-card-chevron {
+                grid-column: 1;
+                grid-row: 1;
+            }
+
+            .curriculum-card-title-block {
+                grid-column: 2;
+                grid-row: 1;
+                min-width: 0;
+            }
+
+            .curriculum-card-status,
+            .curriculum-card-count,
+            .curriculum-card-actions {
+                grid-column: 2;
+                justify-self: start;
+            }
+
+            .curriculum-card-status,
+            .curriculum-card-count {
+                flex-shrink: 1 !important;
+                max-width: 100%;
+                white-space: normal;
+            }
+
+            .curriculum-card-actions {
+                flex-wrap: wrap;
+                align-items: center;
+                margin-top: 2px;
+            }
+
+            .instructor-table-wrap {
+                overflow-x: visible;
+            }
+
+            .instructor-table,
+            .instructor-table tbody,
+            .instructor-table tr,
+            .instructor-table td {
+                display: block;
+                width: 100%;
+            }
+
+            .instructor-table thead {
+                display: none;
+            }
+
+            .instructor-table tbody {
+                padding: 12px;
+                background: var(--bg-1);
+            }
+
+            .instructor-table tbody tr {
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                background: var(--surface);
+                margin-bottom: 10px;
+                padding: 12px 14px;
+            }
+
+            .instructor-table tbody tr:last-child {
+                margin-bottom: 0;
+            }
+
+            .instructor-table tbody tr:hover td {
+                background: transparent;
+            }
+
+            .instructor-table td {
+                border-bottom: 0;
+                padding: 0;
+                font-size: 13px;
+            }
+
+            .instructor-table td + td {
+                margin-top: 10px;
+            }
+
+            .instructor-table td::before {
+                content: attr(data-label);
+                display: block;
+                margin-bottom: 3px;
+                color: var(--fg-3);
+                font-size: 11px;
+                font-weight: 700;
+                line-height: 1.35;
+            }
+
+            .instructor-name-text {
+                font-size: 14px;
+                line-height: 1.55;
+            }
+
+            .instructor-title-cell,
+            .instructor-department-cell {
+                line-height: 1.55;
+            }
+
+            .instructor-action-cell {
+                display: flex !important;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                text-align: left !important;
+            }
+
+            .instructor-action-cell::before {
+                margin-bottom: 0;
             }
         }
 

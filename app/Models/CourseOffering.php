@@ -84,6 +84,11 @@ class CourseOffering extends Model
         return $this->belongsTo(Course::class);
     }
 
+    public function scopeWithActiveCourse($query)
+    {
+        return $query->whereHas('course', fn ($courseQuery) => $courseQuery->where('status', 'active'));
+    }
+
     public function academicYear(): BelongsTo
     {
         return $this->belongsTo(AcademicYear::class);

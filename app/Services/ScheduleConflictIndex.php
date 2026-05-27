@@ -96,6 +96,7 @@ class ScheduleConflictIndex
         $schedules = $this->orderSchedulesByDate(
             $this->baseScheduleQuery()
                 ->whereHas('courseOffering', fn (Builder $query) => $query
+                    ->withActiveCourse()
                     ->where('coordinator_id', $userId)
                     ->when($academicYearId, fn (Builder $query) => $query->where('academic_year_id', $academicYearId)))
         )->get();
@@ -182,7 +183,7 @@ class ScheduleConflictIndex
                 'instructors.instructorProfile:id,user_id,title,academic_degree',
                 'studentGroups:id,course_offering_id,group_code,color_code',
             ])
-            ->whereHas('courseOffering');
+            ->whereHas('courseOffering', fn (Builder $query) => $query->withActiveCourse());
     }
 
     /**

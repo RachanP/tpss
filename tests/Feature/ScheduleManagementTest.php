@@ -40,6 +40,17 @@ class ScheduleManagementTest extends TestCase
             ->assertSee($offering->course->course_code);
     }
 
+    public function test_course_head_cannot_access_schedules_for_inactive_course_offering(): void
+    {
+        [$head, $offering] = $this->makeReadyOffering();
+        $offering->course->update(['status' => 'inactive']);
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.course_offerings.schedules.index', $offering))
+            ->assertForbidden();
+    }
+
     public function test_schedule_index_renders_list_and_grid_views(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
