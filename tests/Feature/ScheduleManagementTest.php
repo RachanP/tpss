@@ -364,10 +364,57 @@ class ScheduleManagementTest extends TestCase
             ->assertOk()
             ->assertSee('data-testid="maker-conflict-total"', false)
             ->assertSee('data-testid="maker-conflict-item"', false)
+            ->assertSee('data-conflict-edit-link', false)
+            ->assertSee('tpss-conflict-alert-scroll-y', false)
             ->assertSee($offering->course->course_code)
             ->assertSee('Existing schedule')
             ->assertSee('edit_schedule_id=' . $schedule->id, false)
+            ->assertSee('focus_schedule_id=' . $schedule->id, false)
+            ->assertSee('from_conflict=1', false)
+            ->assertSee('period=day', false)
+            ->assertSee('date=2026-08-03', false)
             ->assertSee('week_start=2026-08-03', false);
+
+        $this->get(route('maker.course_offerings.schedules.index', [
+            $offering,
+            'edit_schedule_id' => $schedule->id,
+            'focus_schedule_id' => $schedule->id,
+            'from_conflict' => 1,
+            'date' => '2026-08-03',
+            'period' => 'day',
+        ]))
+            ->assertOk()
+            ->assertSee('data-testid="schedule-edit-conflict-focus"', false)
+            ->assertSee('วันและเวลามีข้อมูลซ้อนกับรายการอื่น')
+            ->assertSee(route('maker.schedule_conflicts.index'), false)
+            ->assertDontSee('พบข้อมูลซ้อนกับรายการอื่น แก้ไขช่องที่ไฮไลต์ก่อนส่งอนุมัติ')
+            ->assertSee('data-schedule-id="' . $schedule->id . '"', false);
+
+        $this->get(route('maker.course_offerings.schedules.index', [
+            $offering,
+            'date' => '2026-08-03',
+            'period' => 'day',
+        ]))
+            ->assertOk()
+            ->assertSee('data-testid="schedule-edit-conflict-focus"', false)
+            ->assertSee('modal-field-has-conflict', false);
+    }
+
+    public function test_conflict_edit_returns_to_conflict_alerts_after_update(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $schedule = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group]);
+
+        $this->actingAsCourseHead($head);
+
+        $payload = $this->schedulePayload($instructor, $group, $activityType, $room, [
+            'topic' => 'Resolved from conflict alert',
+            'return_to_conflicts' => '1',
+        ]);
+
+        $this->put(route('maker.course_offerings.schedules.update', [$offering, $schedule]), $payload)
+            ->assertRedirect(route('maker.schedule_conflicts.index'))
+            ->assertSessionHasNoErrors();
     }
 
     public function test_conflict_alert_page_defaults_to_current_scheduling_academic_year(): void

@@ -17,6 +17,23 @@
     $selectedOfferingId = (string) old('course_offering_id', $queryOfferingId ?: ($schedulingOfferings->first()?->id ?? $courseOffering?->id ?? ''));
     $oldModalMode = old('modal_mode');
     $openEditScheduleId = (string) old('edit_schedule_id', request('edit_schedule_id', ''));
+    $focusedScheduleId = (string) request('focus_schedule_id', request('edit_schedule_id', ''));
+    $conflictFieldLabels = [
+        'instructor_overlap' => 'ผู้สอนชน',
+        'room_overlap' => 'ห้อง/สถานที่ชน',
+        'group_overlap' => 'กลุ่มนักศึกษาชน',
+    ];
+    $conflictFieldNote = function ($conflicts, array $types, string $fieldLabel) use ($conflictFieldLabels) {
+        $items = collect($conflicts)
+            ->filter(fn ($conflict) => in_array($conflict['type'] ?? '', $types, true))
+            ->values();
+
+        if ($items->isEmpty()) {
+            return null;
+        }
+
+        return $fieldLabel . 'มีข้อมูลซ้อนกับรายการอื่น ' . $items->count() . ' จุด';
+    };
     $selectedInstructorIds = collect(old('instructor_ids', []))->map(fn ($id) => (string) $id)->all();
     $selectedGroupIds = collect(old('student_group_ids', []))->map(fn ($id) => (string) $id)->all();
     $leadInstructorId = (string) old('lead_instructor_id', '');
@@ -1725,6 +1742,39 @@
             height: 12px;
             flex: 0 0 auto;
         }
+        .schedule-conflict-focus {
+            border-color: color-mix(in oklch, var(--status-conflict) 58%, var(--schedule-border-strong)) !important;
+            background: color-mix(in oklch, var(--status-conflict-bg) 58%, var(--surface)) !important;
+            box-shadow: 0 0 0 3px color-mix(in oklch, var(--status-conflict) 14%, transparent), 0 12px 30px oklch(0% 0 0 / 0.12) !important;
+        }
+        .schedule-conflict-focus .schedule-conflict-pill {
+            box-shadow: 0 0 0 2px color-mix(in oklch, var(--status-conflict) 12%, transparent);
+        }
+        .sched-row.schedule-conflict-focus td,
+        .co-sched-row.schedule-conflict-focus td {
+            background: color-mix(in oklch, var(--status-conflict-bg) 62%, var(--surface)) !important;
+            box-shadow: inset 0 1px 0 var(--status-conflict-border), inset 0 -1px 0 var(--status-conflict-border);
+        }
+        .sched-row.schedule-conflict-focus td:first-child,
+        .co-sched-row.schedule-conflict-focus td:first-child {
+            box-shadow: inset 3px 0 0 var(--status-conflict), inset 0 1px 0 var(--status-conflict-border), inset 0 -1px 0 var(--status-conflict-border);
+        }
+        .modal-conflict-field {
+            margin-top: 6px;
+            color: var(--status-conflict-fg);
+            font-size: 11px;
+            font-weight: 800;
+            line-height: 1.45;
+        }
+        .modal-field-has-conflict .modal-control,
+        .modal-field-has-conflict .time-picker {
+            border-color: var(--status-conflict-border) !important;
+            box-shadow: 0 0 0 3px color-mix(in oklch, var(--status-conflict) 10%, transparent) !important;
+        }
+        .modal-section.modal-field-has-conflict .modal-choice:has(input:checked) {
+            border-color: var(--status-conflict-border);
+            box-shadow: 0 0 0 2px color-mix(in oklch, var(--status-conflict) 8%, transparent);
+        }
         .grid-activity-foot {
             display: flex;
             align-items: center;
@@ -1814,7 +1864,12 @@
             padding-top: 0;
         }
         .grid-activity-card.is-stacked-card.has-visible-stack-switcher .grid-activity-foot {
-            padding-right: 0;
+            position: absolute;
+            left: 10px;
+            right: 10px;
+            bottom: 10px;
+            margin-top: 0;
+            padding-top: 0;
         }
         .grid-activity-card.is-stacked-card.has-visible-stack-switcher {
             gap: 4px;
@@ -1860,6 +1915,16 @@
             display: block;
             font-size: 10.2px;
             line-height: 1.18;
+        }
+        .grid-activity-card.is-stacked-card.is-compact.has-visible-stack-switcher .grid-activity-time {
+            max-width: calc(100% - 70px);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .grid-activity-card.is-stacked-card.is-compact.has-visible-stack-switcher .grid-activity-foot {
+            left: auto;
+            max-width: 64px;
         }
         .schedule-grid.is-precise .grid-activity-card.is-stacked-card.is-compact .grid-activity-title {
             display: block;
@@ -1949,10 +2014,10 @@
         }
         .month-calendar {
             display: grid;
-            grid-template-columns: repeat(7, minmax(128px, 1fr));
+            grid-template-columns: repeat(7, minmax(0, 1fr));
             border: 1px solid var(--schedule-border-strong);
             border-radius: 10px;
-            overflow: auto;
+            overflow: visible;
             background: var(--surface);
             box-shadow: 0 1px 4px oklch(0% 0 0 / 0.05);
         }
@@ -1978,6 +2043,9 @@
             min-height: 154px;
             padding: 8px;
             background: var(--surface);
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
         }
         .month-calendar-day.is-outside {
             background: oklch(98% 0.006 232);
@@ -2017,14 +2085,18 @@
         }
         .month-day-items {
             display: grid;
-            gap: 6px;
+            gap: 4px;
+            min-height: 0;
+            overflow: visible;
+            padding-right: 2px;
         }
         .month-activity {
             width: 100%;
+            min-width: 0;
             border: 1px solid color-mix(in oklch, var(--activity-color) 30%, var(--schedule-border));
-            border-radius: 8px;
+            border-radius: 6px;
             background: color-mix(in oklch, var(--activity-color) 7%, var(--surface));
-            padding: 7px;
+            padding: 5px 6px;
             cursor: pointer;
             text-align: left;
             font: inherit;
@@ -2035,28 +2107,29 @@
         }
         .month-activity-time {
             color: var(--brand-navy);
-            font-size: 10.5px;
+            font-size: 10px;
             font-weight: 900;
             font-variant-numeric: tabular-nums;
+            line-height: 1.2;
         }
         .month-activity-title {
-            margin-top: 2px;
+            margin-top: 1px;
             color: var(--fg-1);
-            font-size: 11.2px;
+            font-size: 10.6px;
             font-weight: 850;
-            line-height: 1.35;
+            line-height: 1.25;
         }
         .month-activity-meta {
-            margin-top: 2px;
+            margin-top: 1px;
             color: var(--schedule-muted);
-            font-size: 10px;
-            line-height: 1.35;
+            font-size: 9.5px;
+            line-height: 1.25;
         }
         .month-activity-tags {
             display: flex;
             flex-wrap: wrap;
             gap: 3px;
-            margin-top: 5px;
+            margin-top: 3px;
         }
         .month-group-summary {
             display: inline-flex;
@@ -2085,21 +2158,71 @@
         [data-testid="schedule-month-calendar"] .month-calendar-day {
             min-height: 132px;
         }
+        [data-testid="schedule-month-calendar"] .month-day-items,
+        [data-testid="schedule-month-calendar-co"] .month-day-items {
+            overflow: visible;
+        }
         [data-testid="schedule-month-calendar"] .month-empty {
             display: none;
         }
         [data-testid="schedule-month-calendar"] .month-activity {
-            padding: 6px;
+            padding: 5px 6px;
+        }
+        [data-testid="schedule-month-calendar"] .month-activity-meta,
+        [data-testid="schedule-month-calendar"] .month-activity .activity-tag,
+        [data-testid="schedule-month-calendar"] .month-activity .month-group-summary,
+        [data-testid="schedule-month-calendar-co"] .month-activity .activity-tag,
+        [data-testid="schedule-month-calendar-co"] .month-activity .month-group-summary {
+            display: none;
         }
         [data-testid="schedule-month-calendar"] .month-activity-title {
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
+            display: block;
             overflow: hidden;
-            font-size: 10.8px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 10.5px;
+        }
+        [data-testid="schedule-month-calendar-co"] .month-activity-title {
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         [data-testid="schedule-month-calendar"] .month-activity .badge {
             display: none;
+        }
+        [data-testid="schedule-month-calendar"] .month-activity:hover,
+        [data-testid="schedule-month-calendar"] .month-activity:focus-visible,
+        [data-testid="schedule-month-calendar-co"] .month-activity:hover,
+        [data-testid="schedule-month-calendar-co"] .month-activity:focus-visible {
+            box-shadow: 0 8px 18px oklch(0% 0 0 / 0.12);
+            position: relative;
+            z-index: 4;
+        }
+        [data-testid="schedule-month-calendar"] .month-activity:hover .month-activity-title,
+        [data-testid="schedule-month-calendar"] .month-activity:focus-visible .month-activity-title,
+        [data-testid="schedule-month-calendar-co"] .month-activity:hover .month-activity-title,
+        [data-testid="schedule-month-calendar-co"] .month-activity:focus-visible .month-activity-title {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            white-space: normal;
+        }
+        [data-testid="schedule-month-calendar"] .month-activity:hover .month-activity-meta,
+        [data-testid="schedule-month-calendar"] .month-activity:focus-visible .month-activity-meta {
+            display: block;
+        }
+        [data-testid="schedule-month-calendar"] .month-activity:hover .activity-tag,
+        [data-testid="schedule-month-calendar"] .month-activity:focus-visible .activity-tag,
+        [data-testid="schedule-month-calendar"] .month-activity:hover .month-group-summary,
+        [data-testid="schedule-month-calendar"] .month-activity:focus-visible .month-group-summary,
+        [data-testid="schedule-month-calendar"] .month-activity:hover .badge,
+        [data-testid="schedule-month-calendar"] .month-activity:focus-visible .badge,
+        [data-testid="schedule-month-calendar-co"] .month-activity:hover .activity-tag,
+        [data-testid="schedule-month-calendar-co"] .month-activity:focus-visible .activity-tag,
+        [data-testid="schedule-month-calendar-co"] .month-activity:hover .month-group-summary,
+        [data-testid="schedule-month-calendar-co"] .month-activity:focus-visible .month-group-summary {
+            display: inline-flex;
         }
         .schedule-modal-backdrop {
             position: fixed;
@@ -2730,12 +2853,14 @@
             width: 100%;
             height: 100%;
             min-height: 80px;
+            /* overflow visible so ghost peek cards can show slightly outside */
+            overflow: visible;
         }
         .grid-activity-card {
             position: absolute !important;
             min-height: 0 !important;
             margin-bottom: 0 !important;
-            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease, opacity 0.2s ease;
+            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease, opacity 0.25s ease, left 0.25s cubic-bezier(0.4, 0, 0.2, 1), width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
             z-index: 10;
         }
@@ -2747,6 +2872,28 @@
             transform: translateY(-1px);
             box-shadow: 0 10px 24px rgba(0,0,0,0.16);
             opacity: 1 !important;
+        }
+        /* Ghost/peek cards — cards outside the current page shown as faint background hints */
+        .grid-activity-card.is-ghost-peek {
+            pointer-events: none;
+            z-index: 5 !important;
+            filter: saturate(0.3);
+        }
+        /* ซ่อนเนื้อหาข้างในการ์ด ghost — ให้เห็นแค่กรอบสี */
+        .grid-activity-card.is-ghost-peek > * {
+            visibility: hidden !important;
+        }
+        .grid-activity-card.is-ghost-peek:hover {
+            transform: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .grid-activity-card.is-ghost-prev {
+            /* Ghost card peeking from the TOP-LEFT */
+            transform-origin: top left;
+        }
+        .grid-activity-card.is-ghost-next {
+            /* Ghost card peeking from the BOTTOM-RIGHT */
+            transform-origin: bottom right;
         }
         .stack-indicator {
             position: absolute;
@@ -2770,6 +2917,32 @@
             pointer-events: auto;
             line-height: 1;
         }
+        .stack-switcher-zone {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 34px;
+            z-index: 1;
+            pointer-events: auto;
+        }
+        .stack-switcher-top-zone {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            bottom: 34px;
+            z-index: 1;
+            pointer-events: auto;
+        }
+        .grid-activity-card.has-visible-stack-switcher .stack-switcher-top-zone:hover ~ .stack-indicator.is-stack-switcher {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .grid-activity-card.has-visible-stack-switcher .stack-switcher-zone:hover ~ .stack-indicator.is-stack-switcher {
+            opacity: 1;
+            pointer-events: auto;
+        }
         .stack-indicator:hover {
             background: color-mix(in oklch, var(--brand-navy) 85%, #000);
             transform: translateY(-1px);
@@ -2792,10 +2965,11 @@
     <div
         class="schedule-shell"
         x-data="{
-            view: sessionStorage.getItem('tpss-schedule-view') || 'list',
+            view: @js($focusedScheduleId ? 'grid' : null) || sessionStorage.getItem('tpss-schedule-view') || 'list',
             detailModal: null,
             editModal: @js($openEditScheduleId ? 'schedule-' . $openEditScheduleId : null),
             showCreate: @js($openCreateModal),
+            focusedScheduleId: @js($focusedScheduleId),
             initialSelectedOfferingId: @js($selectedOfferingId),
             selectedOfferingId: @js($selectedOfferingId),
             scheduleItems: @js($scheduleFilterItems),
@@ -2857,6 +3031,26 @@
                         this.$nextTick(() => { window.tpssInitChoices(document.querySelector('.schedule-modal')); });
                     }
                 });
+
+                if (this.focusedScheduleId) {
+                    this.$nextTick(() => {
+                        window.requestAnimationFrame(() => this.centerFocusedSchedule());
+                    });
+                }
+            },
+            isFocusedSchedule(id) {
+                return this.focusedScheduleId && String(id) === String(this.focusedScheduleId);
+            },
+            focusedScheduleClass(id) {
+                return this.isFocusedSchedule(id) ? 'schedule-conflict-focus' : '';
+            },
+            centerFocusedSchedule() {
+                const rawId = String(this.focusedScheduleId);
+                const safeId = window.CSS?.escape ? CSS.escape(rawId) : rawId.replace(/[^a-zA-Z0-9_-]/g, '');
+                const target = this.$el.querySelector(`[data-schedule-id='${safeId}']`);
+                if (!target) return;
+
+                target.scrollIntoView({ block: 'center', inline: 'center', behavior: this.editModal ? 'auto' : 'smooth' });
             },
             normalizedScheduleSearch() {
                 return this.scheduleSearch.trim().toLowerCase();
@@ -2893,9 +3087,10 @@
 
                 this.$nextTick(() => {
                     window.requestAnimationFrame(() => {
-                        const visibleCards = Array.from(stack.querySelectorAll('[data-stack-card]'))
-                            .filter((card) => card.offsetParent !== null);
-                        const targetCards = visibleCards.length ? visibleCards : [stack];
+                        // กรอง ghost card ออก — นับเฉพาะการ์ดที่อยู่ใน page ปัจจุบัน
+                        const activeCards = Array.from(stack.querySelectorAll('[data-stack-card]'))
+                            .filter((card) => !card.classList.contains('is-ghost-peek'));
+                        const targetCards = activeCards.length ? activeCards : [stack];
                         const bounds = targetCards.reduce((range, card) => {
                             const rect = card.getBoundingClientRect();
                             return {
@@ -3055,7 +3250,13 @@
                 this.editModal = 'schedule-' + id;
             },
             closeCreate() { this.showCreate = false; },
-            closeEdit() { this.editModal = null; }
+            closeEdit() {
+                @if(request()->boolean('from_conflict'))
+                    window.location.href = @js(route('maker.schedule_conflicts.index'));
+                @else
+                    this.editModal = null;
+                @endif
+            }
         }"
         @keydown.escape.window="detailModal = null; showCreate = false; editModal = null"
     >
@@ -3418,7 +3619,7 @@
                                                     }
                                                     $isMultiDay = ! $asSameDay;
                                                 @endphp
-                                                <tr role="button" tabindex="0" class="co-sched-row" style="--activity-color: {{ $activityTone($as) }};" x-show="matchesSchedule('{{ $as->id }}')" x-cloak data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $as->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $as->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $as->id }}'">
+                                                <tr role="button" tabindex="0" class="co-sched-row" :class="focusedScheduleClass('{{ $as->id }}')" style="--activity-color: {{ $activityTone($as) }};" x-show="matchesSchedule('{{ $as->id }}')" x-cloak data-schedule-id="{{ $as->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $as->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $as->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $as->id }}'">
                                                     <td class="co-col-date" style="font-weight: 800; color: var(--fg-1); font-variant-numeric: tabular-nums; vertical-align: middle;">
                                                         @if($asSameDay)
                                                             {{ $formatDate($as->start_date) }}
@@ -3522,7 +3723,7 @@
                                                 $instructorText = $scheduleInstructorText($schedule);
                                                 $itemConflicts = $scheduleConflicts->get($schedule->id, collect());
                                             @endphp
-                                            <div role="button" tabindex="0" class="month-activity" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
+                                            <div role="button" tabindex="0" class="month-activity" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
                                                 <div class="month-activity-time">{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }}</div>
                                                 <div class="month-activity-title">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
                                                 <div class="month-activity-tags">
@@ -3603,7 +3804,7 @@
                                                 ? 'is-compact'
                                                 : ($activityDuration >= 150 ? 'is-tall' : '');
                                         @endphp
-                                        <div role="button" tabindex="0" class="grid-activity {{ $gridActivitySizeClass }}" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
+                                        <div role="button" tabindex="0" class="grid-activity {{ $gridActivitySizeClass }}" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
                                             <div class="grid-activity-top">
                                                 <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }};">{{ $activity?->name ?? 'กิจกรรม' }}</span>
                                                 @if($itemConflicts->isNotEmpty())
@@ -3622,8 +3823,10 @@
                                     @else
                                         @php
                                             $stackCount = count($stack);
+                                            $focusedStackIndex = collect($stack)->search(fn ($occ) => (string) $occ['schedule']->id === $focusedScheduleId);
+                                            $initialStackPage = $focusedStackIndex === false ? 0 : intdiv((int) $focusedStackIndex, 3);
                                         @endphp
-                                        <div class="activity-stack" x-data="{ page: 0, count: {{ $stackCount }} }">
+                                        <div class="activity-stack" x-data="{ page: {{ $initialStackPage }}, count: {{ $stackCount }} }">
                                             @foreach($stack as $idx => $occurrence)
                                                 @php
                                                     $schedule = $occurrence['schedule'];
@@ -3654,23 +3857,69 @@
                                                     tabindex="0"
                                                     class="grid-activity {{ $gridActivitySizeClass }} grid-activity-card is-stacked-card"
                                                     style="--activity-color: {{ $activityTone($schedule) }}; top: {{ round($topPercent, 4) }}%; height: {{ round($heightPercent, 4) }}%;"
-                                                    :style="{
-                                                        left: (({{ $idx }} - page * 3) * 12) + '%',
-                                                        width: (100 - (Math.min(3, count - page * 3) - 1) * 12) + '%',
-                                                        zIndex: 10 + ({{ $idx }} - page * 3)
-                                                    }"
+                                                    :style="(function(){
+                                                        const idx = {{ $idx }};
+                                                        const inPage = idx >= page * 3 && idx < (page + 1) * 3;
+                                                        if (inPage) {
+                                                            return {
+                                                                left: ((idx - page * 3) * 12) + '%',
+                                                                width: (100 - (Math.min(3, count - page * 3) - 1) * 12) + '%',
+                                                                zIndex: 10 + (idx - page * 3),
+                                                                opacity: 1,
+                                                                pointerEvents: 'auto',
+                                                                display: 'flex',
+                                                                transform: 'none'
+                                                            };
+                                                        } else if (idx < page * 3) {
+                                                            /* Ghost cards BEFORE current page — peek from left, stacked by distance */
+                                                            const dist = page * 3 - idx; /* 1 = closest */
+                                                            const baseOpacity = Math.max(0.12, 0.45 - (dist - 1) * 0.08);
+                                                            const scale = Math.max(0.84, 0.95 - (dist - 1) * 0.04);
+                                                            const leftOffset = (-6 - (dist - 1) * 4);
+                                                            return {
+                                                                left: leftOffset + '%',
+                                                                width: '78%',
+                                                                zIndex: 6 - dist,
+                                                                opacity: baseOpacity,
+                                                                pointerEvents: 'none',
+                                                                display: 'flex',
+                                                                transform: 'scale(' + scale + ')',
+                                                                transformOrigin: 'top left'
+                                                            };
+                                                        } else {
+                                                            /* Ghost cards AFTER current page — peek from right, stacked by distance */
+                                                            const dist = idx - (page + 1) * 3 + 1; /* 1 = closest */
+                                                            const baseOpacity = Math.max(0.12, 0.45 - (dist - 1) * 0.08);
+                                                            const scale = Math.max(0.84, 0.95 - (dist - 1) * 0.04);
+                                                            const leftOffset = (28 + (dist - 1) * 4);
+                                                            return {
+                                                                left: leftOffset + '%',
+                                                                width: '78%',
+                                                                zIndex: 6 - dist,
+                                                                opacity: baseOpacity,
+                                                                pointerEvents: 'none',
+                                                                display: 'flex',
+                                                                transform: 'scale(' + scale + ')',
+                                                                transformOrigin: 'bottom right'
+                                                            };
+                                                        }
+                                                    })()"
                                                     :class="{
                                                         'is-stack-front': {{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1),
-                                                        'is-stack-back': {{ $idx }} !== Math.min((page + 1) * 3 - 1, count - 1),
+                                                        'is-stack-back': {{ $idx }} >= page * 3 && {{ $idx }} !== Math.min((page + 1) * 3 - 1, count - 1),
                                                         'has-visible-stack-switcher': count > 3 && {{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1),
-                                                        'has-no-visible-stack-switcher': count <= 3 || {{ $idx }} !== Math.min((page + 1) * 3 - 1, count - 1)
+                                                        'has-no-visible-stack-switcher': count <= 3 || {{ $idx }} !== Math.min((page + 1) * 3 - 1, count - 1),
+                                                        'is-ghost-peek': !({{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3),
+                                                        'is-ghost-prev': {{ $idx }} < page * 3,
+                                                        'is-ghost-next': {{ $idx }} >= (page + 1) * 3,
+                                                        'schedule-conflict-focus': isFocusedSchedule('{{ $schedule->id }}')
                                                     }"
-                                                    x-show="{{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3"
                                                     data-stack-card
+                                                    data-schedule-id="{{ $schedule->id }}"
                                                     data-schedule-modal-trigger
-                                                    @click="detailModal = 'schedule-{{ $schedule->id }}'"
-                                                    @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'"
-                                                    @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'"
+                                                    @click="if({{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3) detailModal = 'schedule-{{ $schedule->id }}'"
+                                                    @keydown.enter.prevent="if({{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3) detailModal = 'schedule-{{ $schedule->id }}'"
+                                                    @keydown.space.prevent="if({{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3) detailModal = 'schedule-{{ $schedule->id }}'"
                                                 >
                                                     @if($itemConflicts->isNotEmpty())
                                                         <div class="grid-activity-top">
@@ -3687,6 +3936,10 @@
                                                     </div>
 
                                                     @if($stackCount > 1)
+                                                        @if($stackCount > 3)
+                                                            <div class="stack-switcher-top-zone" aria-hidden="true"></div>
+                                                            <div class="stack-switcher-zone" aria-hidden="true"></div>
+                                                        @endif
                                                         <div
                                                             class="stack-indicator {{ $stackCount > 3 ? 'is-stack-switcher' : 'is-stack-count' }}"
                                                             x-show="{{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1)"
@@ -3782,7 +4035,7 @@
                                         $status = $statusMeta[$schedule->status] ?? ['label' => $schedule->status, 'class' => 'badge-gray'];
                                         $itemConflicts = $scheduleConflicts->get($schedule->id, collect());
                                     @endphp
-                                    <tr role="button" tabindex="0" class="sched-row" style="--activity-color: {{ $activityTone($schedule) }};" data-testid="schedule-row" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
+                                    <tr role="button" tabindex="0" class="sched-row" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-testid="schedule-row" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
                                         <td>
                                             <div class="sched-time-block">
                                                 <div class="sched-time">{{ $timeText }}</div>
@@ -3863,7 +4116,7 @@
                                             $status = $statusMeta[$schedule->status] ?? ['label' => $schedule->status, 'class' => 'badge-gray'];
                                             $itemConflicts = $scheduleConflicts->get($schedule->id, collect());
                                         @endphp
-                                        <div role="button" tabindex="0" class="month-activity" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
+                                        <div role="button" tabindex="0" class="month-activity" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
                                             <div class="month-activity-time">{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }}</div>
                                             <div class="month-activity-title">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
                                             <div class="month-activity-meta">
@@ -3953,7 +4206,7 @@
                                             ? 'is-compact'
                                             : ($activityDuration >= 150 ? 'is-tall' : '');
                                     @endphp
-                                    <div role="button" tabindex="0" class="grid-activity {{ $gridActivitySizeClass }}" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
+                                    <div role="button" tabindex="0" class="grid-activity {{ $gridActivitySizeClass }}" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
                                         <div class="grid-activity-top">
                                             @if($offeringCourse?->course_code)
                                                 <span class="grid-course">{{ $offeringCourse->course_code }}</span>
@@ -3996,8 +4249,10 @@
                                 @else
                                     @php
                                         $stackCount = count($stack);
+                                        $focusedStackIndex = collect($stack)->search(fn ($occ) => (string) $occ['schedule']->id === $focusedScheduleId);
+                                        $initialStackPage = $focusedStackIndex === false ? 0 : intdiv((int) $focusedStackIndex, 3);
                                     @endphp
-                                    <div class="activity-stack" x-data="{ page: 0, count: {{ $stackCount }} }">
+                                    <div class="activity-stack" x-data="{ page: {{ $initialStackPage }}, count: {{ $stackCount }} }">
                                         @foreach($stack as $idx => $occurrence)
                                             @php
                                                 $schedule = $occurrence['schedule'];
@@ -4029,23 +4284,69 @@
                                                 tabindex="0"
                                                 class="grid-activity {{ $gridActivitySizeClass }} grid-activity-card is-stacked-card"
                                                 style="--activity-color: {{ $activityTone($schedule) }}; top: {{ round($topPercent, 4) }}%; height: {{ round($heightPercent, 4) }}%;"
-                                                :style="{
-                                                    left: (({{ $idx }} - page * 3) * 12) + '%',
-                                                    width: (100 - (Math.min(3, count - page * 3) - 1) * 12) + '%',
-                                                    zIndex: 10 + ({{ $idx }} - page * 3)
-                                                }"
+                                                :style="(function(){
+                                                    const idx = {{ $idx }};
+                                                    const inPage = idx >= page * 3 && idx < (page + 1) * 3;
+                                                    if (inPage) {
+                                                        return {
+                                                            left: ((idx - page * 3) * 12) + '%',
+                                                            width: (100 - (Math.min(3, count - page * 3) - 1) * 12) + '%',
+                                                            zIndex: 10 + (idx - page * 3),
+                                                            opacity: 1,
+                                                            pointerEvents: 'auto',
+                                                            display: 'flex',
+                                                            transform: 'none'
+                                                        };
+                                                    } else if (idx < page * 3) {
+                                                        /* Ghost cards BEFORE current page — peek from left, stacked by distance */
+                                                        const dist = page * 3 - idx; /* 1 = closest */
+                                                        const baseOpacity = Math.max(0.12, 0.45 - (dist - 1) * 0.08);
+                                                        const scale = Math.max(0.84, 0.95 - (dist - 1) * 0.04);
+                                                        const leftOffset = (-6 - (dist - 1) * 4);
+                                                        return {
+                                                            left: leftOffset + '%',
+                                                            width: '78%',
+                                                            zIndex: 6 - dist,
+                                                            opacity: baseOpacity,
+                                                            pointerEvents: 'none',
+                                                            display: 'flex',
+                                                            transform: 'scale(' + scale + ')',
+                                                            transformOrigin: 'top left'
+                                                        };
+                                                    } else {
+                                                        /* Ghost cards AFTER current page — peek from right, stacked by distance */
+                                                        const dist = idx - (page + 1) * 3 + 1; /* 1 = closest */
+                                                        const baseOpacity = Math.max(0.12, 0.45 - (dist - 1) * 0.08);
+                                                        const scale = Math.max(0.84, 0.95 - (dist - 1) * 0.04);
+                                                        const leftOffset = (28 + (dist - 1) * 4);
+                                                        return {
+                                                            left: leftOffset + '%',
+                                                            width: '78%',
+                                                            zIndex: 6 - dist,
+                                                            opacity: baseOpacity,
+                                                            pointerEvents: 'none',
+                                                            display: 'flex',
+                                                            transform: 'scale(' + scale + ')',
+                                                            transformOrigin: 'bottom right'
+                                                        };
+                                                    }
+                                                })()"
                                                 :class="{
                                                     'is-stack-front': {{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1),
-                                                    'is-stack-back': {{ $idx }} !== Math.min((page + 1) * 3 - 1, count - 1),
+                                                    'is-stack-back': {{ $idx }} >= page * 3 && {{ $idx }} !== Math.min((page + 1) * 3 - 1, count - 1),
                                                     'has-visible-stack-switcher': count > 3 && {{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1),
-                                                    'has-no-visible-stack-switcher': count <= 3 || {{ $idx }} !== Math.min((page + 1) * 3 - 1, count - 1)
+                                                    'has-no-visible-stack-switcher': count <= 3 || {{ $idx }} !== Math.min((page + 1) * 3 - 1, count - 1),
+                                                    'is-ghost-peek': !({{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3),
+                                                    'is-ghost-prev': {{ $idx }} < page * 3,
+                                                    'is-ghost-next': {{ $idx }} >= (page + 1) * 3,
+                                                    'schedule-conflict-focus': isFocusedSchedule('{{ $schedule->id }}')
                                                 }"
-                                                x-show="{{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3"
                                                 data-stack-card
+                                                data-schedule-id="{{ $schedule->id }}"
                                                 data-schedule-modal-trigger
-                                                @click="detailModal = 'schedule-{{ $schedule->id }}'"
-                                                @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'"
-                                                @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'"
+                                                @click="if({{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3) detailModal = 'schedule-{{ $schedule->id }}'"
+                                                @keydown.enter.prevent="if({{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3) detailModal = 'schedule-{{ $schedule->id }}'"
+                                                @keydown.space.prevent="if({{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3) detailModal = 'schedule-{{ $schedule->id }}'"
                                             >
                                                 <div class="grid-activity-top">
                                                     @if($offeringCourse?->course_code)
@@ -4086,6 +4387,10 @@
                                                 <div><span class="badge {{ $status['class'] }}">{{ $status['label'] }}</span></div>
 
                                                 @if($stackCount > 1)
+                                                    @if($stackCount > 3)
+                                                        <div class="stack-switcher-top-zone" aria-hidden="true"></div>
+                                                        <div class="stack-switcher-zone" aria-hidden="true"></div>
+                                                    @endif
                                                     <div
                                                         class="stack-indicator {{ $stackCount > 3 ? 'is-stack-switcher' : 'is-stack-count' }}"
                                                         x-show="{{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1)"
@@ -4250,6 +4555,12 @@
 
                         return $value;
                     };
+                    $editConflicts = $scheduleConflicts->get($schedule->id, collect());
+                    $showConflictHints = $editConflicts->isNotEmpty();
+                    $dateTimeConflictNote = $showConflictHints ? $conflictFieldNote($editConflicts, ['instructor_overlap', 'room_overlap', 'group_overlap'], 'วันและเวลา') : null;
+                    $roomConflictNote = $showConflictHints ? $conflictFieldNote($editConflicts, ['room_overlap'], 'ห้อง/สถานที่') : null;
+                    $instructorConflictNote = $showConflictHints ? $conflictFieldNote($editConflicts, ['instructor_overlap'], 'ผู้สอน') : null;
+                    $groupConflictNote = $showConflictHints ? $conflictFieldNote($editConflicts, ['group_overlap'], 'กลุ่มนักศึกษา') : null;
                 @endphp
                 <div class="schedule-modal-backdrop" x-show="editModal === 'schedule-{{ $schedule->id }}'" x-cloak @click.self="closeEdit()" data-testid="schedule-edit-modal">
                     <template x-if="editModal === 'schedule-{{ $schedule->id }}'">
@@ -4278,6 +4589,9 @@
                             <input type="hidden" name="modal_mode" value="edit">
                             <input type="hidden" name="edit_schedule_id" value="{{ $schedule->id }}">
                             <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
+                            @if(request()->boolean('from_conflict'))
+                                <input type="hidden" name="return_to_conflicts" value="1">
+                            @endif
                             <div class="modal-form-body">
                                 @if($editUsesOld && $errors->any())
                                     @php
@@ -4291,7 +4605,7 @@
                                 @endif
 
                                 <div class="modal-form-grid">
-                                    <div>
+                                    <div class="{{ $dateTimeConflictNote ? 'modal-field-has-conflict' : '' }}">
                                         <label class="modal-label" for="edit_start_date_{{ $schedule->id }}">วันที่เริ่ม <span class="required-mark">*</span></label>
                                         <x-thai-date-input
                                             name="start_date"
@@ -4304,7 +4618,7 @@
                                             :year-end="$scheduleDatePickerYearEnd"
                                             x-model="startDateDisplay" />
                                     </div>
-                                    <div>
+                                    <div class="{{ $dateTimeConflictNote ? 'modal-field-has-conflict' : '' }}">
                                         <label class="modal-label" for="edit_end_date_{{ $schedule->id }}">วันที่สิ้นสุด <span class="required-mark">*</span></label>
                                         <x-thai-date-input
                                             name="end_date"
@@ -4317,7 +4631,7 @@
                                             :year-end="$scheduleDatePickerYearEnd"
                                             x-model="endDateDisplay" />
                                     </div>
-                                    <div>
+                                    <div class="{{ $dateTimeConflictNote ? 'modal-field-has-conflict' : '' }}">
                                         <label class="modal-label" for="edit_start_time_{{ $schedule->id }}">เวลาเริ่ม <span class="required-mark">*</span></label>
                                             @php
                                                 $editStart = $editOld('start_time', $formatTime($schedule->start_time));
@@ -4354,7 +4668,7 @@
                                                 <span class="time-unit">น.</span>
                                             </div>
                                     </div>
-                                    <div>
+                                    <div class="{{ $dateTimeConflictNote ? 'modal-field-has-conflict' : '' }}">
                                         <label class="modal-label" for="edit_end_time_{{ $schedule->id }}">เวลาสิ้นสุด <span class="required-mark">*</span></label>
                                         @php
                                             $editEnd = $editOld('end_time', $formatTime($schedule->end_time));
@@ -4390,6 +4704,9 @@
                                             </div>
                                             <span class="time-unit">น.</span>
                                         </div>
+                                        @if($dateTimeConflictNote)
+                                            <div class="modal-conflict-field" data-testid="schedule-edit-conflict-focus">{{ $dateTimeConflictNote }}</div>
+                                        @endif
                                     </div>
                                     <div>
                                         <label class="modal-label" for="edit_activity_type_id_{{ $schedule->id }}">ประเภทกิจกรรม <span class="required-mark">*</span></label>
@@ -4401,7 +4718,7 @@
                                             @endforeach
                                         </select>
                                     </div>
-                                    <div>
+                                    <div class="{{ $roomConflictNote ? 'modal-field-has-conflict' : '' }}">
                                         <label class="modal-label" for="edit_room_id_{{ $schedule->id }}">ห้อง/สถานที่</label>
                                         <select id="edit_room_id_{{ $schedule->id }}" name="room_id" class="modal-control tpss-choices">
                                             <option value="">ไม่ระบุสถานที่</option>
@@ -4411,6 +4728,9 @@
                                                 </option>
                                             @endforeach
                                         </select>
+                                        @if($roomConflictNote)
+                                            <div class="modal-conflict-field">{{ $roomConflictNote }}</div>
+                                        @endif
                                     </div>
                                     <div class="modal-field-full">
                                         <label class="modal-label" for="edit_topic_{{ $schedule->id }}">หัวข้อกิจกรรม <span class="required-mark">*</span></label>
@@ -4426,7 +4746,7 @@
                                     </div>
                                 </div>
 
-                                <div class="modal-section">
+                                <div class="modal-section {{ $instructorConflictNote ? 'modal-field-has-conflict' : '' }}">
                                     <div class="modal-section-title">ผู้สอน <span class="required-mark">*</span></div>
                                     @php
                                         $editInstructorOptions = $eligibleScheduleInstructors($offering);
@@ -4447,6 +4767,9 @@
                                         @endforeach
                                     </div>
                                     <div class="modal-choice-empty" x-show="hasCreateSearch(editInstructorSearch) && !hasCreateSearchMatches(@js($editInstructorSearchItems), editInstructorSearch)" x-cloak>ไม่พบข้อมูลที่ค้นหา</div>
+                                    @if($instructorConflictNote)
+                                        <div class="modal-conflict-field">{{ $instructorConflictNote }}</div>
+                                    @endif
                                 </div>
 
                                 <div class="modal-section">
@@ -4461,7 +4784,7 @@
                                     </select>
                                 </div>
 
-                                <div class="modal-section">
+                                <div class="modal-section {{ $groupConflictNote ? 'modal-field-has-conflict' : '' }}">
                                     <div class="modal-section-title">กลุ่มนักศึกษา <span class="required-mark">*</span></div>
                                     @php
                                         $editGroupSearchItems = $offering->studentGroups
@@ -4481,6 +4804,9 @@
                                         @endforeach
                                     </div>
                                     <div class="modal-choice-empty" x-show="hasCreateSearch(editGroupSearch) && !hasCreateSearchMatches(@js($editGroupSearchItems), editGroupSearch)" x-cloak>ไม่พบข้อมูลที่ค้นหา</div>
+                                    @if($groupConflictNote)
+                                        <div class="modal-conflict-field">{{ $groupConflictNote }}</div>
+                                    @endif
                                 </div>
                             </div>
                             <div class="modal-actions">

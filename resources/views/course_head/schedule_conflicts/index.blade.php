@@ -209,10 +209,47 @@
             line-height: 1.4;
         }
         .conflict-messages {
-            display: flex;
+            display: none;
             flex-direction: column;
             gap: 6px;
             margin-top: 8px;
+        }
+        .conflict-compare {
+            display: grid;
+            gap: 7px;
+            margin-top: 9px;
+        }
+        .conflict-compare-card {
+            border: 1px solid color-mix(in oklch, var(--status-conflict-border) 72%, var(--schedule-border));
+            border-radius: 8px;
+            background: color-mix(in oklch, var(--status-conflict-bg) 52%, var(--surface));
+            padding: 8px 10px;
+        }
+        .conflict-compare-title {
+            color: var(--fg-1);
+            font-size: 12px;
+            font-weight: 850;
+            line-height: 1.35;
+        }
+        .conflict-reasons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 6px;
+        }
+        .conflict-reason {
+            display: inline-flex;
+            align-items: center;
+            max-width: 100%;
+            min-height: 22px;
+            padding: 2px 8px;
+            border: 1px solid var(--status-conflict-border);
+            border-radius: 999px;
+            background: var(--surface);
+            color: var(--status-conflict-fg);
+            font-size: 11px;
+            font-weight: 800;
+            line-height: 1.25;
         }
         .conflict-message {
             display: flex;
@@ -271,6 +308,32 @@
             }
         }
     </style>
+    <script>
+        (() => {
+            const scrollKey = 'tpss-conflict-alert-scroll-y';
+            const savedScroll = sessionStorage.getItem(scrollKey);
+
+            if (savedScroll !== null) {
+                const targetY = Number.parseInt(savedScroll, 10) || 0;
+                const restoreScroll = () => window.scrollTo(0, targetY);
+
+                restoreScroll();
+                requestAnimationFrame(restoreScroll);
+                window.addEventListener('load', () => {
+                    restoreScroll();
+                    sessionStorage.removeItem(scrollKey);
+                }, { once: true });
+            }
+
+            window.addEventListener('DOMContentLoaded', () => {
+                document.querySelectorAll('[data-conflict-edit-link]').forEach((link) => {
+                    link.addEventListener('click', () => {
+                        sessionStorage.setItem(scrollKey, String(window.scrollY));
+                    });
+                });
+            });
+        })();
+    </script>
 
     <div class="conflict-page">
         <section class="conflict-hero">
@@ -332,10 +395,42 @@
                         @foreach($group['schedules'] as $schedule)
                             @php
                                 $conflicts = $conflictMap->get($schedule->id, collect());
+                                $conflictSets = $conflicts
+                                    ->groupBy('schedule_id')
+                                    ->map(function ($items) use ($conflictTypeLabels) {
+                                        $first = $items->first();
+
+                                        return [
+                                            'label' => $first['schedule_label'] ?? '',
+                                            'reasons' => $items
+                                                ->groupBy('type')
+                                                ->map(function ($typedItems, $type) use ($conflictTypeLabels) {
+                                                    $resources = $typedItems
+                                                        ->pluck('resource_label')
+                                                        ->filter()
+                                                        ->flatMap(fn ($value) => collect(explode(',', (string) $value))->map(fn ($item) => trim($item)))
+                                                        ->filter()
+                                                        ->unique()
+                                                        ->values()
+                                                        ->implode(', ');
+
+                                                    return [
+                                                        'label' => $conflictTypeLabels[$type] ?? 'ตารางชน',
+                                                        'resources' => $resources,
+                                                    ];
+                                                })
+                                                ->values(),
+                                        ];
+                                    })
+                                    ->values();
                                 $editUrl = route('maker.course_offerings.schedules.index', [
                                     $offering,
                                     'edit_schedule_id' => $schedule->id,
+                                    'focus_schedule_id' => $schedule->id,
+                                    'from_conflict' => 1,
+                                    'date' => $schedule->start_date?->toDateString(),
                                     'week_start' => $schedule->start_date?->toDateString(),
+                                    'period' => 'day',
                                 ]);
                             @endphp
                             <article class="conflict-item" data-testid="maker-conflict-item">
@@ -345,6 +440,20 @@
                                 </div>
                                 <div>
                                     <div class="conflict-topic">{{ $schedule->topic ?: ($schedule->activityType?->name ?? 'รายการสอน') }}</div>
+                                    <div class="conflict-compare">
+                                        @foreach($conflictSets as $conflictSet)
+                                            <div class="conflict-compare-card">
+                                                <div class="conflict-compare-title">ชนกับ {{ $conflictSet['label'] ?: 'รายการสอนอื่น' }}</div>
+                                                <div class="conflict-reasons">
+                                                    @foreach($conflictSet['reasons'] as $reason)
+                                                        <span class="conflict-reason">
+                                                            {{ $reason['label'] }}@if($reason['resources']): {{ $reason['resources'] }}@endif
+                                                        </span>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
                                     <div class="conflict-messages">
                                         @foreach($conflicts as $conflict)
                                             <div class="conflict-message">
@@ -358,7 +467,7 @@
                                     </div>
                                 </div>
                                 <div class="conflict-actions">
-                                    <a href="{{ $editUrl }}" class="btn btn-secondary" style="text-decoration:none;">ไปแก้ไข</a>
+                                    <a href="{{ $editUrl }}" class="btn btn-secondary" style="text-decoration:none;" data-conflict-edit-link>ไปแก้ไข</a>
                                 </div>
                             </article>
                         @endforeach

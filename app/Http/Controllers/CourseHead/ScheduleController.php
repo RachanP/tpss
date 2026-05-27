@@ -638,9 +638,12 @@ class ScheduleController extends Controller
             ->with($relations)
             ->withCount(['schedules', 'studentGroups', 'instructorPool'])
             ->where('coordinator_id', Auth::id())
-            ->latest('updated_at')
             ->get()
-            ->sortByDesc(fn (CourseOffering $offering) => $offering->academicYear?->phase === 'scheduling')
+            ->sortBy(fn (CourseOffering $offering) => implode('|', [
+                $offering->academicYear?->phase === 'scheduling' ? '0' : '1',
+                mb_strtolower($offering->course?->course_code ?? ''),
+                str_pad((string) $offering->id, 10, '0', STR_PAD_LEFT),
+            ]), SORT_NATURAL)
             ->values();
     }
 
@@ -941,6 +944,10 @@ class ScheduleController extends Controller
         bool $redirectToWorkspace = false
     ): string {
         $returnUrl = (string) $request->input('return_url', '');
+
+        if ($request->boolean('return_to_conflicts')) {
+            return route('maker.schedule_conflicts.index');
+        }
 
         if ($this->isScheduleReturnUrl($request, $returnUrl)) {
             return $returnUrl;
