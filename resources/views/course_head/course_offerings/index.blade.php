@@ -83,7 +83,7 @@
                 ['key' => 'rejected',  'label' => 'ตีกลับ',             'hint' => 'ต้องแก้ไขและส่งใหม่',   'tone' => 'conflict',  'active' => $summary['rejected'] > 0],
             ];
         @endphp
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:20px;" data-testid="offering-summary">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px;" data-testid="offering-summary">
             @foreach($summaryCards as $c)
                 @php
                     $tone = $c['tone'];
@@ -105,7 +105,7 @@
                 @endphp
                 <div style="
                     position:relative;
-                    padding:16px 18px;
+                    padding:12px 14px;
                     background:var(--bg-1);
                     border:2px solid {{ $borderColor }};
                     border-top:4px solid {{ $accent }};
@@ -116,12 +116,12 @@
                         <div style="font-size:0.8125rem;font-weight:700;color:{{ $labelColor }};letter-spacing:0.01em;min-width:0;overflow-wrap:break-word;">
                             {{ $c['label'] }}
                         </div>
-                        <span style="display:inline-block;width:10px;height:10px;background:{{ $accent }};border-radius:50%;flex-shrink:0;opacity:{{ $dotOpacity }};"></span>
+                        <span style="display:inline-block;width:9px;height:9px;background:{{ $accent }};border-radius:50%;flex-shrink:0;opacity:{{ $dotOpacity }};"></span>
                     </div>
-                    <div style="font-size:2.125rem;font-weight:700;line-height:1;color:var(--fg-1);margin-top:10px;font-family:var(--font-display);letter-spacing:-0.01em;">
+                    <div style="font-size:1.75rem;font-weight:700;line-height:1;color:var(--fg-1);margin-top:8px;font-family:var(--font-display);letter-spacing:-0.01em;">
                         {{ $summary[$c['key']] }}
                     </div>
-                    <div style="font-size:0.75rem;color:var(--fg-3);margin-top:8px;">
+                    <div style="font-size:0.7rem;color:var(--fg-3);margin-top:6px;line-height:1.3;">
                         {{ $c['hint'] }}
                     </div>
                 </div>
@@ -153,8 +153,8 @@
                         <th>หลักสูตร / ปีการศึกษา</th>
                         <th>กลุ่มนักศึกษา</th>
                         <th>ชั่วโมงแผน</th>
-                        <th>สถานะการจัดตาราง</th>
-                        <th>สถานะรายวิชา</th>
+                        <th style="white-space:nowrap;">สถานะการจัดตาราง</th>
+                        <th style="white-space:nowrap;">สถานะรายวิชา</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -242,17 +242,17 @@
                                     <div class="caption" style="margin-top:4px;white-space:nowrap;">ฝึกปฏิบัติ {{ $practicumHours }} ชม.</div>
                                 @endif
                             </td>
-                            <td>
+                            <td style="white-space:nowrap;">
                                 @if($phase === 'scheduling')
-                                    <span class="badge" style="background:oklch(90% 0.1 145);color:oklch(30% 0.15 145);border:1px solid oklch(70% 0.15 145);">เปิดจัดตาราง</span>
+                                    <span class="badge" style="background:oklch(90% 0.1 145);color:oklch(30% 0.15 145);border:1px solid oklch(70% 0.15 145);white-space:nowrap;">เปิดจัดตาราง</span>
                                 @elseif($phase === 'published')
-                                    <span class="badge badge-primary">เผยแพร่แล้ว</span>
+                                    <span class="badge badge-primary" style="white-space:nowrap;">เผยแพร่แล้ว</span>
                                 @else
-                                    <span class="badge badge-gray">ยังไม่เปิด</span>
+                                    <span class="badge badge-gray" style="white-space:nowrap;">ยังไม่เปิด</span>
                                 @endif
                             </td>
-                            <td>
-                                <span class="badge {{ $approvalMeta['badge'] }}">{{ $approvalMeta['label'] }}</span>
+                            <td style="white-space:nowrap;">
+                                <span class="badge {{ $approvalMeta['badge'] }}" style="white-space:nowrap;">{{ $approvalMeta['label'] }}</span>
                             </td>
                             <td style="text-align:right;">
                                 <div style="display:inline-flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">

@@ -1286,11 +1286,11 @@
 
         .users-filter-bar {
             display: grid;
-            grid-template-columns: minmax(420px, 1.8fr) repeat(4, minmax(150px, .85fr));
+            grid-template-columns: minmax(280px, 1.6fr) repeat(4, minmax(128px, .85fr));
             grid-auto-rows: 40px;
-            gap: 10px;
+            gap: 8px;
             align-items: center;
-            padding: 12px 20px;
+            padding: 12px 16px;
             border-top: 1px solid var(--border);
             border-bottom: 1px solid var(--border);
             background: oklch(98% 0.006 220);
@@ -1416,9 +1416,9 @@
             outline: 0;
         }
 
-        @media (max-width: 1280px) {
+        @media (max-width: 1100px) {
             .users-filter-bar {
-                grid-template-columns: minmax(360px, 1.4fr) repeat(2, minmax(150px, .8fr));
+                grid-template-columns: minmax(260px, 1.4fr) repeat(2, minmax(140px, .85fr));
             }
 
             .users-filter-search {
