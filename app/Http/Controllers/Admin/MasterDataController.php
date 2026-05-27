@@ -1376,13 +1376,14 @@ class MasterDataController extends Controller
         $file   = $request->file('csv_file');
         $handle = $this->openCsvHandle($file);
 
-        $header = fgetcsv($handle);
+        $requiredHeaders = ['room_code', 'room_name', 'location_type_name'];
+        $header = $this->readCsvHeader($handle, $requiredHeaders);
         if (!$header) {
             fclose($handle);
             return back()->with('error', 'ไฟล์ CSV ว่างเปล่า');
         }
         $header = $this->normalizeCsvHeader($header);
-        $missing = $this->missingCsvHeaders($header, ['room_code', 'room_name', 'location_type_name']);
+        $missing = $this->missingCsvHeaders($header, $requiredHeaders);
         if ($missing) {
             fclose($handle);
             return back()->with('error', 'หัวไฟล์ CSV ไม่ครบ: ' . implode(', ', $missing));
@@ -1497,13 +1498,14 @@ class MasterDataController extends Controller
         $file   = $request->file('csv_file');
         $handle = $this->openCsvHandle($file);
 
-        $header = fgetcsv($handle);
+        $requiredHeaders = ['course_code', 'name_th', 'curriculum_name', 'credits'];
+        $header = $this->readCsvHeader($handle, $requiredHeaders);
         if (!$header) {
             fclose($handle);
             return back()->with('error', 'ไฟล์ CSV ว่างเปล่า');
         }
         $header = $this->normalizeCsvHeader($header);
-        $missing = $this->missingCsvHeaders($header, ['course_code', 'name_th', 'curriculum_name', 'credits']);
+        $missing = $this->missingCsvHeaders($header, $requiredHeaders);
         if ($missing) {
             fclose($handle);
             return back()->with('error', 'หัวไฟล์ CSV ไม่ครบ: ' . implode(', ', $missing));

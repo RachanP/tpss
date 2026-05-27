@@ -2957,15 +2957,18 @@
                             @endif
 
                             <div style="margin-bottom: 16px;">
-                                <a href="{{ asset('templates/rooms_import.csv') }}"
+                                <a href="{{ asset('templates/TPSS_Import_Templates_v2.xlsx') }}"
                                     style="font-size: 13px; color: var(--accent); text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
                                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                                         <polyline points="7 10 12 15 17 10"/>
                                         <line x1="12" y1="15" x2="12" y2="3"/>
                                     </svg>
-                                    ดาวน์โหลดไฟล์ตัวอย่าง (rooms_import.csv)
+                                    ดาวน์โหลดไฟล์ Template Excel (TPSS_Import_Templates_v2.xlsx)
                                 </a>
+                                <div style="font-size: 12px; color: var(--fg-muted); margin-top: 6px; line-height: 1.55;">
+                                    เปิดไฟล์ → ไปที่ชีท <strong>Rooms</strong> → กรอกข้อมูล → บันทึกเป็น <strong>CSV UTF-8</strong> → อัปโหลดไฟล์ที่ได้
+                                </div>
                             </div>
                             <div style="margin-bottom: 16px;">
                                 <label class="frm-lbl">เลือกไฟล์ CSV <span style="color: var(--status-conflict-fg)">*</span></label>
@@ -3031,15 +3034,18 @@
                             @endif
 
                             <div style="margin-bottom: 16px;">
-                                <a href="{{ asset('templates/courses_import.csv') }}"
+                                <a href="{{ asset('templates/TPSS_Import_Templates_v2.xlsx') }}"
                                     style="font-size: 13px; color: var(--accent); text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
                                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                                         <polyline points="7 10 12 15 17 10"/>
                                         <line x1="12" y1="15" x2="12" y2="3"/>
                                     </svg>
-                                    ดาวน์โหลดไฟล์ตัวอย่าง (courses_import.csv)
+                                    ดาวน์โหลดไฟล์ Template Excel (TPSS_Import_Templates_v2.xlsx)
                                 </a>
+                                <div style="font-size: 12px; color: var(--fg-muted); margin-top: 6px; line-height: 1.55;">
+                                    เปิดไฟล์ → ไปที่ชีท <strong>Courses</strong> → กรอกข้อมูล → บันทึกเป็น <strong>CSV UTF-8</strong> → อัปโหลดไฟล์ที่ได้
+                                </div>
                             </div>
                             <div style="margin-bottom: 16px;">
                                 <label class="frm-lbl">เลือกไฟล์ CSV <span style="color: var(--status-conflict-fg)">*</span></label>

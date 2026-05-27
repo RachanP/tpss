@@ -29,7 +29,7 @@ abstract class Controller
 
     protected function normalizeCsvHeader(array $header): array
     {
-        return array_map(fn($h) => trim((string) $h), $header);
+        return array_map(fn($h) => trim(rtrim(trim((string) $h), '*')), $header);
     }
 
     protected function missingCsvHeaders(array $header, array $required): array
@@ -49,6 +49,27 @@ abstract class Controller
     protected function isCsvCommentRow(array $data): bool
     {
         return isset($data[0]) && str_starts_with(trim((string) $data[0]), '#');
+    }
+
+    /**
+     * Read the first plausible non-comment, non-empty row from a CSV handle as the header row.
+     * Skips any lines starting with '#' (template instruction comments) and blank lines.
+     * Excel-exported templates may include title rows and a hint row before the header.
+     * Returns the header array, or false if EOF is reached without finding one.
+     */
+    protected function readCsvHeader(mixed $handle, array $requiredHeaders = []): array|false
+    {
+        while (($row = fgetcsv($handle)) !== false) {
+            if (!$this->csvRowHasData($row)) continue;
+            if ($this->isCsvCommentRow($row)) continue;
+            if (trim((string) ($row[0] ?? '')) === '') continue;
+            if ($requiredHeaders) {
+                $normalized = $this->normalizeCsvHeader($row);
+                if (count(array_intersect($requiredHeaders, $normalized)) === 0) continue;
+            }
+            return $row;
+        }
+        return false;
     }
 
     protected function combineCsvRow(array $header, array $data, int $row, array &$errors): ?array

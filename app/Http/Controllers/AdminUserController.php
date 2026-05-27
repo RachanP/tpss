@@ -419,13 +419,14 @@ class AdminUserController extends Controller
         $file   = $request->file('csv_file');
         $handle = $this->openCsvHandle($file);
 
-        $header = fgetcsv($handle);
+        $requiredHeaders = ['username', 'email', 'name', 'password', 'roles', 'primary_role'];
+        $header = $this->readCsvHeader($handle, $requiredHeaders);
         if (!$header) {
             fclose($handle);
             return back()->with('error', 'ไฟล์ CSV ว่างเปล่า');
         }
         $header = $this->normalizeCsvHeader($header);
-        $missing = $this->missingCsvHeaders($header, ['username', 'email', 'name', 'password', 'roles', 'primary_role']);
+        $missing = $this->missingCsvHeaders($header, $requiredHeaders);
         if ($missing) {
             fclose($handle);
             return back()->with('error', 'หัวไฟล์ CSV ไม่ครบ: ' . implode(', ', $missing));
