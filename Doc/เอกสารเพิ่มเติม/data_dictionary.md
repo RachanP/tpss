@@ -1,130 +1,159 @@
 # TPSS Data Dictionary
 
-**Teaching & Practicum Scheduling System — คณะพยาบาลศาสตร์ มหาวิทยาลัยมหิดล**
+**Teaching & Practicum Scheduling System (TPSS) - คณะพยาบาลศาสตร์ มหาวิทยาลัยมหิดล**
 
-> อ้างอิง: `database/migrations/` (25 ไฟล์) + `mock/er_v1.jpg` | 8 พ.ค. 2569
+อัปเดตล่าสุด: 27 พฤษภาคม 2569  
+แหล่งอ้างอิงหลัก: `database/migrations/` จำนวน 35 ไฟล์, `app/Models/`, และ seeders เฉพาะ master data
+
+เอกสารนี้สรุปโครงสร้างฐานข้อมูลทั้งระบบ รวมตาราง domain ของ TPSS และตารางระบบของ Laravel เช่น `sessions`, `cache`, `cache_locks`
 
 ---
 
 ## สารบัญตาราง
 
-| # | ตาราง | ชื่อไทย | Module | Phase |
-|---|--------|---------|--------|-------|
-| 1 | `users` | ผู้ใช้งาน | M10 | 1 |
-| 2 | `user_roles` | บทบาทผู้ใช้ (pivot) | M10 | 1 |
-| 3 | `departments` | ภาควิชา | M1 | 1 |
-| 4 | `instructor_profiles` | ประวัติอาจารย์ | M1 | 1 |
-| 5 | `instructor_availability` | ความพร้อมสอน | M1 | 1 |
-| 6 | `curriculums` | หลักสูตร | M1 | 1 |
-| 7 | `academic_years` | ปีการศึกษา | M1 | 1 |
-| 8 | `location_types` | ประเภทสถานที่ | M1 | 1 |
-| 9 | `rooms` | ห้อง/สถานที่ฝึก | M1 | 1 |
-| 10 | `activity_types` | ประเภทกิจกรรม | M1 | 1 |
-| 11 | `courses` | รายวิชา | M2 | 1 |
-| 12 | `course_prerequisites` | วิชาบังคับก่อน (pivot) | M2 | 1 |
-| 13 | `course_offerings` | รายวิชาที่เปิดสอน | M2 | 1 |
-| 14 | `course_offering_instructors` | อาจารย์ประจำวิชา (pivot) | M2 | 1 |
-| 15 | `practicum_series` | ชุดฝึกปฏิบัติ | M2 | 1 |
-| 16 | `student_groups` | กลุ่มนักศึกษา | M1 | 1 |
-| 17 | `schedules` | ตารางสอน (กิจกรรม) | M3 | 1 |
-| 18 | `schedule_instructors` | ผู้สอนในกิจกรรม (pivot) | M3 | 1 |
-| 19 | `schedule_student_groups` | กลุ่มนักศึกษาในกิจกรรม (pivot) | M3 | 1 |
-| 20 | `notifications` | การแจ้งเตือน | M5/M7 | 1 |
-| 21 | `audit_logs` | บันทึกการเปลี่ยนแปลง | M12 | 2 |
-| 22 | `system_settings` | ตั้งค่าระบบ | M10 | 1 |
-| 23 | `course_offering_approvals` | ประวัติการอนุมัติ | M11 | 2 |
-| 24 | `schedule_conflicts` | ความขัดแย้งที่ตรวจพบ | M4/M5 | 2 |
-| 25 | `sessions` | Laravel Session | — | — |
+### Domain / Master Data Tables
+
+| # | ตาราง | ความหมาย |
+|---|---|---|
+| 1 | `users` | ผู้ใช้งานระบบ |
+| 2 | `departments` | ภาควิชา/หน่วยงาน |
+| 3 | `instructor_profiles` | โปรไฟล์และภาระงานอาจารย์ |
+| 4 | `instructor_availability` | ช่วงเวลาที่อาจารย์พร้อม/ไม่พร้อมสอน |
+| 5 | `curriculums` | หลักสูตร |
+| 6 | `academic_years` | ปีการศึกษาและภาคการศึกษา |
+| 7 | `location_types` | ประเภทสถานที่ |
+| 8 | `rooms` | ห้องเรียน/สถานที่ฝึก |
+| 9 | `activity_types` | ประเภทกิจกรรมการเรียนการสอน |
+| 10 | `courses` | รายวิชาแม่แบบ |
+| 11 | `course_roles` | บทบาทอาจารย์ในรายวิชา |
+| 12 | `course_offerings` | รายวิชาที่เปิดสอนในปี/ภาคการศึกษา |
+| 13 | `practicum_series` | ชุด/รอบฝึกปฏิบัติ |
+| 14 | `student_groups` | กลุ่มนักศึกษาของรายวิชาที่เปิดสอน |
+| 15 | `schedules` | รายการตารางสอน/ตารางฝึก |
+| 16 | `system_settings` | ค่าตั้งค่าระบบ |
+
+### Pivot / Relation Tables
+
+| # | ตาราง | ความหมาย |
+|---|---|---|
+| 17 | `user_roles` | บทบาทผู้ใช้หลายบทบาท |
+| 18 | `course_prerequisites` | วิชาบังคับก่อน |
+| 19 | `course_staff` | เจ้าหน้าที่ที่รับผิดชอบรายวิชาแม่แบบ |
+| 20 | `course_instructors` | อาจารย์ใน pool รายวิชาแม่แบบ |
+| 21 | `course_offering_instructors` | อาจารย์ใน pool ของรอบเปิดสอน |
+| 22 | `schedule_instructors` | อาจารย์ผู้สอนในรายการตาราง |
+| 23 | `schedule_student_groups` | กลุ่มนักศึกษาที่เข้าร่วมรายการตาราง |
+
+### Workflow / Audit / Conflict Tables
+
+| # | ตาราง | ความหมาย |
+|---|---|---|
+| 24 | `notifications` | การแจ้งเตือน |
+| 25 | `audit_logs` | ประวัติการเปลี่ยนแปลง |
+| 26 | `course_offering_approvals` | ประวัติการอนุมัติรายวิชาที่เปิดสอน |
+| 27 | `schedule_conflicts` | ผล conflict/warning แบบเดิมรายรายการ |
+| 28 | `schedule_conflict_runs` | รอบการประมวลผล conflict แบบ batch |
+| 29 | `schedule_conflict_results` | ผล conflict ของแต่ละรอบ |
+| 30 | `schedule_conflict_result_scopes` | สิทธิ์/ขอบเขตการมองเห็นผล conflict |
+
+### Laravel / System Tables
+
+| # | ตาราง | ความหมาย |
+|---|---|---|
+| 31 | `sessions` | session ของ Laravel |
+| 32 | `cache` | cache key/value ของ Laravel |
+| 33 | `cache_locks` | cache lock ของ Laravel |
 
 ---
 
-## Enum Values สรุป
+## Enum Values
 
-| ตาราง.คอลัมน์ | ค่าที่เป็นได้ | คำอธิบาย |
-|---------------|-------------|----------|
-| `user_roles.role` | `admin`, `staff`, `course_head`, `executive`, `instructor` | 5 บทบาท |
-| `rooms.status` | `active`, `inactive`, `maintenance` | สถานะห้อง |
+| ตาราง.คอลัมน์ | ค่าที่เป็นได้ | ความหมาย |
+|---|---|---|
+| `academic_years.phase` | `preparation`, `scheduling`, `published` | สถานะระดับปี/ภาคการศึกษา |
+| `curriculums.education_level` | `bachelor`, `master`, `doctorate` | ระดับการศึกษา |
+| `rooms.status` | `active`, `inactive`, `maintenance` | สถานะห้อง/สถานที่ |
 | `activity_types.category` | `lecture`, `practicum`, `thesis`, `other` | หมวดกิจกรรม |
 | `courses.course_type` | `theory`, `practicum`, `theory_practicum` | ประเภทวิชา |
-| `course_offerings.approval_status` | `draft`, `pending`, `published`, `rejected` | สถานะอนุมัติระดับวิชา |
-| `course_offering_instructors.role_in_course` | `coordinator`, `secretary`, `instructor`, `group_advisor`, `preceptor` | บทบาทในวิชา |
-| `schedules.status` | `draft`, `pending_approval`, `approved`, `revised` | สถานะกิจกรรม |
-| `notifications.type` | `conflict`, `warning_quota_exceeded`, `warning_missing_info`, `warning_capacity`, `warning_no_schedule`, `approval_update` | ประเภทแจ้งเตือน |
-| `course_offering_approvals.action` | `submit`, `approve`, `reject`, `revise` | การดำเนินการอนุมัติ |
+| `courses.status` | `active`, `inactive` | สถานะรายวิชา |
+| `course_offerings.approval_status` | `draft`, `pending`, `published`, `rejected` | สถานะอนุมัติระดับรอบเปิดสอน |
+| `schedules.status` | `draft`, `pending_approval`, `approved`, `revised` | สถานะรายการตาราง |
+| `user_roles.role` | `admin`, `staff`, `course_head`, `executive`, `instructor` | บทบาทผู้ใช้ |
+| `notifications.type` | `conflict`, `warning_quota_exceeded`, `warning_missing_info`, `warning_capacity`, `warning_no_schedule`, `approval_update` | ประเภทการแจ้งเตือน |
+| `course_offering_approvals.action` | `submit`, `approve`, `reject`, `revise` | การกระทำใน workflow อนุมัติ |
+| `course_offering_approvals.from_status` | `draft`, `pending`, `published`, `rejected` | สถานะเดิม |
+| `course_offering_approvals.to_status` | `draft`, `pending`, `published`, `rejected` | สถานะใหม่ |
+| `schedule_conflicts.conflict_type` | `instructor_overlap`, `room_overlap`, `group_overlap` | ประเภท conflict |
+| `schedule_conflicts.warning_type` | `quota_exceeded`, `capacity_exceeded`, `missing_info`, `no_schedule`, `outside_availability` | ประเภท warning |
 | `schedule_conflicts.severity` | `conflict`, `warning` | ระดับความรุนแรง |
-| `schedule_conflicts.conflict_type` | `instructor_overlap`, `room_overlap`, `group_overlap` | ประเภท conflict (บล็อกบันทึก) |
-| `schedule_conflicts.warning_type` | `quota_exceeded`, `capacity_exceeded`, `missing_info`, `no_schedule`, `outside_availability` | ประเภท warning (บันทึกได้) |
+| `schedule_conflict_runs.status` | `pending`, `processing`, `ready`, `failed`, `missing` | สถานะรอบประมวลผล conflict |
+| `schedule_conflict_runs.source` | `observer`, `pivot`, `manual`, `scheduled`, `bulk_import` | ที่มาของการสั่งตรวจ conflict |
+| `schedule_conflict_results.conflict_type` | `instructor_overlap`, `room_overlap`, `group_overlap` | ประเภท conflict ของผล batch |
+| `schedule_conflict_result_scopes.scope_type` | `course_head_user`, `admin_global`, `executive_academic_year` | ขอบเขตผู้เห็นผล conflict |
 
 ---
 
-## 1. `users` — ผู้ใช้งาน
+## 1. `users` - ผู้ใช้งานระบบ
 
-| คอลัมน์ | ประเภท | Constraint | คำอธิบาย |
-|---------|--------|-----------|----------|
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
 | `id` | BIGINT UNSIGNED | PK, AI | รหัสผู้ใช้ |
-| `username` | VARCHAR(100) | UNIQUE | รหัสเข้าระบบ เช่น staff_01 |
+| `prefix` | VARCHAR(50) | NULL | คำนำหน้า |
+| `username` | VARCHAR(100) | UNIQUE, NOT NULL | รหัสเข้าระบบ เช่น `staff_01` |
+| `employee_id` | VARCHAR(50) | UNIQUE, NULL | รหัสพนักงาน |
 | `name` | VARCHAR(255) | NOT NULL | ชื่อ-สกุล |
-| `email` | VARCHAR(255) | UNIQUE | อีเมล |
-| `password` | VARCHAR(255) | NOT NULL | รหัสผ่าน (hashed) |
-| `is_active` | BOOLEAN | DEFAULT true | สถานะใช้งาน |
+| `email` | VARCHAR(255) | UNIQUE, NOT NULL | อีเมล |
+| `password` | VARCHAR(255) | NOT NULL | รหัสผ่านแบบ hash |
+| `is_active` | BOOLEAN | DEFAULT true | สถานะเปิดใช้งาน |
 | `created_at` | TIMESTAMP | NULL | วันที่สร้าง |
 | `updated_at` | TIMESTAMP | NULL | วันที่แก้ไข |
-| `deleted_at` | TIMESTAMP | NULL | Soft Delete |
-
-> ไม่มีคอลัมน์ `role` — บทบาทอ้างอิงจาก `user_roles` เสมอ
+| `deleted_at` | TIMESTAMP | NULL | soft delete |
 
 ---
 
-## 2. `user_roles` — บทบาทผู้ใช้ (Pivot)
+## 2. `departments` - ภาควิชา/หน่วยงาน
 
-| คอลัมน์ | ประเภท | Constraint | คำอธิบาย |
-|---------|--------|-----------|----------|
-| `user_id` | BIGINT UNSIGNED | PK, FK→users CASCADE | รหัสผู้ใช้ |
-| `role` | ENUM | PK | `admin`/`staff`/`course_head`/`executive`/`instructor` |
-| `is_primary` | BOOLEAN | DEFAULT false | role เริ่มต้นเมื่อ login |
-| `created_at` | TIMESTAMP | NULL | วันที่กำหนดบทบาท |
-
----
-
-## 3. `departments` — ภาควิชา
-
-| คอลัมน์ | ประเภท | Constraint | คำอธิบาย |
-|---------|--------|-----------|----------|
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
 | `id` | BIGINT UNSIGNED | PK, AI | รหัสภาควิชา |
-| `name` | VARCHAR(255) | NOT NULL | ชื่อภาควิชา |
-| `head_user_id` | BIGINT UNSIGNED | FK→users, NULL | หัวหน้าภาควิชา |
-| `secretary_user_id` | BIGINT UNSIGNED | FK→users, NULL | เลขานุการภาควิชา |
+| `name` | VARCHAR(255) | UNIQUE, NOT NULL | ชื่อภาควิชา |
+| `head_user_id` | BIGINT UNSIGNED | FK -> `users.id`, NULL | หัวหน้าภาควิชา |
+| `secretary_user_id` | BIGINT UNSIGNED | FK -> `users.id`, NULL | เลขานุการภาควิชา |
 | `created_at` | TIMESTAMP | NULL | วันที่สร้าง |
 | `updated_at` | TIMESTAMP | NULL | วันที่แก้ไข |
 
 ---
 
-## 4. `instructor_profiles` — ประวัติอาจารย์
+## 3. `instructor_profiles` - โปรไฟล์และภาระงานอาจารย์
 
-| คอลัมน์ | ประเภท | Constraint | คำอธิบาย |
-|---------|--------|-----------|----------|
-| `id` | BIGINT UNSIGNED | PK, AI | รหัสประวัติ |
-| `user_id` | BIGINT UNSIGNED | UNIQUE, FK→users | อ้างอิงผู้ใช้ (1:1) |
-| `title` | VARCHAR(100) | NULL | ตำแหน่งวิชาการ เช่น อ., ผศ., รศ., ศ. |
-| `department_id` | BIGINT UNSIGNED | FK→departments, NULL | ภาควิชาที่สังกัด |
-| `teaching_pct` | INTEGER | DEFAULT 50 | % ภาระงานสอน (20-70%) |
-| `research_pct` | INTEGER | DEFAULT 20 | % ภาระงานวิจัย (20-70%) |
-| `service_pct` | INTEGER | DEFAULT 10 | % ภาระงานบริการวิชาการ (5-20%) |
-| `culture_pct` | INTEGER | DEFAULT 10 | % ภาระงานทำนุบำรุงศิลปะฯ (5-15%) |
-| `other_pct` | INTEGER | DEFAULT 10 | % ภาระงานอื่นๆ ที่ได้รับมอบหมาย (0-20%) |
-| `teaching_quota` | INTEGER | NULL | ชม.สอน/ปี (คำนวณจาก % สอน × ชม.ทำงานรวม) |
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
+| `id` | BIGINT UNSIGNED | PK, AI | รหัสโปรไฟล์ |
+| `user_id` | BIGINT UNSIGNED | FK -> `users.id`, UNIQUE | ผู้ใช้ที่เป็นอาจารย์ |
+| `title` | VARCHAR(100) | NULL | ตำแหน่ง/คำนำหน้าทางวิชาการ |
+| `department_id` | BIGINT UNSIGNED | FK -> `departments.id`, NULL | ภาควิชาที่สังกัด |
+| `employment_type` | VARCHAR(255) | NULL | ประเภทการจ้างงาน |
+| `hired_at` | DATE | NULL | วันที่บรรจุ |
+| `academic_degree` | VARCHAR(255) | NULL | วุฒิการศึกษา |
+| `is_english_passed` | BOOLEAN | DEFAULT false | ผ่านเกณฑ์ภาษาอังกฤษหรือไม่ |
+| `teaching_pct` | INT | DEFAULT 50 | สัดส่วนภาระงานสอน (%) |
+| `research_pct` | INT | DEFAULT 20 | สัดส่วนภาระงานวิจัย (%) |
+| `service_pct` | INT | DEFAULT 10 | สัดส่วนบริการวิชาการ (%) |
+| `culture_pct` | INT | DEFAULT 10 | สัดส่วนศิลปวัฒนธรรม/พัฒนาองค์กร (%) |
+| `other_pct` | INT | DEFAULT 10 | สัดส่วนงานอื่น (%) |
+| `teaching_quota` | INT | NULL | โควตาชั่วโมงสอนต่อปี |
 | `created_at` | TIMESTAMP | NULL | วันที่สร้าง |
 | `updated_at` | TIMESTAMP | NULL | วันที่แก้ไข |
 
 ---
 
-## 5. `instructor_availability` — ความพร้อมสอน
+## 4. `instructor_availability` - ช่วงเวลาพร้อมสอน
 
-| คอลัมน์ | ประเภท | Constraint | คำอธิบาย |
-|---------|--------|-----------|----------|
-| `id` | BIGINT UNSIGNED | PK, AI | รหัส |
-| `user_id` | BIGINT UNSIGNED | FK→users | อาจารย์ |
-| `day_of_week` | TINYINT | NOT NULL | 0=อา., 1=จ., ..., 6=ส. |
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
+| `id` | BIGINT UNSIGNED | PK, AI | รหัสรายการ |
+| `user_id` | BIGINT UNSIGNED | FK -> `users.id` | อาจารย์ |
+| `day_of_week` | TINYINT | NOT NULL | วันในสัปดาห์: 0=Sun, 1=Mon, ..., 6=Sat |
 | `start_time` | TIME | NOT NULL | เวลาเริ่ม |
 | `end_time` | TIME | NOT NULL | เวลาสิ้นสุด |
 | `is_available` | BOOLEAN | DEFAULT true | พร้อมสอนหรือไม่ |
@@ -133,369 +162,600 @@
 
 ---
 
-## 6. `curriculums` — หลักสูตร
+## 5. `curriculums` - หลักสูตร
 
-| คอลัมน์ | ประเภท | Constraint | คำอธิบาย |
-|---------|--------|-----------|----------|
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
 | `id` | BIGINT UNSIGNED | PK, AI | รหัสหลักสูตร |
-| `name` | VARCHAR(255) | NOT NULL | เช่น พยาบาลศาสตรบัณฑิต (ปรับปรุง 2565) |
-| `effective_year` | INTEGER | NOT NULL | ปีที่เริ่มใช้ (ค.ศ.) |
-| `is_active` | BOOLEAN | DEFAULT true | ยังใช้อยู่ |
+| `name` | VARCHAR(255) | NOT NULL | ชื่อหลักสูตร |
+| `effective_year` | INT | NOT NULL | ปีที่เริ่มใช้หลักสูตร |
+| `education_level` | ENUM | DEFAULT `bachelor` | ระดับการศึกษา |
+| `duration_years` | TINYINT UNSIGNED | DEFAULT 4 | จำนวนปีของหลักสูตร |
+| `uses_year_level` | BOOLEAN | DEFAULT true | ใช้ระบบชั้นปีหรือไม่ |
+| `total_credits_required` | SMALLINT UNSIGNED | NULL | หน่วยกิตขั้นต่ำ |
+| `is_active` | BOOLEAN | DEFAULT true, NULL | สถานะใช้งาน |
 | `created_at` | TIMESTAMP | NULL | วันที่สร้าง |
 | `updated_at` | TIMESTAMP | NULL | วันที่แก้ไข |
 
 ---
 
-## 7. `academic_years` — ปีการศึกษา
+## 6. `academic_years` - ปีการศึกษา
 
-| คอลัมน์ | ประเภท | Constraint | คำอธิบาย |
-|---------|--------|-----------|----------|
-| `id` | BIGINT UNSIGNED | PK, AI | รหัสปีการศึกษา |
-| `name` | VARCHAR(255) | NOT NULL | เช่น 2569 |
-| `semester` | INTEGER | NOT NULL | 1, 2, 3 |
-| `start_date` | DATE | NOT NULL | วันเริ่ม (ค.ศ.) |
-| `end_date` | DATE | NOT NULL | วันสิ้นสุด (ค.ศ.) |
-| `is_active` | BOOLEAN | NOT NULL | ปีปัจจุบัน |
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
+| `id` | BIGINT UNSIGNED | PK, AI | รหัสปี/ภาคการศึกษา |
+| `name` | VARCHAR(255) | NOT NULL | ปีการศึกษา เช่น 2569 |
+| `semester` | INT | NOT NULL | ภาคการศึกษา เช่น 1, 2, 3 |
+| `start_date` | DATE | NOT NULL | วันที่เริ่มภาคการศึกษา |
+| `end_date` | DATE | NOT NULL | วันที่สิ้นสุดภาคการศึกษา |
+| `is_active` | BOOLEAN | NOT NULL | สถานะใช้งาน |
+| `phase` | ENUM | DEFAULT `preparation` | สถานะระดับระบบ |
 | `created_at` | TIMESTAMP | NULL | วันที่สร้าง |
 | `updated_at` | TIMESTAMP | NULL | วันที่แก้ไข |
 
-> UNIQUE (`name`, `semester`) | DB=ค.ศ. UI=พ.ศ.(+543)
+Unique: `name + semester`
 
 ---
 
-## 8. `location_types` — ประเภทสถานที่
+## 7. `location_types` - ประเภทสถานที่
 
-| คอลัมน์ | ประเภท | Constraint | คำอธิบาย |
-|---------|--------|-----------|----------|
-| `id` | BIGINT UNSIGNED | PK, AI | รหัส |
-| `name` | VARCHAR(100) | NOT NULL | Lecture, Lab, Ward, Online, External |
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
+| `id` | BIGINT UNSIGNED | PK, AI | รหัสประเภทสถานที่ |
+| `name` | VARCHAR(100) | UNIQUE, NOT NULL | ชื่อประเภท เช่น Lecture, Lab, Ward, Online, External |
+| `requires_capacity` | BOOLEAN | DEFAULT true | ต้องระบุความจุหรือไม่ |
 | `created_at` | TIMESTAMP | NULL | วันที่สร้าง |
 | `updated_at` | TIMESTAMP | NULL | วันที่แก้ไข |
 
 ---
 
-## 9. `rooms` — ห้อง/สถานที่ฝึก
+## 8. `rooms` - ห้องเรียน/สถานที่ฝึก
 
-| คอลัมน์ | ประเภท | Constraint | คำอธิบาย |
-|---------|--------|-----------|----------|
-| `id` | BIGINT UNSIGNED | PK, AI | รหัสห้อง |
-| `room_code` | VARCHAR(255) | UNIQUE | รหัสห้อง |
-| `room_name` | VARCHAR(255) | NOT NULL | ชื่อห้อง |
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
+| `id` | BIGINT UNSIGNED | PK, AI | รหัสห้อง/สถานที่ |
+| `room_code` | VARCHAR(255) | UNIQUE, NOT NULL | รหัสห้อง/สถานที่ |
+| `room_name` | VARCHAR(255) | NOT NULL | ชื่อห้อง/สถานที่ |
 | `building` | VARCHAR(100) | NULL | อาคาร |
-| `capacity` | INTEGER | NOT NULL | ความจุ |
-| `location_type_id` | BIGINT UNSIGNED | FK→location_types | ประเภทสถานที่ |
-| `equipment_type` | JSON | NULL | อุปกรณ์ |
-| `address` | TEXT | NULL | ที่อยู่แหล่งฝึกภายนอก |
-| `status` | ENUM | NOT NULL | `active`/`inactive`/`maintenance` |
+| `capacity` | INT | NULL | ความจุ |
+| `location_type_id` | BIGINT UNSIGNED | FK -> `location_types.id` | ประเภทสถานที่ |
+| `equipment_type` | JSON | NULL | อุปกรณ์/คุณลักษณะของห้อง |
+| `address` | TEXT | NULL | ที่อยู่หรือรายละเอียดสถานที่ภายนอก |
+| `status` | ENUM | NOT NULL | สถานะห้อง |
 | `created_at` | TIMESTAMP | NULL | วันที่สร้าง |
 | `updated_at` | TIMESTAMP | NULL | วันที่แก้ไข |
 
 ---
 
-## 10. `activity_types` — ประเภทกิจกรรม
+## 9. `activity_types` - ประเภทกิจกรรม
 
-| คอลัมน์ | ประเภท | Constraint | คำอธิบาย |
-|---------|--------|-----------|----------|
-| `id` | BIGINT UNSIGNED | PK, AI | รหัส |
-| `name` | VARCHAR(100) | NOT NULL | Lecture, Lab, Round Ward ฯลฯ |
-| `color_code` | VARCHAR(10) | DEFAULT '#3498db' | สีแสดงในตาราง |
-| `is_practicum` | BOOLEAN | NULL | เป็นฝึกปฏิบัติหรือไม่ |
-| `category` | ENUM | NOT NULL | `lecture`/`practicum`/`thesis`/`other` |
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
+| `id` | BIGINT UNSIGNED | PK, AI | รหัสประเภทกิจกรรม |
+| `name` | VARCHAR(100) | NOT NULL | ชื่อประเภทกิจกรรม |
+| `color_code` | VARCHAR(10) | DEFAULT `#3498db`, NULL | สีที่ใช้แสดงบนตาราง |
+| `category` | ENUM | NOT NULL | หมวดกิจกรรม |
 | `created_at` | TIMESTAMP | NULL | วันที่สร้าง |
 | `updated_at` | TIMESTAMP | NULL | วันที่แก้ไข |
 
 ---
 
-## 11. `courses` — รายวิชา
+## 10. `courses` - รายวิชาแม่แบบ
 
-| คอลัมน์ | ประเภท | Constraint | คำอธิบาย |
-|---------|--------|-----------|----------|
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
 | `id` | BIGINT UNSIGNED | PK, AI | รหัสรายวิชา |
-| `course_code` | VARCHAR(255) | NOT NULL | รหัสวิชา เช่น NSG101 |
-| `curriculum_id` | BIGINT UNSIGNED | FK→curriculums | หลักสูตรที่สังกัด |
-| `name_th` | VARCHAR(255) | NOT NULL | ชื่อวิชา (ไทย) |
-| `name_en` | VARCHAR(255) | NULL | ชื่อวิชา (อังกฤษ) |
-| `course_type` | ENUM | NOT NULL | `theory`/`practicum`/`theory_practicum` |
-| `requires_practicum_rotation` | BOOLEAN | NOT NULL | ต้องมี Rotation ฝึกหรือไม่ |
-| `credits` | INTEGER | NOT NULL | หน่วยกิต |
-| `lecture_hours` | INTEGER | NOT NULL | ชม.บรรยาย |
-| `lab_hours` | INTEGER | NOT NULL | ชม.ปฏิบัติการ |
-| `color_code` | VARCHAR(10) | NULL | สีแสดงในตาราง |
+| `course_code` | VARCHAR(255) | NOT NULL | รหัสวิชา |
+| `curriculum_id` | BIGINT UNSIGNED | FK -> `curriculums.id` | หลักสูตร |
+| `department_id` | BIGINT UNSIGNED | FK -> `departments.id`, NULL | ภาควิชาที่รับผิดชอบ |
+| `head_instructor_id` | BIGINT UNSIGNED | FK -> `users.id`, NULL | หัวหน้าวิชาแม่แบบ |
+| `name_th` | VARCHAR(255) | NOT NULL | ชื่อรายวิชาภาษาไทย |
+| `name_en` | VARCHAR(255) | NULL | ชื่อรายวิชาภาษาอังกฤษ |
+| `course_type` | ENUM | NULL | ประเภทวิชา |
+| `default_year_level` | INT | NULL | ชั้นปีตามแผน |
+| `default_semester` | INT | NULL | ภาคเรียนตามแผน |
+| `requires_practicum_rotation` | BOOLEAN | DEFAULT false | ต้องมี rotation ฝึกปฏิบัติหรือไม่ |
+| `is_required` | BOOLEAN | DEFAULT true | เป็นวิชาบังคับหรือไม่ |
+| `credits` | INT | NOT NULL | หน่วยกิต |
+| `lecture_hours` | INT | DEFAULT 0 | ชั่วโมงทฤษฎี |
+| `lab_hours` | INT | DEFAULT 0 | ชั่วโมง lab/ปฏิบัติ |
+| `self_study_hours` | INT | DEFAULT 0 | ชั่วโมงศึกษาด้วยตนเอง |
+| `capacity` | INT UNSIGNED | NULL | จำนวนนักศึกษาสูงสุดที่รับได้ |
+| `color_code` | VARCHAR(10) | NULL | สีแสดงผลรายวิชา |
+| `status` | ENUM | DEFAULT `active` | สถานะรายวิชา |
 | `created_at` | TIMESTAMP | NULL | วันที่สร้าง |
 | `updated_at` | TIMESTAMP | NULL | วันที่แก้ไข |
-| `deleted_at` | TIMESTAMP | NULL | Soft Delete |
+| `deleted_at` | TIMESTAMP | NULL | soft delete |
 
-> UNIQUE (`course_code`, `curriculum_id`)
-
----
-
-## 12. `course_prerequisites` — วิชาบังคับก่อน (Pivot)
-
-| คอลัมน์ | ประเภท | Constraint | คำอธิบาย |
-|---------|--------|-----------|----------|
-| `course_id` | BIGINT UNSIGNED | PK, FK→courses CASCADE | วิชา |
-| `prerequisite_course_id` | BIGINT UNSIGNED | PK, FK→courses CASCADE | วิชาบังคับก่อน |
+Unique: `course_code + curriculum_id`
 
 ---
 
-## 13. `course_offerings` — รายวิชาที่เปิดสอน (ต่อปีการศึกษา)
+## 11. `course_roles` - บทบาทอาจารย์ในรายวิชา
 
-| คอลัมน์ | ประเภท | Constraint | คำอธิบาย |
-|---------|--------|-----------|----------|
-| `id` | BIGINT UNSIGNED | PK, AI | รหัส |
-| `course_id` | BIGINT UNSIGNED | FK→courses | รายวิชา |
-| `academic_year_id` | BIGINT UNSIGNED | FK→academic_years | ปีการศึกษา |
-| `coordinator_id` | BIGINT UNSIGNED | FK→users | หัวหน้าวิชา |
-| `approval_status` | ENUM | NOT NULL | `draft`/`pending`/`published`/`rejected` |
-| `rejection_reason` | TEXT | NULL | เหตุผลตีกลับ |
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
+| `id` | BIGINT UNSIGNED | PK, AI | รหัสบทบาท |
+| `name_th` | VARCHAR(255) | NOT NULL | ชื่อบทบาทภาษาไทย |
+| `sort_order` | TINYINT UNSIGNED | DEFAULT 0 | ลำดับแสดงผล |
 | `created_at` | TIMESTAMP | NULL | วันที่สร้าง |
 | `updated_at` | TIMESTAMP | NULL | วันที่แก้ไข |
-| `deleted_at` | TIMESTAMP | NULL | Soft Delete |
-
-> `approval_status` = สถานะระดับ **รายวิชาต่อปี** (ส่งอนุมัติทั้งวิชา)
 
 ---
 
-## 14. `course_offering_instructors` — อาจารย์ประจำวิชา / Instructor Pool (Pivot)
+## 12. `course_offerings` - รายวิชาที่เปิดสอน
 
-| คอลัมน์ | ประเภท | Constraint | คำอธิบาย |
-|---------|--------|-----------|----------|
-| `course_offering_id` | BIGINT UNSIGNED | PK, FK→course_offerings CASCADE | รายวิชาที่เปิดสอน |
-| `user_id` | BIGINT UNSIGNED | PK, FK→users CASCADE | อาจารย์ |
-| `role_in_course` | ENUM | NULL | `coordinator`/`secretary`/`instructor`/`group_advisor`/`preceptor` |
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
+| `id` | BIGINT UNSIGNED | PK, AI | รหัสรอบเปิดสอน |
+| `course_id` | BIGINT UNSIGNED | FK -> `courses.id` | รายวิชาแม่แบบ |
+| `academic_year_id` | BIGINT UNSIGNED | FK -> `academic_years.id` | ปี/ภาคการศึกษา |
+| `coordinator_id` | BIGINT UNSIGNED | FK -> `users.id` | หัวหน้าวิชาในรอบเปิดสอน |
+| `approval_status` | ENUM | NOT NULL | สถานะอนุมัติ |
+| `rejection_reason` | TEXT | NULL | เหตุผลการตีกลับ/ไม่อนุมัติ |
+| `total_student_count` | INT UNSIGNED | NULL | จำนวนนักศึกษารวม |
+| `planned_lecture_hours` | INT UNSIGNED | NULL | ชั่วโมงทฤษฎีที่วางแผน |
+| `planned_lab_hours` | INT UNSIGNED | NULL | ชั่วโมง lab ที่วางแผน |
+| `planned_practicum_hours` | INT UNSIGNED | NULL | ชั่วโมงฝึกปฏิบัติที่วางแผน |
+| `teaching_weeks` | TINYINT UNSIGNED | NULL | จำนวนสัปดาห์ที่สอน |
+| `requires_practicum_rotation` | BOOLEAN | DEFAULT false | รอบเปิดสอนนี้ต้องจัด rotation หรือไม่ |
+| `practicum_note` | TEXT | NULL | หมายเหตุเมื่อ override จาก master data |
+| `created_at` | TIMESTAMP | NULL | วันที่สร้าง |
+| `updated_at` | TIMESTAMP | NULL | วันที่แก้ไข |
+| `deleted_at` | TIMESTAMP | NULL | soft delete |
 
-> Instructor Pool — หัวหน้าวิชาเพิ่มรายชื่ออาจารย์จาก HR เข้ามาในรายวิชา ไม่ผูกติดกลุ่มนักศึกษา
+Index: `academic_year_id + coordinator_id`
 
 ---
 
-## 15. `practicum_series` — ชุดฝึกปฏิบัติ
+## 13. `practicum_series` - ชุด/รอบฝึกปฏิบัติ
 
-| คอลัมน์ | ประเภท | Constraint | คำอธิบาย |
-|---------|--------|-----------|----------|
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
 | `id` | BIGINT UNSIGNED | PK, AI | รหัสชุดฝึก |
-| `course_offering_id` | BIGINT UNSIGNED | FK→course_offerings | รายวิชาที่เปิดสอน |
-| `name` | VARCHAR(255) | NOT NULL | ชื่อชุดฝึก |
-| `start_date` | DATE | NOT NULL | วันเริ่ม (ค.ศ.) |
-| `end_date` | DATE | NOT NULL | วันสิ้นสุด (ค.ศ.) |
+| `course_offering_id` | BIGINT UNSIGNED | FK -> `course_offerings.id` | รายวิชาที่เปิดสอน |
+| `name` | VARCHAR(255) | NOT NULL | ชื่อชุด/รอบฝึก |
+| `start_date` | DATE | NOT NULL | วันที่เริ่ม |
+| `end_date` | DATE | NOT NULL | วันที่สิ้นสุด |
 | `created_at` | TIMESTAMP | NULL | วันที่สร้าง |
 | `updated_at` | TIMESTAMP | NULL | วันที่แก้ไข |
 
 ---
 
-## 16. `student_groups` — กลุ่มนักศึกษา
+## 14. `student_groups` - กลุ่มนักศึกษา
 
-| คอลัมน์ | ประเภท | Constraint | คำอธิบาย |
-|---------|--------|-----------|----------|
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
 | `id` | BIGINT UNSIGNED | PK, AI | รหัสกลุ่ม |
-| `group_code` | VARCHAR(255) | NOT NULL | รหัสกลุ่ม เช่น A1, B3 |
-| `curriculum_id` | BIGINT UNSIGNED | FK→curriculums | หลักสูตร |
-| `academic_year_id` | BIGINT UNSIGNED | FK→academic_years | ปีการศึกษา |
-| `student_count` | INTEGER | NOT NULL | จำนวนนักศึกษา |
-| `color_code` | VARCHAR(10) | NULL | สีแสดงในตาราง |
+| `course_offering_id` | BIGINT UNSIGNED | FK -> `course_offerings.id`, RESTRICT DELETE | รายวิชาที่เปิดสอน |
+| `group_code` | VARCHAR(255) | NOT NULL | รหัสกลุ่ม เช่น A1, B2 |
+| `student_count` | INT | NOT NULL | จำนวนนักศึกษาในกลุ่ม |
+| `color_code` | VARCHAR(10) | NULL | สีแสดงผลกลุ่ม |
 | `created_at` | TIMESTAMP | NULL | วันที่สร้าง |
 | `updated_at` | TIMESTAMP | NULL | วันที่แก้ไข |
 
+Unique: `course_offering_id + group_code`
+
 ---
 
-## 17. `schedules` — ตารางสอน (กิจกรรมแต่ละ slot)
+## 15. `schedules` - รายการตารางสอน/ตารางฝึก
 
-| คอลัมน์ | ประเภท | Constraint | คำอธิบาย |
-|---------|--------|-----------|----------|
-| `id` | BIGINT UNSIGNED | PK, AI | รหัสกิจกรรม |
-| `course_offering_id` | BIGINT UNSIGNED | FK→course_offerings | รายวิชาที่เปิดสอน |
-| `activity_type_id` | BIGINT UNSIGNED | FK→activity_types | ประเภทกิจกรรม |
-| `room_id` | BIGINT UNSIGNED | FK→rooms, NULL | ห้อง/สถานที่ |
-| `practicum_series_id` | BIGINT UNSIGNED | FK→practicum_series, NULL | ชุดฝึก (ถ้าเป็นฝึก) |
-| `teaching_date` | DATE | NOT NULL | วันที่สอน (ค.ศ.) |
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
+| `id` | BIGINT UNSIGNED | PK, AI | รหัสรายการตาราง |
+| `course_offering_id` | BIGINT UNSIGNED | FK -> `course_offerings.id` | รายวิชาที่เปิดสอน |
+| `activity_type_id` | BIGINT UNSIGNED | FK -> `activity_types.id` | ประเภทกิจกรรม |
+| `room_id` | BIGINT UNSIGNED | FK -> `rooms.id`, NULL | ห้อง/สถานที่ |
+| `practicum_series_id` | BIGINT UNSIGNED | FK -> `practicum_series.id`, NULL | ชุด/รอบฝึกปฏิบัติ |
+| `start_date` | DATE | NULL | วันที่เริ่ม block schedule |
+| `end_date` | DATE | NULL | วันที่สิ้นสุด block schedule |
+| `teaching_date` | DATE | NULL หลัง migration 2026-05-20 | วันที่สอนแบบวันเดียว legacy/compatibility |
 | `start_time` | TIME | NOT NULL | เวลาเริ่ม |
 | `end_time` | TIME | NOT NULL | เวลาสิ้นสุด |
-| `topic` | VARCHAR(255) | NULL | หัวข้อ/เนื้อหา |
-| `capacity_required` | INT UNSIGNED | NULL | จำนวนนักศึกษาที่รองรับ — ใช้ตรวจ `warning_capacity` |
-| `sub_group_label` | VARCHAR(20) | NULL | ป้ายกลุ่มย่อย เช่น a, b, 1, 2 → A1a, A1b |
-| `status` | ENUM | NOT NULL | `draft`/`pending_approval`/`approved`/`revised` |
+| `topic` | VARCHAR(255) | NULL | หัวข้อ/กิจกรรม |
+| `capacity_required` | INT UNSIGNED | NULL | จำนวนผู้เรียนที่ต้องรองรับ |
+| `sub_group_label` | VARCHAR(20) | NULL | ป้ายกลุ่มย่อย เช่น a, b, 1, 2 |
+| `status` | ENUM | NOT NULL | สถานะรายการตาราง |
 | `remark` | TEXT | NULL | หมายเหตุ |
 | `created_at` | TIMESTAMP | NULL | วันที่สร้าง |
 | `updated_at` | TIMESTAMP | NULL | วันที่แก้ไข |
 
-> INDEX (`teaching_date`, `course_offering_id`) | `status` = สถานะระดับ **slot** (แต่ละกิจกรรม)
+Indexes: `teaching_date + course_offering_id`, `course_offering_id + start_date + end_date`, `course_offering_id`, `room_id + start_date + end_date`
 
 ---
 
-## 18. `schedule_instructors` — ผู้สอนในกิจกรรม (Pivot)
+## 16. `system_settings` - ค่าตั้งค่าระบบ
 
-| คอลัมน์ | ประเภท | Constraint | คำอธิบาย |
-|---------|--------|-----------|----------|
-| `schedule_id` | BIGINT UNSIGNED | PK, FK→schedules CASCADE | กิจกรรม |
-| `user_id` | BIGINT UNSIGNED | PK, FK→users CASCADE | อาจารย์ผู้สอน |
-| `is_lead` | BOOLEAN | NULL | ผู้สอนหลักในคาบนั้น |
-
-> INDEX (`schedule_id`, `is_lead`) | รองรับ Team Supervision (หลายอาจารย์ต่อ 1 กิจกรรม)
-
----
-
-## 19. `schedule_student_groups` — กลุ่มนักศึกษาในกิจกรรม (Pivot)
-
-| คอลัมน์ | ประเภท | Constraint | คำอธิบาย |
-|---------|--------|-----------|----------|
-| `schedule_id` | BIGINT UNSIGNED | PK, FK→schedules CASCADE | กิจกรรม |
-| `student_group_id` | BIGINT UNSIGNED | PK, FK→student_groups CASCADE | กลุ่มนักศึกษา |
-
----
-
-## 20. `notifications` — การแจ้งเตือน
-
-| คอลัมน์ | ประเภท | Constraint | คำอธิบาย |
-|---------|--------|-----------|----------|
-| `id` | BIGINT UNSIGNED | PK, AI | รหัส |
-| `user_id` | BIGINT UNSIGNED | FK→users | ผู้รับแจ้งเตือน |
-| `schedule_id` | BIGINT UNSIGNED | FK→schedules, NULL | กิจกรรมที่เกี่ยวข้อง |
-| `course_offering_id` | BIGINT UNSIGNED | FK→course_offerings, NULL | รายวิชา (สำหรับ `approval_update`) |
-| `type` | ENUM | NOT NULL | `conflict`/`warning_quota_exceeded`/`warning_missing_info`/`warning_capacity`/`warning_no_schedule`/`approval_update` |
-| `message` | VARCHAR(255) | NOT NULL | ข้อความแจ้งเตือน |
-| `is_read` | BOOLEAN | NOT NULL | อ่านแล้วหรือไม่ |
-| `created_at` | TIMESTAMP | NULL | วันที่สร้าง |
-
----
-
-## 21. `audit_logs` — บันทึกการเปลี่ยนแปลง (Phase 2 — M12)
-
-| คอลัมน์ | ประเภท | Constraint | คำอธิบาย |
-|---------|--------|-----------|----------|
-| `id` | BIGINT UNSIGNED | PK, AI | รหัส |
-| `user_id` | BIGINT UNSIGNED | FK→users | ผู้ดำเนินการ |
-| `action` | VARCHAR(255) | NOT NULL | การกระทำ เช่น create, update, delete |
-| `table_affected` | VARCHAR(255) | NOT NULL | ตารางที่ถูกเปลี่ยน |
-| `record_id` | BIGINT UNSIGNED | NOT NULL | รหัสแถวที่ถูกเปลี่ยน |
-| `old_values` | JSON | NULL | ค่าเดิม |
-| `new_values` | JSON | NULL | ค่าใหม่ |
-| `created_at` | TIMESTAMP | DEFAULT CURRENT | วันที่บันทึก |
-
----
-
-## 22. `system_settings` — ตั้งค่าระบบ
-
-| คอลัมน์ | ประเภท | Constraint | คำอธิบาย |
-|---------|--------|-----------|----------|
-| `id` | BIGINT UNSIGNED | PK, AI | รหัส |
-| `setting_key` | VARCHAR(100) | UNIQUE | เช่น `current_academic_year_id`, `teaching_quota_hours` |
-| `setting_value` | TEXT | NULL | ค่าตั้งค่า (เช่น 1610) |
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
+| `id` | BIGINT UNSIGNED | PK, AI | รหัส setting |
+| `setting_key` | VARCHAR(100) | UNIQUE, NOT NULL | key เช่น `current_academic_year_id` |
+| `setting_value` | TEXT | NULL | ค่า setting |
 | `description` | VARCHAR(255) | NULL | คำอธิบาย |
 | `created_at` | TIMESTAMP | NULL | วันที่สร้าง |
 | `updated_at` | TIMESTAMP | NULL | วันที่แก้ไข |
 
 ---
 
-## 23. `course_offering_approvals` — ประวัติการอนุมัติ (Phase 2 — M11)
+## 17. `user_roles` - บทบาทผู้ใช้
 
-| คอลัมน์ | ประเภท | Constraint | คำอธิบาย |
-|---------|--------|-----------|----------|
-| `id` | BIGINT UNSIGNED | PK, AI | รหัส |
-| `course_offering_id` | BIGINT UNSIGNED | FK→course_offerings | รายวิชาที่เปิดสอน |
-| `actor_user_id` | BIGINT UNSIGNED | FK→users | ผู้ดำเนินการ (Course Head หรือ Executive) |
-| `action` | ENUM | NOT NULL | `submit`/`approve`/`reject`/`revise` |
-| `comment` | TEXT | NULL | เหตุผลตีกลับ หรือหมายเหตุประกอบ |
-| `from_status` | ENUM | NULL | `draft`/`pending`/`published`/`rejected` |
-| `to_status` | ENUM | NOT NULL | `draft`/`pending`/`published`/`rejected` |
-| `created_at` | TIMESTAMP | DEFAULT CURRENT | วันที่ดำเนินการ |
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
+| `user_id` | BIGINT UNSIGNED | PK composite, FK -> `users.id`, CASCADE DELETE | ผู้ใช้ |
+| `role` | ENUM | PK composite | บทบาท |
+| `is_primary` | BOOLEAN | DEFAULT false | บทบาทหลักเมื่อเข้าสู่ระบบ |
+| `created_at` | TIMESTAMP | NULL | วันที่สร้าง |
 
-> INDEX (`course_offering_id`, `created_at`) — ติดตามประวัติการอนุมัติตามลำดับเวลา
+Primary key: `user_id + role`
 
 ---
 
-## 24. `schedule_conflicts` — ความขัดแย้งที่ตรวจพบ (Phase 2 — M4/M5)
+## 18. `course_prerequisites` - วิชาบังคับก่อน
 
-| คอลัมน์ | ประเภท | Constraint | คำอธิบาย |
-|---------|--------|-----------|----------|
-| `id` | BIGINT UNSIGNED | PK, AI | รหัส |
-| `schedule_id` | BIGINT UNSIGNED | FK→schedules | schedule ที่ตรวจพบปัญหา |
-| `conflicting_schedule_id` | BIGINT UNSIGNED | FK→schedules, NULL | schedule ที่ชนกัน (NULL ถ้าเป็น warning) |
-| `conflict_type` | ENUM | NULL | `instructor_overlap`/`room_overlap`/`group_overlap` |
-| `warning_type` | ENUM | NULL | `quota_exceeded`/`capacity_exceeded`/`missing_info`/`no_schedule`/`outside_availability` |
-| `severity` | ENUM | NOT NULL | `conflict` (บล็อกบันทึก) / `warning` (บันทึกได้) |
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
+| `course_id` | BIGINT UNSIGNED | PK composite, FK -> `courses.id`, CASCADE DELETE | รายวิชาหลัก |
+| `prerequisite_course_id` | BIGINT UNSIGNED | PK composite, FK -> `courses.id`, CASCADE DELETE | รายวิชาบังคับก่อน |
+
+Primary key: `course_id + prerequisite_course_id`
+
+---
+
+## 19. `course_staff` - เจ้าหน้าที่ประจำรายวิชา
+
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
+| `course_id` | BIGINT UNSIGNED | PK composite, FK -> `courses.id`, CASCADE DELETE | รายวิชาแม่แบบ |
+| `user_id` | BIGINT UNSIGNED | PK composite, FK -> `users.id`, CASCADE DELETE | เจ้าหน้าที่ |
+
+Primary key: `course_id + user_id`
+
+---
+
+## 20. `course_instructors` - อาจารย์ใน pool รายวิชาแม่แบบ
+
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
+| `id` | BIGINT UNSIGNED | PK, AI | รหัสรายการ |
+| `course_id` | BIGINT UNSIGNED | FK -> `courses.id`, CASCADE DELETE | รายวิชาแม่แบบ |
+| `user_id` | BIGINT UNSIGNED | FK -> `users.id`, CASCADE DELETE | อาจารย์ |
+| `course_role_id` | BIGINT UNSIGNED | FK -> `course_roles.id`, NULL ON DELETE, NULL | บทบาทในรายวิชา |
+| `created_at` | TIMESTAMP | NULL | วันที่สร้าง |
+| `updated_at` | TIMESTAMP | NULL | วันที่แก้ไข |
+
+Unique: `course_id + user_id`
+
+---
+
+## 21. `course_offering_instructors` - อาจารย์ใน pool รอบเปิดสอน
+
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
+| `course_offering_id` | BIGINT UNSIGNED | PK composite, FK -> `course_offerings.id`, CASCADE DELETE | รายวิชาที่เปิดสอน |
+| `user_id` | BIGINT UNSIGNED | PK composite, FK -> `users.id`, CASCADE DELETE | อาจารย์ |
+| `role_in_course` | VARCHAR(100) | DEFAULT `instructor` | marker เช่น `coordinator`; บทบาทจริงอ้าง `course_role_id` |
+| `course_role_id` | BIGINT UNSIGNED | FK -> `course_roles.id`, NULL ON DELETE, NULL | บทบาทในรายวิชา |
+
+Primary key: `course_offering_id + user_id`
+
+---
+
+## 22. `schedule_instructors` - อาจารย์ผู้สอนในรายการตาราง
+
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
+| `schedule_id` | BIGINT UNSIGNED | PK composite, FK -> `schedules.id`, CASCADE DELETE | รายการตาราง |
+| `user_id` | BIGINT UNSIGNED | PK composite, FK -> `users.id`, CASCADE DELETE | อาจารย์ผู้สอน |
+| `is_lead` | BOOLEAN | NULL | เป็นผู้สอนหลักหรือไม่ |
+
+Primary key: `schedule_id + user_id`  
+Indexes: `schedule_id + is_lead`, `user_id + schedule_id`
+
+---
+
+## 23. `schedule_student_groups` - กลุ่มนักศึกษาในรายการตาราง
+
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
+| `schedule_id` | BIGINT UNSIGNED | PK composite, FK -> `schedules.id`, CASCADE DELETE | รายการตาราง |
+| `student_group_id` | BIGINT UNSIGNED | PK composite, FK -> `student_groups.id`, CASCADE DELETE | กลุ่มนักศึกษา |
+
+Primary key: `schedule_id + student_group_id`  
+Index: `student_group_id + schedule_id`
+
+---
+
+## 24. `notifications` - การแจ้งเตือน
+
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
+| `id` | BIGINT UNSIGNED | PK, AI | รหัสแจ้งเตือน |
+| `user_id` | BIGINT UNSIGNED | FK -> `users.id` | ผู้รับแจ้งเตือน |
+| `schedule_id` | BIGINT UNSIGNED | FK -> `schedules.id`, NULL | รายการตารางที่เกี่ยวข้อง |
+| `course_offering_id` | BIGINT UNSIGNED | FK -> `course_offerings.id`, NULL | รายวิชาที่เปิดสอนที่เกี่ยวข้อง |
+| `type` | ENUM | NOT NULL | ประเภทแจ้งเตือน |
+| `message` | VARCHAR(255) | NOT NULL | ข้อความ |
+| `is_read` | BOOLEAN | NOT NULL | อ่านแล้วหรือไม่ |
+| `created_at` | TIMESTAMP | NULL | วันที่สร้าง |
+
+---
+
+## 25. `audit_logs` - ประวัติการเปลี่ยนแปลง
+
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
+| `id` | BIGINT UNSIGNED | PK, AI | รหัส audit log |
+| `user_id` | BIGINT UNSIGNED | FK -> `users.id` | ผู้กระทำ |
+| `category` | VARCHAR(80) | NULL, INDEX | หมวดภาษาไทยสำหรับแสดงผล |
+| `action` | VARCHAR(255) | NOT NULL | การกระทำ |
+| `table_affected` | VARCHAR(255) | NOT NULL | ตารางที่ถูกเปลี่ยน |
+| `record_id` | BIGINT UNSIGNED | NOT NULL | id ของ record ที่เกี่ยวข้อง |
+| `old_values` | JSON | NULL | ค่าเดิม |
+| `new_values` | JSON | NULL | ค่าใหม่ |
+| `description` | VARCHAR(500) | NULL | คำอธิบายสำหรับแสดงผล |
+| `created_at` | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP, NULL, INDEX | วันที่เกิดเหตุการณ์ |
+
+---
+
+## 26. `course_offering_approvals` - ประวัติการอนุมัติ
+
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
+| `id` | BIGINT UNSIGNED | PK, AI | รหัสรายการอนุมัติ |
+| `course_offering_id` | BIGINT UNSIGNED | FK -> `course_offerings.id` | รายวิชาที่เปิดสอน |
+| `actor_user_id` | BIGINT UNSIGNED | FK -> `users.id` | ผู้ดำเนินการ |
+| `action` | ENUM | NOT NULL | การกระทำ |
+| `comment` | TEXT | NULL | เหตุผล/หมายเหตุ |
+| `from_status` | ENUM | NULL | สถานะเดิม |
+| `to_status` | ENUM | NOT NULL | สถานะใหม่ |
+| `created_at` | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP, NULL | วันที่ดำเนินการ |
+
+Index: `course_offering_id + created_at`
+
+---
+
+## 27. `schedule_conflicts` - ผล conflict/warning แบบเดิม
+
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
+| `id` | BIGINT UNSIGNED | PK, AI | รหัส conflict/warning |
+| `schedule_id` | BIGINT UNSIGNED | FK -> `schedules.id` | schedule ที่ตรวจพบปัญหา |
+| `conflicting_schedule_id` | BIGINT UNSIGNED | FK -> `schedules.id`, NULL | schedule ที่ชนกัน |
+| `conflict_type` | ENUM | NULL | ประเภท conflict |
+| `warning_type` | ENUM | NULL | ประเภท warning |
+| `severity` | ENUM | NOT NULL | ระดับปัญหา |
 | `message` | VARCHAR(255) | NOT NULL | ข้อความอธิบาย |
 | `is_resolved` | BOOLEAN | NOT NULL | แก้ไขแล้วหรือไม่ |
 | `resolved_at` | TIMESTAMP | NULL | วันที่แก้ไข |
-| `created_at` | TIMESTAMP | DEFAULT CURRENT | วันที่ตรวจพบ |
+| `created_at` | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP, NULL | วันที่สร้าง |
 
-> INDEX (`severity`, `is_resolved`) | INDEX (`schedule_id`, `is_resolved`)
-
----
-
-## 25. `sessions` — Laravel Session
-
-| คอลัมน์ | ประเภท | Constraint | คำอธิบาย |
-|---------|--------|-----------|----------|
-| `id` | VARCHAR | PK | Session ID |
-| `user_id` | BIGINT UNSIGNED | FK→users, NULL, INDEX | ผู้ใช้ |
-| `ip_address` | VARCHAR(45) | NULL | IP Address |
-| `user_agent` | TEXT | NULL | Browser Agent |
-| `payload` | LONGTEXT | NOT NULL | Session data (เก็บ `active_role`) |
-| `last_activity` | INTEGER | NOT NULL, INDEX | Timestamp กิจกรรมล่าสุด |
-
-> `active_role` เก็บใน session payload — Role Switcher เปลี่ยนค่านี้
+Indexes: `severity + is_resolved`, `schedule_id + is_resolved`
 
 ---
 
-## Foreign Key Relationships สรุป
+## 28. `schedule_conflict_runs` - รอบประมวลผล conflict
 
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
+| `id` | BIGINT UNSIGNED | PK, AI | รหัสรอบประมวลผล |
+| `academic_year_id` | BIGINT UNSIGNED | FK -> `academic_years.id`, CASCADE DELETE | ปี/ภาคการศึกษาที่ตรวจ |
+| `status` | ENUM | DEFAULT `pending` | สถานะรอบประมวลผล |
+| `generation` | INT UNSIGNED | NOT NULL | ลำดับ generation ของผลตรวจ |
+| `source` | ENUM | DEFAULT `manual` | ที่มาของการสั่งตรวจ |
+| `requested_at` | TIMESTAMP | NULL | เวลาที่ร้องขอ |
+| `started_at` | TIMESTAMP | NULL | เวลาที่เริ่มประมวลผล |
+| `finished_at` | TIMESTAMP | NULL | เวลาที่เสร็จ |
+| `failed_at` | TIMESTAMP | NULL | เวลาที่ล้มเหลว |
+| `error_message` | TEXT | NULL | ข้อความ error |
+| `result_count` | INT UNSIGNED | DEFAULT 0 | จำนวนผล conflict |
+| `metadata` | JSON | NULL | metadata เพิ่มเติม |
+| `created_at` | TIMESTAMP | NULL | วันที่สร้าง |
+| `updated_at` | TIMESTAMP | NULL | วันที่แก้ไข |
+
+Unique: `academic_year_id + generation`  
+Indexes: `academic_year_id + status`, `status`
+
+---
+
+## 29. `schedule_conflict_results` - ผล conflict แบบ batch
+
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
+| `id` | BIGINT UNSIGNED | PK, AI | รหัสผล conflict |
+| `run_id` | BIGINT UNSIGNED | FK -> `schedule_conflict_runs.id`, CASCADE DELETE | รอบประมวลผล |
+| `academic_year_id` | BIGINT UNSIGNED | FK -> `academic_years.id`, CASCADE DELETE | ปี/ภาคการศึกษา |
+| `schedule_id` | BIGINT UNSIGNED | NOT NULL | schedule ต้นทาง |
+| `conflicting_schedule_id` | BIGINT UNSIGNED | NOT NULL | schedule ที่ชนกัน |
+| `conflict_type` | ENUM | NOT NULL | ประเภท conflict |
+| `resource_type` | VARCHAR(50) | NULL | ประเภท resource เช่น instructor, room, group |
+| `resource_id` | BIGINT UNSIGNED | NULL | id ของ resource |
+| `message` | VARCHAR(255) | NOT NULL | ข้อความอธิบาย |
+| `pair_key` | VARCHAR(191) | NOT NULL | key สำหรับกันผลซ้ำของคู่ conflict |
+| `created_at` | TIMESTAMP | NULL | วันที่สร้าง |
+| `updated_at` | TIMESTAMP | NULL | วันที่แก้ไข |
+
+Unique: `run_id + pair_key + schedule_id`  
+Indexes: `run_id + schedule_id`, `academic_year_id + schedule_id`, `academic_year_id + conflict_type`, `resource_type + resource_id`
+
+---
+
+## 30. `schedule_conflict_result_scopes` - ขอบเขตการมองเห็นผล conflict
+
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
+| `id` | BIGINT UNSIGNED | PK, AI | รหัส scope |
+| `run_id` | BIGINT UNSIGNED | FK -> `schedule_conflict_runs.id`, CASCADE DELETE | รอบประมวลผล |
+| `result_id` | BIGINT UNSIGNED | FK -> `schedule_conflict_results.id`, CASCADE DELETE | ผล conflict |
+| `academic_year_id` | BIGINT UNSIGNED | FK -> `academic_years.id`, CASCADE DELETE | ปี/ภาคการศึกษา |
+| `scope_type` | ENUM | NOT NULL | ประเภทขอบเขตการมองเห็น |
+| `user_id` | BIGINT UNSIGNED | NULL | ผู้ใช้ที่เห็นผลนี้ |
+| `role` | VARCHAR(50) | NULL | role ที่เห็นผลนี้ |
+| `course_offering_id` | BIGINT UNSIGNED | NULL | รอบเปิดสอนที่เกี่ยวข้อง |
+| `created_at` | TIMESTAMP | NULL | วันที่สร้าง |
+| `updated_at` | TIMESTAMP | NULL | วันที่แก้ไข |
+
+Indexes: `scope_type + user_id + academic_year_id`, `scope_type + role + academic_year_id`, `course_offering_id + academic_year_id`, `run_id + scope_type`, `result_id`
+
+---
+
+## 31. `sessions` - Laravel Session
+
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
+| `id` | VARCHAR(255) | PK | session id |
+| `user_id` | BIGINT UNSIGNED | NULL, INDEX | ผู้ใช้ที่ผูกกับ session |
+| `ip_address` | VARCHAR(45) | NULL | IP address |
+| `user_agent` | TEXT | NULL | browser/user agent |
+| `payload` | LONGTEXT | NOT NULL | ข้อมูล session |
+| `last_activity` | INT | NOT NULL, INDEX | timestamp การใช้งานล่าสุด |
+
+---
+
+## 32. `cache` - Laravel Cache
+
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
+| `key` | VARCHAR(255) | PK | cache key |
+| `value` | MEDIUMTEXT | NOT NULL | ค่า cache |
+| `expiration` | BIGINT | NOT NULL, INDEX | เวลา expiration |
+
+---
+
+## 33. `cache_locks` - Laravel Cache Locks
+
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
+| `key` | VARCHAR(255) | PK | lock key |
+| `owner` | VARCHAR(255) | NOT NULL | owner token |
+| `expiration` | BIGINT | NOT NULL, INDEX | เวลา expiration |
+
+---
+
+## Foreign Key Relationships
+
+```text
+users
+  -> user_roles.user_id
+  -> instructor_profiles.user_id
+  -> instructor_availability.user_id
+  -> departments.head_user_id / secretary_user_id
+  -> courses.head_instructor_id
+  -> course_staff.user_id
+  -> course_instructors.user_id
+  -> course_offerings.coordinator_id
+  -> course_offering_instructors.user_id
+  -> schedule_instructors.user_id
+  -> notifications.user_id
+  -> audit_logs.user_id
+  -> course_offering_approvals.actor_user_id
+
+departments
+  -> instructor_profiles.department_id
+  -> courses.department_id
+
+curriculums
+  -> courses.curriculum_id
+
+academic_years
+  -> course_offerings.academic_year_id
+  -> schedule_conflict_runs.academic_year_id
+  -> schedule_conflict_results.academic_year_id
+  -> schedule_conflict_result_scopes.academic_year_id
+
+location_types
+  -> rooms.location_type_id
+
+rooms
+  -> schedules.room_id
+
+activity_types
+  -> schedules.activity_type_id
+
+courses
+  -> course_prerequisites.course_id / prerequisite_course_id
+  -> course_staff.course_id
+  -> course_instructors.course_id
+  -> course_offerings.course_id
+
+course_roles
+  -> course_instructors.course_role_id
+  -> course_offering_instructors.course_role_id
+
+course_offerings
+  -> course_offering_instructors.course_offering_id
+  -> practicum_series.course_offering_id
+  -> student_groups.course_offering_id
+  -> schedules.course_offering_id
+  -> notifications.course_offering_id
+  -> course_offering_approvals.course_offering_id
+
+practicum_series
+  -> schedules.practicum_series_id
+
+student_groups
+  -> schedule_student_groups.student_group_id
+
+schedules
+  -> schedule_instructors.schedule_id
+  -> schedule_student_groups.schedule_id
+  -> notifications.schedule_id
+  -> schedule_conflicts.schedule_id / conflicting_schedule_id
+  -> schedule_conflict_results.schedule_id / conflicting_schedule_id
+
+schedule_conflict_runs
+  -> schedule_conflict_results.run_id
+  -> schedule_conflict_result_scopes.run_id
+
+schedule_conflict_results
+  -> schedule_conflict_result_scopes.result_id
 ```
-departments ──┬── head_user_id ──────────► users
-              └── secretary_user_id ─────► users
 
-instructor_profiles ──┬── user_id ───────► users (1:1)
-                       └── department_id ─► departments
-
-instructor_availability ─── user_id ────► users
-
-curriculums ─────────────── courses.curriculum_id
-                └── student_groups.curriculum_id
-
-academic_years ──┬── course_offerings.academic_year_id
-                 └── student_groups.academic_year_id
-
-location_types ────────── rooms.location_type_id
-
-activity_types ────────── schedules.activity_type_id
-
-courses ──┬── course_offerings.course_id
-          ├── course_prerequisites.course_id
-          └── course_prerequisites.prerequisite_course_id
-
-course_offerings ──┬── course_offering_instructors.course_offering_id
-                   ├── practicum_series.course_offering_id
-                   ├── schedules.course_offering_id
-                   ├── notifications.course_offering_id
-                   └── course_offering_approvals.course_offering_id
-
-users ──┬── user_roles.user_id
-        ├── course_offerings.coordinator_id
-        ├── course_offering_instructors.user_id (Instructor Pool)
-        ├── schedule_instructors.user_id
-        ├── notifications.user_id
-        ├── audit_logs.user_id
-        ├── course_offering_approvals.actor_user_id
-        └── instructor_availability.user_id
-
-rooms ──────────── schedules.room_id
-
-practicum_series ──── schedules.practicum_series_id
-
-schedules ──┬── schedule_instructors.schedule_id
-            ├── schedule_student_groups.schedule_id
-            ├── notifications.schedule_id
-            └── schedule_conflicts.schedule_id / conflicting_schedule_id
-
-student_groups ──── schedule_student_groups.student_group_id
-```
+หมายเหตุ: `schedule_conflict_results.schedule_id`, `schedule_conflict_results.conflicting_schedule_id`, `schedule_conflict_result_scopes.user_id`, และ `schedule_conflict_result_scopes.course_offering_id` เป็น unsigned bigint สำหรับอ้างอิงเชิงตรรกะ แต่ migration ปัจจุบันไม่ได้ประกาศ foreign key constraint โดยตรง
 
 ---
 
-## ข้อตกลงข้อมูล (Data Conventions)
+## Indexes และ Unique Constraints สำคัญ
 
-1. **ปี/วันที่**: DB เก็บเป็น **ค.ศ. (Gregorian)** เสมอ — UI แสดง **พ.ศ.** (+543) ผ่าน helper `toBE()`
-2. **Soft Delete**: `users`, `courses`, `course_offerings` ใช้ `deleted_at` — ไม่ลบถาวร
-3. **Multi-role RBAC**: `users` ไม่มี `role` column — query จาก `user_roles` เสมอ, `is_primary=true` = role เริ่มต้น
-4. **Conflict vs Warning**: `conflict` = บล็อกบันทึก (แดง), `warning` = บันทึกได้แต่ต้องแก้ (เหลือง)
-5. **Instructor Pool**: อาจารย์ไม่ผูกติดกลุ่มนักศึกษา — เพิ่มเข้ามาในวิชาผ่าน `course_offering_instructors`, มอบหมายตอนสร้างกิจกรรมผ่าน `schedule_instructors`
-6. **Team Supervision**: 1 กิจกรรมมีได้หลายอาจารย์ — `schedule_instructors` เป็น M:N, `is_lead` ระบุผู้สอนหลัก
-7. **Phase 2 Tables**: `course_offering_approvals`, `schedule_conflicts` เตรียมไว้ล่วงหน้า — migration มีแล้ว แต่ยังไม่ implement logic
+| ตาราง | Constraint / Index | รายละเอียด |
+|---|---|---|
+| `users` | UNIQUE | `username`, `employee_id`, `email` |
+| `departments` | UNIQUE | `name` |
+| `instructor_profiles` | UNIQUE | `user_id` |
+| `academic_years` | UNIQUE | `name + semester` |
+| `location_types` | UNIQUE | `name` |
+| `rooms` | UNIQUE | `room_code` |
+| `courses` | UNIQUE | `course_code + curriculum_id` |
+| `course_offerings` | INDEX | `academic_year_id + coordinator_id` |
+| `student_groups` | UNIQUE | `course_offering_id + group_code` |
+| `schedules` | INDEX | `teaching_date + course_offering_id`, `course_offering_id + start_date + end_date`, `course_offering_id`, `room_id + start_date + end_date` |
+| `user_roles` | PK composite | `user_id + role` |
+| `course_prerequisites` | PK composite | `course_id + prerequisite_course_id` |
+| `course_staff` | PK composite | `course_id + user_id` |
+| `course_instructors` | UNIQUE | `course_id + user_id` |
+| `course_offering_instructors` | PK composite | `course_offering_id + user_id` |
+| `schedule_instructors` | PK + INDEX | `schedule_id + user_id`, `schedule_id + is_lead`, `user_id + schedule_id` |
+| `schedule_student_groups` | PK + INDEX | `schedule_id + student_group_id`, `student_group_id + schedule_id` |
+| `audit_logs` | INDEX | `category`, `created_at` |
+| `course_offering_approvals` | INDEX | `course_offering_id + created_at` |
+| `schedule_conflicts` | INDEX | `severity + is_resolved`, `schedule_id + is_resolved` |
+| `schedule_conflict_runs` | UNIQUE + INDEX | `academic_year_id + generation`, `academic_year_id + status`, `status` |
+| `schedule_conflict_results` | UNIQUE + INDEX | `run_id + pair_key + schedule_id`, `run_id + schedule_id`, `academic_year_id + schedule_id`, `academic_year_id + conflict_type`, `resource_type + resource_id` |
+| `schedule_conflict_result_scopes` | INDEX | scope/user/role/offering lookup indexes |
+| `sessions` | PK + INDEX | `id`, `user_id`, `last_activity` |
+| `cache` | PK + INDEX | `key`, `expiration` |
+| `cache_locks` | PK + INDEX | `key`, `expiration` |
+
+---
+
+## Data Conventions
+
+1. วันที่ในฐานข้อมูลเก็บเป็น ค.ศ. หรือ date/time มาตรฐานของ database ส่วน UI สามารถแสดงเป็น พ.ศ. ได้ผ่าน helper ของระบบ
+2. `users`, `courses`, และ `course_offerings` ใช้ soft delete ผ่าน `deleted_at`
+3. ระบบบทบาทผู้ใช้เป็น multi-role โดยเก็บที่ `user_roles` ไม่เก็บ role เดี่ยวใน `users`
+4. รายวิชาแม่แบบ (`courses`) แยกจากรอบเปิดสอน (`course_offerings`) เพื่อให้แต่ละปี/ภาคปรับจำนวนคน ชั่วโมง และ rotation ได้
+5. instructor pool มีสองระดับ: แม่แบบที่ `course_instructors` และรอบเปิดสอนที่ `course_offering_instructors`
+6. ตารางสอนรองรับทั้งแบบวันเดียวผ่าน `teaching_date` และแบบ block ผ่าน `start_date`/`end_date`; หลัง migration 2026-05-20 `teaching_date` เป็น nullable เพื่อรองรับ block schedule
+7. ตารางฝึกปฏิบัติใช้ `practicum_series` เป็นตัวแบ่งชุด/รอบ และผูกกับ `schedules.practicum_series_id`
+8. conflict มีสองแนวทางที่อยู่ร่วมกัน: `schedule_conflicts` สำหรับผลรายรายการแบบเดิม และ `schedule_conflict_runs/results/scopes` สำหรับการตรวจแบบ batch/async
+9. `notifications` ผูกได้ทั้งระดับ `schedule_id` และ `course_offering_id` เพื่อรองรับทั้ง conflict/warning และ approval update
+10. ตาราง Laravel/system (`sessions`, `cache`, `cache_locks`) เป็น infrastructure ไม่ใช่ business data แต่รวมในเอกสารเพื่อให้ dictionary ครบทั้ง database
