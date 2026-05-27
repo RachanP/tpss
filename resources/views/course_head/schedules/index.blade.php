@@ -2185,6 +2185,39 @@
         [data-testid="schedule-month-calendar"] .month-activity .badge {
             display: none;
         }
+        [data-testid="schedule-month-calendar"] .month-activity:hover,
+        [data-testid="schedule-month-calendar"] .month-activity:focus-visible,
+        [data-testid="schedule-month-calendar-co"] .month-activity:hover,
+        [data-testid="schedule-month-calendar-co"] .month-activity:focus-visible {
+            box-shadow: 0 8px 18px oklch(0% 0 0 / 0.12);
+            position: relative;
+            z-index: 4;
+        }
+        [data-testid="schedule-month-calendar"] .month-activity:hover .month-activity-title,
+        [data-testid="schedule-month-calendar"] .month-activity:focus-visible .month-activity-title,
+        [data-testid="schedule-month-calendar-co"] .month-activity:hover .month-activity-title,
+        [data-testid="schedule-month-calendar-co"] .month-activity:focus-visible .month-activity-title {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            white-space: normal;
+        }
+        [data-testid="schedule-month-calendar"] .month-activity:hover .month-activity-meta,
+        [data-testid="schedule-month-calendar"] .month-activity:focus-visible .month-activity-meta {
+            display: block;
+        }
+        [data-testid="schedule-month-calendar"] .month-activity:hover .activity-tag,
+        [data-testid="schedule-month-calendar"] .month-activity:focus-visible .activity-tag,
+        [data-testid="schedule-month-calendar"] .month-activity:hover .month-group-summary,
+        [data-testid="schedule-month-calendar"] .month-activity:focus-visible .month-group-summary,
+        [data-testid="schedule-month-calendar"] .month-activity:hover .badge,
+        [data-testid="schedule-month-calendar"] .month-activity:focus-visible .badge,
+        [data-testid="schedule-month-calendar-co"] .month-activity:hover .activity-tag,
+        [data-testid="schedule-month-calendar-co"] .month-activity:focus-visible .activity-tag,
+        [data-testid="schedule-month-calendar-co"] .month-activity:hover .month-group-summary,
+        [data-testid="schedule-month-calendar-co"] .month-activity:focus-visible .month-group-summary {
+            display: inline-flex;
+        }
         .schedule-modal-backdrop {
             position: fixed;
             inset: 0;
