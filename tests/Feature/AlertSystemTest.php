@@ -169,6 +169,112 @@ class AlertSystemTest extends TestCase
         $this->assertContains('pa_violations', $keys);
     }
 
+    public function test_pa_violation_critical_links_to_admin_users(): void
+    {
+        $this->seedMinimalCriticals();
+        SystemSetting::set('pa_criteria_config', json_encode($this->defaultPaCriteria()));
+        $this->makeInstructor(['teaching_pct' => 90, 'research_pct' => 5, 'service_pct' => 2, 'culture_pct' => 2, 'other_pct' => 1]);
+
+        $critical = collect(AlertController::getCriticals())->firstWhere('key', 'pa_violations');
+
+        $this->assertSame(route('admin.users'), $critical['link']);
+        $this->assertSame('ดูรายละเอียด', $critical['linkTxt']);
+    }
+
+    public function test_alerts_page_pa_violation_edit_link_targets_instructor_modal_deep_link(): void
+    {
+        $admin = $this->makeUser('admin');
+        $this->seedMinimalCriticals();
+        SystemSetting::set('pa_criteria_config', json_encode($this->defaultPaCriteria()));
+        $instructor = $this->makeInstructor(['teaching_pct' => 90, 'research_pct' => 5, 'service_pct' => 2, 'culture_pct' => 2, 'other_pct' => 1]);
+
+        $response = $this->actingAs($admin)
+            ->withSession(['active_role' => 'admin'])
+            ->get(route('admin.alerts'));
+
+        $response->assertStatus(200);
+        $response->assertSee(route('admin.master_data', [
+            'tab' => 'instructors',
+            'edit_instructor' => $instructor->id,
+        ]));
+    }
+
+    public function test_alerts_page_warning_detail_links_target_record_deep_links(): void
+    {
+        $admin = $this->makeUser('admin');
+        $this->seedMinimalCriticals();
+
+        $department = Department::firstOrFail();
+        $locationType = LocationType::firstOrFail();
+        $room = Room::create([
+            'location_type_id' => $locationType->id,
+            'room_code' => 'WARN-01',
+            'room_name' => '',
+            'capacity' => 0,
+            'status' => 'active',
+        ]);
+        $course = Course::where('course_code', 'CRT 101')->firstOrFail();
+
+        $response = $this->actingAs($admin)
+            ->withSession(['active_role' => 'admin'])
+            ->get(route('admin.alerts'));
+
+        $response->assertStatus(200);
+        $response->assertSee(route('admin.master_data', [
+            'tab' => 'departments',
+            'edit_department' => $department->id,
+        ]));
+        $response->assertSee(route('admin.master_data', [
+            'tab' => 'location_types',
+            'edit_room' => $room->id,
+        ]));
+        $response->assertSee(route('admin.master_data', [
+            'tab' => 'courses',
+            'edit_course' => $course->id,
+        ]));
+    }
+
+    public function test_active_courses_missing_head_critical_has_detail_anchor_and_edit_deep_link(): void
+    {
+        $admin = $this->makeUser('admin');
+        $this->seedMinimalCriticals();
+        $curriculum = Curriculum::firstOrFail();
+        $department = Department::firstOrFail();
+        $course = Course::create([
+            'course_code' => 'NOHEAD 101',
+            'curriculum_id' => $curriculum->id,
+            'department_id' => $department->id,
+            'name_th' => 'รายวิชาไม่มีหัวหน้า',
+            'name_en' => 'Missing Head Course',
+            'course_type' => 'theory',
+            'default_year_level' => 1,
+            'default_semester' => 1,
+            'credits' => 3,
+            'lecture_hours' => 3,
+            'lab_hours' => 0,
+            'self_study_hours' => 6,
+            'capacity' => 30,
+            'status' => 'active',
+            'requires_practicum_rotation' => false,
+            'head_instructor_id' => null,
+        ]);
+
+        $critical = collect(AlertController::getCriticals())->firstWhere('key', 'active_courses_missing_head');
+        $this->assertSame(route('admin.alerts') . '#active-courses-missing-head', $critical['link']);
+        $this->assertSame('ดูรายละเอียด', $critical['linkTxt']);
+
+        $response = $this->actingAs($admin)
+            ->withSession(['active_role' => 'admin'])
+            ->get(route('admin.alerts'));
+
+        $response->assertStatus(200);
+        $response->assertSee('active-courses-missing-head');
+        $response->assertSee(route('admin.master_data', [
+            'tab' => 'courses',
+            'edit_course' => $course->id,
+        ]));
+    }
+
     // ══ getSummary ════════════════════════════════════════════════════
 
     public function test_get_summary_counts_criticals_correctly(): void

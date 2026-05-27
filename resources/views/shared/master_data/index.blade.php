@@ -63,6 +63,40 @@
             curriculums: {{ Js::from($curriculums->pluck('id')->map(fn($id) => (string) $id)->values()) }},
             locationTypes: {{ Js::from($locationTypes->pluck('id')->map(fn($id) => (string) $id)->values()) }},
         },
+        instructorsData: {{ Js::from($instructors) }},
+        roomsData: {{ Js::from($rooms->map(fn($room) => $room->only('id','room_code','room_name','building','capacity','location_type_id','status','address','equipment_type'))->values()) }},
+        coursesData: {{ Js::from($courses->values()) }},
+        linkedInstructorId: new URLSearchParams(window.location.search).get('edit_instructor'),
+        linkedDepartmentId: new URLSearchParams(window.location.search).get('edit_department'),
+        linkedRoomId: new URLSearchParams(window.location.search).get('edit_room'),
+        linkedCourseId: new URLSearchParams(window.location.search).get('edit_course'),
+        cleanMasterDataUrl(tab = this.activeTab) {
+            history.replaceState(null, '', window.location.pathname + '?tab=' + encodeURIComponent(tab));
+        },
+        openLinkedRecordFromQuery() {
+            const link = [
+                { id: this.linkedInstructorId, tab: 'instructors', data: this.instructorsData, open: record => this.openEditInstructor(record), label: 'อาจารย์' },
+                { id: this.linkedDepartmentId, tab: 'departments', data: this.departmentsData, open: record => this.openEditDept(record), label: 'ภาควิชา' },
+                { id: this.linkedRoomId, tab: 'location_types', data: this.roomsData, open: record => this.openEditRoom(record), label: 'ห้อง/สถานที่' },
+                { id: this.linkedCourseId, tab: 'courses', data: this.coursesData, open: record => this.openEditCourse(record), label: 'รายวิชา' },
+            ].find(item => item.id);
+            if (!link) return;
+
+            this.activeTab = link.tab;
+            this.$nextTick(() => {
+                const record = link.data.find(item => String(item.id) === String(link.id));
+                if (record) {
+                    link.open(record);
+                } else if (typeof window.tpssToast === 'function') {
+                    window.tpssToast('ไม่พบข้อมูล' + link.label + 'ที่ต้องการแก้ไข', 'error');
+                }
+                this.linkedInstructorId = null;
+                this.linkedDepartmentId = null;
+                this.linkedRoomId = null;
+                this.linkedCourseId = null;
+                this.cleanMasterDataUrl(link.tab);
+            });
+        },
         filterStorageKey() {
             return 'tpss.masterData.filters.' + window.location.pathname;
         },
@@ -265,7 +299,7 @@
             this.showInstructorModal = true;
         },
         paCriteria: {{ Js::from($paCriteria) }},
-        departmentsData: {{ Js::from($departments->map(fn($d) => ['id' => $d->id, 'name' => $d->name, 'head_user_id' => $d->head_user_id, 'secretary_user_id' => $d->secretary_user_id, 'head_active' => $d->head?->is_active ?? true, 'secretary_active' => $d->secretary?->is_active ?? true, 'instructor_ids' => $d->instructorProfiles->pluck('user_id')->values()])) }},
+        departmentsData: {{ Js::from($departments->map(fn($d) => ['id' => $d->id, 'name' => $d->name, 'head_user_id' => $d->head_user_id, 'secretary_user_id' => $d->secretary_user_id, 'head_active' => $d->head?->is_active ?? true, 'secretary_active' => $d->secretary?->is_active ?? true, 'head' => $d->head ? ['formatted_name' => $d->head->formatted_name, 'name' => $d->head->name] : null, 'secretary' => $d->secretary ? ['formatted_name' => $d->secretary->formatted_name, 'name' => $d->secretary->name] : null, 'instructor_ids' => $d->instructorProfiles->pluck('user_id')->values()])) }},
         headSearch: '',
         secretarySearch: '',
         showHeadDropdown: false,
@@ -721,7 +755,7 @@
     x-init="
         if (!['departments', 'curriculums', 'courses', 'instructors', 'location_types', 'activity_types'].includes(activeTab)) {
             activeTab = 'instructors';
-            history.replaceState(null, '', '?tab=' + activeTab);
+            cleanMasterDataUrl(activeTab);
         }
         restoreFilters();
         sanitizeRestoredFilters();
@@ -777,7 +811,8 @@
             showCloneCurriculumModal = true;
         @endif
         registerFilterPersistence($watch);
-        $watch('activeTab', tab => history.replaceState(null, '', '?tab=' + tab))
+        $watch('activeTab', tab => cleanMasterDataUrl(tab));
+        openLinkedRecordFromQuery();
     ">
 
         <!-- Header -->
