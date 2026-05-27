@@ -33,14 +33,7 @@
             return null;
         }
 
-        $typeLabels = $items
-            ->pluck('type')
-            ->unique()
-            ->map(fn ($type) => $conflictFieldLabels[$type] ?? 'ตารางชน')
-            ->values()
-            ->implode(', ');
-
-        return $fieldLabel . 'มีข้อมูลซ้อนกับรายการอื่น ' . $items->count() . ' จุด' . ($typeLabels ? ' (' . $typeLabels . ')' : '');
+        return $fieldLabel . 'มีข้อมูลซ้อนกับรายการอื่น ' . $items->count() . ' จุด';
     };
     $selectedInstructorIds = collect(old('instructor_ids', []))->map(fn ($id) => (string) $id)->all();
     $selectedGroupIds = collect(old('student_group_ids', []))->map(fn ($id) => (string) $id)->all();
@@ -4550,9 +4543,6 @@
                                             :year-start="$scheduleDatePickerYearStart"
                                             :year-end="$scheduleDatePickerYearEnd"
                                             x-model="startDateDisplay" />
-                                        @if($dateTimeConflictNote)
-                                            <div class="modal-conflict-field" data-testid="schedule-edit-conflict-focus">{{ $dateTimeConflictNote }}</div>
-                                        @endif
                                     </div>
                                     <div class="{{ $dateTimeConflictNote ? 'modal-field-has-conflict' : '' }}">
                                         <label class="modal-label" for="edit_end_date_{{ $schedule->id }}">วันที่สิ้นสุด <span class="required-mark">*</span></label>
@@ -4640,6 +4630,9 @@
                                             </div>
                                             <span class="time-unit">น.</span>
                                         </div>
+                                        @if($dateTimeConflictNote)
+                                            <div class="modal-conflict-field" data-testid="schedule-edit-conflict-focus">{{ $dateTimeConflictNote }}</div>
+                                        @endif
                                     </div>
                                     <div>
                                         <label class="modal-label" for="edit_activity_type_id_{{ $schedule->id }}">ประเภทกิจกรรม <span class="required-mark">*</span></label>
