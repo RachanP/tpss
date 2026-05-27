@@ -273,6 +273,32 @@
             }
         }
     </style>
+    <script>
+        (() => {
+            const scrollKey = 'tpss-conflict-alert-scroll-y';
+            const savedScroll = sessionStorage.getItem(scrollKey);
+
+            if (savedScroll !== null) {
+                const targetY = Number.parseInt(savedScroll, 10) || 0;
+                const restoreScroll = () => window.scrollTo(0, targetY);
+
+                restoreScroll();
+                requestAnimationFrame(restoreScroll);
+                window.addEventListener('load', () => {
+                    restoreScroll();
+                    sessionStorage.removeItem(scrollKey);
+                }, { once: true });
+            }
+
+            window.addEventListener('DOMContentLoaded', () => {
+                document.querySelectorAll('[data-conflict-edit-link]').forEach((link) => {
+                    link.addEventListener('click', () => {
+                        sessionStorage.setItem(scrollKey, String(window.scrollY));
+                    });
+                });
+            });
+        })();
+    </script>
 
     <div class="conflict-page">
         <section class="conflict-hero">
@@ -385,7 +411,7 @@
                                     </div>
                                 </div>
                                 <div class="conflict-actions">
-                                    <a href="{{ $editUrl }}" class="btn btn-secondary" style="text-decoration:none;">ไปแก้ไข</a>
+                                    <a href="{{ $editUrl }}" class="btn btn-secondary" style="text-decoration:none;" data-conflict-edit-link>ไปแก้ไข</a>
                                 </div>
                             </article>
                         @endforeach

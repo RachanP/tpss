@@ -3269,7 +3269,13 @@
                 this.editModal = 'schedule-' + id;
             },
             closeCreate() { this.showCreate = false; },
-            closeEdit() { this.editModal = null; }
+            closeEdit() {
+                @if(request()->boolean('from_conflict'))
+                    window.location.href = @js(route('maker.schedule_conflicts.index'));
+                @else
+                    this.editModal = null;
+                @endif
+            }
         }"
         @keydown.escape.window="detailModal = null; showCreate = false; editModal = null"
     >

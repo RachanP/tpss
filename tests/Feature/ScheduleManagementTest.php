@@ -362,6 +362,8 @@ class ScheduleManagementTest extends TestCase
             ->assertOk()
             ->assertSee('data-testid="maker-conflict-total"', false)
             ->assertSee('data-testid="maker-conflict-item"', false)
+            ->assertSee('data-conflict-edit-link', false)
+            ->assertSee('tpss-conflict-alert-scroll-y', false)
             ->assertSee($offering->course->course_code)
             ->assertSee('Existing schedule')
             ->assertSee('edit_schedule_id=' . $schedule->id, false)
@@ -382,6 +384,7 @@ class ScheduleManagementTest extends TestCase
             ->assertOk()
             ->assertSee('data-testid="schedule-edit-conflict-focus"', false)
             ->assertSee('วันและเวลามีข้อมูลซ้อนกับรายการอื่น')
+            ->assertSee(route('maker.schedule_conflicts.index'), false)
             ->assertDontSee('พบข้อมูลซ้อนกับรายการอื่น แก้ไขช่องที่ไฮไลต์ก่อนส่งอนุมัติ')
             ->assertSee('data-schedule-id="' . $schedule->id . '"', false);
 
