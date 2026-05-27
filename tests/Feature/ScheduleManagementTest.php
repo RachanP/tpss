@@ -381,6 +381,8 @@ class ScheduleManagementTest extends TestCase
         ]))
             ->assertOk()
             ->assertSee('data-testid="schedule-edit-conflict-focus"', false)
+            ->assertSee('วันและเวลามีข้อมูลซ้อนกับรายการอื่น')
+            ->assertDontSee('พบข้อมูลซ้อนกับรายการอื่น แก้ไขช่องที่ไฮไลต์ก่อนส่งอนุมัติ')
             ->assertSee('data-schedule-id="' . $schedule->id . '"', false);
     }
 

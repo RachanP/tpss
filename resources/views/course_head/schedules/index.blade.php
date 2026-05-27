@@ -1811,33 +1811,21 @@
         .co-sched-row.schedule-conflict-focus td:first-child {
             box-shadow: inset 3px 0 0 var(--status-conflict), inset 0 1px 0 var(--status-conflict-border), inset 0 -1px 0 var(--status-conflict-border);
         }
-        .modal-conflict-summary {
-            margin: 0 0 12px;
-            padding: 10px 12px;
-            border: 1px solid var(--status-conflict-border);
-            border-radius: 8px;
-            background: var(--status-conflict-bg);
-            color: var(--status-conflict-fg);
-            font-size: 12px;
-            font-weight: 800;
-            line-height: 1.5;
-        }
         .modal-conflict-field {
             margin-top: 6px;
-            padding: 7px 9px;
-            border: 1px solid var(--status-conflict-border);
-            border-radius: 8px;
-            background: color-mix(in oklch, var(--status-conflict-bg) 68%, var(--surface));
             color: var(--status-conflict-fg);
-            font-size: 11.5px;
-            font-weight: 750;
+            font-size: 11px;
+            font-weight: 800;
             line-height: 1.45;
         }
         .modal-field-has-conflict .modal-control,
-        .modal-field-has-conflict .time-picker,
-        .modal-section.modal-field-has-conflict {
+        .modal-field-has-conflict .time-picker {
             border-color: var(--status-conflict-border) !important;
-            background: color-mix(in oklch, var(--status-conflict-bg) 54%, var(--surface)) !important;
+            box-shadow: 0 0 0 3px color-mix(in oklch, var(--status-conflict) 10%, transparent) !important;
+        }
+        .modal-section.modal-field-has-conflict .modal-choice:has(input:checked) {
+            border-color: var(--status-conflict-border);
+            box-shadow: 0 0 0 2px color-mix(in oklch, var(--status-conflict) 8%, transparent);
         }
         .grid-activity-foot {
             display: flex;
@@ -4538,12 +4526,6 @@
                             <input type="hidden" name="edit_schedule_id" value="{{ $schedule->id }}">
                             <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
                             <div class="modal-form-body">
-                                @if($showConflictHints)
-                                    <div class="modal-conflict-summary" data-testid="schedule-edit-conflict-focus">
-                                        พบข้อมูลซ้อนกับรายการอื่น แก้ไขช่องที่ไฮไลต์ก่อนส่งอนุมัติ
-                                    </div>
-                                @endif
-
                                 @if($editUsesOld && $errors->any())
                                     @php
                                         $alertMessages = $scheduleAlertMessages($errors);
@@ -4569,7 +4551,7 @@
                                             :year-end="$scheduleDatePickerYearEnd"
                                             x-model="startDateDisplay" />
                                         @if($dateTimeConflictNote)
-                                            <div class="modal-conflict-field">{{ $dateTimeConflictNote }}</div>
+                                            <div class="modal-conflict-field" data-testid="schedule-edit-conflict-focus">{{ $dateTimeConflictNote }}</div>
                                         @endif
                                     </div>
                                     <div class="{{ $dateTimeConflictNote ? 'modal-field-has-conflict' : '' }}">
