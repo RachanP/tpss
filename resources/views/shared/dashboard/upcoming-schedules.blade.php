@@ -11,8 +11,8 @@
             <div class="card-ttl">ตารางสอนถัดไป</div>
         </div>
     </div>
-    <div style="padding: 20px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 14px;">
-        <div>
+    <div class="upcoming-schedules-empty">
+        <div class="upcoming-schedules-empty-copy">
             <div style="font-size: 13px; font-weight: 600; color: var(--fg-2); margin-bottom: 2px;">ยังไม่มีตารางสอน</div>
             <div style="font-size: 11.5px; color: var(--fg-3);">เมื่อมีตารางสอนที่ใกล้ถึง ระบบจะแสดงให้ติดตามจากส่วนนี้</div>
         </div>
@@ -29,8 +29,24 @@
         flex-wrap: wrap;
     }
 
+    .upcoming-schedules-empty {
+        min-height: 220px;
+        padding: 24px;
+        border-top: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+    }
+
+    .upcoming-schedules-empty-copy {
+        max-width: 360px;
+        line-height: 1.55;
+    }
+
     @media (max-width: 540px) {
-        [data-testid="dashboard-upcoming-schedules"] > div:last-child {
+        .upcoming-schedules-empty {
+            min-height: 150px;
             padding: 16px !important;
         }
     }
