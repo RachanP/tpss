@@ -49,18 +49,27 @@ class NavigationBadgeService
                 'maker_conflict_count' => $this->courseHeadConflictCount($userId),
                 'maker_conflict_status' => 'ready',
                 'maker_conflict_pending' => false,
+                'maker_conflict_label' => null,
             ];
         }
 
         $academicYearId = $this->defaultAcademicYearIdForCourseHead($userId);
         $status = $this->conflictReadRepository->getStatusForUser($userId, $academicYearId);
-        $count = $this->conflictReadRepository->getCountForUser($userId, $academicYearId);
+
+        if ($academicYearId && $status['status'] === 'missing') {
+            app(ScheduleConflictInvalidationService::class)->markDirty($academicYearId, 'manual');
+        }
+
+        $count = $status['status'] === 'ready'
+            ? $this->conflictReadRepository->getCountForUser($userId, $academicYearId)
+            : null;
 
         return [
             'maker_conflict_count' => $count,
             'maker_conflict_status' => $status['status'],
             'maker_conflict_pending' => $status['status'] !== 'ready',
             'maker_conflict_academic_year_id' => $academicYearId,
+            'maker_conflict_label' => $this->courseHeadConflictLabel($status['status'], $count),
         ];
     }
 
@@ -80,10 +89,24 @@ class NavigationBadgeService
     private function emptyCourseHeadBadge(): array
     {
         return [
-            'maker_conflict_count' => 0,
+            'maker_conflict_count' => null,
             'maker_conflict_status' => 'missing',
             'maker_conflict_pending' => true,
+            'maker_conflict_label' => 'กำลังตรวจสอบ',
         ];
+    }
+
+    private function courseHeadConflictLabel(string $status, ?int $count): ?string
+    {
+        if ($status === 'ready') {
+            return $count && $count > 0 ? (string) $count : null;
+        }
+
+        if ($status === 'failed') {
+            return 'ตรวจสอบไม่สำเร็จ';
+        }
+
+        return 'กำลังตรวจสอบ';
     }
 
     private function defaultAcademicYearIdForCourseHead(int $userId): ?int

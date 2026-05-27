@@ -183,6 +183,7 @@
                 $makerConflictCount = $sidebarBadges['maker_conflict_count'] ?? 0;
                 $makerConflictStatus = $sidebarBadges['maker_conflict_status'] ?? 'ready';
                 $makerConflictPending = (bool) ($sidebarBadges['maker_conflict_pending'] ?? false);
+                $makerConflictLabel = $sidebarBadges['maker_conflict_label'] ?? null;
             @endphp
             <div class="sb-sec">เมนูหลัก</div>
             <!-- Maker Menus -->
@@ -217,7 +218,10 @@
                     </span>
                 @elseif($makerConflictPending)
                     <span class="nv-alert-badges">
-                        <span class="nv-bd nv-bd-red" title="Conflict results {{ $makerConflictStatus }}">!</span>
+                        <span
+                            class="nv-bd {{ $makerConflictStatus === 'failed' ? 'nv-bd-red' : 'nv-bd-warning' }}"
+                            title="{{ $makerConflictStatus === 'failed' ? 'ตรวจสอบรายการชนไม่สำเร็จ' : 'กำลังตรวจสอบรายการชน' }}"
+                        >{{ $makerConflictLabel ?: 'กำลังตรวจสอบ' }}</span>
                     </span>
                 @endif
             </a>

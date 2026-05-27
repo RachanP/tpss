@@ -6,6 +6,10 @@
         'room_overlap' => 'ห้อง/สถานที่ชน',
         'group_overlap' => 'กลุ่มนักศึกษาชน',
     ];
+    $conflictRunStatus = $conflictStatus['status'] ?? 'ready';
+    $conflictStatusLabel = $conflictRunStatus === 'failed'
+        ? 'ตรวจสอบรายการชนไม่สำเร็จ'
+        : 'กำลังตรวจสอบ';
 @endphp
 
 <x-app-layout title="การแจ้งเตือนการชน">
@@ -227,19 +231,19 @@
             </div>
         </section>
 
-        @if(($asyncConflictReads ?? false) && (($conflictStatus['status'] ?? 'ready') !== 'ready'))
+        @if(($asyncConflictReads ?? false) && $conflictRunStatus !== 'ready')
             <div class="conflict-status" data-testid="maker-conflict-status">
-                Conflict results {{ $conflictStatus['status'] ?? 'missing' }}. The latest computed result is not ready yet.
+                {{ $conflictStatusLabel }}
             </div>
         @endif
 
-        @if($conflictGroups->isEmpty() && (($conflictStatus['status'] ?? 'ready') === 'ready'))
+        @if($conflictGroups->isEmpty() && $conflictRunStatus === 'ready')
             <div class="conflict-empty" data-testid="maker-conflict-empty">
                 ยังไม่พบการชนในรายวิชาที่รับผิดชอบ
             </div>
         @elseif($conflictGroups->isEmpty())
             <div class="conflict-empty" data-testid="maker-conflict-pending">
-                Conflict results are not ready yet.
+                {{ $conflictStatusLabel }}
             </div>
         @else
             @foreach($conflictGroups as $group)

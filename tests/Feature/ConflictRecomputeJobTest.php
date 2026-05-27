@@ -139,6 +139,71 @@ class ConflictRecomputeJobTest extends TestCase
         $this->assertNull($badge['maker_conflict_count']);
         $this->assertSame('pending', $badge['maker_conflict_status']);
         $this->assertTrue($badge['maker_conflict_pending']);
+        $this->assertSame('กำลังตรวจสอบ', $badge['maker_conflict_label']);
+    }
+
+    public function test_async_sidebar_badge_starts_recompute_when_results_are_missing(): void
+    {
+        config(['conflicts.async_reads' => true]);
+        Cache::flush();
+        Queue::fake();
+        [$year, $head] = $this->makeReadyOffering();
+
+        $badge = app(NavigationBadgeService::class)->forRole('course_head', $head->id);
+
+        $this->assertNull($badge['maker_conflict_count']);
+        $this->assertSame('missing', $badge['maker_conflict_status']);
+        $this->assertTrue($badge['maker_conflict_pending']);
+        $this->assertSame('กำลังตรวจสอบ', $badge['maker_conflict_label']);
+        $this->assertDatabaseHas('schedule_conflict_runs', [
+            'academic_year_id' => $year->id,
+            'status' => 'pending',
+            'source' => 'manual',
+        ]);
+        Queue::assertPushed(ConflictRecomputeJob::class, fn (ConflictRecomputeJob $job) => $job->academicYearId === $year->id);
+    }
+
+    public function test_async_sidebar_badge_shows_failed_label_instead_of_zero(): void
+    {
+        config(['conflicts.async_reads' => true]);
+        [$year, $head] = $this->makeReadyOffering();
+        ScheduleConflictRun::query()->create([
+            'academic_year_id' => $year->id,
+            'status' => 'failed',
+            'generation' => 1,
+            'source' => 'manual',
+            'requested_at' => now(),
+            'failed_at' => now(),
+            'error_message' => 'Queue failed',
+            'result_count' => 0,
+        ]);
+
+        $badge = app(NavigationBadgeService::class)->forRole('course_head', $head->id);
+
+        $this->assertNull($badge['maker_conflict_count']);
+        $this->assertSame('failed', $badge['maker_conflict_status']);
+        $this->assertTrue($badge['maker_conflict_pending']);
+        $this->assertSame('ตรวจสอบไม่สำเร็จ', $badge['maker_conflict_label']);
+    }
+
+    public function test_async_sidebar_badge_shows_ready_count_after_recompute(): void
+    {
+        config(['conflicts.async_reads' => false]);
+        [$year, $head] = $this->makeConflictDataset();
+
+        $this->artisan('conflicts:recompute', [
+            '--academic-year' => $year->id,
+            '--sync' => true,
+        ])->assertExitCode(0);
+
+        config(['conflicts.async_reads' => true]);
+        $badge = app(NavigationBadgeService::class)->forRole('course_head', $head->id);
+
+        $this->assertSame('ready', $badge['maker_conflict_status']);
+        $this->assertFalse($badge['maker_conflict_pending']);
+        $this->assertIsInt($badge['maker_conflict_count']);
+        $this->assertGreaterThan(0, $badge['maker_conflict_count']);
+        $this->assertSame((string) $badge['maker_conflict_count'], $badge['maker_conflict_label']);
     }
 
     public function test_sync_feature_flag_false_uses_existing_badge_cache_path(): void
@@ -160,6 +225,7 @@ class ConflictRecomputeJobTest extends TestCase
         $this->assertSame(4, $badge['maker_conflict_count']);
         $this->assertSame('ready', $badge['maker_conflict_status']);
         $this->assertFalse($badge['maker_conflict_pending']);
+        $this->assertNull($badge['maker_conflict_label']);
     }
 
     public function test_schedule_observer_dispatches_debounced_recompute_when_async_reads_are_enabled(): void
