@@ -63,5 +63,39 @@ class DatabaseSeederBaselineTest extends TestCase
             });
 
         $this->assertGreaterThan(0, $conflictingSchedules->count());
+
+        $stackDemoSchedules = Schedule::where('topic', 'like', 'Stack demo%')
+            ->orderBy('start_time')
+            ->get();
+
+        $this->assertCount(6, $stackDemoSchedules);
+        $this->assertSame(1, $stackDemoSchedules->pluck('course_offering_id')->unique()->count());
+        $this->assertSame(1, $stackDemoSchedules->pluck('start_date')->map->toDateString()->unique()->count());
+        $this->assertGreaterThan(3, $this->largestOverlappingStackSize($stackDemoSchedules));
+    }
+
+    private function largestOverlappingStackSize($schedules): int
+    {
+        $stacks = [];
+
+        foreach ($schedules as $schedule) {
+            $inserted = false;
+
+            foreach ($stacks as &$stack) {
+                foreach ($stack as $existing) {
+                    if ($schedule->start_time < $existing->end_time && $existing->start_time < $schedule->end_time) {
+                        $stack[] = $schedule;
+                        $inserted = true;
+                        break 2;
+                    }
+                }
+            }
+
+            if (! $inserted) {
+                $stacks[] = [$schedule];
+            }
+        }
+
+        return collect($stacks)->map(fn (array $stack) => count($stack))->max() ?? 0;
     }
 }

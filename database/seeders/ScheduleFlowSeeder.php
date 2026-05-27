@@ -262,6 +262,12 @@ class ScheduleFlowSeeder extends Seeder
             $this->command->info("ScheduleFlowSeeder: สร้างรายการชนตัวอย่าง {$demoConflictsCreated} รายการ สำหรับทดสอบหน้าการแจ้งเตือนการชน");
         }
 
+        $demoStackCardsCreated = $this->seedDemoStackCards($offerings, $rooms, $lectureType, $practicumType, $termStart, $termEnd);
+
+        if ($demoStackCardsCreated > 0) {
+            $this->command->info("ScheduleFlowSeeder: สร้างรายการซ้อนกัน {$demoStackCardsCreated} รายการ สำหรับทดสอบ stack card ในหน้าตารางสอน");
+        }
+
         if ($skippedActivities > 0) {
             $this->command->warn("ScheduleFlowSeeder: ข้าม {$skippedActivities} กิจกรรม เพราะหาห้องหรือผู้สอนที่ว่างไม่พอ");
         }
@@ -345,6 +351,86 @@ class ScheduleFlowSeeder extends Seeder
         });
 
         return 1;
+    }
+
+    private function seedDemoStackCards($offerings, $rooms, ActivityType $lectureType, ActivityType $practicumType, Carbon $termStart, Carbon $termEnd): int
+    {
+        $targetOffering = $offerings
+            ->filter(fn (CourseOffering $offering) => $offering->studentGroups->isNotEmpty())
+            ->sortBy('id')
+            ->first();
+
+        if (! $targetOffering || $rooms->isEmpty()) {
+            return 0;
+        }
+
+        $targetOffering->load(['course', 'studentGroups', 'instructorPool.instructorProfile']);
+        $this->ensureOfferingInstructors($targetOffering);
+        $targetOffering->load(['course', 'studentGroups', 'instructorPool.instructorProfile']);
+
+        $instructorIds = $this->eligibleInstructorIds($targetOffering);
+        $groupIds = $targetOffering->studentGroups->pluck('id')->values()->all();
+
+        if (empty($instructorIds) || empty($groupIds)) {
+            return 0;
+        }
+
+        $demoDate = $this->firstWeekdayBetween($termStart, $termEnd);
+        if (! $demoDate) {
+            return 0;
+        }
+
+        $templates = [
+            ['08:00', '10:00', $lectureType, 'Stack demo - บรรยายภาพรวม'],
+            ['08:15', '09:15', $practicumType, 'Stack demo - ฝึกทักษะสั้น'],
+            ['08:30', '10:15', $lectureType, 'Stack demo - อภิปรายกรณีศึกษา'],
+            ['09:00', '11:00', $practicumType, 'Stack demo - ฝึกปฏิบัติกลุ่ม'],
+            ['09:15', '10:15', $lectureType, 'Stack demo - ทบทวนหัวข้อหลัก'],
+            ['10:00', '12:00', $practicumType, 'Stack demo - สรุปสถานการณ์'],
+        ];
+
+        $created = 0;
+        DB::transaction(function () use ($targetOffering, $rooms, $demoDate, $templates, $instructorIds, $groupIds, &$created): void {
+            foreach ($templates as $index => [$startTime, $endTime, $activityType, $topic]) {
+                $instructorId = (int) $instructorIds[$index % count($instructorIds)];
+                $room = $rooms[$index % $rooms->count()];
+                $groupId = (int) $groupIds[$index % count($groupIds)];
+
+                $schedule = Schedule::create([
+                    'course_offering_id' => $targetOffering->id,
+                    'activity_type_id' => $activityType->id,
+                    'room_id' => $room->id,
+                    'practicum_series_id' => null,
+                    'start_date' => $demoDate->toDateString(),
+                    'end_date' => $demoDate->toDateString(),
+                    'teaching_date' => $demoDate->toDateString(),
+                    'start_time' => $startTime . ':00',
+                    'end_time' => $endTime . ':00',
+                    'topic' => $topic,
+                    'capacity_required' => (int) $targetOffering->total_student_count ?: null,
+                    'status' => 'draft',
+                ]);
+
+                $schedule->instructors()->sync([$instructorId => ['is_lead' => true]]);
+                $schedule->studentGroups()->sync([$groupId]);
+
+                $created++;
+            }
+        });
+
+        return $created;
+    }
+
+    private function firstWeekdayBetween(Carbon $termStart, Carbon $termEnd): ?Carbon
+    {
+        foreach (CarbonPeriod::create($termStart->copy()->startOfDay(), $termEnd->copy()->endOfDay()) as $date) {
+            $candidate = Carbon::parse($date);
+            if ($candidate->isWeekday()) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 
     /**
