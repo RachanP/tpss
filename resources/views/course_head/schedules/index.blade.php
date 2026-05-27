@@ -1858,7 +1858,12 @@
             padding-top: 0;
         }
         .grid-activity-card.is-stacked-card.has-visible-stack-switcher .grid-activity-foot {
-            padding-right: 0;
+            position: absolute;
+            left: 10px;
+            right: 10px;
+            bottom: 33px;
+            margin-top: 0;
+            padding-top: 0;
         }
         .grid-activity-card.is-stacked-card.has-visible-stack-switcher {
             gap: 4px;
@@ -1930,6 +1935,16 @@
         }
         .grid-activity-card.is-stacked-card.is-compact .grid-activity-room {
             display: none;
+        }
+        .grid-activity-card.is-stacked-card.is-compact.has-visible-stack-switcher .grid-activity-foot {
+            left: auto;
+            right: 10px;
+            top: 8px;
+            bottom: auto;
+            min-height: 0;
+        }
+        .grid-activity-card.is-stacked-card.is-compact.has-visible-stack-switcher .grid-activity-top {
+            padding-right: 58px;
         }
         .grid-activity-card.is-stacked-card.is-stack-back.is-compact .grid-activity-time {
             display: none;
