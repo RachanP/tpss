@@ -18,7 +18,6 @@
     $oldModalMode = old('modal_mode');
     $openEditScheduleId = (string) old('edit_schedule_id', request('edit_schedule_id', ''));
     $focusedScheduleId = (string) request('focus_schedule_id', request('edit_schedule_id', ''));
-    $fromConflictAlert = request()->boolean('from_conflict');
     $conflictFieldLabels = [
         'instructor_overlap' => 'ผู้สอนชน',
         'room_overlap' => 'ห้อง/สถานที่ชน',
@@ -4485,7 +4484,7 @@
                         return $value;
                     };
                     $editConflicts = $scheduleConflicts->get($schedule->id, collect());
-                    $showConflictHints = $fromConflictAlert && (string) $schedule->id === $focusedScheduleId && $editConflicts->isNotEmpty();
+                    $showConflictHints = $editConflicts->isNotEmpty();
                     $dateTimeConflictNote = $showConflictHints ? $conflictFieldNote($editConflicts, ['instructor_overlap', 'room_overlap', 'group_overlap'], 'วันและเวลา') : null;
                     $roomConflictNote = $showConflictHints ? $conflictFieldNote($editConflicts, ['room_overlap'], 'ห้อง/สถานที่') : null;
                     $instructorConflictNote = $showConflictHints ? $conflictFieldNote($editConflicts, ['instructor_overlap'], 'ผู้สอน') : null;

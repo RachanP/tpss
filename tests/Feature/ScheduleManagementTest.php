@@ -384,6 +384,15 @@ class ScheduleManagementTest extends TestCase
             ->assertSee('วันและเวลามีข้อมูลซ้อนกับรายการอื่น')
             ->assertDontSee('พบข้อมูลซ้อนกับรายการอื่น แก้ไขช่องที่ไฮไลต์ก่อนส่งอนุมัติ')
             ->assertSee('data-schedule-id="' . $schedule->id . '"', false);
+
+        $this->get(route('maker.course_offerings.schedules.index', [
+            $offering,
+            'date' => '2026-08-03',
+            'period' => 'day',
+        ]))
+            ->assertOk()
+            ->assertSee('data-testid="schedule-edit-conflict-focus"', false)
+            ->assertSee('modal-field-has-conflict', false);
     }
 
     public function test_course_offering_detail_no_longer_shows_prominent_schedule_button(): void
