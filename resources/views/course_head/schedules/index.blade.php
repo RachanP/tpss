@@ -2011,7 +2011,8 @@
             grid-template-columns: repeat(7, minmax(128px, 1fr));
             border: 1px solid var(--schedule-border-strong);
             border-radius: 10px;
-            overflow: auto;
+            overflow-x: auto;
+            overflow-y: visible;
             background: var(--surface);
             box-shadow: 0 1px 4px oklch(0% 0 0 / 0.05);
         }
@@ -2037,6 +2038,9 @@
             min-height: 154px;
             padding: 8px;
             background: var(--surface);
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
         }
         .month-calendar-day.is-outside {
             background: oklch(98% 0.006 232);
@@ -2077,6 +2081,13 @@
         .month-day-items {
             display: grid;
             gap: 4px;
+            min-height: 0;
+            max-height: 248px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-right: 2px;
+            scrollbar-width: thin;
+            scrollbar-color: color-mix(in oklch, var(--brand-navy) 28%, transparent) transparent;
         }
         .month-activity {
             width: 100%;
@@ -2144,6 +2155,10 @@
         }
         [data-testid="schedule-month-calendar"] .month-calendar-day {
             min-height: 132px;
+        }
+        [data-testid="schedule-month-calendar"] .month-day-items,
+        [data-testid="schedule-month-calendar-co"] .month-day-items {
+            max-height: 252px;
         }
         [data-testid="schedule-month-calendar"] .month-empty {
             display: none;
