@@ -381,17 +381,17 @@ class ScheduleFlowSeeder extends Seeder
         }
 
         $templates = [
-            ['08:00', '10:00', $lectureType, 'Stack demo - บรรยายภาพรวม'],
-            ['08:15', '09:15', $practicumType, 'Stack demo - ฝึกทักษะสั้น'],
-            ['08:30', '10:15', $lectureType, 'Stack demo - อภิปรายกรณีศึกษา'],
-            ['09:00', '11:00', $practicumType, 'Stack demo - ฝึกปฏิบัติกลุ่ม'],
-            ['09:15', '10:15', $lectureType, 'Stack demo - ทบทวนหัวข้อหลัก'],
-            ['10:00', '12:00', $practicumType, 'Stack demo - สรุปสถานการณ์'],
+            ['08:00', '10:00', $practicumType, 'เวียนฐานที่ 1 - ประเมินสัญญาณชีพ', 'ฐาน 1'],
+            ['08:15', '09:15', $practicumType, 'เวียนฐานที่ 2 - การให้ยาทางหลอดเลือด', 'ฐาน 2'],
+            ['08:30', '10:15', $practicumType, 'เวียนฐานที่ 3 - ดูแลแผลและป้องกันการติดเชื้อ', 'ฐาน 3'],
+            ['09:00', '11:00', $practicumType, 'เวียนฐานที่ 4 - การสื่อสารกับผู้ป่วยและญาติ', 'ฐาน 4'],
+            ['09:15', '10:15', $lectureType, 'อภิปรายหลังเวียนฐาน - ปัญหาทางการพยาบาล', 'สรุปกลุ่ม'],
+            ['10:00', '12:00', $lectureType, 'สรุปผลการฝึกปฏิบัติรายกลุ่ม', 'สะท้อนคิด'],
         ];
 
         $created = 0;
         DB::transaction(function () use ($targetOffering, $rooms, $demoDate, $templates, $instructorIds, $groupIds, &$created): void {
-            foreach ($templates as $index => [$startTime, $endTime, $activityType, $topic]) {
+            foreach ($templates as $index => [$startTime, $endTime, $activityType, $topic, $subGroupLabel]) {
                 $instructorId = (int) $instructorIds[$index % count($instructorIds)];
                 $room = $rooms[$index % $rooms->count()];
                 $groupId = (int) $groupIds[$index % count($groupIds)];
@@ -408,7 +408,9 @@ class ScheduleFlowSeeder extends Seeder
                     'end_time' => $endTime . ':00',
                     'topic' => $topic,
                     'capacity_required' => (int) $targetOffering->total_student_count ?: null,
+                    'sub_group_label' => $subGroupLabel,
                     'status' => 'draft',
+                    'remark' => 'จำลองสถานการณ์เวียนฐานกลุ่มย่อยในรายวิชาเดียวกัน โดยแต่ละฐานใช้อาจารย์และกลุ่มนักศึกษาต่างกันในช่วงเวลาทับซ้อน',
                 ]);
 
                 $schedule->instructors()->sync([$instructorId => ['is_lead' => true]]);

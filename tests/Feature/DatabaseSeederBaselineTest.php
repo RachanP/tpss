@@ -64,13 +64,16 @@ class DatabaseSeederBaselineTest extends TestCase
 
         $this->assertGreaterThan(0, $conflictingSchedules->count());
 
-        $stackDemoSchedules = Schedule::where('topic', 'like', 'Stack demo%')
+        $stackDemoSchedules = Schedule::where('topic', 'like', 'เวียนฐาน%')
+            ->orWhere('topic', 'like', 'อภิปรายหลังเวียนฐาน%')
+            ->orWhere('topic', 'like', 'สรุปผลการฝึกปฏิบัติรายกลุ่ม%')
             ->orderBy('start_time')
             ->get();
 
         $this->assertCount(6, $stackDemoSchedules);
         $this->assertSame(1, $stackDemoSchedules->pluck('course_offering_id')->unique()->count());
         $this->assertSame(1, $stackDemoSchedules->pluck('start_date')->map->toDateString()->unique()->count());
+        $this->assertSame(6, $stackDemoSchedules->pluck('sub_group_label')->filter()->unique()->count());
         $this->assertGreaterThan(3, $this->largestOverlappingStackSize($stackDemoSchedules));
     }
 
