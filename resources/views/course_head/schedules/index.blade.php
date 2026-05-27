@@ -17,6 +17,30 @@
     $selectedOfferingId = (string) old('course_offering_id', $queryOfferingId ?: ($schedulingOfferings->first()?->id ?? $courseOffering?->id ?? ''));
     $oldModalMode = old('modal_mode');
     $openEditScheduleId = (string) old('edit_schedule_id', request('edit_schedule_id', ''));
+    $focusedScheduleId = (string) request('focus_schedule_id', request('edit_schedule_id', ''));
+    $fromConflictAlert = request()->boolean('from_conflict');
+    $conflictFieldLabels = [
+        'instructor_overlap' => 'ผู้สอนชน',
+        'room_overlap' => 'ห้อง/สถานที่ชน',
+        'group_overlap' => 'กลุ่มนักศึกษาชน',
+    ];
+    $conflictFieldNote = function ($conflicts, array $types) use ($conflictFieldLabels) {
+        $messages = collect($conflicts)
+            ->filter(fn ($conflict) => in_array($conflict['type'] ?? '', $types, true))
+            ->map(function ($conflict) use ($conflictFieldLabels) {
+                $type = $conflict['type'] ?? '';
+                $label = $conflictFieldLabels[$type] ?? 'ตารางชน';
+                $resource = trim((string) ($conflict['resource_label'] ?? ''));
+                $target = trim((string) ($conflict['schedule_label'] ?? ''));
+
+                return trim($label . ($resource ? ': ' . $resource : '') . ($target ? ' ชนกับ ' . $target : ''));
+            })
+            ->filter()
+            ->unique()
+            ->values();
+
+        return $messages->isEmpty() ? null : $messages->implode(' / ');
+    };
     $selectedInstructorIds = collect(old('instructor_ids', []))->map(fn ($id) => (string) $id)->all();
     $selectedGroupIds = collect(old('student_group_ids', []))->map(fn ($id) => (string) $id)->all();
     $leadInstructorId = (string) old('lead_instructor_id', '');
@@ -1769,6 +1793,51 @@
             height: 12px;
             flex: 0 0 auto;
         }
+        .schedule-conflict-focus {
+            border-color: color-mix(in oklch, var(--status-conflict) 58%, var(--schedule-border-strong)) !important;
+            background: color-mix(in oklch, var(--status-conflict-bg) 58%, var(--surface)) !important;
+            box-shadow: 0 0 0 3px color-mix(in oklch, var(--status-conflict) 14%, transparent), 0 12px 30px oklch(0% 0 0 / 0.12) !important;
+        }
+        .schedule-conflict-focus .schedule-conflict-pill {
+            box-shadow: 0 0 0 2px color-mix(in oklch, var(--status-conflict) 12%, transparent);
+        }
+        .sched-row.schedule-conflict-focus td,
+        .co-sched-row.schedule-conflict-focus td {
+            background: color-mix(in oklch, var(--status-conflict-bg) 62%, var(--surface)) !important;
+            box-shadow: inset 0 1px 0 var(--status-conflict-border), inset 0 -1px 0 var(--status-conflict-border);
+        }
+        .sched-row.schedule-conflict-focus td:first-child,
+        .co-sched-row.schedule-conflict-focus td:first-child {
+            box-shadow: inset 3px 0 0 var(--status-conflict), inset 0 1px 0 var(--status-conflict-border), inset 0 -1px 0 var(--status-conflict-border);
+        }
+        .modal-conflict-summary {
+            margin: 0 0 12px;
+            padding: 10px 12px;
+            border: 1px solid var(--status-conflict-border);
+            border-radius: 8px;
+            background: var(--status-conflict-bg);
+            color: var(--status-conflict-fg);
+            font-size: 12px;
+            font-weight: 800;
+            line-height: 1.5;
+        }
+        .modal-conflict-field {
+            margin-top: 6px;
+            padding: 7px 9px;
+            border: 1px solid var(--status-conflict-border);
+            border-radius: 8px;
+            background: color-mix(in oklch, var(--status-conflict-bg) 68%, var(--surface));
+            color: var(--status-conflict-fg);
+            font-size: 11.5px;
+            font-weight: 750;
+            line-height: 1.45;
+        }
+        .modal-field-has-conflict .modal-control,
+        .modal-field-has-conflict .time-picker,
+        .modal-section.modal-field-has-conflict {
+            border-color: var(--status-conflict-border) !important;
+            background: color-mix(in oklch, var(--status-conflict-bg) 54%, var(--surface)) !important;
+        }
         .grid-activity-foot {
             display: flex;
             align-items: center;
@@ -2935,10 +3004,11 @@
     <div
         class="schedule-shell"
         x-data="{
-            view: sessionStorage.getItem('tpss-schedule-view') || 'list',
+            view: @js($focusedScheduleId ? 'grid' : null) || sessionStorage.getItem('tpss-schedule-view') || 'list',
             detailModal: null,
             editModal: @js($openEditScheduleId ? 'schedule-' . $openEditScheduleId : null),
             showCreate: @js($openCreateModal),
+            focusedScheduleId: @js($focusedScheduleId),
             initialSelectedOfferingId: @js($selectedOfferingId),
             selectedOfferingId: @js($selectedOfferingId),
             scheduleItems: @js($scheduleFilterItems),
@@ -3000,6 +3070,26 @@
                         this.$nextTick(() => { window.tpssInitChoices(document.querySelector('.schedule-modal')); });
                     }
                 });
+
+                if (this.focusedScheduleId) {
+                    this.$nextTick(() => {
+                        window.requestAnimationFrame(() => this.centerFocusedSchedule());
+                    });
+                }
+            },
+            isFocusedSchedule(id) {
+                return this.focusedScheduleId && String(id) === String(this.focusedScheduleId);
+            },
+            focusedScheduleClass(id) {
+                return this.isFocusedSchedule(id) ? 'schedule-conflict-focus' : '';
+            },
+            centerFocusedSchedule() {
+                const rawId = String(this.focusedScheduleId);
+                const safeId = window.CSS?.escape ? CSS.escape(rawId) : rawId.replace(/[^a-zA-Z0-9_-]/g, '');
+                const target = this.$el.querySelector(`[data-schedule-id='${safeId}']`);
+                if (!target) return;
+
+                target.scrollIntoView({ block: 'center', inline: 'center', behavior: this.editModal ? 'auto' : 'smooth' });
             },
             normalizedScheduleSearch() {
                 return this.scheduleSearch.trim().toLowerCase();
@@ -3564,7 +3654,7 @@
                                                     }
                                                     $isMultiDay = ! $asSameDay;
                                                 @endphp
-                                                <tr role="button" tabindex="0" class="co-sched-row" style="--activity-color: {{ $activityTone($as) }};" x-show="matchesSchedule('{{ $as->id }}')" x-cloak data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $as->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $as->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $as->id }}'">
+                                                <tr role="button" tabindex="0" class="co-sched-row" :class="focusedScheduleClass('{{ $as->id }}')" style="--activity-color: {{ $activityTone($as) }};" x-show="matchesSchedule('{{ $as->id }}')" x-cloak data-schedule-id="{{ $as->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $as->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $as->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $as->id }}'">
                                                     <td class="co-col-date" style="font-weight: 800; color: var(--fg-1); font-variant-numeric: tabular-nums; vertical-align: middle;">
                                                         @if($asSameDay)
                                                             {{ $formatDate($as->start_date) }}
@@ -3668,7 +3758,7 @@
                                                 $instructorText = $scheduleInstructorText($schedule);
                                                 $itemConflicts = $scheduleConflicts->get($schedule->id, collect());
                                             @endphp
-                                            <div role="button" tabindex="0" class="month-activity" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
+                                            <div role="button" tabindex="0" class="month-activity" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
                                                 <div class="month-activity-time">{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }}</div>
                                                 <div class="month-activity-title">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
                                                 <div class="month-activity-tags">
@@ -3749,7 +3839,7 @@
                                                 ? 'is-compact'
                                                 : ($activityDuration >= 150 ? 'is-tall' : '');
                                         @endphp
-                                        <div role="button" tabindex="0" class="grid-activity {{ $gridActivitySizeClass }}" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
+                                        <div role="button" tabindex="0" class="grid-activity {{ $gridActivitySizeClass }}" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
                                             <div class="grid-activity-top">
                                                 <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }};">{{ $activity?->name ?? 'กิจกรรม' }}</span>
                                                 @if($itemConflicts->isNotEmpty())
@@ -3768,8 +3858,10 @@
                                     @else
                                         @php
                                             $stackCount = count($stack);
+                                            $focusedStackIndex = collect($stack)->search(fn ($occ) => (string) $occ['schedule']->id === $focusedScheduleId);
+                                            $initialStackPage = $focusedStackIndex === false ? 0 : intdiv((int) $focusedStackIndex, 3);
                                         @endphp
-                                        <div class="activity-stack" x-data="{ page: 0, count: {{ $stackCount }} }">
+                                        <div class="activity-stack" x-data="{ page: {{ $initialStackPage }}, count: {{ $stackCount }} }">
                                             @foreach($stack as $idx => $occurrence)
                                                 @php
                                                     $schedule = $occurrence['schedule'];
@@ -3809,10 +3901,12 @@
                                                         'is-stack-front': {{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1),
                                                         'is-stack-back': {{ $idx }} !== Math.min((page + 1) * 3 - 1, count - 1),
                                                         'has-visible-stack-switcher': count > 3 && {{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1),
-                                                        'has-no-visible-stack-switcher': count <= 3 || {{ $idx }} !== Math.min((page + 1) * 3 - 1, count - 1)
+                                                        'has-no-visible-stack-switcher': count <= 3 || {{ $idx }} !== Math.min((page + 1) * 3 - 1, count - 1),
+                                                        'schedule-conflict-focus': isFocusedSchedule('{{ $schedule->id }}')
                                                     }"
                                                     x-show="{{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3"
                                                     data-stack-card
+                                                    data-schedule-id="{{ $schedule->id }}"
                                                     data-schedule-modal-trigger
                                                     @click="detailModal = 'schedule-{{ $schedule->id }}'"
                                                     @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'"
@@ -3932,7 +4026,7 @@
                                         $status = $statusMeta[$schedule->status] ?? ['label' => $schedule->status, 'class' => 'badge-gray'];
                                         $itemConflicts = $scheduleConflicts->get($schedule->id, collect());
                                     @endphp
-                                    <tr role="button" tabindex="0" class="sched-row" style="--activity-color: {{ $activityTone($schedule) }};" data-testid="schedule-row" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
+                                    <tr role="button" tabindex="0" class="sched-row" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-testid="schedule-row" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
                                         <td>
                                             <div class="sched-time-block">
                                                 <div class="sched-time">{{ $timeText }}</div>
@@ -4013,7 +4107,7 @@
                                             $status = $statusMeta[$schedule->status] ?? ['label' => $schedule->status, 'class' => 'badge-gray'];
                                             $itemConflicts = $scheduleConflicts->get($schedule->id, collect());
                                         @endphp
-                                        <div role="button" tabindex="0" class="month-activity" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
+                                        <div role="button" tabindex="0" class="month-activity" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
                                             <div class="month-activity-time">{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }}</div>
                                             <div class="month-activity-title">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
                                             <div class="month-activity-meta">
@@ -4103,7 +4197,7 @@
                                             ? 'is-compact'
                                             : ($activityDuration >= 150 ? 'is-tall' : '');
                                     @endphp
-                                    <div role="button" tabindex="0" class="grid-activity {{ $gridActivitySizeClass }}" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
+                                    <div role="button" tabindex="0" class="grid-activity {{ $gridActivitySizeClass }}" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
                                         <div class="grid-activity-top">
                                             @if($offeringCourse?->course_code)
                                                 <span class="grid-course">{{ $offeringCourse->course_code }}</span>
@@ -4146,8 +4240,10 @@
                                 @else
                                     @php
                                         $stackCount = count($stack);
+                                        $focusedStackIndex = collect($stack)->search(fn ($occ) => (string) $occ['schedule']->id === $focusedScheduleId);
+                                        $initialStackPage = $focusedStackIndex === false ? 0 : intdiv((int) $focusedStackIndex, 3);
                                     @endphp
-                                    <div class="activity-stack" x-data="{ page: 0, count: {{ $stackCount }} }">
+                                    <div class="activity-stack" x-data="{ page: {{ $initialStackPage }}, count: {{ $stackCount }} }">
                                         @foreach($stack as $idx => $occurrence)
                                             @php
                                                 $schedule = $occurrence['schedule'];
@@ -4188,10 +4284,12 @@
                                                     'is-stack-front': {{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1),
                                                     'is-stack-back': {{ $idx }} !== Math.min((page + 1) * 3 - 1, count - 1),
                                                     'has-visible-stack-switcher': count > 3 && {{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1),
-                                                    'has-no-visible-stack-switcher': count <= 3 || {{ $idx }} !== Math.min((page + 1) * 3 - 1, count - 1)
+                                                    'has-no-visible-stack-switcher': count <= 3 || {{ $idx }} !== Math.min((page + 1) * 3 - 1, count - 1),
+                                                    'schedule-conflict-focus': isFocusedSchedule('{{ $schedule->id }}')
                                                 }"
                                                 x-show="{{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3"
                                                 data-stack-card
+                                                data-schedule-id="{{ $schedule->id }}"
                                                 data-schedule-modal-trigger
                                                 @click="detailModal = 'schedule-{{ $schedule->id }}'"
                                                 @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'"
@@ -4404,6 +4502,12 @@
 
                         return $value;
                     };
+                    $editConflicts = $scheduleConflicts->get($schedule->id, collect());
+                    $showConflictHints = $fromConflictAlert && (string) $schedule->id === $focusedScheduleId && $editConflicts->isNotEmpty();
+                    $dateTimeConflictNote = $showConflictHints ? $conflictFieldNote($editConflicts, ['instructor_overlap', 'room_overlap', 'group_overlap']) : null;
+                    $roomConflictNote = $showConflictHints ? $conflictFieldNote($editConflicts, ['room_overlap']) : null;
+                    $instructorConflictNote = $showConflictHints ? $conflictFieldNote($editConflicts, ['instructor_overlap']) : null;
+                    $groupConflictNote = $showConflictHints ? $conflictFieldNote($editConflicts, ['group_overlap']) : null;
                 @endphp
                 <div class="schedule-modal-backdrop" x-show="editModal === 'schedule-{{ $schedule->id }}'" x-cloak @click.self="closeEdit()" data-testid="schedule-edit-modal">
                     <template x-if="editModal === 'schedule-{{ $schedule->id }}'">
@@ -4433,6 +4537,12 @@
                             <input type="hidden" name="edit_schedule_id" value="{{ $schedule->id }}">
                             <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
                             <div class="modal-form-body">
+                                @if($showConflictHints)
+                                    <div class="modal-conflict-summary" data-testid="schedule-edit-conflict-focus">
+                                        รายการนี้มีการชนอยู่ กรุณาตรวจช่องที่พื้นหลังสีแดงจางๆ ก่อนส่งอนุมัติ
+                                    </div>
+                                @endif
+
                                 @if($editUsesOld && $errors->any())
                                     @php
                                         $alertMessages = $scheduleAlertMessages($errors);
@@ -4445,7 +4555,7 @@
                                 @endif
 
                                 <div class="modal-form-grid">
-                                    <div>
+                                    <div class="{{ $dateTimeConflictNote ? 'modal-field-has-conflict' : '' }}">
                                         <label class="modal-label" for="edit_start_date_{{ $schedule->id }}">วันที่เริ่ม <span class="required-mark">*</span></label>
                                         <x-thai-date-input
                                             name="start_date"
@@ -4457,8 +4567,11 @@
                                             :year-start="$scheduleDatePickerYearStart"
                                             :year-end="$scheduleDatePickerYearEnd"
                                             x-model="startDateDisplay" />
+                                        @if($dateTimeConflictNote)
+                                            <div class="modal-conflict-field">{{ $dateTimeConflictNote }}</div>
+                                        @endif
                                     </div>
-                                    <div>
+                                    <div class="{{ $dateTimeConflictNote ? 'modal-field-has-conflict' : '' }}">
                                         <label class="modal-label" for="edit_end_date_{{ $schedule->id }}">วันที่สิ้นสุด <span class="required-mark">*</span></label>
                                         <x-thai-date-input
                                             name="end_date"
@@ -4471,7 +4584,7 @@
                                             :year-end="$scheduleDatePickerYearEnd"
                                             x-model="endDateDisplay" />
                                     </div>
-                                    <div>
+                                    <div class="{{ $dateTimeConflictNote ? 'modal-field-has-conflict' : '' }}">
                                         <label class="modal-label" for="edit_start_time_{{ $schedule->id }}">เวลาเริ่ม <span class="required-mark">*</span></label>
                                             @php
                                                 $editStart = $editOld('start_time', $formatTime($schedule->start_time));
@@ -4508,7 +4621,7 @@
                                                 <span class="time-unit">น.</span>
                                             </div>
                                     </div>
-                                    <div>
+                                    <div class="{{ $dateTimeConflictNote ? 'modal-field-has-conflict' : '' }}">
                                         <label class="modal-label" for="edit_end_time_{{ $schedule->id }}">เวลาสิ้นสุด <span class="required-mark">*</span></label>
                                         @php
                                             $editEnd = $editOld('end_time', $formatTime($schedule->end_time));
@@ -4555,7 +4668,7 @@
                                             @endforeach
                                         </select>
                                     </div>
-                                    <div>
+                                    <div class="{{ $roomConflictNote ? 'modal-field-has-conflict' : '' }}">
                                         <label class="modal-label" for="edit_room_id_{{ $schedule->id }}">ห้อง/สถานที่</label>
                                         <select id="edit_room_id_{{ $schedule->id }}" name="room_id" class="modal-control tpss-choices">
                                             <option value="">ไม่ระบุสถานที่</option>
@@ -4565,6 +4678,9 @@
                                                 </option>
                                             @endforeach
                                         </select>
+                                        @if($roomConflictNote)
+                                            <div class="modal-conflict-field">{{ $roomConflictNote }}</div>
+                                        @endif
                                     </div>
                                     <div class="modal-field-full">
                                         <label class="modal-label" for="edit_topic_{{ $schedule->id }}">หัวข้อกิจกรรม <span class="required-mark">*</span></label>
@@ -4580,8 +4696,11 @@
                                     </div>
                                 </div>
 
-                                <div class="modal-section">
+                                <div class="modal-section {{ $instructorConflictNote ? 'modal-field-has-conflict' : '' }}">
                                     <div class="modal-section-title">ผู้สอน <span class="required-mark">*</span></div>
+                                    @if($instructorConflictNote)
+                                        <div class="modal-conflict-field" style="margin-bottom:8px;">{{ $instructorConflictNote }}</div>
+                                    @endif
                                     @php
                                         $editInstructorOptions = $eligibleScheduleInstructors($offering);
                                         $editInstructorSearchItems = $editInstructorOptions
@@ -4615,8 +4734,11 @@
                                     </select>
                                 </div>
 
-                                <div class="modal-section">
+                                <div class="modal-section {{ $groupConflictNote ? 'modal-field-has-conflict' : '' }}">
                                     <div class="modal-section-title">กลุ่มนักศึกษา <span class="required-mark">*</span></div>
+                                    @if($groupConflictNote)
+                                        <div class="modal-conflict-field" style="margin-bottom:8px;">{{ $groupConflictNote }}</div>
+                                    @endif
                                     @php
                                         $editGroupSearchItems = $offering->studentGroups
                                             ->map(fn ($group) => mb_strtolower($group->group_code . ' ' . $group->student_count . ' คน', 'UTF-8'))

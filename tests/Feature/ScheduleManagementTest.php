@@ -365,7 +365,23 @@ class ScheduleManagementTest extends TestCase
             ->assertSee($offering->course->course_code)
             ->assertSee('Existing schedule')
             ->assertSee('edit_schedule_id=' . $schedule->id, false)
+            ->assertSee('focus_schedule_id=' . $schedule->id, false)
+            ->assertSee('from_conflict=1', false)
+            ->assertSee('period=day', false)
+            ->assertSee('date=2026-08-03', false)
             ->assertSee('week_start=2026-08-03', false);
+
+        $this->get(route('maker.course_offerings.schedules.index', [
+            $offering,
+            'edit_schedule_id' => $schedule->id,
+            'focus_schedule_id' => $schedule->id,
+            'from_conflict' => 1,
+            'date' => '2026-08-03',
+            'period' => 'day',
+        ]))
+            ->assertOk()
+            ->assertSee('data-testid="schedule-edit-conflict-focus"', false)
+            ->assertSee('data-schedule-id="' . $schedule->id . '"', false);
     }
 
     public function test_course_offering_detail_no_longer_shows_prominent_schedule_button(): void

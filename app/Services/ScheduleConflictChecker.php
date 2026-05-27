@@ -12,7 +12,7 @@ class ScheduleConflictChecker
      * @param  array{start_date:string,end_date:string,start_time:string,end_time:string,room_id?:int|null}  $data
      * @param  array<int>  $instructorIds
      * @param  array<int>  $studentGroupIds
-     * @return array<int, array{type:string,message:string,schedule_id:int}>
+     * @return array<int, array{type:string,message:string,schedule_id:int,schedule_label?:string,resource_label?:string}>
      */
     public function check(array $data, array $instructorIds, array $studentGroupIds, ?int $ignoreScheduleId = null): array
     {
@@ -20,7 +20,7 @@ class ScheduleConflictChecker
             ->merge($this->instructorConflicts($data, $instructorIds, $ignoreScheduleId))
             ->merge($this->roomConflicts($data, $ignoreScheduleId))
             ->merge($this->studentGroupConflicts($data, $studentGroupIds, $ignoreScheduleId))
-            ->unique(fn (array $conflict) => $conflict['type'] . ':' . $conflict['schedule_id'] . ':' . $conflict['message'])
+            ->unique(fn (array $conflict) => $conflict['type'] . ':' . $conflict['schedule_id'] . ':' . ($conflict['resource_label'] ?? $conflict['message']))
             ->values()
             ->all();
     }
@@ -28,7 +28,7 @@ class ScheduleConflictChecker
     /**
      * @param  array<string, mixed>  $data
      * @param  array<int>  $instructorIds
-     * @return Collection<int, array{type:string,message:string,schedule_id:int}>
+     * @return Collection<int, array{type:string,message:string,schedule_id:int,schedule_label?:string,resource_label?:string}>
      */
     private function instructorConflicts(array $data, array $instructorIds, ?int $ignoreScheduleId): Collection
     {
@@ -40,18 +40,28 @@ class ScheduleConflictChecker
             ->whereHas('instructors', fn (Builder $query) => $query->whereIn('users.id', $instructorIds))
             ->with(['courseOffering.course', 'instructors' => fn ($query) => $query->whereIn('users.id', $instructorIds)])
             ->get()
-            ->flatMap(function (Schedule $schedule) {
-                return $schedule->instructors->map(fn ($instructor) => [
+            ->map(function (Schedule $schedule) {
+                $names = $schedule->instructors
+                    ->map(fn ($instructor) => $instructor->formatted_name ?? $instructor->name)
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->implode(', ');
+                $scheduleLabel = $this->scheduleLabel($schedule);
+
+                return [
                     'type' => 'instructor_overlap',
                     'schedule_id' => $schedule->id,
-                    'message' => 'อาจารย์ ' . ($instructor->formatted_name ?? $instructor->name) . ' มีตารางซ้อนกับ ' . $this->scheduleLabel($schedule),
-                ]);
+                    'schedule_label' => $scheduleLabel,
+                    'resource_label' => $names,
+                    'message' => 'อาจารย์: ' . $names . ' ชนกับ ' . $scheduleLabel,
+                ];
             });
     }
 
     /**
      * @param  array<string, mixed>  $data
-     * @return Collection<int, array{type:string,message:string,schedule_id:int}>
+     * @return Collection<int, array{type:string,message:string,schedule_id:int,schedule_label?:string,resource_label?:string}>
      */
     private function roomConflicts(array $data, ?int $ignoreScheduleId): Collection
     {
@@ -64,17 +74,24 @@ class ScheduleConflictChecker
             ->where('room_id', $roomId)
             ->with(['courseOffering.course', 'room'])
             ->get()
-            ->map(fn (Schedule $schedule) => [
-                'type' => 'room_overlap',
-                'schedule_id' => $schedule->id,
-                'message' => 'ห้อง/สถานที่ ' . ($schedule->room?->room_name ?? $schedule->room?->room_code ?? 'ที่เลือก') . ' มีตารางซ้อนกับ ' . $this->scheduleLabel($schedule),
-            ]);
+            ->map(function (Schedule $schedule) {
+                $roomLabel = $schedule->room?->room_name ?? $schedule->room?->room_code ?? 'ที่เลือก';
+                $scheduleLabel = $this->scheduleLabel($schedule);
+
+                return [
+                    'type' => 'room_overlap',
+                    'schedule_id' => $schedule->id,
+                    'schedule_label' => $scheduleLabel,
+                    'resource_label' => $roomLabel,
+                    'message' => 'ห้อง/สถานที่: ' . $roomLabel . ' ชนกับ ' . $scheduleLabel,
+                ];
+            });
     }
 
     /**
      * @param  array<string, mixed>  $data
      * @param  array<int>  $studentGroupIds
-     * @return Collection<int, array{type:string,message:string,schedule_id:int}>
+     * @return Collection<int, array{type:string,message:string,schedule_id:int,schedule_label?:string,resource_label?:string}>
      */
     private function studentGroupConflicts(array $data, array $studentGroupIds, ?int $ignoreScheduleId): Collection
     {
@@ -86,12 +103,22 @@ class ScheduleConflictChecker
             ->whereHas('studentGroups', fn (Builder $query) => $query->whereIn('student_groups.id', $studentGroupIds))
             ->with(['courseOffering.course', 'studentGroups' => fn ($query) => $query->whereIn('student_groups.id', $studentGroupIds)])
             ->get()
-            ->flatMap(function (Schedule $schedule) {
-                return $schedule->studentGroups->map(fn ($group) => [
+            ->map(function (Schedule $schedule) {
+                $groupCodes = $schedule->studentGroups
+                    ->pluck('group_code')
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->implode(', ');
+                $scheduleLabel = $this->scheduleLabel($schedule);
+
+                return [
                     'type' => 'group_overlap',
                     'schedule_id' => $schedule->id,
-                    'message' => 'กลุ่มนักศึกษา ' . $group->group_code . ' มีตารางซ้อนกับ ' . $this->scheduleLabel($schedule),
-                ]);
+                    'schedule_label' => $scheduleLabel,
+                    'resource_label' => $groupCodes,
+                    'message' => 'กลุ่มนักศึกษา: ' . $groupCodes . ' ชนกับ ' . $scheduleLabel,
+                ];
             });
     }
 
