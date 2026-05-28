@@ -1,0 +1,1360 @@
+<mxfile host="app.diagrams.net" agent="Claude" pages="6">
+  <diagram id="wLB_HdWhm09Tg-l7awQ-" name="All Roles">
+    <mxGraphModel dx="6000" dy="2805" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="9sq4j_rTRBJ-9EMcldTL-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=light-dark(#d9d9d9, #1d293b);strokeColor=light-dark(#000000, #5c79a3);strokeWidth=2;opacity=30;" value="" vertex="1">
+          <mxGeometry height="2770" width="860" x="-650" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="-vDcSOCTT5RrFc6po_0D-13" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fillStyle=auto;strokeWidth=2;opacity=40;" value="" vertex="1">
+          <mxGeometry height="430" width="1860" x="230" y="2580" as="geometry" />
+        </mxCell>
+        <mxCell id="gGWFsRtzyq5olIQmbkMn-7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;opacity=80;glass=0;" value="" vertex="1">
+          <mxGeometry height="50" width="250" x="370" y="2595" as="geometry" />
+        </mxCell>
+        <mxCell id="-vDcSOCTT5RrFc6po_0D-12" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=light-dark(#f7e5ff, #392f3f);strokeColor=#9673a6;fillStyle=auto;strokeWidth=2;opacity=40;" value="" vertex="1">
+          <mxGeometry height="480" width="1860" x="240" y="2050" as="geometry" />
+        </mxCell>
+        <mxCell id="gGWFsRtzyq5olIQmbkMn-6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;opacity=80;glass=0;" value="" vertex="1">
+          <mxGeometry height="50" width="210" x="350" y="2070" as="geometry" />
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-13" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;p class=&quot;MsoNormal&quot;&gt;&lt;b&gt;&lt;span style=&quot;font-size:14.0pt;line-height:115%;&amp;lt;br/&amp;gt;font-family:&amp;quot;TH Sarabun New&amp;quot;,sans-serif&quot;&gt;4. &lt;span lang=&quot;TH&quot;&gt;ผู้บริหาร (Excutive&lt;/span&gt;)&lt;/span&gt;&lt;/b&gt;&lt;span style=&quot;font-size:14.0pt;line-height:115%;&amp;lt;br/&amp;gt;font-family:&amp;quot;TH Sarabun New&amp;quot;,sans-serif&quot;&gt;&lt;/span&gt;&lt;/p&gt;" vertex="1">
+          <mxGeometry height="30" width="350" x="278.05" y="2080" as="geometry" />
+        </mxCell>
+        <mxCell id="-vDcSOCTT5RrFc6po_0D-11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fillStyle=auto;strokeWidth=2;opacity=40;" value="]" vertex="1">
+          <mxGeometry height="750" width="1860" x="240" y="1270" as="geometry" />
+        </mxCell>
+        <mxCell id="gGWFsRtzyq5olIQmbkMn-4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;opacity=80;glass=0;" value="" vertex="1">
+          <mxGeometry height="50" width="431.4" x="308.6" y="1330" as="geometry" />
+        </mxCell>
+        <mxCell id="-vDcSOCTT5RrFc6po_0D-10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fillStyle=auto;strokeWidth=2;opacity=40;" value="" vertex="1">
+          <mxGeometry height="450" width="1860" x="240" y="770" as="geometry" />
+        </mxCell>
+        <mxCell id="gGWFsRtzyq5olIQmbkMn-3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;opacity=80;glass=0;" value="" vertex="1">
+          <mxGeometry height="50" width="339.02" x="270.98" y="810" as="geometry" />
+        </mxCell>
+        <mxCell id="-vDcSOCTT5RrFc6po_0D-9" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;opacity=40;" value="" vertex="1">
+          <mxGeometry height="480" width="1860" x="240" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="gGWFsRtzyq5olIQmbkMn-2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;opacity=80;glass=0;" value="" vertex="1">
+          <mxGeometry height="50" width="284.51" x="265.49" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-2" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;p class=&quot;MsoNormal&quot;&gt;&lt;b&gt;&lt;span style=&quot;line-height: 115%;&quot;&gt;&lt;font style=&quot;font-size: 18px;&quot;&gt;1. &lt;span lang=&quot;TH&quot; style=&quot;&quot;&gt;ผู้ดูแลระบบ (&lt;/span&gt;System Admin)&lt;/font&gt;&lt;/span&gt;&lt;/b&gt;&lt;span style=&quot;font-size:14.0pt;line-height:115%;font-family:&amp;lt;br/&amp;gt;&amp;quot;TH Sarabun New&amp;quot;,sans-serif&quot;&gt;&lt;/span&gt;&lt;/p&gt;" vertex="1">
+          <mxGeometry height="30" width="290" x="265.49" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-5" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="ระบบเปลี่ยนเป็น&#xa;ช่วงจัดตารางสอน" vertex="1">
+          <mxGeometry height="114.5" width="114.5" x="1600" y="434.5" as="geometry" />
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-6" edge="1" parent="1" source="Ey3WlHDIhNnO9Qq_wDNp-10" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.716;exitY=0.991;exitDx=0;exitDy=0;dashed=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;curved=0;exitPerimeter=0;" target="Ey3WlHDIhNnO9Qq_wDNp-21">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1806" y="634.5" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-7" connectable="0" parent="Ey3WlHDIhNnO9Qq_wDNp-6" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="พบข้อมูลผิดพลาด" vertex="1">
+          <mxGeometry relative="1" x="-0.0184" y="-1" as="geometry">
+            <mxPoint x="-61" y="-2" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-8" edge="1" parent="1" source="Ey3WlHDIhNnO9Qq_wDNp-10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="Ey3WlHDIhNnO9Qq_wDNp-24">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-9" connectable="0" parent="Ey3WlHDIhNnO9Qq_wDNp-8" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="เมื่อทุกวิชาได้รับอนุมัติแล้ว" vertex="1">
+          <mxGeometry relative="1" x="0.0097" y="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;Admin ดู Dashboard ภาพรวมระบบและสถานะการจัดตารางแต่ละวิชา&lt;/span&gt;" vertex="1">
+          <mxGeometry height="71" width="182.62" x="1598" y="614.5" as="geometry" />
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-11" edge="1" parent="1" source="Ey3WlHDIhNnO9Qq_wDNp-5" style="curved=0;startArrow=none;endArrow=block;exitX=0.5;exitY=1;entryX=0.324;entryY=0.034;rounded=1;exitDx=0;exitDy=0;entryDx=0;entryDy=0;entryPerimeter=0;" target="Ey3WlHDIhNnO9Qq_wDNp-10" value="ติดตามภาพรวม">
+          <mxGeometry relative="1" x="0.0097" y="3" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points" />
+            <mxPoint x="1608.4499999999998" y="584.5" as="sourcePoint" />
+            <mxPoint x="1357.4499999999998" y="683.5" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-12" edge="1" parent="1" source="Ey3WlHDIhNnO9Qq_wDNp-13" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;curved=0;" target="Ey3WlHDIhNnO9Qq_wDNp-36">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="820" y="505.2499999999999" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-13" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;นำเข้าข้อมูลผู้ใช้งาน&lt;/span&gt;&lt;br style=&quot;padding: 0px; margin: 0px; color: rgb(51, 51, 51);&quot;&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;และกำหนดสิทธิ์ (Roles)&amp;nbsp;&lt;/span&gt;" vertex="1">
+          <mxGeometry height="71" width="150" x="600" y="469.75" as="geometry" />
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-14" edge="1" parent="1" source="Ey3WlHDIhNnO9Qq_wDNp-15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="Ey3WlHDIhNnO9Qq_wDNp-20">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-15" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;font color=&quot;#333333&quot;&gt;ระบุหัวหน้าวิชาและอาจารย์ที่สอนวิชานั้นๆ&lt;/font&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;(จัดการ Course Pool)&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="71" width="130" x="1160" y="334.5" as="geometry" />
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-16" edge="1" parent="1" source="Ey3WlHDIhNnO9Qq_wDNp-20" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;curved=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="Ey3WlHDIhNnO9Qq_wDNp-26" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1540" y="370.5" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-17" connectable="0" parent="Ey3WlHDIhNnO9Qq_wDNp-16" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="ข้อมูลพร้อม" vertex="1">
+          <mxGeometry relative="1" x="-0.2039" y="2" as="geometry">
+            <mxPoint x="-2" y="-2" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-18" edge="1" parent="1" source="Ey3WlHDIhNnO9Qq_wDNp-20" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;curved=0;" target="Ey3WlHDIhNnO9Qq_wDNp-13">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-19" connectable="0" parent="Ey3WlHDIhNnO9Qq_wDNp-18" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="ข้อมูลไม่ครบ / ยังไม่ได้ระบุหัวหน้าวิชา / ไม่ได้ตั้งค่าปีการศึกษา" vertex="1">
+          <mxGeometry relative="1" x="-0.1238" y="5" as="geometry">
+            <mxPoint y="-10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-20" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="ตรวจสอบความครบถ้วน&lt;div&gt;ของข้อมูลโดยระบบ&lt;/div&gt;" vertex="1">
+          <mxGeometry height="80" width="200" x="1375" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-21" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="&lt;font color=&quot;#333333&quot;&gt;แก้ไขข้อมูล&amp;nbsp;&lt;/font&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;(&lt;/font&gt;&lt;span style=&quot;background-color: transparent;&quot;&gt;&lt;font color=&quot;#333333&quot;&gt;หากแก้ข้อมูลที่ส่งผลต่อการจัดตาราง&lt;/font&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;เช่น ความจุสถานที่, ภาควิชาของอาจารย์&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: rgb(0, 0, 0);&quot;&gt;&lt;span style=&quot;background-color: transparent;&quot;&gt;ระบบจะแจ้งเตือนและตรวจสอบใหม่)&lt;/span&gt;&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="71" width="252.62" x="1775" y="504.5" as="geometry" />
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-22" edge="1" parent="1" source="Ey3WlHDIhNnO9Qq_wDNp-21" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.695;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;dashed=1;curved=0;" target="Ey3WlHDIhNnO9Qq_wDNp-10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-23" edge="1" parent="1" source="Ey3WlHDIhNnO9Qq_wDNp-24" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="Ey3WlHDIhNnO9Qq_wDNp-29">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1205" y="650.5" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-24" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="ระบบเปลี่ยน&#xa;ช่วงเผยแพร่ตารางสอน" vertex="1">
+          <mxGeometry height="120.5" width="120.5" x="1220" y="589.75" as="geometry" />
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-25" edge="1" parent="1" source="Ey3WlHDIhNnO9Qq_wDNp-26" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="Ey3WlHDIhNnO9Qq_wDNp-5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-26" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;font color=&quot;#333333&quot;&gt;ปรับระบบเป็นช่วงจัดตารางสอน&lt;/font&gt;" vertex="1">
+          <mxGeometry height="71" width="130" x="1410" y="456.25" as="geometry" />
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-27" edge="1" parent="1" source="Ey3WlHDIhNnO9Qq_wDNp-29" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" target="Ey3WlHDIhNnO9Qq_wDNp-31">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-28" connectable="0" parent="Ey3WlHDIhNnO9Qq_wDNp-27" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="ใกล้จบเทอม/เปลี่ยนเทอม" vertex="1">
+          <mxGeometry relative="1" x="0.2148" y="2" as="geometry">
+            <mxPoint x="15" y="-2" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-29" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;font color=&quot;#333333&quot;&gt;Admin ดูภาพรวมตารางสอนและภาระงานได้&lt;/font&gt;" vertex="1">
+          <mxGeometry height="71" width="130" x="975" y="614.5" as="geometry" />
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-30" edge="1" parent="1" source="Ey3WlHDIhNnO9Qq_wDNp-31" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;curved=0;" target="Ey3WlHDIhNnO9Qq_wDNp-33">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-31" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;font color=&quot;#333333&quot;&gt;ปิดระบบในเทอมปัจจุบัน&lt;/font&gt;" vertex="1">
+          <mxGeometry height="71" width="130" x="630" y="614.5" as="geometry" />
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-32" edge="1" parent="1" source="Ey3WlHDIhNnO9Qq_wDNp-33" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="Ey3WlHDIhNnO9Qq_wDNp-13">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-33" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="ระบบเปลี่ยน&#xa;ช่วงเตรียมระบบ" vertex="1">
+          <mxGeometry height="120.5" width="120.5" x="444.75" y="445" as="geometry" />
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-34" edge="1" parent="1" source="Ey3WlHDIhNnO9Qq_wDNp-36" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="Ey3WlHDIhNnO9Qq_wDNp-39">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-35" edge="1" parent="1" source="Ey3WlHDIhNnO9Qq_wDNp-36" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;dashed=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1060" y="504.83333333333337" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-36" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;จัดการฐานข้อมูลพื้นฐาน (Master Data)&lt;/span&gt;&lt;br style=&quot;padding: 0px; margin: 0px; color: rgb(51, 51, 51);&quot;&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;- เพิ่มรายชื่อบุคลากร&lt;/span&gt;&lt;br style=&quot;padding: 0px; margin: 0px; color: rgb(51, 51, 51);&quot;&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;- เพิ่มข้อมูลสถานที่/ห้องเรียน และอื่นๆ&lt;/span&gt;" vertex="1">
+          <mxGeometry height="71" width="220" x="790" y="469.75" as="geometry" />
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-37" edge="1" parent="1" source="Ey3WlHDIhNnO9Qq_wDNp-39" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="Ey3WlHDIhNnO9Qq_wDNp-15">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-38" connectable="0" parent="Ey3WlHDIhNnO9Qq_wDNp-37" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="โหลดวิชาที่เปิดสอนในเทอม" vertex="1">
+          <mxGeometry relative="1" x="0.0845" y="-4" as="geometry">
+            <mxPoint x="-7" y="-4" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-39" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;สร้างหรือตั้งค่า&lt;/span&gt;&lt;div&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;ปีการศึกษาและเทอมปัจจุบัน&amp;nbsp;&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="61.5" width="180" x="810" y="339.25" as="geometry" />
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-40" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;font color=&quot;#333333&quot;&gt;ตั้งค่าเกณฑ์ PA&lt;/font&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;(ครั้งเดียว)&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="41.5" width="110" x="1060" y="485.75" as="geometry" />
+        </mxCell>
+        <mxCell id="Ey3WlHDIhNnO9Qq_wDNp-41" edge="1" parent="1" source="Ey3WlHDIhNnO9Qq_wDNp-40" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.721;entryY=1.042;entryDx=0;entryDy=0;entryPerimeter=0;curved=0;dashed=1;" target="Ey3WlHDIhNnO9Qq_wDNp-39">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="6Qllh5HQ-9ghYeTZ9tUq-1" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;p class=&quot;MsoNormal&quot;&gt;&lt;b&gt;&lt;span style=&quot;font-size:14.0pt;line-height:115%;&amp;lt;br/&amp;gt;font-family:&amp;quot;TH Sarabun New&amp;quot;,sans-serif&quot;&gt;2. &lt;span lang=&quot;TH&quot;&gt;เจ้าหน้าที่ (&lt;/span&gt;Staff / Admin Support)&lt;/span&gt;&lt;/b&gt;&lt;span style=&quot;font-size:14.0pt;line-height:115%;&amp;lt;br/&amp;gt;font-family:&amp;quot;TH Sarabun New&amp;quot;,sans-serif&quot;&gt;&lt;/span&gt;&lt;/p&gt;" vertex="1">
+          <mxGeometry height="30" width="350" x="265.49" y="820" as="geometry" />
+        </mxCell>
+        <mxCell id="6Qllh5HQ-9ghYeTZ9tUq-2" edge="1" parent="1" source="6Qllh5HQ-9ghYeTZ9tUq-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" target="6Qllh5HQ-9ghYeTZ9tUq-17">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="6Qllh5HQ-9ghYeTZ9tUq-3" connectable="0" parent="6Qllh5HQ-9ghYeTZ9tUq-2" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Admin ปิดระบบเทอมปัจจุบัน" vertex="1">
+          <mxGeometry relative="1" x="-0.3225" y="-2" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="6Qllh5HQ-9ghYeTZ9tUq-4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;ดึงรายงาน Export&lt;/span&gt;&lt;br style=&quot;padding: 0px; margin: 0px; color: rgb(51, 51, 51);&quot;&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;ไปประสานงานต่อกับหน่วยงานอื่น&lt;/span&gt;" vertex="1">
+          <mxGeometry height="71" width="176.15" x="697.62" y="1095.5" as="geometry" />
+        </mxCell>
+        <mxCell id="6Qllh5HQ-9ghYeTZ9tUq-5" edge="1" parent="1" source="6Qllh5HQ-9ghYeTZ9tUq-13" style="curved=1;startArrow=none;endArrow=block;exitX=1;exitY=0.5;entryX=0;entryY=0.5;rounded=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" target="6Qllh5HQ-9ghYeTZ9tUq-14" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+            <mxPoint x="830.12" y="984.7199999999998" as="sourcePoint" />
+            <mxPoint x="905.12" y="984.7199999999998" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="6Qllh5HQ-9ghYeTZ9tUq-6" edge="1" parent="1" source="6Qllh5HQ-9ghYeTZ9tUq-14" style="curved=1;startArrow=none;endArrow=block;exitX=1;exitY=0.5;entryX=0;entryY=0.5;rounded=0;entryDx=0;entryDy=0;exitDx=0;exitDy=0;" target="6Qllh5HQ-9ghYeTZ9tUq-15" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+            <mxPoint x="1102.1200000000003" y="984.7199999999998" as="sourcePoint" />
+            <mxPoint x="1176.12" y="984.7199999999998" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="6Qllh5HQ-9ghYeTZ9tUq-7" edge="1" parent="1" source="6Qllh5HQ-9ghYeTZ9tUq-15" style="curved=1;startArrow=none;endArrow=block;exitX=1;exitY=0.5;entryX=0;entryY=0.5;rounded=0;entryDx=0;entryDy=0;exitDx=0;exitDy=0;" target="6Qllh5HQ-9ghYeTZ9tUq-12" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+            <mxPoint x="1376.12" y="984.7199999999998" as="sourcePoint" />
+            <mxPoint x="1452.1199999999953" y="985.5" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="6Qllh5HQ-9ghYeTZ9tUq-8" connectable="0" parent="6Qllh5HQ-9ghYeTZ9tUq-7" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Admin ปรับเป็นช่วงจัดตาราง" vertex="1">
+          <mxGeometry relative="1" x="-0.1214" y="-1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="6Qllh5HQ-9ghYeTZ9tUq-11" edge="1" parent="1" source="6Qllh5HQ-9ghYeTZ9tUq-12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1572.9533333333334" y="1095.5" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="6Qllh5HQ-9ghYeTZ9tUq-12" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="ระบบเปลี่ยนเป็น&#xa;ช่วงจัดตารางสอน" vertex="1">
+          <mxGeometry height="110.75" width="110.75" x="1517.62" y="929.6300000000001" as="geometry" />
+        </mxCell>
+        <mxCell id="6Qllh5HQ-9ghYeTZ9tUq-13" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;จัดการฐานข้อมูลพื้นฐาน (Master Data)&lt;/span&gt;&lt;br style=&quot;padding: 0px; margin: 0px; color: rgb(51, 51, 51);&quot;&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;- เพิ่มรายชื่อบุคลากร&lt;/span&gt;&lt;br style=&quot;padding: 0px; margin: 0px; color: rgb(51, 51, 51);&quot;&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;- เพิ่มข้อมูลสถานที่/ห้องเรียน และอื่นๆ&lt;/span&gt;" vertex="1">
+          <mxGeometry height="71" width="200" x="647.62" y="949.5" as="geometry" />
+        </mxCell>
+        <mxCell id="6Qllh5HQ-9ghYeTZ9tUq-14" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;สร้างหรือตั้งค่า&lt;/span&gt;&lt;div&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;ปีการศึกษาและเทอมปัจจุบัน&amp;nbsp;&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="71" width="197" x="905.12" y="949.5" as="geometry" />
+        </mxCell>
+        <mxCell id="6Qllh5HQ-9ghYeTZ9tUq-15" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;font&gt;ระบุหัวหน้าวิชาและอาจารย์ที่สอนวิชานั้นๆ&lt;/font&gt;&lt;div&gt;&lt;font&gt;(จัดการ Course Pool)&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="71" width="150.5" x="1177.12" y="949.5" as="geometry" />
+        </mxCell>
+        <mxCell id="6Qllh5HQ-9ghYeTZ9tUq-16" edge="1" parent="1" source="6Qllh5HQ-9ghYeTZ9tUq-17" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="6Qllh5HQ-9ghYeTZ9tUq-13">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="647.62" y="985.5" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="6Qllh5HQ-9ghYeTZ9tUq-17" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="ระบบเปลี่ยนเป็น&#xa;ช่วงเตรียมระบบ" vertex="1">
+          <mxGeometry height="120.5" width="120.5" x="477.62" y="924.75" as="geometry" />
+        </mxCell>
+        <mxCell id="6Qllh5HQ-9ghYeTZ9tUq-18" edge="1" parent="1" source="6Qllh5HQ-9ghYeTZ9tUq-20" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="6Qllh5HQ-9ghYeTZ9tUq-22">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="6Qllh5HQ-9ghYeTZ9tUq-19" connectable="0" parent="6Qllh5HQ-9ghYeTZ9tUq-18" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="เมื่อทุกวิชาได้รับอนุมัติแล้ว" vertex="1">
+          <mxGeometry relative="1" x="-0.1147" y="1" as="geometry">
+            <mxPoint x="-13" y="-1" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="6Qllh5HQ-9ghYeTZ9tUq-20" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;ร่วมกับหัวหน้าวิชา&lt;/span&gt;&lt;br style=&quot;padding: 0px; margin: 0px; color: rgb(51, 51, 51);&quot;&gt;&lt;font&gt;สร้าง แก้ไข และตั้งค่ารายละเอียดวิชากลุ่มนักศึกษา&lt;/font&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;และกิจกรรมในตารางสอน&lt;/span&gt;&lt;div&gt;&lt;font&gt;ที่ได้รับมอบหมาย&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="71" width="194.85" x="1475.5700000000002" y="1095.5" as="geometry" />
+        </mxCell>
+        <mxCell id="6Qllh5HQ-9ghYeTZ9tUq-21" edge="1" parent="1" source="6Qllh5HQ-9ghYeTZ9tUq-22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="6Qllh5HQ-9ghYeTZ9tUq-24">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="6Qllh5HQ-9ghYeTZ9tUq-22" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="ระบบเปลี่ยนเป็น&#xa;ช่วงเผยแพร่ตาราง" vertex="1">
+          <mxGeometry height="110.75" width="110.75" x="1157.62" y="1075.62" as="geometry" />
+        </mxCell>
+        <mxCell id="6Qllh5HQ-9ghYeTZ9tUq-23" edge="1" parent="1" source="6Qllh5HQ-9ghYeTZ9tUq-24" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" target="6Qllh5HQ-9ghYeTZ9tUq-4">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="877.62" y="1130.9137931034484" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="6Qllh5HQ-9ghYeTZ9tUq-24" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;font color=&quot;#333333&quot;&gt;Staff ดูภาพรวมตารางสอนและภาระงานอาจารย์ทุกคนได้&lt;/font&gt;" vertex="1">
+          <mxGeometry height="71" width="160" x="927.62" y="1095.5" as="geometry" />
+        </mxCell>
+        <mxCell id="6Qllh5HQ-9ghYeTZ9tUq-26" edge="1" parent="1" source="6Qllh5HQ-9ghYeTZ9tUq-27" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;curved=0;dashed=1;" target="6Qllh5HQ-9ghYeTZ9tUq-20">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="6Qllh5HQ-9ghYeTZ9tUq-27" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="&lt;font color=&quot;#333333&quot;&gt;แก้ไขข้อมูล&amp;nbsp;&lt;/font&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;(&lt;/font&gt;&lt;span style=&quot;background-color: transparent;&quot;&gt;&lt;font color=&quot;#333333&quot;&gt;หากแก้ข้อมูลที่ส่งผลต่อการจัดตาราง&lt;/font&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;เช่น ความจุสถานที่, ภาควิชาของอาจารย์&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: rgb(0, 0, 0);&quot;&gt;&lt;span style=&quot;background-color: transparent;&quot;&gt;ระบบจะแจ้งเตือนและตรวจสอบใหม่)&lt;/span&gt;&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="71" width="230" x="1797.62" y="1095.49" as="geometry" />
+        </mxCell>
+        <mxCell id="6Qllh5HQ-9ghYeTZ9tUq-28" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;dashed=1;curved=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1670.42" y="1130.76" as="sourcePoint" />
+            <mxPoint x="1799.42" y="1130.76" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="6Qllh5HQ-9ghYeTZ9tUq-29" connectable="0" parent="6Qllh5HQ-9ghYeTZ9tUq-28" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="พบข้อมูลผิดพลาด" vertex="1">
+          <mxGeometry relative="1" x="-0.0184" y="-1" as="geometry">
+            <mxPoint x="-4" y="-1" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-1" parent="1" style="rhombus;strokeWidth=2;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;" value="ระบบตรวจสอบ&#xa;การชนกันของกิจกรรมภายในวิชา&#xa;และความครบถ้วนของกิจกรรมรายวิชา" vertex="1">
+          <mxGeometry height="110" width="300" x="1190" y="1513" as="geometry" />
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-2" edge="1" parent="1" source="pgU98yXdbD_K4MPtSGm3-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="pgU98yXdbD_K4MPtSGm3-34">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="880" y="1870" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-3" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="ระบบเปลี่ยนเป็น&#xa;ช่วงเผยแพร่ตาราง" vertex="1">
+          <mxGeometry height="122" width="122" x="1010" y="1809" as="geometry" />
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-4" edge="1" parent="1" source="pgU98yXdbD_K4MPtSGm3-1" style="curved=0;startArrow=none;endArrow=block;exitX=0.5;exitY=0;entryX=0;entryY=0.5;rounded=1;entryDx=0;entryDy=0;exitDx=0;exitDy=0;" target="pgU98yXdbD_K4MPtSGm3-8" value="กิจกรรมชน/กรอกข้อมูลตารางไม่ครบ">
+          <mxGeometry relative="1" x="0.4825" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1339" y="1326" />
+            </Array>
+            <mxPoint x="1655" y="1316" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-5" edge="1" parent="1" source="pgU98yXdbD_K4MPtSGm3-1" style="curved=0;startArrow=none;endArrow=block;exitX=0.5;exitY=1;entryX=0.5;entryY=0;rounded=1;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" target="pgU98yXdbD_K4MPtSGm3-28" value="กิจกรรมไม่ชน">
+          <mxGeometry relative="1" x="0.0162" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1339" y="1710" />
+            </Array>
+            <mxPoint x="1552.499999999999" y="1711" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-6" edge="1" parent="1" source="pgU98yXdbD_K4MPtSGm3-26" style="curved=0;dashed=1;dashPattern=2 3;startArrow=none;endArrow=block;exitX=1;exitY=0.5;entryX=0.5;entryY=0;rounded=1;entryDx=0;entryDy=0;exitDx=0;exitDy=0;" target="pgU98yXdbD_K4MPtSGm3-10" value="ส่งกลับมาให้แก้ไข">
+          <mxGeometry relative="1" x="-0.2727" y="1" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1703" y="1460" />
+            </Array>
+            <mxPoint x="1689" y="1471" as="sourcePoint" />
+            <mxPoint x="2059" y="1479.52" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-7" edge="1" parent="1" source="pgU98yXdbD_K4MPtSGm3-8" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;curved=0;" target="pgU98yXdbD_K4MPtSGm3-10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-8" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;font color=&quot;#333333&quot;&gt;แจ้งเตือนประเภทการชน&lt;/font&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;-อาจารย์ชนกันกับวิชาอื่นในเวลานั้น&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;-ห้องเรียนและสถานที่ชนกับวิชาอื่น&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;-กลุ่มนักศึกษาชนกับกิจกรรมในวิชา&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;-กิจกรรมหรือข้อมูลไม่ครบ&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="90" width="205" x="1600" y="1280" as="geometry" />
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-9" edge="1" parent="1" source="pgU98yXdbD_K4MPtSGm3-10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" target="pgU98yXdbD_K4MPtSGm3-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;แก้ไขตารางเวลา&lt;/span&gt;&lt;br style=&quot;padding: 0px; margin: 0px; color: rgb(51, 51, 51);&quot;&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;หรือเปลี่ยนสถานที่/อาจารย์/กลุ่มนักศึกษา&lt;/span&gt;" vertex="1">
+          <mxGeometry height="71" width="225" x="1590" y="1532.5" as="geometry" />
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-11" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;p class=&quot;MsoNormal&quot;&gt;&lt;b&gt;&lt;span style=&quot;font-size:14.0pt;line-height:115%;&amp;lt;br/&amp;gt;font-family:&amp;quot;TH Sarabun New&amp;quot;,sans-serif;mso-fareast-font-family:Aptos;&amp;lt;br/&amp;gt;mso-fareast-theme-font:minor-latin;mso-ansi-language:EN-US;mso-fareast-language:&amp;lt;br/&amp;gt;EN-US;mso-bidi-language:TH&quot;&gt;3. &lt;span lang=&quot;TH&quot;&gt;หัวหน้าวิชา / ผู้ประสานรายวิชา (Course Head&lt;/span&gt;&lt;/span&gt;&lt;/b&gt;&lt;b style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;span style=&quot;font-size:14.0pt;line-height:115%;&amp;lt;br/&amp;gt;font-family:&amp;quot;TH Sarabun New&amp;quot;,sans-serif;mso-fareast-font-family:Aptos;&amp;lt;br/&amp;gt;mso-fareast-theme-font:minor-latin;mso-ansi-language:EN-US;mso-fareast-language:&amp;lt;br/&amp;gt;EN-US;mso-bidi-language:TH&quot;&gt;)&lt;/span&gt;&lt;/b&gt;&lt;/p&gt;" vertex="1">
+          <mxGeometry height="30" width="490" x="280" y="1340" as="geometry" />
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-12" edge="1" parent="1" source="pgU98yXdbD_K4MPtSGm3-15" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;curved=0;" target="pgU98yXdbD_K4MPtSGm3-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-13" edge="1" parent="1" source="pgU98yXdbD_K4MPtSGm3-15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;dashed=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="pgU98yXdbD_K4MPtSGm3-35">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="984.4705882352941" y="1460" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-14" connectable="0" parent="pgU98yXdbD_K4MPtSGm3-13" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="จำนวนกลุ่มนักศึกษาเกินความจุ / ไม่กำหนดบทบาทผู้สอน&amp;nbsp;&lt;div&gt;/ ผู้สอนจากภาคอื่น&amp;nbsp;&lt;/div&gt;" vertex="1">
+          <mxGeometry relative="1" x="-0.1427" as="geometry">
+            <mxPoint x="-15" y="3" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-15" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=center;" value="&lt;div style=&quot;&quot;&gt;&lt;font color=&quot;#333333&quot;&gt;สร้าง แก้ไข และตั้งค่ารายละเอียดวิชา&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;&quot;&gt;&lt;font color=&quot;#333333&quot;&gt;- กลุ่มนักศึกษาในวิชา&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;&quot;&gt;&lt;font color=&quot;#333333&quot;&gt;- กิจกรรมในรายวิชา&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;&quot;&gt;&lt;font color=&quot;#333333&quot;&gt;- กำหนดบทบาทผู้สอน&amp;nbsp;&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;&quot;&gt;&lt;font color=&quot;#333333&quot;&gt;(หัวหน้าวิชา/เลขานุการ/ผู้สอน/ประจำกลุ่ม/พี่เลี้ยง)&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="83.75" width="270" x="850" y="1621" as="geometry" />
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-16" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="ระบบพร้อม&#xa;เริ่มจัดตาราง" vertex="1">
+          <mxGeometry height="106" width="106" x="645.0500000000002" y="1515" as="geometry" />
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-17" edge="1" parent="1" source="pgU98yXdbD_K4MPtSGm3-16" style="curved=0;startArrow=none;endArrow=block;exitX=1;exitY=0.5;entryX=0;entryY=0.5;rounded=1;entryDx=0;entryDy=0;exitDx=0;exitDy=0;" target="pgU98yXdbD_K4MPtSGm3-15" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="780" y="1568" />
+              <mxPoint x="780" y="1663" />
+            </Array>
+            <mxPoint x="752.0500000000002" y="1567.62" as="sourcePoint" />
+            <mxPoint x="830.0500000000002" y="1567.62" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-21" edge="1" parent="1" source="pgU98yXdbD_K4MPtSGm3-23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="pgU98yXdbD_K4MPtSGm3-16">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-22" connectable="0" parent="pgU98yXdbD_K4MPtSGm3-21" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Admin ปรับเป็นช่วงจัดตาราง" vertex="1">
+          <mxGeometry relative="1" x="-0.043" y="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-23" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;font color=&quot;#333333&quot;&gt;รอ Admin และ Staff&amp;nbsp;&lt;/font&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;ตั้งค่าระบบ&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="44" width="140" x="628.05" y="1721" as="geometry" />
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-24" edge="1" parent="1" source="pgU98yXdbD_K4MPtSGm3-25" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="pgU98yXdbD_K4MPtSGm3-23">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-25" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="ระบบเปลี่ยนเป็น&#xa;ช่วงเตรียมระบบ" vertex="1">
+          <mxGeometry height="106" width="106" x="490" y="1690" as="geometry" />
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-26" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="&lt;font color=&quot;#333333&quot;&gt;ตารางสอนถูกตีกลับจากผู้บริหาร&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="170" x="1400" y="1430" as="geometry" />
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-27" edge="1" parent="1" source="pgU98yXdbD_K4MPtSGm3-28" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="pgU98yXdbD_K4MPtSGm3-31">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-28" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;ตรวจสอบภาพรวม&lt;/span&gt;&lt;br style=&quot;padding: 0px; margin: 0px; color: rgb(51, 51, 51);&quot;&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;ความถูกต้องทั้งหมดของวิชาตนเอง&lt;/span&gt;" vertex="1">
+          <mxGeometry height="71" width="190" x="1244" y="1707.5" as="geometry" />
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-29" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="pgU98yXdbD_K4MPtSGm3-3" value="&lt;span style=&quot;color: rgb(0, 0, 0); font-family: Helvetica; font-size: 11px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: nowrap; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; float: none; display: inline !important;&quot;&gt;เมื่อทุกวิชาได้รับอนุมัติแล้ว&lt;/span&gt;">
+          <mxGeometry relative="1" x="-0.0362" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1275" y="1970" />
+              <mxPoint x="991" y="1970" />
+            </Array>
+            <mxPoint x="1274" y="1967" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-30" edge="1" parent="1" source="pgU98yXdbD_K4MPtSGm3-31" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="pgU98yXdbD_K4MPtSGm3-36">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-31" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;กดส่งขออนุมัติตารางสอน&lt;/span&gt;&lt;br&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;วิชาของตนเอง&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="71" width="130" x="1274" y="1820" as="geometry" />
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-32" edge="1" parent="1" source="pgU98yXdbD_K4MPtSGm3-34" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="pgU98yXdbD_K4MPtSGm3-25">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-33" connectable="0" parent="pgU98yXdbD_K4MPtSGm3-32" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Admin ปิดระบบเทอมปัจจุบัน" vertex="1">
+          <mxGeometry relative="1" x="-0.1984" y="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-34" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;font color=&quot;#333333&quot;&gt;Course Head ดูภาพรวมและตารางสอนของวิชาตนเอง&lt;/font&gt;" vertex="1">
+          <mxGeometry height="71" width="160" x="700" y="1834.5" as="geometry" />
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-35" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="&lt;font color=&quot;#333333&quot;&gt;แจ้งเตือน&lt;/font&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;-กลุ่มนักศึกษาเกินความจุห้อง&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;-ไม่กำหนดบทบาทการสอน&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;-ผู้สอนจากภาคอื่น&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="80" width="170" x="900" y="1460" as="geometry" />
+        </mxCell>
+        <mxCell id="pgU98yXdbD_K4MPtSGm3-36" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;font color=&quot;#333333&quot;&gt;รอการอนุมัติจากผู้บริหาร&lt;/font&gt;" vertex="1">
+          <mxGeometry height="71" width="130" x="1274" y="1931" as="geometry" />
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-1" edge="1" parent="1" source="m1s5oK5GOVTyV_WatBHW-3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;curved=0;" target="m1s5oK5GOVTyV_WatBHW-15">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-2" connectable="0" parent="m1s5oK5GOVTyV_WatBHW-1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="ไม่อนุมัติ (Reject)" vertex="1">
+          <mxGeometry relative="1" x="0.0835" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-3" parent="1" style="rhombus;strokeWidth=2;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;" value="พิจารณาอนุมัติ&#xa;ตารางสอนแต่ละวิชา" vertex="1">
+          <mxGeometry height="70" width="187.5" x="1112" y="2150.5" as="geometry" />
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-4" edge="1" parent="1" source="m1s5oK5GOVTyV_WatBHW-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="m1s5oK5GOVTyV_WatBHW-32">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-5" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="ระบบเปลี่ยนเป็น&#xa;ช่วงเผยแพร่ตาราง" vertex="1">
+          <mxGeometry height="129" width="129" x="1351.5" y="2380.5" as="geometry" />
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-6" edge="1" parent="1" source="m1s5oK5GOVTyV_WatBHW-10" style="curved=1;startArrow=none;endArrow=block;exitX=1;exitY=0.5;entryX=0;entryY=0.5;rounded=0;exitDx=0;exitDy=0;" target="m1s5oK5GOVTyV_WatBHW-3" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+            <mxPoint x="1062.5" y="2115" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-7" edge="1" parent="1" source="m1s5oK5GOVTyV_WatBHW-3" style="curved=0;startArrow=none;endArrow=block;entryX=0.5;entryY=0;rounded=1;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" target="m1s5oK5GOVTyV_WatBHW-33" value="อนุมัติ (Approve)">
+          <mxGeometry relative="1" x="0.1624" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1415" y="2183" />
+            </Array>
+            <mxPoint x="1204.5" y="2205.5" as="sourcePoint" />
+            <mxPoint x="1345" y="2303.5" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-8" edge="1" parent="1" source="m1s5oK5GOVTyV_WatBHW-33" style="curved=1;startArrow=none;endArrow=block;entryX=0.5;entryY=0;rounded=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="m1s5oK5GOVTyV_WatBHW-5" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+            <mxPoint x="1416" y="2333" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-9" connectable="0" parent="m1s5oK5GOVTyV_WatBHW-8" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="ครบทุกวิชา" vertex="1">
+          <mxGeometry relative="1" x="0.1038" y="-3" as="geometry">
+            <mxPoint y="-14" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;ตรวจสอบตารางสอน&lt;/span&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;และความสมดุลของ&lt;/span&gt;&lt;div&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;ภาระงานของอาจารย์แต่ละคน&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="71" width="236.15" x="826.9200000000001" y="2150.5" as="geometry" />
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-11" edge="1" parent="1" source="m1s5oK5GOVTyV_WatBHW-33" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;curved=0;" target="m1s5oK5GOVTyV_WatBHW-23">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1372.2640000000001" y="2328.337" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-12" connectable="0" parent="m1s5oK5GOVTyV_WatBHW-11" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="ไม่ครบ" vertex="1">
+          <mxGeometry relative="1" x="-0.6024" y="3" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-14" edge="1" parent="1" source="m1s5oK5GOVTyV_WatBHW-15" style="curved=1;startArrow=none;endArrow=block;exitX=1;exitY=0.5;entryX=0;entryY=0.5;rounded=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" target="m1s5oK5GOVTyV_WatBHW-25" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+            <mxPoint x="2145.5" y="2008" as="sourcePoint" />
+            <mxPoint x="1604.9999999999968" y="2008" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-15" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;ระบุข้อเสนอแนะ /&lt;/span&gt;&lt;br style=&quot;padding: 0px; margin: 0px; color: rgb(51, 51, 51);&quot;&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;เหตุผลที่ต้องแก้ไข&lt;/span&gt;&lt;div&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;ตารางสอน&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="71" width="140" x="1385" y="2092" as="geometry" />
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-18" edge="1" parent="1" source="m1s5oK5GOVTyV_WatBHW-19" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m1s5oK5GOVTyV_WatBHW-23">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="615" y="2115.190476190476" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-19" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="ระบบพร้อม&#xa;เริ่มจัดตาราง" vertex="1">
+          <mxGeometry height="106" width="106" x="460" y="2132.5" as="geometry" />
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-20" edge="1" parent="1" source="m1s5oK5GOVTyV_WatBHW-28" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="m1s5oK5GOVTyV_WatBHW-19">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="513" y="2313" />
+              <mxPoint x="513" y="2313" />
+            </Array>
+            <mxPoint x="510" y="2423" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-21" connectable="0" parent="m1s5oK5GOVTyV_WatBHW-20" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Admin ปรับเป็นช่วงจัดตาราง" vertex="1">
+          <mxGeometry relative="1" x="0.0834" y="-1" as="geometry">
+            <mxPoint x="-1" y="-11" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-22" edge="1" parent="1" source="m1s5oK5GOVTyV_WatBHW-23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m1s5oK5GOVTyV_WatBHW-10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-23" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;font color=&quot;#333333&quot;&gt;ดูภาพรวมคำขออนุมัติตารางสอน&lt;/font&gt;&lt;span style=&quot;color: light-dark(rgb(51, 51, 51), rgb(193, 193, 193)); background-color: transparent;&quot;&gt;แต่ละวิชา&lt;/span&gt;" vertex="1">
+          <mxGeometry height="71" width="150" x="615" y="2150.5" as="geometry" />
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-24" edge="1" parent="1" source="m1s5oK5GOVTyV_WatBHW-25" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="m1s5oK5GOVTyV_WatBHW-23">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-25" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="&lt;font color=&quot;#333333&quot;&gt;ตีกลับตารางสอนให้&lt;/font&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;หัวหน้าวิชาไปแก้ไข&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="170" x="1605" y="2097.5" as="geometry" />
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-26" edge="1" parent="1" source="m1s5oK5GOVTyV_WatBHW-27" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="m1s5oK5GOVTyV_WatBHW-28">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-27" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="ระบบเปลี่ยนเป็น&#xa;ช่วงเตรียมระบบ" vertex="1">
+          <mxGeometry height="106" width="106" x="460" y="2392" as="geometry" />
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-28" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;font color=&quot;#333333&quot;&gt;รอ Admin และ Staff&amp;nbsp;&lt;/font&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;ตั้งค่าระบบ&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="44" width="140" x="443" y="2293" as="geometry" />
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-29" edge="1" parent="1" source="m1s5oK5GOVTyV_WatBHW-32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="m1s5oK5GOVTyV_WatBHW-27">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1374.9999999999995" y="2468.5" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-30" connectable="0" parent="m1s5oK5GOVTyV_WatBHW-29" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="&lt;span style=&quot;color: rgba(0, 0, 0, 0); font-family: monospace; font-size: 0px; text-align: start; background-color: rgb(236, 236, 236);&quot;&gt;%3CmxGraphModel%3E%3Croot%3E%3CmxCell%20id%3D%220%22%2F%3E%3CmxCell%20id%3D%221%22%20parent%3D%220%22%2F%3E%3CmxCell%20id%3D%222%22%20connectable%3D%220%22%20parent%3D%221%22%20style%3D%22edgeLabel%3Bhtml%3D1%3Balign%3Dcenter%3BverticalAlign%3Dmiddle%3Bresizable%3D0%3Bpoints%3D%5B%5D%3B%22%20value%3D%22Admin%20%E0%B8%9B%E0%B8%B4%E0%B8%94%E0%B8%A3%E0%B8%B0%E0%B8%9A%E0%B8%9A%E0%B9%80%E0%B8%97%E0%B8%AD%E0%B8%A1%E0%B8%9B%E0%B8%B1%E0%B8%88%E0%B8%88%E0%B8%B8%E0%B8%9A%E0%B8%B1%E0%B8%99%22%20vertex%3D%221%22%3E%3CmxGeometry%20x%3D%22257.1428571428571%22%20y%3D%22921.0000000000002%22%20as%3D%22geometry%22%2F%3E%3C%2FmxCell%3E%3C%2Froot%3E%3C%2FmxGraphModel%3E&lt;/span&gt;" vertex="1">
+          <mxGeometry relative="1" x="0.048" y="3" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-31" connectable="0" parent="m1s5oK5GOVTyV_WatBHW-29" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Admin ปิดระบบเทอมปัจจุบัน" vertex="1">
+          <mxGeometry relative="1" x="0.0194" y="-1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-32" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;Excutive ดูภาพรวมตารางสอนและ&lt;/span&gt;&lt;div&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;ภาระงานอาจารย์ทุกคนได้&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="71" width="200" x="844.9999999999995" y="2409.5" as="geometry" />
+        </mxCell>
+        <mxCell id="m1s5oK5GOVTyV_WatBHW-33" parent="1" style="rhombus;strokeWidth=2;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;" value="อนุมัติครบทุกวิชา" vertex="1">
+          <mxGeometry height="70" width="187.5" x="1322.25" y="2239" as="geometry" />
+        </mxCell>
+        <mxCell id="PxSBfJ0Pr5vVRcTA1wdx-1" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;p class=&quot;MsoNormal&quot;&gt;&lt;b&gt;&lt;span style=&quot;font-size:14.0pt;line-height:115%;&amp;lt;br/&amp;gt;font-family:&amp;quot;TH Sarabun New&amp;quot;,sans-serif&quot;&gt;5. &lt;span lang=&quot;TH&quot;&gt;อาจารย์ผู้สอน (&lt;/span&gt;Lecturer)&lt;/span&gt;&lt;/b&gt;&lt;span style=&quot;font-size:14.0pt;line-height:115%;font-family:&amp;lt;br/&amp;gt;&amp;quot;TH Sarabun New&amp;quot;,sans-serif&quot;&gt;&lt;/span&gt;&lt;/p&gt;" vertex="1">
+          <mxGeometry height="30" width="350" x="320" y="2605" as="geometry" />
+        </mxCell>
+        <mxCell id="PxSBfJ0Pr5vVRcTA1wdx-5" edge="1" parent="1" source="PxSBfJ0Pr5vVRcTA1wdx-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="PxSBfJ0Pr5vVRcTA1wdx-10">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="625.49" y="2744.6129032258063" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="PxSBfJ0Pr5vVRcTA1wdx-6" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="ระบบเปลี่ยนเป็น&#xa;ช่วงเตรียมระบบ" vertex="1">
+          <mxGeometry height="106" width="106" x="435.49" y="2691.5" as="geometry" />
+        </mxCell>
+        <mxCell id="PxSBfJ0Pr5vVRcTA1wdx-7" edge="1" parent="1" source="PxSBfJ0Pr5vVRcTA1wdx-10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="PxSBfJ0Pr5vVRcTA1wdx-12">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="PxSBfJ0Pr5vVRcTA1wdx-8" connectable="0" parent="PxSBfJ0Pr5vVRcTA1wdx-7" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="&lt;span style=&quot;color: rgba(0, 0, 0, 0); font-family: monospace; font-size: 0px; text-align: start; background-color: rgb(236, 236, 236);&quot;&gt;%3CmxGraphModel%3E%3Croot%3E%3CmxCell%20id%3D%220%22%2F%3E%3CmxCell%20id%3D%221%22%20parent%3D%220%22%2F%3E%3CmxCell%20id%3D%222%22%20connectable%3D%220%22%20parent%3D%221%22%20style%3D%22edgeLabel%3Bhtml%3D1%3Balign%3Dcenter%3BverticalAlign%3Dmiddle%3Bresizable%3D0%3Bpoints%3D%5B%5D%3B%22%20value%3D%22Admin%20%E0%B8%9B%E0%B8%A3%E0%B8%B1%E0%B8%9A%E0%B9%80%E0%B8%9B%E0%B9%87%E0%B8%99%E0%B8%8A%E0%B9%88%E0%B8%A7%E0%B8%87%E0%B8%88%E0%B8%B1%E0%B8%94%E0%B8%95%E0%B8%B2%E0%B8%A3%E0%B8%B2%E0%B8%87%22%20vertex%3D%221%22%3E%3CmxGeometry%20x%3D%22428%22%20y%3D%22617.4615384615381%22%20as%3D%22geometry%22%2F%3E%3C%2FmxCell%3E%3C%2Froot%3E%3C%2FmxGraphModel%3E&lt;/span&gt;" vertex="1">
+          <mxGeometry relative="1" x="0.0157" y="-2" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="PxSBfJ0Pr5vVRcTA1wdx-9" connectable="0" parent="PxSBfJ0Pr5vVRcTA1wdx-7" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Admin ปรับเป็นช่วงจัดตาราง" vertex="1">
+          <mxGeometry relative="1" x="-0.0157" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="PxSBfJ0Pr5vVRcTA1wdx-10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;font color=&quot;#333333&quot;&gt;รอ Admin และ Staff&amp;nbsp;&lt;/font&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;ตั้งค่าระบบ&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="44" width="140" x="605.49" y="2722.5" as="geometry" />
+        </mxCell>
+        <mxCell id="PxSBfJ0Pr5vVRcTA1wdx-11" edge="1" parent="1" source="PxSBfJ0Pr5vVRcTA1wdx-12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1095.49" y="2745" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="PxSBfJ0Pr5vVRcTA1wdx-12" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="ระบบพร้อม&#xa;เริ่มจัดตาราง" vertex="1">
+          <mxGeometry height="106" width="106" x="915.49" y="2691.5" as="geometry" />
+        </mxCell>
+        <mxCell id="PxSBfJ0Pr5vVRcTA1wdx-13" edge="1" parent="1" source="PxSBfJ0Pr5vVRcTA1wdx-15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1425.49" y="2745" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="PxSBfJ0Pr5vVRcTA1wdx-14" connectable="0" parent="PxSBfJ0Pr5vVRcTA1wdx-13" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="เมื่อทุกวิชาได้รับอนุมัติแล้ว" vertex="1">
+          <mxGeometry relative="1" x="-0.0187" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="PxSBfJ0Pr5vVRcTA1wdx-15" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;font color=&quot;#333333&quot;&gt;รอ Course Head จัดตารางและ Excutive อนุมติครบทุกวิชา&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="170" x="1095.49" y="2715" as="geometry" />
+        </mxCell>
+        <mxCell id="PxSBfJ0Pr5vVRcTA1wdx-16" edge="1" parent="1" source="PxSBfJ0Pr5vVRcTA1wdx-17" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="PxSBfJ0Pr5vVRcTA1wdx-19">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="PxSBfJ0Pr5vVRcTA1wdx-17" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="ระบบเปลี่ยนเป็น&#xa;ช่วงเผยแพร่ตาราง" vertex="1">
+          <mxGeometry height="106" width="106" x="1425.49" y="2691.5" as="geometry" />
+        </mxCell>
+        <mxCell id="PxSBfJ0Pr5vVRcTA1wdx-18" edge="1" parent="1" source="PxSBfJ0Pr5vVRcTA1wdx-19" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="PxSBfJ0Pr5vVRcTA1wdx-21">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="PxSBfJ0Pr5vVRcTA1wdx-19" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;รับการแจ้งเตือน&lt;/span&gt;&lt;br style=&quot;padding: 0px; margin: 0px; color: rgb(51, 51, 51);&quot;&gt;&lt;font color=&quot;#333333&quot;&gt;ตารางสอนของตนเอง&lt;/font&gt;" vertex="1">
+          <mxGeometry height="71" width="163.01" x="1396.99" y="2885" as="geometry" />
+        </mxCell>
+        <mxCell id="PxSBfJ0Pr5vVRcTA1wdx-20" edge="1" parent="1" source="PxSBfJ0Pr5vVRcTA1wdx-21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="PxSBfJ0Pr5vVRcTA1wdx-24">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="PxSBfJ0Pr5vVRcTA1wdx-21" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;ดูตารางสอนและภาระงาน&lt;/span&gt;&lt;br style=&quot;padding: 0px; margin: 0px; color: rgb(51, 51, 51);&quot;&gt;&lt;font color=&quot;#333333&quot;&gt;ชองตนเองในเทอมนั้นๆ&lt;/font&gt;" vertex="1">
+          <mxGeometry height="71" width="180.08" x="1085.41" y="2885" as="geometry" />
+        </mxCell>
+        <mxCell id="PxSBfJ0Pr5vVRcTA1wdx-22" edge="1" parent="1" source="PxSBfJ0Pr5vVRcTA1wdx-24" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="PxSBfJ0Pr5vVRcTA1wdx-6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="PxSBfJ0Pr5vVRcTA1wdx-23" connectable="0" parent="PxSBfJ0Pr5vVRcTA1wdx-22" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Admin ปิดระบบเทอมปัจจุบัน" vertex="1">
+          <mxGeometry relative="1" x="-0.1682" y="-4" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="PxSBfJ0Pr5vVRcTA1wdx-24" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;รับการแจ้งเตือนอื่นๆ&lt;/span&gt;&lt;br style=&quot;padding: 0px; margin: 0px; color: rgb(51, 51, 51);&quot;&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;ที่เกี่ยวข้องกับการสอนในเทอมนั้นๆ&lt;/span&gt;" vertex="1">
+          <mxGeometry height="71" width="180" x="765.49" y="2885" as="geometry" />
+        </mxCell>
+        <mxCell id="-vDcSOCTT5RrFc6po_0D-15" edge="1" parent="1" source="6uLkgh3GRKFqFk0KaPh4-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="6uLkgh3GRKFqFk0KaPh4-4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="6uLkgh3GRKFqFk0KaPh4-1" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=18;" value="เริ่มต้น&#xa;เข้าระบบ" vertex="1">
+          <mxGeometry height="185.25" width="185.25" x="-530" y="1650.3700000000001" as="geometry" />
+        </mxCell>
+        <mxCell id="-vDcSOCTT5RrFc6po_0D-3" edge="1" parent="1" source="6uLkgh3GRKFqFk0KaPh4-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="pgU98yXdbD_K4MPtSGm3-25">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="-vDcSOCTT5RrFc6po_0D-4" edge="1" parent="1" source="6uLkgh3GRKFqFk0KaPh4-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m1s5oK5GOVTyV_WatBHW-19">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="-vDcSOCTT5RrFc6po_0D-5" edge="1" parent="1" source="6uLkgh3GRKFqFk0KaPh4-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="PxSBfJ0Pr5vVRcTA1wdx-6">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="240" y="2650" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="-vDcSOCTT5RrFc6po_0D-6" edge="1" parent="1" source="6uLkgh3GRKFqFk0KaPh4-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="6Qllh5HQ-9ghYeTZ9tUq-17">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="-vDcSOCTT5RrFc6po_0D-8" edge="1" parent="1" source="6uLkgh3GRKFqFk0KaPh4-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="Ey3WlHDIhNnO9Qq_wDNp-33">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="6uLkgh3GRKFqFk0KaPh4-4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;div&gt;&lt;span style=&quot;font-size: 18px;&quot;&gt;เข้าสู่ระบบ&lt;/span&gt;&lt;/div&gt;&lt;font style=&quot;font-size: 18px;&quot;&gt;ระบบ Role based access control&lt;/font&gt;&lt;div&gt;&lt;font style=&quot;font-size: 18px;&quot;&gt;แยกบทบาทตามที่ตั้งค่าผู้ใช้แต่ละคนไว้&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="120" width="350" x="-240" y="1683" as="geometry" />
+        </mxCell>
+        <mxCell id="gGWFsRtzyq5olIQmbkMn-5" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;p class=&quot;MsoNormal&quot;&gt;&lt;b&gt;&lt;span style=&quot;font-size:14.0pt;line-height:115%;&amp;lt;br/&amp;gt;font-family:&amp;quot;TH Sarabun New&amp;quot;,sans-serif;mso-fareast-font-family:Aptos;&amp;lt;br/&amp;gt;mso-fareast-theme-font:minor-latin;mso-ansi-language:EN-US;mso-fareast-language:&amp;lt;br/&amp;gt;EN-US;mso-bidi-language:TH&quot;&gt;3. &lt;span lang=&quot;TH&quot;&gt;หัวหน้าวิชา / ผู้ประสานรายวิชา (Course Head&lt;/span&gt;&lt;/span&gt;&lt;/b&gt;&lt;b style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;span style=&quot;font-size:14.0pt;line-height:115%;&amp;lt;br/&amp;gt;font-family:&amp;quot;TH Sarabun New&amp;quot;,sans-serif;mso-fareast-font-family:Aptos;&amp;lt;br/&amp;gt;mso-fareast-theme-font:minor-latin;mso-ansi-language:EN-US;mso-fareast-language:&amp;lt;br/&amp;gt;EN-US;mso-bidi-language:TH&quot;&gt;)&lt;/span&gt;&lt;/b&gt;&lt;/p&gt;" vertex="1">
+          <mxGeometry height="30" width="490" x="790" y="1420" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="PY_fHitPcRKGLatUIEwP" name="Admin">
+    <mxGraphModel dx="3425" dy="1403" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="598omRBENPpghGtlDkAj-1" parent="1" style="whiteSpace=wrap;strokeWidth=2;fillColor=light-dark(#eeeeee,#1f2020);strokeColor=light-dark(#999999,#cccccc);fontColor=light-dark(#333333,#cccccc);align=left;shadow=1;glass=0;rounded=1;" value="📌 สัญลักษณ์และสีที่ใช้&#xa;◎ วงกลมซ้อน = จุดเริ่มต้น / สิ้นสุด / แจ้งสถานะ (เช่น แบบร่าง, ถูกตีกลับ, เผยแพร่)&#xa;▭ สี่เหลี่ยมมุมมน = ขั้นตอนการทำงานปกติ / การเรียกดูรายงาน&#xa;◇ รูปเพชร = จุดตัดสินใจ / ตรวจสอบเงื่อนไข&#xa;➔ เส้นทึบ = เส้นทางการทำงานหลัก (Main Flow)&#xa;⇢ เส้นประ = ทางเลือก / การแจ้งเตือน / โยงข้อมูล / ย้อนกลับไปแก้ไข&#xa;&#xa;ความหมายของสี&#xa;🟢 สีเขียว = จุดเริ่มต้น / จุดสิ้นสุด / สถานะตาราง&#xa;🔵 สีฟ้า = ขั้นตอนการทำงาน / กระบวนการ / รายงาน&#xa;🔴 สีแดง (ชมพู) = จุดตัดสินใจ / ตรวจสอบเงื่อนไข&#xa;🟠สีส้ม = ขั้นตอนการแก้ไข ปรับแก้" vertex="1">
+          <mxGeometry height="210" width="410" x="1218" y="185.5" as="geometry" />
+        </mxCell>
+        <mxCell id="598omRBENPpghGtlDkAj-2" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;p class=&quot;MsoNormal&quot;&gt;&lt;b&gt;&lt;span style=&quot;line-height: 115%;&quot;&gt;&lt;font style=&quot;font-size: 18px;&quot;&gt;1. &lt;span lang=&quot;TH&quot; style=&quot;&quot;&gt;ผู้ดูแลระบบ (&lt;/span&gt;System Admin)&lt;/font&gt;&lt;/span&gt;&lt;/b&gt;&lt;span style=&quot;font-size:14.0pt;line-height:115%;font-family:&amp;lt;br/&amp;gt;&amp;quot;TH Sarabun New&amp;quot;,sans-serif&quot;&gt;&lt;/span&gt;&lt;/p&gt;" vertex="1">
+          <mxGeometry height="30" width="290" x="-20" y="270" as="geometry" />
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-38" edge="1" parent="1" source="598omRBENPpghGtlDkAj-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="2iiO2VONxZ9nY8CgVyZf-37">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="598omRBENPpghGtlDkAj-3" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="เริ่มต้น&#xa;เข้าระบบ" vertex="1">
+          <mxGeometry height="67" width="67" x="-30" y="457.25" as="geometry" />
+        </mxCell>
+        <mxCell id="598omRBENPpghGtlDkAj-4" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="ระบบเปลี่ยนเป็น&#xa;ช่วงจัดตารางสอน" vertex="1">
+          <mxGeometry height="114.5" width="114.5" x="1220" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-10" edge="1" parent="1" source="598omRBENPpghGtlDkAj-11" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.716;exitY=0.991;exitDx=0;exitDy=0;dashed=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;curved=0;exitPerimeter=0;" target="2iiO2VONxZ9nY8CgVyZf-12">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1426" y="620" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-11" connectable="0" parent="2iiO2VONxZ9nY8CgVyZf-10" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="พบข้อมูลผิดพลาด" vertex="1">
+          <mxGeometry relative="1" x="-0.0184" y="-1" as="geometry">
+            <mxPoint x="-61" y="-2" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-25" edge="1" parent="1" source="598omRBENPpghGtlDkAj-11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="2iiO2VONxZ9nY8CgVyZf-15">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-26" connectable="0" parent="2iiO2VONxZ9nY8CgVyZf-25" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="เมื่อทุกวิชาได้รับอนุมัติแล้ว" vertex="1">
+          <mxGeometry relative="1" x="0.0097" y="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="598omRBENPpghGtlDkAj-11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;Admin ดู Dashboard ภาพรวมระบบและสถานะการจัดตารางแต่ละวิชา&lt;/span&gt;" vertex="1">
+          <mxGeometry height="71" width="182.62" x="1218" y="600" as="geometry" />
+        </mxCell>
+        <mxCell id="598omRBENPpghGtlDkAj-12" edge="1" parent="1" source="598omRBENPpghGtlDkAj-4" style="curved=0;startArrow=none;endArrow=block;exitX=0.5;exitY=1;entryX=0.324;entryY=0.034;rounded=1;exitDx=0;exitDy=0;entryDx=0;entryDy=0;entryPerimeter=0;" target="598omRBENPpghGtlDkAj-11" value="ติดตามภาพรวม">
+          <mxGeometry relative="1" x="0.0097" y="3" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points" />
+            <mxPoint x="1228.4499999999998" y="570" as="sourcePoint" />
+            <mxPoint x="977.4499999999998" y="669" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-29" edge="1" parent="1" source="2iiO2VONxZ9nY8CgVyZf-1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;curved=0;" target="2iiO2VONxZ9nY8CgVyZf-42">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="440" y="490.7499999999999" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;นำเข้าข้อมูลผู้ใช้งาน&lt;/span&gt;&lt;br style=&quot;padding: 0px; margin: 0px; color: rgb(51, 51, 51);&quot;&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;และกำหนดสิทธิ์ (Roles)&amp;nbsp;&lt;/span&gt;" vertex="1">
+          <mxGeometry height="71" width="150" x="220" y="455.25" as="geometry" />
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-50" edge="1" parent="1" source="2iiO2VONxZ9nY8CgVyZf-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="2iiO2VONxZ9nY8CgVyZf-8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;font color=&quot;#333333&quot;&gt;ระบุหัวหน้าวิชาและอาจารย์ที่สอนวิชานั้นๆ&lt;/font&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;(จัดการ Course Pool)&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="71" width="130" x="780" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-9" edge="1" parent="1" source="2iiO2VONxZ9nY8CgVyZf-8" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;curved=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="2iiO2VONxZ9nY8CgVyZf-20" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1160" y="356" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-19" connectable="0" parent="2iiO2VONxZ9nY8CgVyZf-9" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="ข้อมูลพร้อม" vertex="1">
+          <mxGeometry relative="1" x="-0.2039" y="2" as="geometry">
+            <mxPoint x="-2" y="-2" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-52" edge="1" parent="1" source="2iiO2VONxZ9nY8CgVyZf-8" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;curved=0;" target="2iiO2VONxZ9nY8CgVyZf-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-55" connectable="0" parent="2iiO2VONxZ9nY8CgVyZf-52" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="ข้อมูลไม่ครบ / ยังไม่ได้ระบุหัวหน้าวิชา / ไม่ได้ตั้งค่าปีการศึกษา" vertex="1">
+          <mxGeometry relative="1" x="-0.1238" y="5" as="geometry">
+            <mxPoint y="-10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-8" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="ตรวจสอบความครบถ้วน&lt;div&gt;ของข้อมูลโดยระบบ&lt;/div&gt;" vertex="1">
+          <mxGeometry height="80" width="200" x="995" y="315.5" as="geometry" />
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-12" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="&lt;font color=&quot;#333333&quot;&gt;แก้ไขข้อมูล&amp;nbsp;&lt;/font&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;(&lt;/font&gt;&lt;span style=&quot;background-color: transparent;&quot;&gt;&lt;font color=&quot;#333333&quot;&gt;หากแก้ข้อมูลที่ส่งผลต่อการจัดตาราง&lt;/font&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;เช่น ความจุสถานที่, ภาควิชาของอาจารย์&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: rgb(0, 0, 0);&quot;&gt;&lt;span style=&quot;background-color: transparent;&quot;&gt;ระบบจะแจ้งเตือนและตรวจสอบใหม่)&lt;/span&gt;&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="71" width="252.62" x="1395" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-13" edge="1" parent="1" source="2iiO2VONxZ9nY8CgVyZf-12" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.695;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;dashed=1;curved=0;" target="598omRBENPpghGtlDkAj-11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-31" edge="1" parent="1" source="2iiO2VONxZ9nY8CgVyZf-15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="2iiO2VONxZ9nY8CgVyZf-32">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="825" y="636" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-15" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="ระบบเปลี่ยน&#xa;ช่วงเผยแพร่ตารางสอน" vertex="1">
+          <mxGeometry height="120.5" width="120.5" x="840" y="575.25" as="geometry" />
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-21" edge="1" parent="1" source="2iiO2VONxZ9nY8CgVyZf-20" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="598omRBENPpghGtlDkAj-4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-20" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;font color=&quot;#333333&quot;&gt;ปรับระบบเป็นช่วงจัดตารางสอน&lt;/font&gt;" vertex="1">
+          <mxGeometry height="71" width="130" x="1030" y="441.75" as="geometry" />
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-35" edge="1" parent="1" source="2iiO2VONxZ9nY8CgVyZf-32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" target="2iiO2VONxZ9nY8CgVyZf-34">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-36" connectable="0" parent="2iiO2VONxZ9nY8CgVyZf-35" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="ใกล้จบเทอม/เปลี่ยนเทอม" vertex="1">
+          <mxGeometry relative="1" x="0.2148" y="2" as="geometry">
+            <mxPoint x="15" y="-2" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-32" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;font color=&quot;#333333&quot;&gt;Admin ดูภาพรวมตารางสอนและภาระงานได้&lt;/font&gt;" vertex="1">
+          <mxGeometry height="71" width="130" x="595" y="600" as="geometry" />
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-40" edge="1" parent="1" source="2iiO2VONxZ9nY8CgVyZf-34" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;curved=0;" target="2iiO2VONxZ9nY8CgVyZf-37">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-34" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;font color=&quot;#333333&quot;&gt;ปิดระบบในเทอมปัจจุบัน&lt;/font&gt;" vertex="1">
+          <mxGeometry height="71" width="130" x="250" y="600" as="geometry" />
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-39" edge="1" parent="1" source="2iiO2VONxZ9nY8CgVyZf-37" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="2iiO2VONxZ9nY8CgVyZf-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-37" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="ระบบเปลี่ยน&#xa;ช่วงเตรียมระบบ" vertex="1">
+          <mxGeometry height="120.5" width="120.5" x="64.75" y="430.5" as="geometry" />
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-45" edge="1" parent="1" source="2iiO2VONxZ9nY8CgVyZf-42" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="2iiO2VONxZ9nY8CgVyZf-43">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-57" edge="1" parent="1" source="2iiO2VONxZ9nY8CgVyZf-42" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;dashed=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="680" y="490.33333333333337" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-42" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;จัดการฐานข้อมูลพื้นฐาน (Master Data)&lt;/span&gt;&lt;br style=&quot;padding: 0px; margin: 0px; color: rgb(51, 51, 51);&quot;&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;- เพิ่มรายชื่อบุคลากร&lt;/span&gt;&lt;br style=&quot;padding: 0px; margin: 0px; color: rgb(51, 51, 51);&quot;&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;- เพิ่มข้อมูลสถานที่/ห้องเรียน และอื่นๆ&lt;/span&gt;" vertex="1">
+          <mxGeometry height="71" width="220" x="410" y="455.25" as="geometry" />
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-44" edge="1" parent="1" source="2iiO2VONxZ9nY8CgVyZf-43" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="2iiO2VONxZ9nY8CgVyZf-4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-46" connectable="0" parent="2iiO2VONxZ9nY8CgVyZf-44" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="โหลดวิชาที่เปิดสอนในเทอม" vertex="1">
+          <mxGeometry relative="1" x="0.0845" y="-4" as="geometry">
+            <mxPoint x="-7" y="-4" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-43" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;สร้างหรือตั้งค่า&lt;/span&gt;&lt;div&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;ปีการศึกษาและเทอมปัจจุบัน&amp;nbsp;&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="61.5" width="180" x="430" y="324.75" as="geometry" />
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-59" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;font color=&quot;#333333&quot;&gt;ตั้งค่าเกณฑ์ PA&lt;/font&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;(ครั้งเดียว)&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="41.5" width="110" x="680" y="471.25" as="geometry" />
+        </mxCell>
+        <mxCell id="2iiO2VONxZ9nY8CgVyZf-61" edge="1" parent="1" source="2iiO2VONxZ9nY8CgVyZf-59" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.721;entryY=1.042;entryDx=0;entryDy=0;entryPerimeter=0;curved=0;dashed=1;" target="2iiO2VONxZ9nY8CgVyZf-43">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="G3DANhJYS1TKrlDiPYXt" name="Staff">
+    <mxGraphModel dx="2289" dy="1247" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="L2hoAHdCPJ70e9Mt9AmX-3" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;p class=&quot;MsoNormal&quot;&gt;&lt;b&gt;&lt;span style=&quot;font-size:14.0pt;line-height:115%;&amp;lt;br/&amp;gt;font-family:&amp;quot;TH Sarabun New&amp;quot;,sans-serif&quot;&gt;2. &lt;span lang=&quot;TH&quot;&gt;เจ้าหน้าที่ (&lt;/span&gt;Staff / Admin Support)&lt;/span&gt;&lt;/b&gt;&lt;span style=&quot;font-size:14.0pt;line-height:115%;&amp;lt;br/&amp;gt;font-family:&amp;quot;TH Sarabun New&amp;quot;,sans-serif&quot;&gt;&lt;/span&gt;&lt;/p&gt;" vertex="1">
+          <mxGeometry height="30" width="350" x="170" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="VxFn5fuQ4fMD16-auChV-1" edge="1" parent="1" source="L2hoAHdCPJ70e9Mt9AmX-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" target="UcA-lUnJ4drOSF5IwJp--1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="VxFn5fuQ4fMD16-auChV-2" connectable="0" parent="VxFn5fuQ4fMD16-auChV-1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Admin ปิดระบบเทอมปัจจุบัน" vertex="1">
+          <mxGeometry relative="1" x="-0.3225" y="-2" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="L2hoAHdCPJ70e9Mt9AmX-4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;ดึงรายงาน Export&lt;/span&gt;&lt;br style=&quot;padding: 0px; margin: 0px; color: rgb(51, 51, 51);&quot;&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;ไปประสานงานต่อกับหน่วยงานอื่น&lt;/span&gt;" vertex="1">
+          <mxGeometry height="71" width="176.15" x="470" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="L2hoAHdCPJ70e9Mt9AmX-8" edge="1" parent="1" source="L2hoAHdCPJ70e9Mt9AmX-13" style="curved=1;startArrow=none;endArrow=block;exitX=1;exitY=0.5;entryX=0;entryY=0.5;rounded=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" target="L2hoAHdCPJ70e9Mt9AmX-14" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+            <mxPoint x="602.5" y="439.2199999999999" as="sourcePoint" />
+            <mxPoint x="677.5" y="439.2199999999998" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="L2hoAHdCPJ70e9Mt9AmX-9" edge="1" parent="1" source="L2hoAHdCPJ70e9Mt9AmX-14" style="curved=1;startArrow=none;endArrow=block;exitX=1;exitY=0.5;entryX=0;entryY=0.5;rounded=0;entryDx=0;entryDy=0;exitDx=0;exitDy=0;" target="L2hoAHdCPJ70e9Mt9AmX-15" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+            <mxPoint x="874.5000000000005" y="439.2199999999998" as="sourcePoint" />
+            <mxPoint x="948.5" y="439.2199999999998" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="L2hoAHdCPJ70e9Mt9AmX-10" edge="1" parent="1" source="L2hoAHdCPJ70e9Mt9AmX-15" style="curved=1;startArrow=none;endArrow=block;exitX=1;exitY=0.5;entryX=0;entryY=0.5;rounded=0;entryDx=0;entryDy=0;exitDx=0;exitDy=0;" target="L2hoAHdCPJ70e9Mt9AmX-12" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+            <mxPoint x="1148.5" y="439.2199999999998" as="sourcePoint" />
+            <mxPoint x="1224.4999999999955" y="440" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="uCU9nDmR33C9xD8zf-KZ-1" connectable="0" parent="L2hoAHdCPJ70e9Mt9AmX-10" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Admin ปรับเป็นช่วงจัดตาราง" vertex="1">
+          <mxGeometry relative="1" x="-0.1214" y="-1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="UcA-lUnJ4drOSF5IwJp--2" edge="1" parent="1" source="L2hoAHdCPJ70e9Mt9AmX-11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="UcA-lUnJ4drOSF5IwJp--1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="L2hoAHdCPJ70e9Mt9AmX-11" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="เริ่มต้น&#xa;เข้าระบบ" vertex="1">
+          <mxGeometry height="87" width="87" x="130" y="396" as="geometry" />
+        </mxCell>
+        <mxCell id="11DQPJVlx3oBm6uwF_vp-1" edge="1" parent="1" source="L2hoAHdCPJ70e9Mt9AmX-12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1345.3333333333335" y="550" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="L2hoAHdCPJ70e9Mt9AmX-12" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="ระบบเปลี่ยนเป็น&#xa;ช่วงจัดตารางสอน" vertex="1">
+          <mxGeometry height="110.75" width="110.75" x="1290" y="384.13" as="geometry" />
+        </mxCell>
+        <mxCell id="L2hoAHdCPJ70e9Mt9AmX-13" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;จัดการฐานข้อมูลพื้นฐาน (Master Data)&lt;/span&gt;&lt;br style=&quot;padding: 0px; margin: 0px; color: rgb(51, 51, 51);&quot;&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;- เพิ่มรายชื่อบุคลากร&lt;/span&gt;&lt;br style=&quot;padding: 0px; margin: 0px; color: rgb(51, 51, 51);&quot;&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;- เพิ่มข้อมูลสถานที่/ห้องเรียน และอื่นๆ&lt;/span&gt;" vertex="1">
+          <mxGeometry height="71" width="200" x="420" y="404" as="geometry" />
+        </mxCell>
+        <mxCell id="L2hoAHdCPJ70e9Mt9AmX-14" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;สร้างหรือตั้งค่า&lt;/span&gt;&lt;div&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;ปีการศึกษาและเทอมปัจจุบัน&amp;nbsp;&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="71" width="197" x="677.5" y="404" as="geometry" />
+        </mxCell>
+        <mxCell id="L2hoAHdCPJ70e9Mt9AmX-15" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;font&gt;ระบุหัวหน้าวิชาและอาจารย์ที่สอนวิชานั้นๆ&lt;/font&gt;&lt;div&gt;&lt;font&gt;(จัดการ Course Pool)&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="71" width="150.5" x="949.5" y="404" as="geometry" />
+        </mxCell>
+        <mxCell id="UcA-lUnJ4drOSF5IwJp--3" edge="1" parent="1" source="UcA-lUnJ4drOSF5IwJp--1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="L2hoAHdCPJ70e9Mt9AmX-13">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="420" y="440" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="UcA-lUnJ4drOSF5IwJp--1" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="ระบบเปลี่ยนเป็น&#xa;ช่วงเตรียมระบบ" vertex="1">
+          <mxGeometry height="120.5" width="120.5" x="250" y="379.25" as="geometry" />
+        </mxCell>
+        <mxCell id="11DQPJVlx3oBm6uwF_vp-5" edge="1" parent="1" source="11DQPJVlx3oBm6uwF_vp-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="11DQPJVlx3oBm6uwF_vp-4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="NPs89K7_j4aeveHeBU_c-1" connectable="0" parent="11DQPJVlx3oBm6uwF_vp-5" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="เมื่อทุกวิชาได้รับอนุมัติแล้ว" vertex="1">
+          <mxGeometry relative="1" x="-0.1147" y="1" as="geometry">
+            <mxPoint x="-13" y="-1" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="11DQPJVlx3oBm6uwF_vp-3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;ร่วมกับหัวหน้าวิชา&lt;/span&gt;&lt;br style=&quot;padding: 0px; margin: 0px; color: rgb(51, 51, 51);&quot;&gt;&lt;font&gt;สร้าง แก้ไข และตั้งค่ารายละเอียดวิชากลุ่มนักศึกษา&lt;/font&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;และกิจกรรมในตารางสอน&lt;/span&gt;&lt;div&gt;&lt;font&gt;ที่ได้รับมอบหมาย&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="71" width="194.85" x="1247.95" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="jCr3nd3XGnl_fJCxiTCI-2" edge="1" parent="1" source="11DQPJVlx3oBm6uwF_vp-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="jCr3nd3XGnl_fJCxiTCI-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="11DQPJVlx3oBm6uwF_vp-4" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="ระบบเปลี่ยนเป็น&#xa;ช่วงเผยแพร่ตาราง" vertex="1">
+          <mxGeometry height="110.75" width="110.75" x="930" y="530.12" as="geometry" />
+        </mxCell>
+        <mxCell id="jCr3nd3XGnl_fJCxiTCI-3" edge="1" parent="1" source="jCr3nd3XGnl_fJCxiTCI-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" target="L2hoAHdCPJ70e9Mt9AmX-4">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="650" y="585.4137931034483" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="jCr3nd3XGnl_fJCxiTCI-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;font color=&quot;#333333&quot;&gt;Staff ดูภาพรวมตารางสอนและภาระงานอาจารย์ทุกคนได้&lt;/font&gt;" vertex="1">
+          <mxGeometry height="71" width="160" x="700" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="xCSwlK21wY1bAIs7wSWV-1" parent="1" style="whiteSpace=wrap;strokeWidth=2;fillColor=light-dark(#eeeeee,#1f2020);strokeColor=light-dark(#999999,#cccccc);fontColor=light-dark(#333333,#cccccc);align=left;shadow=1;glass=0;rounded=1;" value="📌 สัญลักษณ์และสีที่ใช้&#xa;◎ วงกลมซ้อน = จุดเริ่มต้น / สิ้นสุด / แจ้งสถานะ (เช่น แบบร่าง, ถูกตีกลับ, เผยแพร่)&#xa;▭ สี่เหลี่ยมมุมมน = ขั้นตอนการทำงานปกติ / การเรียกดูรายงาน&#xa;◇ รูปเพชร = จุดตัดสินใจ / ตรวจสอบเงื่อนไข&#xa;➔ เส้นทึบ = เส้นทางการทำงานหลัก (Main Flow)&#xa;⇢ เส้นประ = ทางเลือก / การแจ้งเตือน / โยงข้อมูล / ย้อนกลับไปแก้ไข&#xa;&#xa;ความหมายของสี&#xa;🟢 สีเขียว = จุดเริ่มต้น / จุดสิ้นสุด / สถานะตาราง&#xa;🔵 สีฟ้า = ขั้นตอนการทำงาน / กระบวนการ / รายงาน&#xa;🔴 สีแดง (ชมพู) = จุดตัดสินใจ / ตรวจสอบเงื่อนไข&#xa;🟠สีส้ม = ขั้นตอนการแก้ไข ปรับแก้" vertex="1">
+          <mxGeometry height="210" width="410" x="880" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="6VcwChHN0GGlzQJ9WDJR-6" edge="1" parent="1" source="22izt5Cfj4Iq39z8hH-n-1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;curved=0;dashed=1;" target="11DQPJVlx3oBm6uwF_vp-3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="22izt5Cfj4Iq39z8hH-n-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="&lt;font color=&quot;#333333&quot;&gt;แก้ไขข้อมูล&amp;nbsp;&lt;/font&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;(&lt;/font&gt;&lt;span style=&quot;background-color: transparent;&quot;&gt;&lt;font color=&quot;#333333&quot;&gt;หากแก้ข้อมูลที่ส่งผลต่อการจัดตาราง&lt;/font&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;เช่น ความจุสถานที่, ภาควิชาของอาจารย์&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: rgb(0, 0, 0);&quot;&gt;&lt;span style=&quot;background-color: transparent;&quot;&gt;ระบบจะแจ้งเตือนและตรวจสอบใหม่)&lt;/span&gt;&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="71" width="230" x="1570" y="549.99" as="geometry" />
+        </mxCell>
+        <mxCell id="6VcwChHN0GGlzQJ9WDJR-4" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;dashed=1;curved=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1442.8" y="585.26" as="sourcePoint" />
+            <mxPoint x="1571.8" y="585.26" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="6VcwChHN0GGlzQJ9WDJR-5" connectable="0" parent="6VcwChHN0GGlzQJ9WDJR-4" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="พบข้อมูลผิดพลาด" vertex="1">
+          <mxGeometry relative="1" x="-0.0184" y="-1" as="geometry">
+            <mxPoint x="-4" y="-1" as="offset" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="3SokG6e9neOWqG3_kO4-" name="Course Head">
+    <mxGraphModel dx="2567" dy="935" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="zDLUvHSU95smvMe_R_eE-1" parent="1" style="rhombus;strokeWidth=2;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;" value="ระบบตรวจสอบ&#xa;การชนกันของกิจกรรมภายในวิชา&#xa;และความครบถ้วนของกิจกรรมรายวิชา" vertex="1">
+          <mxGeometry height="110" width="300" x="840" y="563" as="geometry" />
+        </mxCell>
+        <mxCell id="_5TjhmpDmV-2lKNORIVp-1" edge="1" parent="1" source="zDLUvHSU95smvMe_R_eE-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="9UXBRoxAQurXui6btF95-1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="530" y="919.9999999999998" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="zDLUvHSU95smvMe_R_eE-2" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="ระบบเปลี่ยนเป็น&#xa;ช่วงเผยแพร่ตาราง" vertex="1">
+          <mxGeometry height="122" width="122" x="660" y="859" as="geometry" />
+        </mxCell>
+        <mxCell id="zDLUvHSU95smvMe_R_eE-7" edge="1" parent="1" source="zDLUvHSU95smvMe_R_eE-1" style="curved=0;startArrow=none;endArrow=block;exitX=0.5;exitY=0;entryX=0;entryY=0.5;rounded=1;entryDx=0;entryDy=0;exitDx=0;exitDy=0;" target="zDLUvHSU95smvMe_R_eE-16" value="กิจกรรมชน/กรอกข้อมูลตารางไม่ครบ">
+          <mxGeometry relative="1" x="0.4825" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="989.0000000000001" y="376" />
+            </Array>
+            <mxPoint x="1305" y="366" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="zDLUvHSU95smvMe_R_eE-10" edge="1" parent="1" source="zDLUvHSU95smvMe_R_eE-1" style="curved=0;startArrow=none;endArrow=block;exitX=0.5;exitY=1;entryX=0.5;entryY=0;rounded=1;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" target="QaPyxHKyp3CiCLOtXasQ-4" value="กิจกรรมไม่ชน">
+          <mxGeometry relative="1" x="0.0162" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="989.0000000000001" y="760" />
+            </Array>
+            <mxPoint x="1202.499999999999" y="761" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="zDLUvHSU95smvMe_R_eE-13" edge="1" parent="1" source="QaPyxHKyp3CiCLOtXasQ-1" style="curved=0;dashed=1;dashPattern=2 3;startArrow=none;endArrow=block;exitX=1;exitY=0.5;entryX=0.5;entryY=0;rounded=1;entryDx=0;entryDy=0;exitDx=0;exitDy=0;" target="zDLUvHSU95smvMe_R_eE-17" value="ส่งกลับมาให้แก้ไข">
+          <mxGeometry relative="1" x="-0.2727" y="1" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1353" y="510" />
+            </Array>
+            <mxPoint x="1339" y="521" as="sourcePoint" />
+            <mxPoint x="1709" y="529.52" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="kb_1sIe3fsZdrNxbmvs--3" edge="1" parent="1" source="zDLUvHSU95smvMe_R_eE-16" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;curved=0;" target="zDLUvHSU95smvMe_R_eE-17">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="zDLUvHSU95smvMe_R_eE-16" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;font color=&quot;#333333&quot;&gt;แจ้งเตือนประเภทการชน&lt;/font&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;-อาจารย์ชนกันกับวิชาอื่นในเวลานั้น&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;-ห้องเรียนและสถานที่ชนกับวิชาอื่น&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;-กลุ่มนักศึกษาชนกับกิจกรรมในวิชา&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;-กิจกรรมหรือข้อมูลไม่ครบ&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="90" width="205" x="1250" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="kb_1sIe3fsZdrNxbmvs--2" edge="1" parent="1" source="zDLUvHSU95smvMe_R_eE-17" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" target="zDLUvHSU95smvMe_R_eE-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="zDLUvHSU95smvMe_R_eE-17" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;แก้ไขตารางเวลา&lt;/span&gt;&lt;br style=&quot;padding: 0px; margin: 0px; color: rgb(51, 51, 51);&quot;&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;หรือเปลี่ยนสถานที่/อาจารย์/กลุ่มนักศึกษา&lt;/span&gt;" vertex="1">
+          <mxGeometry height="71" width="225" x="1240" y="582.5" as="geometry" />
+        </mxCell>
+        <mxCell id="zDLUvHSU95smvMe_R_eE-20" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;p class=&quot;MsoNormal&quot;&gt;&lt;b&gt;&lt;span style=&quot;font-size:14.0pt;line-height:115%;&amp;lt;br/&amp;gt;font-family:&amp;quot;TH Sarabun New&amp;quot;,sans-serif;mso-fareast-font-family:Aptos;&amp;lt;br/&amp;gt;mso-fareast-theme-font:minor-latin;mso-ansi-language:EN-US;mso-fareast-language:&amp;lt;br/&amp;gt;EN-US;mso-bidi-language:TH&quot;&gt;3. &lt;span lang=&quot;TH&quot;&gt;หัวหน้าวิชา / ผู้ประสานรายวิชา (Course Head&lt;/span&gt;&lt;/span&gt;&lt;/b&gt;&lt;b style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;span style=&quot;font-size:14.0pt;line-height:115%;&amp;lt;br/&amp;gt;font-family:&amp;quot;TH Sarabun New&amp;quot;,sans-serif;mso-fareast-font-family:Aptos;&amp;lt;br/&amp;gt;mso-fareast-theme-font:minor-latin;mso-ansi-language:EN-US;mso-fareast-language:&amp;lt;br/&amp;gt;EN-US;mso-bidi-language:TH&quot;&gt;)&lt;/span&gt;&lt;/b&gt;&lt;/p&gt;" vertex="1">
+          <mxGeometry height="30" width="490" x="-30" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="xKTDfZFLhUfbjmQWa3US-1" edge="1" parent="1" source="zDLUvHSU95smvMe_R_eE-21" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;curved=0;" target="zDLUvHSU95smvMe_R_eE-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="RiLz6Pm4zvP-2_OLLgC4-2" edge="1" parent="1" source="zDLUvHSU95smvMe_R_eE-21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;dashed=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="RiLz6Pm4zvP-2_OLLgC4-1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="634.4705882352941" y="510" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="RiLz6Pm4zvP-2_OLLgC4-3" connectable="0" parent="RiLz6Pm4zvP-2_OLLgC4-2" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="จำนวนกลุ่มนักศึกษาเกินความจุ / ไม่กำหนดบทบาทผู้สอน&amp;nbsp;&lt;div&gt;/ ผู้สอนจากภาคอื่น&amp;nbsp;&lt;/div&gt;" vertex="1">
+          <mxGeometry relative="1" x="-0.1427" as="geometry">
+            <mxPoint x="-15" y="3" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="zDLUvHSU95smvMe_R_eE-21" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=center;" value="&lt;div style=&quot;&quot;&gt;&lt;font color=&quot;#333333&quot;&gt;สร้าง แก้ไข และตั้งค่ารายละเอียดวิชา&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;&quot;&gt;&lt;font color=&quot;#333333&quot;&gt;- กลุ่มนักศึกษาในวิชา&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;&quot;&gt;&lt;font color=&quot;#333333&quot;&gt;- กิจกรรมในรายวิชา&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;&quot;&gt;&lt;font color=&quot;#333333&quot;&gt;- กำหนดบทบาทผู้สอน&amp;nbsp;&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;&quot;&gt;&lt;font color=&quot;#333333&quot;&gt;(หัวหน้าวิชา/เลขานุการ/ผู้สอน/ประจำกลุ่ม/พี่เลี้ยง)&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="83.75" width="270" x="500" y="671" as="geometry" />
+        </mxCell>
+        <mxCell id="zDLUvHSU95smvMe_R_eE-22" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="ระบบพร้อม&#xa;เริ่มจัดตาราง" vertex="1">
+          <mxGeometry height="106" width="106" x="295.0500000000002" y="565" as="geometry" />
+        </mxCell>
+        <mxCell id="zDLUvHSU95smvMe_R_eE-23" edge="1" parent="1" source="zDLUvHSU95smvMe_R_eE-22" style="curved=0;startArrow=none;endArrow=block;exitX=1;exitY=0.5;entryX=0;entryY=0.5;rounded=1;entryDx=0;entryDy=0;exitDx=0;exitDy=0;" target="zDLUvHSU95smvMe_R_eE-21" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="430" y="618" />
+              <mxPoint x="430" y="713" />
+            </Array>
+            <mxPoint x="402.0500000000002" y="617.6199999999999" as="sourcePoint" />
+            <mxPoint x="480.0500000000002" y="617.6199999999999" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="UESWd0a4wdJbg6Im-Jv5-1" parent="1" style="whiteSpace=wrap;strokeWidth=2;fillColor=light-dark(#eeeeee,#1f2020);strokeColor=light-dark(#999999,#cccccc);fontColor=light-dark(#333333,#cccccc);align=left;shadow=1;glass=0;rounded=1;" value="📌 สัญลักษณ์และสีที่ใช้&#xa;◎ วงกลมซ้อน = จุดเริ่มต้น / สิ้นสุด / แจ้งสถานะ (เช่น แบบร่าง, ถูกตีกลับ, เผยแพร่)&#xa;▭ สี่เหลี่ยมมุมมน = ขั้นตอนการทำงานปกติ / การเรียกดูรายงาน&#xa;◇ รูปเพชร = จุดตัดสินใจ / ตรวจสอบเงื่อนไข&#xa;➔ เส้นทึบ = เส้นทางการทำงานหลัก (Main Flow)&#xa;⇢ เส้นประ = ทางเลือก / การแจ้งเตือน / โยงข้อมูล / ย้อนกลับไปแก้ไข&#xa;&#xa;ความหมายของสี&#xa;🟢 สีเขียว = จุดเริ่มต้น / จุดสิ้นสุด / สถานะตาราง&#xa;🔵 สีฟ้า = ขั้นตอนการทำงาน / กระบวนการ / รายงาน&#xa;🔴 สีแดง (ชมพู) = จุดตัดสินใจ / ตรวจสอบเงื่อนไข&#xa;🟠สีส้ม = ขั้นตอนการแก้ไข ปรับแก้" vertex="1">
+          <mxGeometry height="210" width="410" x="1140" y="720" as="geometry" />
+        </mxCell>
+        <mxCell id="twRyelLwPrOb98V9mLoB-4" edge="1" parent="1" source="twRyelLwPrOb98V9mLoB-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="twRyelLwPrOb98V9mLoB-3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="twRyelLwPrOb98V9mLoB-1" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="เริ่มต้น&#xa;เข้าระบบ" vertex="1">
+          <mxGeometry height="87" width="87" x="-10" y="749.5" as="geometry" />
+        </mxCell>
+        <mxCell id="8MfSUSXMEpsmJI-ExvhD-2" edge="1" parent="1" source="twRyelLwPrOb98V9mLoB-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="zDLUvHSU95smvMe_R_eE-22">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="qkdjtvwJ7QJX0OoopbFi-1" connectable="0" parent="8MfSUSXMEpsmJI-ExvhD-2" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Admin ปรับเป็นช่วงจัดตาราง" vertex="1">
+          <mxGeometry relative="1" x="-0.043" y="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="twRyelLwPrOb98V9mLoB-2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;font color=&quot;#333333&quot;&gt;รอ Admin และ Staff&amp;nbsp;&lt;/font&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;ตั้งค่าระบบ&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="44" width="140" x="278.05" y="771" as="geometry" />
+        </mxCell>
+        <mxCell id="8MfSUSXMEpsmJI-ExvhD-1" edge="1" parent="1" source="twRyelLwPrOb98V9mLoB-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="twRyelLwPrOb98V9mLoB-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="twRyelLwPrOb98V9mLoB-3" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="ระบบเปลี่ยนเป็น&#xa;ช่วงเตรียมระบบ" vertex="1">
+          <mxGeometry height="106" width="106" x="140" y="740" as="geometry" />
+        </mxCell>
+        <mxCell id="QaPyxHKyp3CiCLOtXasQ-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="&lt;font color=&quot;#333333&quot;&gt;ตารางสอนถูกตีกลับจากผู้บริหาร&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="170" x="1050" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="QaPyxHKyp3CiCLOtXasQ-7" edge="1" parent="1" source="QaPyxHKyp3CiCLOtXasQ-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="QaPyxHKyp3CiCLOtXasQ-5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="QaPyxHKyp3CiCLOtXasQ-4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;ตรวจสอบภาพรวม&lt;/span&gt;&lt;br style=&quot;padding: 0px; margin: 0px; color: rgb(51, 51, 51);&quot;&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;ความถูกต้องทั้งหมดของวิชาตนเอง&lt;/span&gt;" vertex="1">
+          <mxGeometry height="71" width="190" x="894" y="757.5" as="geometry" />
+        </mxCell>
+        <mxCell id="QaPyxHKyp3CiCLOtXasQ-6" edge="1" parent="1" source="RiLz6Pm4zvP-2_OLLgC4-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="zDLUvHSU95smvMe_R_eE-2" value="&#xa;&lt;span style=&quot;color: rgb(0, 0, 0); font-family: Helvetica; font-size: 11px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: nowrap; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;&quot;&gt;เมื่อทุกวิชาได้รับอนุมัติแล้ว&lt;/span&gt;&#xa;&#xa;">
+          <mxGeometry relative="1" x="-0.0707" y="10" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="925" y="1020" />
+              <mxPoint x="641" y="1020" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="RiLz6Pm4zvP-2_OLLgC4-6" edge="1" parent="1" source="QaPyxHKyp3CiCLOtXasQ-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="RiLz6Pm4zvP-2_OLLgC4-5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="QaPyxHKyp3CiCLOtXasQ-5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;กดส่งขออนุมัติตารางสอน&lt;/span&gt;&lt;br&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;วิชาของตนเอง&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="71" width="130" x="924" y="870" as="geometry" />
+        </mxCell>
+        <mxCell id="9UXBRoxAQurXui6btF95-2" edge="1" parent="1" source="9UXBRoxAQurXui6btF95-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="twRyelLwPrOb98V9mLoB-3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kb_1sIe3fsZdrNxbmvs--1" connectable="0" parent="9UXBRoxAQurXui6btF95-2" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Admin ปิดระบบเทอมปัจจุบัน" vertex="1">
+          <mxGeometry relative="1" x="-0.1984" y="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="9UXBRoxAQurXui6btF95-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;font color=&quot;#333333&quot;&gt;Course Head ดูภาพรวมและตารางสอนของวิชาตนเอง&lt;/font&gt;" vertex="1">
+          <mxGeometry height="71" width="160" x="350" y="884.5" as="geometry" />
+        </mxCell>
+        <mxCell id="RiLz6Pm4zvP-2_OLLgC4-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="&lt;font color=&quot;#333333&quot;&gt;แจ้งเตือน&lt;/font&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;-กลุ่มนักศึกษาเกินความจุห้อง&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;-ไม่กำหนดบทบาทการสอน&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;-ผู้สอนจากภาคอื่น&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="80" width="170" x="550" y="510" as="geometry" />
+        </mxCell>
+        <mxCell id="RiLz6Pm4zvP-2_OLLgC4-5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;font color=&quot;#333333&quot;&gt;รอการอนุมัติจากผู้บริหาร&lt;/font&gt;" vertex="1">
+          <mxGeometry height="71" width="130" x="924" y="981" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="UctfyMQ3JmbGIvWOGrbQ" name="Excutive">
+    <mxGraphModel dx="1585" dy="863" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="HiE0Bk9CM4gJ3jw1ns46-1" edge="1" parent="1" source="N1SkaY3eHZ2ssla4uATp-2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;curved=0;" target="N1SkaY3eHZ2ssla4uATp-20">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="HiE0Bk9CM4gJ3jw1ns46-2" connectable="0" parent="HiE0Bk9CM4gJ3jw1ns46-1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="ไม่อนุมัติ (Reject)" vertex="1">
+          <mxGeometry relative="1" x="0.0835" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="N1SkaY3eHZ2ssla4uATp-2" parent="1" style="rhombus;strokeWidth=2;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;" value="พิจารณาอนุมัติ&#xa;ตารางสอนแต่ละวิชา" vertex="1">
+          <mxGeometry height="70" width="187.5" x="1027" y="497.5" as="geometry" />
+        </mxCell>
+        <mxCell id="mccBAXn0SKGTitOglZ55-3" edge="1" parent="1" source="N1SkaY3eHZ2ssla4uATp-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="mccBAXn0SKGTitOglZ55-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="N1SkaY3eHZ2ssla4uATp-3" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="ระบบเปลี่ยนเป็น&#xa;ช่วงเผยแพร่ตาราง" vertex="1">
+          <mxGeometry height="129" width="129" x="1266.5" y="727.5" as="geometry" />
+        </mxCell>
+        <mxCell id="N1SkaY3eHZ2ssla4uATp-5" edge="1" parent="1" source="N1SkaY3eHZ2ssla4uATp-11" style="curved=1;startArrow=none;endArrow=block;exitX=1;exitY=0.5;entryX=0;entryY=0.5;rounded=0;exitDx=0;exitDy=0;" target="N1SkaY3eHZ2ssla4uATp-2" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+            <mxPoint x="977.5" y="462" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="N1SkaY3eHZ2ssla4uATp-7" edge="1" parent="1" source="N1SkaY3eHZ2ssla4uATp-2" style="curved=0;startArrow=none;endArrow=block;entryX=0.5;entryY=0;rounded=1;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" target="mccBAXn0SKGTitOglZ55-5" value="อนุมัติ (Approve)">
+          <mxGeometry relative="1" x="0.1624" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1330" y="530" />
+            </Array>
+            <mxPoint x="1119.5" y="552.5" as="sourcePoint" />
+            <mxPoint x="1260" y="650.5" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="N1SkaY3eHZ2ssla4uATp-8" edge="1" parent="1" source="mccBAXn0SKGTitOglZ55-5" style="curved=1;startArrow=none;endArrow=block;entryX=0.5;entryY=0;rounded=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="N1SkaY3eHZ2ssla4uATp-3" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+            <mxPoint x="1331" y="680" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="mccBAXn0SKGTitOglZ55-8" connectable="0" parent="N1SkaY3eHZ2ssla4uATp-8" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="ครบทุกวิชา" vertex="1">
+          <mxGeometry relative="1" x="0.1038" y="-3" as="geometry">
+            <mxPoint y="-14" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="N1SkaY3eHZ2ssla4uATp-11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;ตรวจสอบตารางสอน&lt;/span&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;และความสมดุลของ&lt;/span&gt;&lt;div&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;ภาระงานของอาจารย์แต่ละคน&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="71" width="236.15" x="741.92" y="497.5" as="geometry" />
+        </mxCell>
+        <mxCell id="W9DoYURgHwt0FHWgpZTE-2" edge="1" parent="1" source="mccBAXn0SKGTitOglZ55-5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;curved=0;" target="nmEKzBZ9-iqxrrBG_Yr_-2">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1287.2640000000001" y="675.337" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="mccBAXn0SKGTitOglZ55-7" connectable="0" parent="W9DoYURgHwt0FHWgpZTE-2" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="ไม่ครบ" vertex="1">
+          <mxGeometry relative="1" x="-0.6024" y="3" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="N1SkaY3eHZ2ssla4uATp-15" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;p class=&quot;MsoNormal&quot;&gt;&lt;b&gt;&lt;span style=&quot;font-size:14.0pt;line-height:115%;&amp;lt;br/&amp;gt;font-family:&amp;quot;TH Sarabun New&amp;quot;,sans-serif&quot;&gt;4. &lt;span lang=&quot;TH&quot;&gt;ผู้บริหาร (Excutive&lt;/span&gt;)&lt;/span&gt;&lt;/b&gt;&lt;span style=&quot;font-size:14.0pt;line-height:115%;&amp;lt;br/&amp;gt;font-family:&amp;quot;TH Sarabun New&amp;quot;,sans-serif&quot;&gt;&lt;/span&gt;&lt;/p&gt;" vertex="1">
+          <mxGeometry height="30" width="350" x="267" y="349" as="geometry" />
+        </mxCell>
+        <mxCell id="N1SkaY3eHZ2ssla4uATp-19" edge="1" parent="1" source="N1SkaY3eHZ2ssla4uATp-20" style="curved=1;startArrow=none;endArrow=block;exitX=1;exitY=0.5;entryX=0;entryY=0.5;rounded=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" target="W9DoYURgHwt0FHWgpZTE-1" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+            <mxPoint x="2060.5" y="355" as="sourcePoint" />
+            <mxPoint x="1519.9999999999968" y="355.0000000000001" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="N1SkaY3eHZ2ssla4uATp-20" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;ระบุข้อเสนอแนะ /&lt;/span&gt;&lt;br style=&quot;padding: 0px; margin: 0px; color: rgb(51, 51, 51);&quot;&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;เหตุผลที่ต้องแก้ไข&lt;/span&gt;&lt;div&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;ตารางสอน&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="71" width="140" x="1300" y="439" as="geometry" />
+        </mxCell>
+        <mxCell id="1saarSaPh_GmNvM_rdRQ-1" edge="1" parent="1" source="chV6fJTXtS2VHOpzmK4L-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="1saarSaPh_GmNvM_rdRQ-2">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="355.0000000000002" y="792.0000000000002" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="chV6fJTXtS2VHOpzmK4L-1" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="เริ่มต้น&#xa;เข้าระบบ" vertex="1">
+          <mxGeometry height="87" width="87" x="180" y="748.5" as="geometry" />
+        </mxCell>
+        <mxCell id="nmEKzBZ9-iqxrrBG_Yr_-1" edge="1" parent="1" source="gd42YiFBjz1LKPn6DruN-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="nmEKzBZ9-iqxrrBG_Yr_-2">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="530" y="462.19047619047615" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gd42YiFBjz1LKPn6DruN-1" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="ระบบพร้อม&#xa;เริ่มจัดตาราง" vertex="1">
+          <mxGeometry height="106" width="106" x="375" y="479.5" as="geometry" />
+        </mxCell>
+        <mxCell id="gd42YiFBjz1LKPn6DruN-2" edge="1" parent="1" source="1saarSaPh_GmNvM_rdRQ-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="gd42YiFBjz1LKPn6DruN-1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="428" y="660" />
+              <mxPoint x="428" y="660" />
+            </Array>
+            <mxPoint x="425" y="770" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="AXTmTi-fO_cNn9d4wInM-1" connectable="0" parent="gd42YiFBjz1LKPn6DruN-2" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Admin ปรับเป็นช่วงจัดตาราง" vertex="1">
+          <mxGeometry relative="1" x="0.0834" y="-1" as="geometry">
+            <mxPoint x="-1" y="-11" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="nmEKzBZ9-iqxrrBG_Yr_-3" edge="1" parent="1" source="nmEKzBZ9-iqxrrBG_Yr_-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="N1SkaY3eHZ2ssla4uATp-11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="nmEKzBZ9-iqxrrBG_Yr_-2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;font color=&quot;#333333&quot;&gt;ดูภาพรวมคำขออนุมัติตารางสอน&lt;/font&gt;&lt;span style=&quot;color: light-dark(rgb(51, 51, 51), rgb(193, 193, 193)); background-color: transparent;&quot;&gt;แต่ละวิชา&lt;/span&gt;" vertex="1">
+          <mxGeometry height="71" width="150" x="530" y="497.5" as="geometry" />
+        </mxCell>
+        <mxCell id="Ae5fsvBeW3LqMVteI2iq-3" edge="1" parent="1" source="W9DoYURgHwt0FHWgpZTE-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="nmEKzBZ9-iqxrrBG_Yr_-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="W9DoYURgHwt0FHWgpZTE-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="&lt;font color=&quot;#333333&quot;&gt;ตีกลับตารางสอนให้&lt;/font&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;หัวหน้าวิชาไปแก้ไข&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="170" x="1520" y="444.5" as="geometry" />
+        </mxCell>
+        <mxCell id="1saarSaPh_GmNvM_rdRQ-4" edge="1" parent="1" source="1saarSaPh_GmNvM_rdRQ-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="1saarSaPh_GmNvM_rdRQ-3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="1saarSaPh_GmNvM_rdRQ-2" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="ระบบเปลี่ยนเป็น&#xa;ช่วงเตรียมระบบ" vertex="1">
+          <mxGeometry height="106" width="106" x="375" y="739" as="geometry" />
+        </mxCell>
+        <mxCell id="1saarSaPh_GmNvM_rdRQ-3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;font color=&quot;#333333&quot;&gt;รอ Admin และ Staff&amp;nbsp;&lt;/font&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;ตั้งค่าระบบ&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="44" width="140" x="358" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="mccBAXn0SKGTitOglZ55-4" edge="1" parent="1" source="mccBAXn0SKGTitOglZ55-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="1saarSaPh_GmNvM_rdRQ-2">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1289.9999999999995" y="815.5" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="7xkjSQ5bRHncSdnTNwDh-1" connectable="0" parent="mccBAXn0SKGTitOglZ55-4" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="&lt;span style=&quot;color: rgba(0, 0, 0, 0); font-family: monospace; font-size: 0px; text-align: start; background-color: rgb(236, 236, 236);&quot;&gt;%3CmxGraphModel%3E%3Croot%3E%3CmxCell%20id%3D%220%22%2F%3E%3CmxCell%20id%3D%221%22%20parent%3D%220%22%2F%3E%3CmxCell%20id%3D%222%22%20connectable%3D%220%22%20parent%3D%221%22%20style%3D%22edgeLabel%3Bhtml%3D1%3Balign%3Dcenter%3BverticalAlign%3Dmiddle%3Bresizable%3D0%3Bpoints%3D%5B%5D%3B%22%20value%3D%22Admin%20%E0%B8%9B%E0%B8%B4%E0%B8%94%E0%B8%A3%E0%B8%B0%E0%B8%9A%E0%B8%9A%E0%B9%80%E0%B8%97%E0%B8%AD%E0%B8%A1%E0%B8%9B%E0%B8%B1%E0%B8%88%E0%B8%88%E0%B8%B8%E0%B8%9A%E0%B8%B1%E0%B8%99%22%20vertex%3D%221%22%3E%3CmxGeometry%20x%3D%22257.1428571428571%22%20y%3D%22921.0000000000002%22%20as%3D%22geometry%22%2F%3E%3C%2FmxCell%3E%3C%2Froot%3E%3C%2FmxGraphModel%3E&lt;/span&gt;" vertex="1">
+          <mxGeometry relative="1" x="0.048" y="3" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="MgLdMF5mPc4qd65b96QS-1" connectable="0" parent="mccBAXn0SKGTitOglZ55-4" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Admin ปิดระบบเทอมปัจจุบัน" vertex="1">
+          <mxGeometry relative="1" x="0.0194" y="-1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="mccBAXn0SKGTitOglZ55-2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;Excutive ดูภาพรวมตารางสอนและ&lt;/span&gt;&lt;div&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;ภาระงานอาจารย์ทุกคนได้&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="71" width="200" x="759.9999999999995" y="756.5" as="geometry" />
+        </mxCell>
+        <mxCell id="mccBAXn0SKGTitOglZ55-5" parent="1" style="rhombus;strokeWidth=2;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;" value="อนุมัติครบทุกวิชา" vertex="1">
+          <mxGeometry height="70" width="187.5" x="1237.25" y="586" as="geometry" />
+        </mxCell>
+        <mxCell id="d5hCCfq1pLSG96XqoLld-1" parent="1" style="whiteSpace=wrap;strokeWidth=2;fillColor=light-dark(#eeeeee,#1f2020);strokeColor=light-dark(#999999,#cccccc);fontColor=light-dark(#333333,#cccccc);align=left;shadow=1;glass=0;rounded=1;" value="📌 สัญลักษณ์และสีที่ใช้&#xa;◎ วงกลมซ้อน = จุดเริ่มต้น / สิ้นสุด / แจ้งสถานะ (เช่น แบบร่าง, ถูกตีกลับ, เผยแพร่)&#xa;▭ สี่เหลี่ยมมุมมน = ขั้นตอนการทำงานปกติ / การเรียกดูรายงาน&#xa;◇ รูปเพชร = จุดตัดสินใจ / ตรวจสอบเงื่อนไข&#xa;➔ เส้นทึบ = เส้นทางการทำงานหลัก (Main Flow)&#xa;⇢ เส้นประ = ทางเลือก / การแจ้งเตือน / โยงข้อมูล / ย้อนกลับไปแก้ไข&#xa;&#xa;ความหมายของสี&#xa;🟢 สีเขียว = จุดเริ่มต้น / จุดสิ้นสุด / สถานะตาราง&#xa;🔵 สีฟ้า = ขั้นตอนการทำงาน / กระบวนการ / รายงาน&#xa;🔴 สีแดง (ชมพู) = จุดตัดสินใจ / ตรวจสอบเงื่อนไข&#xa;🟠สีส้ม = ขั้นตอนการแก้ไข ปรับแก้" vertex="1">
+          <mxGeometry height="210" width="410" x="1470" y="617.5" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="yB2_zdzlI6AG2_CfJ13G" name="Lecturuer">
+    <mxGraphModel dx="2567" dy="935" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="MLixOOe3idIR0zESTP5--10" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;p class=&quot;MsoNormal&quot;&gt;&lt;b&gt;&lt;span style=&quot;font-size:14.0pt;line-height:115%;&amp;lt;br/&amp;gt;font-family:&amp;quot;TH Sarabun New&amp;quot;,sans-serif&quot;&gt;5. &lt;span lang=&quot;TH&quot;&gt;อาจารย์ผู้สอน (&lt;/span&gt;Lecturer)&lt;/span&gt;&lt;/b&gt;&lt;span style=&quot;font-size:14.0pt;line-height:115%;font-family:&amp;lt;br/&amp;gt;&amp;quot;TH Sarabun New&amp;quot;,sans-serif&quot;&gt;&lt;/span&gt;&lt;/p&gt;" vertex="1">
+          <mxGeometry height="30" width="350" x="150" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="Kbd4W9YOqU055hKCdWom-1" parent="1" style="whiteSpace=wrap;strokeWidth=2;fillColor=light-dark(#eeeeee,#1f2020);strokeColor=light-dark(#999999,#cccccc);fontColor=light-dark(#333333,#cccccc);align=left;shadow=1;glass=0;rounded=1;" value="📌 สัญลักษณ์และสีที่ใช้&#xa;◎ วงกลมซ้อน = จุดเริ่มต้น / สิ้นสุด / แจ้งสถานะ (เช่น แบบร่าง, ถูกตีกลับ, เผยแพร่)&#xa;▭ สี่เหลี่ยมมุมมน = ขั้นตอนการทำงานปกติ / การเรียกดูรายงาน&#xa;◇ รูปเพชร = จุดตัดสินใจ / ตรวจสอบเงื่อนไข&#xa;➔ เส้นทึบ = เส้นทางการทำงานหลัก (Main Flow)&#xa;⇢ เส้นประ = ทางเลือก / การแจ้งเตือน / โยงข้อมูล / ย้อนกลับไปแก้ไข&#xa;&#xa;ความหมายของสี&#xa;🟢 สีเขียว = จุดเริ่มต้น / จุดสิ้นสุด / สถานะตาราง&#xa;🔵 สีฟ้า = ขั้นตอนการทำงาน / กระบวนการ / รายงาน&#xa;🔴 สีแดง (ชมพู) = จุดตัดสินใจ / ตรวจสอบเงื่อนไข&#xa;🟠สีส้ม = ขั้นตอนการแก้ไข ปรับแก้" vertex="1">
+          <mxGeometry height="210" width="410" x="514.51" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="5rjqWoPyRBSp-_FTJvur-2" edge="1" parent="1" source="tacZMKGcCueIfOd17d85-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="5rjqWoPyRBSp-_FTJvur-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="tacZMKGcCueIfOd17d85-1" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="เริ่มต้น&#xa;เข้าระบบ" vertex="1">
+          <mxGeometry height="87" width="87" x="-330" y="426" as="geometry" />
+        </mxCell>
+        <mxCell id="VqD5_ViZSIeL4VnUviRa-1" edge="1" parent="1" source="5rjqWoPyRBSp-_FTJvur-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="EndJothPyr1JK4sC4IXP-1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-10" y="469.61290322580646" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="5rjqWoPyRBSp-_FTJvur-1" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="ระบบเปลี่ยนเป็น&#xa;ช่วงเตรียมระบบ" vertex="1">
+          <mxGeometry height="106" width="106" x="-200" y="416.5" as="geometry" />
+        </mxCell>
+        <mxCell id="Vu2JEIM1pE20q9bzHea0-2" edge="1" parent="1" source="EndJothPyr1JK4sC4IXP-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="Vu2JEIM1pE20q9bzHea0-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Vu2JEIM1pE20q9bzHea0-3" connectable="0" parent="Vu2JEIM1pE20q9bzHea0-2" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="&lt;span style=&quot;color: rgba(0, 0, 0, 0); font-family: monospace; font-size: 0px; text-align: start; background-color: rgb(236, 236, 236);&quot;&gt;%3CmxGraphModel%3E%3Croot%3E%3CmxCell%20id%3D%220%22%2F%3E%3CmxCell%20id%3D%221%22%20parent%3D%220%22%2F%3E%3CmxCell%20id%3D%222%22%20connectable%3D%220%22%20parent%3D%221%22%20style%3D%22edgeLabel%3Bhtml%3D1%3Balign%3Dcenter%3BverticalAlign%3Dmiddle%3Bresizable%3D0%3Bpoints%3D%5B%5D%3B%22%20value%3D%22Admin%20%E0%B8%9B%E0%B8%A3%E0%B8%B1%E0%B8%9A%E0%B9%80%E0%B8%9B%E0%B9%87%E0%B8%99%E0%B8%8A%E0%B9%88%E0%B8%A7%E0%B8%87%E0%B8%88%E0%B8%B1%E0%B8%94%E0%B8%95%E0%B8%B2%E0%B8%A3%E0%B8%B2%E0%B8%87%22%20vertex%3D%221%22%3E%3CmxGeometry%20x%3D%22428%22%20y%3D%22617.4615384615381%22%20as%3D%22geometry%22%2F%3E%3C%2FmxCell%3E%3C%2Froot%3E%3C%2FmxGraphModel%3E&lt;/span&gt;" vertex="1">
+          <mxGeometry relative="1" x="0.0157" y="-2" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="8mE0DRdud7sR04kgm30h-1" connectable="0" parent="Vu2JEIM1pE20q9bzHea0-2" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Admin ปรับเป็นช่วงจัดตาราง" vertex="1">
+          <mxGeometry relative="1" x="-0.0157" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="EndJothPyr1JK4sC4IXP-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;font color=&quot;#333333&quot;&gt;รอ Admin และ Staff&amp;nbsp;&lt;/font&gt;&lt;div&gt;&lt;font color=&quot;#333333&quot;&gt;ตั้งค่าระบบ&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="44" width="140" x="-30" y="447.5" as="geometry" />
+        </mxCell>
+        <mxCell id="8mE0DRdud7sR04kgm30h-2" edge="1" parent="1" source="Vu2JEIM1pE20q9bzHea0-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="460" y="470" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Vu2JEIM1pE20q9bzHea0-1" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="ระบบพร้อม&#xa;เริ่มจัดตาราง" vertex="1">
+          <mxGeometry height="106" width="106" x="280" y="416.5" as="geometry" />
+        </mxCell>
+        <mxCell id="8mE0DRdud7sR04kgm30h-5" edge="1" parent="1" source="8mE0DRdud7sR04kgm30h-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="790" y="470" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="6bOIQoxgQKSHQgxiU0IL-1" connectable="0" parent="8mE0DRdud7sR04kgm30h-5" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="เมื่อทุกวิชาได้รับอนุมัติแล้ว" vertex="1">
+          <mxGeometry relative="1" x="-0.0187" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="8mE0DRdud7sR04kgm30h-4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;font color=&quot;#333333&quot;&gt;รอ Course Head จัดตารางและ Excutive อนุมติครบทุกวิชา&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="170" x="460" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="YmzHeZigrsQA792b5jan-2" edge="1" parent="1" source="6bOIQoxgQKSHQgxiU0IL-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="YmzHeZigrsQA792b5jan-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="6bOIQoxgQKSHQgxiU0IL-2" parent="1" style="ellipse;shape=doubleEllipse;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" value="ระบบเปลี่ยนเป็น&#xa;ช่วงเผยแพร่ตาราง" vertex="1">
+          <mxGeometry height="106" width="106" x="790" y="416.5" as="geometry" />
+        </mxCell>
+        <mxCell id="YmzHeZigrsQA792b5jan-4" edge="1" parent="1" source="YmzHeZigrsQA792b5jan-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="YmzHeZigrsQA792b5jan-3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="YmzHeZigrsQA792b5jan-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;รับการแจ้งเตือน&lt;/span&gt;&lt;br style=&quot;padding: 0px; margin: 0px; color: rgb(51, 51, 51);&quot;&gt;&lt;font color=&quot;#333333&quot;&gt;ตารางสอนของตนเอง&lt;/font&gt;" vertex="1">
+          <mxGeometry height="71" width="163.01" x="761.5" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="YmzHeZigrsQA792b5jan-7" edge="1" parent="1" source="YmzHeZigrsQA792b5jan-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="YmzHeZigrsQA792b5jan-6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="YmzHeZigrsQA792b5jan-3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;ดูตารางสอนและภาระงาน&lt;/span&gt;&lt;br style=&quot;padding: 0px; margin: 0px; color: rgb(51, 51, 51);&quot;&gt;&lt;font color=&quot;#333333&quot;&gt;ชองตนเองในเทอมนั้นๆ&lt;/font&gt;" vertex="1">
+          <mxGeometry height="71" width="180.08" x="449.92" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="YmzHeZigrsQA792b5jan-8" edge="1" parent="1" source="YmzHeZigrsQA792b5jan-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="5rjqWoPyRBSp-_FTJvur-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="HHGw_XdPyyD3fMCR-XgX-1" connectable="0" parent="YmzHeZigrsQA792b5jan-8" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Admin ปิดระบบเทอมปัจจุบัน" vertex="1">
+          <mxGeometry relative="1" x="-0.1682" y="-4" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="YmzHeZigrsQA792b5jan-6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;รับการแจ้งเตือนอื่นๆ&lt;/span&gt;&lt;br style=&quot;padding: 0px; margin: 0px; color: rgb(51, 51, 51);&quot;&gt;&lt;span style=&quot;color: rgb(51, 51, 51);&quot;&gt;ที่เกี่ยวข้องกับการสอนในเทอมนั้นๆ&lt;/span&gt;" vertex="1">
+          <mxGeometry height="71" width="180" x="130" y="610" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
