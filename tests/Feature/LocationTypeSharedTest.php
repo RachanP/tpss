@@ -122,7 +122,7 @@ class LocationTypeSharedTest extends TestCase
     public function test_room_overlap_not_emitted_when_location_type_is_shared(): void
     {
         // Arrange: ห้องประเภท is_shared
-        $sharedType = LocationType::create(['name' => 'หอผู้ป่วย', 'requires_capacity' => false, 'is_shared' => true]);
+        $sharedType = LocationType::create(['name' => 'หอผู้ป่วย', 'is_shared' => true]);
         $room = Room::create([
             'room_code'        => 'WARD-01',
             'room_name'        => 'หอผู้ป่วย 1',
@@ -158,7 +158,7 @@ class LocationTypeSharedTest extends TestCase
     public function test_room_overlap_emitted_when_location_type_is_not_shared(): void
     {
         // Arrange: ห้องประเภทปกติ (is_shared = false)
-        $normalType = LocationType::create(['name' => 'ห้องบรรยาย', 'requires_capacity' => true, 'is_shared' => false]);
+        $normalType = LocationType::create(['name' => 'ห้องบรรยาย', 'is_shared' => false]);
         $room = Room::create([
             'room_code'        => 'LEC-01',
             'room_name'        => 'ห้องบรรยาย 1',
@@ -195,7 +195,7 @@ class LocationTypeSharedTest extends TestCase
 
     public function test_bulk_conflict_map_skips_room_overlap_for_shared_type(): void
     {
-        $sharedType = LocationType::create(['name' => 'ชุมชน', 'requires_capacity' => false, 'is_shared' => true]);
+        $sharedType = LocationType::create(['name' => 'ชุมชน', 'is_shared' => true]);
         $room = Room::create([
             'room_code'        => 'COM-01',
             'room_name'        => 'ชุมชน 1',
@@ -229,7 +229,7 @@ class LocationTypeSharedTest extends TestCase
 
     public function test_bulk_conflict_map_emits_room_overlap_for_normal_type(): void
     {
-        $normalType = LocationType::create(['name' => 'ห้องปฏิบัติการ', 'requires_capacity' => true, 'is_shared' => false]);
+        $normalType = LocationType::create(['name' => 'ห้องปฏิบัติการ', 'is_shared' => false]);
         $room = Room::create([
             'room_code'        => 'LAB-01',
             'room_name'        => 'ห้อง Lab 1',
@@ -261,11 +261,10 @@ class LocationTypeSharedTest extends TestCase
 
     public function test_capacity_alert_skipped_for_is_shared_room(): void
     {
-        // Arrange: ห้อง is_shared + requires_capacity=true แต่ไม่มี capacity
+        // Arrange: ห้อง is_shared ไม่มี capacity
         $sharedType = LocationType::create([
-            'name'              => 'หอผู้ป่วย',
-            'requires_capacity' => true,  // แม้จะ requires_capacity...
-            'is_shared'         => true,  // แต่เป็น shared — ควร skip alert
+            'name'      => 'หอผู้ป่วย',
+            'is_shared' => true,  // สถานที่เปิด — ควร skip alert
         ]);
         Room::create([
             'room_code'        => 'WARD-99',
@@ -284,9 +283,8 @@ class LocationTypeSharedTest extends TestCase
     public function test_capacity_alert_still_fires_for_non_shared_room_without_capacity(): void
     {
         $normalType = LocationType::create([
-            'name'              => 'ห้องบรรยายปกติ',
-            'requires_capacity' => true,
-            'is_shared'         => false,
+            'name'      => 'ห้องบรรยายปกติ',
+            'is_shared' => false,
         ]);
         Room::create([
             'room_code'        => 'LEC-99',

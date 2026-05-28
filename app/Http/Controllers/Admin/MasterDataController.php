@@ -105,7 +105,7 @@ class MasterDataController extends Controller
         // Rooms with their types
         $rooms = Room::query()
             ->select(['id', 'location_type_id', 'room_code', 'room_name', 'building', 'capacity', 'equipment_type', 'address', 'status'])
-            ->with('locationType:id,name,requires_capacity')
+            ->with('locationType:id,name,is_shared')
             ->get();
 
         // Staff users for assigned_staff dropdown
@@ -373,15 +373,14 @@ class MasterDataController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:100|unique:location_types,name',
         ]);
-        $validated['requires_capacity'] = $request->boolean('requires_capacity');
-        $validated['is_shared']         = $request->boolean('is_shared');
+        $validated['is_shared'] = $request->boolean('is_shared');
 
         $locationType = LocationType::create($validated);
 
         $this->logMasterDataCreate(
             'location_types',
             $locationType->id,
-            $this->auditSnapshot($locationType, ['name', 'requires_capacity', 'is_shared']),
+            $this->auditSnapshot($locationType, ['name', 'is_shared']),
             "สร้างประเภทสถานที่ {$locationType->name}",
         );
 
@@ -393,10 +392,9 @@ class MasterDataController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:100|unique:location_types,name,' . $locationType->id,
         ]);
-        $validated['requires_capacity'] = $request->boolean('requires_capacity');
-        $validated['is_shared']         = $request->boolean('is_shared');
+        $validated['is_shared'] = $request->boolean('is_shared');
 
-        $fields = ['name', 'requires_capacity', 'is_shared'];
+        $fields = ['name', 'is_shared'];
         $before = $this->auditSnapshot($locationType, $fields);
 
         $locationType->update($validated);
@@ -1064,7 +1062,7 @@ class MasterDataController extends Controller
 
     public function destroyLocationType(LocationType $locationType)
     {
-        $snapshot = $this->auditSnapshot($locationType, ['name', 'requires_capacity']);
+        $snapshot = $this->auditSnapshot($locationType, ['name', 'is_shared']);
         $locationTypeId = $locationType->id;
         $affected = $locationType->rooms()->count();
 

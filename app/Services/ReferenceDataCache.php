@@ -32,7 +32,7 @@ class ReferenceDataCache
     {
         return $this->remember(__FUNCTION__, self::ACTIVE_ROOMS_KEY, fn () => Room::query()
             ->select(['id', 'location_type_id', 'room_code', 'room_name', 'building', 'capacity', 'status'])
-            ->with('locationType:id,name,requires_capacity')
+            ->with('locationType:id,name,is_shared')
             ->where('status', 'active')
             ->orderBy('room_code')
             ->get()
@@ -44,7 +44,7 @@ class ReferenceDataCache
                 'building' => $room->building,
                 'capacity' => $room->capacity,
                 'status' => $room->status,
-                'locationType' => $room->locationType?->only(['id', 'name', 'requires_capacity']),
+                'locationType' => $room->locationType?->only(['id', 'name', 'is_shared']),
             ])
             ->values()
             ->all());
