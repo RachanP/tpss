@@ -1123,6 +1123,8 @@
         /* ── โหมดรายการ (list) — ตารางคอลัมน์ อ่านง่าย ───────────────── */
         .sched-list-wrap {
             overflow-x: auto;
+            max-width: 100%;
+            -webkit-overflow-scrolling: touch;
             border: 1px solid var(--schedule-border-strong);
             border-radius: 10px;
             background: var(--surface);
@@ -2020,53 +2022,55 @@
             [data-testid="schedule-grid-view"],
             [data-testid="schedule-grid-view-co"] {
                 max-width: 100%;
-                overflow-x: hidden;
+                overflow-x: auto;
+                overflow-y: visible;
+                -webkit-overflow-scrolling: touch;
             }
             [data-testid="schedule-grid-view-co"] {
                 padding: 10px !important;
             }
             .schedule-grid.is-precise {
-                width: 100%;
-                max-width: 100%;
-                overflow-x: hidden;
-                grid-template-columns: 44px repeat(var(--grid-day-count), minmax(0, 1fr)) !important;
+                width: max-content;
+                min-width: calc(48px + (var(--grid-day-count) * 118px));
+                max-width: none;
+                overflow: visible;
             }
             .schedule-grid.is-precise .grid-cell {
-                padding: 3px 2px;
+                padding: 4px 5px;
             }
             .schedule-grid.is-precise .grid-head {
                 min-height: 40px;
+                font-size: 10px;
+                line-height: 1.2;
+            }
+            .schedule-grid.is-precise .grid-head .caption {
                 font-size: 9px;
                 line-height: 1.15;
             }
-            .schedule-grid.is-precise .grid-head .caption {
-                font-size: 8px;
-                line-height: 1.1;
-            }
             .schedule-grid.is-precise .grid-time {
-                font-size: 9.5px;
+                font-size: 10px;
                 padding-right: 4px;
             }
             .schedule-grid.is-precise .grid-cell-activity {
-                padding: 2px;
+                padding: 3px;
             }
             .schedule-grid.is-precise .grid-cell-activity .grid-activity {
-                padding: 5px 4px;
+                padding: 6px 6px;
                 border-left-width: 2px;
             }
             .schedule-grid.is-precise .grid-activity-card.is-stacked-card {
-                padding: 5px 4px !important;
+                padding: 6px 6px !important;
             }
             .schedule-grid.is-precise .grid-activity-title,
             .schedule-grid.is-precise .grid-activity-card.is-stacked-card .grid-activity-title {
-                font-size: 9.5px;
-                line-height: 1.2;
+                font-size: 10.5px;
+                line-height: 1.24;
             }
             .schedule-grid.is-precise .grid-activity-time,
-            .schedule-grid.is-precise .grid-activity-card.is-stacked-card .grid-activity-time,
-            .schedule-grid.is-precise .grid-location-name,
-            .schedule-grid.is-precise .grid-activity-room {
-                display: none;
+            .schedule-grid.is-precise .grid-activity-card.is-stacked-card .grid-activity-time {
+                display: block;
+                font-size: 9.5px;
+                line-height: 1.2;
             }
             .schedule-grid.is-precise .schedule-conflict-pill {
                 min-height: 17px;
@@ -2311,6 +2315,14 @@
         [data-testid="schedule-month-calendar-co"] .month-activity:hover .month-group-summary,
         [data-testid="schedule-month-calendar-co"] .month-activity:focus-visible .month-group-summary {
             display: inline-flex;
+        }
+        @media (max-width: 640px) {
+            .month-calendar {
+                min-width: 720px;
+            }
+            .sched-list {
+                min-width: 640px;
+            }
         }
         .schedule-modal-backdrop {
             position: fixed;
@@ -2799,11 +2811,42 @@
             }
         }
         @media (max-width: 640px) {
+            .offerings-dropdown-panel {
+                padding: 10px 12px;
+            }
+            .offerings-panel-meta {
+                align-items: flex-start;
+                gap: 6px;
+            }
+            .offering-selector-wrapper {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 6px;
+            }
+            .offering-selector-label {
+                white-space: normal;
+            }
+            .offering-select-control {
+                min-width: 0;
+                width: 100%;
+                font-size: 12.5px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
             .course-overview {
                 grid-template-columns: 1fr;
             }
             .course-overview-actions {
                 justify-content: flex-start;
+                width: 100%;
+            }
+            .course-overview-actions .btn {
+                flex: 1 1 150px;
+                justify-content: center;
+            }
+            .course-overview-name {
+                font-size: 18px;
             }
             .schedule-filter-bar {
                 grid-template-columns: 1fr;
@@ -3393,13 +3436,14 @@
                             @php
                                 $availCourse = $availOffering->course;
                                 $isSelected = ! $isWorkspace && $courseOffering && $courseOffering->id === $availOffering->id;
+                                $optionCourseName = $availCourse?->name_th ?? $availCourse?->name_en ?? 'ไม่มีชื่อรายวิชา';
                                 $optUrl = route('maker.course_offerings.schedules.index', array_filter([
                                     $availOffering,
                                     ...$selectorQuery,
                                 ]));
                             @endphp
                             <option value="{{ $optUrl }}" {{ $isSelected ? 'selected' : '' }}>
-                                {{ $availCourse?->course_code ?? '-' }} - {{ $availCourse?->name_th ?? $availCourse?->name_en ?? 'ไม่มีชื่อรายวิชา' }}
+                                {{ $availCourse?->course_code ?? '-' }} - {{ \Illuminate\Support\Str::limit($optionCourseName, 36) }}
                             </option>
                         @endforeach
                     </select>
