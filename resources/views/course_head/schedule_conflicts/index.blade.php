@@ -26,28 +26,21 @@
             flex-direction: column;
             gap: 14px;
         }
-        .conflict-hero,
         .conflict-offering {
             border: 1px solid var(--schedule-border);
             border-radius: 10px;
             background: var(--surface);
             box-shadow: 0 1px 3px oklch(0% 0 0 / 0.05);
         }
-        .conflict-hero {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
-            gap: 16px;
-            align-items: center;
-            padding: 16px 18px;
-            border-color: var(--schedule-border-strong);
-        }
-        .conflict-hero-main {
-            min-width: 0;
+        .conflict-header {
             display: flex;
-            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
             gap: 12px;
+            flex-wrap: wrap;
+            padding: 0 4px;
         }
-        .conflict-hero-row {
+        .conflict-header-row {
             display: flex;
             align-items: center;
             gap: 12px;
@@ -55,7 +48,7 @@
         }
         .conflict-title {
             margin: 0;
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 950;
             color: var(--brand-navy);
             line-height: 1.2;
@@ -78,64 +71,81 @@
             flex-shrink: 0;
             color: var(--brand-navy);
         }
-        .conflict-summary-stats {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
+        .conflict-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
         }
-        .conflict-stat {
-            display: inline-flex;
-            align-items: baseline;
-            gap: 6px;
-            padding: 6px 12px;
+        .conflict-summary-card {
+            display: grid;
+            grid-template-columns: 44px 1fr;
+            align-items: center;
+            gap: 14px;
+            padding: 16px 18px;
             border: 1px solid var(--schedule-border);
-            border-left: 3px solid var(--schedule-border-strong);
-            border-radius: 6px;
+            border-top: 3px solid var(--schedule-border-strong);
+            border-radius: 10px;
             background: var(--surface);
-            line-height: 1.2;
+            box-shadow: 0 1px 3px oklch(0% 0 0 / 0.04);
+            transition: border-color 0.15s ease, transform 0.15s ease;
         }
-        .conflict-stat-value {
-            color: var(--brand-navy);
-            font-size: 18px;
-            font-weight: 950;
-            font-variant-numeric: tabular-nums;
-            min-width: 22px;
-            text-align: right;
+        .conflict-summary-card:hover {
+            transform: translateY(-1px);
         }
-        .conflict-stat-label {
-            color: var(--fg-2);
-            font-size: 12px;
-            font-weight: 800;
-            white-space: nowrap;
-        }
-        .conflict-stat--instructor { border-left-color: oklch(48% 0.14 268); }
-        .conflict-stat--room       { border-left-color: oklch(52% 0.16 28); }
-        .conflict-stat--group      { border-left-color: oklch(48% 0.14 168); }
-        .conflict-total {
+        .conflict-summary-icon {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 9px;
-            min-height: 40px;
-            padding: 7px 13px;
-            border: 1px solid var(--status-conflict-border);
-            border-radius: 999px;
-            background: var(--status-conflict-bg);
-            color: var(--status-conflict-fg);
-            text-align: center;
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            background: var(--schedule-soft);
+            color: var(--schedule-muted);
+            flex-shrink: 0;
         }
-        .conflict-total strong {
-            display: block;
-            font-size: 22px;
-            line-height: 1;
-            font-weight: 900;
+        .conflict-summary-body {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+        }
+        .conflict-summary-value {
+            font-size: 28px;
+            font-weight: 950;
+            line-height: 1.05;
+            color: var(--brand-navy);
             font-variant-numeric: tabular-nums;
         }
-        .conflict-total span {
-            display: block;
-            font-size: 11px;
-            font-weight: 800;
+        .conflict-summary-label {
+            color: var(--fg-1);
+            font-size: 13px;
+            font-weight: 900;
+            line-height: 1.25;
         }
+        .conflict-summary-sub {
+            color: var(--schedule-muted);
+            font-size: 11.5px;
+            font-weight: 700;
+            line-height: 1.3;
+            margin-top: 1px;
+        }
+        .conflict-summary-card--total {
+            border-top-color: var(--status-conflict-border, oklch(52% 0.16 28));
+            background: color-mix(in oklch, var(--status-conflict-bg, oklch(96% 0.04 28)) 40%, var(--surface));
+        }
+        .conflict-summary-card--total .conflict-summary-icon {
+            background: var(--status-conflict-bg, oklch(96% 0.04 28));
+            color: var(--status-conflict-fg, oklch(40% 0.14 28));
+        }
+        .conflict-summary-card--total .conflict-summary-value {
+            color: var(--status-conflict-fg, oklch(40% 0.14 28));
+        }
+        .conflict-summary-card--instructor { border-top-color: oklch(48% 0.14 268); }
+        .conflict-summary-card--instructor .conflict-summary-icon { background: oklch(96% 0.03 268); color: oklch(40% 0.14 268); }
+        .conflict-summary-card--room { border-top-color: oklch(52% 0.16 28); }
+        .conflict-summary-card--room .conflict-summary-icon { background: oklch(96% 0.04 28); color: oklch(48% 0.16 28); }
+        .conflict-summary-card--group { border-top-color: oklch(48% 0.14 168); }
+        .conflict-summary-card--group .conflict-summary-icon { background: oklch(95% 0.04 168); color: oklch(38% 0.14 168); }
         .conflict-status {
             border: 1px solid var(--status-warning-border, var(--schedule-border-strong));
             border-radius: 8px;
@@ -402,16 +412,17 @@
             padding: 6px 0 2px;
         }
         @media (max-width: 760px) {
-            .conflict-hero,
             .conflict-item {
                 grid-template-columns: 1fr;
             }
             .conflict-title {
-                font-size: 22px;
+                font-size: 20px;
             }
-            .conflict-total {
-                justify-content: flex-start;
-                text-align: left;
+            .conflict-summary-card {
+                padding: 14px;
+            }
+            .conflict-summary-value {
+                font-size: 24px;
             }
             .conflict-actions {
                 align-items: flex-start;
@@ -562,39 +573,78 @@
         })();
     </script>
 
+    @php
+        $typeCounts = $conflictTypeCounts ?? [];
+        $summaryCards = [
+            [
+                'key' => 'instructor_overlap',
+                'label' => 'ผู้สอนชน',
+                'sub' => 'อาจารย์มีตารางซ้อน',
+                'modifier' => 'instructor',
+                'icon' => 'user',
+            ],
+            [
+                'key' => 'room_overlap',
+                'label' => 'ห้อง/สถานที่ชน',
+                'sub' => 'ห้องถูกใช้ซ้ำเวลาเดียวกัน',
+                'modifier' => 'room',
+                'icon' => 'home',
+            ],
+            [
+                'key' => 'group_overlap',
+                'label' => 'กลุ่มนักศึกษาชน',
+                'sub' => 'นักศึกษามีตารางซ้อน',
+                'modifier' => 'group',
+                'icon' => 'users',
+            ],
+        ];
+    @endphp
     <div class="conflict-page">
-        <section class="conflict-hero">
-            <div class="conflict-hero-main">
-                <div class="conflict-hero-row">
-                    <h1 class="conflict-title">การแจ้งเตือนการชน</h1>
-                    @if($selectedAcademicYear)
-                        <span class="conflict-year-inline" data-testid="maker-conflict-year">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                            ปีการศึกษา {{ $selectedAcademicYear->name }} / ภาค {{ $selectedAcademicYear->semester }}
-                        </span>
-                    @endif
+        <section class="conflict-header">
+            <div class="conflict-header-row">
+                <h1 class="conflict-title">การแจ้งเตือนการชน</h1>
+                @if($selectedAcademicYear)
+                    <span class="conflict-year-inline" data-testid="maker-conflict-year">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                        ปีการศึกษา {{ $selectedAcademicYear->name }} / ภาค {{ $selectedAcademicYear->semester }}
+                    </span>
+                @endif
+            </div>
+        </section>
+
+        <section class="conflict-summary-grid" data-testid="maker-conflict-summary">
+            <div class="conflict-summary-card conflict-summary-card--total" data-testid="maker-conflict-total">
+                <div class="conflict-summary-icon" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
                 </div>
-                @php
-                    $typeCounts = $conflictTypeCounts ?? [];
-                    $summaryStats = [
-                        ['key' => 'instructor_overlap', 'label' => 'ผู้สอนชน',      'modifier' => 'instructor'],
-                        ['key' => 'room_overlap',       'label' => 'ห้อง/สถานที่ชน', 'modifier' => 'room'],
-                        ['key' => 'group_overlap',      'label' => 'กลุ่ม นศ. ชน',   'modifier' => 'group'],
-                    ];
-                @endphp
-                <div class="conflict-summary-stats" data-testid="maker-conflict-summary">
-                    @foreach($summaryStats as $stat)
-                        <div class="conflict-stat conflict-stat--{{ $stat['modifier'] }}">
-                            <span class="conflict-stat-value">{{ $typeCounts[$stat['key']] ?? 0 }}</span>
-                            <span class="conflict-stat-label">{{ $stat['label'] }}</span>
-                        </div>
-                    @endforeach
+                <div class="conflict-summary-body">
+                    <div class="conflict-summary-value">{{ $totalConflictCount ?? '…' }}</div>
+                    <div class="conflict-summary-label">รายการชนทั้งหมด</div>
+                    <div class="conflict-summary-sub">ต้องแก้ไขให้หมดก่อนส่งอนุมัติ</div>
                 </div>
             </div>
-            <div class="conflict-total" data-testid="maker-conflict-total">
-                <strong>{{ $totalConflictCount ?? '...' }}</strong>
-                <span>รายการชนที่ต้องแก้</span>
-            </div>
+            @foreach($summaryCards as $card)
+                <div class="conflict-summary-card conflict-summary-card--{{ $card['modifier'] }}">
+                    <div class="conflict-summary-icon" aria-hidden="true">
+                        @switch($card['icon'])
+                            @case('user')
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                                @break
+                            @case('home')
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                                @break
+                            @case('users')
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-3-3.87"></path><path d="M9 7a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"></path><path d="M1 21v-2a4 4 0 0 1 3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                                @break
+                        @endswitch
+                    </div>
+                    <div class="conflict-summary-body">
+                        <div class="conflict-summary-value">{{ $typeCounts[$card['key']] ?? 0 }}</div>
+                        <div class="conflict-summary-label">{{ $card['label'] }}</div>
+                        <div class="conflict-summary-sub">{{ $card['sub'] }}</div>
+                    </div>
+                </div>
+            @endforeach
         </section>
 
         @if(($asyncConflictReads ?? false) && in_array($conflictRunStatus, ['running', 'failed']))
