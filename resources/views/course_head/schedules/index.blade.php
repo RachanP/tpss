@@ -552,15 +552,6 @@
             display: inline-flex !important;
             visibility: hidden;
         }
-        .schedule-shell.is-grid-navigating .schedule-card-actions {
-            opacity: .72;
-        }
-        .schedule-shell.is-grid-navigating .schedule-grid-wrap,
-        .schedule-shell.is-grid-navigating .month-calendar,
-        .schedule-shell.is-grid-navigating .schedule-list-table {
-            opacity: .72;
-            transition: opacity .12s ease-out;
-        }
         .sched-datenav-arrow {
             display: inline-flex;
             align-items: center;
@@ -3082,7 +3073,6 @@
                 }
                 sessionStorage.setItem('tpss-schedule-scroll-y', window.scrollY);
                 sessionStorage.setItem('tpss-schedule-scroll-height', document.documentElement.scrollHeight);
-                this.$el.classList.add('is-grid-navigating');
                 window.location.href = url.toString();
             },
             jumpToGridDate(value) {
