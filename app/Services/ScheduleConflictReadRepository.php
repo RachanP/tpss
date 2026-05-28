@@ -430,18 +430,15 @@ class ScheduleConflictReadRepository
             return collect();
         }
 
-        $ranked = $this->scopedResultQuery($runId, $userId, $academicYearId)
+        return $this->scopedResultQuery($runId, $userId, $academicYearId)
             ->whereIn('schedule_conflict_results.schedule_id', $scheduleIds)
-            ->select([
-                'schedule_conflict_results.id',
-                DB::raw('ROW_NUMBER() OVER (PARTITION BY schedule_conflict_results.schedule_id ORDER BY schedule_conflict_results.id) as preview_rank'),
-            ]);
-
-        return DB::query()
-            ->fromSub($ranked, 'ranked_conflicts')
-            ->where('preview_rank', '<=', self::PREVIEW_SIZE)
-            ->pluck('id')
-            ->map(fn ($id) => (int) $id);
+            ->orderBy('schedule_conflict_results.schedule_id')
+            ->orderBy('schedule_conflict_results.id')
+            ->get(['schedule_conflict_results.id', 'schedule_conflict_results.schedule_id'])
+            ->groupBy(fn ($row) => (int) $row->schedule_id)
+            ->flatMap(fn (Collection $items) => $items->take(self::PREVIEW_SIZE)->pluck('id'))
+            ->map(fn ($id) => (int) $id)
+            ->values();
     }
 
     private function loadSchedulesForResults(Collection $results): void
