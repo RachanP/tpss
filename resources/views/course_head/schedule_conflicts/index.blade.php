@@ -93,17 +93,6 @@
             flex-shrink: 0;
             color: var(--brand-navy);
         }
-        .conflict-year-phase {
-            display: inline-flex;
-            align-items: center;
-            padding: 2px 8px;
-            border-radius: 999px;
-            background: var(--brand-navy);
-            color: oklch(98% 0.004 240);
-            font-size: 10.5px;
-            font-weight: 900;
-            letter-spacing: 0.02em;
-        }
         .conflict-total {
             display: inline-flex;
             align-items: center;
@@ -569,9 +558,6 @@
                     <div class="conflict-year-badge" data-testid="maker-conflict-year">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
                         ปีการศึกษา {{ $selectedAcademicYear->name }} / ภาค {{ $selectedAcademicYear->semester }}
-                        @if($selectedAcademicYear->phase === 'scheduling')
-                            <span class="conflict-year-phase">ช่วงจัดตาราง</span>
-                        @endif
                     </div>
                 @endif
             </div>
