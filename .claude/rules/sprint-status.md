@@ -1,4 +1,4 @@
-# Sprint Status — ณ 25 พ.ค. 2569
+# Sprint Status — ณ 28 พ.ค. 2569
 
 ## Phase Overview
 
@@ -187,6 +187,46 @@
 - ไม่มี conflict ที่ยังไม่ได้แก้ไข
 - บันทึกผลใน System Test Checklist
 - เอกสาร (SRS / User Manual) อัปเดตแล้ว (ถ้าเกี่ยวข้อง)
+
+## Bug Report — 28 พ.ค. 2569 (อัพเดต_แก้บัค.pdf) 🟢 IN PROGRESS
+
+12 รายการจาก test รอบ Schedule Suite — แบ่ง 3 branch ทำขนาน (ลด conflict โดยแบ่งเซ็ตไฟล์):
+
+### Branch A — `fix/conflicts-page-detail` (Rachan, Lead)
+หน้าแจ้งเตือนการชน + sidebar icon — เซ็ตไฟล์ owned:
+`views/course_head/schedules/conflicts.blade.php`, `views/components/sidebar.blade.php`, `app/Services/ScheduleConflictReadRepository.php`, `ScheduleController::conflicts/asyncConflicts`
+
+1. เอา dropdown ปีการศึกษาออก + เพิ่ม detail (อาจารย์/ห้อง/กลุ่ม) ในกล่องแจ้งเตือน
+9. "กำลังตรวจสอบการชน…" → empty state ตาม phase (preparation / no_offerings) ดู [architecture.md](architecture.md#course-head-offering-filter-bug-report-28-พค)
+10. Sidebar icon (warning/critical) sync กับ icon ในหน้าหลัก — ใช้ component เดียวกัน
+11. Tooltip/Popover hover ดูรายละเอียดการชน — bold หัวข้อสำคัญ + icon แบ่งประเภท
+12. ปุ่ม "ดูทั้งหมด N รายการ" count ไม่ตรงกับแถวจริง — ต้องนับจาก same query ที่ render
+
+### Branch B — `fix/schedule-calendar-ui` (pronpimon)
+Calendar render + responsive — เซ็ตไฟล์ owned:
+`views/course_head/schedules/index.blade.php` (เฉพาะ calendar grid section), partials `_calendar_*.blade.php` ถ้ามี, responsive CSS
+
+4. ตารางสอนมุมสัปดาห์ล้นจอบน iPhone — fix scroll แนวนอนใน container
+5. การ์ดมุมมองเดือนสไตล์ต่างจาก week/day — รวมเป็น component เดียว ดู [ui.md](ui.md#schedule-calendar-consistency-bug-report-28-พค)
+7. ป้าย "นอกช่วงปีการศึกษา" เบียดปุ่ม toolbar — wrap ขึ้นบรรทัดบนเมื่อจอแคบ
+8. Ghost card ล้นไปวันข้างๆ — limit 2-3 ใบ + "+N ดูเพิ่ม" popover
+
+### Branch C — `fix/schedule-logic-form` (phuwadon)
+Controller logic + modal form — เซ็ตไฟล์ owned:
+`views/course_head/schedules/_form.blade.php` (modal), `ScheduleController::coordinatorScheduleOfferings + coordinatorScheduleOfferingRedirectTarget`, validation rules
+
+2. Default รายวิชารหัสน้อยสุดเมื่อเข้าหน้าตารางสอน — เปลี่ยน order จาก `updated_at DESC` → `course_code ASC`
+3. Modal เพิ่มกิจกรรม: clear default time (08:00-09:00) → `--:--` placeholder + required validation ดู [ui.md](ui.md#form-default-value-policy-bug-report-28-พค)
+6. Filter วิชา `status='active'` เท่านั้น — ใช้ `withActiveCourse()` scope (ดูเหมือนไม่ได้ใช้บางจุด)
+
+### กฎก่อนแก้
+
+- **Merge order**: phuwadon (เล็กสุด) → pronpimon (กลาง) → Rachan (ใหญ่สุด — rebase ล่าสุดได้)
+- **Controller risk zone** — Rachan แก้ `conflicts()/asyncConflicts()` (ล่าง), phuwadon แก้ `coordinatorScheduleOfferings()` (บน) — คนละ method ไม่ชน ตราบที่ไม่เพิ่ม `use` statements เดียวกัน
+- **`schedules/index.blade.php`** — pronpimon เป็น owner; phuwadon ทำ default course ใน backend ไม่แตะ blade
+- **ก่อน rebase**: ดึง sprint ล่าสุดก่อนเริ่มแก้ — Schedule Suite + course offering UI fixes merge ไปก่อนหน้านี้แล้ว
+
+---
 
 ## Sprint 3 Bug Report — 18 พ.ค. 2569 (bug_sprint2_18_05_69.pdf) ✅ ปิดหมดแล้ว
 

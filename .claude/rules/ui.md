@@ -79,6 +79,22 @@ mock/production/
 - Month grid testid: `schedule-month-calendar-co`
 - Conflict errors render เป็น bullet list (error bag `schedule` เป็น array)
 
+### Schedule Calendar Consistency (Bug Report 28 พ.ค.)
+- **Card component เดียวกันทุก period** — week/day/month ต้องใช้ partial ตัวเดียวกัน (สี/typography/spacing) ห้ามเขียน inline style แยกใน month grid
+- **Ghost card stacking limit** — slot ที่ซ้อนกันแสดงสูงสุด 2-3 ใบใน column แล้วเหลือเป็นปุ่ม `+ ดูรายการที่ชนกันอีก N รายการ` → คลิกเปิด popover ห้ามให้ card ดันออกนอก column ของวันตัวเอง (`max-width: 100%` + `overflow: hidden` บน day column)
+- **Toolbar wrap policy** — ป้าย `นอกช่วงปีการศึกษา` ถ้าหน้าจอแคบ (laptop/tablet) ให้ wrap เป็นบรรทัดบนของ toolbar ห้ามเบียดปุ่ม period switcher
+- **Tooltip/Popover การชน** — เน้น bold หัวข้อสำคัญ (รหัสวิชา / ชื่ออาจารย์ / ห้อง) ใช้ icon + สีแบ่งประเภท (instructor/room/group) เพื่อกวาดสายตาเร็ว
+
+### Form Default Value Policy (Bug Report 28 พ.ค.)
+- **ห้าม pre-fill เวลา** ใน modal เพิ่ม/แก้กิจกรรม — ใช้ placeholder `--:--` + `required` validation แทน เพื่อกัน user เผลอกดบันทึกค่า default
+- **เคลียร์ default ที่ user มักลืมแก้** ทุกฟอร์ม — รวมถึง dropdown ที่ pre-select ค่าแรกโดยไม่ตั้งใจ
+- ค่า default ที่ "เดาถูกเกือบทุกครั้ง" (เช่น `date = today`) ยังคงไว้ได้
+
+### Mobile Responsive Checklist (course_head — Bug Report 28 พ.ค.)
+- ทุกหน้าฝั่ง `course_head` ต้องผ่าน iPhone viewport (≤390px) เหมือนฝั่ง admin — รวมถึง schedule week view (อย่าให้ตารางล้นจอ ต้อง scroll แนวนอนได้)
+- ตรวจ responsive ทุก breakpoint: mobile (≤640px), tablet (641-1024px), laptop (1025-1366px), desktop (>1366px)
+- Calendar grid บน mobile → ให้ scroll แนวนอนภายใน container เท่านั้น ห้ามให้ทั้ง page scroll ตามตาราง
+
 ## Accordion Drill-Down Pattern (implement แล้ว M1)
 
 - ภาควิชา → อาจารย์ (title, employment_type, academic_degree)

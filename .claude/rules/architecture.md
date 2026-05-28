@@ -19,6 +19,17 @@
 4. **Rotation Schedule** — กลุ่มหมุนเวียนระหว่างแหล่งฝึกและประเภทประสบการณ์
 5. **Exception-based** — ตารางเปลี่ยนตามสัปดาห์ มีวันหยุด กิจกรรมพิเศษ
 
+## Course Head Offering Filter (Bug Report 28 พ.ค.)
+
+หน้าจัดตารางของหัวหน้าวิชา (`CourseHead\ScheduleController::coordinatorScheduleOfferings` + `coordinatorScheduleOfferingRedirectTarget`) ต้อง:
+
+1. **Filter `courses.status = 'active'` เสมอ** — ใช้ `withActiveCourse()` scope ที่มีอยู่แล้ว ห้ามดึงวิชาที่ปิดสอนมาให้หัวหน้าจัดตาราง (หัวหน้าวิชาเดิมอาจยังเป็น `head_instructor_id` ของวิชาที่ปิดไปแล้วใน Master Data — แต่ไม่ควรต้องรับผิดชอบ workload)
+2. **Default selection** — เรียงตาม `courses.course_code` ASC แล้วเลือกตัวแรก เป็นค่าเริ่มต้นเมื่อ user เข้าหน้าตารางสอนโดยยังไม่ระบุ offering (เปลี่ยนจากเดิมที่ใช้ `updated_at DESC` — ลำดับสุ่มและสับสน)
+3. **Empty state ตามสถานะระบบ** (หน้าแจ้งเตือนการชนด้วย):
+   - `academic_year` ยังไม่มี active หรือยัง `preparation` → "อยู่ในสถานะเตรียมข้อมูล (ยังไม่ถึงช่วงเวลาการจัดตารางเรียน)"
+   - `phase = scheduling` แต่ user ไม่มี offering ที่รับผิดชอบ → "ไม่พบรายวิชาที่ต้องจัดตารางสอนในระบบ"
+   - ห้ามแสดง "กำลังตรวจสอบการชน…" ตอนยังไม่มีข้อมูลให้ตรวจ
+
 ## Schedule Slot Validation Gates (Schedule Suite — 24 พ.ค.)
 
 บังคับใน `CourseHead\ScheduleController` ตอน `store/update` (และ `CourseHead\CourseOfferingController::storeInstructor` สำหรับ pool):
