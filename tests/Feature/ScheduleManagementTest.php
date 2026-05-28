@@ -475,13 +475,52 @@ class ScheduleManagementTest extends TestCase
 
         $this->get(route('maker.schedule_conflicts.index'))
             ->assertOk()
-            // status=missing → แสดง empty state ("ยังไม่พบการชน") ไม่แสดง pending placeholder
-            ->assertSee('data-testid="maker-conflict-empty"', false)
-            ->assertDontSee('data-testid="maker-conflict-pending"', false)
-            // orange banner ซ่อน — ไม่ควรขึ้น "กำลังตรวจสอบ" เมื่อยังไม่มีข้อมูล
-            ->assertDontSee('data-testid="maker-conflict-status"', false);
+            ->assertSee('data-testid="maker-conflict-pending"', false)
+            ->assertSee('data-testid="maker-conflict-status"', false)
+            ->assertSee('กำลังตรวจสอบรายการชน');
 
         Queue::assertPushed(ConflictRecomputeJob::class);
+    }
+
+    public function test_course_head_sidebar_hides_checking_badge_during_preparation_phase(): void
+    {
+        config(['conflicts.async_reads' => true]);
+        Cache::flush();
+        [$head] = $this->makeReadyOffering('preparation');
+
+        Cache::put("sidebar.badges.course_head.async.{$head->id}", [
+            'maker_conflict_count' => null,
+            'maker_conflict_status' => 'pending',
+            'maker_conflict_pending' => true,
+            'maker_conflict_label' => 'กำลังตรวจสอบ',
+        ], 300);
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.schedules.index'))
+            ->assertOk()
+            ->assertSee('data-status="idle"', false)
+            ->assertSee('data-poll="false"', false)
+            ->assertSee('data-conflict-badge', false)
+            ->assertDontSee('>กำลังตรวจสอบ</span>', false);
+    }
+
+    public function test_conflict_alert_page_does_not_enter_checking_state_during_preparation_phase(): void
+    {
+        config(['conflicts.async_reads' => true]);
+        Cache::flush();
+        Queue::fake();
+        [$head] = $this->makeReadyOffering('preparation');
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.schedule_conflicts.index'))
+            ->assertOk()
+            ->assertSee('data-testid="maker-conflict-empty"', false)
+            ->assertDontSee('data-testid="maker-conflict-pending"', false)
+            ->assertDontSee('data-testid="maker-conflict-status"', false);
+
+        Queue::assertNothingPushed();
     }
 
     public function test_conflict_edit_returns_to_conflict_alerts_after_update(): void

@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Http\Controllers\Admin\AlertController;
-use App\Models\AcademicYear;
 use App\Models\CourseOffering;
 use Illuminate\Support\Facades\Cache;
 
@@ -55,13 +54,21 @@ class NavigationBadgeService
             ];
         }
 
+        $academicYearId = $this->schedulingAcademicYearIdForCourseHead($userId);
+
+        if (! $academicYearId) {
+            Cache::forget(self::courseHeadAsyncCacheKey($userId));
+
+            return $this->idleCourseHeadBadge(null);
+        }
+
         $cached = Cache::get(self::courseHeadAsyncCacheKey($userId));
 
         if (is_array($cached)) {
             return $cached;
         }
 
-        $badge = $this->uncachedAsyncCourseHeadConflictBadge($userId);
+        $badge = $this->uncachedAsyncCourseHeadConflictBadge($userId, $academicYearId);
         Cache::put(
             self::courseHeadAsyncCacheKey($userId),
             $badge,
@@ -71,28 +78,26 @@ class NavigationBadgeService
         return $badge;
     }
 
-    private function uncachedAsyncCourseHeadConflictBadge(int $userId): array
+    /**
+     * @return array{status:string,count:?int,pending:bool,label:?string,poll:bool}
+     */
+    public function courseHeadConflictBadgeStatusJson(int $userId): array
     {
-        $academicYearId = $this->defaultAcademicYearIdForCourseHead($userId);
+        $badge = $this->courseHeadConflictBadge($userId);
+        $status = (string) ($badge['maker_conflict_status'] ?? 'missing');
+        $count = $badge['maker_conflict_count'] ?? null;
 
-        // ถ้าผู้ใช้ไม่มี offering หรือ offering ไม่ได้อยู่ในช่วง scheduling เลย
-        // → ไม่ต้องโชว์ pending badge (เดิมโชว์ "กำลังตรวจสอบ" ทำให้สับสนว่า error)
-        $hasSchedulingYear = $academicYearId
-            && AcademicYear::query()
-                ->whereKey($academicYearId)
-                ->where('phase', 'scheduling')
-                ->exists();
+        return [
+            'status' => $status,
+            'count' => is_numeric($count) ? (int) $count : null,
+            'pending' => (bool) ($badge['maker_conflict_pending'] ?? false),
+            'label' => $badge['maker_conflict_label'] ?? null,
+            'poll' => in_array($status, ['missing', 'pending', 'processing'], true),
+        ];
+    }
 
-        if (! $hasSchedulingYear) {
-            return [
-                'maker_conflict_count' => null,
-                'maker_conflict_status' => 'idle',
-                'maker_conflict_pending' => false,
-                'maker_conflict_academic_year_id' => $academicYearId,
-                'maker_conflict_label' => null,
-            ];
-        }
-
+    private function uncachedAsyncCourseHeadConflictBadge(int $userId, int $academicYearId): array
+    {
         $status = $this->conflictReadRepository->getStatusForUser($userId, $academicYearId);
 
         if ($status['status'] === 'missing') {
@@ -148,27 +153,28 @@ class NavigationBadgeService
         return 'กำลังตรวจสอบ';
     }
 
-    private function defaultAcademicYearIdForCourseHead(int $userId): ?int
+    private function idleCourseHeadBadge(?int $academicYearId): array
     {
-        $availableYearIds = CourseOffering::query()
+        return [
+            'maker_conflict_count' => null,
+            'maker_conflict_status' => 'idle',
+            'maker_conflict_pending' => false,
+            'maker_conflict_academic_year_id' => $academicYearId,
+            'maker_conflict_label' => null,
+        ];
+    }
+
+    private function schedulingAcademicYearIdForCourseHead(int $userId): ?int
+    {
+        $academicYearId = CourseOffering::query()
             ->withActiveCourse()
             ->where('coordinator_id', $userId)
-            ->pluck('academic_year_id')
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values();
-
-        if ($availableYearIds->isEmpty()) {
-            return null;
-        }
-
-        $academicYearId = AcademicYear::query()
-            ->whereIn('id', $availableYearIds->all())
-            ->orderByRaw("CASE WHEN phase = 'scheduling' THEN 0 WHEN is_active = 1 THEN 1 ELSE 2 END")
-            ->orderByDesc('start_date')
-            ->orderByDesc('semester')
-            ->orderByDesc('id')
-            ->value('id');
+            ->whereHas('academicYear', fn ($query) => $query->where('phase', 'scheduling'))
+            ->join('academic_years', 'academic_years.id', '=', 'course_offerings.academic_year_id')
+            ->orderByDesc('academic_years.start_date')
+            ->orderByDesc('academic_years.semester')
+            ->orderByDesc('academic_years.id')
+            ->value('academic_years.id');
 
         return $academicYearId ? (int) $academicYearId : null;
     }

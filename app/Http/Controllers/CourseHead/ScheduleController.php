@@ -138,12 +138,26 @@ class ScheduleController extends Controller
         $repository = app(ScheduleConflictReadRepository::class);
         $page = max(1, (int) $request->query('page', 1));
         $conflictStatus = $repository->getStatusForUser($userId, $selectedAcademicYearId);
+        $selectedYearIsScheduling = $selectedAcademicYear?->phase === 'scheduling';
+        $conflictChecking = $selectedYearIsScheduling
+            && in_array($conflictStatus['status'] ?? 'missing', ['missing', 'pending', 'processing'], true);
 
-        if (($conflictStatus['status'] ?? 'missing') === 'missing' && $selectedAcademicYearId) {
+        if ($selectedYearIsScheduling && ($conflictStatus['status'] ?? 'missing') === 'missing' && $selectedAcademicYearId) {
             app(ScheduleConflictInvalidationService::class)->markDirty($selectedAcademicYearId, 'manual');
         }
 
-        $resultPage = $repository->getScheduleSummaryPageForUser($userId, $selectedAcademicYearId, $page);
+        $resultPage = $conflictChecking
+            ? new LengthAwarePaginator(
+                collect(),
+                0,
+                25,
+                $page,
+                [
+                    'path' => $request->url(),
+                    'query' => $request->query(),
+                ]
+            )
+            : $repository->getScheduleSummaryPageForUser($userId, $selectedAcademicYearId, $page);
         $conflictGroups = $this->conflictGroupsFromSummaries($resultPage->getCollection());
 
         return view('course_head.schedule_conflicts.index', [
@@ -154,9 +168,10 @@ class ScheduleController extends Controller
             'conflictSchedules' => $resultPage,
             'conflictGroups' => $conflictGroups,
             'conflictMap' => collect(),
-            'totalConflictCount' => $repository->getCountForUser($userId, $selectedAcademicYearId),
-            'conflictTypeCounts' => $repository->getTypeCountsForUser($userId, $selectedAcademicYearId),
+            'totalConflictCount' => $conflictChecking ? null : $repository->getCountForUser($userId, $selectedAcademicYearId),
+            'conflictTypeCounts' => $conflictChecking ? [] : $repository->getTypeCountsForUser($userId, $selectedAcademicYearId),
             'conflictStatus' => $conflictStatus,
+            'conflictChecking' => $conflictChecking,
             'conflictEmptyStateKey' => $emptyStateKey ?? $this->conflictEmptyStateKey($availableYears),
             'asyncConflictReads' => true,
         ]);
@@ -906,9 +921,16 @@ class ScheduleController extends Controller
             description: "สร้างตารางสอน: {$schedule->topic}",
         );
 
+        $savedFlashKey = config('conflicts.async_reads') && $request->boolean('return_to_conflicts')
+            ? 'warning'
+            : 'success';
+        $savedFlashMessage = $savedFlashKey === 'warning'
+            ? 'บันทึกข้อมูลแล้ว ระบบกำลังตรวจสอบรายการชนใหม่'
+            : 'เพิ่มรายการสอนเรียบร้อยแล้ว';
+
         return redirect()
             ->to($this->scheduleReturnUrl($request, $courseOffering, $validated['start_date'], $redirectToWorkspace))
-            ->with('success', 'เพิ่มรายการสอนเรียบร้อยแล้ว')
+            ->with($savedFlashKey, $savedFlashMessage)
             ->with('schedule_conflict_warning', collect($conflicts)->pluck('message')->unique()->values()->all());
     }
 
@@ -998,9 +1020,16 @@ class ScheduleController extends Controller
             );
         }
 
+        $savedFlashKey = config('conflicts.async_reads') && $request->boolean('return_to_conflicts')
+            ? 'warning'
+            : 'success';
+        $savedFlashMessage = $savedFlashKey === 'warning'
+            ? 'บันทึกข้อมูลแล้ว ระบบกำลังตรวจสอบรายการชนใหม่'
+            : 'อัปเดตรายการสอนเรียบร้อยแล้ว';
+
         return redirect()
             ->to($this->scheduleReturnUrl($request, $courseOffering, $validated['start_date']))
-            ->with('success', 'อัปเดตรายการสอนเรียบร้อยแล้ว')
+            ->with($savedFlashKey, $savedFlashMessage)
             ->with('schedule_conflict_warning', collect($conflicts)->pluck('message')->unique()->values()->all());
     }
 

@@ -267,6 +267,188 @@ class ConflictRecomputeJobTest extends TestCase
         $this->assertSame('กำลังตรวจสอบ', $badge['maker_conflict_label']);
     }
 
+    public function test_conflict_badge_status_endpoint_returns_ready_json_for_course_head(): void
+    {
+        Cache::flush();
+        [$year, $head] = $this->makeConflictDataset();
+        $this->attachRole($head, 'course_head');
+
+        $this->artisan('conflicts:recompute', [
+            '--academic-year' => $year->id,
+            '--sync' => true,
+        ])->assertExitCode(0);
+        config(['conflicts.async_reads' => true]);
+        Cache::flush();
+
+        $response = $this->actingAs($head)
+            ->withSession(['active_role' => 'course_head'])
+            ->getJson(route('maker.conflict_badge_status'))
+            ->assertOk()
+            ->assertJsonStructure(['status', 'count', 'pending', 'label', 'poll'])
+            ->assertJsonPath('status', 'ready')
+            ->assertJsonPath('pending', false)
+            ->assertJsonPath('poll', false);
+
+        $this->assertGreaterThan(0, $response->json('count'));
+        $this->assertSame((string) $response->json('count'), $response->json('label'));
+    }
+
+    public function test_conflict_badge_status_endpoint_polls_when_results_are_missing(): void
+    {
+        config(['conflicts.async_reads' => true]);
+        Cache::flush();
+        Queue::fake();
+        [, $head] = $this->makeReadyOffering();
+        $this->attachRole($head, 'course_head');
+
+        $this->actingAs($head)
+            ->withSession(['active_role' => 'course_head'])
+            ->getJson(route('maker.conflict_badge_status'))
+            ->assertOk()
+            ->assertJsonPath('status', 'missing')
+            ->assertJsonPath('count', null)
+            ->assertJsonPath('pending', true)
+            ->assertJsonPath('poll', true);
+
+        Queue::assertPushed(ConflictRecomputeJob::class);
+    }
+
+    public function test_conflict_badge_status_endpoint_is_scoped_to_the_current_course_head(): void
+    {
+        Cache::flush();
+        [$year, $firstHead] = $this->makeConflictDataset();
+        [, $secondHead] = $this->makeReadyOffering($year, 'No conflicts');
+        $this->attachRole($firstHead, 'course_head');
+        $this->attachRole($secondHead, 'course_head');
+
+        $this->artisan('conflicts:recompute', [
+            '--academic-year' => $year->id,
+            '--sync' => true,
+        ])->assertExitCode(0);
+        config(['conflicts.async_reads' => true]);
+        Cache::flush();
+
+        $firstResponse = $this->actingAs($firstHead)
+            ->withSession(['active_role' => 'course_head'])
+            ->getJson(route('maker.conflict_badge_status'))
+            ->assertOk()
+            ->assertJsonPath('status', 'ready');
+
+        $secondResponse = $this->actingAs($secondHead)
+            ->withSession(['active_role' => 'course_head'])
+            ->getJson(route('maker.conflict_badge_status'))
+            ->assertOk()
+            ->assertJsonPath('status', 'ready')
+            ->assertJsonPath('count', 0)
+            ->assertJsonPath('label', null);
+
+        $this->assertGreaterThan(0, $firstResponse->json('count'));
+        $this->assertSame(0, $secondResponse->json('count'));
+    }
+
+    public function test_conflict_badge_status_endpoint_rejects_non_course_heads(): void
+    {
+        $staff = $this->makeUser('Staff');
+        $this->attachRole($staff, 'staff');
+
+        $this->actingAs($staff)
+            ->withSession(['active_role' => 'staff'])
+            ->getJson(route('maker.conflict_badge_status'))
+            ->assertForbidden();
+    }
+
+    public function test_conflict_badge_status_endpoint_is_rate_limited(): void
+    {
+        Cache::flush();
+        [$year, $head] = $this->makeConflictDataset();
+        $this->attachRole($head, 'course_head');
+
+        $this->artisan('conflicts:recompute', [
+            '--academic-year' => $year->id,
+            '--sync' => true,
+        ])->assertExitCode(0);
+        config(['conflicts.async_reads' => true]);
+        Cache::flush();
+
+        for ($i = 0; $i < 30; $i++) {
+            $this->actingAs($head)
+                ->withSession(['active_role' => 'course_head'])
+                ->getJson(route('maker.conflict_badge_status'))
+                ->assertOk();
+        }
+
+        $this->actingAs($head)
+            ->withSession(['active_role' => 'course_head'])
+            ->getJson(route('maker.conflict_badge_status'))
+            ->assertStatus(429);
+    }
+
+    public function test_conflict_badge_status_endpoint_is_idle_without_scheduling_year(): void
+    {
+        config(['conflicts.async_reads' => true]);
+        Cache::flush();
+        $year = AcademicYear::query()->create([
+            'name' => '2571',
+            'semester' => 1,
+            'start_date' => '2027-08-01',
+            'end_date' => '2027-12-31',
+            'is_active' => true,
+            'phase' => 'preparation',
+        ]);
+        [, $head] = $this->makeReadyOffering($year, 'Preparation');
+        $this->attachRole($head, 'course_head');
+        Cache::put("sidebar.badges.course_head.async.{$head->id}", [
+            'maker_conflict_count' => null,
+            'maker_conflict_status' => 'pending',
+            'maker_conflict_pending' => true,
+            'maker_conflict_academic_year_id' => $year->id,
+            'maker_conflict_label' => 'กำลังตรวจสอบ',
+        ], 300);
+
+        $this->actingAs($head)
+            ->withSession(['active_role' => 'course_head'])
+            ->getJson(route('maker.conflict_badge_status'))
+            ->assertOk()
+            ->assertJsonPath('status', 'idle')
+            ->assertJsonPath('count', null)
+            ->assertJsonPath('pending', false)
+            ->assertJsonPath('label', null)
+            ->assertJsonPath('poll', false);
+    }
+
+    public function test_conflict_alert_page_hides_stale_ready_counts_while_recompute_is_pending(): void
+    {
+        Cache::flush();
+        [$year, $head] = $this->makeConflictDataset();
+        $this->attachRole($head, 'course_head');
+
+        $this->artisan('conflicts:recompute', [
+            '--academic-year' => $year->id,
+            '--sync' => true,
+        ])->assertExitCode(0);
+
+        config(['conflicts.async_reads' => true]);
+        $readyCount = app(ScheduleConflictReadRepository::class)->getCountForUser($head->id, $year->id);
+        ScheduleConflictRun::query()->create([
+            'academic_year_id' => $year->id,
+            'status' => 'pending',
+            'generation' => 2,
+            'source' => 'manual',
+            'requested_at' => now(),
+            'result_count' => 0,
+        ]);
+        Cache::flush();
+
+        $this->actingAs($head)
+            ->withSession(['active_role' => 'course_head'])
+            ->get(route('maker.schedule_conflicts.index'))
+            ->assertOk()
+            ->assertSee('data-testid="maker-conflict-pending"', false)
+            ->assertSee('กำลังตรวจสอบรายการชน')
+            ->assertSee('บันทึกข้อมูลแล้ว ระบบกำลังตรวจสอบรายการชนใหม่')
+            ->assertDontSee('<div class="conflict-summary-value">' . $readyCount . '</div>', false);
+    }
+
     public function test_async_sidebar_badge_starts_recompute_when_results_are_missing(): void
     {
         config(['conflicts.async_reads' => true]);
@@ -619,6 +801,15 @@ class ConflictRecomputeJobTest extends TestCase
             'email' => "conflict_user_{$number}@example.com",
             'password' => 'password',
             'is_active' => true,
+        ]);
+    }
+
+    private function attachRole(User $user, string $role): void
+    {
+        UserRole::query()->create([
+            'user_id' => $user->id,
+            'role' => $role,
+            'is_primary' => true,
         ]);
     }
 
