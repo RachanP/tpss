@@ -138,12 +138,26 @@ class ScheduleController extends Controller
         $repository = app(ScheduleConflictReadRepository::class);
         $page = max(1, (int) $request->query('page', 1));
         $conflictStatus = $repository->getStatusForUser($userId, $selectedAcademicYearId);
+        $selectedYearIsScheduling = $selectedAcademicYear?->phase === 'scheduling';
+        $conflictChecking = $selectedYearIsScheduling
+            && in_array($conflictStatus['status'] ?? 'missing', ['missing', 'pending', 'processing'], true);
 
-        if (($conflictStatus['status'] ?? 'missing') === 'missing' && $selectedAcademicYearId) {
+        if ($selectedYearIsScheduling && ($conflictStatus['status'] ?? 'missing') === 'missing' && $selectedAcademicYearId) {
             app(ScheduleConflictInvalidationService::class)->markDirty($selectedAcademicYearId, 'manual');
         }
 
-        $resultPage = $repository->getScheduleSummaryPageForUser($userId, $selectedAcademicYearId, $page);
+        $resultPage = $conflictChecking
+            ? new LengthAwarePaginator(
+                collect(),
+                0,
+                25,
+                $page,
+                [
+                    'path' => $request->url(),
+                    'query' => $request->query(),
+                ]
+            )
+            : $repository->getScheduleSummaryPageForUser($userId, $selectedAcademicYearId, $page);
         $conflictGroups = $this->conflictGroupsFromSummaries($resultPage->getCollection());
 
         return view('course_head.schedule_conflicts.index', [
@@ -154,9 +168,10 @@ class ScheduleController extends Controller
             'conflictSchedules' => $resultPage,
             'conflictGroups' => $conflictGroups,
             'conflictMap' => collect(),
-            'totalConflictCount' => $repository->getCountForUser($userId, $selectedAcademicYearId),
-            'conflictTypeCounts' => $repository->getTypeCountsForUser($userId, $selectedAcademicYearId),
+            'totalConflictCount' => $conflictChecking ? null : $repository->getCountForUser($userId, $selectedAcademicYearId),
+            'conflictTypeCounts' => $conflictChecking ? [] : $repository->getTypeCountsForUser($userId, $selectedAcademicYearId),
             'conflictStatus' => $conflictStatus,
+            'conflictChecking' => $conflictChecking,
             'conflictEmptyStateKey' => $emptyStateKey ?? $this->conflictEmptyStateKey($availableYears),
             'asyncConflictReads' => true,
         ]);
@@ -439,13 +454,22 @@ class ScheduleController extends Controller
 
         $scheduleRelations = $this->scheduleRelations();
 
+        // Bug #2: รับ instructor_id query param สำหรับ server-side filter
+        $filterInstructorId = (int) $request->query('instructor_id', 0);
+
+        $schedulesQuery = Schedule::query()
+            ->with($scheduleRelations)
+            ->whereIn('course_offering_id', $offeringIds);
+
+        if ($filterInstructorId > 0) {
+            $schedulesQuery->whereHas('instructors', fn ($q) => $q->where('users.id', $filterInstructorId));
+        }
+
         $schedules = empty($offeringIds)
             ? collect()
             : $this->orderSchedulesByDate(
                 $this->filterSchedulesByDateRange(
-                    Schedule::query()
-                        ->with($scheduleRelations)
-                        ->whereIn('course_offering_id', $offeringIds),
+                    $schedulesQuery,
                     $periodStart->toDateString(),
                     $periodEnd->toDateString()
                 )
@@ -477,33 +501,34 @@ class ScheduleController extends Controller
         };
 
         return [
-            'courseOffering' => $courseOffering,
-            'availableOfferings' => $availableOfferings,
-            'isWorkspace' => $isWorkspace,
+            'courseOffering'           => $courseOffering,
+            'availableOfferings'       => $availableOfferings,
+            'isWorkspace'              => $isWorkspace,
             ...$this->scheduleDatePickerYearRange(),
-            'schedules' => $schedules,
-            'allSchedules' => $allSchedules,
-            'totalScheduleCount' => $totalScheduleCount,
-            'schedulePeriod' => $period,
-            'includeWeekends' => $includeWeekends,
-            'selectedScheduleDate' => $selectedDate,
-            'weekStart' => $periodStart,
-            'weekEnd' => $periodEnd,
-            'weekDays' => $weekDays,
-            'occurrences' => $occurrences,
-            'occurrencesByDate' => $occurrencesByDate,
-            'gridOccurrencesByDate' => $occurrencesByDate,
-            'groupedSchedules' => $groupedSchedules,
-            'scheduleConflicts' => $this->scheduleConflictMap($schedules),
-            'timeSlots' => $timeSlots,
-            'activityTypes' => app(ReferenceDataCache::class)->activityTypes(),
-            'rooms' => app(ReferenceDataCache::class)->activeRooms(),
-            'dayViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'day', $includeWeekends),
-            'weekViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'week', $includeWeekends),
-            'monthViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'month', $includeWeekends),
-            'previousWeekUrl' => $this->schedulePeriodUrl($courseOffering, $previousPeriod, $isWorkspace, $period, $includeWeekends),
-            'nextWeekUrl' => $this->schedulePeriodUrl($courseOffering, $nextPeriod, $isWorkspace, $period, $includeWeekends),
-            'weekendToggleUrl' => $this->schedulePeriodUrl($courseOffering, $selectedDate, $isWorkspace, $period, $period === 'week' ? ! $includeWeekends : $includeWeekends),
+            'schedules'                => $schedules,
+            'allSchedules'             => $allSchedules,
+            'totalScheduleCount'       => $totalScheduleCount,
+            'schedulePeriod'           => $period,
+            'includeWeekends'          => $includeWeekends,
+            'selectedScheduleDate'     => $selectedDate,
+            'weekStart'                => $periodStart,
+            'weekEnd'                  => $periodEnd,
+            'weekDays'                 => $weekDays,
+            'occurrences'              => $occurrences,
+            'occurrencesByDate'        => $occurrencesByDate,
+            'gridOccurrencesByDate'    => $occurrencesByDate,
+            'groupedSchedules'         => $groupedSchedules,
+            'scheduleConflicts'        => $this->scheduleConflictMap($schedules),
+            'timeSlots'                => $timeSlots,
+            'activityTypes'            => app(ReferenceDataCache::class)->activityTypes(),
+            'rooms'                    => app(ReferenceDataCache::class)->activeRooms(),
+            'selectedInstructorId'     => $filterInstructorId ?: null,
+            'dayViewUrl'               => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'day', $includeWeekends, $filterInstructorId ?: null),
+            'weekViewUrl'              => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'week', $includeWeekends, $filterInstructorId ?: null),
+            'monthViewUrl'             => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'month', $includeWeekends, $filterInstructorId ?: null),
+            'previousWeekUrl'          => $this->schedulePeriodUrl($courseOffering, $previousPeriod, $isWorkspace, $period, $includeWeekends, $filterInstructorId ?: null),
+            'nextWeekUrl'              => $this->schedulePeriodUrl($courseOffering, $nextPeriod, $isWorkspace, $period, $includeWeekends, $filterInstructorId ?: null),
+            'weekendToggleUrl'         => $this->schedulePeriodUrl($courseOffering, $selectedDate, $isWorkspace, $period, $period === 'week' ? ! $includeWeekends : $includeWeekends, $filterInstructorId ?: null),
             'coordinatorEmptyStateKey' => \App\Support\CoordinatorEmptyState::forCoordinator((int) Auth::id()),
         ];
     }
@@ -780,7 +805,8 @@ class ScheduleController extends Controller
         CarbonImmutable $date,
         bool $isWorkspace,
         string $period,
-        bool $includeWeekends = false
+        bool $includeWeekends = false,
+        ?int $instructorId = null
     ): string
     {
         $keepWeekendParam = $period === 'week' && $includeWeekends;
@@ -788,19 +814,21 @@ class ScheduleController extends Controller
         if ($isWorkspace || ! $courseOffering) {
             return route('maker.schedules.index', array_filter([
                 'course_offering_id' => $courseOffering?->id,
-                'week_start' => $date->toDateString(),
-                'date' => $date->toDateString(),
-                'period' => $period,
-                'include_weekends' => $keepWeekendParam ? 1 : null,
+                'week_start'         => $date->toDateString(),
+                'date'               => $date->toDateString(),
+                'period'             => $period,
+                'include_weekends'   => $keepWeekendParam ? 1 : null,
+                'instructor_id'      => $instructorId ?: null,
             ]));
         }
 
         return route('maker.course_offerings.schedules.index', array_filter([
             $courseOffering,
-            'week_start' => $date->toDateString(),
-            'date' => $date->toDateString(),
-            'period' => $period,
+            'week_start'       => $date->toDateString(),
+            'date'             => $date->toDateString(),
+            'period'           => $period,
             'include_weekends' => $keepWeekendParam ? 1 : null,
+            'instructor_id'    => $instructorId ?: null,
         ]));
     }
 
@@ -893,9 +921,16 @@ class ScheduleController extends Controller
             description: "สร้างตารางสอน: {$schedule->topic}",
         );
 
+        $savedFlashKey = config('conflicts.async_reads') && $request->boolean('return_to_conflicts')
+            ? 'warning'
+            : 'success';
+        $savedFlashMessage = $savedFlashKey === 'warning'
+            ? 'บันทึกข้อมูลแล้ว ระบบกำลังตรวจสอบรายการชนใหม่'
+            : 'เพิ่มรายการสอนเรียบร้อยแล้ว';
+
         return redirect()
             ->to($this->scheduleReturnUrl($request, $courseOffering, $validated['start_date'], $redirectToWorkspace))
-            ->with('success', 'เพิ่มรายการสอนเรียบร้อยแล้ว')
+            ->with($savedFlashKey, $savedFlashMessage)
             ->with('schedule_conflict_warning', collect($conflicts)->pluck('message')->unique()->values()->all());
     }
 
@@ -985,9 +1020,16 @@ class ScheduleController extends Controller
             );
         }
 
+        $savedFlashKey = config('conflicts.async_reads') && $request->boolean('return_to_conflicts')
+            ? 'warning'
+            : 'success';
+        $savedFlashMessage = $savedFlashKey === 'warning'
+            ? 'บันทึกข้อมูลแล้ว ระบบกำลังตรวจสอบรายการชนใหม่'
+            : 'อัปเดตรายการสอนเรียบร้อยแล้ว';
+
         return redirect()
             ->to($this->scheduleReturnUrl($request, $courseOffering, $validated['start_date']))
-            ->with('success', 'อัปเดตรายการสอนเรียบร้อยแล้ว')
+            ->with($savedFlashKey, $savedFlashMessage)
             ->with('schedule_conflict_warning', collect($conflicts)->pluck('message')->unique()->values()->all());
     }
 
