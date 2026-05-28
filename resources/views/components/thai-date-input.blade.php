@@ -32,7 +32,7 @@
 <div
     class="tdi-wrap"
     x-data="thaiDateInput()"
-    @if($calendar) @click.outside="$refs.tdiPop && $refs.tdiPop.contains($event.target) || tdiClose()" @keydown.escape="tdiClose()" @endif>
+    @if($calendar) @click.outside="tdiClose()" @keydown.escape="tdiClose()" @endif>
     <div class="tdi-control" x-ref="tdiControl">
         <input
             x-ref="thaiInput"

@@ -166,7 +166,7 @@
 
     {{-- ปฏิทินเลือกวันที่ พ.ศ. ของ <x-thai-date-input> — ลงทะเบียนที่ layout เพื่อให้ทำงานแม้ component อยู่ใน <template> --}}
     <style>
-        .tdi-wrap { width: 100%; }
+        .tdi-wrap { width: 100%; position: relative; }
         .tdi-control {
             position: relative;
             width: 100%;
@@ -192,9 +192,9 @@
         .tdi-cal-btn:hover { background: var(--bg-2, #f1f5f9); color: var(--brand-navy, #1e3a5f); }
         .tdi-cal-btn svg { width: 18px; height: 18px; }
         .tdi-pop {
-            position: fixed;
+            position: absolute;
             z-index: 10000;
-            top: 0;
+            top: calc(100% + 6px);
             left: 0;
             width: 292px;
             max-width: calc(100vw - 24px);
@@ -368,7 +368,6 @@
                 tdiPopStyle: '',
                 tdiPositionHandler: null,
                 tdiGlobalCloseHandler: null,
-                tdiPopMoved: false,
 
                 // มาส์กข้อความให้เป็นรูปแบบ วว/ดด/พ.ศ.
                 init() {
@@ -427,13 +426,6 @@
                         this.tdiSync();
                         this.calOpen = true;
                         this.tdiCloseMenus();
-                        // Move pop element to document.body once so it isn't clipped by modal stacking contexts
-                        try {
-                            if (!this.tdiPopMoved && this.$refs && this.$refs.tdiPop) {
-                                document.body.appendChild(this.$refs.tdiPop);
-                                this.tdiPopMoved = true;
-                            }
-                        } catch (e) {}
                         this.tdiPositionPop();
                         this.tdiAttachPositionListeners();
                         return;
@@ -451,46 +443,8 @@
                     this.tdiYearOpen = false;
                 },
                 tdiPositionPop() {
-                    this.$nextTick(() => {
-                        const control = this.$refs.tdiControl;
-                        const pop = (this.$refs && this.$refs.tdiPop) ? this.$refs.tdiPop : (control ? control.querySelector('.tdi-pop') : null);
-                        if (!control || !pop) return;
-
-                        const gap = 12;
-                        const rect = control.getBoundingClientRect();
-                        const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
-                        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-
-                        if (!this.tdiIsControlVisible(rect, viewportWidth, viewportHeight)) {
-                            this.tdiClose();
-                            return;
-                        }
-
-                        const preferredWidth = Math.max(270, Math.min(300, rect.width));
-                        const width = Math.min(preferredWidth, Math.max(220, viewportWidth - (gap * 2)));
-                        const desiredLeft = rect.width > width + 24 ? rect.right - width : rect.left;
-                        const left = Math.min(
-                            Math.max(gap, desiredLeft),
-                            Math.max(gap, viewportWidth - width - gap)
-                        );
-
-                        const popHeight = Math.min(pop.offsetHeight || 320, Math.max(220, viewportHeight - (gap * 2)));
-                        const belowTop = rect.bottom + 6;
-                        const spaceBelow = viewportHeight - belowTop - gap;
-                        const spaceAbove = rect.top - gap;
-                        const openAbove = spaceBelow < popHeight && spaceAbove > spaceBelow;
-                        const top = openAbove
-                            ? Math.max(gap, rect.top - popHeight - 6)
-                            : Math.min(belowTop, Math.max(gap, viewportHeight - popHeight - gap));
-
-                        this.tdiPopStyle = [
-                            'position: fixed',
-                            `top: ${top}px`,
-                            `left: ${left}px`,
-                            `width: ${width}px`,
-                            `max-height: ${Math.max(220, viewportHeight - (gap * 2))}px`,
-                        ].join('; ');
-                    });
+                    // position: absolute ผูกกับ .tdi-wrap (CSS) — บังคับเปิดข้างล่างเสมอ
+                    this.tdiPopStyle = 'top: calc(100% + 6px); bottom: auto;';
                 },
                 tdiIsControlVisible(rect, viewportWidth, viewportHeight) {
                     if (rect.bottom <= 0 || rect.top >= viewportHeight || rect.right <= 0 || rect.left >= viewportWidth) {

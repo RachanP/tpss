@@ -9,6 +9,7 @@ use App\Models\Room;
 use App\Models\Schedule;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -83,6 +84,12 @@ class ScheduleScenarioSeeder extends Seeder
 
         $total = array_sum($scenarios);
         $this->command->info("เสร็จสิ้น — สร้าง {$total} slot ทดสอบ (topic ขึ้นต้นด้วย [SCN-N])");
+
+        if (config('conflicts.async_reads')) {
+            $this->command->info('กำลังคำนวณ conflict read model ใหม่ (async_reads=true)…');
+            Artisan::call('conflicts:recompute', ['--academic-year' => $year->id, '--sync' => true]);
+            $this->command->info('  ✓ recompute เสร็จ — หน้าแจ้งเตือนการชนจะอัปเดต');
+        }
     }
 
     private function cleanup(array $offeringIds): void

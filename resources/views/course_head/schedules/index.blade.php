@@ -1298,19 +1298,28 @@
             color: oklch(46% 0.07 75);
             font-weight: 750;
         }
-        .grid-activity.has-series .grid-activity-title::after {
-            content: " ทำซ้ำ";
-            display: inline-flex;
-            margin-left: 6px;
+        .grid-activity-top .series-badge,
+        .month-activity-tags .series-badge {
+            min-height: 18px;
             padding: 1px 6px;
-            border-radius: 999px;
-            border: 1px solid oklch(72% 0.05 245);
-            background: oklch(96% 0.018 245);
-            color: var(--brand-navy);
             font-size: 10px;
             font-weight: 900;
-            vertical-align: 1px;
-            white-space: nowrap;
+            border-radius: 999px;
+            background: oklch(96% 0.018 245);
+            border-color: oklch(72% 0.05 245);
+            color: var(--brand-navy);
+        }
+        /* Series tooltip variant — same structure as conflict-tt but blue-tinted */
+        .series-tt {
+            border-color: oklch(79% 0.055 245);
+        }
+        .series-tt .conflict-tt-head {
+            color: oklch(34% 0.075 245);
+            border-bottom-color: oklch(88% 0.03 245);
+        }
+        .series-badge[data-conflict-pill] {
+            cursor: default;
+            position: relative;
         }
         .series-toggle-panel {
             display: grid;
@@ -3805,6 +3814,13 @@
                         window.requestAnimationFrame(() => this.centerFocusedSchedule());
                     });
                 }
+
+                // Ensure grid rows reflect any dynamic changes (e.g., edits made via modals)
+                this.$nextTick(() => {
+                    window.requestAnimationFrame(() => {
+                        if (typeof window.tpssRecomputeGridRows === 'function') window.tpssRecomputeGridRows();
+                    });
+                });
             },
             setCreateMode(mode) {
                 this.createMode = mode === 'series' ? 'series' : 'single';
@@ -4097,6 +4113,12 @@
                     window.location.href = @js(route('maker.schedule_conflicts.index'));
                 @else
                     this.editModal = null;
+                    this.$nextTick(() => {
+                        // small delay to allow DOM/modal transitions to finish
+                        setTimeout(() => {
+                            if (typeof window.tpssRecomputeGridRows === 'function') window.tpssRecomputeGridRows();
+                        }, 120);
+                    });
                 @endif
             }
         }"
@@ -4200,6 +4222,91 @@
                     if (timer) clearTimeout(timer);
                 });
             })();
+        </script>
+
+        <script>
+            // Recompute grid-row start/span for activity items based on visible times.
+            // This helps the grid reflect edited start/end times without a full reload.
+            window.tpssRecomputeGridRows = function () {
+                try {
+                    const grid = document.querySelector('.schedule-grid.is-precise');
+                    if (!grid) return;
+                    const minuteStep = parseInt(grid.dataset.gridMinuteStep || '5', 10) || 5;
+                    const firstTimeCell = grid.querySelector('.grid-cell.grid-time');
+                    if (!firstTimeCell) return;
+                    const startText = (firstTimeCell.textContent || '').trim().split('\n')[0].trim();
+                    const startParts = startText.match(/(\d{1,2}):(\d{2})/);
+                    if (!startParts) return;
+                    const gridStartMinutes = parseInt(startParts[1], 10) * 60 + parseInt(startParts[2], 10);
+
+                    function parseTimeMinutes(timeStr) {
+                        const p = (timeStr || '').match(/(\d{1,2}):(\d{2})/);
+                        if (!p) return null;
+                        return parseInt(p[1], 10) * 60 + parseInt(p[2], 10);
+                    }
+
+                    grid.querySelectorAll('.grid-cell.grid-cell-activity').forEach(cell => {
+                        const stack = cell.querySelector('.activity-stack');
+                        if (stack) {
+                            // --- Stacked cards: recompute cell span from all visible cards ---
+                            const timeEls = stack.querySelectorAll('.grid-activity-time');
+                            let minStart = null;
+                            let maxEnd = null;
+                            timeEls.forEach(el => {
+                                const txt = (el.textContent || '').trim();
+                                const m = txt.match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
+                                if (!m) return;
+                                const s = parseTimeMinutes(m[1]);
+                                const e = parseTimeMinutes(m[2]);
+                                if (s !== null && (minStart === null || s < minStart)) minStart = s;
+                                if (e !== null && (maxEnd === null || e > maxEnd)) maxEnd = e;
+                            });
+                            if (minStart === null || maxEnd === null) return;
+                            const minutesFromStart = Math.max(0, minStart - gridStartMinutes);
+                            const rowsStart = Math.floor(minutesFromStart / minuteStep) + 2;
+                            const span = Math.max(1, Math.ceil(Math.max(5, maxEnd - minStart) / minuteStep));
+                            cell.style.gridRow = `${rowsStart} / span ${span}`;
+
+                            // Also update each card's top% and height% inside the stack
+                            const stackDuration = maxEnd - minStart;
+                            stack.querySelectorAll('.grid-activity-card').forEach(card => {
+                                const timeEl = card.querySelector('.grid-activity-time');
+                                if (!timeEl) return;
+                                const txt = (timeEl.textContent || '').trim();
+                                const m = txt.match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
+                                if (!m) return;
+                                const s = parseTimeMinutes(m[1]);
+                                const e = parseTimeMinutes(m[2]);
+                                if (s === null || e === null) return;
+                                const topPct = stackDuration > 0 ? ((s - minStart) / stackDuration) * 100 : 0;
+                                const heightPct = stackDuration > 0 ? ((e - s) / stackDuration) * 100 : 100;
+                                card.style.top = Math.max(0, topPct).toFixed(4) + '%';
+                                card.style.height = Math.max(5, heightPct).toFixed(4) + '%';
+                            });
+                            return;
+                        }
+
+                        // --- Single card: recompute cell grid-row ---
+                        const card = cell.querySelector('.grid-activity, .grid-activity-card');
+                        if (!card) return;
+                        const timeEl = card.querySelector('.grid-activity-time, .month-activity-time');
+                        if (!timeEl) return;
+                        const timeText = (timeEl.textContent || '').trim();
+                        // Expect formats like "08:00 - 09:30" possibly with trailing duration text
+                        const m = timeText.match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
+                        if (!m) return;
+                        const startMinutes = parseTimeMinutes(m[1]);
+                        const endMinutes = parseTimeMinutes(m[2]);
+                        if (startMinutes === null || endMinutes === null) return;
+                        const minutesFromStart = Math.max(0, startMinutes - gridStartMinutes);
+                        const rowsStart = Math.floor(minutesFromStart / minuteStep) + 2; // header row offset
+                        const span = Math.max(1, Math.ceil((endMinutes - startMinutes) / minuteStep));
+                        cell.style.gridRow = `${rowsStart} / span ${span}`;
+                    });
+                } catch (err) {
+                    console.error('tpssRecomputeGridRows error', err);
+                }
+            };
         </script>
 
         @if($isWorkspace && $availableOfferings->isNotEmpty())
@@ -4490,13 +4597,7 @@
                                                         @endif
                                                         @if($as->schedule_template_id)
                                                             <div style="margin-top:6px;">
-                                                                <span class="series-badge" title="กิจกรรมทำซ้ำรายสัปดาห์">
-                                                                    <span class="series-dot" aria-hidden="true"></span>
-                                                                    <span>ทำซ้ำ</span>
-                                                                    @if($as->series_week_number)
-                                                                        <span>สัปดาห์ {{ $as->series_week_number }}</span>
-                                                                    @endif
-                                                                </span>
+                                                                @include('course_head.schedules._series_badge', ['schedule' => $as])
                                                             </div>
                                                         @endif
                                                         @if($asIncompleteReasons->isNotEmpty())
@@ -4590,10 +4691,7 @@
                                                         <span class="month-group-summary">{{ $schedule->studentGroups->count() }} กลุ่ม</span>
                                                     @endif
                                                     @if($schedule->schedule_template_id)
-                                                        <span class="series-badge" title="กิจกรรมทำซ้ำรายสัปดาห์">
-                                                            <span class="series-dot" aria-hidden="true"></span>
-                                                            <span>ทำซ้ำ</span>
-                                                        </span>
+                                                        @include('course_head.schedules._series_badge', ['schedule' => $schedule])
                                                     @endif
                                                     @include('course_head.schedules._incomplete_badge', ['reasons' => $incompleteReasons])
                                                     @if($itemConflicts->isNotEmpty())
@@ -4611,7 +4709,7 @@
                             @endforeach
                         </div>
                     @else
-                    <div class="schedule-grid is-precise" style="--grid-day-count: {{ max(1, $weekDays->count()) }}; --grid-minute-row-height: {{ $gridMinuteRowHeight }}px; grid-template-columns: 68px repeat({{ max(1, $weekDays->count()) }}, minmax({{ ($includeWeekends ?? false) && ($schedulePeriod ?? 'week') === 'week' ? 122 : 146 }}px, 1fr)); grid-template-rows: 44px repeat({{ $gridMinuteRowCount }}, var(--grid-minute-row-height));">
+                    <div class="schedule-grid is-precise" data-grid-minute-step="{{ $gridMinuteStep }}" style="--grid-day-count: {{ max(1, $weekDays->count()) }}; --grid-minute-row-height: {{ $gridMinuteRowHeight }}px; grid-template-columns: 68px repeat({{ max(1, $weekDays->count()) }}, minmax({{ ($includeWeekends ?? false) && ($schedulePeriod ?? 'week') === 'week' ? 122 : 146 }}px, 1fr)); grid-template-rows: 44px repeat({{ $gridMinuteRowCount }}, var(--grid-minute-row-height));">
                         <div class="grid-cell grid-head" style="grid-area:1 / 1;"></div>
                         @foreach($weekDays as $dayIndex => $day)
                             <div class="grid-cell grid-head" style="grid-area:1 / {{ $dayIndex + 2 }};">
@@ -4673,6 +4771,9 @@
                                         <div role="button" tabindex="0" class="grid-activity {{ $gridActivitySizeClass }} {{ $schedule->schedule_template_id ? 'has-series' : '' }}" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
                                             <div class="grid-activity-top">
                                                 <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }};">{{ $activity?->name ?? 'กิจกรรม' }}</span>
+                                                @if($schedule->schedule_template_id)
+                                                    @include('course_head.schedules._series_badge', ['schedule' => $schedule])
+                                                @endif
                                                 @if($itemConflicts->isNotEmpty())
                                                     @include('course_head.schedules._conflict_pill', ['conflicts' => $itemConflicts])
                                                 @endif
@@ -5039,7 +5140,7 @@
                         @endforeach
                     </div>
                 @else
-                <div class="schedule-grid is-precise" style="--grid-day-count: {{ max(1, $weekDays->count()) }}; --grid-minute-row-height: {{ $gridMinuteRowHeight }}px; grid-template-columns: 68px repeat({{ max(1, $weekDays->count()) }}, minmax({{ ($includeWeekends ?? false) && ($schedulePeriod ?? 'week') === 'week' ? 122 : 146 }}px, 1fr)); grid-template-rows: 44px repeat({{ $gridMinuteRowCount }}, var(--grid-minute-row-height));">
+                <div class="schedule-grid is-precise" data-grid-minute-step="{{ $gridMinuteStep }}" style="--grid-day-count: {{ max(1, $weekDays->count()) }}; --grid-minute-row-height: {{ $gridMinuteRowHeight }}px; grid-template-columns: 68px repeat({{ max(1, $weekDays->count()) }}, minmax({{ ($includeWeekends ?? false) && ($schedulePeriod ?? 'week') === 'week' ? 122 : 146 }}px, 1fr)); grid-template-rows: 44px repeat({{ $gridMinuteRowCount }}, var(--grid-minute-row-height));">
                     <div class="grid-cell grid-head" style="grid-area:1 / 1;"></div>
                     @foreach($weekDays as $dayIndex => $day)
                         <div class="grid-cell grid-head" style="grid-area:1 / {{ $dayIndex + 2 }};">
@@ -5099,12 +5200,15 @@
                                             ? 'is-compact'
                                             : ($activityDuration >= 150 ? 'is-tall' : '');
                                     @endphp
-                                    <div role="button" tabindex="0" class="grid-activity {{ $gridActivitySizeClass }}" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
+                                    <div role="button" tabindex="0" class="grid-activity {{ $gridActivitySizeClass }} {{ $schedule->schedule_template_id ? 'has-series' : '' }}" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
                                         <div class="grid-activity-top">
                                             @if($offeringCourse?->course_code)
                                                 <span class="grid-course">{{ $offeringCourse->course_code }}</span>
                                             @endif
                                             <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }};">{{ $activity?->name ?? 'กิจกรรม' }}</span>
+                                            @if($schedule->schedule_template_id)
+                                                @include('course_head.schedules._series_badge', ['schedule' => $schedule])
+                                            @endif
                                             @if($itemConflicts->isNotEmpty())
                                                 @include('course_head.schedules._conflict_pill', ['conflicts' => $itemConflicts])
                                             @endif
@@ -5117,7 +5221,7 @@
                                             <div class="grid-activity-sub">{{ $activity->name }}</div>
                                         @endif
                                         <div class="grid-activity-meta">
-                                            <div>{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }} · {{ $formatDuration($occurrence['duration_minutes']) }}</div>
+                                            <div class="grid-activity-time">{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }} · {{ $formatDuration($occurrence['duration_minutes']) }}</div>
                                             <div class="grid-instructor">
                                                 @if($instructorText === '-')
                                                     <span class="sched-muted">-</span>
@@ -5264,7 +5368,7 @@
                                                     <div class="grid-activity-sub">{{ $activity->name }}</div>
                                                 @endif
                                                 <div class="grid-activity-meta">
-                                                    <div>{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }} · {{ $formatDuration($occurrence['duration_minutes']) }}</div>
+                                                    <div class="grid-activity-time">{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }} · {{ $formatDuration($occurrence['duration_minutes']) }}</div>
                                                     <div class="grid-instructor">
                                                         @if($instructorText === '-')
                                                             <span class="sched-muted">-</span>
@@ -5675,7 +5779,7 @@
                                             @endif
                                         </span>
                                         <div style="font-size:12px;font-weight:700;color:var(--fg-2);line-height:1.55;">
-                                            รายการรายสัปดาห์นี้ปรับห้อง ผู้สอน กลุ่มนักศึกษา และหมายเหตุแยกตามสัปดาห์ได้ วัน เวลา ประเภทกิจกรรม และหัวข้อจะยึดตามชุดทำซ้ำ
+                                            ปรับ<strong>ห้อง · เวลา · ผู้สอน · กลุ่มนักศึกษา · หมายเหตุ</strong>แยกรายสัปดาห์ได้ ประเภทกิจกรรมและหัวข้อยึดตามชุดทำซ้ำ
                                         </div>
                                     </div>
                                     @if($resourceCopyOptions->isNotEmpty())

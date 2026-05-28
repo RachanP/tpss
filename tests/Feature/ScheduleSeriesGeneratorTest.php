@@ -469,6 +469,251 @@ class ScheduleSeriesGeneratorTest extends TestCase
         $this->assertDatabaseMissing('schedules', ['schedule_template_id' => $template->id]);
     }
 
+    public function test_weekly_series_supports_custom_date_range(): void
+    {
+        [$offering, $instructor, $group, $activityType, $room, $head] = $this->fixture();
+
+        $this->actingAs($head);
+        $this->withSession(['active_role' => 'course_head']);
+
+        $this->post(route('maker.course_offerings.schedules.series.store', $offering), [
+            'weekday' => 1,
+            'start_week' => 1,
+            'end_week' => 10,
+            'start_time' => '09:00',
+            'end_time' => '11:00',
+            'activity_type_id' => $activityType->id,
+            'topic' => 'Custom range series',
+            'use_custom_series_range' => '1',
+            'starts_on' => '17/08/2569',
+            'ends_on' => '07/09/2569',
+        ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $template = ScheduleTemplate::where('topic', 'Custom range series')->firstOrFail();
+        $this->assertSame('2026-08-17', $template->starts_on?->toDateString());
+        $this->assertSame('2026-09-07', $template->ends_on?->toDateString());
+
+        $instances = $offering->schedules()->where('topic', 'Custom range series')->orderBy('start_date')->get();
+        $this->assertSame(['2026-08-17', '2026-08-24', '2026-08-31', '2026-09-07'], $instances->pluck('start_date')->map->toDateString()->all());
+    }
+
+    public function test_weekly_series_detects_instructor_conflict_across_offerings(): void
+    {
+        [$offering, $instructor, $group, $activityType, $room, $head] = $this->fixture();
+        [$otherOffering, $otherInstructor, $otherGroup] = $this->secondOffering($head, $offering, $instructor);
+
+        // series ใน offering แรก: Monday 09:00-11:00 — สัปดาห์ 1-3 (3 instances)
+        $this->actingAs($head);
+        $this->withSession(['active_role' => 'course_head']);
+        $this->post(route('maker.course_offerings.schedules.series.store', $offering), [
+            'weekday' => 1,
+            'start_week' => 1,
+            'end_week' => 3,
+            'start_time' => '09:00',
+            'end_time' => '11:00',
+            'activity_type_id' => $activityType->id,
+            'room_id' => $room->id,
+            'topic' => 'Series A',
+            'instructor_ids' => [$instructor->id],
+            'lead_instructor_id' => $instructor->id,
+            'student_group_ids' => [$group->id],
+        ])->assertSessionHasNoErrors();
+
+        // slot ใน offering อื่น Monday เดียวกัน 10:00-12:00 ทับเวลา — อาจารย์คนเดียวกัน
+        $response = $this->post(route('maker.course_offerings.schedules.store', $otherOffering), [
+            'activity_type_id' => $activityType->id,
+            'room_id' => $room->id,
+            'start_date' => '03/08/2569',
+            'end_date' => '03/08/2569',
+            'start_time' => '10:00',
+            'end_time' => '12:00',
+            'topic' => 'Cross-course instructor slot',
+            'instructor_ids' => [$instructor->id],
+            'lead_instructor_id' => $instructor->id,
+            'student_group_ids' => [$otherGroup->id],
+        ]);
+        $response->assertRedirect();
+
+        $crossSlot = $otherOffering->schedules()->where('topic', 'Cross-course instructor slot')->firstOrFail();
+        $this->assertDatabaseHas('schedules', ['id' => $crossSlot->id]);
+
+        // เช็คผ่าน ScheduleConflictChecker ตรงๆ
+        $checker = app(\App\Services\ScheduleConflictChecker::class);
+        $conflicts = $checker->check([
+            'course_offering_id' => $otherOffering->id,
+            'activity_type_id' => $activityType->id,
+            'room_id' => $room->id,
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-03',
+            'start_time' => '10:00',
+            'end_time' => '12:00',
+        ], [$instructor->id], [$otherGroup->id], $crossSlot->id);
+
+        $instructorConflicts = collect($conflicts)->where('type', 'instructor_overlap');
+        $this->assertNotEmpty($instructorConflicts, 'ต้องตรวจพบ instructor overlap ข้าม offering');
+    }
+
+    public function test_weekly_series_detects_room_conflict_across_offerings(): void
+    {
+        [$offering, $instructor, $group, $activityType, $room, $head] = $this->fixture();
+        [$otherOffering, $otherInstructor, $otherGroup] = $this->secondOffering($head, $offering, $instructor);
+
+        // series A — Monday 13:00-15:00 ในห้อง R1
+        $this->actingAs($head);
+        $this->withSession(['active_role' => 'course_head']);
+        $this->post(route('maker.course_offerings.schedules.series.store', $offering), [
+            'weekday' => 1,
+            'start_week' => 1,
+            'end_week' => 2,
+            'start_time' => '13:00',
+            'end_time' => '15:00',
+            'activity_type_id' => $activityType->id,
+            'room_id' => $room->id,
+            'topic' => 'Series room A',
+            'instructor_ids' => [$instructor->id],
+            'lead_instructor_id' => $instructor->id,
+            'student_group_ids' => [$group->id],
+        ])->assertSessionHasNoErrors();
+
+        // slot ใน offering อื่น ห้องเดียวกัน 14:00-16:00 — อาจารย์คนละคน
+        $this->post(route('maker.course_offerings.schedules.store', $otherOffering), [
+            'activity_type_id' => $activityType->id,
+            'room_id' => $room->id,
+            'start_date' => '03/08/2569',
+            'end_date' => '03/08/2569',
+            'start_time' => '14:00',
+            'end_time' => '16:00',
+            'topic' => 'Cross-course room slot',
+            'instructor_ids' => [$otherInstructor->id],
+            'lead_instructor_id' => $otherInstructor->id,
+            'student_group_ids' => [$otherGroup->id],
+        ])->assertRedirect();
+
+        $crossSlot = $otherOffering->schedules()->where('topic', 'Cross-course room slot')->firstOrFail();
+        $checker = app(\App\Services\ScheduleConflictChecker::class);
+        $conflicts = $checker->check([
+            'course_offering_id' => $otherOffering->id,
+            'activity_type_id' => $activityType->id,
+            'room_id' => $room->id,
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-03',
+            'start_time' => '14:00',
+            'end_time' => '16:00',
+        ], [$otherInstructor->id], [$otherGroup->id], $crossSlot->id);
+
+        $roomConflicts = collect($conflicts)->where('type', 'room_overlap');
+        $this->assertNotEmpty($roomConflicts, 'ต้องตรวจพบ room overlap ข้าม offering');
+    }
+
+    public function test_course_head_cannot_update_series_template_of_other_coordinator(): void
+    {
+        [$offering, $instructor, $group, $activityType, $room, $head] = $this->fixture();
+        $template = ScheduleTemplate::create([
+            'course_offering_id' => $offering->id,
+            'activity_type_id' => $activityType->id,
+            'weekday' => 1,
+            'start_time' => '09:00',
+            'end_time' => '11:00',
+            'start_week' => 1,
+            'end_week' => 2,
+            'topic' => 'Owned by head A',
+        ]);
+
+        // user ที่ไม่ใช่ coordinator ของ offering
+        $otherHead = $this->user('course_head', Department::firstOrFail());
+        $this->actingAs($otherHead);
+        $this->withSession(['active_role' => 'course_head']);
+
+        $this->put(route('maker.course_offerings.schedules.templates.update', [$offering, $template]), [
+            'weekday' => 2,
+            'start_week' => 1,
+            'end_week' => 2,
+            'start_time' => '13:00',
+            'end_time' => '15:00',
+            'activity_type_id' => $activityType->id,
+            'topic' => 'Hacked',
+        ])
+            ->assertStatus(403);
+
+        $template->refresh();
+        $this->assertSame('Owned by head A', $template->topic);
+    }
+
+    public function test_course_head_cannot_delete_series_template_of_other_coordinator(): void
+    {
+        [$offering, $instructor, $group, $activityType, $room, $head] = $this->fixture();
+        app(ScheduleSeriesGenerator::class)->generateFromTemplate(
+            ScheduleTemplate::create([
+                'course_offering_id' => $offering->id,
+                'activity_type_id' => $activityType->id,
+                'weekday' => 1,
+                'start_time' => '09:00',
+                'end_time' => '11:00',
+                'start_week' => 1,
+                'end_week' => 2,
+                'topic' => 'Cannot touch',
+            ]),
+            ['room_id' => $room->id, 'instructor_ids' => [$instructor->id], 'student_group_ids' => [$group->id]]
+        );
+        $firstSchedule = $offering->schedules()->where('topic', 'Cannot touch')->orderBy('series_week_number')->firstOrFail();
+
+        $otherHead = $this->user('course_head', Department::firstOrFail());
+        $this->actingAs($otherHead);
+        $this->withSession(['active_role' => 'course_head']);
+
+        $this->delete(route('maker.course_offerings.schedules.destroy', [$offering, $firstSchedule]), [
+            'series_delete_scope' => 'all',
+        ])->assertStatus(403);
+
+        $this->assertDatabaseHas('schedule_templates', ['topic' => 'Cannot touch']);
+        $this->assertDatabaseHas('schedules', ['id' => $firstSchedule->id]);
+    }
+
+    private function secondOffering(User $head, CourseOffering $primary, User $sharedInstructor): array
+    {
+        $department = Department::firstOrFail();
+        $curriculum = Curriculum::firstOrFail();
+        $course = Course::create([
+            'course_code' => 'SER102',
+            'curriculum_id' => $curriculum->id,
+            'department_id' => $department->id,
+            'head_instructor_id' => $head->id,
+            'name_th' => 'Series Course B',
+            'name_en' => 'Series Course B',
+            'course_type' => 'theory',
+            'default_year_level' => 2,
+            'default_semester' => 1,
+            'requires_practicum_rotation' => false,
+            'credits' => 3,
+            'lecture_hours' => 3,
+            'lab_hours' => 0,
+            'self_study_hours' => 6,
+            'status' => 'active',
+        ]);
+        $offering = CourseOffering::create([
+            'course_id' => $course->id,
+            'academic_year_id' => $primary->academic_year_id,
+            'coordinator_id' => $head->id,
+            'approval_status' => 'draft',
+            'total_student_count' => 30,
+            'teaching_weeks' => 16,
+        ]);
+        $otherInstructor = $this->user('instructor', $department);
+        $offering->instructorPool()->attach([
+            $sharedInstructor->id => ['role_in_course' => 'instructor'],
+            $otherInstructor->id => ['role_in_course' => 'instructor'],
+        ]);
+        $group = StudentGroup::create([
+            'course_offering_id' => $offering->id,
+            'group_code' => 'B1',
+            'student_count' => 15,
+        ]);
+
+        return [$offering, $otherInstructor, $group];
+    }
+
     private function fixture(): array
     {
         $department = Department::create(['name' => 'Nursing']);
