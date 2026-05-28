@@ -5445,49 +5445,56 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 
-    // ── Conflict pill tooltip: position fixed + delegated handler ───────────
-    // ใช้ position:fixed + JS calc เพื่อหนี overflow:hidden ของ card cell
+    // ── Conflict pill tooltip: PORTAL pattern ───────────────────────────────
+    // เหตุผล: card parent มี transform บน :hover → สร้าง containing block ใหม่
+    // ทำให้ position:fixed ของ tooltip ติดอยู่ใน card อีก
+    // วิธีแก้: ย้าย tooltip content ไปอยู่ใต้ <body> (escape ทุก ancestor)
     (function () {
+        var portal = document.createElement('div');
+        portal.id = 'conflict-tt-portal';
+        portal.style.cssText = 'position:fixed;top:0;left:0;z-index:99999;display:none;';
+        portal.setAttribute('role', 'tooltip');
+        document.body.appendChild(portal);
+
         var openPill = null;
 
         function place(pill) {
-            var tt = pill.querySelector('.conflict-tt');
-            if (!tt) return;
+            // Clone content from this pill's hidden tooltip into the portal
+            var source = pill.querySelector('.conflict-tt');
+            if (!source) return;
+            portal.innerHTML = source.innerHTML;
+            portal.className = 'conflict-tt conflict-tt--portal';
 
-            // Show invisibly to measure size
-            tt.style.visibility = 'hidden';
-            pill.setAttribute('data-tt-open', 'true');
-            var ttRect = tt.getBoundingClientRect();
+            // Show invisibly to measure
+            portal.style.visibility = 'hidden';
+            portal.style.display = 'block';
+            var ttRect = portal.getBoundingClientRect();
             var pillRect = pill.getBoundingClientRect();
             var vw = window.innerWidth, vh = window.innerHeight;
             var margin = 8;
 
-            // Prefer below pill; flip above if not enough space
             var top = pillRect.bottom + 6;
             if (top + ttRect.height > vh - margin) {
                 top = Math.max(margin, pillRect.top - ttRect.height - 6);
             }
-
-            // Align left with pill; clamp inside viewport
             var left = pillRect.left;
             if (left + ttRect.width > vw - margin) {
                 left = Math.max(margin, vw - ttRect.width - margin);
             }
             if (left < margin) left = margin;
 
-            tt.style.transform = 'translate(' + Math.round(left) + 'px, ' + Math.round(top) + 'px)';
-            tt.style.visibility = '';
+            portal.style.top = Math.round(top) + 'px';
+            portal.style.left = Math.round(left) + 'px';
+            portal.style.visibility = '';
         }
 
-        function close(pill) {
-            if (!pill) return;
-            pill.removeAttribute('data-tt-open');
-            var tt = pill.querySelector('.conflict-tt');
-            if (tt) tt.style.visibility = '';
+        function close() {
+            portal.style.display = 'none';
+            portal.innerHTML = '';
+            openPill = null;
         }
 
         function open(pill) {
-            if (openPill && openPill !== pill) close(openPill);
             openPill = pill;
             place(pill);
         }
@@ -5498,11 +5505,10 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         document.addEventListener('mouseout', function (e) {
             var pill = e.target.closest('[data-conflict-pill]');
-            if (!pill) return;
-            // Don't close if moving to a child of the same pill
+            if (!pill || pill !== openPill) return;
             var related = e.relatedTarget;
             if (related && pill.contains(related)) return;
-            if (pill === openPill) { close(pill); openPill = null; }
+            close();
         });
         document.addEventListener('focusin', function (e) {
             var pill = e.target.closest('[data-conflict-pill]');
@@ -5510,9 +5516,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         document.addEventListener('focusout', function (e) {
             var pill = e.target.closest('[data-conflict-pill]');
-            if (pill === openPill) { close(pill); openPill = null; }
+            if (pill === openPill) close();
         });
-        // Reposition on scroll/resize while open
         window.addEventListener('scroll', function () { if (openPill) place(openPill); }, true);
         window.addEventListener('resize', function () { if (openPill) place(openPill); });
     })();
