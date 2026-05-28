@@ -62,9 +62,10 @@ class ScheduleController extends Controller
         $defaultAcademicYear = $this->defaultConflictAcademicYear($availableYears);
         $selectedAcademicYear = $this->selectedConflictAcademicYear($request, $availableYears, $defaultAcademicYear);
         $selectedAcademicYearId = $selectedAcademicYear?->id ? (int) $selectedAcademicYear->id : null;
+        $emptyStateKey = $this->conflictEmptyStateKey($availableYears);
 
         if (config('conflicts.async_reads')) {
-            return $this->asyncConflicts($request, $userId, $availableYears, $selectedAcademicYear, $selectedAcademicYearId);
+            return $this->asyncConflicts($request, $userId, $availableYears, $selectedAcademicYear, $selectedAcademicYearId, $emptyStateKey);
         }
 
         $result = app(ScheduleConflictIndex::class)->conflictsForCoordinator($userId, $selectedAcademicYearId);
@@ -121,6 +122,7 @@ class ScheduleController extends Controller
             'totalConflictCount' => $result['total'],
             'conflictTypeCounts' => $conflictTypeCounts,
             'conflictStatus' => ['status' => 'ready'],
+            'conflictEmptyStateKey' => $this->conflictEmptyStateKey($availableYears),
             'asyncConflictReads' => false,
         ]);
     }
@@ -130,7 +132,8 @@ class ScheduleController extends Controller
         int $userId,
         Collection $availableYears,
         ?AcademicYear $selectedAcademicYear,
-        ?int $selectedAcademicYearId
+        ?int $selectedAcademicYearId,
+        ?string $emptyStateKey = null
     ): View {
         $repository = app(ScheduleConflictReadRepository::class);
         $page = max(1, (int) $request->query('page', 1));
@@ -154,6 +157,7 @@ class ScheduleController extends Controller
             'totalConflictCount' => $repository->getCountForUser($userId, $selectedAcademicYearId),
             'conflictTypeCounts' => $repository->getTypeCountsForUser($userId, $selectedAcademicYearId),
             'conflictStatus' => $conflictStatus,
+            'conflictEmptyStateKey' => $emptyStateKey ?? $this->conflictEmptyStateKey($availableYears),
             'asyncConflictReads' => true,
         ]);
     }
@@ -272,6 +276,34 @@ class ScheduleController extends Controller
     /**
      * @return Collection<int, AcademicYear>
      */
+    /**
+     * Determine which empty-state message to show on the conflicts page.
+     *
+     * - 'preparation' : ระบบยังไม่เปิด scheduling phase ที่ไหนเลย
+     * - 'no_offerings': เปิด scheduling แล้ว แต่ผู้ใช้ไม่มี course offering ที่รับผิดชอบ
+     * - 'no_conflicts': มี offering + อยู่ในช่วง scheduling แต่ไม่พบการชน
+     */
+    private function conflictEmptyStateKey(Collection $availableYears): string
+    {
+        $systemHasScheduling = AcademicYear::query()
+            ->where('phase', 'scheduling')
+            ->exists();
+
+        if (! $systemHasScheduling) {
+            return 'preparation';
+        }
+
+        $userHasSchedulingOffering = $availableYears->contains(
+            fn (AcademicYear $year) => $year->phase === 'scheduling'
+        );
+
+        if (! $userHasSchedulingOffering) {
+            return 'no_offerings';
+        }
+
+        return 'no_conflicts';
+    }
+
     private function coordinatorAcademicYears(int $userId): Collection
     {
         return AcademicYear::query()

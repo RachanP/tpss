@@ -74,9 +74,28 @@ class NavigationBadgeService
     private function uncachedAsyncCourseHeadConflictBadge(int $userId): array
     {
         $academicYearId = $this->defaultAcademicYearIdForCourseHead($userId);
+
+        // ถ้าผู้ใช้ไม่มี offering หรือ offering ไม่ได้อยู่ในช่วง scheduling เลย
+        // → ไม่ต้องโชว์ pending badge (เดิมโชว์ "กำลังตรวจสอบ" ทำให้สับสนว่า error)
+        $hasSchedulingYear = $academicYearId
+            && AcademicYear::query()
+                ->whereKey($academicYearId)
+                ->where('phase', 'scheduling')
+                ->exists();
+
+        if (! $hasSchedulingYear) {
+            return [
+                'maker_conflict_count' => null,
+                'maker_conflict_status' => 'idle',
+                'maker_conflict_pending' => false,
+                'maker_conflict_academic_year_id' => $academicYearId,
+                'maker_conflict_label' => null,
+            ];
+        }
+
         $status = $this->conflictReadRepository->getStatusForUser($userId, $academicYearId);
 
-        if ($academicYearId && $status['status'] === 'missing') {
+        if ($status['status'] === 'missing') {
             app(ScheduleConflictInvalidationService::class)->markDirty($academicYearId, 'manual');
         }
 

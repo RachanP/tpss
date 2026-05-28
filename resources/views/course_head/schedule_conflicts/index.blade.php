@@ -406,6 +406,56 @@
             color: var(--fg-2);
             font-weight: 800;
         }
+        .conflict-empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            padding: 36px 24px;
+            border: 1px solid var(--schedule-border);
+            border-radius: 12px;
+            background: var(--surface);
+            text-align: center;
+        }
+        .conflict-empty-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: var(--schedule-soft);
+            color: var(--schedule-muted);
+            margin-bottom: 2px;
+        }
+        .conflict-empty-title {
+            font-size: 17px;
+            font-weight: 950;
+            color: var(--brand-navy);
+            line-height: 1.3;
+        }
+        .conflict-empty-sub {
+            max-width: 560px;
+            color: var(--fg-2);
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.55;
+        }
+        .conflict-empty-state--success {
+            border-color: color-mix(in oklch, var(--status-success-border, oklch(70% 0.14 145)) 60%, var(--schedule-border));
+            background: color-mix(in oklch, var(--status-success-bg, oklch(96% 0.04 145)) 45%, var(--surface));
+        }
+        .conflict-empty-state--success .conflict-empty-icon {
+            background: var(--status-success-bg, oklch(94% 0.04 145));
+            color: var(--status-success-fg, oklch(38% 0.14 145));
+        }
+        .conflict-empty-state--success .conflict-empty-title {
+            color: var(--status-success-fg, oklch(38% 0.14 145));
+        }
+        .conflict-empty-state--info .conflict-empty-icon {
+            background: oklch(94% 0.03 232);
+            color: oklch(38% 0.12 232);
+        }
         .conflict-pagination {
             display: flex;
             justify-content: center;
@@ -659,9 +709,46 @@
                 กำลังประมวลผล…
             </div>
         @elseif($conflictGroups->isEmpty())
-            {{-- ready / missing / failed แต่ไม่มีข้อมูลชน --}}
-            <div class="conflict-empty" data-testid="maker-conflict-empty">
-                ยังไม่พบการชนในรายวิชาที่รับผิดชอบ
+            @php
+                $emptyKey = $conflictEmptyStateKey ?? 'no_conflicts';
+                $emptyStates = [
+                    'preparation' => [
+                        'icon' => 'clock',
+                        'title' => 'อยู่ในสถานะเตรียมข้อมูล',
+                        'sub' => 'ยังไม่ถึงช่วงเวลาการจัดตารางเรียน ระบบจะเริ่มตรวจสอบการชนเมื่อผู้ดูแลเปิดช่วงจัดตาราง',
+                        'tone' => 'info',
+                    ],
+                    'no_offerings' => [
+                        'icon' => 'inbox',
+                        'title' => 'ไม่พบรายวิชาที่ต้องจัดตารางสอนในระบบ',
+                        'sub' => 'ช่วงจัดตารางเปิดอยู่ แต่คุณยังไม่ได้รับมอบหมายเป็นหัวหน้าวิชาในรอบนี้ ติดต่อผู้ดูแลระบบหากต้องการรับผิดชอบรายวิชา',
+                        'tone' => 'info',
+                    ],
+                    'no_conflicts' => [
+                        'icon' => 'check',
+                        'title' => 'ยังไม่พบการชนในรายวิชาที่รับผิดชอบ',
+                        'sub' => 'ตารางสอนของคุณยังไม่มีรายการที่ชนกัน — พร้อมส่งขออนุมัติได้',
+                        'tone' => 'success',
+                    ],
+                ];
+                $state = $emptyStates[$emptyKey] ?? $emptyStates['no_conflicts'];
+            @endphp
+            <div class="conflict-empty-state conflict-empty-state--{{ $state['tone'] }}" data-testid="maker-conflict-empty" data-empty-state="{{ $emptyKey }}">
+                <div class="conflict-empty-icon" aria-hidden="true">
+                    @switch($state['icon'])
+                        @case('clock')
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                            @break
+                        @case('inbox')
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+                            @break
+                        @case('check')
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            @break
+                    @endswitch
+                </div>
+                <div class="conflict-empty-title">{{ $state['title'] }}</div>
+                <div class="conflict-empty-sub">{{ $state['sub'] }}</div>
             </div>
         @else
             @foreach($conflictGroups as $group)
