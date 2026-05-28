@@ -277,31 +277,14 @@ class ScheduleController extends Controller
      * @return Collection<int, AcademicYear>
      */
     /**
-     * Determine which empty-state message to show on the conflicts page.
-     *
-     * - 'preparation' : ระบบยังไม่เปิด scheduling phase ที่ไหนเลย
-     * - 'no_offerings': เปิด scheduling แล้ว แต่ผู้ใช้ไม่มี course offering ที่รับผิดชอบ
-     * - 'no_conflicts': มี offering + อยู่ในช่วง scheduling แต่ไม่พบการชน
+     * Empty-state key สำหรับหน้าแจ้งเตือนการชน
+     * 'ready' → 'no_conflicts' (มี offering แต่ไม่พบการชน)
      */
     private function conflictEmptyStateKey(Collection $availableYears): string
     {
-        $systemHasScheduling = AcademicYear::query()
-            ->where('phase', 'scheduling')
-            ->exists();
+        $key = \App\Support\CoordinatorEmptyState::forCoordinator((int) Auth::id());
 
-        if (! $systemHasScheduling) {
-            return 'preparation';
-        }
-
-        $userHasSchedulingOffering = $availableYears->contains(
-            fn (AcademicYear $year) => $year->phase === 'scheduling'
-        );
-
-        if (! $userHasSchedulingOffering) {
-            return 'no_offerings';
-        }
-
-        return 'no_conflicts';
+        return $key === \App\Support\CoordinatorEmptyState::READY ? 'no_conflicts' : $key;
     }
 
     private function coordinatorAcademicYears(int $userId): Collection
@@ -521,6 +504,7 @@ class ScheduleController extends Controller
             'previousWeekUrl' => $this->schedulePeriodUrl($courseOffering, $previousPeriod, $isWorkspace, $period, $includeWeekends),
             'nextWeekUrl' => $this->schedulePeriodUrl($courseOffering, $nextPeriod, $isWorkspace, $period, $includeWeekends),
             'weekendToggleUrl' => $this->schedulePeriodUrl($courseOffering, $selectedDate, $isWorkspace, $period, $period === 'week' ? ! $includeWeekends : $includeWeekends),
+            'coordinatorEmptyStateKey' => \App\Support\CoordinatorEmptyState::forCoordinator((int) Auth::id()),
         ];
     }
 

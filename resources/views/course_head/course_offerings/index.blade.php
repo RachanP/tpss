@@ -272,9 +272,28 @@
                             </td>
                         </tr>
                     @empty
+                        @php
+                            $emptyKey = $coordinatorEmptyStateKey ?? 'no_offerings';
+                            $emptyMessages = [
+                                'preparation' => [
+                                    'title' => 'อยู่ในสถานะเตรียมข้อมูล',
+                                    'sub' => 'ยังไม่ถึงช่วงเวลาการจัดตารางเรียน — ระบบจะเปิดรายวิชาเมื่อผู้ดูแลตั้งค่าเป็นช่วงจัดตาราง',
+                                ],
+                                'no_offerings' => [
+                                    'title' => 'ไม่พบรายวิชาที่รับผิดชอบในรอบนี้',
+                                    'sub' => 'คุณยังไม่ได้รับมอบหมายเป็นหัวหน้าวิชาในรอบ scheduling นี้ — ติดต่อผู้ดูแลระบบหากต้องการรับผิดชอบรายวิชา',
+                                ],
+                                'ready' => [
+                                    'title' => 'ไม่พบรายวิชาที่รับผิดชอบ',
+                                    'sub' => 'ลองเลือกปีการศึกษาอื่นจากตัวกรองด้านบน',
+                                ],
+                            ];
+                            $msg = $emptyMessages[$emptyKey] ?? $emptyMessages['ready'];
+                        @endphp
                         <tr>
-                            <td colspan="7" style="text-align:center;padding:34px 20px;color:var(--fg-3);">
-                                ไม่พบรายวิชาที่รับผิดชอบ
+                            <td colspan="7" style="text-align:center;padding:34px 20px;" data-empty-state="{{ $emptyKey }}">
+                                <div style="font-weight:950;font-size:15px;color:var(--brand-navy);margin-bottom:4px;">{{ $msg['title'] }}</div>
+                                <div style="font-weight:700;font-size:12.5px;color:var(--fg-2);line-height:1.55;max-width:520px;margin:0 auto;">{{ $msg['sub'] }}</div>
                             </td>
                         </tr>
                     @endforelse

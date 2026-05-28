@@ -4192,7 +4192,24 @@
 
         @if($isWorkspace)
             @if($availableOfferings->isEmpty())
-                <div class="schedule-empty" data-testid="schedule-no-offerings-empty">ยังไม่มีรายวิชาที่ต้องจัดตาราง</div>
+                @php
+                    $emptyKey = $coordinatorEmptyStateKey ?? 'no_offerings';
+                    $emptyMessages = [
+                        'preparation' => [
+                            'title' => 'อยู่ในสถานะเตรียมข้อมูล',
+                            'sub' => 'ยังไม่ถึงช่วงเวลาการจัดตารางเรียน — ระบบจะเปิดให้จัดตารางเมื่อผู้ดูแลตั้งค่าปีการศึกษาเป็นช่วงจัดตาราง',
+                        ],
+                        'no_offerings' => [
+                            'title' => 'ไม่พบรายวิชาที่ต้องจัดตารางสอนในระบบ',
+                            'sub' => 'ช่วงจัดตารางเปิดอยู่ แต่คุณยังไม่ได้รับมอบหมายเป็นหัวหน้าวิชาในรอบนี้ — ติดต่อผู้ดูแลระบบหากต้องการรับผิดชอบรายวิชา',
+                        ],
+                    ];
+                    $msg = $emptyMessages[$emptyKey] ?? $emptyMessages['no_offerings'];
+                @endphp
+                <div class="schedule-empty" data-testid="schedule-no-offerings-empty" data-empty-state="{{ $emptyKey }}" style="padding:32px 20px;text-align:center;">
+                    <div style="font-weight:950;font-size:16px;color:var(--brand-navy);margin-bottom:6px;">{{ $msg['title'] }}</div>
+                    <div style="font-weight:700;font-size:13px;color:var(--fg-2);line-height:1.55;max-width:560px;margin:0 auto;">{{ $msg['sub'] }}</div>
+                </div>
             @else
             <div x-show="view === 'list'" x-cloak data-testid="schedule-list-view">
                 @php
