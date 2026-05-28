@@ -2857,8 +2857,7 @@
             width: 100%;
             height: 100%;
             min-height: 80px;
-            /* overflow visible so ghost peek cards can show slightly outside */
-            overflow: visible;
+            overflow: hidden;
         }
         .grid-activity-card {
             position: absolute !important;
@@ -3878,10 +3877,10 @@
                                                             const dist = page * 3 - idx; /* 1 = closest */
                                                             const baseOpacity = Math.max(0.12, 0.45 - (dist - 1) * 0.08);
                                                             const scale = Math.max(0.84, 0.95 - (dist - 1) * 0.04);
-                                                            const leftOffset = (-6 - (dist - 1) * 4);
+                                                            const leftOffset = Math.max(0, 4 - (dist - 1) * 2);
                                                             return {
                                                                 left: leftOffset + '%',
-                                                                width: '78%',
+                                                                width: '72%',
                                                                 zIndex: 6 - dist,
                                                                 opacity: baseOpacity,
                                                                 pointerEvents: 'none',
@@ -3894,10 +3893,10 @@
                                                             const dist = idx - (page + 1) * 3 + 1; /* 1 = closest */
                                                             const baseOpacity = Math.max(0.12, 0.45 - (dist - 1) * 0.08);
                                                             const scale = Math.max(0.84, 0.95 - (dist - 1) * 0.04);
-                                                            const leftOffset = (28 + (dist - 1) * 4);
+                                                            const leftOffset = Math.min(24, 16 + (dist - 1) * 3);
                                                             return {
                                                                 left: leftOffset + '%',
-                                                                width: '78%',
+                                                                width: '72%',
                                                                 zIndex: 6 - dist,
                                                                 opacity: baseOpacity,
                                                                 pointerEvents: 'none',
@@ -4305,10 +4304,10 @@
                                                         const dist = page * 3 - idx; /* 1 = closest */
                                                         const baseOpacity = Math.max(0.12, 0.45 - (dist - 1) * 0.08);
                                                         const scale = Math.max(0.84, 0.95 - (dist - 1) * 0.04);
-                                                        const leftOffset = (-6 - (dist - 1) * 4);
+                                                        const leftOffset = Math.max(0, 4 - (dist - 1) * 2);
                                                         return {
                                                             left: leftOffset + '%',
-                                                            width: '78%',
+                                                            width: '72%',
                                                             zIndex: 6 - dist,
                                                             opacity: baseOpacity,
                                                             pointerEvents: 'none',
@@ -4321,10 +4320,10 @@
                                                         const dist = idx - (page + 1) * 3 + 1; /* 1 = closest */
                                                         const baseOpacity = Math.max(0.12, 0.45 - (dist - 1) * 0.08);
                                                         const scale = Math.max(0.84, 0.95 - (dist - 1) * 0.04);
-                                                        const leftOffset = (28 + (dist - 1) * 4);
+                                                        const leftOffset = Math.min(24, 16 + (dist - 1) * 3);
                                                         return {
                                                             left: leftOffset + '%',
-                                                            width: '78%',
+                                                            width: '72%',
                                                             zIndex: 6 - dist,
                                                             opacity: baseOpacity,
                                                             pointerEvents: 'none',
