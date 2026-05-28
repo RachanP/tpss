@@ -41,58 +41,76 @@
             padding: 16px 18px;
             border-color: var(--schedule-border-strong);
         }
-        .conflict-heading-row {
+        .conflict-hero-main {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .conflict-hero-row {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 12px;
             flex-wrap: wrap;
         }
-        .conflict-kicker {
-            display: inline-flex;
-            align-items: center;
-            min-height: 22px;
-            padding: 2px 10px;
-            border: 1px solid var(--schedule-border-strong);
-            border-radius: 999px;
-            background: var(--schedule-soft);
-            color: var(--schedule-muted);
-            font-size: 10px;
-            font-weight: 850;
-            line-height: 1.2;
-        }
         .conflict-title {
-            margin-top: 7px;
-            font-size: 26px;
+            margin: 0;
+            font-size: 24px;
             font-weight: 950;
             color: var(--brand-navy);
-            line-height: 1.25;
+            line-height: 1.2;
             letter-spacing: 0;
         }
-        .conflict-copy {
-            max-width: 920px;
-            margin-top: 5px;
-            color: var(--fg-2);
-            font-size: 13px;
-            line-height: 1.55;
-        }
-        .conflict-year-badge {
+        .conflict-year-inline {
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            margin-top: 12px;
-            padding: 6px 12px;
+            gap: 6px;
+            padding: 4px 10px;
             border: 1px solid var(--schedule-border-strong);
             border-radius: 999px;
             background: var(--schedule-soft);
             color: var(--fg-1);
-            font-size: 12.5px;
+            font-size: 12px;
             font-weight: 850;
-            line-height: 1.3;
+            line-height: 1.25;
         }
-        .conflict-year-badge svg {
+        .conflict-year-inline svg {
             flex-shrink: 0;
             color: var(--brand-navy);
         }
+        .conflict-summary-stats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .conflict-stat {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 6px;
+            padding: 6px 12px;
+            border: 1px solid var(--schedule-border);
+            border-left: 3px solid var(--schedule-border-strong);
+            border-radius: 6px;
+            background: var(--surface);
+            line-height: 1.2;
+        }
+        .conflict-stat-value {
+            color: var(--brand-navy);
+            font-size: 18px;
+            font-weight: 950;
+            font-variant-numeric: tabular-nums;
+            min-width: 22px;
+            text-align: right;
+        }
+        .conflict-stat-label {
+            color: var(--fg-2);
+            font-size: 12px;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+        .conflict-stat--instructor { border-left-color: oklch(48% 0.14 268); }
+        .conflict-stat--room       { border-left-color: oklch(52% 0.16 28); }
+        .conflict-stat--group      { border-left-color: oklch(48% 0.14 168); }
         .conflict-total {
             display: inline-flex;
             align-items: center;
@@ -546,20 +564,32 @@
 
     <div class="conflict-page">
         <section class="conflict-hero">
-            <div>
-                <div class="conflict-heading-row">
-                    <span class="conflict-kicker">รายการที่ต้องตรวจสอบก่อนส่งอนุมัติ</span>
+            <div class="conflict-hero-main">
+                <div class="conflict-hero-row">
+                    <h1 class="conflict-title">การแจ้งเตือนการชน</h1>
+                    @if($selectedAcademicYear)
+                        <span class="conflict-year-inline" data-testid="maker-conflict-year">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                            ปีการศึกษา {{ $selectedAcademicYear->name }} / ภาค {{ $selectedAcademicYear->semester }}
+                        </span>
+                    @endif
                 </div>
-                <div class="conflict-title">การแจ้งเตือนการชน</div>
-                <div class="conflict-copy">
-                    แสดงรายการชนของทุกรายวิชาที่คุณรับผิดชอบ ระบบจะแสดงข้อมูลสรุปก่อนและโหลดรายละเอียดทั้งหมดเมื่อกดดูเพิ่มเติม
+                @php
+                    $typeCounts = $conflictTypeCounts ?? [];
+                    $summaryStats = [
+                        ['key' => 'instructor_overlap', 'label' => 'ผู้สอนชน',      'modifier' => 'instructor'],
+                        ['key' => 'room_overlap',       'label' => 'ห้อง/สถานที่ชน', 'modifier' => 'room'],
+                        ['key' => 'group_overlap',      'label' => 'กลุ่ม นศ. ชน',   'modifier' => 'group'],
+                    ];
+                @endphp
+                <div class="conflict-summary-stats" data-testid="maker-conflict-summary">
+                    @foreach($summaryStats as $stat)
+                        <div class="conflict-stat conflict-stat--{{ $stat['modifier'] }}">
+                            <span class="conflict-stat-value">{{ $typeCounts[$stat['key']] ?? 0 }}</span>
+                            <span class="conflict-stat-label">{{ $stat['label'] }}</span>
+                        </div>
+                    @endforeach
                 </div>
-                @if($selectedAcademicYear)
-                    <div class="conflict-year-badge" data-testid="maker-conflict-year">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                        ปีการศึกษา {{ $selectedAcademicYear->name }} / ภาค {{ $selectedAcademicYear->semester }}
-                    </div>
-                @endif
             </div>
             <div class="conflict-total" data-testid="maker-conflict-total">
                 <strong>{{ $totalConflictCount ?? '...' }}</strong>

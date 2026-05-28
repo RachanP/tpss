@@ -64,6 +64,31 @@ class ScheduleConflictReadRepository
         );
     }
 
+    /**
+     * Total conflict count for a course_head user, broken down by conflict_type.
+     *
+     * @return array<string, int>  e.g. ['instructor_overlap' => 30, 'room_overlap' => 25, 'group_overlap' => 22]
+     */
+    public function getTypeCountsForUser(int $userId, ?int $academicYearId): array
+    {
+        if (! $academicYearId || ! $this->userHasAcademicYearScope($userId, $academicYearId)) {
+            return [];
+        }
+
+        $run = $this->latestReadyRun((int) $academicYearId);
+
+        if (! $run) {
+            return [];
+        }
+
+        return $this->scopedResultQuery((int) $run->id, $userId, (int) $academicYearId)
+            ->select('schedule_conflict_results.conflict_type', DB::raw('count(*) as total'))
+            ->groupBy('schedule_conflict_results.conflict_type')
+            ->pluck('total', 'conflict_type')
+            ->map(fn ($count) => (int) $count)
+            ->all();
+    }
+
     public function getPageForUser(int $userId, ?int $academicYearId, int $page): LengthAwarePaginator
     {
         if (! $academicYearId || ! $this->userHasAcademicYearScope($userId, $academicYearId)) {

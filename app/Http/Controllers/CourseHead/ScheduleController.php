@@ -104,6 +104,12 @@ class ScheduleController extends Controller
             })
             ->values();
 
+        $conflictTypeCounts = $conflictMap
+            ->flatten(1)
+            ->groupBy('type')
+            ->map(fn ($items) => $items->count())
+            ->all();
+
         return view('course_head.schedule_conflicts.index', [
             'offerings' => collect(),
             'availableYears' => $availableYears,
@@ -113,6 +119,7 @@ class ScheduleController extends Controller
             'conflictGroups' => $conflictGroups,
             'conflictMap' => $conflictMap,
             'totalConflictCount' => $result['total'],
+            'conflictTypeCounts' => $conflictTypeCounts,
             'conflictStatus' => ['status' => 'ready'],
             'asyncConflictReads' => false,
         ]);
@@ -145,6 +152,7 @@ class ScheduleController extends Controller
             'conflictGroups' => $conflictGroups,
             'conflictMap' => collect(),
             'totalConflictCount' => $repository->getCountForUser($userId, $selectedAcademicYearId),
+            'conflictTypeCounts' => $repository->getTypeCountsForUser($userId, $selectedAcademicYearId),
             'conflictStatus' => $conflictStatus,
             'asyncConflictReads' => true,
         ]);
