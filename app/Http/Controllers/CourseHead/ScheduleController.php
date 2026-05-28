@@ -762,7 +762,8 @@ class ScheduleController extends Controller
         }
 
         return $this->coordinatorScheduleOfferings(includeSchedulingData: false)
-            ->first()?->id;
+            ->first(fn (CourseOffering $offering) => $offering->academicYear?->phase === 'scheduling')
+            ?->id;
     }
 
     private function coordinatorScheduleOfferings(bool $includeSchedulingData = true): Collection
