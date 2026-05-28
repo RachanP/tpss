@@ -10,6 +10,7 @@ use App\Models\CourseRole;
 use App\Models\SystemSetting;
 use App\Http\Controllers\Admin\AlertController;
 use App\Services\AuditLogger;
+use App\Services\NavigationBadgeService;
 use App\Support\ThaiDate;
 use Illuminate\Support\Facades\DB;
 
@@ -366,6 +367,14 @@ class AdminSettingController extends Controller
         }
 
         $year->update(['phase' => 'preparation']);
+
+        CourseOffering::query()
+            ->withActiveCourse()
+            ->where('academic_year_id', $year->id)
+            ->pluck('coordinator_id')
+            ->filter()
+            ->unique()
+            ->each(fn ($userId) => NavigationBadgeService::flushCourseHead((int) $userId));
 
         AuditLogger::log(
             action:      'ตั้งค่าระบบ.ปิดช่วงจัดตาราง',

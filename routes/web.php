@@ -6,6 +6,7 @@ use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\Admin\AlertController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\CourseHead\CourseOfferingController;
+use App\Http\Controllers\CourseHead\ConflictBadgeStatusController;
 use App\Http\Controllers\CourseHead\ScheduleController;
 use Illuminate\Support\Facades\Route;
 
@@ -39,6 +40,9 @@ Route::middleware(['auth', 'no-back'])->group(function () {
     Route::middleware(['\App\Http\Middleware\CheckRole:course_head'])->group(function () {
         Route::get('/maker/schedules', [ScheduleController::class, 'workspace'])->name('maker.schedules.index');
         Route::get('/maker/schedule-conflicts', [ScheduleController::class, 'conflicts'])->name('maker.schedule_conflicts.index');
+        Route::get('/maker/conflict-badge-status', ConflictBadgeStatusController::class)
+            ->name('maker.conflict_badge_status')
+            ->middleware('throttle:30,1');
         Route::get('/maker/schedules/create', [ScheduleController::class, 'createGlobal'])->name('maker.schedules.create');
         Route::post('/maker/schedules', [ScheduleController::class, 'storeGlobal'])->name('maker.schedules.store');
     });

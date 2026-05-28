@@ -16,7 +16,7 @@
 | Sprint 1 | 11–12 พ.ค. | M10 Login/RBAC | ✅ 100% |
 | Sprint 2 | 12–15 พ.ค. | M1 Master Data | ✅ 100% |
 | Sprint 3 | 18–19 พ.ค. | M2 Course Management | ✅ merge เข้า sprint แล้ว (18 พ.ค.) |
-| **Sprint 4–6** | **20–26 พ.ค.** | **M3 + M4 + M8 → Schedule Suite** | **🟢 IN PROGRESS — Phase A/B/C ลงเกือบครบ บน branch `4-m3-schedule-suite-testPat` (Friend 2 = pronpimon) รอ merge เข้า sprint** |
+| **Sprint 4–6** | **20–28 พ.ค.** | **M3 + M4 + M8 → Schedule Suite** | ✅ merge เข้า sprint แล้ว — รวม Cross-course conflict (branch `4-m4-cross-course-conflict` merge `42e4810`) |
 | Sprint 7 | 20–27 พ.ค. | M7 Search & Filter | ✅ merge เข้า sprint แล้ว (16 พ.ค.) |
 
 ## Sprint 2 (M1) — สิ่งที่เสร็จแล้ว
@@ -77,9 +77,9 @@
 - **CSV importer**: รับ `is_required` column แบบ optional (default true) + preload curriculums (เลิก N+1)
 - **เพิ่ม 4 tests**: master curriculum without year_level, course year_level capped by duration, credit-based requires total_credits, cascade clear on toggle
 
-## Schedule Suite (M3 + M4 บางส่วน + M8) — สิ่งที่เสร็จแล้วบน `4-m3-schedule-suite-testPat`
+## Schedule Suite (M3 + M4 + M8) — ✅ merge เข้า sprint แล้ว
 
-> งาน Friend 2 (pronpimon013) — commits 22–25 พ.ค. รอ merge เข้า sprint
+> งาน Friend 2 (pronpimon013) — commits 22–25 พ.ค. + Cross-course conflict (merge `42e4810`)
 
 ### M3 — Schedule CRUD
 - `CourseHead\ScheduleController` — index/create/store/update/destroy + workspace mode + per-offering view
@@ -89,12 +89,13 @@
 - Dashboard widget "ตารางสอนที่กำลังจะถึง" (commit `3026295`)
 - Optional `ScheduleFlowSeeder` (`php artisan db:seed --class=ScheduleFlowSeeder`) — พาระบบจาก fresh seed → state จัดตารางพร้อมข้อมูลตัวอย่าง
 
-### M4 — Conflict & Validation Hardening (ภายในวิชาเท่านั้น — commits `c4eebcd`, `d41055c`)
+### M4 — Conflict & Validation Hardening (commits `c4eebcd`, `d41055c`, `42e4810`)
 - **Instructor / room / group overlap** ภายใน offering เดียวกัน บล็อกบันทึก (severity `conflict`)
+- **Cross-course conflict** ✅ — instructor/room overlap ข้ามวิชาผ่าน `ScheduleConflictChecker::bulkConflictMap()` + `ScheduleConflictReadRepository` (read model สำหรับหน้า conflicts) — `buildOwnedConflictMap()` ใน `CourseHead\ScheduleController` ดึง schedules ทั้งระบบที่ overlap date window แล้ว pairwise compare
 - **Department gate** — อาจารย์ที่เลือกใน slot และที่ add เข้า instructor pool ต้องมี `instructor_profiles.department_id == courses.department_id` (`ScheduleController::assertInstructorsBelongToCourseDepartment`, `CourseHead\CourseOfferingController::storeInstructor`)
 - **Capacity gate** — sum(`student_groups.student_count`) ของ groups ที่เลือก ≤ `capacity_required` (`ScheduleController::assertSelectedGroupsFitCapacity`)
 - Conflict error key `'schedule'` ส่งเป็น **array of messages** (ไม่ใช่ string implode) → UI render เป็น bullet list
-- ⚠️ **Cross-course conflict ยังไม่ทำ** — pronpimon จะทำต่อใน branch แยกหลัง merge ครั้งนี้
+- **Conflicts page** — `/course_head/schedule/conflicts` dedicated page (4-card dashboard summary + per-schedule detail + styled popover tooltip, portal pattern)
 
 ### M8 — Calendar Views (commit `96f3fa7`, `7633390`, `e8ea5e1`)
 - Period filters: **day / week / month** — toggle ผ่าน query param `?period=day|week|month&date=YYYY-MM-DD`
@@ -119,7 +120,7 @@
 | คน | งาน | ขอบเขต |
 |----|-----|--------|
 | **Rachan (Lead)** | Course Offering UI fixes | หน้าจัดการ course offering — polish layout/UX ต่อ |
-| **pronpimon** | M4 Cross-Course Conflict Check | ตรวจ conflict ห้อง/ผู้สอนข้ามรายวิชาภายในคณะ (อ้างอิง `instructor_profiles.employee_id` เป็น Global Instructor ID) |
+| **pronpimon** | M4 Cross-Course Conflict Check | ✅ merge แล้ว (`42e4810`) — ตรวจ conflict ห้อง/ผู้สอนข้ามรายวิชาภายในคณะ |
 | **phuwadon** | User Management UX/UI | หน้าจัดการผู้ใช้ — polish + accessibility |
 
 ### Test Coverage (134 tests / 133 passing — pre-Schedule Suite)

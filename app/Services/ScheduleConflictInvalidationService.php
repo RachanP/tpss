@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 
 class ScheduleConflictInvalidationService
 {
-    private const DEBOUNCE_SECONDS = 45;
+    private const DEBOUNCE_SECONDS = 10;
     private const DIRTY_TTL_SECONDS = 300;
 
     public function markDirty(?int $academicYearId, string $source = 'observer'): void

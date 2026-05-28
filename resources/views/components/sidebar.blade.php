@@ -184,6 +184,22 @@
                 $makerConflictStatus = $sidebarBadges['maker_conflict_status'] ?? 'ready';
                 $makerConflictPending = (bool) ($sidebarBadges['maker_conflict_pending'] ?? false);
                 $makerConflictLabel = $sidebarBadges['maker_conflict_label'] ?? null;
+                $makerConflictNumericCount = is_numeric($makerConflictCount) ? (int) $makerConflictCount : null;
+                $makerConflictPoll = in_array($makerConflictStatus, ['missing', 'pending', 'processing'], true);
+                $makerConflictVisible = ($makerConflictNumericCount !== null && $makerConflictNumericCount > 0) || $makerConflictPending;
+                $makerConflictTone = ($makerConflictNumericCount !== null && $makerConflictNumericCount > 0) || $makerConflictStatus === 'failed'
+                    ? 'nv-bd-red'
+                    : 'nv-bd-warning';
+                $makerConflictText = $makerConflictVisible
+                    ? (($makerConflictNumericCount !== null && $makerConflictNumericCount > 0)
+                        ? (string) $makerConflictNumericCount
+                        : ($makerConflictLabel ?: 'กำลังตรวจสอบ'))
+                    : '';
+                $makerConflictTitle = $makerConflictVisible
+                    ? (($makerConflictNumericCount !== null && $makerConflictNumericCount > 0)
+                        ? "{$makerConflictNumericCount} รายการชน"
+                        : ($makerConflictStatus === 'failed' ? 'ตรวจสอบรายการชนไม่สำเร็จ' : 'กำลังตรวจสอบรายการชน'))
+                    : '';
             @endphp
             <div class="sb-sec">เมนูหลัก</div>
             <!-- Maker Menus -->
@@ -212,18 +228,21 @@
                     <line x1="12" y1="17" x2="12.01" y2="17"></line>
                 </svg>
                 <span>การแจ้งเตือนการชน</span>
-                @if(is_numeric($makerConflictCount) && (int) $makerConflictCount > 0)
-                    <span class="nv-alert-badges">
-                        <span class="nv-bd nv-bd-red" title="{{ $makerConflictCount }} รายการชน">{{ $makerConflictCount }}</span>
-                    </span>
-                @elseif($makerConflictPending)
-                    <span class="nv-alert-badges">
-                        <span
-                            class="nv-bd {{ $makerConflictStatus === 'failed' ? 'nv-bd-red' : 'nv-bd-warning' }}"
-                            title="{{ $makerConflictStatus === 'failed' ? 'ตรวจสอบรายการชนไม่สำเร็จ' : 'กำลังตรวจสอบรายการชน' }}"
-                        >{{ $makerConflictLabel ?: 'กำลังตรวจสอบ' }}</span>
-                    </span>
-                @endif
+                <span
+                    class="nv-alert-badges"
+                    data-conflict-badge
+                    data-endpoint="{{ route('maker.conflict_badge_status') }}"
+                    data-status="{{ $makerConflictStatus }}"
+                    data-pending="{{ $makerConflictPending ? 'true' : 'false' }}"
+                    data-poll="{{ $makerConflictPoll ? 'true' : 'false' }}"
+                    @if(! $makerConflictVisible) hidden @endif
+                >
+                    <span
+                        class="nv-bd {{ $makerConflictTone }}"
+                        data-conflict-badge-pill
+                        title="{{ $makerConflictTitle }}"
+                    >{{ $makerConflictText }}</span>
+                </span>
             </a>
             <a href="{{ route('maker.course_offerings.index') }}" class="nv {{ Request::routeIs('maker.course_offerings.*') && ! Request::routeIs('maker.course_offerings.schedules.*') ? 'on' : '' }}">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -449,3 +468,140 @@
         </form>
     </div>
 </div>
+
+@if($activeRole === 'course_head')
+    <script>
+        (() => {
+            const POLL_INTERVAL_MS = 8000;
+            const text = {
+                checking: @json('กำลังตรวจสอบ'),
+                failed: @json('ตรวจสอบไม่สำเร็จ'),
+                checkingTitle: @json('กำลังตรวจสอบรายการชน'),
+                failedTitle: @json('ตรวจสอบรายการชนไม่สำเร็จ'),
+                conflictSuffix: @json(' รายการชน'),
+            };
+
+            function initConflictBadge(root) {
+                const pill = root.querySelector('[data-conflict-badge-pill]');
+                const endpoint = root.dataset.endpoint;
+
+                if (! pill || ! endpoint) {
+                    return;
+                }
+
+                let polling = root.dataset.poll === 'true';
+                let timer = null;
+                let inflight = false;
+
+                function stop() {
+                    if (timer) {
+                        window.clearInterval(timer);
+                        timer = null;
+                    }
+                }
+
+                function applyBadge(data) {
+                    const status = String(data.status || 'missing');
+                    const rawCount = data.count === null || data.count === undefined ? null : Number(data.count);
+                    const hasCount = Number.isFinite(rawCount) && rawCount > 0;
+                    const pending = Boolean(data.pending);
+                    const label = data.label || null;
+
+                    polling = Boolean(data.poll);
+                    root.dataset.status = status;
+                    root.dataset.pending = pending ? 'true' : 'false';
+                    root.dataset.poll = polling ? 'true' : 'false';
+
+                    let visible = false;
+                    let tone = 'warning';
+                    let badgeText = '';
+                    let title = '';
+
+                    if (status === 'ready') {
+                        if (hasCount) {
+                            visible = true;
+                            tone = 'red';
+                            badgeText = String(rawCount);
+                            title = `${rawCount}${text.conflictSuffix}`;
+                        }
+                    } else if (status === 'failed') {
+                        visible = true;
+                        tone = 'red';
+                        badgeText = label || text.failed;
+                        title = text.failedTitle;
+                    } else if (pending || polling) {
+                        visible = true;
+                        badgeText = label || text.checking;
+                        title = text.checkingTitle;
+                    }
+
+                    pill.textContent = badgeText;
+                    pill.title = title;
+                    pill.classList.toggle('nv-bd-red', tone === 'red');
+                    pill.classList.toggle('nv-bd-warning', tone !== 'red');
+                    root.hidden = ! visible;
+
+                    if (! polling) {
+                        stop();
+                    }
+                }
+
+                async function pollOnce() {
+                    if (inflight || ! polling || document.hidden) {
+                        return;
+                    }
+
+                    inflight = true;
+
+                    try {
+                        const response = await window.fetch(endpoint, {
+                            headers: { Accept: 'application/json' },
+                            credentials: 'same-origin',
+                        });
+
+                        if ([401, 403, 429].includes(response.status)) {
+                            polling = false;
+                            root.dataset.poll = 'false';
+                            stop();
+                            return;
+                        }
+
+                        if (! response.ok) {
+                            return;
+                        }
+
+                        applyBadge(await response.json());
+                    } catch (error) {
+                        // Keep the sidebar quiet on transient network errors.
+                    } finally {
+                        inflight = false;
+                    }
+                }
+
+                function start() {
+                    if (timer || ! polling || document.hidden) {
+                        return;
+                    }
+
+                    pollOnce();
+                    timer = window.setInterval(pollOnce, POLL_INTERVAL_MS);
+                }
+
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden) {
+                        stop();
+                        return;
+                    }
+
+                    start();
+                });
+
+                start();
+            }
+
+            document
+                .querySelectorAll('[data-conflict-badge]')
+                .forEach(initConflictBadge);
+        })();
+    </script>
+@endif
