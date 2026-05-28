@@ -822,8 +822,8 @@ class AuditLogIntegrationTest extends TestCase
     {
         $this->actingAsAdmin()
             ->post(route('admin.location_types.store'), [
-                'name' => 'ประเภทห้อง Audit',
-                'requires_capacity' => 1,
+                'name'      => 'ประเภทห้อง Audit',
+                'is_shared' => 0,  // ห้องเรียนทั่วไป
             ])
             ->assertRedirect();
 
@@ -832,25 +832,25 @@ class AuditLogIntegrationTest extends TestCase
 
         $this->actingAsAdmin()
             ->put(route('admin.location_types.update', $locationType), [
-                'name' => 'ประเภทห้อง Audit',
-                'requires_capacity' => 0,
+                'name'      => 'ประเภทห้อง Audit',
+                'is_shared' => 1,  // เปลี่ยนเป็นสถานที่ประเภทเปิด
             ])
             ->assertRedirect();
 
         $locationUpdateLog = $this->latestLog('ข้อมูลหลัก.แก้ไข', 'location_types');
-        $this->assertSame(['requires_capacity'], array_keys($locationUpdateLog->old_values));
-        $this->assertTrue($locationUpdateLog->old_values['requires_capacity']);
-        $this->assertFalse($locationUpdateLog->new_values['requires_capacity']);
+        $this->assertSame(['is_shared'], array_keys($locationUpdateLog->old_values));
+        $this->assertFalse($locationUpdateLog->old_values['is_shared']);
+        $this->assertTrue($locationUpdateLog->new_values['is_shared']);
 
         $this->actingAsAdmin()
             ->post(route('admin.rooms.store'), [
-                'room_code' => 'LAB-201',
-                'room_name' => 'ห้องปฏิบัติการ 201',
-                'building' => 'อาคาร 1',
-                'capacity' => 40,
+                'room_code'        => 'LAB-201',
+                'room_name'        => 'ห้องปฏิบัติการ 201',
+                'building'         => 'อาคาร 1',
+                'capacity'         => 40,
                 'location_type_id' => $locationType->id,
-                'status' => 'active',
-                'equipment_type' => 'projector,bed',
+                'status'           => 'active',
+                'equipment_type'   => 'projector,bed',
             ])
             ->assertRedirect();
 
@@ -859,13 +859,13 @@ class AuditLogIntegrationTest extends TestCase
 
         $this->actingAsAdmin()
             ->put(route('admin.rooms.update', $room), [
-                'room_code' => 'LAB-201',
-                'room_name' => 'ห้องปฏิบัติการ 201',
-                'building' => 'อาคาร 1',
-                'capacity' => 45,
+                'room_code'        => 'LAB-201',
+                'room_name'        => 'ห้องปฏิบัติการ 201',
+                'building'         => 'อาคาร 1',
+                'capacity'         => 45,
                 'location_type_id' => $locationType->id,
-                'status' => 'active',
-                'equipment_type' => 'projector,bed',
+                'status'           => 'active',
+                'equipment_type'   => 'projector,bed',
             ])
             ->assertRedirect();
 

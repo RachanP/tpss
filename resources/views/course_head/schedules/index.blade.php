@@ -3690,6 +3690,22 @@
             })();
         </script>
 
+        <script>
+            /**
+             * Bug #2: applyInstructorFilter — redirect \u0e1e\u0e23\u0e49\u0e2d\u0e21 instructor_id query param
+             * \u0e23\u0e31\u0e01\u0e29\u0e32 query params \u0e2d\u0e37\u0e48\u0e19 (period, week_start, date, include_weekends) \u0e44\u0e27\u0e49\u0e04\u0e23\u0e1a
+             */
+            function applyInstructorFilter(instructorId) {
+                const url = new URL(window.location.href);
+                if (instructorId) {
+                    url.searchParams.set('instructor_id', instructorId);
+                } else {
+                    url.searchParams.delete('instructor_id');
+                }
+                window.location.href = url.toString();
+            }
+        </script>
+
         @if($isWorkspace && $availableOfferings->isNotEmpty())
         <div class="schedule-toolbar">
             <div class="schedule-title">ตารางสอน</div>
@@ -3731,6 +3747,24 @@
                 @click="toggleWeekends()"
                 aria-pressed="{{ ($includeWeekends ?? false) ? 'true' : 'false' }}"
             >เสาร์-อาทิตย์</button>
+            {{-- Bug #2: instructor server-side filter (ใช้ได้ทุก view) --}}
+            @if($instructorFilterOptions->isNotEmpty())
+            <div class="instructor-filter-wrap">
+                <select
+                    id="workspace-instructor-filter"
+                    class="schedule-filter-control"
+                    aria-label="กรองตามผู้สอน"
+                    onchange="applyInstructorFilter(this.value)"
+                >
+                    <option value="">อาจารย์ทุกท่าน</option>
+                    @foreach($instructorFilterOptions as $instructor)
+                        <option value="{{ $instructor->id }}" {{ ($selectedInstructorId ?? null) == $instructor->id ? 'selected' : '' }}>
+                            {{ $instructor->formatted_name ?? $instructor->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            @endif
             <div class="schedule-toggle" role="group" aria-label="รูปแบบการแสดงตาราง">
                 <button type="button" :class="{ 'is-active': view === 'list' }" @click="view = 'list'" data-testid="schedule-list-toggle">แบบรายการ</button>
                 <button type="button" :class="{ 'is-active': view === 'grid' }" @click="view = 'grid'" data-testid="schedule-grid-toggle">แบบตาราง</button>
@@ -3887,10 +3921,14 @@
                             <option value="{{ $group->id }}">{{ $group->group_code }}</option>
                         @endforeach
                     </select>
-                    <select class="schedule-filter-control" x-model="scheduleInstructor" aria-label="กรองตามผู้สอน">
+                    <select class="schedule-filter-control" x-model="scheduleInstructor" aria-label="กรองตามผู้สอน"
+                        @change="applyInstructorFilter($event.target.value)"
+                        id="co-instructor-filter">
                         <option value="">ทุกผู้สอน</option>
                         @foreach($instructorFilterOptions as $instructor)
-                            <option value="{{ $instructor->id }}">{{ $instructor->formatted_name ?? $instructor->name }}</option>
+                            <option value="{{ $instructor->id }}" {{ ($selectedInstructorId ?? null) == $instructor->id ? 'selected' : '' }}>
+                                {{ $instructor->formatted_name ?? $instructor->name }}
+                            </option>
                         @endforeach
                     </select>
                 </div>

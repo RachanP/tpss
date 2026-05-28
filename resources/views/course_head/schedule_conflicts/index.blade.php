@@ -7,11 +7,12 @@
         'group_overlap' => 'กลุ่มนักศึกษาชน',
     ];
     $conflictRunStatus = $conflictStatus['status'] ?? 'ready';
+    $conflictChecking = (bool) ($conflictChecking ?? in_array($conflictRunStatus, ['missing', 'pending', 'processing'], true));
     $conflictStatusLabel = match ($conflictRunStatus) {
         'failed'  => 'ตรวจสอบรายการชนไม่สำเร็จ ระบบจะแสดงผลล่าสุดที่พร้อมใช้งานถ้ามี',
-        'running' => 'กำลังประมวลผลรายการชน อาจใช้เวลาสักครู่',
+        'missing', 'pending', 'processing' => 'บันทึกข้อมูลแล้ว ระบบกำลังตรวจสอบรายการชนใหม่',
         'ready'   => 'ผลตรวจสอบพร้อมใช้งาน',
-        default   => '', // 'missing' — ไม่แสดงอะไร
+        default   => '',
     };
 @endphp
 
@@ -140,6 +141,46 @@
         .conflict-summary-card--total .conflict-summary-value {
             color: var(--status-conflict-fg, oklch(40% 0.14 28));
         }
+        .conflict-summary-card--checking {
+            border-top-color: var(--status-warning-border, oklch(72% 0.12 78));
+            background: color-mix(in oklch, var(--status-warning-bg, oklch(96% 0.05 78)) 42%, var(--surface));
+        }
+        .conflict-summary-card--checking .conflict-summary-icon {
+            background: var(--status-warning-bg, oklch(96% 0.05 78));
+            color: var(--status-warning-fg, oklch(42% 0.11 78));
+        }
+        .conflict-summary-card--checking .conflict-summary-value {
+            color: var(--status-warning-fg, oklch(42% 0.11 78));
+        }
+        .conflict-summary-value--checking {
+            display: inline-flex;
+            align-items: center;
+            min-height: 30px;
+            gap: 4px;
+        }
+        .conflict-loading-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: conflict-dot-bounce 1s ease-in-out infinite;
+        }
+        .conflict-loading-dot:nth-child(2) {
+            animation-delay: 0.14s;
+        }
+        .conflict-loading-dot:nth-child(3) {
+            animation-delay: 0.28s;
+        }
+        @keyframes conflict-dot-bounce {
+            0%, 80%, 100% {
+                transform: translateY(0);
+                opacity: .45;
+            }
+            40% {
+                transform: translateY(-5px);
+                opacity: 1;
+            }
+        }
         .conflict-summary-card--instructor { border-top-color: oklch(48% 0.14 268); }
         .conflict-summary-card--instructor .conflict-summary-icon { background: oklch(96% 0.03 268); color: oklch(40% 0.14 268); }
         .conflict-summary-card--room { border-top-color: oklch(52% 0.16 28); }
@@ -154,6 +195,17 @@
             padding: 10px 12px;
             font-size: 13px;
             font-weight: 750;
+        }
+        .conflict-status--checking {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .conflict-status-pulse {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            color: var(--status-warning-fg, oklch(42% 0.11 78));
         }
         .conflict-offering {
             overflow: hidden;
@@ -504,6 +556,73 @@
                     });
                 });
 
+                @if($conflictChecking)
+                    const conflictBadgeEndpoint = @json(route('maker.conflict_badge_status'));
+                    let conflictPollTimer = null;
+                    let conflictPollInflight = false;
+
+                    const stopConflictPagePolling = () => {
+                        if (conflictPollTimer) {
+                            window.clearInterval(conflictPollTimer);
+                            conflictPollTimer = null;
+                        }
+                    };
+
+                    const pollConflictReady = async () => {
+                        if (conflictPollInflight || document.hidden) {
+                            return;
+                        }
+
+                        conflictPollInflight = true;
+
+                        try {
+                            const response = await fetch(conflictBadgeEndpoint, {
+                                headers: { Accept: 'application/json' },
+                                credentials: 'same-origin',
+                            });
+
+                            if ([401, 403, 429].includes(response.status)) {
+                                stopConflictPagePolling();
+                                return;
+                            }
+
+                            if (!response.ok) {
+                                return;
+                            }
+
+                            const payload = await response.json();
+
+                            if (payload.status === 'ready' || payload.poll === false) {
+                                stopConflictPagePolling();
+                                window.location.reload();
+                            }
+                        } catch (error) {
+                            // Keep the conflict page quiet on transient polling errors.
+                        } finally {
+                            conflictPollInflight = false;
+                        }
+                    };
+
+                    const startConflictPagePolling = () => {
+                        if (conflictPollTimer || document.hidden) {
+                            return;
+                        }
+
+                        conflictPollTimer = window.setInterval(pollConflictReady, 8000);
+                    };
+
+                    document.addEventListener('visibilitychange', () => {
+                        if (document.hidden) {
+                            stopConflictPagePolling();
+                            return;
+                        }
+
+                        startConflictPagePolling();
+                    });
+
+                    startConflictPagePolling();
+                @endif
+
                 // ── Fix 3: Offering header collapse / expand ──────────────────
                 document.querySelectorAll('[data-offering-toggle]').forEach((header) => {
                     const offering = header.closest('.conflict-offering');
@@ -663,14 +782,24 @@
         </section>
 
         <section class="conflict-summary-grid" data-testid="maker-conflict-summary">
-            <div class="conflict-summary-card conflict-summary-card--total" data-testid="maker-conflict-total">
+            <div class="conflict-summary-card {{ $conflictChecking ? 'conflict-summary-card--checking' : 'conflict-summary-card--total' }}" data-testid="maker-conflict-total">
                 <div class="conflict-summary-icon" aria-hidden="true">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
                 </div>
                 <div class="conflict-summary-body">
-                    <div class="conflict-summary-value">{{ $totalConflictCount ?? '…' }}</div>
-                    <div class="conflict-summary-label">รายการชนทั้งหมด</div>
-                    <div class="conflict-summary-sub">ต้องแก้ไขให้หมดก่อนส่งอนุมัติ</div>
+                    @if($conflictChecking)
+                        <div class="conflict-summary-value conflict-summary-value--checking" aria-label="กำลังตรวจสอบ">
+                            <span class="conflict-loading-dot"></span>
+                            <span class="conflict-loading-dot"></span>
+                            <span class="conflict-loading-dot"></span>
+                        </div>
+                        <div class="conflict-summary-label">กำลังตรวจสอบรายการชน</div>
+                        <div class="conflict-summary-sub">ระบบกำลังคำนวณผลล่าสุด กรุณารอสักครู่</div>
+                    @else
+                        <div class="conflict-summary-value">{{ $totalConflictCount ?? '…' }}</div>
+                        <div class="conflict-summary-label">รายการชนทั้งหมด</div>
+                        <div class="conflict-summary-sub">ต้องแก้ไขให้หมดก่อนส่งอนุมัติ</div>
+                    @endif
                 </div>
             </div>
             @foreach($summaryCards as $card)
@@ -689,7 +818,15 @@
                         @endswitch
                     </div>
                     <div class="conflict-summary-body">
-                        <div class="conflict-summary-value">{{ $typeCounts[$card['key']] ?? 0 }}</div>
+                        @if($conflictChecking)
+                            <div class="conflict-summary-value conflict-summary-value--checking" aria-label="กำลังตรวจสอบ">
+                                <span class="conflict-loading-dot"></span>
+                                <span class="conflict-loading-dot"></span>
+                                <span class="conflict-loading-dot"></span>
+                            </div>
+                        @else
+                            <div class="conflict-summary-value">{{ $typeCounts[$card['key']] ?? 0 }}</div>
+                        @endif
                         <div class="conflict-summary-label">{{ $card['label'] }}</div>
                         <div class="conflict-summary-sub">{{ $card['sub'] }}</div>
                     </div>
@@ -697,16 +834,23 @@
             @endforeach
         </section>
 
-        @if(($asyncConflictReads ?? false) && in_array($conflictRunStatus, ['running', 'failed']))
-            <div class="conflict-status" data-testid="maker-conflict-status">
+        @if(($asyncConflictReads ?? false) && ($conflictChecking || $conflictRunStatus === 'failed'))
+            <div class="conflict-status {{ $conflictChecking ? 'conflict-status--checking' : '' }}" data-testid="maker-conflict-status">
+                @if($conflictChecking)
+                    <span class="conflict-status-pulse" aria-hidden="true">
+                        <span class="conflict-loading-dot"></span>
+                        <span class="conflict-loading-dot"></span>
+                        <span class="conflict-loading-dot"></span>
+                    </span>
+                @endif
                 {{ $conflictStatusLabel }}
             </div>
         @endif
 
-        @if($conflictGroups->isEmpty() && $conflictRunStatus === 'running')
+        @if($conflictGroups->isEmpty() && $conflictChecking)
             {{-- background job กำลังทำงานจริง: แสดง subtle placeholder --}}
             <div class="conflict-empty" data-testid="maker-conflict-pending" style="opacity:.6">
-                กำลังประมวลผล…
+                กำลังตรวจสอบรายการชน…
             </div>
         @elseif($conflictGroups->isEmpty())
             @php

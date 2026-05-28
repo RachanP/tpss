@@ -67,7 +67,7 @@ class AlertSystemTest extends TestCase
         $dept = Department::create(['name' => 'ภาควิชาทดสอบ']);
         $curr = Curriculum::create(['name' => 'หลักสูตรทดสอบ', 'effective_year' => 2568, 'is_active' => true]);
         ActivityType::create(['name' => 'บรรยาย', 'color_code' => '#000000', 'category' => 'lecture']);
-        LocationType::create(['name' => 'ห้องบรรยาย', 'requires_capacity' => true]);
+        LocationType::create(['name' => 'ห้องบรรยาย', 'is_shared' => false]);
 
         // An active course with a head_instructor clears the M2 hardening criticals
         // (no_active_course / active_courses_missing_head).
@@ -484,20 +484,20 @@ class AlertSystemTest extends TestCase
         $this->assertTrue($issues->contains(fn($i) => str_contains($i, 'สอน')));
     }
 
-    // ══ requires_capacity ════════════════════════════════════════════
+    // ══ is_shared (open space) ═════════════════════════════════════════════════
 
-    public function test_room_missing_capacity_in_requires_capacity_type_triggers_warning(): void
+    public function test_room_missing_capacity_in_standard_type_triggers_warning(): void
     {
-        $lt = LocationType::create(['name' => 'ห้องบรรยาย', 'requires_capacity' => true]);
+        $lt = LocationType::create(['name' => 'ห้องบรรยาย', 'is_shared' => false]);
         Room::create(['room_code' => 'R01', 'room_name' => 'ห้อง 1', 'location_type_id' => $lt->id, 'status' => 'active', 'capacity' => 0]);
 
         $summary = AlertController::getSummary();
         $this->assertGreaterThan(0, $summary['rooms']);
     }
 
-    public function test_room_missing_capacity_in_non_capacity_type_does_not_trigger_warning(): void
+    public function test_room_missing_capacity_in_open_space_type_does_not_trigger_warning(): void
     {
-        $lt = LocationType::create(['name' => 'ชุมชน', 'requires_capacity' => false]);
+        $lt = LocationType::create(['name' => 'ชุมชน', 'is_shared' => true]);
         Room::create(['room_code' => 'C01', 'room_name' => 'ชุมชนทดสอบ', 'location_type_id' => $lt->id, 'status' => 'active', 'capacity' => 0]);
 
         AlertController::flushCache();
@@ -505,9 +505,9 @@ class AlertSystemTest extends TestCase
         $this->assertEquals(0, $summary['rooms']);
     }
 
-    public function test_room_with_capacity_in_requires_capacity_type_does_not_trigger_warning(): void
+    public function test_room_with_capacity_in_standard_type_does_not_trigger_warning(): void
     {
-        $lt = LocationType::create(['name' => 'ห้องบรรยาย', 'requires_capacity' => true]);
+        $lt = LocationType::create(['name' => 'ห้องบรรยาย', 'is_shared' => false]);
         Room::create(['room_code' => 'R02', 'room_name' => 'ห้อง 2', 'location_type_id' => $lt->id, 'status' => 'active', 'capacity' => 30]);
 
         AlertController::flushCache();
@@ -519,7 +519,7 @@ class AlertSystemTest extends TestCase
 
     public function test_dismissed_warnings_excluded_from_summary_count(): void
     {
-        $lt = LocationType::create(['name' => 'ห้องบรรยาย', 'requires_capacity' => true]);
+        $lt = LocationType::create(['name' => 'ห้องบรรยาย', 'is_shared' => false]);
         Room::create(['room_code' => 'R01', 'room_name' => 'ห้อง 1', 'location_type_id' => $lt->id, 'status' => 'active', 'capacity' => 0]);
 
         SystemSetting::set('dismissed_warnings', json_encode(['rooms']));
@@ -531,7 +531,7 @@ class AlertSystemTest extends TestCase
 
     public function test_non_dismissed_warnings_still_counted(): void
     {
-        $lt = LocationType::create(['name' => 'ห้องบรรยาย', 'requires_capacity' => true]);
+        $lt = LocationType::create(['name' => 'ห้องบรรยาย', 'is_shared' => false]);
         Room::create(['room_code' => 'R01', 'room_name' => 'ห้อง 1', 'location_type_id' => $lt->id, 'status' => 'active', 'capacity' => 0]);
         Department::create(['name' => 'ภาควิชาไม่มีหัวหน้า']);
 

@@ -91,8 +91,12 @@ class ScheduleConflictChecker
 
         return $this->overlappingSchedules($data, $ignoreScheduleId)
             ->where('room_id', $roomId)
-            ->with(['courseOffering.course', 'room'])
+            ->with(['courseOffering.course', 'room.locationType'])
             ->get()
+            ->filter(function (Schedule $schedule) {
+                // ข้ามถ้า room ประเภทนี้ "ใช้ร่วมกันได้" — ไม่ถือว่าชนกัน
+                return ! ($schedule->room?->locationType?->is_shared ?? false);
+            })
             ->map(function (Schedule $schedule) {
                 $roomLabel = $schedule->room?->room_name ?? $schedule->room?->room_code ?? 'ที่เลือก';
                 $scheduleLabel = $this->scheduleLabel($schedule);
@@ -238,6 +242,7 @@ class ScheduleConflictChecker
             'start_time' => substr((string) $s->start_time, 0, 5),
             'end_time'   => substr((string) $s->end_time, 0, 5),
             'room_id'    => $s->room_id,
+            'is_shared'  => (bool) ($s->room?->locationType?->is_shared ?? false),
             'inst_ids'   => $s->relationLoaded('instructors')
                 ? $s->instructors->pluck('id')->map(fn ($v) => (int) $v)->all()
                 : [],
@@ -292,7 +297,8 @@ class ScheduleConflictChecker
                 }
 
                 // Room overlap — single entry per pair (room is scalar)
-                if ($a['room_id'] && $a['room_id'] === $b['room_id']) {
+                // ข้ามถ้า room ประเภท is_shared (ห้องใช้ร่วมกันได้ข้ามตาราง)
+                if ($a['room_id'] && $a['room_id'] === $b['room_id'] && ! $a['is_shared']) {
                     $roomName = $a['schedule']->room?->room_name ?? $a['schedule']->room?->room_code ?? 'ที่เลือก';
                     $conflictMap[$a['id']][] = [
                         'type'        => 'room_overlap',

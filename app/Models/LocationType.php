@@ -6,9 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class LocationType extends Model
 {
-    protected $fillable = ['name', 'requires_capacity'];
+    protected $fillable = ['name', 'is_shared'];
 
-    protected $casts = ['requires_capacity' => 'boolean'];
+    protected $casts = [
+        'is_shared' => 'boolean',
+    ];
 
     public function rooms()
     {
