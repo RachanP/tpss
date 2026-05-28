@@ -17,6 +17,28 @@ class CsvImportValidationTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_public_excel_templates_have_data_and_note_sheets(): void
+    {
+        foreach ([
+            'users_import.xlsx' => ['Users', 'Users หมายเหตุ'],
+            'rooms_import.xlsx' => ['Rooms', 'Rooms หมายเหตุ'],
+            'courses_import.xlsx' => ['Courses', 'Courses หมายเหตุ'],
+        ] as $filename => $sheetNames) {
+            $zip = new \ZipArchive();
+
+            $this->assertTrue($zip->open(public_path("templates/{$filename}")) === true);
+            $workbook = $zip->getFromName('xl/workbook.xml');
+            $zip->close();
+
+            $this->assertIsString($workbook);
+            $this->assertStringContainsString('name="คำแนะนำ"', $workbook);
+
+            foreach ($sheetNames as $sheetName) {
+                $this->assertStringContainsString('name="' . $sheetName . '"', $workbook);
+            }
+        }
+    }
+
     private function makeAdmin(): User
     {
         $user = User::create([
@@ -100,6 +122,24 @@ class CsvImportValidationTest extends TestCase
         $this->post(route('admin.rooms.import'), ['csv_file' => $file]);
 
         $this->assertDatabaseHas('rooms', ['room_code' => 'RM-01']);
+    }
+
+    public function test_import_rooms_accepts_thai_headers(): void
+    {
+        $admin = $this->makeAdmin();
+        LocationType::create(['name' => 'ห้องเรียน']);
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        $csv = "รหัสห้อง/สถานที่,ชื่อห้อง/สถานที่,ประเภทสถานที่,อาคาร,ความจุ,ที่อยู่,อุปกรณ์,สถานะ\n"
+            . "RM-TH,ห้องทดสอบภาษาไทย,ห้องเรียน,อาคารทดสอบ,40,,โปรเจคเตอร์,active\n";
+
+        $this->post(route('admin.rooms.import'), ['csv_file' => $this->csvFile($csv)])
+            ->assertSessionMissing('import_errors');
+
+        $this->assertDatabaseHas('rooms', [
+            'room_code' => 'RM-TH',
+            'room_name' => 'ห้องทดสอบภาษาไทย',
+        ]);
     }
 
     public function test_import_rooms_accepts_excel_template_csv_with_hint_row_and_required_markers(): void
@@ -215,6 +255,24 @@ class CsvImportValidationTest extends TestCase
             ->assertSessionMissing('import_errors');
 
         $this->assertDatabaseHas('courses', ['course_code' => 'NSBS_301-A']);
+    }
+
+    public function test_import_courses_accepts_thai_headers(): void
+    {
+        $admin = $this->makeAdmin();
+        $this->seedCourseImportLookups();
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        $csv = "รหัสวิชา,ชื่อรายวิชาภาษาไทย,ชื่อรายวิชาภาษาอังกฤษ,หลักสูตร,ภาควิชา,รหัสพนักงานหัวหน้าวิชา,ประเภทรายวิชา,หน่วยกิต,ชั่วโมงบรรยาย,ชั่วโมงปฏิบัติ,ชั่วโมงศึกษาด้วยตนเอง,จำนวนนักศึกษาสูงสุด,ชั้นปีตามแผน,ภาคเรียนตามแผน,หมุนเวียนฝึกปฏิบัติ,วิชาบังคับ,สีรายวิชา,สถานะ\n"
+            . "NSBS TH,วิชาหัวตารางไทย,Thai Header Course,หลักสูตรทดสอบ,ภาควิชาทดสอบ,MU999,theory,3,3,0,6,30,1,1,0,1,#3B82F6,active\n";
+
+        $this->post(route('admin.courses.import'), ['csv_file' => $this->csvFile($csv)])
+            ->assertSessionMissing('import_errors');
+
+        $this->assertDatabaseHas('courses', [
+            'course_code' => 'NSBS TH',
+            'name_th' => 'วิชาหัวตารางไทย',
+        ]);
     }
 
     public function test_import_courses_accepts_excel_template_csv_with_hint_row_and_required_markers(): void
@@ -426,6 +484,24 @@ class CsvImportValidationTest extends TestCase
         $this->assertDatabaseHas('users', [
             'username' => 'xlsx_user',
             'email' => 'xlsx_user@example.com',
+        ]);
+    }
+
+    public function test_import_users_accepts_thai_headers(): void
+    {
+        $admin = $this->makeAdmin();
+        Department::create(['name' => 'CSV Date Dept']);
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        $csv = "คำนำหน้า,ชื่อ-นามสกุล,อีเมล,ชื่อผู้ใช้,รหัสผ่านเริ่มต้น,บทบาท,บทบาทหลัก,รหัสพนักงาน,ตำแหน่งทางวิชาการ,วุฒิการศึกษา,ภาควิชา,ประเภทการจ้างงาน,วันที่บรรจุ,สัดส่วนการสอน,สัดส่วนวิจัย,สัดส่วนบริการวิชาการ,สัดส่วนศิลปวัฒนธรรม,สัดส่วนงานอื่นๆ\n"
+            . "นาย,Thai Header User,thai_header@example.com,thai_header,password123,instructor,instructor,EMP-THAI,อาจารย์,ปริญญาโท,CSV Date Dept,Full-time,2026-01-15,50,25,10,10,5\n";
+
+        $this->post(route('admin.users.import'), ['csv_file' => $this->csvFile($csv)])
+            ->assertSessionMissing('import_errors');
+
+        $this->assertDatabaseHas('users', [
+            'username' => 'thai_header',
+            'email' => 'thai_header@example.com',
         ]);
     }
 
