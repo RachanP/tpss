@@ -188,43 +188,37 @@
 - บันทึกผลใน System Test Checklist
 - เอกสาร (SRS / User Manual) อัปเดตแล้ว (ถ้าเกี่ยวข้อง)
 
-## Bug Report — 28 พ.ค. 2569 (อัพเดต_แก้บัค.pdf) 🟢 IN PROGRESS
+## Bug Report — 28 พ.ค. 2569 (อัพเดต_แก้บัค.pdf) ✅ ปิดหมดแล้ว
 
-12 รายการจาก test รอบ Schedule Suite — แบ่ง 3 branch ทำขนาน (ลด conflict โดยแบ่งเซ็ตไฟล์):
+12 รายการจาก test รอบ Schedule Suite — แบ่ง 3 branch ทำขนาน, merge เข้า sprint ครบทั้งหมด:
 
-### Branch A — `fix/conflicts-page-detail` (Rachan, Lead)
-หน้าแจ้งเตือนการชน + sidebar icon — เซ็ตไฟล์ owned:
-`views/course_head/schedules/conflicts.blade.php`, `views/components/sidebar.blade.php`, `app/Services/ScheduleConflictReadRepository.php`, `ScheduleController::conflicts/asyncConflicts`
+### Branch A — `fix/conflicts-page-detail` (Rachan, Lead) ✅ merge `ad76341`
+หน้าแจ้งเตือนการชน + sidebar + tooltip:
+1. ลบ dropdown ปีการศึกษา + เพิ่ม detail (อาจารย์/ห้อง/กลุ่ม) ในกล่องแจ้งเตือน + สรุปภาพรวม 4 cards
+9. Empty state แยก `preparation` / `no_offerings` / `no_conflicts` — สร้าง `App\Support\CoordinatorEmptyState` ใช้ร่วมทุกหน้าฝั่ง course_head
+10. Sidebar icon (CRITICAL=circle, WARNING=triangle) sync กับหน้า admin.alerts
+11. Tooltip การชนเป็น styled popover ใน `_conflict_pill.blade.php` ใช้ **portal pattern** (escape transform/overflow ของ card cell ที่ block `position: fixed`)
+12. Count "ดูทั้งหมด N" ใช้ `COUNT(DISTINCT conflicting_schedule_id)` ตรงกับ cards ที่ render หลัง `groupBy(schedule_id)` + preview fetch ครบทุก record ของ top N distinct schedules → preview = expanded view
 
-1. เอา dropdown ปีการศึกษาออก + เพิ่ม detail (อาจารย์/ห้อง/กลุ่ม) ในกล่องแจ้งเตือน
-9. "กำลังตรวจสอบการชน…" → empty state ตาม phase (preparation / no_offerings) ดู [architecture.md](architecture.md#course-head-offering-filter-bug-report-28-พค)
-10. Sidebar icon (warning/critical) sync กับ icon ในหน้าหลัก — ใช้ component เดียวกัน
-11. Tooltip/Popover hover ดูรายละเอียดการชน — bold หัวข้อสำคัญ + icon แบ่งประเภท
-12. ปุ่ม "ดูทั้งหมด N รายการ" count ไม่ตรงกับแถวจริง — ต้องนับจาก same query ที่ render
+### Branch B — `fix/schedule-calendar-ui` (pronpimon) ✅ merge `219becf`
+Calendar render + mobile responsive (10 commits ใน `schedules/index.blade.php` + `app.css`):
+4. ตารางสอนมุมสัปดาห์ scroll แนวนอนในจอ mobile (iPhone)
+5. การ์ดมุมมองเดือน align กับ week/day grid styling
+7. ป้าย "นอกช่วงปีการศึกษา" wrap ขึ้นบรรทัดบนเมื่อจอแคบ
+8. Ghost card contain ใน column ของวันตัวเอง
 
-### Branch B — `fix/schedule-calendar-ui` (pronpimon)
-Calendar render + responsive — เซ็ตไฟล์ owned:
-`views/course_head/schedules/index.blade.php` (เฉพาะ calendar grid section), partials `_calendar_*.blade.php` ถ้ามี, responsive CSS
+### Branch C — `fix/schedule-logic-form` (phuwadon) ✅ merge `9b0b43f`
+Controller logic + modal form (commit msg เดิม "แก้บัคยับๆครับเฮีย" — amend แล้ว):
+2. Default รายวิชารหัสน้อยสุด (course_code ASC)
+3. Modal เพิ่มกิจกรรม: clear default time + required validation
+6. Filter วิชา `status='active'` ใน coordinator queries
 
-4. ตารางสอนมุมสัปดาห์ล้นจอบน iPhone — fix scroll แนวนอนใน container
-5. การ์ดมุมมองเดือนสไตล์ต่างจาก week/day — รวมเป็น component เดียว ดู [ui.md](ui.md#schedule-calendar-consistency-bug-report-28-พค)
-7. ป้าย "นอกช่วงปีการศึกษา" เบียดปุ่ม toolbar — wrap ขึ้นบรรทัดบนเมื่อจอแคบ
-8. Ghost card ล้นไปวันข้างๆ — limit 2-3 ใบ + "+N ดูเพิ่ม" popover
+### Lessons learned (ใช้กับงานขนานครั้งต่อไป)
 
-### Branch C — `fix/schedule-logic-form` (phuwadon)
-Controller logic + modal form — เซ็ตไฟล์ owned:
-`views/course_head/schedules/_form.blade.php` (modal), `ScheduleController::coordinatorScheduleOfferings + coordinatorScheduleOfferingRedirectTarget`, validation rules
-
-2. Default รายวิชารหัสน้อยสุดเมื่อเข้าหน้าตารางสอน — เปลี่ยน order จาก `updated_at DESC` → `course_code ASC`
-3. Modal เพิ่มกิจกรรม: clear default time (08:00-09:00) → `--:--` placeholder + required validation ดู [ui.md](ui.md#form-default-value-policy-bug-report-28-พค)
-6. Filter วิชา `status='active'` เท่านั้น — ใช้ `withActiveCourse()` scope (ดูเหมือนไม่ได้ใช้บางจุด)
-
-### กฎก่อนแก้
-
-- **Merge order**: phuwadon (เล็กสุด) → pronpimon (กลาง) → Rachan (ใหญ่สุด — rebase ล่าสุดได้)
-- **Controller risk zone** — Rachan แก้ `conflicts()/asyncConflicts()` (ล่าง), phuwadon แก้ `coordinatorScheduleOfferings()` (บน) — คนละ method ไม่ชน ตราบที่ไม่เพิ่ม `use` statements เดียวกัน
-- **`schedules/index.blade.php`** — pronpimon เป็น owner; phuwadon ทำ default course ใน backend ไม่แตะ blade
-- **ก่อน rebase**: ดึง sprint ล่าสุดก่อนเริ่มแก้ — Schedule Suite + course offering UI fixes merge ไปก่อนหน้านี้แล้ว
+- **แบ่งไฟล์ก่อน แล้วค่อยลงมือ** — phuwadon/pronpimon/Rachan แตะ `schedules/index.blade.php` ทั้ง 3 คน แต่ละคนละจุด → rebase ไม่ conflict สักครั้ง (เพราะวางแผนล่วงหน้า)
+- **Merge order** (phuwadon → pronpimon → Rachan) ตามแผนเดิม รันได้ตามจริง
+- **`--force-with-lease`** เป็น default บน branch ตัวเอง — safe ปฏิเสธถ้ามีคนทับ
+- **Reword commit message ของเพื่อน** — ถ้าจำเป็น: reset sprint → cherry-pick + amend (preserve author) → force push sprint — ทำได้ในช่วง window สั้น ๆ ก่อนคนอื่น pull
 
 ---
 
