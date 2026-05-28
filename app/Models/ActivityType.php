@@ -13,4 +13,9 @@ class ActivityType extends Model
     {
         return $this->hasMany(Schedule::class);
     }
+
+    public function scheduleTemplates(): HasMany
+    {
+        return $this->hasMany(ScheduleTemplate::class);
+    }
 }
