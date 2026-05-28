@@ -552,6 +552,84 @@
             display: inline-flex !important;
             visibility: hidden;
         }
+        @media (max-width: 640px) {
+            .schedule-card-hdr {
+                align-items: stretch;
+                gap: 12px !important;
+                padding: 14px 12px 16px;
+            }
+            .schedule-card-hdr > div:first-child {
+                width: 100%;
+                text-align: left;
+            }
+            .schedule-card-hdr .card-ttl {
+                font-size: 15px;
+                line-height: 1.3;
+            }
+            .schedule-caption-line {
+                align-items: flex-start;
+                gap: 6px;
+            }
+            .schedule-caption-warning {
+                max-width: 100%;
+                white-space: normal;
+                text-align: left;
+            }
+            .schedule-card-actions {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr);
+                justify-items: center;
+                width: 100%;
+                gap: 8px;
+                margin-left: 0;
+                flex: 1 1 100%;
+            }
+            .schedule-card-actions .sched-datenav {
+                display: grid;
+                grid-template-columns: 36px minmax(0, 1fr) 36px;
+                align-items: center;
+                gap: 6px;
+                width: min(100%, 236px);
+            }
+            .schedule-card-actions .sched-datenav-arrow {
+                width: 36px;
+                height: 36px;
+            }
+            .schedule-card-actions .sched-datenav-stack,
+            .schedule-card-actions .sched-datenav-picker,
+            .schedule-card-actions .sched-datenav .tdi-wrap {
+                width: 100%;
+                min-width: 0;
+                flex: 1 1 auto;
+            }
+            .schedule-card-actions .sched-datenav-input {
+                height: 36px;
+                font-size: 12.5px;
+                text-align: center;
+                padding-left: 8px;
+                padding-right: 34px;
+            }
+            .schedule-card-actions .period-toggle {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                width: min(100%, 168px);
+            }
+            .schedule-card-actions .schedule-toggle {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                width: min(100%, 176px);
+            }
+            .schedule-card-actions .period-toggle a,
+            .schedule-card-actions .schedule-toggle button {
+                min-height: 34px;
+                padding: 6px 8px;
+                font-size: 11.5px;
+            }
+            .schedule-card-actions .weekend-toggle {
+                width: min(100%, 168px);
+                min-height: 34px;
+            }
+        }
         .sched-datenav-arrow {
             display: inline-flex;
             align-items: center;
