@@ -529,7 +529,7 @@
             align-items: center;
         }
         .schedule-card-hdr > div:first-child {
-            flex: 1 1 300px;
+            flex: 1 1 0;
             min-width: 0;
         }
         .schedule-card-actions {
@@ -539,21 +539,13 @@
             gap: 10px;
             row-gap: 8px;
             flex-wrap: wrap;
-            flex: 0 0 auto;
+            flex: 0 0 max-content;
             max-width: 100%;
             margin-left: auto;
         }
-        @media (max-width: 1180px) {
-            .schedule-card-hdr {
-                align-items: flex-start;
-            }
-            .schedule-card-hdr > div:first-child {
-                flex-basis: 100%;
-            }
+        @media (max-width: 1040px) {
             .schedule-card-actions {
-                width: 100%;
-                flex-basis: 100%;
-                margin-left: 0;
+                flex-basis: min-content;
             }
         }
         .schedule-card-actions > [x-cloak] {
