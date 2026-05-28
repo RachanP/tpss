@@ -8,9 +8,10 @@
     ];
     $conflictRunStatus = $conflictStatus['status'] ?? 'ready';
     $conflictStatusLabel = match ($conflictRunStatus) {
-        'failed' => 'ตรวจสอบรายการชนไม่สำเร็จ ระบบจะแสดงผลล่าสุดที่พร้อมใช้งานถ้ามี',
-        'ready' => 'ผลตรวจสอบพร้อมใช้งาน',
-        default => 'กำลังตรวจสอบรายการชน',
+        'failed'  => 'ตรวจสอบรายการชนไม่สำเร็จ ระบบจะแสดงผลล่าสุดที่พร้อมใช้งานถ้ามี',
+        'running' => 'กำลังประมวลผลรายการชน อาจใช้เวลาสักครู่',
+        'ready'   => 'ผลตรวจสอบพร้อมใช้งาน',
+        default   => '', // 'missing' — ไม่แสดงอะไร
     };
 @endphp
 
@@ -529,19 +530,21 @@
             </div>
         </section>
 
-        @if(($asyncConflictReads ?? false) && $conflictRunStatus !== 'ready')
+        @if(($asyncConflictReads ?? false) && in_array($conflictRunStatus, ['running', 'failed']))
             <div class="conflict-status" data-testid="maker-conflict-status">
                 {{ $conflictStatusLabel }}
             </div>
         @endif
 
-        @if($conflictGroups->isEmpty() && $conflictRunStatus === 'ready')
-            <div class="conflict-empty" data-testid="maker-conflict-empty">
-                ยังไม่พบการชนในรายวิชาที่รับผิดชอบ
+        @if($conflictGroups->isEmpty() && $conflictRunStatus === 'running')
+            {{-- background job กำลังทำงานจริง: แสดง subtle placeholder --}}
+            <div class="conflict-empty" data-testid="maker-conflict-pending" style="opacity:.6">
+                กำลังประมวลผล…
             </div>
         @elseif($conflictGroups->isEmpty())
-            <div class="conflict-empty" data-testid="maker-conflict-pending">
-                {{ $conflictStatusLabel }}
+            {{-- ready / missing / failed แต่ไม่มีข้อมูลชน --}}
+            <div class="conflict-empty" data-testid="maker-conflict-empty">
+                ยังไม่พบการชนในรายวิชาที่รับผิดชอบ
             </div>
         @else
             @foreach($conflictGroups as $group)

@@ -86,6 +86,45 @@ class ScheduleConflictReadRepository
         return $paginator;
     }
 
+    /**
+     * Return a conflict map (keyed by schedule ID) from the pre-computed read model.
+     * Drop-in replacement for ScheduleConflictIndex::conflictsFor() on the schedules page.
+     *
+     * @param  array<int, int>  $scheduleIds
+     * @return Collection<int, Collection<int, array{type:string,message:string,schedule_id:int,schedule_label:string,resource_label:string}>>
+     */
+    public function getConflictMapForSchedules(array $scheduleIds, int $userId, int $academicYearId): Collection
+    {
+        if (empty($scheduleIds) || ! $academicYearId) {
+            return collect();
+        }
+
+        $run = $this->latestReadyRun($academicYearId);
+
+        if (! $run) {
+            return collect();
+        }
+
+        $results = $this->scopedResultQuery((int) $run->id, $userId, $academicYearId)
+            ->whereIn('schedule_conflict_results.schedule_id', $scheduleIds)
+            ->orderBy('schedule_conflict_results.schedule_id')
+            ->orderBy('schedule_conflict_results.id')
+            ->get();
+
+        if ($results->isEmpty()) {
+            return collect();
+        }
+
+        $this->loadSchedulesForResults($results);
+
+        return $results
+            ->groupBy(fn (ScheduleConflictResult $result) => (int) $result->schedule_id)
+            ->map(fn (Collection $items) => $items
+                ->map(fn (ScheduleConflictResult $result) => $this->displayConflict($result))
+                ->values()
+            );
+    }
+
     public function getScheduleSummaryPageForUser(
         int $userId,
         ?int $academicYearId,

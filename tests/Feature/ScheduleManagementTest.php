@@ -436,7 +436,11 @@ class ScheduleManagementTest extends TestCase
 
         $this->get(route('maker.schedule_conflicts.index'))
             ->assertOk()
-            ->assertSee('data-testid="maker-conflict-pending"', false);
+            // status=missing → แสดง empty state ("ยังไม่พบการชน") ไม่แสดง pending placeholder
+            ->assertSee('data-testid="maker-conflict-empty"', false)
+            ->assertDontSee('data-testid="maker-conflict-pending"', false)
+            // orange banner ซ่อน — ไม่ควรขึ้น "กำลังตรวจสอบ" เมื่อยังไม่มีข้อมูล
+            ->assertDontSee('data-testid="maker-conflict-status"', false);
 
         Queue::assertPushed(ConflictRecomputeJob::class);
     }

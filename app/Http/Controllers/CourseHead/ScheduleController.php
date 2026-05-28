@@ -592,7 +592,33 @@ class ScheduleController extends Controller
 
     private function scheduleConflictMap(Collection $schedules): Collection
     {
-        return app(ScheduleConflictIndex::class)->conflictsFor($schedules);
+        if ($schedules->isEmpty()) {
+            return collect();
+        }
+
+        if (! config('conflicts.async_reads')) {
+            // Fallback: real-time scan (used when async_reads is disabled)
+            return app(ScheduleConflictIndex::class)->conflictsFor($schedules);
+        }
+
+        $userId = (int) Auth::id();
+        $repository = app(ScheduleConflictReadRepository::class);
+
+        // Group by academic_year_id so workspace mode (multiple offerings) works correctly.
+        // courseOffering.academicYear is already eager-loaded via scheduleRelations().
+        $result = collect();
+
+        foreach ($schedules->groupBy(fn (Schedule $s) => (int) ($s->courseOffering?->academic_year_id ?? 0)) as $academicYearId => $yearSchedules) {
+            if (! $academicYearId) {
+                continue;
+            }
+
+            $ids = $yearSchedules->pluck('id')->map(fn ($id) => (int) $id)->all();
+            $conflictMap = $repository->getConflictMapForSchedules($ids, $userId, $academicYearId);
+            $result = $result->union($conflictMap);
+        }
+
+        return $result;
     }
 
     /**
