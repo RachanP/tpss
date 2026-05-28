@@ -39,8 +39,9 @@ class AlertController extends Controller
 
         $roomsWithIssues = Room::where(function ($q) {
                 $q->where(function ($cap) {
-                    // capacity: เฉพาะ location_type ที่ต้องการ capacity
-                    $cap->whereHas('locationType', fn($q) => $q->where('requires_capacity', true))
+                    // capacity: เฉพาะ location_type ที่ต้องการ capacity และไม่ใช่ประเภทใช้ร่วมกัน
+                    $cap->whereHas('locationType', fn($q) => $q->where('requires_capacity', true)
+                                                                ->where('is_shared', false))
                         ->where(fn($c) => $c->whereNull('capacity')->orWhere('capacity', 0));
                 })->orWhere(function ($name) {
                     // room_name: บังคับทุก location_type
@@ -151,7 +152,8 @@ class AlertController extends Controller
 
             $roomCount = Room::where(function ($q) {
                 $q->where(function ($cap) {
-                    $cap->whereHas('locationType', fn($q) => $q->where('requires_capacity', true))
+                    $cap->whereHas('locationType', fn($q) => $q->where('requires_capacity', true)
+                                                                ->where('is_shared', false))
                         ->where(fn($c) => $c->whereNull('capacity')->orWhere('capacity', 0));
                 })->orWhere(function ($name) {
                     $name->whereNull('room_name')->orWhere('room_name', '');

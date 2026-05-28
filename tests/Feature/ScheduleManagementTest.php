@@ -364,7 +364,7 @@ class ScheduleManagementTest extends TestCase
 
         $this->get(route('maker.schedules.index'))
             ->assertOk()
-            ->assertSee('ยังไม่มีรายวิชาที่ต้องจัดตาราง')
+            ->assertSee('data-testid="schedule-no-offerings-empty"', false)
             ->assertDontSee('data-testid="schedule-create-link"', false)
             ->assertDontSee('data-testid="schedule-floating-create-link"', false)
             ->assertDontSee('data-testid="schedule-list-toggle"', false)

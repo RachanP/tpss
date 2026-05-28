@@ -374,13 +374,14 @@ class MasterDataController extends Controller
             'name' => 'required|string|max:100|unique:location_types,name',
         ]);
         $validated['requires_capacity'] = $request->boolean('requires_capacity');
+        $validated['is_shared']         = $request->boolean('is_shared');
 
         $locationType = LocationType::create($validated);
 
         $this->logMasterDataCreate(
             'location_types',
             $locationType->id,
-            $this->auditSnapshot($locationType, ['name', 'requires_capacity']),
+            $this->auditSnapshot($locationType, ['name', 'requires_capacity', 'is_shared']),
             "สร้างประเภทสถานที่ {$locationType->name}",
         );
 
@@ -393,8 +394,9 @@ class MasterDataController extends Controller
             'name' => 'required|string|max:100|unique:location_types,name,' . $locationType->id,
         ]);
         $validated['requires_capacity'] = $request->boolean('requires_capacity');
+        $validated['is_shared']         = $request->boolean('is_shared');
 
-        $fields = ['name', 'requires_capacity'];
+        $fields = ['name', 'requires_capacity', 'is_shared'];
         $before = $this->auditSnapshot($locationType, $fields);
 
         $locationType->update($validated);

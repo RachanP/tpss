@@ -212,8 +212,10 @@ class ConflictRecomputeJobTest extends TestCase
             ->getScheduleSummaryPageForUser($head->id, $year->id, 1);
 
         $this->assertCount(25, $page->items());
-        $this->assertLessThanOrEqual(3, $page->getCollection()->first()['preview_conflicts']->count());
-        $this->assertTrue($page->getCollection()->first()['has_more']);
+        $firstSummary = $page->getCollection()->first();
+        // preview_conflicts \u0e21\u0e35\u0e44\u0e14\u0e49\u0e2b\u0e25\u0e32\u0e22 records \u0e15\u0e48\u0e2d 1 \u0e04\u0e39\u0e48 (หลาย conflict types) — \u0e15\u0e23\u0e27\u0e08\u0e1c\u0e48\u0e32\u0e19 distinct schedule count \u0e41\u0e17\u0e19
+        $this->assertLessThanOrEqual(3, $firstSummary['preview_distinct_count']);
+        $this->assertTrue($firstSummary['has_more']);
     }
 
     public function test_failed_new_run_does_not_hide_latest_ready_results(): void

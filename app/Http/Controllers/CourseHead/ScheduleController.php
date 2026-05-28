@@ -439,13 +439,22 @@ class ScheduleController extends Controller
 
         $scheduleRelations = $this->scheduleRelations();
 
+        // Bug #2: รับ instructor_id query param สำหรับ server-side filter
+        $filterInstructorId = (int) $request->query('instructor_id', 0);
+
+        $schedulesQuery = Schedule::query()
+            ->with($scheduleRelations)
+            ->whereIn('course_offering_id', $offeringIds);
+
+        if ($filterInstructorId > 0) {
+            $schedulesQuery->whereHas('instructors', fn ($q) => $q->where('users.id', $filterInstructorId));
+        }
+
         $schedules = empty($offeringIds)
             ? collect()
             : $this->orderSchedulesByDate(
                 $this->filterSchedulesByDateRange(
-                    Schedule::query()
-                        ->with($scheduleRelations)
-                        ->whereIn('course_offering_id', $offeringIds),
+                    $schedulesQuery,
                     $periodStart->toDateString(),
                     $periodEnd->toDateString()
                 )
@@ -477,33 +486,34 @@ class ScheduleController extends Controller
         };
 
         return [
-            'courseOffering' => $courseOffering,
-            'availableOfferings' => $availableOfferings,
-            'isWorkspace' => $isWorkspace,
+            'courseOffering'           => $courseOffering,
+            'availableOfferings'       => $availableOfferings,
+            'isWorkspace'              => $isWorkspace,
             ...$this->scheduleDatePickerYearRange(),
-            'schedules' => $schedules,
-            'allSchedules' => $allSchedules,
-            'totalScheduleCount' => $totalScheduleCount,
-            'schedulePeriod' => $period,
-            'includeWeekends' => $includeWeekends,
-            'selectedScheduleDate' => $selectedDate,
-            'weekStart' => $periodStart,
-            'weekEnd' => $periodEnd,
-            'weekDays' => $weekDays,
-            'occurrences' => $occurrences,
-            'occurrencesByDate' => $occurrencesByDate,
-            'gridOccurrencesByDate' => $occurrencesByDate,
-            'groupedSchedules' => $groupedSchedules,
-            'scheduleConflicts' => $this->scheduleConflictMap($schedules),
-            'timeSlots' => $timeSlots,
-            'activityTypes' => app(ReferenceDataCache::class)->activityTypes(),
-            'rooms' => app(ReferenceDataCache::class)->activeRooms(),
-            'dayViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'day', $includeWeekends),
-            'weekViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'week', $includeWeekends),
-            'monthViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'month', $includeWeekends),
-            'previousWeekUrl' => $this->schedulePeriodUrl($courseOffering, $previousPeriod, $isWorkspace, $period, $includeWeekends),
-            'nextWeekUrl' => $this->schedulePeriodUrl($courseOffering, $nextPeriod, $isWorkspace, $period, $includeWeekends),
-            'weekendToggleUrl' => $this->schedulePeriodUrl($courseOffering, $selectedDate, $isWorkspace, $period, $period === 'week' ? ! $includeWeekends : $includeWeekends),
+            'schedules'                => $schedules,
+            'allSchedules'             => $allSchedules,
+            'totalScheduleCount'       => $totalScheduleCount,
+            'schedulePeriod'           => $period,
+            'includeWeekends'          => $includeWeekends,
+            'selectedScheduleDate'     => $selectedDate,
+            'weekStart'                => $periodStart,
+            'weekEnd'                  => $periodEnd,
+            'weekDays'                 => $weekDays,
+            'occurrences'              => $occurrences,
+            'occurrencesByDate'        => $occurrencesByDate,
+            'gridOccurrencesByDate'    => $occurrencesByDate,
+            'groupedSchedules'         => $groupedSchedules,
+            'scheduleConflicts'        => $this->scheduleConflictMap($schedules),
+            'timeSlots'                => $timeSlots,
+            'activityTypes'            => app(ReferenceDataCache::class)->activityTypes(),
+            'rooms'                    => app(ReferenceDataCache::class)->activeRooms(),
+            'selectedInstructorId'     => $filterInstructorId ?: null,
+            'dayViewUrl'               => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'day', $includeWeekends, $filterInstructorId ?: null),
+            'weekViewUrl'              => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'week', $includeWeekends, $filterInstructorId ?: null),
+            'monthViewUrl'             => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'month', $includeWeekends, $filterInstructorId ?: null),
+            'previousWeekUrl'          => $this->schedulePeriodUrl($courseOffering, $previousPeriod, $isWorkspace, $period, $includeWeekends, $filterInstructorId ?: null),
+            'nextWeekUrl'              => $this->schedulePeriodUrl($courseOffering, $nextPeriod, $isWorkspace, $period, $includeWeekends, $filterInstructorId ?: null),
+            'weekendToggleUrl'         => $this->schedulePeriodUrl($courseOffering, $selectedDate, $isWorkspace, $period, $period === 'week' ? ! $includeWeekends : $includeWeekends, $filterInstructorId ?: null),
             'coordinatorEmptyStateKey' => \App\Support\CoordinatorEmptyState::forCoordinator((int) Auth::id()),
         ];
     }
@@ -780,7 +790,8 @@ class ScheduleController extends Controller
         CarbonImmutable $date,
         bool $isWorkspace,
         string $period,
-        bool $includeWeekends = false
+        bool $includeWeekends = false,
+        ?int $instructorId = null
     ): string
     {
         $keepWeekendParam = $period === 'week' && $includeWeekends;
@@ -788,19 +799,21 @@ class ScheduleController extends Controller
         if ($isWorkspace || ! $courseOffering) {
             return route('maker.schedules.index', array_filter([
                 'course_offering_id' => $courseOffering?->id,
-                'week_start' => $date->toDateString(),
-                'date' => $date->toDateString(),
-                'period' => $period,
-                'include_weekends' => $keepWeekendParam ? 1 : null,
+                'week_start'         => $date->toDateString(),
+                'date'               => $date->toDateString(),
+                'period'             => $period,
+                'include_weekends'   => $keepWeekendParam ? 1 : null,
+                'instructor_id'      => $instructorId ?: null,
             ]));
         }
 
         return route('maker.course_offerings.schedules.index', array_filter([
             $courseOffering,
-            'week_start' => $date->toDateString(),
-            'date' => $date->toDateString(),
-            'period' => $period,
+            'week_start'       => $date->toDateString(),
+            'date'             => $date->toDateString(),
+            'period'           => $period,
             'include_weekends' => $keepWeekendParam ? 1 : null,
+            'instructor_id'    => $instructorId ?: null,
         ]));
     }
 

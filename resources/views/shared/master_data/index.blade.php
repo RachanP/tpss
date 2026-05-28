@@ -332,15 +332,15 @@
         // Location Types
         showLocTypeModal: false,
         editLocTypeMode: false,
-        currentLocType: { id: '', name: '', requires_capacity: true, rooms_count: 0 },
+        currentLocType: { id: '', name: '', requires_capacity: true, is_shared: false, rooms_count: 0 },
         openAddLocType() {
             this.editLocTypeMode = false;
-            this.currentLocType = { id: '', name: '', requires_capacity: true, rooms_count: 0 };
+            this.currentLocType = { id: '', name: '', requires_capacity: true, is_shared: false, rooms_count: 0 };
             this.showLocTypeModal = true;
         },
         openEditLocType(type) {
             this.editLocTypeMode = true;
-            this.currentLocType = { id: type.id, name: type.name, requires_capacity: type.requires_capacity, rooms_count: type.rooms_count };
+            this.currentLocType = { id: type.id, name: type.name, requires_capacity: type.requires_capacity, is_shared: type.is_shared ?? false, rooms_count: type.rooms_count };
             this.showLocTypeModal = true;
         },
 
@@ -1315,7 +1315,7 @@
                                 {{-- Edit --}}
                                 <div @click.stop style="flex-shrink: 0;">
                                     <button class="action-btn" title="แก้ไขประเภท"
-                                        @click.stop="openEditLocType({{ Js::from(['id' => $type->id, 'name' => $type->name, 'requires_capacity' => $type->requires_capacity, 'rooms_count' => $type->rooms_count]) }})">
+                                        @click.stop="openEditLocType({{ Js::from(['id' => $type->id, 'name' => $type->name, 'requires_capacity' => $type->requires_capacity, 'is_shared' => $type->is_shared, 'rooms_count' => $type->rooms_count]) }})">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -2127,6 +2127,16 @@
                                 <div>
                                     <label for="requires_capacity_check" style="font-weight: 600; cursor: pointer; display: block; margin-bottom: 2px;">ต้องระบุความจุ (จำนวนที่นั่ง)</label>
                                     <div style="font-size: 12px; color: var(--fg-3);">ปิดสำหรับสถานที่ที่ไม่มีที่นั่งชัดเจน เช่น ชุมชน, สถานที่ภาคสนาม</div>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: flex-start; gap: 12px; padding: 14px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 4px; margin-top: 8px;">
+                                <input type="hidden" name="is_shared" value="0">
+                                <input type="checkbox" name="is_shared" value="1" id="is_shared_check"
+                                    x-model="currentLocType.is_shared"
+                                    style="width: 16px; height: 16px; margin-top: 2px; flex-shrink: 0; cursor: pointer; accent-color: var(--brand-navy);">
+                                <div>
+                                    <label for="is_shared_check" style="font-weight: 600; cursor: pointer; display: block; margin-bottom: 2px;">ใช้ร่วมกันได้ (ไม่นับ room conflict)</label>
+                                    <div style="font-size: 12px; color: var(--fg-3);">เปิดสำหรับสถานที่ที่หลายวิชาใช้พร้อมกันได้ เช่น หอผู้ป่วย, ชุมชน — ระบบจะไม่แจ้งเตือนการชนของห้อง</div>
                                 </div>
                             </div>
                         </div>
