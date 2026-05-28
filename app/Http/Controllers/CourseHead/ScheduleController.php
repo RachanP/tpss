@@ -751,9 +751,17 @@ class ScheduleController extends Controller
 
     private function coordinatorScheduleOfferingRedirectTarget(Request $request): ?int
     {
+        // ระหว่าง preparation/no_offerings — ไม่ redirect ปล่อยให้ workspace render empty state
+        // (สอดคล้องกับ rule ใน .claude/rules/architecture.md: "Empty state ตามสถานะระบบ")
+        if (\App\Support\CoordinatorEmptyState::forCoordinator((int) Auth::id())
+            !== \App\Support\CoordinatorEmptyState::READY) {
+            return null;
+        }
+
         $query = CourseOffering::query()
             ->withActiveCourse()
-            ->where('coordinator_id', Auth::id());
+            ->where('coordinator_id', Auth::id())
+            ->whereHas('academicYear', fn ($q) => $q->where('phase', 'scheduling'));
 
         $selectedId = (int) $request->query('course_offering_id');
 
@@ -762,7 +770,8 @@ class ScheduleController extends Controller
         }
 
         return $this->coordinatorScheduleOfferings(includeSchedulingData: false)
-            ->first()?->id;
+            ->first(fn (CourseOffering $offering) => $offering->academicYear?->phase === 'scheduling')
+            ?->id;
     }
 
     private function coordinatorScheduleOfferings(bool $includeSchedulingData = true): Collection
