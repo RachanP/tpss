@@ -2537,6 +2537,13 @@
             outline-offset: 1px;
             border-color: var(--brand-navy);
         }
+        .modal-inline-error {
+            margin-top: 5px;
+            color: var(--status-conflict-fg);
+            font-size: 12px;
+            font-weight: 800;
+            line-height: 1.45;
+        }
         .modal-choice-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3199,11 +3206,13 @@
                     select.dispatchEvent(new Event('change', { bubbles: true }));
                 });
                 // reset custom time pickers
-                const resetTp = (hiddenId, hVal, mVal) => {
+                const resetTp = (hiddenId, hVal = '--', mVal = '--') => {
                     const picker = form.querySelector(`.time-picker[data-tp-hidden='${hiddenId}']`);
                     if (!picker) return;
                     picker.querySelector('.tp-val-hour').textContent = hVal;
                     picker.querySelector('.tp-val-min').textContent = mVal;
+                    picker.dataset.tpHour = hVal === '--' ? '' : hVal;
+                    picker.dataset.tpMin = mVal === '--' ? '' : mVal;
                     const drop = picker.querySelector('.tp-drop');
                     if (drop) {
                         drop.querySelectorAll('.tp-hour-item').forEach(li => {
@@ -3215,11 +3224,13 @@
                     }
                     const hidden = document.getElementById(hiddenId);
                     if (hidden) {
-                        hidden.value = hVal + ':' + mVal;
+                        hidden.value = hVal !== '--' && mVal !== '--' ? hVal + ':' + mVal : '';
+                        hidden.dispatchEvent(new Event('input', { bubbles: true }));
+                        hidden.dispatchEvent(new Event('change', { bubbles: true }));
                     }
                 };
-                resetTp('start_time', '08', '00');
-                resetTp('end_time',   '09', '00');
+                resetTp('start_time');
+                resetTp('end_time');
                 const offeringSelect = form.querySelector('[name=course_offering_id]');
                 if (offeringSelect && this.initialSelectedOfferingId) {
                     offeringSelect.value = this.initialSelectedOfferingId;
@@ -4909,21 +4920,25 @@
                                     <label class="modal-label" for="start_time">เวลาเริ่ม <span class="required-mark">*</span></label>
                                     @php
                                         $oldStart = old('start_time');
-                                        [$oldStartHour, $oldStartMin] = $oldStart ? explode(':', $oldStart) : ['08','00'];
+                                        [$oldStartHour, $oldStartMin] = is_string($oldStart) && preg_match('/^\d{2}:\d{2}$/', $oldStart)
+                                            ? explode(':', $oldStart)
+                                            : [null, null];
+                                        $startHourDisplay = $oldStartHour ?: '--';
+                                        $startMinDisplay = $oldStartMin ?: '--';
                                     @endphp
                                     <input type="hidden" id="start_time" name="start_time" value="{{ $oldStart }}">
                                     <div class="time-picker-group">
                                         <div class="time-picker" id="tp_start" data-tp-hidden="start_time" tabindex="0">
-                                            <span class="tp-val tp-val-hour">{{ $oldStartHour ?? '08' }}</span>
+                                            <span class="tp-val tp-val-hour">{{ $startHourDisplay }}</span>
                                             <span class="time-separator">:</span>
-                                            <span class="tp-val tp-val-min">{{ $oldStartMin ?? '00' }}</span>
+                                            <span class="tp-val tp-val-min">{{ $startMinDisplay }}</span>
                                             <div class="tp-drop">
                                                 <div class="tp-drop-columns">
                                                     <div class="tp-col tp-col-hour">
                                                         <ul>
                                                             @for($h = 0; $h < 24; $h++)
                                                                 @php $hh = sprintf('%02d', $h); @endphp
-                                                                <li data-val="{{ $hh }}" class="tp-hour-item {{ $hh === ($oldStartHour ?? '08') ? 'tp-sel' : '' }}">{{ $hh }}</li>
+                                                                <li data-val="{{ $hh }}" class="tp-hour-item {{ $oldStartHour && $hh === $oldStartHour ? 'tp-sel' : '' }}">{{ $hh }}</li>
                                                             @endfor
                                                         </ul>
                                                     </div>
@@ -4932,7 +4947,7 @@
                                                         <ul>
                                                             @foreach(range(0,59) as $m)
                                                                 @php $mm = sprintf('%02d', $m); @endphp
-                                                                <li data-val="{{ $mm }}" class="tp-min-item {{ $mm === ($oldStartMin ?? '00') ? 'tp-sel' : '' }}">{{ $mm }}</li>
+                                                                <li data-val="{{ $mm }}" class="tp-min-item {{ $oldStartMin && $mm === $oldStartMin ? 'tp-sel' : '' }}">{{ $mm }}</li>
                                                             @endforeach
                                                         </ul>
                                                     </div>
@@ -4941,26 +4956,31 @@
                                         </div>
                                         <span class="time-unit">น.</span>
                                     </div>
+                                    <div class="modal-inline-error" data-time-error-for="start_time" hidden>กรุณาเลือกเวลาเริ่ม</div>
                                 </div>
                                 <div>
                                     <label class="modal-label" for="end_time">เวลาสิ้นสุด <span class="required-mark">*</span></label>
                                     @php
                                         $oldEnd = old('end_time');
-                                        [$oldEndHour, $oldEndMin] = $oldEnd ? explode(':', $oldEnd) : ['09','00'];
+                                        [$oldEndHour, $oldEndMin] = is_string($oldEnd) && preg_match('/^\d{2}:\d{2}$/', $oldEnd)
+                                            ? explode(':', $oldEnd)
+                                            : [null, null];
+                                        $endHourDisplay = $oldEndHour ?: '--';
+                                        $endMinDisplay = $oldEndMin ?: '--';
                                     @endphp
                                     <input type="hidden" id="end_time" name="end_time" value="{{ $oldEnd }}">
                                     <div class="time-picker-group">
                                         <div class="time-picker" id="tp_end" data-tp-hidden="end_time" tabindex="0">
-                                            <span class="tp-val tp-val-hour">{{ $oldEndHour ?? '09' }}</span>
+                                            <span class="tp-val tp-val-hour">{{ $endHourDisplay }}</span>
                                             <span class="time-separator">:</span>
-                                            <span class="tp-val tp-val-min">{{ $oldEndMin ?? '00' }}</span>
+                                            <span class="tp-val tp-val-min">{{ $endMinDisplay }}</span>
                                             <div class="tp-drop">
                                                 <div class="tp-drop-columns">
                                                     <div class="tp-col tp-col-hour">
                                                         <ul>
                                                             @for($h = 0; $h < 24; $h++)
                                                                 @php $hh = sprintf('%02d', $h); @endphp
-                                                                <li data-val="{{ $hh }}" class="tp-hour-item {{ $hh === ($oldEndHour ?? '09') ? 'tp-sel' : '' }}">{{ $hh }}</li>
+                                                                <li data-val="{{ $hh }}" class="tp-hour-item {{ $oldEndHour && $hh === $oldEndHour ? 'tp-sel' : '' }}">{{ $hh }}</li>
                                                             @endfor
                                                         </ul>
                                                     </div>
@@ -4969,7 +4989,7 @@
                                                         <ul>
                                                             @foreach(range(0,59) as $m)
                                                                 @php $mm = sprintf('%02d', $m); @endphp
-                                                                <li data-val="{{ $mm }}" class="tp-min-item {{ $mm === ($oldEndMin ?? '00') ? 'tp-sel' : '' }}">{{ $mm }}</li>
+                                                                <li data-val="{{ $mm }}" class="tp-min-item {{ $oldEndMin && $mm === $oldEndMin ? 'tp-sel' : '' }}">{{ $mm }}</li>
                                                             @endforeach
                                                         </ul>
                                                     </div>
@@ -4978,6 +4998,7 @@
                                         </div>
                                         <span class="time-unit">น.</span>
                                     </div>
+                                    <div class="modal-inline-error" data-time-error-for="end_time" hidden>กรุณาเลือกเวลาสิ้นสุด</div>
                                 </div>
                                 <div>
                                     <label class="modal-label" for="activity_type_id">ประเภทกิจกรรม <span class="required-mark">*</span></label>
@@ -5139,21 +5160,37 @@ document.addEventListener('DOMContentLoaded', function () {
         var hidden = document.getElementById(hiddenId);
         if (!hidden) return;
 
-        var parts = (hidden.value || '08:00').split(':');
+        var isTimePart = function(value) {
+            return /^\d{2}$/.test(value || '');
+        };
+        var currentHour = isTimePart(picker.dataset.tpHour)
+            ? picker.dataset.tpHour
+            : (isTimePart(picker.querySelector('.tp-val-hour').textContent.trim()) ? picker.querySelector('.tp-val-hour').textContent.trim() : '');
+        var currentMin = isTimePart(picker.dataset.tpMin)
+            ? picker.dataset.tpMin
+            : (isTimePart(picker.querySelector('.tp-val-min').textContent.trim()) ? picker.querySelector('.tp-val-min').textContent.trim() : '');
+
         if (part === 'hour') {
-            parts[0] = val;
+            currentHour = val;
+            picker.dataset.tpHour = val;
             picker.querySelector('.tp-val-hour').textContent = val;
             drop.querySelectorAll('.tp-hour-item').forEach(function(el) { el.classList.remove('tp-sel'); });
         } else {
-            parts[1] = val;
+            currentMin = val;
+            picker.dataset.tpMin = val;
             picker.querySelector('.tp-val-min').textContent = val;
             drop.querySelectorAll('.tp-min-item').forEach(function(el) { el.classList.remove('tp-sel'); });
         }
         li.classList.add('tp-sel');
-        hidden.value = parts.join(':');
+        hidden.value = currentHour && currentMin ? currentHour + ':' + currentMin : '';
 
         hidden.dispatchEvent(new Event('change', { bubbles: true }));
         hidden.dispatchEvent(new Event('input', { bubbles: true }));
+
+        var error = document.querySelector(`[data-time-error-for="${hiddenId}"]`);
+        if (error && hidden.value) {
+            error.hidden = true;
+        }
     }
 
     function initTimePickers() {
@@ -5169,6 +5206,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     var parts = hidden.value.split(':');
                     var h = parts[0] || '08';
                     var m = parts[1] || '00';
+                    picker.dataset.tpHour = h;
+                    picker.dataset.tpMin = m;
                     picker.querySelector('.tp-val-hour').textContent = h;
                     picker.querySelector('.tp-val-min').textContent = m;
 
@@ -5179,9 +5218,13 @@ document.addEventListener('DOMContentLoaded', function () {
                         li.classList.toggle('tp-sel', li.dataset.val === m);
                     });
                 } else {
-                    var h = picker.querySelector('.tp-val-hour').textContent.trim();
-                    var m = picker.querySelector('.tp-val-min').textContent.trim();
-                    hidden.value = h + ':' + m;
+                    picker.dataset.tpHour = '';
+                    picker.dataset.tpMin = '';
+                    picker.querySelector('.tp-val-hour').textContent = '--';
+                    picker.querySelector('.tp-val-min').textContent = '--';
+                    drop.querySelectorAll('.tp-hour-item, .tp-min-item').forEach(function(li) {
+                        li.classList.remove('tp-sel');
+                    });
                 }
             }
 
@@ -5234,6 +5277,31 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // init on load
     initTimePickers();
+
+    var createForm = document.querySelector('form[data-testid="schedule-form"]');
+    if (createForm) {
+        createForm.addEventListener('submit', function(e) {
+            var missing = false;
+            ['start_time', 'end_time'].forEach(function(fieldId) {
+                var field = document.getElementById(fieldId);
+                var error = document.querySelector(`[data-time-error-for="${fieldId}"]`);
+                var isEmpty = !field || !field.value;
+
+                if (error) {
+                    error.hidden = !isEmpty;
+                }
+                missing = missing || isEmpty;
+            });
+
+            if (missing) {
+                e.preventDefault();
+                var firstError = createForm.querySelector('[data-time-error-for]:not([hidden])');
+                if (firstError) {
+                    firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
 
     // re-init when Alpine opens an edit modal (new .time-picker may appear)
     document.addEventListener('tpss:edit-opened', initTimePickers);

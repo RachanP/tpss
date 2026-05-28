@@ -20,9 +20,9 @@ class CourseOfferingSeeder extends Seeder
         }
 
         // จำลองสถานะหลัง Admin กด "เปิดช่วงจัดตาราง":
-        // สร้าง offering สำหรับทุกวิชาที่ active และมีหัวหน้าวิชา
-        $courses = Course::where('status', 'active')
-            ->whereNotNull('head_instructor_id')
+        // สร้าง offering เฉพาะวิชาที่ active และอยู่ในภาคเรียนของปีการศึกษาปัจจุบัน
+        $courses = Course::query()
+            ->offeredInAcademicTerm($year)
             ->get();
 
         $created = 0;
