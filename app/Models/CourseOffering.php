@@ -195,6 +195,11 @@ class CourseOffering extends Model
         return $this->hasMany(Schedule::class);
     }
 
+    public function scheduleTemplates(): HasMany
+    {
+        return $this->hasMany(ScheduleTemplate::class);
+    }
+
     private function readableRouteKeyHasCollision(string $baseKey): bool
     {
         $this->loadMissing('academicYear');

@@ -57,7 +57,7 @@
                     <line x1="3" y1="10" x2="21" y2="10"></line>
                 </svg>
             </button>
-            <div class="tdi-pop" x-show="calOpen" x-cloak x-transition.opacity :style="tdiPopStyle" role="dialog" aria-label="ปฏิทินเลือกวันที่">
+            <div class="tdi-pop" x-ref="tdiPop" x-show="calOpen" x-cloak x-transition.opacity :style="tdiPopStyle" role="dialog" aria-label="ปฏิทินเลือกวันที่">
             <div class="tdi-pop-head">
                 <button type="button" class="tdi-pop-nav" @click="tdiShiftMonth(-1)" aria-label="เดือนก่อนหน้า">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
