@@ -470,13 +470,34 @@ class ScheduleConflictReadRepository
             return collect();
         }
 
-        return $this->scopedResultQuery($runId, $userId, $academicYearId)
+        // Fetch all conflict records for these source schedules — group by source then pick
+        // top N DISTINCT conflicting schedules (not top N records) so preview shows the
+        // SAME complete info per card as the full expanded view.
+        $rows = $this->scopedResultQuery($runId, $userId, $academicYearId)
             ->whereIn('schedule_conflict_results.schedule_id', $scheduleIds)
             ->orderBy('schedule_conflict_results.schedule_id')
             ->orderBy('schedule_conflict_results.id')
-            ->get(['schedule_conflict_results.id', 'schedule_conflict_results.schedule_id'])
+            ->get([
+                'schedule_conflict_results.id',
+                'schedule_conflict_results.schedule_id',
+                'schedule_conflict_results.conflicting_schedule_id',
+            ]);
+
+        return $rows
             ->groupBy(fn ($row) => (int) $row->schedule_id)
-            ->flatMap(fn (Collection $items) => $items->take(self::PREVIEW_SIZE)->pluck('id'))
+            ->flatMap(function (Collection $items) {
+                $allowedConflictIds = $items
+                    ->pluck('conflicting_schedule_id')
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->take(self::PREVIEW_SIZE)
+                    ->values()
+                    ->all();
+
+                return $items
+                    ->filter(fn ($row) => in_array((int) $row->conflicting_schedule_id, $allowedConflictIds, true))
+                    ->pluck('id');
+            })
             ->map(fn ($id) => (int) $id)
             ->values();
     }
