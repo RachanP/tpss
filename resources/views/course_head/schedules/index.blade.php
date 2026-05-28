@@ -1829,12 +1829,14 @@
             flex: 0 0 auto;
         }
 
-        /* ── Styled hover tooltip (replaces native title attr) ────────── */
+        /* ── Styled hover tooltip (replaces native title attr) ──────────
+           position: fixed → escape ทุก stacking context และ overflow:hidden ของ card
+           ตำแหน่งจะถูก set ผ่าน JS (transform: translate) ตอน hover/focus    */
         .conflict-tt {
-            position: absolute;
+            position: fixed;
+            top: 0;
             left: 0;
-            top: calc(100% + 6px);
-            z-index: 9999;
+            z-index: 99999;
             display: none;
             min-width: 280px;
             max-width: 380px;
@@ -1846,14 +1848,11 @@
             white-space: normal;
             cursor: default;
             pointer-events: none;
+            transform: translate(0, 0);
         }
-        .schedule-conflict-pill:hover .conflict-tt,
-        .schedule-conflict-pill:focus-visible .conflict-tt,
-        .schedule-conflict-pill:focus-within .conflict-tt {
+        .schedule-conflict-pill[data-tt-open="true"] .conflict-tt {
             display: block;
         }
-        /* แสดงด้านบนถ้า pill อยู่ครึ่งล่างของหน้าจอ — fallback ตรงๆ ผ่าน position alone ทำยาก */
-        /* ใช้ scroll/clipping จาก container เพราะ position absolute น่าจะอยู่ใน card */
         .conflict-tt-head {
             display: flex;
             align-items: center;
@@ -5445,6 +5444,78 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+
+    // ── Conflict pill tooltip: position fixed + delegated handler ───────────
+    // ใช้ position:fixed + JS calc เพื่อหนี overflow:hidden ของ card cell
+    (function () {
+        var openPill = null;
+
+        function place(pill) {
+            var tt = pill.querySelector('.conflict-tt');
+            if (!tt) return;
+
+            // Show invisibly to measure size
+            tt.style.visibility = 'hidden';
+            pill.setAttribute('data-tt-open', 'true');
+            var ttRect = tt.getBoundingClientRect();
+            var pillRect = pill.getBoundingClientRect();
+            var vw = window.innerWidth, vh = window.innerHeight;
+            var margin = 8;
+
+            // Prefer below pill; flip above if not enough space
+            var top = pillRect.bottom + 6;
+            if (top + ttRect.height > vh - margin) {
+                top = Math.max(margin, pillRect.top - ttRect.height - 6);
+            }
+
+            // Align left with pill; clamp inside viewport
+            var left = pillRect.left;
+            if (left + ttRect.width > vw - margin) {
+                left = Math.max(margin, vw - ttRect.width - margin);
+            }
+            if (left < margin) left = margin;
+
+            tt.style.transform = 'translate(' + Math.round(left) + 'px, ' + Math.round(top) + 'px)';
+            tt.style.visibility = '';
+        }
+
+        function close(pill) {
+            if (!pill) return;
+            pill.removeAttribute('data-tt-open');
+            var tt = pill.querySelector('.conflict-tt');
+            if (tt) tt.style.visibility = '';
+        }
+
+        function open(pill) {
+            if (openPill && openPill !== pill) close(openPill);
+            openPill = pill;
+            place(pill);
+        }
+
+        document.addEventListener('mouseover', function (e) {
+            var pill = e.target.closest('[data-conflict-pill]');
+            if (pill && pill !== openPill) open(pill);
+        });
+        document.addEventListener('mouseout', function (e) {
+            var pill = e.target.closest('[data-conflict-pill]');
+            if (!pill) return;
+            // Don't close if moving to a child of the same pill
+            var related = e.relatedTarget;
+            if (related && pill.contains(related)) return;
+            if (pill === openPill) { close(pill); openPill = null; }
+        });
+        document.addEventListener('focusin', function (e) {
+            var pill = e.target.closest('[data-conflict-pill]');
+            if (pill) open(pill);
+        });
+        document.addEventListener('focusout', function (e) {
+            var pill = e.target.closest('[data-conflict-pill]');
+            if (pill === openPill) { close(pill); openPill = null; }
+        });
+        // Reposition on scroll/resize while open
+        window.addEventListener('scroll', function () { if (openPill) place(openPill); }, true);
+        window.addEventListener('resize', function () { if (openPill) place(openPill); });
+    })();
 
     // ── Custom time-picker engine ───────────────────────────────────────────
     var _openDrop = null; // currently open .tp-drop
