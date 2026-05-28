@@ -5470,18 +5470,26 @@ document.addEventListener('DOMContentLoaded', function () {
             portal.style.display = 'block';
             var ttRect = portal.getBoundingClientRect();
             var pillRect = pill.getBoundingClientRect();
-            var vw = window.innerWidth, vh = window.innerHeight;
-            var margin = 8;
+            var vw = document.documentElement.clientWidth;  // exclude scrollbar
+            var vh = document.documentElement.clientHeight;
+            var margin = 16;  // breathing room from viewport edges
 
+            // Vertical: prefer below; flip above if not enough space
             var top = pillRect.bottom + 6;
             if (top + ttRect.height > vh - margin) {
                 top = Math.max(margin, pillRect.top - ttRect.height - 6);
             }
-            var left = pillRect.left;
-            if (left + ttRect.width > vw - margin) {
-                left = Math.max(margin, vw - ttRect.width - margin);
-            }
-            if (left < margin) left = margin;
+
+            // Horizontal: prefer side of pill with more space
+            // - pill in left half → align tooltip's LEFT with pill's left
+            // - pill in right half → align tooltip's RIGHT with pill's right
+            var pillCenter = pillRect.left + pillRect.width / 2;
+            var left = pillCenter < vw / 2
+                ? pillRect.left
+                : pillRect.right - ttRect.width;
+
+            // Clamp inside viewport
+            left = Math.max(margin, Math.min(left, vw - ttRect.width - margin));
 
             portal.style.top = Math.round(top) + 'px';
             portal.style.left = Math.round(left) + 'px';
