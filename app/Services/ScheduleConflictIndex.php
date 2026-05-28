@@ -297,26 +297,36 @@ class ScheduleConflictIndex
 
     private function messageFor(string $type, Schedule $candidate, mixed $resource): array
     {
+        $scheduleLabel = $this->scheduleLabel($candidate);
+
         return match ($type) {
             'room_overlap' => [
                 'type' => $type,
                 'schedule_id' => $candidate->id,
-                'message' => 'ห้อง/สถานที่ ' . ($candidate->room?->room_name ?? $candidate->room?->room_code ?? 'ที่เลือก') . ' มีตารางซ้อนกับ ' . $this->scheduleLabel($candidate),
+                'schedule_label' => $scheduleLabel,
+                'resource_label' => $candidate->room?->room_name ?? $candidate->room?->room_code ?? 'ที่เลือก',
+                'message' => 'ห้อง/สถานที่ ' . ($candidate->room?->room_name ?? $candidate->room?->room_code ?? 'ที่เลือก') . ' มีตารางซ้อนกับ ' . $scheduleLabel,
             ],
             'instructor_overlap' => [
                 'type' => $type,
                 'schedule_id' => $candidate->id,
-                'message' => 'อาจารย์ ' . ($resource->formatted_name ?? $resource->name) . ' มีตารางซ้อนกับ ' . $this->scheduleLabel($candidate),
+                'schedule_label' => $scheduleLabel,
+                'resource_label' => $resource->formatted_name ?? $resource->name,
+                'message' => 'อาจารย์ ' . ($resource->formatted_name ?? $resource->name) . ' มีตารางซ้อนกับ ' . $scheduleLabel,
             ],
             'group_overlap' => [
                 'type' => $type,
                 'schedule_id' => $candidate->id,
-                'message' => 'กลุ่มนักศึกษา ' . $resource->group_code . ' มีตารางซ้อนกับ ' . $this->scheduleLabel($candidate),
+                'schedule_label' => $scheduleLabel,
+                'resource_label' => $resource->group_code,
+                'message' => 'กลุ่มนักศึกษา ' . $resource->group_code . ' มีตารางซ้อนกับ ' . $scheduleLabel,
             ],
             default => [
                 'type' => $type,
                 'schedule_id' => $candidate->id,
-                'message' => 'ตารางซ้อนกับ ' . $this->scheduleLabel($candidate),
+                'schedule_label' => $scheduleLabel,
+                'resource_label' => '',
+                'message' => 'ตารางซ้อนกับ ' . $scheduleLabel,
             ],
         };
     }
