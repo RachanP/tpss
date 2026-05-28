@@ -526,14 +526,21 @@
             white-space: nowrap;
         }
         .schedule-card-hdr {
-            align-items: center;
+            align-items: flex-start;
+        }
+        .schedule-card-hdr > div:first-child {
+            flex: 1 1 100%;
+            min-width: 0;
         }
         .schedule-card-actions {
             display: flex;
             align-items: center;
-            gap: 12px;
+            justify-content: flex-end;
+            gap: 10px;
+            row-gap: 8px;
             flex-wrap: wrap;
-            margin-left: auto;
+            width: 100%;
+            margin-left: 0;
         }
         .schedule-card-actions > [x-cloak] {
             display: inline-flex !important;
