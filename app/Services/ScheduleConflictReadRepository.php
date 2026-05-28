@@ -598,7 +598,8 @@ class ScheduleConflictReadRepository
     {
         $course = $schedule->courseOffering?->course;
         $courseLabel = trim(($course?->course_code ?? 'รายวิชา') . ' ' . ($course?->name_th ?? $course?->name_en ?? ''));
-        $dateLabel = optional($schedule->start_date ?? $schedule->teaching_date)->format('d/m/Y') ?? '-';
+        $rawDate = $schedule->start_date ?? $schedule->teaching_date;
+        $dateLabel = $rawDate ? \App\Support\ThaiDate::date($rawDate) : '-';
         $timeLabel = substr((string) $schedule->start_time, 0, 5) . '-' . substr((string) $schedule->end_time, 0, 5);
 
         return "{$courseLabel} ({$dateLabel} {$timeLabel})";

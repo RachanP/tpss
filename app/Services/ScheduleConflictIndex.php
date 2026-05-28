@@ -373,7 +373,8 @@ class ScheduleConflictIndex
     {
         $course = $schedule->courseOffering?->course;
         $courseLabel = trim(($course?->course_code ?? 'รายวิชา') . ' ' . ($course?->name_th ?? ''));
-        $dateLabel = optional($this->scheduleStartDate($schedule))->format('d/m/Y') ?? '-';
+        $startDate = $this->scheduleStartDate($schedule);
+        $dateLabel = $startDate ? \App\Support\ThaiDate::date($startDate) : '-';
         $timeLabel = substr((string) $schedule->start_time, 0, 5) . '-' . substr((string) $schedule->end_time, 0, 5);
 
         return "{$courseLabel} ({$dateLabel} {$timeLabel})";
