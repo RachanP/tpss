@@ -13,10 +13,18 @@
     $createAction = $isWorkspace
         ? route('maker.schedules.store')
         : ($courseOffering ? route('maker.course_offerings.schedules.store', $courseOffering) : '#');
+    $seriesCreateAction = (! $isWorkspace && $courseOffering)
+        ? route('maker.course_offerings.schedules.series.store', $courseOffering)
+        : $createAction;
     $queryOfferingId = request('course_offering_id');
     $selectedOfferingId = (string) old('course_offering_id', $queryOfferingId ?: ($schedulingOfferings->first()?->id ?? $courseOffering?->id ?? ''));
     $oldModalMode = old('modal_mode');
+    $defaultCreateMode = (! $isWorkspace && $courseOffering) ? 'series' : 'single';
+    $oldCreateMode = (! $isWorkspace && $courseOffering)
+        ? old('create_mode', $defaultCreateMode)
+        : 'single';
     $openEditScheduleId = (string) old('edit_schedule_id', request('edit_schedule_id', ''));
+    $openEditSeriesTemplateId = (string) old('edit_series_template_id', '');
     $focusedScheduleId = (string) request('focus_schedule_id', request('edit_schedule_id', ''));
     $conflictFieldLabels = [
         'instructor_overlap' => 'ผู้สอนชน',
@@ -49,9 +57,10 @@
             ->unique()
             ->values();
     };
-    $openCreateModal = $canEdit && ! $openEditScheduleId && (
+    $openCreateModal = $canEdit && ! $openEditScheduleId && ! $openEditSeriesTemplateId && (
         request('modal') === 'create'
         || $oldModalMode === 'create'
+        || old('create_mode')
         || old('start_date')
         || old('course_offering_id')
     );
@@ -243,8 +252,38 @@
             ? ($instructors->count() === 1
                 ? ($instructors->first()->formatted_name ?? $instructors->first()->name)
                 : $instructors->count() . ' ท่าน')
-            : 'ไม่มีผู้สอน';
+            : '-';
     };
+    $scheduleIncompleteReasons = function ($schedule) use ($scheduleDepartmentInstructors) {
+        return collect([
+            $scheduleDepartmentInstructors($schedule)->isEmpty() ? 'รอกำหนดผู้สอน' : null,
+            $schedule?->studentGroups?->isEmpty() ? 'รอกำหนดกลุ่ม' : null,
+        ])->filter()->values();
+    };
+    $scheduleResourceCopyItems = ($allSchedules ?? collect())
+        ->filter(fn ($schedule) => $schedule->schedule_template_id && $scheduleIncompleteReasons($schedule)->isEmpty())
+        ->map(function ($schedule) use ($formatDate, $scheduleDepartmentInstructors) {
+            $instructors = $scheduleDepartmentInstructors($schedule);
+            $leadInstructor = $schedule->instructors->first(fn ($instructor) => (bool) $instructor->pivot?->is_lead);
+
+            return [
+                'id' => (string) $schedule->id,
+                'template_id' => (string) $schedule->schedule_template_id,
+                'week' => $schedule->series_week_number ? (int) $schedule->series_week_number : null,
+                'label' => collect([
+                    $schedule->series_week_number ? 'สัปดาห์ ' . $schedule->series_week_number : null,
+                    $formatDate($schedule->start_date ?? $schedule->teaching_date),
+                    $schedule->studentGroups->pluck('group_code')->implode(', '),
+                    $instructors->map(fn ($instructor) => $instructor->formatted_name ?? $instructor->name)->implode(', '),
+                ])->filter()->implode(' · '),
+                'room_id' => $schedule->room_id ? (string) $schedule->room_id : '',
+                'remark' => (string) ($schedule->remark ?? ''),
+                'lead_instructor_id' => $leadInstructor?->id ? (string) $leadInstructor->id : '',
+                'instructor_ids' => $instructors->pluck('id')->map(fn ($id) => (string) $id)->values(),
+                'student_group_ids' => $schedule->studentGroups->pluck('id')->map(fn ($id) => (string) $id)->values(),
+            ];
+        })
+        ->values();
     $singleCourseSchedules = ($allSchedules ?? collect());
     $activityFilterOptions = $singleCourseSchedules->pluck('activityType')->filter()->unique('id')->sortBy('name')->values();
     $groupFilterOptions = $singleCourseSchedules->flatMap->studentGroups->unique('id')->sortBy('group_code')->values();
@@ -1191,6 +1230,261 @@
             font-weight: 900;
             text-transform: uppercase;
         }
+        .series-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            min-height: 20px;
+            padding: 1px 6px;
+            border-radius: 4px;
+            border: 1px solid oklch(79% 0.055 245);
+            background: oklch(96.5% 0.016 245);
+            color: oklch(34% 0.075 245);
+            font-size: 10.5px;
+            font-weight: 750;
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+        .co-sched-table .series-badge {
+            max-width: 100%;
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
+        .series-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 999px;
+            background: oklch(52% 0.13 245);
+            flex: 0 0 auto;
+        }
+        .schedule-incomplete-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            min-height: 20px;
+            padding: 1px 6px;
+            border-radius: 4px;
+            border: 1px solid oklch(82% 0.08 82);
+            background: oklch(97% 0.032 88);
+            color: oklch(36% 0.08 75);
+            font-size: 10.5px;
+            font-weight: 750;
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+        .co-sched-table .schedule-incomplete-badge {
+            max-width: 100%;
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
+        .grid-activity .schedule-incomplete-badge,
+        .month-activity .schedule-incomplete-badge {
+            max-width: 100%;
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
+        .grid-activity .schedule-incomplete-detail,
+        .month-activity .schedule-incomplete-detail {
+            display: none;
+        }
+        .schedule-incomplete-dot {
+            width: 5px;
+            height: 5px;
+            flex: 0 0 auto;
+            border-radius: 999px;
+            background: oklch(58% 0.16 72);
+        }
+        .schedule-incomplete-detail {
+            color: oklch(46% 0.07 75);
+            font-weight: 750;
+        }
+        .grid-activity.has-series .grid-activity-title::after {
+            content: " ทำซ้ำ";
+            display: inline-flex;
+            margin-left: 6px;
+            padding: 1px 6px;
+            border-radius: 999px;
+            border: 1px solid oklch(72% 0.05 245);
+            background: oklch(96% 0.018 245);
+            color: var(--brand-navy);
+            font-size: 10px;
+            font-weight: 900;
+            vertical-align: 1px;
+            white-space: nowrap;
+        }
+        .series-toggle-panel {
+            display: grid;
+            gap: 12px;
+            margin: 4px 0 14px;
+            padding: 16px 18px;
+            border: 1px solid var(--schedule-border);
+            border-radius: 8px;
+            background: color-mix(in oklch, var(--surface) 76%, oklch(97.5% 0.01 232));
+        }
+        .series-toggle-choice {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            color: var(--fg-1);
+            font-size: 13px;
+            font-weight: 850;
+            line-height: 1.45;
+            cursor: pointer;
+        }
+        .series-toggle-choice input {
+            width: 18px;
+            height: 18px;
+            margin-top: 1px;
+            accent-color: var(--brand-navy);
+            flex: 0 0 auto;
+        }
+        .series-toggle-choice small {
+            display: block;
+            margin-top: 2px;
+            color: var(--fg-3);
+            font-size: 12px;
+            font-weight: 650;
+            line-height: 1.45;
+        }
+        .series-summary {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 14px;
+            align-items: start;
+            cursor: default;
+        }
+        .series-summary-title {
+            color: var(--fg-1);
+            font-size: 17px;
+            font-weight: 900;
+            line-height: 1.35;
+        }
+        .series-summary-copy {
+            max-width: 64ch;
+            margin-top: 4px;
+            color: var(--fg-2);
+            font-size: 12.5px;
+            font-weight: 700;
+            line-height: 1.6;
+        }
+        .series-summary-note {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 32px;
+            margin-top: 0;
+            padding: 5px 9px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--schedule-border));
+            border-radius: 999px;
+            background: color-mix(in oklch, var(--surface) 70%, oklch(97.5% 0.01 232));
+            color: var(--fg-2);
+            font-size: 12px;
+            font-weight: 800;
+            line-height: 1.3;
+        }
+        .series-fields {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(220px, 1fr));
+            gap: 14px 18px;
+            align-items: start;
+        }
+        .series-range-switch {
+            min-height: 44px;
+            height: 44px;
+            align-items: center;
+            padding: 8px 12px;
+            border: 1px solid var(--schedule-border);
+            border-radius: 8px;
+            background: var(--surface);
+        }
+        .series-range-placeholder {
+            visibility: hidden;
+            pointer-events: none;
+        }
+        .series-range-switch input {
+            margin-top: 0;
+        }
+        .series-range-switch span {
+            display: flex;
+            min-width: 0;
+            align-items: baseline;
+            gap: 8px;
+            flex-wrap: wrap;
+            line-height: 1.25;
+        }
+        .series-range-switch small {
+            display: inline;
+            margin-top: 0;
+            line-height: 1.25;
+        }
+        .series-range-fields {
+            grid-column: 1 / -1;
+            display: none;
+            grid-template-columns: repeat(2, minmax(220px, 1fr));
+            gap: 12px 16px;
+            padding-top: 2px;
+        }
+        .series-range-panel:has(.series-range-checkbox:checked) .series-range-fields {
+            display: grid;
+        }
+        .series-fields .tdi-wrap,
+        .series-fields .tdi-control,
+        .series-fields .tdi-input-cal {
+            width: 100%;
+        }
+        .resource-copy-panel {
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 16%, var(--border));
+            background: color-mix(in oklch, var(--info-bg) 58%, var(--surface));
+            border-radius: 8px;
+            padding: 12px;
+            margin: 12px 0;
+        }
+        .resource-copy-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+        }
+        .resource-copy-note {
+            color: var(--fg-2);
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1.55;
+            margin-top: 6px;
+        }
+        @media (max-width: 760px) {
+            .series-summary {
+                grid-template-columns: 1fr;
+            }
+            .series-summary-note {
+                justify-self: start;
+            }
+            .series-fields,
+            .series-range-fields {
+                grid-template-columns: 1fr;
+            }
+            .series-range-switch {
+                height: auto;
+                min-height: 52px;
+                align-items: flex-start;
+            }
+            .series-range-placeholder {
+                display: none;
+            }
+            .series-range-switch input {
+                margin-top: 2px;
+            }
+            .series-range-switch span,
+            .series-range-switch small {
+                display: block;
+            }
+            .series-range-switch small {
+                margin-top: 2px;
+            }
+            .resource-copy-row {
+                grid-template-columns: 1fr;
+            }
+        }
         .grid-activity:hover,
         .grid-activity:focus-visible {
             border-color: color-mix(in oklch, var(--activity-color) 44%, var(--schedule-border-strong));
@@ -1377,7 +1671,7 @@
 
         /* ── โหมดรายการตารางสอนของรายวิชาเดี่ยว (co-sched-table) ── */
         .co-sched-table-wrap {
-            overflow-x: auto;
+            overflow-x: hidden;
             border: 1px solid var(--schedule-border);
             border-radius: 0 0 10px 10px;
             background: var(--surface);
@@ -1386,6 +1680,7 @@
         }
         .co-sched-table {
             width: 100%;
+            table-layout: fixed;
             border-collapse: collapse;
             font-size: 13.5px;
             color: var(--fg-1);
@@ -1427,27 +1722,47 @@
         }
         /* Column Widths & Balances */
         .co-col-date {
-            width: 110px;
-            min-width: 110px;
+            width: 12%;
+            min-width: 0;
         }
         .co-col-time {
-            width: 110px;
-            min-width: 110px;
+            width: 13%;
+            min-width: 0;
         }
         .co-col-activity {
-            /* Flexible width, takes remaining space */
+            width: 34%;
+            min-width: 0;
         }
         .co-col-groups {
-            width: 220px;
-            min-width: 220px;
+            width: 12%;
+            min-width: 0;
         }
         .co-col-instructors {
-            width: 120px;
-            min-width: 120px;
+            width: 14%;
+            min-width: 0;
         }
         .co-col-location {
-            width: 150px;
-            min-width: 150px;
+            width: 15%;
+            min-width: 0;
+        }
+        @media (max-width: 900px) {
+            .co-sched-table-wrap {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            .co-sched-table {
+                min-width: 880px;
+            }
+            .co-col-date     { width: 110px; }
+            .co-col-time     { width: 110px; }
+            .co-col-activity { width: 280px; }
+            .co-col-groups   { width: 110px; }
+            .co-col-instructors { width: 140px; }
+            .co-col-location { width: 130px; }
+            .co-sched-table th,
+            .co-sched-row td {
+                padding: 10px 12px;
+            }
         }
         /* UI Elements inside table */
         .co-day-badge {
@@ -1532,6 +1847,7 @@
             font-weight: 800;
             color: var(--fg-1);
             line-height: 1.45;
+            overflow-wrap: anywhere;
         }
         .co-activity-type-badge {
             display: inline-flex;
@@ -1545,6 +1861,9 @@
             border-radius: 4px;
             padding: 1px 6px;
             margin-top: 4.5px;
+            max-width: 100%;
+            white-space: normal;
+            overflow-wrap: anywhere;
         }
         .co-activity-dot-small {
             width: 5px;
@@ -1557,7 +1876,7 @@
             display: flex;
             gap: 4px;
             flex-wrap: wrap;
-            max-width: 218px;
+            max-width: 100%;
         }
         .co-group-badge {
             display: inline-flex;
@@ -1587,12 +1906,13 @@
             color: var(--fg-1);
             font-weight: 700;
             white-space: normal;
-            word-break: break-word;
+            overflow-wrap: anywhere;
         }
         .co-location-room {
             font-size: 12.5px;
             color: var(--fg-1);
             font-weight: 700;
+            overflow-wrap: anywhere;
         }
         .co-location-building {
             font-size: 11px;
@@ -2427,6 +2747,12 @@
             min-height: 17px;
             padding: 1px 5px;
             font-size: 9.5px;
+            max-width: 100%;
+            min-width: 0;
+            white-space: normal;
+            overflow-wrap: anywhere;
+            text-align: left;
+            line-height: 1.2;
         }
         .month-empty {
             color: var(--fg-3);
@@ -2783,6 +3109,62 @@
             border-radius: 7px;
             padding: 4px 14px;
         }
+        .schedule-action-menu {
+            position: relative;
+            display: inline-flex;
+        }
+        .schedule-action-menu-list {
+            position: absolute;
+            right: 0;
+            bottom: calc(100% + 4px);
+            min-width: 156px;
+            background: var(--surface);
+            border: 1px solid var(--schedule-border);
+            border-radius: 6px;
+            box-shadow: 0 4px 14px oklch(0% 0 0 / 0.1);
+            padding: 3px;
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            z-index: 30;
+        }
+        .schedule-action-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 8px;
+            border: 0;
+            background: transparent;
+            color: var(--fg-1);
+            font-size: 11.5px;
+            font-weight: 700;
+            text-align: left;
+            border-radius: 4px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .schedule-action-item svg {
+            width: 12px;
+            height: 12px;
+            flex: 0 0 12px;
+        }
+        .schedule-action-item:hover,
+        .schedule-action-item:focus-visible {
+            background: oklch(95% 0.012 245);
+            outline: none;
+        }
+        .schedule-action-item.is-danger {
+            color: oklch(48% 0.18 28);
+        }
+        .schedule-action-item.is-danger:hover,
+        .schedule-action-item.is-danger:focus-visible {
+            background: oklch(95% 0.04 28);
+        }
+        .schedule-action-divider {
+            height: 1px;
+            background: var(--schedule-border);
+            margin: 3px 2px;
+        }
         .modal-form-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2812,6 +3194,7 @@
         .modal-control {
             width: 100%;
             min-height: 38px;
+            box-sizing: border-box;
             border: 1px solid var(--schedule-border);
             border-radius: 8px !important;
             background: var(--surface);
@@ -2821,6 +3204,10 @@
             font-size: 13px;
             -webkit-appearance: none;
             appearance: none;
+        }
+        .modal-control:not(textarea) {
+            height: 44px;
+            min-height: 44px;
         }
         .modal-control:focus {
             outline: 2px solid color-mix(in oklch, var(--brand-navy) 40%, transparent);
@@ -3075,7 +3462,7 @@
             border: 1px solid var(--schedule-border);
             border-radius: 8px;
             background: var(--surface);
-            height: 38px;
+            height: 44px;
             padding: 0 12px;
             box-sizing: border-box;
             width: 150px;
@@ -3111,13 +3498,48 @@
             z-index: 10000;
             display: none;
             overflow: hidden;
+            width: 238px;
+            --tp-row-height: 42px;
+        }
+        .tp-drop::before {
+            content: "";
+            position: absolute;
+            left: 10px;
+            right: 10px;
+            top: 50%;
+            height: var(--tp-row-height);
+            transform: translateY(-50%);
+            border: 1.5px solid color-mix(in oklch, var(--brand-navy) 34%, var(--schedule-border));
+            border-radius: 8px;
+            background:
+                linear-gradient(
+                    90deg,
+                    color-mix(in oklch, var(--brand-navy) 5%, var(--surface)) 0 calc(50% - 12px),
+                    transparent calc(50% - 12px) calc(50% + 12px),
+                    color-mix(in oklch, var(--brand-navy) 5%, var(--surface)) calc(50% + 12px) 100%
+                );
+            pointer-events: none;
+            z-index: 0;
+        }
+        .tp-drop::after {
+            content: "";
+            position: absolute;
+            left: 14px;
+            right: 14px;
+            top: 50%;
+            height: 1px;
+            background: color-mix(in oklch, var(--brand-navy) 18%, transparent);
+            pointer-events: none;
+            z-index: 0;
         }
         .tp-drop.tp-open {
             display: block;
         }
         .tp-drop-columns {
             display: flex;
-            height: 200px;
+            position: relative;
+            z-index: 1;
+            height: 220px;
             width: 100%;
             background: var(--surface);
         }
@@ -3126,7 +3548,7 @@
             overflow-y: auto;
             scrollbar-width: none;
             -ms-overflow-style: none;
-            padding: 4px 0;
+            padding: 0;
             display: flex;
             flex-direction: column;
         }
@@ -3141,24 +3563,37 @@
             color: var(--fg-3);
             user-select: none;
             width: 10px;
+            position: relative;
+            z-index: 3;
+            height: var(--tp-row-height);
+            align-self: center;
+            border-radius: 6px;
+            background: var(--surface);
         }
         .tp-col ul {
             list-style: none;
-            padding: 0;
+            padding: calc((220px - var(--tp-row-height)) / 2) 0;
             margin: 0;
             width: 100%;
         }
         .tp-col li {
-            padding: 6px 0;
-            font-size: 13px;
+            height: var(--tp-row-height);
+            min-height: var(--tp-row-height);
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
             font-weight: 500;
             cursor: pointer;
             text-align: center;
             color: var(--fg-1, #1e293b);
-            transition: background 0.08s, color 0.08s;
-            border-radius: 4px;
-            margin: 2px 4px;
+            transition: background 0.08s, color 0.08s, box-shadow 0.08s;
+            border-radius: 7px;
+            margin: 0 7px;
             white-space: nowrap;
+            position: relative;
+            z-index: 2;
         }
         .tp-col li:hover {
             background: color-mix(in oklch, var(--brand-navy, #1e3a5f) 8%, transparent);
@@ -3295,11 +3730,13 @@
             view: @js($focusedScheduleId ? 'grid' : null) || sessionStorage.getItem('tpss-schedule-view') || 'list',
             detailModal: null,
             editModal: @js($openEditScheduleId ? 'schedule-' . $openEditScheduleId : null),
+            editSeriesModal: @js($openEditSeriesTemplateId ? 'schedule-' . $openEditSeriesTemplateId : null),
             showCreate: @js($openCreateModal),
             focusedScheduleId: @js($focusedScheduleId),
             initialSelectedOfferingId: @js($selectedOfferingId),
             selectedOfferingId: @js($selectedOfferingId),
             scheduleItems: @js($scheduleFilterItems),
+            scheduleResourceCopies: @js($scheduleResourceCopyItems->keyBy('id')),
             scheduleSearch: '',
             scheduleActivity: '',
             scheduleGroup: '',
@@ -3311,6 +3748,11 @@
             calendarAllowsCreate: @js($canCreateInCurrentPeriod),
             createInstructorSearch: '',
             createGroupSearch: '',
+            createMode: @js($oldCreateMode),
+            defaultCreateMode: @js($defaultCreateMode),
+            normalCreateAction: @js($createAction),
+            seriesCreateAction: @js($seriesCreateAction),
+            defaultSeriesEndWeek: @js(max(1, (int) ($courseOffering->teaching_weeks ?? 1))),
             createStartDate: @js(old('start_date') ? $formatDate(\Carbon\CarbonImmutable::parse(old('start_date'))) : ''),
             createEndDate: @js(old('end_date') ? $formatDate(\Carbon\CarbonImmutable::parse(old('end_date'))) : ''),
             init() {
@@ -3319,7 +3761,6 @@
                     this.createInstructorSearch = '';
                     this.createGroupSearch = '';
                 });
-
                 const scrollY = sessionStorage.getItem('tpss-schedule-scroll-y');
                 if (scrollY !== null) {
                     const restoreY = parseInt(scrollY, 10);
@@ -3364,6 +3805,34 @@
                         window.requestAnimationFrame(() => this.centerFocusedSchedule());
                     });
                 }
+            },
+            setCreateMode(mode) {
+                this.createMode = mode === 'series' ? 'series' : 'single';
+
+                if (this.createMode === 'series') {
+                    this.closeCreateDatePickers();
+                    this.restoreSeriesWeekDefaults();
+                }
+            },
+            closeCreateDatePickers() {
+                document.dispatchEvent(new CustomEvent('tpss:close-date-popovers'));
+            },
+            restoreSeriesWeekDefaults() {
+                this.$nextTick(() => {
+                    const form = this.$refs.createForm;
+                    if (!form) return;
+
+                    const startWeek = form.querySelector('#series_start_week');
+                    const endWeek = form.querySelector('#series_end_week');
+
+                    if (startWeek && !startWeek.value) {
+                        startWeek.value = startWeek.dataset.defaultValue || '1';
+                    }
+
+                    if (endWeek && !endWeek.value) {
+                        endWeek.value = endWeek.dataset.defaultValue || String(this.defaultSeriesEndWeek || 1);
+                    }
+                });
             },
             isFocusedSchedule(id) {
                 return this.focusedScheduleId && String(id) === String(this.focusedScheduleId);
@@ -3473,6 +3942,39 @@
 
                 return items.some((item) => String(item || '').toLowerCase().includes(normalizedKeyword));
             },
+            applyResourceCopy(form, sourceId) {
+                const source = this.scheduleResourceCopies[String(sourceId || '')];
+                if (!source || !form) return;
+
+                const setSelect = (name, value) => {
+                    const select = form.querySelector(`[name='${name}']`);
+                    if (!select) return;
+                    select.value = value || '';
+                    select.dispatchEvent(new Event('change', { bubbles: true }));
+                    select.dispatchEvent(new Event('input', { bubbles: true }));
+                    select._tpssSelect?.sync?.();
+                };
+                const setTextarea = (name, value) => {
+                    const field = form.querySelector(`[name='${name}']`);
+                    if (!field) return;
+                    field.value = value || '';
+                    field.dispatchEvent(new Event('input', { bubbles: true }));
+                    field.dispatchEvent(new Event('change', { bubbles: true }));
+                };
+                const setCheckedGroup = (name, values) => {
+                    const selected = new Set((values || []).map((value) => String(value)));
+                    form.querySelectorAll(`input[name='${name}[]']`).forEach((input) => {
+                        input.checked = selected.has(String(input.value));
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                    });
+                };
+
+                setSelect('room_id', source.room_id);
+                setSelect('lead_instructor_id', source.lead_instructor_id);
+                setTextarea('remark', source.remark);
+                setCheckedGroup('instructor_ids', source.instructor_ids);
+                setCheckedGroup('student_group_ids', source.student_group_ids);
+            },
             toThaiDateDisplay(value) {
                 const trimmed = String(value || '').trim();
                 if (!trimmed.match(/^\d{4}-\d{2}-\d{2}$/)) return '';
@@ -3508,6 +4010,7 @@
                 this.createInstructorSearch = '';
                 this.createGroupSearch = '';
                 this.selectedOfferingId = this.initialSelectedOfferingId;
+                this.setCreateMode(this.defaultCreateMode);
 
                 if (!form) return;
 
@@ -3515,6 +4018,7 @@
                 form.querySelectorAll('input[type=checkbox], input[type=radio]').forEach((input) => {
                     input.checked = false;
                 });
+                document.dispatchEvent(new CustomEvent('tpss:reset-series-range'));
                 form.querySelectorAll('input[type=text], input[type=date], input[type=time], input[type=number], input[type=search], textarea').forEach((field) => {
                     field.value = '';
                     field.dispatchEvent(new Event('input', { bubbles: true }));
@@ -3524,6 +4028,7 @@
                     select.selectedIndex = 0;
                     select.dispatchEvent(new Event('change', { bubbles: true }));
                 });
+                this.restoreSeriesWeekDefaults();
                 // reset custom time pickers
                 const resetTp = (hiddenId, hVal = '--', mVal = '--') => {
                     const picker = form.querySelector(`.time-picker[data-tp-hidden='${hiddenId}']`);
@@ -3535,10 +4040,10 @@
                     const drop = picker.querySelector('.tp-drop');
                     if (drop) {
                         drop.querySelectorAll('.tp-hour-item').forEach(li => {
-                            li.classList.toggle('tp-sel', li.dataset.val === hVal);
+                            li.classList.toggle('tp-sel', li.dataset.val === hVal && li.dataset.cycle === '1');
                         });
                         drop.querySelectorAll('.tp-min-item').forEach(li => {
-                            li.classList.toggle('tp-sel', li.dataset.val === mVal);
+                            li.classList.toggle('tp-sel', li.dataset.val === mVal && li.dataset.cycle === '1');
                         });
                     }
                     const hidden = document.getElementById(hiddenId);
@@ -3577,7 +4082,14 @@
             openEdit(id) {
                 this.detailModal = null;
                 this.showCreate = false;
+                this.editSeriesModal = null;
                 this.editModal = 'schedule-' + id;
+            },
+            openSeriesEdit(id) {
+                this.detailModal = null;
+                this.showCreate = false;
+                this.editModal = null;
+                this.editSeriesModal = 'schedule-' + id;
             },
             closeCreate() { this.showCreate = false; },
             closeEdit() {
@@ -3588,7 +4100,7 @@
                 @endif
             }
         }"
-        @keydown.escape.window="detailModal = null; showCreate = false; editModal = null"
+        @keydown.escape.window="detailModal = null; showCreate = false; editModal = null; editSeriesModal = null"
     >
         @if($errors->has('schedule') && ! $openCreateModal && ! $openEditScheduleId)
             @php
@@ -3939,6 +4451,7 @@
                                                     $asRoom = $as->room;
                                                     $asInstructorText = $scheduleInstructorText($as);
                                                     $asConflicts = $scheduleConflicts->get($as->id, collect());
+                                                    $asIncompleteReasons = $scheduleIncompleteReasons($as);
                                                     $asSameDay = $as->start_date?->format('d/m/Y') === $as->end_date?->format('d/m/Y');
 
                                                     $dayOfWeekName = $thaiDays[$as->start_date->dayOfWeekIso] ?? '';
@@ -3974,6 +4487,22 @@
                                                             </div>
                                                         @else
                                                             <div class="co-activity-topic-main">{{ $asActivity?->name ?? 'กิจกรรม' }}</div>
+                                                        @endif
+                                                        @if($as->schedule_template_id)
+                                                            <div style="margin-top:6px;">
+                                                                <span class="series-badge" title="กิจกรรมทำซ้ำรายสัปดาห์">
+                                                                    <span class="series-dot" aria-hidden="true"></span>
+                                                                    <span>ทำซ้ำ</span>
+                                                                    @if($as->series_week_number)
+                                                                        <span>สัปดาห์ {{ $as->series_week_number }}</span>
+                                                                    @endif
+                                                                </span>
+                                                            </div>
+                                                        @endif
+                                                        @if($asIncompleteReasons->isNotEmpty())
+                                                            <div style="margin-top:6px;">
+                                                                @include('course_head.schedules._incomplete_badge', ['reasons' => $asIncompleteReasons])
+                                                            </div>
                                                         @endif
                                                         @if($asConflicts->isNotEmpty())
                                                             <div style="margin-top:6px;">
@@ -4050,8 +4579,9 @@
                                                 $room = $schedule->room;
                                                 $instructorText = $scheduleInstructorText($schedule);
                                                 $itemConflicts = $scheduleConflicts->get($schedule->id, collect());
+                                                $incompleteReasons = $scheduleIncompleteReasons($schedule);
                                             @endphp
-                                            <div role="button" tabindex="0" class="month-activity" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
+                                            <div role="button" tabindex="0" class="month-activity {{ $schedule->schedule_template_id ? 'has-series' : '' }}" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
                                                 <div class="month-activity-time">{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }}</div>
                                                 <div class="month-activity-title">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
                                                 <div class="month-activity-tags">
@@ -4059,6 +4589,13 @@
                                                     @if($schedule->studentGroups->isNotEmpty())
                                                         <span class="month-group-summary">{{ $schedule->studentGroups->count() }} กลุ่ม</span>
                                                     @endif
+                                                    @if($schedule->schedule_template_id)
+                                                        <span class="series-badge" title="กิจกรรมทำซ้ำรายสัปดาห์">
+                                                            <span class="series-dot" aria-hidden="true"></span>
+                                                            <span>ทำซ้ำ</span>
+                                                        </span>
+                                                    @endif
+                                                    @include('course_head.schedules._incomplete_badge', ['reasons' => $incompleteReasons])
                                                     @if($itemConflicts->isNotEmpty())
                                                         @include('course_head.schedules._conflict_pill', ['conflicts' => $itemConflicts])
                                                     @endif
@@ -4127,17 +4664,19 @@
                                             $offeringCourse = $schedule->courseOffering?->course;
                                             $instructorText = $scheduleInstructorText($schedule);
                                             $itemConflicts = $scheduleConflicts->get($schedule->id, collect());
+                                            $incompleteReasons = $scheduleIncompleteReasons($schedule);
                                             $activityDuration = (int) $occurrence['duration_minutes'];
                                             $gridActivitySizeClass = $activityDuration < 75
                                                 ? 'is-compact'
                                                 : ($activityDuration >= 150 ? 'is-tall' : '');
                                         @endphp
-                                        <div role="button" tabindex="0" class="grid-activity {{ $gridActivitySizeClass }}" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
+                                        <div role="button" tabindex="0" class="grid-activity {{ $gridActivitySizeClass }} {{ $schedule->schedule_template_id ? 'has-series' : '' }}" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
                                             <div class="grid-activity-top">
                                                 <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }};">{{ $activity?->name ?? 'กิจกรรม' }}</span>
                                                 @if($itemConflicts->isNotEmpty())
                                                     @include('course_head.schedules._conflict_pill', ['conflicts' => $itemConflicts])
                                                 @endif
+                                                @include('course_head.schedules._incomplete_badge', ['reasons' => $incompleteReasons])
                                             </div>
                                             <div class="grid-activity-title">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
                                             <div class="grid-activity-time">{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }} · {{ $formatDuration($occurrence['duration_minutes']) }}</div>
@@ -4379,6 +4918,7 @@
                                         $instructorText = $scheduleInstructorText($schedule);
                                         $status = $statusMeta[$schedule->status] ?? ['label' => $schedule->status, 'class' => 'badge-gray'];
                                         $itemConflicts = $scheduleConflicts->get($schedule->id, collect());
+                                        $incompleteReasons = $scheduleIncompleteReasons($schedule);
                                     @endphp
                                     <tr role="button" tabindex="0" class="sched-row" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-testid="schedule-row" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
                                         <td>
@@ -4398,6 +4938,7 @@
                                                 @if($itemConflicts->isNotEmpty())
                                                     @include('course_head.schedules._conflict_pill', ['conflicts' => $itemConflicts])
                                                 @endif
+                                                @include('course_head.schedules._incomplete_badge', ['reasons' => $incompleteReasons])
                                             </div>
                                         </td>
                                         <td>
@@ -4411,7 +4952,11 @@
                                                 <span class="sched-muted">—</span>
                                             @endif
                                         </td>
-                                        <td><span class="sched-strong">{{ $instructorText }}</span></td>
+                                        @if($instructorText === '-')
+                                            <td><span class="sched-muted">-</span></td>
+                                        @else
+                                            <td><span class="sched-strong">{{ $instructorText }}</span></td>
+                                        @endif
                                         <td>
                                             <div class="sched-strong">{{ $room?->room_name ?? $room?->room_code ?? 'ไม่ระบุสถานที่' }}</div>
                                             @if($room?->building)
@@ -4457,11 +5002,12 @@
                                             $activity = $schedule->activityType;
                                             $room = $schedule->room;
                                             $offeringCourse = $schedule->courseOffering?->course;
-                                            $instructorText = $scheduleInstructorText($schedule);
-                                            $status = $statusMeta[$schedule->status] ?? ['label' => $schedule->status, 'class' => 'badge-gray'];
-                                            $itemConflicts = $scheduleConflicts->get($schedule->id, collect());
-                                        @endphp
-                                        <div role="button" tabindex="0" class="month-activity" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
+                                        $instructorText = $scheduleInstructorText($schedule);
+                                        $status = $statusMeta[$schedule->status] ?? ['label' => $schedule->status, 'class' => 'badge-gray'];
+                                        $itemConflicts = $scheduleConflicts->get($schedule->id, collect());
+                                        $incompleteReasons = $scheduleIncompleteReasons($schedule);
+                                    @endphp
+                                        <div role="button" tabindex="0" class="month-activity {{ $schedule->schedule_template_id ? 'has-series' : '' }}" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
                                             <div class="month-activity-time">{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }}</div>
                                             <div class="month-activity-title">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
                                             <div class="month-activity-meta">
@@ -4479,6 +5025,7 @@
                                                 @if($itemConflicts->isNotEmpty())
                                                     @include('course_head.schedules._conflict_pill', ['conflicts' => $itemConflicts])
                                                 @endif
+                                                @include('course_head.schedules._incomplete_badge', ['reasons' => $incompleteReasons])
                                                 <span class="badge {{ $status['class'] }}">{{ $status['label'] }}</span>
                                             </div>
                                         </div>
@@ -4546,6 +5093,7 @@
                                         $instructorText = $scheduleInstructorText($schedule);
                                         $status = $statusMeta[$schedule->status] ?? ['label' => $schedule->status, 'class' => 'badge-gray'];
                                         $itemConflicts = $scheduleConflicts->get($schedule->id, collect());
+                                        $incompleteReasons = $scheduleIncompleteReasons($schedule);
                                         $activityDuration = (int) $occurrence['duration_minutes'];
                                         $gridActivitySizeClass = $activityDuration < 75
                                             ? 'is-compact'
@@ -4560,6 +5108,7 @@
                                             @if($itemConflicts->isNotEmpty())
                                                 @include('course_head.schedules._conflict_pill', ['conflicts' => $itemConflicts])
                                             @endif
+                                            @include('course_head.schedules._incomplete_badge', ['reasons' => $incompleteReasons])
                                         </div>
                                         <div class="grid-activity-title">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
                                         @if($isWorkspace && ($offeringCourse?->name_th || $offeringCourse?->name_en))
@@ -4569,7 +5118,13 @@
                                         @endif
                                         <div class="grid-activity-meta">
                                             <div>{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }} · {{ $formatDuration($occurrence['duration_minutes']) }}</div>
-                                            <div class="grid-instructor">{{ $instructorText }}</div>
+                                            <div class="grid-instructor">
+                                                @if($instructorText === '-')
+                                                    <span class="sched-muted">-</span>
+                                                @else
+                                                    {{ $instructorText }}
+                                                @endif
+                                            </div>
                                             <div>
                                                 <div class="grid-location-name">{{ $room?->room_name ?? $room?->room_code ?? 'ไม่ระบุสถานที่' }}</div>
                                                 @if($room?->building)
@@ -4697,10 +5252,11 @@
                                                     @if($offeringCourse?->course_code)
                                                         <span class="grid-course">{{ $offeringCourse->course_code }}</span>
                                                     @endif
-                                                    @if($itemConflicts->isNotEmpty())
-                                                        @include('course_head.schedules._conflict_pill', ['conflicts' => $itemConflicts])
-                                                    @endif
-                                                </div>
+                                                @if($itemConflicts->isNotEmpty())
+                                                    @include('course_head.schedules._conflict_pill', ['conflicts' => $itemConflicts])
+                                                @endif
+                                                @include('course_head.schedules._incomplete_badge', ['reasons' => $incompleteReasons])
+                                            </div>
                                                 <div class="grid-activity-title">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
                                                 @if($isWorkspace && ($offeringCourse?->name_th || $offeringCourse?->name_en))
                                                     <div class="grid-activity-sub">{{ $offeringCourse?->name_th ?? $offeringCourse?->name_en }}</div>
@@ -4709,7 +5265,13 @@
                                                 @endif
                                                 <div class="grid-activity-meta">
                                                     <div>{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }} · {{ $formatDuration($occurrence['duration_minutes']) }}</div>
-                                                    <div class="grid-instructor">{{ $instructorText }}</div>
+                                                    <div class="grid-instructor">
+                                                        @if($instructorText === '-')
+                                                            <span class="sched-muted">-</span>
+                                                        @else
+                                                            {{ $instructorText }}
+                                                        @endif
+                                                    </div>
                                                     <div>
                                                         <div class="grid-location-name">{{ $room?->room_name ?? $room?->room_code ?? 'ไม่ระบุสถานที่' }}</div>
                                                         @if($room?->building)
@@ -4782,6 +5344,7 @@
                     : ($formatDate($schedule->start_date) . ' - ' . $formatDate($schedule->end_date));
                 $scheduleCanEdit = $offering?->academicYear?->phase === 'scheduling';
                 $detailInstructors = $scheduleDepartmentInstructors($schedule);
+                $detailIncompleteReasons = $scheduleIncompleteReasons($schedule);
             @endphp
             <div class="schedule-modal-backdrop" x-show="detailModal === 'schedule-{{ $schedule->id }}'" x-cloak @click.self="detailModal = null" data-testid="schedule-detail-modal">
                 <template x-if="detailModal === 'schedule-{{ $schedule->id }}'">
@@ -4791,6 +5354,18 @@
                         <div style="min-width:0;">
                             <div class="modal-title-detail" id="schedule-detail-title-{{ $schedule->id }}">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
                             <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }}; margin-top:5px;">{{ $activity?->name ?? 'กิจกรรม' }}</span>
+                            @if($schedule->schedule_template_id)
+                                <span class="series-badge" style="margin-top:5px;" title="กิจกรรมทำซ้ำรายสัปดาห์">
+                                    <span class="series-dot" aria-hidden="true"></span>
+                                    <span>ทำซ้ำ</span>
+                                    @if($schedule->series_week_number)
+                                        <span>สัปดาห์ {{ $schedule->series_week_number }}</span>
+                                    @endif
+                                </span>
+                            @endif
+                            <span style="display:inline-flex;margin-top:5px;">
+                                @include('course_head.schedules._incomplete_badge', ['reasons' => $detailIncompleteReasons])
+                            </span>
                         </div>
                         <button type="button" class="modal-close" @click="detailModal = null" aria-label="ปิด">×</button>
                     </div>
@@ -4800,6 +5375,12 @@
                                 <div class="detail-row-label">วันที่</div>
                                 <div class="detail-row-value">{{ $dateText }} · {{ $timeText }} <span class="sub">({{ $formatDuration($durationForSchedule($schedule)) }})</span></div>
                             </div>
+                            @if($schedule->schedule_template_id)
+                                <div class="detail-row">
+                                    <div class="detail-row-label">ชุดทำซ้ำ</div>
+                                    <div class="detail-row-value">รายการนี้มาจากกิจกรรมรายสัปดาห์ ห้องและกลุ่มนักศึกษาปรับรายสัปดาห์ได้</div>
+                                </div>
+                            @endif
                             <div class="detail-row">
                                 <div class="detail-row-label">รายวิชา</div>
                                 <div class="detail-row-value">{{ $offeringCourse?->course_code ?? '-' }} {{ $offeringCourse?->name_th ?? $offeringCourse?->name_en ?? '' }}</div>
@@ -4821,14 +5402,18 @@
                                             @endforeach
                                         </div>
                                     @else
-                                        <span style="color:var(--fg-3);">ไม่มีผู้สอน</span>
+                                        <span style="color:var(--fg-3);">-</span>
                                     @endif
                                 </div>
                             </div>
                             <div class="detail-row">
                                 <div class="detail-row-label">สถานที่</div>
                                 <div class="detail-row-value">
-                                    {{ $room?->room_name ?? $room?->room_code ?? 'ไม่ระบุ' }}@if($room?->building) <span class="sub">· {{ $room->building }}</span>@endif
+                                    @if($room?->room_name || $room?->room_code)
+                                        {{ $room->room_name ?? $room->room_code }}@if($room?->building) <span class="sub">· {{ $room->building }}</span>@endif
+                                    @else
+                                        <span style="color:var(--fg-3);">-</span>
+                                    @endif
                                 </div>
                             </div>
                             <div class="detail-row">
@@ -4844,7 +5429,7 @@
                                             @endforeach
                                         </div>
                                     @else
-                                        <span style="color:var(--fg-3);">—</span>
+                                        <span style="color:var(--fg-3);">-</span>
                                     @endif
                                 </div>
                             </div>
@@ -4858,24 +5443,149 @@
                     </div>
                     @if($scheduleCanEdit)
                         <div class="modal-actions">
-                            <button type="button" class="btn btn-secondary" data-testid="schedule-edit-modal-trigger" @click="openEdit('{{ $schedule->id }}')" style="display:inline-flex;align-items:center;gap:5px;">
-                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                แก้ไข
-                            </button>
                             <form id="delete-schedule-{{ $schedule->id }}" method="POST" action="{{ route('maker.course_offerings.schedules.destroy', [$offering, $schedule]) }}" style="display:none;">
                                 @csrf
                                 @method('DELETE')
                                 <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
                             </form>
-                            <button type="button" class="btn btn-red" data-form="delete-schedule-{{ $schedule->id }}" data-label="{{ $activity?->name ?? 'รายการสอน' }} {{ $timeText }}" onclick="tpssDelete(this)" data-testid="schedule-delete-button" style="display:inline-flex;align-items:center;gap:5px;">
+                            @if($schedule->schedule_template_id && $schedule->scheduleTemplate)
+                                <form id="delete-series-from-{{ $schedule->id }}" method="POST" action="{{ route('maker.course_offerings.schedules.destroy', [$offering, $schedule]) }}" style="display:none;">
+                                    @csrf
+                                    @method('DELETE')
+                                    <input type="hidden" name="series_delete_scope" value="from_current">
+                                    <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
+                                </form>
+                                <form id="delete-series-all-{{ $schedule->id }}" method="POST" action="{{ route('maker.course_offerings.schedules.destroy', [$offering, $schedule]) }}" style="display:none;">
+                                    @csrf
+                                    @method('DELETE')
+                                    <input type="hidden" name="series_delete_scope" value="all">
+                                    <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
+                                </form>
+                            @endif
+                            @php
+                                $seriesLabel = $schedule->topic ?: ($activity?->name ?? 'รายการทำซ้ำ');
+                                $weekLabel = $schedule->series_week_number ? ' (สัปดาห์ ' . $schedule->series_week_number . ')' : '';
+                                $seriesTimeLabel = $schedule->start_time && $schedule->end_time
+                                    ? ' · ' . substr((string) $schedule->start_time, 0, 5) . '-' . substr((string) $schedule->end_time, 0, 5)
+                                    : '';
+                            @endphp
+                            @if($schedule->schedule_template_id)
+                                <button type="button" class="btn btn-secondary" data-testid="schedule-series-edit-modal-trigger" @click="openSeriesEdit('{{ $schedule->id }}')" style="display:inline-flex;align-items:center;gap:5px;">
+                                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"></path><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><path d="M7 23l-4-4 4-4"></path><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+                                    แก้ชุดทำซ้ำ
+                                </button>
+                            @endif
+                            <button type="button" class="btn btn-secondary" data-testid="schedule-edit-modal-trigger" @click="openEdit('{{ $schedule->id }}')" style="display:inline-flex;align-items:center;gap:5px;">
+                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                แก้ไข
+                            </button>
+                            @if($schedule->schedule_template_id && $schedule->scheduleTemplate)
+                                <button type="button" class="btn btn-secondary" data-form="delete-series-from-{{ $schedule->id }}" data-label="{{ $seriesLabel }}{{ $weekLabel }} ตั้งแต่ {{ $formatDate($schedule->start_date ?? $schedule->teaching_date) }}{{ $seriesTimeLabel }}" data-warn="ระบบจะลบรายการนี้และรายการสัปดาห์ถัดไปในชุดเดียวกัน ส่วนสัปดาห์ก่อนหน้าจะยังอยู่" onclick="tpssDelete(this)" data-testid="schedule-series-delete-from-button" style="display:inline-flex;align-items:center;gap:5px;">
+                                    ลบตั้งแต่สัปดาห์นี้
+                                </button>
+                                <button type="button" class="btn btn-red" data-form="delete-series-all-{{ $schedule->id }}" data-label='ชุดทำซ้ำ "{{ $seriesLabel }}"{{ $seriesTimeLabel }}' data-warn="ระบบจะลบรายการทุกสัปดาห์ในชุดทำซ้ำนี้ทั้งหมด" onclick="tpssDelete(this)" data-testid="schedule-series-delete-all-button" style="display:inline-flex;align-items:center;gap:5px;">
+                                    ลบทั้งชุด
+                                </button>
+                            @endif
+                            <button type="button" class="btn btn-red" data-form="delete-schedule-{{ $schedule->id }}" data-label="{{ $seriesLabel }}{{ $weekLabel }} · {{ $timeText }}" onclick="tpssDelete(this)" data-testid="schedule-delete-button" style="display:inline-flex;align-items:center;gap:5px;">
                                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                                ลบ
+                                {{ $schedule->schedule_template_id ? 'ลบการ์ดนี้' : 'ลบ' }}
                             </button>
                         </div>
                     @endif
                 </section>
                 </template>
             </div>
+
+            @if($scheduleCanEdit && $schedule->scheduleTemplate)
+                @php
+                    $seriesTemplate = $schedule->scheduleTemplate;
+                    $seriesUsesOld = (string) old('edit_series_template_id') === (string) $schedule->id;
+                    $seriesOld = fn (string $key, mixed $default = null) => $seriesUsesOld ? old($key, $default) : $default;
+                @endphp
+                <div class="schedule-modal-backdrop" x-show="editSeriesModal === 'schedule-{{ $schedule->id }}'" x-cloak @click.self="editSeriesModal = null" data-testid="schedule-series-edit-modal">
+                    <template x-if="editSeriesModal === 'schedule-{{ $schedule->id }}'">
+                        <section class="schedule-modal is-form" role="dialog" aria-modal="true" aria-labelledby="schedule-series-edit-title-{{ $schedule->id }}">
+                            <div class="modal-handle"></div>
+                            <div class="modal-head">
+                                <div>
+                                    <div class="modal-title" id="schedule-series-edit-title-{{ $schedule->id }}">แก้ชุดทำซ้ำรายสัปดาห์</div>
+                                    <div style="font-size:12px;font-weight:700;color:var(--fg-2);margin-top:3px;">การเปลี่ยนวัน เวลา ประเภทกิจกรรม และหัวข้อ จะ sync ไปยังรายการในชุดนี้ โดยไม่ทับห้องและกลุ่มรายสัปดาห์</div>
+                                </div>
+                                <button type="button" class="modal-close" @click="editSeriesModal = null" aria-label="ปิด">×</button>
+                            </div>
+                            <form method="POST" action="{{ route('maker.course_offerings.schedules.templates.update', [$offering, $seriesTemplate]) }}" data-testid="schedule-series-edit-form">
+                                @csrf
+                                @method('PUT')
+                                <input type="hidden" name="modal_mode" value="series_edit">
+                                <input type="hidden" name="edit_series_template_id" value="{{ $schedule->id }}">
+                                <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
+                                <div class="modal-form-body">
+                                    @if($seriesUsesOld && $errors->any())
+                                        @php
+                                            $alertMessages = $scheduleAlertMessages($errors);
+                                        @endphp
+                                        <div class="schedule-empty" style="margin-bottom:12px;border-color:var(--status-conflict-border);background:var(--status-conflict-bg);color:var(--status-conflict-fg);font-weight:800;text-align:left;">
+                                            @foreach($alertMessages as $message)
+                                                <div style="{{ ! $loop->last ? 'margin-bottom:6px;' : '' }}">{{ $message }}</div>
+                                            @endforeach
+                                        </div>
+                                    @endif
+
+                                    <div class="modal-form-grid">
+                                        <div>
+                                            <label class="modal-label" for="series_edit_weekday_{{ $schedule->id }}">วันในสัปดาห์ <span class="required-mark">*</span></label>
+                                            <select id="series_edit_weekday_{{ $schedule->id }}" name="weekday" required class="modal-control">
+                                                @foreach($thaiDays as $dayIso => $dayName)
+                                                    <option value="{{ $dayIso }}" @selected((string) $seriesOld('weekday', $seriesTemplate->weekday) === (string) $dayIso)>{{ $dayName }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="modal-label" for="series_edit_start_week_{{ $schedule->id }}">สัปดาห์เริ่ม <span class="required-mark">*</span></label>
+                                            <input id="series_edit_start_week_{{ $schedule->id }}" name="start_week" type="number" min="1" max="{{ max(1, (int) ($offering->teaching_weeks ?? 52)) }}" required class="modal-control" value="{{ $seriesOld('start_week', $seriesTemplate->start_week) }}">
+                                        </div>
+                                        <div>
+                                            <label class="modal-label" for="series_edit_end_week_{{ $schedule->id }}">สัปดาห์สิ้นสุด <span class="required-mark">*</span></label>
+                                            <input id="series_edit_end_week_{{ $schedule->id }}" name="end_week" type="number" min="1" max="{{ max(1, (int) ($offering->teaching_weeks ?? 52)) }}" required class="modal-control" value="{{ $seriesOld('end_week', $seriesTemplate->end_week) }}">
+                                        </div>
+                                        <div>
+                                            <label class="modal-label" for="series_edit_start_time_{{ $schedule->id }}">เวลาเริ่ม <span class="required-mark">*</span></label>
+                                            <input id="series_edit_start_time_{{ $schedule->id }}" name="start_time" type="time" required class="modal-control" value="{{ $seriesOld('start_time', substr((string) $seriesTemplate->start_time, 0, 5)) }}">
+                                        </div>
+                                        <div>
+                                            <label class="modal-label" for="series_edit_end_time_{{ $schedule->id }}">เวลาสิ้นสุด <span class="required-mark">*</span></label>
+                                            <input id="series_edit_end_time_{{ $schedule->id }}" name="end_time" type="time" required class="modal-control" value="{{ $seriesOld('end_time', substr((string) $seriesTemplate->end_time, 0, 5)) }}">
+                                        </div>
+                                        <div>
+                                            <label class="modal-label" for="series_edit_activity_type_id_{{ $schedule->id }}">ประเภทกิจกรรม <span class="required-mark">*</span></label>
+                                            <select id="series_edit_activity_type_id_{{ $schedule->id }}" name="activity_type_id" required class="modal-control">
+                                                @foreach($activityTypes as $activityType)
+                                                    <option value="{{ $activityType->id }}" @selected((string) $seriesOld('activity_type_id', $seriesTemplate->activity_type_id) === (string) $activityType->id)>
+                                                        {{ $activityType->name }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div class="modal-field-full">
+                                            <label class="modal-label" for="series_edit_topic_{{ $schedule->id }}">หัวข้อกิจกรรม <span class="required-mark">*</span></label>
+                                            <input id="series_edit_topic_{{ $schedule->id }}" name="topic" type="text" maxlength="255" required class="modal-control" value="{{ $seriesOld('topic', $seriesTemplate->topic) }}">
+                                        </div>
+                                        <div class="modal-field-full">
+                                            <label class="modal-label" for="series_edit_capacity_required_{{ $schedule->id }}">จำนวนที่รองรับ <span class="optional-note">ไม่ระบุ = ไม่จำกัดจำนวน</span></label>
+                                            <input id="series_edit_capacity_required_{{ $schedule->id }}" name="capacity_required" type="number" min="1" class="modal-control" value="{{ $seriesOld('capacity_required', $seriesTemplate->capacity_required) }}">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-actions">
+                                    <button type="button" class="btn btn-secondary" @click="editSeriesModal = null">ยกเลิก</button>
+                                    <button type="submit" class="btn btn-primary" data-testid="schedule-series-submit">บันทึกชุดทำซ้ำ</button>
+                                </div>
+                            </form>
+                        </section>
+                    </template>
+                </div>
+            @endif
 
             @if($scheduleCanEdit)
                 @php
@@ -4927,6 +5637,7 @@
                                 endDateDisplay: @js($editDateDisplay('end_date', $schedule->end_date)),
                                 editInstructorSearch: '',
                                 editGroupSearch: '',
+                                resourceCopySource: '',
                             }"
                         >
                             @csrf
@@ -4947,6 +5658,45 @@
                                             <div style="{{ ! $loop->last ? 'margin-bottom:6px;' : '' }}">{{ $message }}</div>
                                         @endforeach
                                     </div>
+                                @endif
+
+                                @if($schedule->schedule_template_id)
+                                    @php
+                                        $resourceCopyOptions = $scheduleResourceCopyItems
+                                            ->filter(fn ($item) => $item['template_id'] === (string) $schedule->schedule_template_id && $item['id'] !== (string) $schedule->id)
+                                            ->values();
+                                    @endphp
+                                    <div class="series-toggle-panel" style="margin-bottom:12px;">
+                                        <span class="series-badge" title="กิจกรรมทำซ้ำรายสัปดาห์">
+                                            <span class="series-dot" aria-hidden="true"></span>
+                                            <span>รายการทำซ้ำ</span>
+                                            @if($schedule->series_week_number)
+                                                <span>สัปดาห์ {{ $schedule->series_week_number }}</span>
+                                            @endif
+                                        </span>
+                                        <div style="font-size:12px;font-weight:700;color:var(--fg-2);line-height:1.55;">
+                                            รายการรายสัปดาห์นี้ปรับห้อง ผู้สอน กลุ่มนักศึกษา และหมายเหตุแยกตามสัปดาห์ได้ วัน เวลา ประเภทกิจกรรม และหัวข้อจะยึดตามชุดทำซ้ำ
+                                        </div>
+                                    </div>
+                                    @if($resourceCopyOptions->isNotEmpty())
+                                        <div class="resource-copy-panel">
+                                            <div class="resource-copy-row">
+                                                <div>
+                                                    <label class="modal-label" for="resource_copy_{{ $schedule->id }}">ดึงรายละเอียดจากสัปดาห์อื่น</label>
+                                                    <select id="resource_copy_{{ $schedule->id }}" class="modal-control" x-model="resourceCopySource">
+                                                        <option value="">เลือกการ์ดต้นทาง</option>
+                                                        @foreach($resourceCopyOptions as $copyOption)
+                                                            <option value="{{ $copyOption['id'] }}">{{ $copyOption['label'] }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                                <button type="button" class="btn btn-secondary" @click="applyResourceCopy($el.closest('form'), resourceCopySource)" :disabled="!resourceCopySource">
+                                                    คัดลอกรายละเอียด
+                                                </button>
+                                            </div>
+                                            <div class="resource-copy-note">คัดลอกเฉพาะห้อง ผู้สอน ผู้สอนหลัก กลุ่มนักศึกษา และหมายเหตุ แล้วกดบันทึกเพื่อใช้กับสัปดาห์นี้</div>
+                                        </div>
+                                    @endif
                                 @endif
 
                                 <div class="modal-form-grid">
@@ -4992,19 +5742,23 @@
                                                         <div class="tp-drop-columns">
                                                             <div class="tp-col tp-col-hour">
                                                                 <ul>
-                                                                    @for($h = 0; $h < 24; $h++)
-                                                                        @php $hh = sprintf('%02d', $h); @endphp
-                                                                        <li data-val="{{ $hh }}" class="tp-hour-item {{ $hh === ($editStartHour ?? '08') ? 'tp-sel' : '' }}">{{ $hh }}</li>
+                                                                    @for($cycle = 0; $cycle < 3; $cycle++)
+                                                                        @for($h = 0; $h < 24; $h++)
+                                                                            @php $hh = sprintf('%02d', $h); @endphp
+                                                                            <li data-val="{{ $hh }}" data-cycle="{{ $cycle }}" class="tp-hour-item {{ $cycle === 1 && $hh === ($editStartHour ?? '08') ? 'tp-sel' : '' }}">{{ $hh }}</li>
+                                                                        @endfor
                                                                     @endfor
                                                                 </ul>
                                                             </div>
                                                             <div class="tp-col-divider">:</div>
                                                             <div class="tp-col tp-col-min">
                                                                 <ul>
-                                                                    @foreach(range(0,59) as $m)
-                                                                        @php $mm = sprintf('%02d', $m); @endphp
-                                                                        <li data-val="{{ $mm }}" class="tp-min-item {{ $mm === ($editStartMin ?? '00') ? 'tp-sel' : '' }}">{{ $mm }}</li>
-                                                                    @endforeach
+                                                                    @for($cycle = 0; $cycle < 3; $cycle++)
+                                                                        @foreach(range(0,59) as $m)
+                                                                            @php $mm = sprintf('%02d', $m); @endphp
+                                                                            <li data-val="{{ $mm }}" data-cycle="{{ $cycle }}" class="tp-min-item {{ $cycle === 1 && $mm === ($editStartMin ?? '00') ? 'tp-sel' : '' }}">{{ $mm }}</li>
+                                                                        @endforeach
+                                                                    @endfor
                                                                 </ul>
                                                             </div>
                                                         </div>
@@ -5029,19 +5783,23 @@
                                                     <div class="tp-drop-columns">
                                                         <div class="tp-col tp-col-hour">
                                                             <ul>
-                                                                @for($h = 0; $h < 24; $h++)
-                                                                    @php $hh = sprintf('%02d', $h); @endphp
-                                                                    <li data-val="{{ $hh }}" class="tp-hour-item {{ $hh === ($editEndHour ?? '09') ? 'tp-sel' : '' }}">{{ $hh }}</li>
+                                                                @for($cycle = 0; $cycle < 3; $cycle++)
+                                                                    @for($h = 0; $h < 24; $h++)
+                                                                        @php $hh = sprintf('%02d', $h); @endphp
+                                                                        <li data-val="{{ $hh }}" data-cycle="{{ $cycle }}" class="tp-hour-item {{ $cycle === 1 && $hh === ($editEndHour ?? '09') ? 'tp-sel' : '' }}">{{ $hh }}</li>
+                                                                    @endfor
                                                                 @endfor
                                                             </ul>
                                                         </div>
                                                         <div class="tp-col-divider">:</div>
                                                         <div class="tp-col tp-col-min">
                                                             <ul>
-                                                                @foreach(range(0,59) as $m)
-                                                                    @php $mm = sprintf('%02d', $m); @endphp
-                                                                    <li data-val="{{ $mm }}" class="tp-min-item {{ $mm === ($editEndMin ?? '00') ? 'tp-sel' : '' }}">{{ $mm }}</li>
-                                                                @endforeach
+                                                                @for($cycle = 0; $cycle < 3; $cycle++)
+                                                                    @foreach(range(0,59) as $m)
+                                                                        @php $mm = sprintf('%02d', $m); @endphp
+                                                                        <li data-val="{{ $mm }}" data-cycle="{{ $cycle }}" class="tp-min-item {{ $cycle === 1 && $mm === ($editEndMin ?? '00') ? 'tp-sel' : '' }}">{{ $mm }}</li>
+                                                                    @endforeach
+                                                                @endfor
                                                             </ul>
                                                         </div>
                                                     </div>
@@ -5190,9 +5948,11 @@
                         </div>
                         <button type="button" class="modal-close" @click="closeCreate()" aria-label="ปิด">×</button>
                     </div>
-                    <form method="POST" action="{{ $createAction }}" data-testid="schedule-form" x-ref="createForm">
+                    <form method="POST" action="{{ $createAction }}" x-bind:action="createMode === 'series' ? seriesCreateAction : normalCreateAction" @submit="$el.action = createMode === 'series' ? seriesCreateAction : normalCreateAction" data-testid="schedule-form" x-ref="createForm">
                         @csrf
                         <input type="hidden" name="modal_mode" value="create">
+                        <input type="hidden" name="create_mode" x-bind:value="createMode">
+                        <input type="hidden" name="repeat_weekly" value="1" x-bind:disabled="createMode !== 'series'">
                         <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
                         <div class="modal-form-body">
                             @if($errors->any())
@@ -5203,6 +5963,74 @@
                                     @foreach($alertMessages as $message)
                                         <div style="{{ ! $loop->last ? 'margin-bottom:6px;' : '' }}">{{ $message }}</div>
                                     @endforeach
+                                </div>
+                            @endif
+
+                            @if(! $isWorkspace && $courseOffering)
+                                <div
+                                    class="series-toggle-panel series-range-panel"
+                                >
+                                    <div class="series-toggle-choice series-summary" data-testid="schedule-repeat-weekly">
+                                        <div>
+                                            <div class="series-summary-title">สร้างรายการรายสัปดาห์อัตโนมัติ</div>
+                                            <div class="series-summary-copy">ระบบจะสร้างรายการวันและเวลาเดียวกันตามช่วงรายวิชา โดยเก็บรายละเอียดผู้สอน กลุ่มนักศึกษา ห้อง และหมายเหตุไว้ที่รายการแรก</div>
+                                        </div>
+                                        <div class="series-summary-note">สัปดาห์ถัดไปเติมผู้สอนและกลุ่มภายหลังได้</div>
+                                    </div>
+                                    <div class="series-fields" x-show="createMode === 'series'" x-cloak>
+                                        @php
+                                            $seriesDefaultStartDate = $academicStartDate?->toDateString() ?? ($selectedScheduleDate ?? $weekStart)->toDateString();
+                                            $seriesDefaultEndDate = $academicStartDate
+                                                ? $academicStartDate->addWeeks(max(1, (int) ($courseOffering->teaching_weeks ?? 1)))->subDay()->toDateString()
+                                                : ($weekEnd ?? $weekStart)->toDateString();
+                                        @endphp
+                                        <input id="series_start_week" name="start_week" type="hidden" value="{{ old('start_week', 1) }}" data-default-value="1" x-bind:disabled="createMode !== 'series'">
+                                        <input id="series_end_week" name="end_week" type="hidden" value="{{ old('end_week', $courseOffering->teaching_weeks ?? 1) }}" data-default-value="{{ max(1, (int) ($courseOffering->teaching_weeks ?? 1)) }}" x-bind:disabled="createMode !== 'series'">
+                                        <div>
+                                            <label class="modal-label" for="series_weekday">วันในสัปดาห์ <span class="required-mark">*</span></label>
+                                            <select id="series_weekday" name="weekday" class="modal-control" x-bind:required="createMode === 'series'" x-bind:disabled="createMode !== 'series'">
+                                                @foreach($thaiDays as $dayIso => $dayName)
+                                                    <option value="{{ $dayIso }}" @selected((string) old('weekday', $selectedScheduleDate?->dayOfWeekIso ?? $weekStart->dayOfWeekIso) === (string) $dayIso)>{{ $dayName }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <span class="modal-label series-range-placeholder" aria-hidden="true">ช่วงวันที่</span>
+                                            <label class="series-toggle-choice series-range-switch">
+                                                <input class="series-range-checkbox" type="checkbox" name="use_custom_series_range" value="1" @checked(old('use_custom_series_range')) x-on:change="if (! $event.target.checked) document.dispatchEvent(new CustomEvent('tpss:close-date-popovers'))">
+                                                <span>
+                                                    เลือกช่วงวันที่เอง
+                                                    <small>ใช้เฉพาะกรณีไม่ต้องสร้างครบทั้งช่วงรายวิชา</small>
+                                                </span>
+                                            </label>
+                                        </div>
+                                        <div class="series-range-fields">
+                                            <div>
+                                                <label class="modal-label" for="series_starts_on">เริ่มวันที่</label>
+                                                <x-thai-date-input
+                                                    name="starts_on"
+                                                    id="series_starts_on"
+                                                    class="modal-control"
+                                                    :value="old('starts_on', $seriesDefaultStartDate)"
+                                                    :required="false"
+                                                    :helper="false"
+                                                    :year-start="$scheduleDatePickerYearStart"
+                                                    :year-end="$scheduleDatePickerYearEnd" />
+                                            </div>
+                                            <div>
+                                                <label class="modal-label" for="series_ends_on">สิ้นสุดวันที่</label>
+                                                <x-thai-date-input
+                                                    name="ends_on"
+                                                    id="series_ends_on"
+                                                    class="modal-control"
+                                                    :value="old('ends_on', $seriesDefaultEndDate)"
+                                                    :required="false"
+                                                    :helper="false"
+                                                    :year-start="$scheduleDatePickerYearStart"
+                                                    :year-end="$scheduleDatePickerYearEnd" />
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             @endif
 
@@ -5226,28 +6054,32 @@
                                     <input type="hidden" name="course_offering_id" value="{{ $courseOffering->id }}" data-testid="schedule-course-offering">
                                 @endif
 
-                                <div>
+                                <div x-show="createMode !== 'series'" x-cloak>
                                     <label class="modal-label" for="start_date">วันที่เริ่ม <span class="required-mark">*</span></label>
                                     <x-thai-date-input
                                         name="start_date"
                                         id="start_date"
                                         class="modal-control"
-                                        :required="true"
+                                        :required="false"
                                         :helper="false"
                                         :year-start="$scheduleDatePickerYearStart"
                                         :year-end="$scheduleDatePickerYearEnd"
+                                        x-bind:required="createMode !== 'series'"
+                                        x-bind:disabled="createMode === 'series'"
                                         x-model="createStartDate" />
                                 </div>
-                                <div>
+                                <div x-show="createMode !== 'series'" x-cloak>
                                     <label class="modal-label" for="end_date">วันที่สิ้นสุด <span class="required-mark">*</span></label>
                                     <x-thai-date-input
                                         name="end_date"
                                         id="end_date"
                                         class="modal-control"
-                                        :required="true"
+                                        :required="false"
                                         :helper="false"
                                         :year-start="$scheduleDatePickerYearStart"
                                         :year-end="$scheduleDatePickerYearEnd"
+                                        x-bind:required="createMode !== 'series'"
+                                        x-bind:disabled="createMode === 'series'"
                                         x-model="createEndDate" />
                                 </div>
                                 <div>
@@ -5270,19 +6102,23 @@
                                                 <div class="tp-drop-columns">
                                                     <div class="tp-col tp-col-hour">
                                                         <ul>
-                                                            @for($h = 0; $h < 24; $h++)
-                                                                @php $hh = sprintf('%02d', $h); @endphp
-                                                                <li data-val="{{ $hh }}" class="tp-hour-item {{ $oldStartHour && $hh === $oldStartHour ? 'tp-sel' : '' }}">{{ $hh }}</li>
+                                                            @for($cycle = 0; $cycle < 3; $cycle++)
+                                                                @for($h = 0; $h < 24; $h++)
+                                                                    @php $hh = sprintf('%02d', $h); @endphp
+                                                                    <li data-val="{{ $hh }}" data-cycle="{{ $cycle }}" class="tp-hour-item {{ $cycle === 1 && $oldStartHour && $hh === $oldStartHour ? 'tp-sel' : '' }}">{{ $hh }}</li>
+                                                                @endfor
                                                             @endfor
                                                         </ul>
                                                     </div>
                                                     <div class="tp-col-divider">:</div>
                                                     <div class="tp-col tp-col-min">
                                                         <ul>
-                                                            @foreach(range(0,59) as $m)
-                                                                @php $mm = sprintf('%02d', $m); @endphp
-                                                                <li data-val="{{ $mm }}" class="tp-min-item {{ $oldStartMin && $mm === $oldStartMin ? 'tp-sel' : '' }}">{{ $mm }}</li>
-                                                            @endforeach
+                                                            @for($cycle = 0; $cycle < 3; $cycle++)
+                                                                @foreach(range(0,59) as $m)
+                                                                    @php $mm = sprintf('%02d', $m); @endphp
+                                                                    <li data-val="{{ $mm }}" data-cycle="{{ $cycle }}" class="tp-min-item {{ $cycle === 1 && $oldStartMin && $mm === $oldStartMin ? 'tp-sel' : '' }}">{{ $mm }}</li>
+                                                                @endforeach
+                                                            @endfor
                                                         </ul>
                                                     </div>
                                                 </div>
@@ -5312,19 +6148,23 @@
                                                 <div class="tp-drop-columns">
                                                     <div class="tp-col tp-col-hour">
                                                         <ul>
-                                                            @for($h = 0; $h < 24; $h++)
-                                                                @php $hh = sprintf('%02d', $h); @endphp
-                                                                <li data-val="{{ $hh }}" class="tp-hour-item {{ $oldEndHour && $hh === $oldEndHour ? 'tp-sel' : '' }}">{{ $hh }}</li>
+                                                            @for($cycle = 0; $cycle < 3; $cycle++)
+                                                                @for($h = 0; $h < 24; $h++)
+                                                                    @php $hh = sprintf('%02d', $h); @endphp
+                                                                    <li data-val="{{ $hh }}" data-cycle="{{ $cycle }}" class="tp-hour-item {{ $cycle === 1 && $oldEndHour && $hh === $oldEndHour ? 'tp-sel' : '' }}">{{ $hh }}</li>
+                                                                @endfor
                                                             @endfor
                                                         </ul>
                                                     </div>
                                                     <div class="tp-col-divider">:</div>
                                                     <div class="tp-col tp-col-min">
                                                         <ul>
-                                                            @foreach(range(0,59) as $m)
-                                                                @php $mm = sprintf('%02d', $m); @endphp
-                                                                <li data-val="{{ $mm }}" class="tp-min-item {{ $oldEndMin && $mm === $oldEndMin ? 'tp-sel' : '' }}">{{ $mm }}</li>
-                                                            @endforeach
+                                                            @for($cycle = 0; $cycle < 3; $cycle++)
+                                                                @foreach(range(0,59) as $m)
+                                                                    @php $mm = sprintf('%02d', $m); @endphp
+                                                                    <li data-val="{{ $mm }}" data-cycle="{{ $cycle }}" class="tp-min-item {{ $cycle === 1 && $oldEndMin && $mm === $oldEndMin ? 'tp-sel' : '' }}">{{ $mm }}</li>
+                                                                @endforeach
+                                                            @endfor
                                                         </ul>
                                                     </div>
                                                 </div>
@@ -5374,6 +6214,7 @@
                                 <div x-show="selectedOfferingId === '{{ $offeringOption->id }}'" x-cloak>
                                     <div class="modal-section">
                                         <div class="modal-section-title">ผู้สอน <span class="required-mark">*</span></div>
+                                        <div class="optional-note" x-show="createMode === 'series'" x-cloak style="margin-bottom:8px;">ถ้าเลือกไว้ ระบบจะใส่ให้เฉพาะการ์ดสัปดาห์แรก สัปดาห์ถัดไปเติมหรือคัดลอกภายหลังได้</div>
                                         @php
                                             $createInstructorOptions = $eligibleScheduleInstructors($offeringOption);
                                             $createInstructorSearchItems = $createInstructorOptions
@@ -5409,6 +6250,7 @@
 
                                     <div class="modal-section">
                                         <div class="modal-section-title">กลุ่มนักศึกษา <span class="required-mark">*</span></div>
+                                        <div class="optional-note" x-show="createMode === 'series'" x-cloak style="margin-bottom:8px;">ถ้าเลือกไว้ ระบบจะใส่ให้เฉพาะการ์ดสัปดาห์แรก สัปดาห์ถัดไปเติมหรือคัดลอกจากการ์ดที่ครบแล้วได้</div>
                                         @php
                                             $createGroupSearchItems = $offeringOption->studentGroups
                                                 ->map(fn ($group) => mb_strtolower($group->group_code . ' ' . $group->student_count . ' คน', 'UTF-8'))
@@ -5533,6 +6375,56 @@ document.addEventListener('DOMContentLoaded', function () {
     // ── Custom time-picker engine ───────────────────────────────────────────
     var _openDrop = null; // currently open .tp-drop
 
+    function centerTimeItem(selected, behavior) {
+        if (!selected) return;
+        var col = selected.closest('.tp-col');
+        if (!col) return;
+
+        var targetTop = selected.offsetTop - ((col.clientHeight - selected.offsetHeight) / 2);
+        col.scrollTo({
+            top: Math.max(0, targetTop),
+            behavior: behavior || 'auto'
+        });
+    }
+
+    function timePartSelector(part) {
+        return part === 'hour' ? '.tp-hour-item' : '.tp-min-item';
+    }
+
+    function findCanonicalTimeItem(drop, part, value) {
+        var selector = timePartSelector(part) + '[data-val="' + value + '"][data-cycle="1"]';
+        return drop.querySelector(selector) || drop.querySelector(timePartSelector(part) + '[data-val="' + value + '"]');
+    }
+
+    function bindCyclicTimeColumn(col) {
+        if (!col || col._tpCycleBound) return;
+        col._tpCycleBound = true;
+
+        col.addEventListener('scroll', function() {
+            if (col._tpCycling) return;
+
+            var first = col.querySelector('li');
+            if (!first) return;
+
+            var items = col.querySelectorAll('li');
+            var uniqueCount = col.classList.contains('tp-col-hour') ? 24 : 60;
+            if (items.length < uniqueCount * 3) return;
+
+            var segmentHeight = first.offsetHeight * uniqueCount;
+            if (!segmentHeight) return;
+
+            if (col.scrollTop < segmentHeight * 0.25) {
+                col._tpCycling = true;
+                col.scrollTop += segmentHeight;
+                requestAnimationFrame(function() { col._tpCycling = false; });
+            } else if (col.scrollTop > segmentHeight * 1.75) {
+                col._tpCycling = true;
+                col.scrollTop -= segmentHeight;
+                requestAnimationFrame(function() { col._tpCycling = false; });
+            }
+        }, { passive: true });
+    }
+
     function openDrop(drop, picker) {
         if (_openDrop && _openDrop !== drop) closeDrop(_openDrop);
         _openDrop = drop;
@@ -5546,19 +6438,20 @@ document.addEventListener('DOMContentLoaded', function () {
         drop.style.top  = (rect.bottom + 2) + 'px';
         drop.style.minWidth = Math.max(rect.width, 64) + 'px';
         drop.classList.add('tp-open');
+        drop.querySelectorAll('.tp-col').forEach(bindCyclicTimeColumn);
 
-        // scroll selected hour and minute to the top of their columns
-        var selHour = drop.querySelector('.tp-hour-item.tp-sel');
-        if (selHour) {
-            var col = selHour.closest('.tp-col');
-            if (col) col.scrollTop = selHour.offsetTop;
-        }
+        // align selected hour and minute with the center guide frame.
+        // Empty controls still open in the middle cycle to avoid the top padding gap.
+        var fallbackHour = picker.id && picker.id.indexOf('end') !== -1 ? '09' : '08';
+        var selHour = drop.querySelector('.tp-hour-item.tp-sel[data-cycle="1"]')
+            || drop.querySelector('.tp-hour-item.tp-sel')
+            || findCanonicalTimeItem(drop, 'hour', fallbackHour);
+        centerTimeItem(selHour);
 
-        var selMin = drop.querySelector('.tp-min-item.tp-sel');
-        if (selMin) {
-            var col = selMin.closest('.tp-col');
-            if (col) col.scrollTop = selMin.offsetTop;
-        }
+        var selMin = drop.querySelector('.tp-min-item.tp-sel[data-cycle="1"]')
+            || drop.querySelector('.tp-min-item.tp-sel')
+            || findCanonicalTimeItem(drop, 'min', '00');
+        centerTimeItem(selMin);
 
         picker.classList.add('tp-active');
     }
@@ -5600,7 +6493,9 @@ document.addEventListener('DOMContentLoaded', function () {
             picker.querySelector('.tp-val-min').textContent = val;
             drop.querySelectorAll('.tp-min-item').forEach(function(el) { el.classList.remove('tp-sel'); });
         }
-        li.classList.add('tp-sel');
+        var selected = findCanonicalTimeItem(drop, part, val) || li;
+        selected.classList.add('tp-sel');
+        centerTimeItem(selected, 'smooth');
         hidden.value = currentHour && currentMin ? currentHour + ':' + currentMin : '';
 
         hidden.dispatchEvent(new Event('change', { bubbles: true }));
@@ -5631,10 +6526,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     picker.querySelector('.tp-val-min').textContent = m;
 
                     drop.querySelectorAll('.tp-hour-item').forEach(function(li) {
-                        li.classList.toggle('tp-sel', li.dataset.val === h);
+                        li.classList.toggle('tp-sel', li.dataset.val === h && li.dataset.cycle === '1');
                     });
                     drop.querySelectorAll('.tp-min-item').forEach(function(li) {
-                        li.classList.toggle('tp-sel', li.dataset.val === m);
+                        li.classList.toggle('tp-sel', li.dataset.val === m && li.dataset.cycle === '1');
                     });
                 } else {
                     picker.dataset.tpHour = '';
