@@ -69,6 +69,7 @@ class CourseOfferingController extends Controller
             'availableYears'  => $availableYears,
             'selectedYearId'  => $defaultYearId,
             'summary'         => $summary,
+            'coordinatorEmptyStateKey' => \App\Support\CoordinatorEmptyState::forCoordinator((int) $coordinatorId),
         ]);
     }
 

@@ -1807,6 +1807,7 @@
             display: none;
         }
         .schedule-conflict-pill {
+            position: relative;
             display: inline-flex;
             align-items: center;
             gap: 5px;
@@ -1820,11 +1821,122 @@
             font-weight: 850;
             line-height: 1.2;
             white-space: nowrap;
+            cursor: help;
         }
-        .schedule-conflict-pill svg {
+        .schedule-conflict-pill > svg {
             width: 12px;
             height: 12px;
             flex: 0 0 auto;
+        }
+
+        /* ── Styled hover tooltip (replaces native title attr) ──────────
+           position: fixed → escape ทุก stacking context และ overflow:hidden ของ card
+           ตำแหน่งจะถูก set ผ่าน JS (transform: translate) ตอน hover/focus    */
+        .conflict-tt {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 99999;
+            display: none;
+            min-width: 280px;
+            max-width: 380px;
+            padding: 0;
+            border: 1px solid color-mix(in oklch, var(--status-conflict-border) 50%, oklch(85% 0.01 240));
+            border-radius: 10px;
+            background: var(--surface, white);
+            box-shadow: 0 8px 24px oklch(0% 0 0 / 0.16), 0 2px 6px oklch(0% 0 0 / 0.08);
+            white-space: normal;
+            cursor: default;
+            pointer-events: none;
+            transform: translate(0, 0);
+        }
+        .schedule-conflict-pill[data-tt-open="true"] .conflict-tt {
+            display: block;
+        }
+        .conflict-tt-head {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 12px;
+            border-bottom: 1px solid oklch(92% 0.01 240);
+            background: color-mix(in oklch, var(--status-conflict-bg) 55%, white);
+            color: var(--status-conflict-fg);
+            font-size: 11.5px;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+        }
+        .conflict-tt-head svg { flex-shrink: 0; }
+        .conflict-tt-head strong { font-weight: 950; letter-spacing: 0; }
+        .conflict-tt-body {
+            display: block;
+            padding: 10px 12px;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+        .conflict-tt-group {
+            display: block;
+            padding-bottom: 8px;
+            margin-bottom: 8px;
+            border-bottom: 1px dashed oklch(92% 0.01 240);
+        }
+        .conflict-tt-group:last-child {
+            border-bottom: 0;
+            padding-bottom: 0;
+            margin-bottom: 0;
+        }
+        .conflict-tt-target {
+            display: block;
+            font-size: 11.5px;
+            line-height: 1.4;
+            color: oklch(28% 0.04 240);
+        }
+        .conflict-tt-target-prefix {
+            color: oklch(50% 0.02 240);
+            font-weight: 700;
+            margin-right: 4px;
+        }
+        .conflict-tt-target strong {
+            color: var(--brand-navy, oklch(28% 0.08 245));
+            font-weight: 950;
+        }
+        .conflict-tt-reasons {
+            display: grid;
+            gap: 4px;
+            margin-top: 6px;
+        }
+        .conflict-tt-reason {
+            display: grid;
+            grid-template-columns: 14px auto 1fr;
+            align-items: baseline;
+            gap: 6px;
+            font-size: 11.5px;
+            line-height: 1.4;
+        }
+        .conflict-tt-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transform: translateY(1px);
+        }
+        .conflict-tt-reason--instructor .conflict-tt-icon { color: oklch(48% 0.14 268); }
+        .conflict-tt-reason--room .conflict-tt-icon       { color: oklch(52% 0.16 28); }
+        .conflict-tt-reason--group .conflict-tt-icon      { color: oklch(48% 0.14 168); }
+        .conflict-tt-reason-label {
+            color: oklch(45% 0.02 240);
+            font-weight: 800;
+            white-space: nowrap;
+        }
+        .conflict-tt-reason-value {
+            color: oklch(20% 0.02 240);
+            font-weight: 700;
+            min-width: 0;
+            word-break: break-word;
+        }
+        .conflict-tt-reason-value strong { font-weight: 900; }
+        .conflict-tt-reason-value--muted {
+            color: oklch(55% 0.02 240);
+            font-style: italic;
+            font-weight: 700;
         }
         .schedule-conflict-focus {
             border-color: color-mix(in oklch, var(--status-conflict) 58%, var(--schedule-border-strong)) !important;
@@ -3865,10 +3977,7 @@
                                                         @endif
                                                         @if($asConflicts->isNotEmpty())
                                                             <div style="margin-top:6px;">
-                                                                <span class="schedule-conflict-pill" title="{{ $asConflicts->pluck('message')->implode(' / ') }}">
-                                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                                                                    ชน {{ $asConflicts->count() }} รายการ
-                                                                </span>
+                                                                @include('course_head.schedules._conflict_pill', ['conflicts' => $asConflicts])
                                                             </div>
                                                         @endif
                                                     </td>
@@ -3951,7 +4060,7 @@
                                                         <span class="month-group-summary">{{ $schedule->studentGroups->count() }} กลุ่ม</span>
                                                     @endif
                                                     @if($itemConflicts->isNotEmpty())
-                                                        <span class="schedule-conflict-pill" title="{{ $itemConflicts->pluck('message')->implode(' / ') }}">ชน {{ $itemConflicts->count() }}</span>
+                                                        @include('course_head.schedules._conflict_pill', ['conflicts' => $itemConflicts])
                                                     @endif
                                                 </div>
                                             </div>
@@ -4027,7 +4136,7 @@
                                             <div class="grid-activity-top">
                                                 <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }};">{{ $activity?->name ?? 'กิจกรรม' }}</span>
                                                 @if($itemConflicts->isNotEmpty())
-                                                    <span class="schedule-conflict-pill" title="{{ $itemConflicts->pluck('message')->implode(' / ') }}">ชน {{ $itemConflicts->count() }}</span>
+                                                    @include('course_head.schedules._conflict_pill', ['conflicts' => $itemConflicts])
                                                 @endif
                                             </div>
                                             <div class="grid-activity-title">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
@@ -4142,7 +4251,7 @@
                                                 >
                                                     @if($itemConflicts->isNotEmpty())
                                                         <div class="grid-activity-top">
-                                                            <span class="schedule-conflict-pill" title="{{ $itemConflicts->pluck('message')->implode(' / ') }}">ชน {{ $itemConflicts->count() }}</span>
+                                                            @include('course_head.schedules._conflict_pill', ['conflicts' => $itemConflicts])
                                                         </div>
                                                     @endif
                                                     <div class="grid-activity-title">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
@@ -4192,7 +4301,24 @@
 
         @if($isWorkspace)
             @if($availableOfferings->isEmpty())
-                <div class="schedule-empty" data-testid="schedule-no-offerings-empty">ยังไม่มีรายวิชาที่ต้องจัดตาราง</div>
+                @php
+                    $emptyKey = $coordinatorEmptyStateKey ?? 'no_offerings';
+                    $emptyMessages = [
+                        'preparation' => [
+                            'title' => 'อยู่ในสถานะเตรียมข้อมูล',
+                            'sub' => 'ยังไม่ถึงช่วงเวลาการจัดตารางเรียน — ระบบจะเปิดให้จัดตารางเมื่อผู้ดูแลตั้งค่าปีการศึกษาเป็นช่วงจัดตาราง',
+                        ],
+                        'no_offerings' => [
+                            'title' => 'ไม่พบรายวิชาที่ต้องจัดตารางสอนในระบบ',
+                            'sub' => 'ช่วงจัดตารางเปิดอยู่ แต่คุณยังไม่ได้รับมอบหมายเป็นหัวหน้าวิชาในรอบนี้ — ติดต่อผู้ดูแลระบบหากต้องการรับผิดชอบรายวิชา',
+                        ],
+                    ];
+                    $msg = $emptyMessages[$emptyKey] ?? $emptyMessages['no_offerings'];
+                @endphp
+                <div class="schedule-empty" data-testid="schedule-no-offerings-empty" data-empty-state="{{ $emptyKey }}" style="padding:32px 20px;text-align:center;">
+                    <div style="font-weight:950;font-size:16px;color:var(--brand-navy);margin-bottom:6px;">{{ $msg['title'] }}</div>
+                    <div style="font-weight:700;font-size:13px;color:var(--fg-2);line-height:1.55;max-width:560px;margin:0 auto;">{{ $msg['sub'] }}</div>
+                </div>
             @else
             <div x-show="view === 'list'" x-cloak data-testid="schedule-list-view">
                 @php
@@ -4270,7 +4396,7 @@
                                                     <span class="sched-muted" style="font-size: 10.5px;">· {{ $offeringCourse?->name_th ?? $offeringCourse?->name_en }}</span>
                                                 @endif
                                                 @if($itemConflicts->isNotEmpty())
-                                                    <span class="schedule-conflict-pill" title="{{ $itemConflicts->pluck('message')->implode(' / ') }}">ชน {{ $itemConflicts->count() }}</span>
+                                                    @include('course_head.schedules._conflict_pill', ['conflicts' => $itemConflicts])
                                                 @endif
                                             </div>
                                         </td>
@@ -4351,7 +4477,7 @@
                                                     <span class="month-group-summary">{{ $schedule->studentGroups->count() }} กลุ่ม</span>
                                                 @endif
                                                 @if($itemConflicts->isNotEmpty())
-                                                    <span class="schedule-conflict-pill" title="{{ $itemConflicts->pluck('message')->implode(' / ') }}">ชน {{ $itemConflicts->count() }}</span>
+                                                    @include('course_head.schedules._conflict_pill', ['conflicts' => $itemConflicts])
                                                 @endif
                                                 <span class="badge {{ $status['class'] }}">{{ $status['label'] }}</span>
                                             </div>
@@ -4432,7 +4558,7 @@
                                             @endif
                                             <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }};">{{ $activity?->name ?? 'กิจกรรม' }}</span>
                                             @if($itemConflicts->isNotEmpty())
-                                                <span class="schedule-conflict-pill" title="{{ $itemConflicts->pluck('message')->implode(' / ') }}">ชน {{ $itemConflicts->count() }}</span>
+                                                @include('course_head.schedules._conflict_pill', ['conflicts' => $itemConflicts])
                                             @endif
                                         </div>
                                         <div class="grid-activity-title">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
@@ -4572,7 +4698,7 @@
                                                         <span class="grid-course">{{ $offeringCourse->course_code }}</span>
                                                     @endif
                                                     @if($itemConflicts->isNotEmpty())
-                                                        <span class="schedule-conflict-pill" title="{{ $itemConflicts->pluck('message')->implode(' / ') }}">ชน {{ $itemConflicts->count() }}</span>
+                                                        @include('course_head.schedules._conflict_pill', ['conflicts' => $itemConflicts])
                                                     @endif
                                                 </div>
                                                 <div class="grid-activity-title">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
@@ -5318,6 +5444,91 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+
+    // ── Conflict pill tooltip: PORTAL pattern ───────────────────────────────
+    // เหตุผล: card parent มี transform บน :hover → สร้าง containing block ใหม่
+    // ทำให้ position:fixed ของ tooltip ติดอยู่ใน card อีก
+    // วิธีแก้: ย้าย tooltip content ไปอยู่ใต้ <body> (escape ทุก ancestor)
+    (function () {
+        var portal = document.createElement('div');
+        portal.id = 'conflict-tt-portal';
+        portal.style.cssText = 'position:fixed;top:0;left:0;z-index:99999;display:none;';
+        portal.setAttribute('role', 'tooltip');
+        document.body.appendChild(portal);
+
+        var openPill = null;
+
+        function place(pill) {
+            // Clone content from this pill's hidden tooltip into the portal
+            var source = pill.querySelector('.conflict-tt');
+            if (!source) return;
+            portal.innerHTML = source.innerHTML;
+            portal.className = 'conflict-tt conflict-tt--portal';
+
+            // Show invisibly to measure
+            portal.style.visibility = 'hidden';
+            portal.style.display = 'block';
+            var ttRect = portal.getBoundingClientRect();
+            var pillRect = pill.getBoundingClientRect();
+            var vw = document.documentElement.clientWidth;  // exclude scrollbar
+            var vh = document.documentElement.clientHeight;
+            var margin = 16;  // breathing room from viewport edges
+
+            // Vertical: prefer below; flip above if not enough space
+            var top = pillRect.bottom + 6;
+            if (top + ttRect.height > vh - margin) {
+                top = Math.max(margin, pillRect.top - ttRect.height - 6);
+            }
+
+            // Horizontal: prefer side of pill with more space
+            // - pill in left half → align tooltip's LEFT with pill's left
+            // - pill in right half → align tooltip's RIGHT with pill's right
+            var pillCenter = pillRect.left + pillRect.width / 2;
+            var left = pillCenter < vw / 2
+                ? pillRect.left
+                : pillRect.right - ttRect.width;
+
+            // Clamp inside viewport
+            left = Math.max(margin, Math.min(left, vw - ttRect.width - margin));
+
+            portal.style.top = Math.round(top) + 'px';
+            portal.style.left = Math.round(left) + 'px';
+            portal.style.visibility = '';
+        }
+
+        function close() {
+            portal.style.display = 'none';
+            portal.innerHTML = '';
+            openPill = null;
+        }
+
+        function open(pill) {
+            openPill = pill;
+            place(pill);
+        }
+
+        document.addEventListener('mouseover', function (e) {
+            var pill = e.target.closest('[data-conflict-pill]');
+            if (pill && pill !== openPill) open(pill);
+        });
+        document.addEventListener('mouseout', function (e) {
+            var pill = e.target.closest('[data-conflict-pill]');
+            if (!pill || pill !== openPill) return;
+            var related = e.relatedTarget;
+            if (related && pill.contains(related)) return;
+            close();
+        });
+        document.addEventListener('focusin', function (e) {
+            var pill = e.target.closest('[data-conflict-pill]');
+            if (pill) open(pill);
+        });
+        document.addEventListener('focusout', function (e) {
+            var pill = e.target.closest('[data-conflict-pill]');
+            if (pill === openPill) close();
+        });
+        window.addEventListener('scroll', function () { if (openPill) place(openPill); }, true);
+        window.addEventListener('resize', function () { if (openPill) place(openPill); });
+    })();
 
     // ── Custom time-picker engine ───────────────────────────────────────────
     var _openDrop = null; // currently open .tp-drop
