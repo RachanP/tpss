@@ -419,6 +419,16 @@ class ScheduleConflictReadRepository
                 ->mapWithKeys(fn ($item) => [$item->conflict_type => (int) $item->total])
                 ->all());
 
+        $distinctConflictCounts = $this->scopedResultQuery($runId, $userId, $academicYearId)
+            ->whereIn('schedule_conflict_results.schedule_id', $scheduleIds->all())
+            ->select([
+                'schedule_conflict_results.schedule_id',
+                DB::raw('COUNT(DISTINCT schedule_conflict_results.conflicting_schedule_id) as distinct_total'),
+            ])
+            ->groupBy('schedule_conflict_results.schedule_id')
+            ->pluck('distinct_total', 'schedule_id')
+            ->map(fn ($count) => (int) $count);
+
         $previewIds = $this->previewResultIds($runId, $userId, $academicYearId, $scheduleIds->all());
         $previewResults = $previewIds->isEmpty()
             ? collect()
@@ -434,17 +444,22 @@ class ScheduleConflictReadRepository
                 ->map(fn (ScheduleConflictResult $result) => $this->displayConflict($result))
                 ->values());
 
-        return $rows->map(function ($row) use ($schedules, $typeCounts, $previews) {
+        return $rows->map(function ($row) use ($schedules, $typeCounts, $previews, $distinctConflictCounts) {
             $scheduleId = (int) $row->schedule_id;
             $conflictCount = (int) $row->conflict_count;
+            $distinctCount = (int) ($distinctConflictCounts->get($scheduleId) ?? 0);
+            $previewItems = $previews->get($scheduleId, collect());
+            $previewDistinct = $previewItems->pluck('schedule_id')->unique()->count();
 
             return [
                 'schedule' => $schedules->get($scheduleId),
                 'schedule_id' => $scheduleId,
                 'conflict_count' => $conflictCount,
+                'distinct_conflict_count' => $distinctCount,
+                'preview_distinct_count' => $previewDistinct,
                 'type_counts' => $typeCounts->get($scheduleId, []),
-                'preview_conflicts' => $previews->get($scheduleId, collect()),
-                'has_more' => $conflictCount > self::PREVIEW_SIZE,
+                'preview_conflicts' => $previewItems,
+                'has_more' => $distinctCount > $previewDistinct,
             ];
         })->filter(fn (array $summary) => $summary['schedule'])->values();
     }

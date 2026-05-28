@@ -690,8 +690,15 @@
                                 $conflicts = $summary
                                     ? collect($summary['preview_conflicts'] ?? [])
                                     : $conflictMap->get($schedule->id, collect());
-                                $hasMoreConflicts = (bool) ($summary['has_more'] ?? false);
-                                $conflictCount = (int) ($summary['conflict_count'] ?? $conflicts->count());
+                                $distinctCount = (int) (
+                                    $summary['distinct_conflict_count']
+                                    ?? $conflicts->pluck('schedule_id')->unique()->count()
+                                );
+                                $previewDistinctCount = (int) (
+                                    $summary['preview_distinct_count']
+                                    ?? $conflicts->pluck('schedule_id')->unique()->count()
+                                );
+                                $hasMoreConflicts = (bool) ($summary['has_more'] ?? ($distinctCount > $previewDistinctCount));
                                 $detailUrl = $summary
                                     ? route('schedule_conflicts.details', [
                                         $schedule,
@@ -729,10 +736,10 @@
                                     @if($hasMoreConflicts)
                                         <div class="conflict-detail-actions">
                                             <button type="button" class="conflict-detail-toggle" data-conflict-detail-toggle>
-                                                ดูทั้งหมด {{ $conflictCount }} รายการ
+                                                ดูทั้งหมด {{ $distinctCount }} รายการ
                                             </button>
                                             <span class="conflict-detail-note" data-conflict-detail-note>
-                                                แสดงตัวอย่าง 3 รายการ
+                                                แสดงตัวอย่าง {{ $previewDistinctCount }} จาก {{ $distinctCount }} รายการ
                                             </span>
                                         </div>
                                     @endif
