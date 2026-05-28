@@ -3391,9 +3391,9 @@
                 </div>
             </label>
             <div class="period-toggle" aria-label="ช่วงเวลาที่แสดง" x-show="view === 'grid'" x-cloak>
-                <button type="button" data-period-url="{{ $dayViewUrl }}" @click="changeGridPeriod('day')" class="{{ ($schedulePeriod ?? 'week') === 'day' ? 'is-active' : '' }}">วัน</button>
-                <button type="button" data-period-url="{{ $weekViewUrl }}" @click="changeGridPeriod('week')" class="{{ ($schedulePeriod ?? 'week') === 'week' ? 'is-active' : '' }}">สัปดาห์</button>
-                <button type="button" data-period-url="{{ $monthViewUrl }}" @click="changeGridPeriod('month')" class="{{ ($schedulePeriod ?? 'week') === 'month' ? 'is-active' : '' }}">เดือน</button>
+                <a href="{{ $dayViewUrl }}" class="{{ ($schedulePeriod ?? 'week') === 'day' ? 'is-active' : '' }}">วัน</a>
+                <a href="{{ $weekViewUrl }}" class="{{ ($schedulePeriod ?? 'week') === 'week' ? 'is-active' : '' }}">สัปดาห์</a>
+                <a href="{{ $monthViewUrl }}" class="{{ ($schedulePeriod ?? 'week') === 'month' ? 'is-active' : '' }}">เดือน</a>
             </div>
             <button
                 type="button"
@@ -3521,9 +3521,9 @@
                             </a>
                         </div>
                         <div class="period-toggle" aria-label="ช่วงเวลาที่แสดง" x-show="view === 'grid'" x-cloak>
-                            <button type="button" data-period-url="{{ $dayViewUrl }}" @click="changeGridPeriod('day')" class="{{ ($schedulePeriod ?? 'week') === 'day' ? 'is-active' : '' }}">วัน</button>
-                            <button type="button" data-period-url="{{ $weekViewUrl }}" @click="changeGridPeriod('week')" class="{{ ($schedulePeriod ?? 'week') === 'week' ? 'is-active' : '' }}">สัปดาห์</button>
-                            <button type="button" data-period-url="{{ $monthViewUrl }}" @click="changeGridPeriod('month')" class="{{ ($schedulePeriod ?? 'week') === 'month' ? 'is-active' : '' }}">เดือน</button>
+                            <a href="{{ $dayViewUrl }}" class="{{ ($schedulePeriod ?? 'week') === 'day' ? 'is-active' : '' }}">วัน</a>
+                            <a href="{{ $weekViewUrl }}" class="{{ ($schedulePeriod ?? 'week') === 'week' ? 'is-active' : '' }}">สัปดาห์</a>
+                            <a href="{{ $monthViewUrl }}" class="{{ ($schedulePeriod ?? 'week') === 'month' ? 'is-active' : '' }}">เดือน</a>
                         </div>
                         <button
                             type="button"
