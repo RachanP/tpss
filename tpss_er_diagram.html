@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>TPSS — ER Diagram</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f8fa;
+    --ink: #1a1f2e;
+    --ink-muted: #6b7280;
+    --border: #e2e6ee;
+    --card: #ffffff;
+    --hl: #fef3c7;
+    --hl-ring: #f59e0b;
+    --g1: #3b82f6; --g1-bg: #eff6ff; --g1-card: #dbeafe;
+    --g2: #10b981; --g2-bg: #ecfdf5; --g2-card: #d1fae5;
+    --g3: #f59e0b; --g3-bg: #fffbeb; --g3-card: #fef3c7;
+    --g4: #8b5cf6; --g4-bg: #f5f3ff; --g4-card: #ede9fe;
+    --g5: #6b7280; --g5-bg: #f3f4f6; --g5-card: #e5e7eb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'IBM Plex Sans Thai', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  header {
+    position: sticky; top: 0; z-index: 100;
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex; align-items: center; gap: 16px;
+    flex-wrap: wrap;
+  }
+  h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  .subtitle { color: var(--ink-muted); font-size: 12px; }
+  .search {
+    margin-left: auto;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    width: 280px;
+    font-family: inherit;
+  }
+  .legend { display: flex; gap: 12px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ink-muted); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+  main { padding: 24px; position: relative; }
+  #fk-svg {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 5;
+  }
+  #fk-svg path.fk-line {
+    fill: none;
+    stroke-width: 1.4;
+    opacity: 0.5;
+    pointer-events: stroke;
+    cursor: pointer;
+    transition: opacity .25s, stroke-width .25s;
+  }
+  #fk-svg path.fk-line:hover,
+  #fk-svg path.fk-line.active {
+    opacity: 1;
+    stroke-width: 2.8;
+    stroke-dasharray: 8 4;
+    animation: flow 0.8s linear infinite;
+  }
+  #fk-svg path.fk-line.dimmed { opacity: 0.07; }
+  @keyframes flow {
+    to { stroke-dashoffset: -12; }
+  }
+  #fk-svg polygon.arrow {
+    transition: opacity .25s;
+    opacity: 0.75;
+  }
+  #fk-svg polygon.arrow.active { opacity: 1; }
+  #fk-svg polygon.arrow.dimmed { opacity: 0.07; }
+  /* Tooltip popup */
+  #fk-tooltip {
+    position: fixed;
+    z-index: 1000;
+    background: #1a1f2e;
+    color: #fff;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.5;
+    box-shadow: 0 8px 24px rgba(0,0,0,.18);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .15s;
+    max-width: 320px;
+  }
+  #fk-tooltip.visible { opacity: 1; }
+  #fk-tooltip .tt-title { font-weight: 600; margin-bottom: 4px; }
+  #fk-tooltip .tt-flow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: #fcd34d;
+    margin-top: 4px;
+  }
+  #fk-tooltip .tt-card {
+    display: inline-block;
+    background: rgba(255,255,255,0.15);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    margin-top: 4px;
+  }
+  #fk-svg circle {
+    transition: opacity .25s;
+    opacity: 0.65;
+  }
+  #fk-svg circle.active { opacity: 1; }
+  #fk-svg circle.dimmed { opacity: 0.07; }
+  #fk-svg .card-label {
+    transition: opacity .25s;
+    opacity: 0.7;
+  }
+  #fk-svg .card-label.active { opacity: 1; }
+  #fk-svg .card-label.dimmed { opacity: 0.07; }
+  #fk-svg .card-label text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    text-anchor: middle;
+    dominant-baseline: central;
+    fill: #fff;
+    pointer-events: none;
+  }
+  #fk-svg .card-label rect {
+    rx: 3;
+  }
+  .table { position: relative; z-index: 10; background: var(--card); }
+  .toggle-lines {
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: #fff;
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--ink);
+  }
+  .toggle-lines:hover { background: var(--bg); }
+  .toggle-lines.off { opacity: 0.5; }
+  body.lines-off #fk-svg { display: none; }
+  .group {
+    margin-bottom: 32px;
+    padding: 16px;
+    position: relative;
+  }
+  .group-bg {
+    position: absolute;
+    inset: 0;
+    border-radius: 8px;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .group.g1 .group-bg { background: var(--g1-bg); border-left: 4px solid var(--g1); }
+  .group.g2 .group-bg { background: var(--g2-bg); border-left: 4px solid var(--g2); }
+  .group.g3 .group-bg { background: var(--g3-bg); border-left: 4px solid var(--g3); }
+  .group.g4 .group-bg { background: var(--g4-bg); border-left: 4px solid var(--g4); }
+  .group.g5 .group-bg { background: var(--g5-bg); border-left: 4px solid var(--g5); }
+  .group > .group-title,
+  .group > .grid { position: relative; z-index: 10; }
+  .group-title {
+    margin: 0 0 12px;
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .group-title .count {
+    font-size: 11px;
+    color: var(--ink-muted);
+    font-weight: 400;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 70px 90px;
+    padding: 20px 40px;
+  }
+  .table {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    transition: box-shadow .15s, transform .15s;
+    scroll-margin-top: 80px;
+  }
+  .table:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+  .table.highlighted { box-shadow: 0 0 0 3px var(--hl-ring); transform: translateY(-2px); }
+  .table.dimmed { opacity: 0.18; filter: grayscale(0.6); }
+  .table.focused { box-shadow: 0 0 0 2px var(--ink); }
+  .table.related { box-shadow: 0 0 0 2px currentColor; }
+  .g1 .table.related { color: var(--g1); }
+  .g2 .table.related { color: var(--g2); }
+  .g3 .table.related { color: var(--g3); }
+  .g4 .table.related { color: var(--g4); }
+  .g5 .table.related { color: var(--g5); }
+  .table-name {
+    padding: 8px 12px;
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .g1 .table-name { background: var(--g1-card); }
+  .g2 .table-name { background: var(--g2-card); }
+  .g3 .table-name { background: var(--g3-card); }
+  .g4 .table-name { background: var(--g4-card); }
+  .g5 .table-name { background: var(--g5-card); }
+  .pivot-badge {
+    font-size: 9px;
+    background: #fff;
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: var(--ink-muted);
+    font-family: inherit;
+    font-weight: 400;
+  }
+  .columns { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+  .col {
+    display: flex;
+    padding: 4px 12px;
+    gap: 8px;
+    border-bottom: 1px solid #f3f4f6;
+    align-items: center;
+  }
+  .col:last-child { border-bottom: none; }
+  .col-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .col-type { color: var(--ink-muted); font-size: 10px; }
+  .badge {
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .pk { background: #fef3c7; color: #92400e; }
+  .fk { background: #dbeafe; color: #1e40af; cursor: pointer; }
+  .fk:hover { background: #93c5fd; }
+  .uq { background: #e0e7ff; color: #3730a3; }
+  .nn { color: var(--ink-muted); font-size: 9px; }
+  footer {
+    text-align: center;
+    padding: 24px;
+    color: var(--ink-muted);
+    font-size: 11px;
+    border-top: 1px solid var(--border);
+    background: #fff;
+  }
+  .stats {
+    display: flex; gap: 16px; font-size: 12px; color: var(--ink-muted);
+  }
+  .stats strong { color: var(--ink); font-weight: 600; }
+  @media print {
+    header { position: static; }
+    .search { display: none; }
+    .table { break-inside: avoid; }
+    .group { break-inside: avoid-page; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>TPSS — Database Schema</h1>
+    <div class="subtitle">Teaching & Practicum Scheduling System · คณะพยาบาลศาสตร์ ม.มหิดล</div>
+  </div>
+  <div class="stats">
+    <span><strong>36</strong> tables</span>
+    <span><strong>52</strong> foreign keys</span>
+    <span><strong>5</strong> domains</span>
+    <span style="display:inline-flex;align-items:center;gap:4px;">
+      <span style="background:#3b82f6;color:#fff;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;padding:1px 4px;border-radius:3px;">N</span>:
+      <span style="background:#3b82f6;color:#fff;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;">1</span>
+      <span style="color:var(--ink-muted);font-size:11px;">many-to-one</span>
+    </span>
+  </div>
+  <button class="toggle-lines" id="toggle-lines" title="ซ่อน/แสดงเส้นโยง FK">🔗 เส้นโยง</button>
+  <input type="text" class="search" id="search" placeholder="🔍 ค้นหา table หรือ column...">
+</header>
+
+<main id="main">
+<svg id="fk-svg"></svg>
+<div id="fk-tooltip"></div>
+
+<div class="group g1">
+  <h2 class="group-title">Identity & RBAC <span class="count">· ผู้ใช้ บทบาท สิทธิ์</span></h2>
+  <div class="grid">
+
+    <div class="table" id="t-users" data-name="users">
+      <div class="table-name">users</div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">id</span><span class="col-type">bigint</span></div>
+        <div class="col"><span class="col-name">username</span><span class="badge uq">UQ</span><span class="col-type">varchar</span></div>
+        <div class="col"><span class="col-name">employee_id</span><span class="badge uq">UQ</span><span class="col-type">varchar</span></div>
+        <div class="col"><span class="col-name">email</span><span class="badge uq">UQ</span><span class="col-type">varchar</span></div>
+        <div class="col"><span class="col-name">prefix, name, password</span><span class="col-type">varchar</span></div>
+        <div class="col"><span class="col-name">is_active</span><span class="col-type">tinyint</span></div>
+        <div class="col"><span class="col-name">deleted_at</span><span class="col-type">timestamp</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-user_roles" data-name="user_roles">
+      <div class="table-name">user_roles <span class="pivot-badge">pivot</span></div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="badge fk" data-target="t-users">FK</span><span class="col-name">user_id</span><span class="col-type">→ users</span></div>
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">role</span><span class="col-type">enum</span></div>
+        <div class="col"><span class="col-name">is_primary</span><span class="col-type">tinyint</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-instructor_profiles" data-name="instructor_profiles">
+      <div class="table-name">instructor_profiles</div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">id</span><span class="col-type">bigint</span></div>
+        <div class="col"><span class="badge fk" data-target="t-users">FK</span><span class="col-name">user_id</span><span class="badge uq">UQ</span><span class="col-type">→ users</span></div>
+        <div class="col"><span class="badge fk" data-target="t-departments">FK</span><span class="col-name">department_id</span><span class="col-type">→ departments</span></div>
+        <div class="col"><span class="col-name">title, employment_type</span><span class="col-type">varchar</span></div>
+        <div class="col"><span class="col-name">academic_degree, hired_at</span><span class="col-type">varchar,date</span></div>
+        <div class="col"><span class="col-name">is_english_passed</span><span class="col-type">tinyint</span></div>
+        <div class="col"><span class="col-name">teaching/research/service_pct</span><span class="col-type">int</span></div>
+        <div class="col"><span class="col-name">culture/other_pct, quota</span><span class="col-type">int</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-instructor_availability" data-name="instructor_availability">
+      <div class="table-name">instructor_availability</div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">id</span><span class="col-type">bigint</span></div>
+        <div class="col"><span class="badge fk" data-target="t-users">FK</span><span class="col-name">user_id</span><span class="col-type">→ users</span></div>
+        <div class="col"><span class="col-name">day_of_week</span><span class="col-type">tinyint</span></div>
+        <div class="col"><span class="col-name">start_time, end_time</span><span class="col-type">time</span></div>
+        <div class="col"><span class="col-name">is_available</span><span class="col-type">tinyint</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-sessions" data-name="sessions">
+      <div class="table-name">sessions</div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">id</span><span class="col-type">varchar</span></div>
+        <div class="col"><span class="col-name">user_id</span><span class="col-type">bigint</span></div>
+        <div class="col"><span class="col-name">ip_address, user_agent</span><span class="col-type">varchar,text</span></div>
+        <div class="col"><span class="col-name">payload</span><span class="col-type">longtext</span></div>
+        <div class="col"><span class="col-name">last_activity</span><span class="col-type">int</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="group g2">
+  <h2 class="group-title">Master Data <span class="count">· หลักสูตร รายวิชา ห้อง ปีการศึกษา</span></h2>
+  <div class="grid">
+
+    <div class="table" id="t-departments" data-name="departments">
+      <div class="table-name">departments</div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">id</span><span class="col-type">bigint</span></div>
+        <div class="col"><span class="col-name">name</span><span class="badge uq">UQ</span><span class="col-type">varchar</span></div>
+        <div class="col"><span class="badge fk" data-target="t-users">FK</span><span class="col-name">head_user_id</span><span class="col-type">→ users</span></div>
+        <div class="col"><span class="badge fk" data-target="t-users">FK</span><span class="col-name">secretary_user_id</span><span class="col-type">→ users</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-curriculums" data-name="curriculums">
+      <div class="table-name">curriculums</div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">id</span><span class="col-type">bigint</span></div>
+        <div class="col"><span class="col-name">name, effective_year</span><span class="col-type">varchar,int</span></div>
+        <div class="col"><span class="col-name">education_level</span><span class="col-type">enum</span></div>
+        <div class="col"><span class="col-name">duration_years</span><span class="col-type">tinyint</span></div>
+        <div class="col"><span class="col-name">uses_year_level</span><span class="col-type">tinyint</span></div>
+        <div class="col"><span class="col-name">total_credits_required</span><span class="col-type">smallint</span></div>
+        <div class="col"><span class="col-name">is_active</span><span class="col-type">tinyint</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-courses" data-name="courses">
+      <div class="table-name">courses</div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">id</span><span class="col-type">bigint</span></div>
+        <div class="col"><span class="col-name">course_code</span><span class="badge uq">UQ</span><span class="col-type">varchar</span></div>
+        <div class="col"><span class="badge fk" data-target="t-curriculums">FK</span><span class="col-name">curriculum_id</span><span class="col-type">→ curriculums</span></div>
+        <div class="col"><span class="badge fk" data-target="t-departments">FK</span><span class="col-name">department_id</span><span class="col-type">→ departments</span></div>
+        <div class="col"><span class="badge fk" data-target="t-users">FK</span><span class="col-name">head_instructor_id</span><span class="col-type">→ users</span></div>
+        <div class="col"><span class="col-name">name_th, name_en</span><span class="col-type">varchar</span></div>
+        <div class="col"><span class="col-name">course_type</span><span class="col-type">enum</span></div>
+        <div class="col"><span class="col-name">default_year_level, semester</span><span class="col-type">int</span></div>
+        <div class="col"><span class="col-name">is_required, requires_practicum</span><span class="col-type">tinyint</span></div>
+        <div class="col"><span class="col-name">credits, lecture/lab_hours</span><span class="col-type">int</span></div>
+        <div class="col"><span class="col-name">capacity, status, color</span><span class="col-type">int,enum</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-course_prerequisites" data-name="course_prerequisites">
+      <div class="table-name">course_prerequisites <span class="pivot-badge">pivot</span></div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="badge fk" data-target="t-courses">FK</span><span class="col-name">course_id</span><span class="col-type">→ courses</span></div>
+        <div class="col"><span class="badge pk">PK</span><span class="badge fk" data-target="t-courses">FK</span><span class="col-name">prerequisite_course_id</span><span class="col-type">→ courses</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-course_roles" data-name="course_roles">
+      <div class="table-name">course_roles</div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">id</span><span class="col-type">bigint</span></div>
+        <div class="col"><span class="col-name">name_th</span><span class="col-type">varchar</span></div>
+        <div class="col"><span class="col-name">sort_order</span><span class="col-type">tinyint</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-course_instructors" data-name="course_instructors">
+      <div class="table-name">course_instructors <span class="pivot-badge">pivot</span></div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">id</span><span class="col-type">bigint</span></div>
+        <div class="col"><span class="badge fk" data-target="t-courses">FK</span><span class="col-name">course_id</span><span class="col-type">→ courses</span></div>
+        <div class="col"><span class="badge fk" data-target="t-users">FK</span><span class="col-name">user_id</span><span class="col-type">→ users</span></div>
+        <div class="col"><span class="badge fk" data-target="t-course_roles">FK</span><span class="col-name">course_role_id</span><span class="col-type">→ course_roles</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-course_staff" data-name="course_staff">
+      <div class="table-name">course_staff <span class="pivot-badge">pivot</span></div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="badge fk" data-target="t-courses">FK</span><span class="col-name">course_id</span><span class="col-type">→ courses</span></div>
+        <div class="col"><span class="badge pk">PK</span><span class="badge fk" data-target="t-users">FK</span><span class="col-name">user_id</span><span class="col-type">→ users</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-location_types" data-name="location_types">
+      <div class="table-name">location_types</div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">id</span><span class="col-type">bigint</span></div>
+        <div class="col"><span class="col-name">name</span><span class="badge uq">UQ</span><span class="col-type">varchar</span></div>
+        <div class="col"><span class="col-name">is_shared</span><span class="col-type">tinyint</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-rooms" data-name="rooms">
+      <div class="table-name">rooms</div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">id</span><span class="col-type">bigint</span></div>
+        <div class="col"><span class="col-name">room_code</span><span class="badge uq">UQ</span><span class="col-type">varchar</span></div>
+        <div class="col"><span class="col-name">room_name, building</span><span class="col-type">varchar</span></div>
+        <div class="col"><span class="col-name">capacity</span><span class="col-type">int</span></div>
+        <div class="col"><span class="badge fk" data-target="t-location_types">FK</span><span class="col-name">location_type_id</span><span class="col-type">→ location_types</span></div>
+        <div class="col"><span class="col-name">equipment_type, address</span><span class="col-type">json,text</span></div>
+        <div class="col"><span class="col-name">status</span><span class="col-type">enum</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-activity_types" data-name="activity_types">
+      <div class="table-name">activity_types</div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">id</span><span class="col-type">bigint</span></div>
+        <div class="col"><span class="col-name">name, color_code</span><span class="col-type">varchar</span></div>
+        <div class="col"><span class="col-name">category</span><span class="col-type">enum</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-academic_years" data-name="academic_years">
+      <div class="table-name">academic_years</div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">id</span><span class="col-type">bigint</span></div>
+        <div class="col"><span class="col-name">name, semester</span><span class="badge uq">UQ</span><span class="col-type">varchar,int</span></div>
+        <div class="col"><span class="col-name">start_date, end_date</span><span class="col-type">date</span></div>
+        <div class="col"><span class="col-name">is_active</span><span class="col-type">tinyint</span></div>
+        <div class="col"><span class="col-name">phase</span><span class="col-type">enum</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="group g3">
+  <h2 class="group-title">Course Offering & Approval <span class="count">· รายวิชาที่เปิดสอนต่อปี</span></h2>
+  <div class="grid">
+
+    <div class="table" id="t-course_offerings" data-name="course_offerings">
+      <div class="table-name">course_offerings</div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">id</span><span class="col-type">bigint</span></div>
+        <div class="col"><span class="badge fk" data-target="t-courses">FK</span><span class="col-name">course_id</span><span class="col-type">→ courses</span></div>
+        <div class="col"><span class="badge fk" data-target="t-academic_years">FK</span><span class="col-name">academic_year_id</span><span class="col-type">→ academic_years</span></div>
+        <div class="col"><span class="badge fk" data-target="t-users">FK</span><span class="col-name">coordinator_id</span><span class="col-type">→ users</span></div>
+        <div class="col"><span class="col-name">approval_status</span><span class="col-type">enum</span></div>
+        <div class="col"><span class="col-name">rejection_reason</span><span class="col-type">text</span></div>
+        <div class="col"><span class="col-name">total_student_count</span><span class="col-type">int</span></div>
+        <div class="col"><span class="col-name">planned_lecture/lab/practicum</span><span class="col-type">int</span></div>
+        <div class="col"><span class="col-name">teaching_weeks</span><span class="col-type">tinyint</span></div>
+        <div class="col"><span class="col-name">requires_practicum_rotation</span><span class="col-type">tinyint</span></div>
+        <div class="col"><span class="col-name">practicum_note, deleted_at</span><span class="col-type">text</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-course_offering_instructors" data-name="course_offering_instructors">
+      <div class="table-name">course_offering_instructors <span class="pivot-badge">pivot</span></div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="badge fk" data-target="t-course_offerings">FK</span><span class="col-name">course_offering_id</span><span class="col-type">→ course_offerings</span></div>
+        <div class="col"><span class="badge pk">PK</span><span class="badge fk" data-target="t-users">FK</span><span class="col-name">user_id</span><span class="col-type">→ users</span></div>
+        <div class="col"><span class="col-name">role_in_course</span><span class="col-type">varchar</span></div>
+        <div class="col"><span class="badge fk" data-target="t-course_roles">FK</span><span class="col-name">course_role_id</span><span class="col-type">→ course_roles</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-course_offering_approvals" data-name="course_offering_approvals">
+      <div class="table-name">course_offering_approvals</div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">id</span><span class="col-type">bigint</span></div>
+        <div class="col"><span class="badge fk" data-target="t-course_offerings">FK</span><span class="col-name">course_offering_id</span><span class="col-type">→ course_offerings</span></div>
+        <div class="col"><span class="badge fk" data-target="t-users">FK</span><span class="col-name">actor_user_id</span><span class="col-type">→ users</span></div>
+        <div class="col"><span class="col-name">action</span><span class="col-type">enum</span></div>
+        <div class="col"><span class="col-name">comment</span><span class="col-type">text</span></div>
+        <div class="col"><span class="col-name">from_status, to_status</span><span class="col-type">enum</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-student_groups" data-name="student_groups">
+      <div class="table-name">student_groups</div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">id</span><span class="col-type">bigint</span></div>
+        <div class="col"><span class="badge fk" data-target="t-course_offerings">FK</span><span class="col-name">course_offering_id</span><span class="col-type">→ course_offerings</span></div>
+        <div class="col"><span class="col-name">group_code</span><span class="badge uq">UQ</span><span class="col-type">varchar</span></div>
+        <div class="col"><span class="col-name">student_count</span><span class="col-type">int</span></div>
+        <div class="col"><span class="col-name">color_code</span><span class="col-type">varchar</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="group g4">
+  <h2 class="group-title">Schedule & Conflict <span class="count">· ตารางสอน การชน การแจ้งเตือน</span></h2>
+  <div class="grid">
+
+    <div class="table" id="t-schedules" data-name="schedules">
+      <div class="table-name">schedules</div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">id</span><span class="col-type">bigint</span></div>
+        <div class="col"><span class="badge fk" data-target="t-course_offerings">FK</span><span class="col-name">course_offering_id</span><span class="col-type">→ course_offerings</span></div>
+        <div class="col"><span class="badge fk" data-target="t-activity_types">FK</span><span class="col-name">activity_type_id</span><span class="col-type">→ activity_types</span></div>
+        <div class="col"><span class="badge fk" data-target="t-rooms">FK</span><span class="col-name">room_id</span><span class="col-type">→ rooms</span></div>
+        <div class="col"><span class="badge fk" data-target="t-practicum_series">FK</span><span class="col-name">practicum_series_id</span><span class="col-type">→ practicum_series</span></div>
+        <div class="col"><span class="badge fk" data-target="t-schedule_templates">FK</span><span class="col-name">schedule_template_id</span><span class="col-type">→ schedule_templates</span></div>
+        <div class="col"><span class="col-name">series_week_number</span><span class="col-type">tinyint</span></div>
+        <div class="col"><span class="col-name">start_date, end_date</span><span class="col-type">date</span></div>
+        <div class="col"><span class="col-name">teaching_date</span><span class="col-type">date</span></div>
+        <div class="col"><span class="col-name">start_time, end_time</span><span class="col-type">time</span></div>
+        <div class="col"><span class="col-name">topic, sub_group_label</span><span class="col-type">varchar</span></div>
+        <div class="col"><span class="col-name">capacity_required</span><span class="col-type">int</span></div>
+        <div class="col"><span class="col-name">status, remark</span><span class="col-type">enum,text</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-schedule_templates" data-name="schedule_templates">
+      <div class="table-name">schedule_templates</div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">id</span><span class="col-type">bigint</span></div>
+        <div class="col"><span class="badge fk" data-target="t-course_offerings">FK</span><span class="col-name">course_offering_id</span><span class="col-type">→ course_offerings</span></div>
+        <div class="col"><span class="badge fk" data-target="t-activity_types">FK</span><span class="col-name">activity_type_id</span><span class="col-type">→ activity_types</span></div>
+        <div class="col"><span class="col-name">weekday</span><span class="col-type">tinyint</span></div>
+        <div class="col"><span class="col-name">start_time, end_time</span><span class="col-type">time</span></div>
+        <div class="col"><span class="col-name">start_week, end_week</span><span class="col-type">tinyint</span></div>
+        <div class="col"><span class="col-name">starts_on, ends_on</span><span class="col-type">date</span></div>
+        <div class="col"><span class="col-name">topic, sub_group_label</span><span class="col-type">varchar</span></div>
+        <div class="col"><span class="col-name">capacity_required</span><span class="col-type">int</span></div>
+        <div class="col"><span class="badge fk" data-target="t-users">FK</span><span class="col-name">created_by, updated_by</span><span class="col-type">→ users</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-schedule_instructors" data-name="schedule_instructors">
+      <div class="table-name">schedule_instructors <span class="pivot-badge">pivot</span></div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="badge fk" data-target="t-schedules">FK</span><span class="col-name">schedule_id</span><span class="col-type">→ schedules</span></div>
+        <div class="col"><span class="badge pk">PK</span><span class="badge fk" data-target="t-users">FK</span><span class="col-name">user_id</span><span class="col-type">→ users</span></div>
+        <div class="col"><span class="col-name">is_lead</span><span class="col-type">tinyint</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-schedule_student_groups" data-name="schedule_student_groups">
+      <div class="table-name">schedule_student_groups <span class="pivot-badge">pivot</span></div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="badge fk" data-target="t-schedules">FK</span><span class="col-name">schedule_id</span><span class="col-type">→ schedules</span></div>
+        <div class="col"><span class="badge pk">PK</span><span class="badge fk" data-target="t-student_groups">FK</span><span class="col-name">student_group_id</span><span class="col-type">→ student_groups</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-practicum_series" data-name="practicum_series">
+      <div class="table-name">practicum_series</div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">id</span><span class="col-type">bigint</span></div>
+        <div class="col"><span class="badge fk" data-target="t-course_offerings">FK</span><span class="col-name">course_offering_id</span><span class="col-type">→ course_offerings</span></div>
+        <div class="col"><span class="col-name">name</span><span class="col-type">varchar</span></div>
+        <div class="col"><span class="col-name">start_date, end_date</span><span class="col-type">date</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-schedule_conflicts" data-name="schedule_conflicts">
+      <div class="table-name">schedule_conflicts</div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">id</span><span class="col-type">bigint</span></div>
+        <div class="col"><span class="badge fk" data-target="t-schedules">FK</span><span class="col-name">schedule_id</span><span class="col-type">→ schedules</span></div>
+        <div class="col"><span class="badge fk" data-target="t-schedules">FK</span><span class="col-name">conflicting_schedule_id</span><span class="col-type">→ schedules</span></div>
+        <div class="col"><span class="col-name">conflict_type, warning_type</span><span class="col-type">enum</span></div>
+        <div class="col"><span class="col-name">severity, message</span><span class="col-type">enum,varchar</span></div>
+        <div class="col"><span class="col-name">is_resolved, resolved_at</span><span class="col-type">tinyint,ts</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-schedule_conflict_runs" data-name="schedule_conflict_runs">
+      <div class="table-name">schedule_conflict_runs</div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">id</span><span class="col-type">bigint</span></div>
+        <div class="col"><span class="badge fk" data-target="t-academic_years">FK</span><span class="col-name">academic_year_id</span><span class="col-type">→ academic_years</span></div>
+        <div class="col"><span class="col-name">status, source</span><span class="col-type">enum</span></div>
+        <div class="col"><span class="col-name">generation</span><span class="badge uq">UQ</span><span class="col-type">int</span></div>
+        <div class="col"><span class="col-name">requested/started/finished</span><span class="col-type">timestamp</span></div>
+        <div class="col"><span class="col-name">failed_at, error_message</span><span class="col-type">timestamp,text</span></div>
+        <div class="col"><span class="col-name">result_count, metadata</span><span class="col-type">int,json</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-schedule_conflict_results" data-name="schedule_conflict_results">
+      <div class="table-name">schedule_conflict_results</div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">id</span><span class="col-type">bigint</span></div>
+        <div class="col"><span class="badge fk" data-target="t-schedule_conflict_runs">FK</span><span class="col-name">run_id</span><span class="col-type">→ runs</span></div>
+        <div class="col"><span class="badge fk" data-target="t-academic_years">FK</span><span class="col-name">academic_year_id</span><span class="col-type">→ academic_years</span></div>
+        <div class="col"><span class="col-name">schedule_id, conflicting_id</span><span class="col-type">bigint</span></div>
+        <div class="col"><span class="col-name">conflict_type</span><span class="col-type">enum</span></div>
+        <div class="col"><span class="col-name">resource_type, resource_id</span><span class="col-type">varchar,bigint</span></div>
+        <div class="col"><span class="col-name">message, pair_key</span><span class="col-type">varchar</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-schedule_conflict_result_scopes" data-name="schedule_conflict_result_scopes">
+      <div class="table-name">schedule_conflict_result_scopes</div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">id</span><span class="col-type">bigint</span></div>
+        <div class="col"><span class="badge fk" data-target="t-schedule_conflict_runs">FK</span><span class="col-name">run_id</span><span class="col-type">→ runs</span></div>
+        <div class="col"><span class="badge fk" data-target="t-schedule_conflict_results">FK</span><span class="col-name">result_id</span><span class="col-type">→ results</span></div>
+        <div class="col"><span class="badge fk" data-target="t-academic_years">FK</span><span class="col-name">academic_year_id</span><span class="col-type">→ academic_years</span></div>
+        <div class="col"><span class="col-name">scope_type</span><span class="col-type">enum</span></div>
+        <div class="col"><span class="col-name">user_id, role</span><span class="col-type">bigint,varchar</span></div>
+        <div class="col"><span class="col-name">course_offering_id</span><span class="col-type">bigint</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-notifications" data-name="notifications">
+      <div class="table-name">notifications</div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">id</span><span class="col-type">bigint</span></div>
+        <div class="col"><span class="badge fk" data-target="t-users">FK</span><span class="col-name">user_id</span><span class="col-type">→ users</span></div>
+        <div class="col"><span class="badge fk" data-target="t-schedules">FK</span><span class="col-name">schedule_id</span><span class="col-type">→ schedules</span></div>
+        <div class="col"><span class="badge fk" data-target="t-course_offerings">FK</span><span class="col-name">course_offering_id</span><span class="col-type">→ course_offerings</span></div>
+        <div class="col"><span class="col-name">type, message</span><span class="col-type">enum,varchar</span></div>
+        <div class="col"><span class="col-name">is_read</span><span class="col-type">tinyint</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="group g5">
+  <h2 class="group-title">System & Infrastructure <span class="count">· Audit, Settings, Laravel infra</span></h2>
+  <div class="grid">
+
+    <div class="table" id="t-audit_logs" data-name="audit_logs">
+      <div class="table-name">audit_logs</div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">id</span><span class="col-type">bigint</span></div>
+        <div class="col"><span class="badge fk" data-target="t-users">FK</span><span class="col-name">user_id</span><span class="col-type">→ users</span></div>
+        <div class="col"><span class="col-name">category, action</span><span class="col-type">varchar</span></div>
+        <div class="col"><span class="col-name">table_affected, record_id</span><span class="col-type">varchar,bigint</span></div>
+        <div class="col"><span class="col-name">old_values, new_values</span><span class="col-type">json</span></div>
+        <div class="col"><span class="col-name">description</span><span class="col-type">varchar</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-system_settings" data-name="system_settings">
+      <div class="table-name">system_settings</div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">id</span><span class="col-type">bigint</span></div>
+        <div class="col"><span class="col-name">setting_key</span><span class="badge uq">UQ</span><span class="col-type">varchar</span></div>
+        <div class="col"><span class="col-name">setting_value</span><span class="col-type">text</span></div>
+        <div class="col"><span class="col-name">description</span><span class="col-type">varchar</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-migrations" data-name="migrations">
+      <div class="table-name">migrations <span class="pivot-badge">laravel</span></div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">id</span><span class="col-type">int</span></div>
+        <div class="col"><span class="col-name">migration, batch</span><span class="col-type">varchar,int</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-cache" data-name="cache">
+      <div class="table-name">cache <span class="pivot-badge">laravel</span></div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">key</span><span class="col-type">varchar</span></div>
+        <div class="col"><span class="col-name">value</span><span class="col-type">mediumtext</span></div>
+        <div class="col"><span class="col-name">expiration</span><span class="col-type">bigint</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-cache_locks" data-name="cache_locks">
+      <div class="table-name">cache_locks <span class="pivot-badge">laravel</span></div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">key</span><span class="col-type">varchar</span></div>
+        <div class="col"><span class="col-name">owner, expiration</span><span class="col-type">varchar,bigint</span></div>
+      </div>
+    </div>
+
+    <div class="table" id="t-jobs" data-name="jobs">
+      <div class="table-name">jobs <span class="pivot-badge">laravel</span></div>
+      <div class="columns">
+        <div class="col"><span class="badge pk">PK</span><span class="col-name">id</span><span class="col-type">bigint</span></div>
+        <div class="col"><span class="col-name">queue, payload</span><span class="col-type">varchar,longtext</span></div>
+        <div class="col"><span class="col-name">attempts</span><span class="col-type">tinyint</span></div>
+        <div class="col"><span class="col-name">reserved_at, available_at</span><span class="col-type">int</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</main>
+
+<footer>
+  TPSS Schema · Generated from branch <code>feat/auto-duplicate-weekly</code> · 36 tables · 52 foreign keys
+</footer>
+
+<script>
+  // Inject group-bg div so SVG can sit above bg but below tables
+  document.querySelectorAll('.group').forEach(g => {
+    const bg = document.createElement('div');
+    bg.className = 'group-bg';
+    g.insertBefore(bg, g.firstChild);
+  });
+
+  // ========== FK CONNECTION LINES ==========
+  const svg = document.getElementById('fk-svg');
+  const main = document.getElementById('main');
+  const GROUP_COLORS = { g1: '#3b82f6', g2: '#10b981', g3: '#f59e0b', g4: '#8b5cf6', g5: '#9ca3af' };
+
+  // Collect all FK edges from each FK badge (one line per FK column)
+  const edges = [];
+  document.querySelectorAll('.badge.fk[data-target]').forEach(fkBadge => {
+    const col = fkBadge.closest('.col');
+    const srcTable = fkBadge.closest('.table');
+    const group = srcTable.closest('.group').className.match(/g[1-5]/)[0];
+    const targetId = fkBadge.dataset.target;
+    if (targetId === srcTable.id) return;
+    const isUnique = col.querySelector('.badge.uq') !== null;
+    const sourceColName = (col.querySelector('.col-name')?.textContent || '').trim();
+    edges.push({
+      sourceTable: srcTable.id, sourceCol: col, target: targetId, group,
+      sourceCard: isUnique ? '1' : 'N',
+      targetCard: '1',
+      sourceColName,
+      sourceTableName: srcTable.dataset.name,
+      targetTableName: document.getElementById(targetId)?.dataset.name || targetId
+    });
+  });
+
+  // (edge assignment per-target happens at draw time, after positions are known)
+
+  const NS = 'http://www.w3.org/2000/svg';
+
+  function drawLines() {
+    const mainRect = main.getBoundingClientRect();
+    svg.setAttribute('width', main.scrollWidth);
+    svg.setAttribute('height', main.scrollHeight);
+    svg.innerHTML = '';
+
+    edges.forEach(edge => {
+      const tgtTable = document.getElementById(edge.target);
+      const col = edge.sourceCol;
+      const srcTable = document.getElementById(edge.sourceTable);
+      if (!tgtTable || !col || !srcTable) return;
+
+      // Find target's PK row (first .col containing a .badge.pk)
+      let pkRow = null;
+      for (const r of tgtTable.querySelectorAll('.col')) {
+        if (r.querySelector('.badge.pk')) { pkRow = r; break; }
+      }
+      const tr = (pkRow || tgtTable).getBoundingClientRect();
+      const tgtRect = tgtTable.getBoundingClientRect();
+      const cr = col.getBoundingClientRect();
+      const srcRect = srcTable.getBoundingClientRect();
+
+      // If FK column is also part of PK (pivot table relationship) → anchor at table header
+      const isPivotFK = col.querySelector('.badge.pk') !== null;
+      const headerRow = srcTable.querySelector('.table-name');
+      const anchorRow = isPivotFK && headerRow ? headerRow : col;
+      const ar = anchorRow.getBoundingClientRect();
+
+      // Source point: at anchor row, on the side facing the target
+      const srcCenterX = srcRect.left + srcRect.width / 2;
+      const tgtCenterX = tgtRect.left + tgtRect.width / 2;
+      const useRightSrc = tgtCenterX > srcCenterX;
+      const sx = (useRightSrc ? srcRect.right : srcRect.left) - mainRect.left;
+      const sy = ar.top + ar.height / 2 - mainRect.top;
+
+      // Target point: at PK row, on the side facing the source
+      const useRightTgt = srcCenterX > tgtCenterX;
+      const tx = (useRightTgt ? tgtRect.right : tgtRect.left) - mainRect.left;
+      const ty = tr.top + tr.height / 2 - mainRect.top;
+
+      // Bezier: horizontal exit/entry
+      const dx = tx - sx;
+      const cpOffset = Math.max(60, Math.min(200, Math.abs(dx) * 0.45));
+      const cp1x = sx + (useRightSrc ? cpOffset : -cpOffset);
+      const cp2x = tx + (useRightTgt ? cpOffset : -cpOffset);
+      const cp2y = ty;
+
+      const path = document.createElementNS(NS, 'path');
+      path.setAttribute('class', 'fk-line');
+      path.setAttribute('d', `M ${sx} ${sy} C ${cp1x} ${sy}, ${cp2x} ${ty}, ${tx} ${ty}`);
+      path.setAttribute('stroke', GROUP_COLORS[edge.group]);
+      path.dataset.source = edge.sourceTable;
+      path.dataset.target = edge.target;
+      path.dataset.edgeIdx = edges.indexOf(edge);
+      svg.appendChild(path);
+
+      // Arrow at target (replaces target circle) — points along the line direction
+      const arrowSize = 7;
+      const angle = Math.atan2(ty - cp2y, tx - cp2x); // direction at target
+      const arrowTipX = tx, arrowTipY = ty;
+      const baseX = arrowTipX - Math.cos(angle) * arrowSize;
+      const baseY = arrowTipY - Math.sin(angle) * arrowSize;
+      const perpX = -Math.sin(angle) * arrowSize * 0.55;
+      const perpY =  Math.cos(angle) * arrowSize * 0.55;
+      const ap1 = `${arrowTipX},${arrowTipY}`;
+      const ap2 = `${baseX + perpX},${baseY + perpY}`;
+      const ap3 = `${baseX - perpX},${baseY - perpY}`;
+      const arrow = document.createElementNS(NS, 'polygon');
+      arrow.setAttribute('class', 'arrow');
+      arrow.setAttribute('points', `${ap1} ${ap2} ${ap3}`);
+      arrow.setAttribute('fill', GROUP_COLORS[edge.group]);
+      arrow.dataset.source = edge.sourceTable;
+      arrow.dataset.target = edge.target;
+      svg.appendChild(arrow);
+
+      // Cardinality labels — offset inward from endpoint along the line
+      const labelOffset = 14;
+      const sLabelX = sx + (useRightSrc ? labelOffset : -labelOffset);
+      const tLabelX = tx + (useRightTgt ? labelOffset : -labelOffset);
+      [[sLabelX, sy, edge.sourceCard], [tLabelX, ty, edge.targetCard]].forEach(([x, y, label]) => {
+        const g = document.createElementNS(NS, 'g');
+        g.setAttribute('class', 'card-label');
+        g.dataset.source = edge.sourceTable;
+        g.dataset.target = edge.target;
+        const w = label === 'N' ? 14 : 11, h = 12;
+        const rect = document.createElementNS(NS, 'rect');
+        rect.setAttribute('x', x - w / 2);
+        rect.setAttribute('y', y - h / 2);
+        rect.setAttribute('width', w);
+        rect.setAttribute('height', h);
+        rect.setAttribute('fill', GROUP_COLORS[edge.group]);
+        g.appendChild(rect);
+        const text = document.createElementNS(NS, 'text');
+        text.setAttribute('x', x);
+        text.setAttribute('y', y);
+        text.textContent = label;
+        g.appendChild(text);
+        svg.appendChild(g);
+      });
+
+      // Source endpoint: open circle (clearly different from arrow at target)
+      const cc = document.createElementNS(NS, 'circle');
+      cc.setAttribute('cx', sx);
+      cc.setAttribute('cy', sy);
+      cc.setAttribute('r', 3.5);
+      cc.setAttribute('fill', '#fff');
+      cc.setAttribute('stroke', GROUP_COLORS[edge.group]);
+      cc.setAttribute('stroke-width', 1.6);
+      cc.dataset.source = edge.sourceTable;
+      cc.dataset.target = edge.target;
+      svg.appendChild(cc);
+    });
+  }
+
+  // Build adjacency: tableId → Set of related tableIds
+  const related = {};
+  edges.forEach(e => {
+    (related[e.sourceTable] ||= new Set()).add(e.target);
+    (related[e.target] ||= new Set()).add(e.sourceTable);
+  });
+
+  function highlightTableEdges(tableId) {
+    // Lines
+    svg.querySelectorAll('path, circle, polygon, .card-label').forEach(p => {
+      p.classList.remove('active', 'dimmed');
+      if (!tableId) return;
+      if (p.dataset.source === tableId || p.dataset.target === tableId) {
+        p.classList.add('active');
+      } else {
+        p.classList.add('dimmed');
+      }
+    });
+    // Tables
+    document.querySelectorAll('.table').forEach(t => {
+      t.classList.remove('dimmed', 'focused', 'related');
+      if (!tableId) return;
+      if (t.id === tableId) {
+        t.classList.add('focused');
+      } else if (related[tableId] && related[tableId].has(t.id)) {
+        t.classList.add('related');
+      } else {
+        t.classList.add('dimmed');
+      }
+    });
+  }
+
+  // Click line → tooltip with flow detail
+  const tooltip = document.getElementById('fk-tooltip');
+  let activeEdgeIdx = null;
+  function showTooltip(edge, evt) {
+    const cardText = edge.sourceCard === '1' ? 'one-to-one (1:1)' : 'many-to-one (N:1)';
+    tooltip.innerHTML = `
+      <div class="tt-title">FK Relationship</div>
+      <div class="tt-flow">${edge.sourceTableName}.${edge.sourceColName}</div>
+      <div style="color:#94a3b8;font-size:11px;">↓ refers to</div>
+      <div class="tt-flow">${edge.targetTableName}.id</div>
+      <div class="tt-card">${edge.sourceCard} : ${edge.targetCard} &nbsp;·&nbsp; ${cardText}</div>
+    `;
+    tooltip.classList.add('visible');
+    const x = Math.min(evt.clientX + 14, window.innerWidth - 340);
+    const y = Math.min(evt.clientY + 14, window.innerHeight - 140);
+    tooltip.style.left = x + 'px';
+    tooltip.style.top = y + 'px';
+  }
+  function hideTooltip() {
+    tooltip.classList.remove('visible');
+  }
+
+  // Delegated handlers for SVG paths
+  svg.addEventListener('mouseover', e => {
+    const path = e.target.closest('path.fk-line');
+    if (!path) return;
+    const idx = parseInt(path.dataset.edgeIdx, 10);
+    const edge = edges[idx];
+    if (edge) showTooltip(edge, e);
+  });
+  svg.addEventListener('mousemove', e => {
+    if (!tooltip.classList.contains('visible')) return;
+    const x = Math.min(e.clientX + 14, window.innerWidth - 340);
+    const y = Math.min(e.clientY + 14, window.innerHeight - 140);
+    tooltip.style.left = x + 'px';
+    tooltip.style.top = y + 'px';
+  });
+  svg.addEventListener('mouseout', e => {
+    if (e.target.closest('path.fk-line')) hideTooltip();
+  });
+
+  // Hover table → highlight its FKs
+  document.querySelectorAll('.table').forEach(t => {
+    t.addEventListener('mouseenter', () => highlightTableEdges(t.id));
+    t.addEventListener('mouseleave', () => highlightTableEdges(null));
+  });
+
+  // Toggle: show/hide all lines
+  const toggleBtn = document.getElementById('toggle-lines');
+  toggleBtn.addEventListener('click', () => {
+    document.body.classList.toggle('lines-off');
+    toggleBtn.classList.toggle('off', document.body.classList.contains('lines-off'));
+  });
+
+  // Render on load + resize (delayed to wait for font load + layout settle)
+  window.addEventListener('load', () => {
+    drawLines();
+    setTimeout(drawLines, 300);
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(drawLines);
+    }
+  });
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(drawLines, 150);
+  });
+
+  // FK click → highlight target table
+  document.querySelectorAll('.badge.fk').forEach(badge => {
+    badge.addEventListener('click', e => {
+      e.stopPropagation();
+      const targetId = badge.dataset.target;
+      if (!targetId) return;
+      const target = document.getElementById(targetId);
+      if (!target) return;
+      document.querySelectorAll('.table.highlighted').forEach(t => t.classList.remove('highlighted'));
+      target.classList.add('highlighted');
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => target.classList.remove('highlighted'), 2500);
+    });
+  });
+
+  // Search filter
+  const search = document.getElementById('search');
+  search.addEventListener('input', e => {
+    const q = e.target.value.toLowerCase().trim();
+    document.querySelectorAll('.table').forEach(table => {
+      if (!q) {
+        table.classList.remove('dimmed');
+        return;
+      }
+      const name = table.dataset.name.toLowerCase();
+      const cols = Array.from(table.querySelectorAll('.col-name'))
+        .map(c => c.textContent.toLowerCase()).join(' ');
+      const matches = name.includes(q) || cols.includes(q);
+      table.classList.toggle('dimmed', !matches);
+    });
+  });
+</script>
+
+</body>
+</html>
