@@ -38,7 +38,7 @@
 2. **Capacity gate** — sum(`student_groups.student_count`) ของ groups ที่ผูกกับ slot ต้อง ≤ `capacity_required` ของ slot
 3. **Lead instructor required** — ต้องมี `lead_instructor_id` 1 คน
 4. **In-course conflict** — instructor/room/group overlap ภายใน offering บล็อกบันทึก (error key `'schedule'` ส่งเป็น array of messages)
-5. **Cross-course conflict** — ⚠️ ยังไม่ implement — pronpimon ทำต่อใน branch แยก โดยอิง `instructor_profiles.employee_id` เป็น Global Instructor ID
+5. **Cross-course conflict** ✅ — implement แล้วผ่าน `ScheduleConflictChecker::bulkConflictMap()` + `ScheduleConflictReadRepository` (merge `42e4810`) — `buildOwnedConflictMap()` ดึง schedules ทั้งระบบที่ overlap date window แล้ว pairwise compare instructor/room ข้ามวิชา + หน้า `/course_head/schedule/conflicts` แสดงผลแบบ 4-card summary
 
 ## Academic Year Activation Lock (22 พ.ค.)
 
