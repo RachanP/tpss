@@ -2016,6 +2016,84 @@
             border-color: color-mix(in oklch, var(--brand-navy) 32%, var(--schedule-border));
             font-size: 9.5px;
         }
+        @media (max-width: 640px) {
+            [data-testid="schedule-grid-view"],
+            [data-testid="schedule-grid-view-co"] {
+                max-width: 100%;
+                overflow-x: hidden;
+            }
+            [data-testid="schedule-grid-view-co"] {
+                padding: 10px !important;
+            }
+            .schedule-grid.is-precise {
+                width: 100%;
+                max-width: 100%;
+                overflow-x: hidden;
+                grid-template-columns: 44px repeat(var(--grid-day-count), minmax(0, 1fr)) !important;
+            }
+            .schedule-grid.is-precise .grid-cell {
+                padding: 3px 2px;
+            }
+            .schedule-grid.is-precise .grid-head {
+                min-height: 40px;
+                font-size: 9px;
+                line-height: 1.15;
+            }
+            .schedule-grid.is-precise .grid-head .caption {
+                font-size: 8px;
+                line-height: 1.1;
+            }
+            .schedule-grid.is-precise .grid-time {
+                font-size: 9.5px;
+                padding-right: 4px;
+            }
+            .schedule-grid.is-precise .grid-cell-activity {
+                padding: 2px;
+            }
+            .schedule-grid.is-precise .grid-cell-activity .grid-activity {
+                padding: 5px 4px;
+                border-left-width: 2px;
+            }
+            .schedule-grid.is-precise .grid-activity-card.is-stacked-card {
+                padding: 5px 4px !important;
+            }
+            .schedule-grid.is-precise .grid-activity-title,
+            .schedule-grid.is-precise .grid-activity-card.is-stacked-card .grid-activity-title {
+                font-size: 9.5px;
+                line-height: 1.2;
+            }
+            .schedule-grid.is-precise .grid-activity-time,
+            .schedule-grid.is-precise .grid-activity-card.is-stacked-card .grid-activity-time,
+            .schedule-grid.is-precise .grid-location-name,
+            .schedule-grid.is-precise .grid-activity-room {
+                display: none;
+            }
+            .schedule-grid.is-precise .schedule-conflict-pill {
+                min-height: 17px;
+                padding: 1px 5px;
+                font-size: 8.5px;
+            }
+            .schedule-grid.is-precise .grid-activity-foot {
+                min-height: 18px;
+            }
+            .schedule-grid.is-precise .grid-activity-groups {
+                min-height: 17px;
+                padding: 1px 5px;
+                font-size: 8.5px;
+            }
+            .schedule-grid.is-precise .stack-indicator {
+                right: 4px;
+                bottom: 4px;
+                max-width: calc(100% - 8px);
+                padding: 3px 5px;
+                font-size: 8.5px;
+                gap: 3px;
+            }
+            .schedule-grid.is-precise .stack-sync-icon {
+                width: 10px;
+                height: 10px;
+            }
+        }
         .month-calendar {
             display: grid;
             grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -3754,7 +3832,7 @@
                             @endforeach
                         </div>
                     @else
-                    <div class="schedule-grid is-precise" style="--grid-minute-row-height: {{ $gridMinuteRowHeight }}px; grid-template-columns: 68px repeat({{ max(1, $weekDays->count()) }}, minmax({{ ($includeWeekends ?? false) && ($schedulePeriod ?? 'week') === 'week' ? 122 : 146 }}px, 1fr)); grid-template-rows: 44px repeat({{ $gridMinuteRowCount }}, var(--grid-minute-row-height));">
+                    <div class="schedule-grid is-precise" style="--grid-day-count: {{ max(1, $weekDays->count()) }}; --grid-minute-row-height: {{ $gridMinuteRowHeight }}px; grid-template-columns: 68px repeat({{ max(1, $weekDays->count()) }}, minmax({{ ($includeWeekends ?? false) && ($schedulePeriod ?? 'week') === 'week' ? 122 : 146 }}px, 1fr)); grid-template-rows: 44px repeat({{ $gridMinuteRowCount }}, var(--grid-minute-row-height));">
                         <div class="grid-cell grid-head" style="grid-area:1 / 1;"></div>
                         @foreach($weekDays as $dayIndex => $day)
                             <div class="grid-cell grid-head" style="grid-area:1 / {{ $dayIndex + 2 }};">
@@ -4155,7 +4233,7 @@
                         @endforeach
                     </div>
                 @else
-                <div class="schedule-grid is-precise" style="--grid-minute-row-height: {{ $gridMinuteRowHeight }}px; grid-template-columns: 68px repeat({{ max(1, $weekDays->count()) }}, minmax({{ ($includeWeekends ?? false) && ($schedulePeriod ?? 'week') === 'week' ? 122 : 146 }}px, 1fr)); grid-template-rows: 44px repeat({{ $gridMinuteRowCount }}, var(--grid-minute-row-height));">
+                <div class="schedule-grid is-precise" style="--grid-day-count: {{ max(1, $weekDays->count()) }}; --grid-minute-row-height: {{ $gridMinuteRowHeight }}px; grid-template-columns: 68px repeat({{ max(1, $weekDays->count()) }}, minmax({{ ($includeWeekends ?? false) && ($schedulePeriod ?? 'week') === 'week' ? 122 : 146 }}px, 1fr)); grid-template-rows: 44px repeat({{ $gridMinuteRowCount }}, var(--grid-minute-row-height));">
                     <div class="grid-cell grid-head" style="grid-area:1 / 1;"></div>
                     @foreach($weekDays as $dayIndex => $day)
                         <div class="grid-cell grid-head" style="grid-area:1 / {{ $dayIndex + 2 }};">
