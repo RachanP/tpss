@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Builder;
 
 class Course extends Model
 {
@@ -97,6 +98,15 @@ class Course extends Model
     public function courseOfferings(): HasMany
     {
         return $this->hasMany(CourseOffering::class);
+    }
+
+    public function scopeOfferedInAcademicTerm(Builder $query, AcademicYear $academicYear): Builder
+    {
+        return $query
+            ->where('status', 'active')
+            ->whereNotNull('head_instructor_id')
+            ->where('default_semester', $academicYear->semester)
+            ->whereHas('curriculum', fn (Builder $curriculumQuery) => $curriculumQuery->where('is_active', true));
     }
 
     /**

@@ -424,11 +424,48 @@
         },
         currentCurriculumDurationYears() {
             const meta = this.curriculumMeta[String(this.currentCourse.curriculum_id || '')];
-            return meta && meta.duration_years > 0 ? meta.duration_years : 4;
+            const selectedYear = parseInt(this.currentCourse.default_year_level || '0', 10);
+            return Math.max(meta?.duration_years || 4, selectedYear || 0);
         },
         currentCurriculumYearOptions() {
             const n = this.currentCurriculumDurationYears();
-            return Array.from({ length: n }, (_, i) => i + 1);
+            return Array.from({ length: n }, (_, i) => String(i + 1));
+        },
+        normalizeCourseFormSelects({ resetInvalidYear = true } = {}) {
+            ['curriculum_id', 'department_id', 'head_instructor_id', 'default_year_level', 'default_semester'].forEach(key => {
+                const value = this.currentCourse[key];
+                this.currentCourse[key] = value === null || value === undefined ? '' : String(value);
+            });
+
+            if (!this.currentCurriculumUsesYearLevel()) {
+                if (resetInvalidYear) {
+                    this.currentCourse.default_year_level = '';
+                }
+                return;
+            }
+
+            const selectedYear = parseInt(this.currentCourse.default_year_level || '0', 10);
+            const meta = this.curriculumMeta[String(this.currentCourse.curriculum_id || '')];
+            const maxYear = meta && meta.duration_years > 0 ? meta.duration_years : 4;
+            if (resetInvalidYear && selectedYear > maxYear) {
+                this.currentCourse.default_year_level = '';
+            }
+        },
+        hydrateCourseForm(course) {
+            const stringValue = value => value === null || value === undefined ? '' : String(value);
+            const hydrated = { ...course };
+
+            hydrated.route_key = course.course_code || '';
+            hydrated.curriculum_id = stringValue(course.curriculum_id);
+            hydrated.department_id = stringValue(course.department_id);
+            hydrated.head_instructor_id = stringValue(course.head_instructor_id);
+            hydrated.default_year_level = stringValue(course.default_year_level);
+            hydrated.default_semester = stringValue(course.default_semester);
+            hydrated.requires_practicum_rotation = course.requires_practicum_rotation ? '1' : '0';
+            hydrated.is_required = (course.is_required ?? true) ? '1' : '0';
+            hydrated.prerequisite_ids = (course.prerequisites || []).map(prerequisite => String(prerequisite.id));
+
+            return hydrated;
         },
         courseHeadSearch: '',
         showCourseHeadDropdown: false,
@@ -449,14 +486,12 @@
             this.courseInstructorSearch = '';
             this.showAllCourseInstructors = false;
             this.showCourseModal = true;
+            this.$nextTick(() => this.normalizeCourseFormSelects({ resetInvalidYear: false }));
         },
         openEditCourse(course) {
             this.editCourseMode = true;
-            this.currentCourse = { ...course };
-            this.currentCourse.route_key = course.course_code;
-            this.currentCourse.requires_practicum_rotation = course.requires_practicum_rotation ? '1' : '0';
-            this.currentCourse.is_required = (course.is_required ?? true) ? '1' : '0';
-            this.currentCourse.prerequisite_ids = (course.prerequisites || []).map(prerequisite => String(prerequisite.id));
+            this.currentCourse = this.hydrateCourseForm(course);
+            this.normalizeCourseFormSelects({ resetInvalidYear: false });
             this.courseHeadSearch = course.head_instructor ? course.head_instructor.formatted_name : '';
             this.selectedStaff = course.assigned_staff ? course.assigned_staff.map(s => ({ id: s.id, name: s.formatted_name || s.name })) : [];
             this.staffSearch = '';
@@ -470,6 +505,7 @@
             this.courseInstructorSearch = '';
             this.showAllCourseInstructors = false;
             this.showCourseModal = true;
+            this.$nextTick(() => this.normalizeCourseFormSelects({ resetInvalidYear: false }));
         },
         selectCourseHead(user) {
             this.currentCourse.head_instructor_id = user.id;
@@ -2329,7 +2365,7 @@
                                     </div>
                                     <div class="form-group course-wide-field">
                                         <label>หลักสูตร <span style="color:var(--status-conflict-fg)">*</span></label>
-                                        <select name="curriculum_id" data-testid="course-form-curriculum" x-model="currentCourse.curriculum_id" required>
+                                        <select name="curriculum_id" data-testid="course-form-curriculum" x-model="currentCourse.curriculum_id" @change="normalizeCourseFormSelects({ resetInvalidYear: true })" required>
                                             <option value="">-- เลือกหลักสูตร --</option>
                                             @foreach($curriculums as $curr)
                                                 <option value="{{ $curr->id }}">{{ $curr->name }}</option>
@@ -2493,11 +2529,11 @@
                                 <div class="course-form-grid course-form-grid--plan">
                                     <div class="form-group" x-show="currentCurriculumUsesYearLevel()">
                                         <label>ชั้นปีตามแผน <span style="color:var(--status-conflict-fg)">*</span></label>
-                                        <select name="default_year_level" x-model="currentCourse.default_year_level" :required="currentCurriculumUsesYearLevel()">
+                                        <select name="default_year_level" x-model="currentCourse.default_year_level" x-effect="$el.value = currentCourse.default_year_level || ''" :required="currentCurriculumUsesYearLevel()">
                                             <option value="">-- เลือกชั้นปี --</option>
-                                            <template x-for="y in currentCurriculumYearOptions()" :key="y">
-                                                <option :value="y" x-text="'ชั้นปีที่ ' + y"></option>
-                                            </template>
+                                            @for($yearOption = 1; $yearOption <= 10; $yearOption++)
+                                                <option value="{{ $yearOption }}" :disabled="{{ $yearOption }} > currentCurriculumDurationYears()">ชั้นปีที่ {{ $yearOption }}</option>
+                                            @endfor
                                         </select>
                                     </div>
                                     <div class="form-group" x-show="!currentCurriculumUsesYearLevel()">

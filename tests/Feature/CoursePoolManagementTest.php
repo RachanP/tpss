@@ -54,6 +54,63 @@ class CoursePoolManagementTest extends TestCase
             ->assertDontSee('/admin/course-pool/NSBS%20111', false);
     }
 
+    public function test_master_data_course_modal_serializes_planned_year_and_semester_for_editing(): void
+    {
+        $admin = $this->makeUser('admin');
+        $course = $this->makeCourse([
+            'course_code' => 'NSBS 111',
+            'default_year_level' => 3,
+            'default_semester' => 1,
+        ]);
+
+        $this->actingAsRole($admin, 'admin');
+
+        $content = $this->get(route('admin.master_data', ['tab' => 'courses']))
+            ->assertOk()
+            ->assertSee('ปี 3', false)
+            ->assertSee('ภาค 1', false)
+            ->assertSee('hydrateCourseForm(course)', false)
+            ->assertSee('normalizeCourseFormSelects({ resetInvalidYear = true } = {})', false)
+            ->assertSee('$nextTick(() => this.normalizeCourseFormSelects({ resetInvalidYear: false }))', false)
+            ->assertDontSee('$nextTick(() => this.normalizeCourseFormSelects())', false)
+            ->assertSee('x-effect="$el.value = currentCourse.default_year_level || \'\'"', false)
+            ->assertSee(':disabled="3 > currentCurriculumDurationYears()"', false)
+            ->assertDontSee('x-for="y in currentCurriculumYearOptions()"', false)
+            ->assertSee('x-model="currentCourse.default_year_level"', false)
+            ->assertSee('x-model="currentCourse.default_semester"', false)
+            ->getContent();
+
+        $this->assertMatchesRegularExpression('/default_year_level(?:\\\\u0022|")\s*:\s*3/', $content);
+        $this->assertMatchesRegularExpression('/default_semester(?:\\\\u0022|")\s*:\s*1/', $content);
+        $this->assertStringContainsString($course->course_code, $content);
+    }
+
+    public function test_master_data_course_modal_year_options_fall_back_to_course_year_when_curriculum_meta_is_missing(): void
+    {
+        $admin = $this->makeUser('admin');
+        $shortCurriculum = Curriculum::create([
+            'name' => 'Two Year Curriculum',
+            'effective_year' => 2569,
+            'duration_years' => 2,
+            'uses_year_level' => true,
+            'is_active' => true,
+        ]);
+
+        $this->makeCourse([
+            'course_code' => 'NSBS 112',
+            'curriculum_id' => $shortCurriculum->id,
+            'default_year_level' => 3,
+            'default_semester' => 1,
+        ]);
+
+        $this->actingAsRole($admin, 'admin');
+
+        $this->get(route('admin.master_data', ['tab' => 'courses']))
+            ->assertOk()
+            ->assertSee('Math.max(meta?.duration_years || 4, selectedYear || 0)', false)
+            ->assertSee('normalizeCourseFormSelects({ resetInvalidYear: false })', false);
+    }
+
     public function test_admin_can_update_course_assignments_from_course_modal_form(): void
     {
         $admin = $this->makeUser('admin');
@@ -455,6 +512,9 @@ class CoursePoolManagementTest extends TestCase
             ->assertSee('วิชาบังคับ')
             ->assertSee('แม่แบบผู้รับผิดชอบ')
             ->assertSee('แก้ไขแม่แบบ')
+            ->assertSee('data-testid="edit-template-link"', false)
+            ->assertSee('tab=courses', false)
+            ->assertSee('edit_course=' . $course->id, false)
             ->assertSee($head->name)
             ->assertSee($instructor->name);
     }

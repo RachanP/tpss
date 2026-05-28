@@ -259,6 +259,39 @@ class ScheduleManagementTest extends TestCase
             ->assertDontSee('ภาพรวมตารางสอนที่รับผิดชอบ');
     }
 
+    public function test_schedule_workspace_defaults_to_lowest_scheduling_course_code(): void
+    {
+        [$head, $highOffering] = $this->makeReadyOffering();
+        [, $lowOffering] = $this->makeReadyOffering();
+        [, $middleOffering] = $this->makeReadyOffering();
+
+        $highOffering->course->update(['course_code' => 'NSBS 231']);
+        $lowOffering->course->update(['course_code' => 'NSBS 111']);
+        $middleOffering->course->update(['course_code' => 'NSBS 212']);
+        $lowOffering->forceFill(['coordinator_id' => $head->id])->save();
+        $middleOffering->forceFill(['coordinator_id' => $head->id])->save();
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.schedules.index'))
+            ->assertRedirect(route('maker.course_offerings.schedules.index', ['courseOffering' => $lowOffering->id]));
+    }
+
+    public function test_schedule_workspace_query_course_offering_overrides_lowest_default(): void
+    {
+        [$head, $highOffering] = $this->makeReadyOffering();
+        [, $lowOffering] = $this->makeReadyOffering();
+
+        $highOffering->course->update(['course_code' => 'NSBS 231']);
+        $lowOffering->course->update(['course_code' => 'NSBS 111']);
+        $lowOffering->forceFill(['coordinator_id' => $head->id])->save();
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.schedules.index', ['course_offering_id' => $highOffering->id]))
+            ->assertRedirect(route('maker.course_offerings.schedules.index', ['courseOffering' => $highOffering->id]));
+    }
+
     public function test_schedule_workspace_create_button_opens_create_modal(): void
     {
         [$head, $offering] = $this->makeReadyOffering();
@@ -271,6 +304,12 @@ class ScheduleManagementTest extends TestCase
             ->assertSee('data-testid="schedule-floating-create-link"', false)
             ->assertSee('data-testid="schedule-create-modal"', false)
             ->assertSee('action="' . route('maker.course_offerings.schedules.store', $offering) . '"', false)
+            ->assertSee('id="start_time" name="start_time" value=""', false)
+            ->assertSee('id="end_time" name="end_time" value=""', false)
+            ->assertSee('<span class="tp-val tp-val-hour">--</span>', false)
+            ->assertSee('<span class="tp-val tp-val-min">--</span>', false)
+            ->assertDontSee('id="start_time" name="start_time" value="08:00"', false)
+            ->assertDontSee('id="end_time" name="end_time" value="09:00"', false)
             ->assertDontSee('href="' . route('maker.course_offerings.schedules.create', [$offering, 'week_start' => '2026-08-03']) . '"', false);
     }
 
@@ -614,6 +653,21 @@ class ScheduleManagementTest extends TestCase
         ]);
         $this->assertDatabaseHas('schedule_instructors', ['user_id' => $instructor->id]);
         $this->assertDatabaseHas('schedule_student_groups', ['student_group_id' => $group->id]);
+    }
+
+    public function test_schedule_store_requires_explicit_start_and_end_time(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+
+        $this->actingAsCourseHead($head);
+
+        $this->post(route('maker.course_offerings.schedules.store', $offering), $this->schedulePayload($instructor, $group, $activityType, $room, [
+            'start_time' => '',
+            'end_time' => '',
+        ]))
+            ->assertSessionHasErrors(['start_time', 'end_time']);
+
+        $this->assertDatabaseCount('schedules', 0);
     }
 
     public function test_global_store_with_unowned_course_offering_is_rejected(): void

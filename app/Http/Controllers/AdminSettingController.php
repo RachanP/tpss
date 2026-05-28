@@ -248,12 +248,12 @@ class AdminSettingController extends Controller
         }
 
         // Auto-create offerings for active courses in this academic year/semester.
-        // The selected academic year supplies the year/term; course.status is the
-        // source of truth for which courses are active in that term.
+        // The selected academic year supplies the year/term; courses must match
+        // the academic year's semester to be opened in this round.
         // Existing offerings for this academic year are synced too, because they may
         // have been seeded or created before the template was finalized.
-        $courses = Course::where('status', 'active')
-            ->whereNotNull('head_instructor_id')
+        $courses = Course::query()
+            ->offeredInAcademicTerm($year)
             ->get();
 
         $created = 0;
@@ -286,9 +286,7 @@ class AdminSettingController extends Controller
 
             $offeringsToSync = CourseOffering::with('course')
                 ->where('academic_year_id', $year->id)
-                ->whereHas('course', fn ($query) => $query
-                    ->where('status', 'active')
-                    ->whereNotNull('head_instructor_id'))
+                ->whereHas('course', fn ($query) => $query->offeredInAcademicTerm($year))
                 ->get();
 
             foreach ($offeringsToSync as $offering) {
@@ -312,7 +310,10 @@ class AdminSettingController extends Controller
             $year->update(['phase' => 'scheduling']);
         });
 
-        $total = CourseOffering::withActiveCourse()->where('academic_year_id', $year->id)->count();
+        $total = CourseOffering::withActiveCourse()
+            ->where('academic_year_id', $year->id)
+            ->whereHas('course', fn ($query) => $query->offeredInAcademicTerm($year))
+            ->count();
         $newMsg = $created > 0 ? "สร้างใหม่ {$created} รายวิชา" : "ไม่มีรายวิชาใหม่";
         $syncMsg = $synced > 0 ? "ซิงก์แม่แบบ {$synced} รายวิชา" : "ไม่พบรายวิชาเดิมที่ต้องซิงก์";
 

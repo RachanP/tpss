@@ -712,12 +712,8 @@ class ScheduleController extends Controller
             return $selectedId;
         }
 
-        return (clone $query)
-            ->select('course_offerings.id')
-            ->leftJoin('academic_years', 'academic_years.id', '=', 'course_offerings.academic_year_id')
-            ->orderByRaw("CASE WHEN academic_years.phase = 'scheduling' THEN 1 ELSE 0 END DESC")
-            ->orderByDesc('course_offerings.updated_at')
-            ->value('course_offerings.id');
+        return $this->coordinatorScheduleOfferings(includeSchedulingData: false)
+            ->first()?->id;
     }
 
     private function coordinatorScheduleOfferings(bool $includeSchedulingData = true): Collection
