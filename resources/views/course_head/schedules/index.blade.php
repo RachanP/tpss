@@ -2097,27 +2097,30 @@
         .month-activity {
             width: 100%;
             min-width: 0;
-            border: 1px solid color-mix(in oklch, var(--activity-color) 30%, var(--schedule-border));
-            border-radius: 6px;
-            background: color-mix(in oklch, var(--activity-color) 7%, var(--surface));
-            padding: 5px 6px;
+            border: 1px solid color-mix(in oklch, var(--activity-color) 26%, var(--schedule-border));
+            border-left: 3px solid var(--activity-color);
+            border-radius: 7px;
+            background: var(--surface);
+            padding: 6px 7px;
             cursor: pointer;
             text-align: left;
             font: inherit;
+            color: var(--fg-2);
+            box-shadow: 0 1px 3px oklch(0% 0 0 / 0.07);
         }
         .month-activity:focus-visible {
             outline: 2px solid var(--brand-navy);
             outline-offset: 2px;
         }
         .month-activity-time {
-            color: var(--brand-navy);
-            font-size: 10px;
+            color: var(--fg-1);
+            font-size: 10.5px;
             font-weight: 900;
             font-variant-numeric: tabular-nums;
             line-height: 1.2;
         }
         .month-activity-title {
-            margin-top: 1px;
+            margin-top: 2px;
             color: var(--fg-1);
             font-size: 10.6px;
             font-weight: 850;
@@ -2140,10 +2143,10 @@
             align-items: center;
             min-height: 17px;
             padding: 1px 6px;
-            border: 1px solid var(--schedule-border);
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--schedule-border));
             border-radius: 999px;
-            color: var(--schedule-muted);
-            background: var(--surface);
+            color: var(--fg-2);
+            background: oklch(96.5% 0.014 232);
             font-size: 9.5px;
             font-weight: 850;
         }
@@ -2170,7 +2173,7 @@
             display: none;
         }
         [data-testid="schedule-month-calendar"] .month-activity {
-            padding: 5px 6px;
+            padding: 6px 7px;
         }
         [data-testid="schedule-month-calendar"] .month-activity-meta,
         [data-testid="schedule-month-calendar"] .month-activity .activity-tag,
@@ -2199,7 +2202,10 @@
         [data-testid="schedule-month-calendar"] .month-activity:focus-visible,
         [data-testid="schedule-month-calendar-co"] .month-activity:hover,
         [data-testid="schedule-month-calendar-co"] .month-activity:focus-visible {
-            box-shadow: 0 8px 18px oklch(0% 0 0 / 0.12);
+            border-color: color-mix(in oklch, var(--activity-color) 44%, var(--schedule-border-strong));
+            background: color-mix(in oklch, var(--activity-color) 5%, var(--surface));
+            box-shadow: 0 3px 10px oklch(0% 0 0 / 0.08);
+            outline: none;
             position: relative;
             z-index: 4;
         }
