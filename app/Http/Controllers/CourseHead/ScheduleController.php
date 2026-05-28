@@ -62,9 +62,10 @@ class ScheduleController extends Controller
         $defaultAcademicYear = $this->defaultConflictAcademicYear($availableYears);
         $selectedAcademicYear = $this->selectedConflictAcademicYear($request, $availableYears, $defaultAcademicYear);
         $selectedAcademicYearId = $selectedAcademicYear?->id ? (int) $selectedAcademicYear->id : null;
+        $emptyStateKey = $this->conflictEmptyStateKey($availableYears);
 
         if (config('conflicts.async_reads')) {
-            return $this->asyncConflicts($request, $userId, $availableYears, $selectedAcademicYear, $selectedAcademicYearId);
+            return $this->asyncConflicts($request, $userId, $availableYears, $selectedAcademicYear, $selectedAcademicYearId, $emptyStateKey);
         }
 
         $result = app(ScheduleConflictIndex::class)->conflictsForCoordinator($userId, $selectedAcademicYearId);
@@ -104,6 +105,12 @@ class ScheduleController extends Controller
             })
             ->values();
 
+        $conflictTypeCounts = $conflictMap
+            ->flatten(1)
+            ->groupBy('type')
+            ->map(fn ($items) => $items->count())
+            ->all();
+
         return view('course_head.schedule_conflicts.index', [
             'offerings' => collect(),
             'availableYears' => $availableYears,
@@ -113,7 +120,9 @@ class ScheduleController extends Controller
             'conflictGroups' => $conflictGroups,
             'conflictMap' => $conflictMap,
             'totalConflictCount' => $result['total'],
+            'conflictTypeCounts' => $conflictTypeCounts,
             'conflictStatus' => ['status' => 'ready'],
+            'conflictEmptyStateKey' => $this->conflictEmptyStateKey($availableYears),
             'asyncConflictReads' => false,
         ]);
     }
@@ -123,7 +132,8 @@ class ScheduleController extends Controller
         int $userId,
         Collection $availableYears,
         ?AcademicYear $selectedAcademicYear,
-        ?int $selectedAcademicYearId
+        ?int $selectedAcademicYearId,
+        ?string $emptyStateKey = null
     ): View {
         $repository = app(ScheduleConflictReadRepository::class);
         $page = max(1, (int) $request->query('page', 1));
@@ -145,7 +155,9 @@ class ScheduleController extends Controller
             'conflictGroups' => $conflictGroups,
             'conflictMap' => collect(),
             'totalConflictCount' => $repository->getCountForUser($userId, $selectedAcademicYearId),
+            'conflictTypeCounts' => $repository->getTypeCountsForUser($userId, $selectedAcademicYearId),
             'conflictStatus' => $conflictStatus,
+            'conflictEmptyStateKey' => $emptyStateKey ?? $this->conflictEmptyStateKey($availableYears),
             'asyncConflictReads' => true,
         ]);
     }
@@ -264,6 +276,17 @@ class ScheduleController extends Controller
     /**
      * @return Collection<int, AcademicYear>
      */
+    /**
+     * Empty-state key สำหรับหน้าแจ้งเตือนการชน
+     * 'ready' → 'no_conflicts' (มี offering แต่ไม่พบการชน)
+     */
+    private function conflictEmptyStateKey(Collection $availableYears): string
+    {
+        $key = \App\Support\CoordinatorEmptyState::forCoordinator((int) Auth::id());
+
+        return $key === \App\Support\CoordinatorEmptyState::READY ? 'no_conflicts' : $key;
+    }
+
     private function coordinatorAcademicYears(int $userId): Collection
     {
         return AcademicYear::query()
@@ -481,6 +504,7 @@ class ScheduleController extends Controller
             'previousWeekUrl' => $this->schedulePeriodUrl($courseOffering, $previousPeriod, $isWorkspace, $period, $includeWeekends),
             'nextWeekUrl' => $this->schedulePeriodUrl($courseOffering, $nextPeriod, $isWorkspace, $period, $includeWeekends),
             'weekendToggleUrl' => $this->schedulePeriodUrl($courseOffering, $selectedDate, $isWorkspace, $period, $period === 'week' ? ! $includeWeekends : $includeWeekends),
+            'coordinatorEmptyStateKey' => \App\Support\CoordinatorEmptyState::forCoordinator((int) Auth::id()),
         ];
     }
 

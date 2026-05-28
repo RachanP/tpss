@@ -26,97 +26,126 @@
             flex-direction: column;
             gap: 14px;
         }
-        .conflict-hero,
         .conflict-offering {
             border: 1px solid var(--schedule-border);
             border-radius: 10px;
             background: var(--surface);
             box-shadow: 0 1px 3px oklch(0% 0 0 / 0.05);
         }
-        .conflict-hero {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
-            gap: 16px;
+        .conflict-header {
+            display: flex;
+            justify-content: space-between;
             align-items: center;
-            padding: 16px 18px;
-            border-color: var(--schedule-border-strong);
+            gap: 12px;
+            flex-wrap: wrap;
+            padding: 0 4px;
         }
-        .conflict-heading-row {
+        .conflict-header-row {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 12px;
             flex-wrap: wrap;
         }
-        .conflict-kicker {
+        .conflict-title {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 950;
+            color: var(--brand-navy);
+            line-height: 1.2;
+            letter-spacing: 0;
+        }
+        .conflict-year-inline {
             display: inline-flex;
             align-items: center;
-            min-height: 22px;
-            padding: 2px 10px;
+            gap: 6px;
+            padding: 4px 10px;
             border: 1px solid var(--schedule-border-strong);
             border-radius: 999px;
             background: var(--schedule-soft);
-            color: var(--schedule-muted);
-            font-size: 10px;
-            font-weight: 850;
-            line-height: 1.2;
-        }
-        .conflict-title {
-            margin-top: 7px;
-            font-size: 26px;
-            font-weight: 950;
-            color: var(--brand-navy);
-            line-height: 1.25;
-            letter-spacing: 0;
-        }
-        .conflict-copy {
-            max-width: 920px;
-            margin-top: 5px;
-            color: var(--fg-2);
-            font-size: 13px;
-            line-height: 1.55;
-        }
-        .conflict-filter {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            align-items: center;
-            margin-top: 12px;
-        }
-        .conflict-filter select {
-            min-width: 210px;
-            border: 1px solid var(--bd);
-            border-radius: 8px;
-            background: var(--surface);
             color: var(--fg-1);
-            padding: 8px 10px;
-            font-size: 13px;
-            font-weight: 700;
+            font-size: 12px;
+            font-weight: 850;
+            line-height: 1.25;
         }
-        .conflict-total {
+        .conflict-year-inline svg {
+            flex-shrink: 0;
+            color: var(--brand-navy);
+        }
+        .conflict-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+        }
+        .conflict-summary-card {
+            display: grid;
+            grid-template-columns: 44px 1fr;
+            align-items: center;
+            gap: 14px;
+            padding: 16px 18px;
+            border: 1px solid var(--schedule-border);
+            border-top: 3px solid var(--schedule-border-strong);
+            border-radius: 10px;
+            background: var(--surface);
+            box-shadow: 0 1px 3px oklch(0% 0 0 / 0.04);
+            transition: border-color 0.15s ease, transform 0.15s ease;
+        }
+        .conflict-summary-card:hover {
+            transform: translateY(-1px);
+        }
+        .conflict-summary-icon {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 9px;
-            min-height: 40px;
-            padding: 7px 13px;
-            border: 1px solid var(--status-conflict-border);
-            border-radius: 999px;
-            background: var(--status-conflict-bg);
-            color: var(--status-conflict-fg);
-            text-align: center;
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            background: var(--schedule-soft);
+            color: var(--schedule-muted);
+            flex-shrink: 0;
         }
-        .conflict-total strong {
-            display: block;
-            font-size: 22px;
-            line-height: 1;
-            font-weight: 900;
+        .conflict-summary-body {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+        }
+        .conflict-summary-value {
+            font-size: 28px;
+            font-weight: 950;
+            line-height: 1.05;
+            color: var(--brand-navy);
             font-variant-numeric: tabular-nums;
         }
-        .conflict-total span {
-            display: block;
-            font-size: 11px;
-            font-weight: 800;
+        .conflict-summary-label {
+            color: var(--fg-1);
+            font-size: 13px;
+            font-weight: 900;
+            line-height: 1.25;
         }
+        .conflict-summary-sub {
+            color: var(--schedule-muted);
+            font-size: 11.5px;
+            font-weight: 700;
+            line-height: 1.3;
+            margin-top: 1px;
+        }
+        .conflict-summary-card--total {
+            border-top-color: var(--status-conflict-border, oklch(52% 0.16 28));
+            background: color-mix(in oklch, var(--status-conflict-bg, oklch(96% 0.04 28)) 40%, var(--surface));
+        }
+        .conflict-summary-card--total .conflict-summary-icon {
+            background: var(--status-conflict-bg, oklch(96% 0.04 28));
+            color: var(--status-conflict-fg, oklch(40% 0.14 28));
+        }
+        .conflict-summary-card--total .conflict-summary-value {
+            color: var(--status-conflict-fg, oklch(40% 0.14 28));
+        }
+        .conflict-summary-card--instructor { border-top-color: oklch(48% 0.14 268); }
+        .conflict-summary-card--instructor .conflict-summary-icon { background: oklch(96% 0.03 268); color: oklch(40% 0.14 268); }
+        .conflict-summary-card--room { border-top-color: oklch(52% 0.16 28); }
+        .conflict-summary-card--room .conflict-summary-icon { background: oklch(96% 0.04 28); color: oklch(48% 0.16 28); }
+        .conflict-summary-card--group { border-top-color: oklch(48% 0.14 168); }
+        .conflict-summary-card--group .conflict-summary-icon { background: oklch(95% 0.04 168); color: oklch(38% 0.14 168); }
         .conflict-status {
             border: 1px solid var(--status-warning-border, var(--schedule-border-strong));
             border-radius: 8px;
@@ -256,36 +285,77 @@
             padding: 8px 10px;
         }
         .conflict-compare-title {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 6px;
             color: var(--fg-1);
             font-size: 12px;
-            font-weight: 850;
+            font-weight: 700;
             line-height: 1.35;
         }
-        .conflict-reasons,
+        .conflict-compare-prefix {
+            color: var(--schedule-muted);
+            font-weight: 700;
+        }
+        .conflict-compare-target {
+            color: var(--brand-navy);
+            font-size: 13px;
+            font-weight: 900;
+            line-height: 1.3;
+        }
+        .conflict-reason-list {
+            list-style: none;
+            margin: 8px 0 0;
+            padding: 0;
+            display: grid;
+            gap: 5px;
+        }
+        .conflict-reason-row {
+            display: grid;
+            grid-template-columns: 18px auto 1fr;
+            align-items: baseline;
+            gap: 6px;
+            color: var(--fg-1);
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        .conflict-reason-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--status-conflict-fg);
+            transform: translateY(2px);
+        }
+        .conflict-reason-row--room_overlap .conflict-reason-icon { color: oklch(52% 0.16 28); }
+        .conflict-reason-row--instructor_overlap .conflict-reason-icon { color: oklch(48% 0.14 268); }
+        .conflict-reason-row--group_overlap .conflict-reason-icon { color: oklch(48% 0.14 168); }
+        .conflict-reason-label {
+            color: var(--schedule-muted);
+            font-weight: 800;
+            white-space: nowrap;
+        }
+        .conflict-reason-value {
+            color: var(--fg-1);
+            font-weight: 700;
+            min-width: 0;
+            word-break: break-word;
+        }
+        .conflict-reason-value strong {
+            font-weight: 900;
+            color: var(--fg-1);
+        }
+        .conflict-reason-value--muted {
+            color: var(--schedule-muted);
+            font-weight: 700;
+            font-style: italic;
+        }
         .conflict-detail-actions {
             display: flex;
             flex-wrap: wrap;
             align-items: center;
-            gap: 5px;
-            margin-top: 6px;
-        }
-        .conflict-detail-actions {
             gap: 8px;
             margin-top: 8px;
-        }
-        .conflict-reason {
-            display: inline-flex;
-            align-items: center;
-            max-width: 100%;
-            min-height: 22px;
-            padding: 2px 8px;
-            border: 1px solid var(--status-conflict-border);
-            border-radius: 999px;
-            background: var(--surface);
-            color: var(--status-conflict-fg);
-            font-size: 11px;
-            font-weight: 800;
-            line-height: 1.25;
         }
         .conflict-detail-toggle {
             min-height: 30px;
@@ -336,22 +406,73 @@
             color: var(--fg-2);
             font-weight: 800;
         }
+        .conflict-empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            padding: 36px 24px;
+            border: 1px solid var(--schedule-border);
+            border-radius: 12px;
+            background: var(--surface);
+            text-align: center;
+        }
+        .conflict-empty-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: var(--schedule-soft);
+            color: var(--schedule-muted);
+            margin-bottom: 2px;
+        }
+        .conflict-empty-title {
+            font-size: 17px;
+            font-weight: 950;
+            color: var(--brand-navy);
+            line-height: 1.3;
+        }
+        .conflict-empty-sub {
+            max-width: 560px;
+            color: var(--fg-2);
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.55;
+        }
+        .conflict-empty-state--success {
+            border-color: color-mix(in oklch, var(--status-success-border, oklch(70% 0.14 145)) 60%, var(--schedule-border));
+            background: color-mix(in oklch, var(--status-success-bg, oklch(96% 0.04 145)) 45%, var(--surface));
+        }
+        .conflict-empty-state--success .conflict-empty-icon {
+            background: var(--status-success-bg, oklch(94% 0.04 145));
+            color: var(--status-success-fg, oklch(38% 0.14 145));
+        }
+        .conflict-empty-state--success .conflict-empty-title {
+            color: var(--status-success-fg, oklch(38% 0.14 145));
+        }
+        .conflict-empty-state--info .conflict-empty-icon {
+            background: oklch(94% 0.03 232);
+            color: oklch(38% 0.12 232);
+        }
         .conflict-pagination {
             display: flex;
             justify-content: center;
             padding: 6px 0 2px;
         }
         @media (max-width: 760px) {
-            .conflict-hero,
             .conflict-item {
                 grid-template-columns: 1fr;
             }
             .conflict-title {
-                font-size: 22px;
+                font-size: 20px;
             }
-            .conflict-total {
-                justify-content: flex-start;
-                text-align: left;
+            .conflict-summary-card {
+                padding: 14px;
+            }
+            .conflict-summary-value {
+                font-size: 24px;
             }
             .conflict-actions {
                 align-items: flex-start;
@@ -502,32 +623,78 @@
         })();
     </script>
 
+    @php
+        $typeCounts = $conflictTypeCounts ?? [];
+        $summaryCards = [
+            [
+                'key' => 'instructor_overlap',
+                'label' => 'ผู้สอนชน',
+                'sub' => 'อาจารย์มีตารางซ้อน',
+                'modifier' => 'instructor',
+                'icon' => 'user',
+            ],
+            [
+                'key' => 'room_overlap',
+                'label' => 'ห้อง/สถานที่ชน',
+                'sub' => 'ห้องถูกใช้ซ้ำเวลาเดียวกัน',
+                'modifier' => 'room',
+                'icon' => 'home',
+            ],
+            [
+                'key' => 'group_overlap',
+                'label' => 'กลุ่มนักศึกษาชน',
+                'sub' => 'นักศึกษามีตารางซ้อน',
+                'modifier' => 'group',
+                'icon' => 'users',
+            ],
+        ];
+    @endphp
     <div class="conflict-page">
-        <section class="conflict-hero">
-            <div>
-                <div class="conflict-heading-row">
-                    <span class="conflict-kicker">รายการที่ต้องตรวจสอบก่อนส่งอนุมัติ</span>
-                </div>
-                <div class="conflict-title">การแจ้งเตือนการชน</div>
-                <div class="conflict-copy">
-                    แสดงรายการชนของทุกรายวิชาที่คุณรับผิดชอบ ระบบจะแสดงข้อมูลสรุปก่อนและโหลดรายละเอียดทั้งหมดเมื่อกดดูเพิ่มเติม
-                </div>
-                @if(($availableYears ?? collect())->isNotEmpty())
-                    <form class="conflict-filter" method="GET" action="{{ route('maker.schedule_conflicts.index') }}">
-                        <select name="academic_year_id" onchange="this.form.submit()" aria-label="Academic year">
-                            @foreach($availableYears as $year)
-                                <option value="{{ $year->id }}" @selected((int) $selectedAcademicYearId === (int) $year->id)>
-                                    {{ $year->name }} / {{ $year->semester }} @if($year->phase === 'scheduling') - scheduling @elseif($year->is_active) - active @endif
-                                </option>
-                            @endforeach
-                        </select>
-                    </form>
+        <section class="conflict-header">
+            <div class="conflict-header-row">
+                <h1 class="conflict-title">การแจ้งเตือนการชน</h1>
+                @if($selectedAcademicYear)
+                    <span class="conflict-year-inline" data-testid="maker-conflict-year">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                        ปีการศึกษา {{ $selectedAcademicYear->name }} / ภาค {{ $selectedAcademicYear->semester }}
+                    </span>
                 @endif
             </div>
-            <div class="conflict-total" data-testid="maker-conflict-total">
-                <strong>{{ $totalConflictCount ?? '...' }}</strong>
-                <span>รายการชนที่ต้องแก้</span>
+        </section>
+
+        <section class="conflict-summary-grid" data-testid="maker-conflict-summary">
+            <div class="conflict-summary-card conflict-summary-card--total" data-testid="maker-conflict-total">
+                <div class="conflict-summary-icon" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                </div>
+                <div class="conflict-summary-body">
+                    <div class="conflict-summary-value">{{ $totalConflictCount ?? '…' }}</div>
+                    <div class="conflict-summary-label">รายการชนทั้งหมด</div>
+                    <div class="conflict-summary-sub">ต้องแก้ไขให้หมดก่อนส่งอนุมัติ</div>
+                </div>
             </div>
+            @foreach($summaryCards as $card)
+                <div class="conflict-summary-card conflict-summary-card--{{ $card['modifier'] }}">
+                    <div class="conflict-summary-icon" aria-hidden="true">
+                        @switch($card['icon'])
+                            @case('user')
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                                @break
+                            @case('home')
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                                @break
+                            @case('users')
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-3-3.87"></path><path d="M9 7a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"></path><path d="M1 21v-2a4 4 0 0 1 3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                                @break
+                        @endswitch
+                    </div>
+                    <div class="conflict-summary-body">
+                        <div class="conflict-summary-value">{{ $typeCounts[$card['key']] ?? 0 }}</div>
+                        <div class="conflict-summary-label">{{ $card['label'] }}</div>
+                        <div class="conflict-summary-sub">{{ $card['sub'] }}</div>
+                    </div>
+                </div>
+            @endforeach
         </section>
 
         @if(($asyncConflictReads ?? false) && in_array($conflictRunStatus, ['running', 'failed']))
@@ -542,9 +709,46 @@
                 กำลังประมวลผล…
             </div>
         @elseif($conflictGroups->isEmpty())
-            {{-- ready / missing / failed แต่ไม่มีข้อมูลชน --}}
-            <div class="conflict-empty" data-testid="maker-conflict-empty">
-                ยังไม่พบการชนในรายวิชาที่รับผิดชอบ
+            @php
+                $emptyKey = $conflictEmptyStateKey ?? 'no_conflicts';
+                $emptyStates = [
+                    'preparation' => [
+                        'icon' => 'clock',
+                        'title' => 'อยู่ในสถานะเตรียมข้อมูล',
+                        'sub' => 'ยังไม่ถึงช่วงเวลาการจัดตารางเรียน ระบบจะเริ่มตรวจสอบการชนเมื่อผู้ดูแลเปิดช่วงจัดตาราง',
+                        'tone' => 'info',
+                    ],
+                    'no_offerings' => [
+                        'icon' => 'inbox',
+                        'title' => 'ไม่พบรายวิชาที่ต้องจัดตารางสอนในระบบ',
+                        'sub' => 'ช่วงจัดตารางเปิดอยู่ แต่คุณยังไม่ได้รับมอบหมายเป็นหัวหน้าวิชาในรอบนี้ ติดต่อผู้ดูแลระบบหากต้องการรับผิดชอบรายวิชา',
+                        'tone' => 'info',
+                    ],
+                    'no_conflicts' => [
+                        'icon' => 'check',
+                        'title' => 'ยังไม่พบการชนในรายวิชาที่รับผิดชอบ',
+                        'sub' => 'ตารางสอนของคุณยังไม่มีรายการที่ชนกัน — พร้อมส่งขออนุมัติได้',
+                        'tone' => 'success',
+                    ],
+                ];
+                $state = $emptyStates[$emptyKey] ?? $emptyStates['no_conflicts'];
+            @endphp
+            <div class="conflict-empty-state conflict-empty-state--{{ $state['tone'] }}" data-testid="maker-conflict-empty" data-empty-state="{{ $emptyKey }}">
+                <div class="conflict-empty-icon" aria-hidden="true">
+                    @switch($state['icon'])
+                        @case('clock')
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                            @break
+                        @case('inbox')
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+                            @break
+                        @case('check')
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            @break
+                    @endswitch
+                </div>
+                <div class="conflict-empty-title">{{ $state['title'] }}</div>
+                <div class="conflict-empty-sub">{{ $state['sub'] }}</div>
             </div>
         @else
             @foreach($conflictGroups as $group)
@@ -573,8 +777,15 @@
                                 $conflicts = $summary
                                     ? collect($summary['preview_conflicts'] ?? [])
                                     : $conflictMap->get($schedule->id, collect());
-                                $hasMoreConflicts = (bool) ($summary['has_more'] ?? false);
-                                $conflictCount = (int) ($summary['conflict_count'] ?? $conflicts->count());
+                                $distinctCount = (int) (
+                                    $summary['distinct_conflict_count']
+                                    ?? $conflicts->pluck('schedule_id')->unique()->count()
+                                );
+                                $previewDistinctCount = (int) (
+                                    $summary['preview_distinct_count']
+                                    ?? $conflicts->pluck('schedule_id')->unique()->count()
+                                );
+                                $hasMoreConflicts = (bool) ($summary['has_more'] ?? ($distinctCount > $previewDistinctCount));
                                 $detailUrl = $summary
                                     ? route('schedule_conflicts.details', [
                                         $schedule,
@@ -612,10 +823,10 @@
                                     @if($hasMoreConflicts)
                                         <div class="conflict-detail-actions">
                                             <button type="button" class="conflict-detail-toggle" data-conflict-detail-toggle>
-                                                ดูทั้งหมด {{ $conflictCount }} รายการ
+                                                ดูทั้งหมด {{ $distinctCount }} รายการ
                                             </button>
                                             <span class="conflict-detail-note" data-conflict-detail-note>
-                                                แสดงตัวอย่าง 3 รายการ
+                                                แสดงตัวอย่าง {{ $previewDistinctCount }} จาก {{ $distinctCount }} รายการ
                                             </span>
                                         </div>
                                     @endif

@@ -64,6 +64,31 @@ class ScheduleConflictReadRepository
         );
     }
 
+    /**
+     * Total conflict count for a course_head user, broken down by conflict_type.
+     *
+     * @return array<string, int>  e.g. ['instructor_overlap' => 30, 'room_overlap' => 25, 'group_overlap' => 22]
+     */
+    public function getTypeCountsForUser(int $userId, ?int $academicYearId): array
+    {
+        if (! $academicYearId || ! $this->userHasAcademicYearScope($userId, $academicYearId)) {
+            return [];
+        }
+
+        $run = $this->latestReadyRun((int) $academicYearId);
+
+        if (! $run) {
+            return [];
+        }
+
+        return $this->scopedResultQuery((int) $run->id, $userId, (int) $academicYearId)
+            ->select('schedule_conflict_results.conflict_type', DB::raw('count(*) as total'))
+            ->groupBy('schedule_conflict_results.conflict_type')
+            ->pluck('total', 'conflict_type')
+            ->map(fn ($count) => (int) $count)
+            ->all();
+    }
+
     public function getPageForUser(int $userId, ?int $academicYearId, int $page): LengthAwarePaginator
     {
         if (! $academicYearId || ! $this->userHasAcademicYearScope($userId, $academicYearId)) {
@@ -394,6 +419,16 @@ class ScheduleConflictReadRepository
                 ->mapWithKeys(fn ($item) => [$item->conflict_type => (int) $item->total])
                 ->all());
 
+        $distinctConflictCounts = $this->scopedResultQuery($runId, $userId, $academicYearId)
+            ->whereIn('schedule_conflict_results.schedule_id', $scheduleIds->all())
+            ->select([
+                'schedule_conflict_results.schedule_id',
+                DB::raw('COUNT(DISTINCT schedule_conflict_results.conflicting_schedule_id) as distinct_total'),
+            ])
+            ->groupBy('schedule_conflict_results.schedule_id')
+            ->pluck('distinct_total', 'schedule_id')
+            ->map(fn ($count) => (int) $count);
+
         $previewIds = $this->previewResultIds($runId, $userId, $academicYearId, $scheduleIds->all());
         $previewResults = $previewIds->isEmpty()
             ? collect()
@@ -409,17 +444,22 @@ class ScheduleConflictReadRepository
                 ->map(fn (ScheduleConflictResult $result) => $this->displayConflict($result))
                 ->values());
 
-        return $rows->map(function ($row) use ($schedules, $typeCounts, $previews) {
+        return $rows->map(function ($row) use ($schedules, $typeCounts, $previews, $distinctConflictCounts) {
             $scheduleId = (int) $row->schedule_id;
             $conflictCount = (int) $row->conflict_count;
+            $distinctCount = (int) ($distinctConflictCounts->get($scheduleId) ?? 0);
+            $previewItems = $previews->get($scheduleId, collect());
+            $previewDistinct = $previewItems->pluck('schedule_id')->unique()->count();
 
             return [
                 'schedule' => $schedules->get($scheduleId),
                 'schedule_id' => $scheduleId,
                 'conflict_count' => $conflictCount,
+                'distinct_conflict_count' => $distinctCount,
+                'preview_distinct_count' => $previewDistinct,
                 'type_counts' => $typeCounts->get($scheduleId, []),
-                'preview_conflicts' => $previews->get($scheduleId, collect()),
-                'has_more' => $conflictCount > self::PREVIEW_SIZE,
+                'preview_conflicts' => $previewItems,
+                'has_more' => $distinctCount > $previewDistinct,
             ];
         })->filter(fn (array $summary) => $summary['schedule'])->values();
     }
@@ -430,13 +470,34 @@ class ScheduleConflictReadRepository
             return collect();
         }
 
-        return $this->scopedResultQuery($runId, $userId, $academicYearId)
+        // Fetch all conflict records for these source schedules — group by source then pick
+        // top N DISTINCT conflicting schedules (not top N records) so preview shows the
+        // SAME complete info per card as the full expanded view.
+        $rows = $this->scopedResultQuery($runId, $userId, $academicYearId)
             ->whereIn('schedule_conflict_results.schedule_id', $scheduleIds)
             ->orderBy('schedule_conflict_results.schedule_id')
             ->orderBy('schedule_conflict_results.id')
-            ->get(['schedule_conflict_results.id', 'schedule_conflict_results.schedule_id'])
+            ->get([
+                'schedule_conflict_results.id',
+                'schedule_conflict_results.schedule_id',
+                'schedule_conflict_results.conflicting_schedule_id',
+            ]);
+
+        return $rows
             ->groupBy(fn ($row) => (int) $row->schedule_id)
-            ->flatMap(fn (Collection $items) => $items->take(self::PREVIEW_SIZE)->pluck('id'))
+            ->flatMap(function (Collection $items) {
+                $allowedConflictIds = $items
+                    ->pluck('conflicting_schedule_id')
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->take(self::PREVIEW_SIZE)
+                    ->values()
+                    ->all();
+
+                return $items
+                    ->filter(fn ($row) => in_array((int) $row->conflicting_schedule_id, $allowedConflictIds, true))
+                    ->pluck('id');
+            })
             ->map(fn ($id) => (int) $id)
             ->values();
     }
@@ -537,7 +598,8 @@ class ScheduleConflictReadRepository
     {
         $course = $schedule->courseOffering?->course;
         $courseLabel = trim(($course?->course_code ?? 'รายวิชา') . ' ' . ($course?->name_th ?? $course?->name_en ?? ''));
-        $dateLabel = optional($schedule->start_date ?? $schedule->teaching_date)->format('d/m/Y') ?? '-';
+        $rawDate = $schedule->start_date ?? $schedule->teaching_date;
+        $dateLabel = $rawDate ? \App\Support\ThaiDate::date($rawDate) : '-';
         $timeLabel = substr((string) $schedule->start_time, 0, 5) . '-' . substr((string) $schedule->end_time, 0, 5);
 
         return "{$courseLabel} ({$dateLabel} {$timeLabel})";
