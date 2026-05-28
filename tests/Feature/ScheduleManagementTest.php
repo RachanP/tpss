@@ -882,8 +882,9 @@ class ScheduleManagementTest extends TestCase
         $this->assertDatabaseCount('schedules', 0);
     }
 
-    public function test_schedule_form_excludes_and_rejects_instructors_from_other_departments(): void
+    public function test_schedule_form_shows_cross_department_instructors_and_save_succeeds_with_warning(): void
     {
+        // Cross-department teaching อนุญาตได้ — แสดงในฟอร์ม + บันทึกผ่าน + flash warning
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
         $outsideInstructor = $this->makeUser('instructor');
         $outsideInstructor->instructorProfile()->update([
@@ -897,16 +898,25 @@ class ScheduleManagementTest extends TestCase
         $this->get(route('maker.course_offerings.schedules.index', [$offering, 'modal' => 'create']))
             ->assertOk()
             ->assertSee($instructor->name)
-            ->assertDontSee($outsideInstructor->name);
+            ->assertSee($outsideInstructor->name);
 
-        $this->post(route('maker.course_offerings.schedules.store', $offering), $this->schedulePayload($outsideInstructor, $group, $activityType, $room))
-            ->assertSessionHasErrors('instructor_ids');
+        $response = $this->post(
+            route('maker.course_offerings.schedules.store', $offering),
+            $this->schedulePayload($outsideInstructor, $group, $activityType, $room),
+        );
 
-        $this->assertDatabaseCount('schedules', 0);
+        $response->assertSessionDoesntHaveErrors('instructor_ids');
+        $response->assertSessionHas('schedule_cross_dept_warning', function ($warnings) {
+            return is_array($warnings)
+                && count($warnings) === 1
+                && str_contains($warnings[0], 'ต่างจากภาควิชาของรายวิชา');
+        });
+        $this->assertDatabaseCount('schedules', 1);
     }
 
-    public function test_schedule_page_hides_existing_schedule_instructors_from_other_departments(): void
+    public function test_schedule_page_shows_existing_schedule_instructors_from_other_departments(): void
     {
+        // เปลี่ยนจาก "ซ่อน" → "แสดง" — ตามนโยบาย warning แทน block
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
         $outsideInstructor = $this->makeUser('instructor');
         $outsideInstructor->instructorProfile()->update([
@@ -921,7 +931,7 @@ class ScheduleManagementTest extends TestCase
         $this->get(route('maker.course_offerings.schedules.index', $offering))
             ->assertOk()
             ->assertSee($instructor->name)
-            ->assertDontSee($outsideInstructor->name);
+            ->assertSee($outsideInstructor->name);
     }
 
     public function test_course_head_can_update_schedule_and_pivots(): void

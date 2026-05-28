@@ -212,29 +212,18 @@
             ? $color
             : 'var(--schedule-border-strong)';
     };
+    // แสดงผู้สอนทั้งหมดใน pool — รวมต่างภาควิชา (แจ้งเตือนผ่าน badge ไม่บล็อก)
     $eligibleScheduleInstructors = function ($offering) {
-        $departmentId = $offering?->course?->department_id;
-        $pool = $offering?->instructorPool ?? collect();
-
-        if (! $departmentId) {
-            return $pool;
-        }
-
-        return $pool
-            ->filter(fn ($instructor) => (int) $instructor->instructorProfile?->department_id === (int) $departmentId)
-            ->values();
+        return $offering?->instructorPool ?? collect();
     };
-    $scheduleDepartmentInstructors = function ($schedule) use ($eligibleScheduleInstructors) {
-        $eligibleIds = $eligibleScheduleInstructors($schedule?->courseOffering)
-            ->pluck('id')
-            ->map(fn ($id) => (int) $id)
-            ->all();
-
-        return $schedule?->instructors
-            ? $schedule->instructors
-                ->filter(fn ($instructor) => in_array((int) $instructor->id, $eligibleIds, true))
-                ->values()
-            : collect();
+    $isCrossDeptInstructor = function ($instructor, $offering) {
+        $courseDeptId = $offering?->course?->department_id;
+        $instructorDeptId = $instructor?->instructorProfile?->department_id;
+        return $courseDeptId && $instructorDeptId
+            && (int) $instructorDeptId !== (int) $courseDeptId;
+    };
+    $scheduleDepartmentInstructors = function ($schedule) {
+        return $schedule?->instructors ?? collect();
     };
     $scheduleInstructorText = function ($schedule) use ($scheduleDepartmentInstructors) {
         $instructors = $scheduleDepartmentInstructors($schedule);
@@ -3610,6 +3599,15 @@
                 <div style="margin-top:10px;">
                     <a href="{{ route('maker.schedule_conflicts.index') }}" class="btn btn-secondary" style="text-decoration:none;">ดูการแจ้งเตือนการชน</a>
                 </div>
+            </div>
+        @endif
+
+        @if(session('schedule_cross_dept_warning') && count(session('schedule_cross_dept_warning')) > 0)
+            <div class="schedule-empty" style="border-color:#d97706;background:#fef3c7;color:#92400e;font-weight:700;text-align:left;margin-bottom:14px;" data-testid="schedule-cross-dept-warning">
+                <div style="margin-bottom:6px;font-weight:800;">⚠ แจ้งเตือน: ผู้สอนต่างภาควิชา</div>
+                @foreach(session('schedule_cross_dept_warning') as $message)
+                    <div>{{ $message }}</div>
+                @endforeach
             </div>
         @endif
 

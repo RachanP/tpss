@@ -198,18 +198,9 @@ class CourseOfferingController extends Controller
                 ->withInput();
         }
 
-        if (
-            $courseOffering->course?->department_id
-            && (int) $user->instructorProfile->department_id !== (int) $courseOffering->course->department_id
-        ) {
-            if ($request->expectsJson()) {
-                return response()->json(['message' => 'เลือกได้เฉพาะอาจารย์ในภาควิชาของรายวิชานี้'], 422);
-            }
-
-            return $this->redirectToInstructors($courseOffering)
-                ->withErrors(['user_id' => 'เลือกได้เฉพาะอาจารย์ในภาควิชาของรายวิชานี้'])
-                ->withInput();
-        }
+        // ผู้สอนต่างภาควิชา — แจ้งเตือนแต่ไม่บล็อก (cross-department teaching เกิดได้ในคณะพยาบาล)
+        $isCrossDepartment = $courseOffering->course?->department_id
+            && (int) $user->instructorProfile->department_id !== (int) $courseOffering->course->department_id;
 
         if ($courseOffering->instructorPool()->where('users.id', $user->id)->exists()) {
             if ($request->expectsJson()) {
@@ -235,6 +226,15 @@ class CourseOfferingController extends Controller
             description: "เพิ่มผู้สอนในรายวิชา {$this->offeringCourseLabel($courseOffering)}",
         );
 
+        $crossDeptWarning = $isCrossDepartment
+            ? sprintf(
+                'อาจารย์ %s อยู่ภาควิชา %s ต่างจากภาควิชาของรายวิชา (%s) — เพิ่มได้แต่ควรตรวจสอบความเหมาะสม',
+                $user->formatted_name ?? $user->name,
+                $user->instructorProfile?->department?->name ?? '-',
+                $courseOffering->course?->department?->name ?? '-',
+            )
+            : null;
+
         if ($request->expectsJson()) {
             $role = $roleId ? CourseRole::find($roleId) : null;
             return response()->json([
@@ -244,10 +244,15 @@ class CourseOfferingController extends Controller
                 'course_role_id' => $roleId,
                 'role_name'      => $role?->name_th,
                 'is_coordinator' => false,
+                'cross_department_warning' => $crossDeptWarning,
             ]);
         }
 
-        return back()->with('success', 'เพิ่มอาจารย์ในรายวิชาเรียบร้อยแล้ว');
+        $response = back()->with('success', 'เพิ่มอาจารย์ในรายวิชาเรียบร้อยแล้ว');
+
+        return $crossDeptWarning
+            ? $response->with('warning', $crossDeptWarning)
+            : $response;
     }
 
     public function updateInstructorRole(Request $request, CourseOffering $courseOffering, User $user): JsonResponse|RedirectResponse

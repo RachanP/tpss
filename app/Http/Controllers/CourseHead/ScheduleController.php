@@ -884,7 +884,7 @@ class ScheduleController extends Controller
         $validated['course_offering_id'] = $courseOffering->id;
         $this->assertScheduleWithinAcademicYear($courseOffering, $validated);
         $this->assertSelectedGroupsFitCapacity($courseOffering, $validated);
-        $this->assertInstructorsBelongToCourseDepartment($courseOffering, $validated['instructor_ids']);
+        $crossDeptWarnings = $this->detectCrossDepartmentInstructors($courseOffering, $validated['instructor_ids']);
         $this->assertLeadInstructorSelected($validated);
         $conflicts = $this->detectConflicts($conflictChecker, $validated);
 
@@ -940,7 +940,8 @@ class ScheduleController extends Controller
         return redirect()
             ->to($this->scheduleReturnUrl($request, $courseOffering, $validated['start_date'], $redirectToWorkspace))
             ->with($savedFlashKey, $savedFlashMessage)
-            ->with('schedule_conflict_warning', collect($conflicts)->pluck('message')->unique()->values()->all());
+            ->with('schedule_conflict_warning', collect($conflicts)->pluck('message')->unique()->values()->all())
+            ->with('schedule_cross_dept_warning', $crossDeptWarnings);
     }
 
     public function edit(CourseOffering $courseOffering, Schedule $schedule): View|RedirectResponse
@@ -971,7 +972,7 @@ class ScheduleController extends Controller
         $validated['course_offering_id'] = $courseOffering->id;
         $this->assertScheduleWithinAcademicYear($courseOffering, $validated);
         $this->assertSelectedGroupsFitCapacity($courseOffering, $validated);
-        $this->assertInstructorsBelongToCourseDepartment($courseOffering, $validated['instructor_ids']);
+        $crossDeptWarnings = $this->detectCrossDepartmentInstructors($courseOffering, $validated['instructor_ids']);
         $this->assertLeadInstructorSelected($validated);
         $conflicts = $this->detectConflicts($conflictChecker, $validated, $schedule->id);
 
@@ -1039,7 +1040,8 @@ class ScheduleController extends Controller
         return redirect()
             ->to($this->scheduleReturnUrl($request, $courseOffering, $validated['start_date']))
             ->with($savedFlashKey, $savedFlashMessage)
-            ->with('schedule_conflict_warning', collect($conflicts)->pluck('message')->unique()->values()->all());
+            ->with('schedule_conflict_warning', collect($conflicts)->pluck('message')->unique()->values()->all())
+            ->with('schedule_cross_dept_warning', $crossDeptWarnings);
     }
 
     public function destroy(Request $request, CourseOffering $courseOffering, Schedule $schedule): RedirectResponse
@@ -1316,25 +1318,34 @@ class ScheduleController extends Controller
         }
     }
 
-    private function assertInstructorsBelongToCourseDepartment(CourseOffering $courseOffering, array $instructorIds): void
+    /**
+     * ตรวจหาผู้สอนต่างภาควิชากับรายวิชา — return list ของ warning messages (ไม่ throw)
+     * cross-department teaching อนุญาตได้ในคณะพยาบาล (เช่น วิชาแกน, อาจารย์รับเชิญ)
+     */
+    private function detectCrossDepartmentInstructors(CourseOffering $courseOffering, array $instructorIds): array
     {
-        $courseOffering->loadMissing('course');
+        $courseOffering->loadMissing('course.department');
         $departmentId = $courseOffering->course?->department_id;
 
-        if (! $departmentId) {
-            return;
+        if (! $departmentId || empty($instructorIds)) {
+            return [];
         }
 
-        $allowedCount = $courseOffering->instructorPool()
+        $courseDeptName = $courseOffering->course?->department?->name ?? '-';
+
+        return $courseOffering->instructorPool()
+            ->with('instructorProfile.department')
             ->whereIn('users.id', array_map('intval', $instructorIds))
-            ->whereHas('instructorProfile', fn ($query) => $query->where('department_id', $departmentId))
-            ->count();
-
-        if ($allowedCount !== count(array_unique(array_map('intval', $instructorIds)))) {
-            throw ValidationException::withMessages([
-                'instructor_ids' => 'เลือกได้เฉพาะผู้สอนในภาควิชาของรายวิชานี้',
-            ]);
-        }
+            ->get()
+            ->filter(fn ($instructor) => (int) $instructor->instructorProfile?->department_id !== (int) $departmentId)
+            ->map(fn ($instructor) => sprintf(
+                'อาจารย์ %s อยู่ภาควิชา %s ต่างจากภาควิชาของรายวิชา (%s)',
+                $instructor->formatted_name ?? $instructor->name,
+                $instructor->instructorProfile?->department?->name ?? '-',
+                $courseDeptName,
+            ))
+            ->values()
+            ->all();
     }
 
     private function detectConflicts(
