@@ -528,25 +528,107 @@
         .schedule-card-hdr {
             align-items: center;
         }
+        .schedule-card-hdr > div:first-child {
+            flex: 1 1 0;
+            min-width: 0;
+        }
         .schedule-card-actions {
             display: flex;
             align-items: center;
-            gap: 12px;
+            justify-content: flex-end;
+            gap: 10px;
+            row-gap: 8px;
             flex-wrap: wrap;
+            flex: 0 0 max-content;
+            max-width: 100%;
             margin-left: auto;
+        }
+        @media (max-width: 1040px) {
+            .schedule-card-actions {
+                flex-basis: min-content;
+            }
         }
         .schedule-card-actions > [x-cloak] {
             display: inline-flex !important;
             visibility: hidden;
         }
-        .schedule-shell.is-grid-navigating .schedule-card-actions {
-            opacity: .72;
-        }
-        .schedule-shell.is-grid-navigating .schedule-grid-wrap,
-        .schedule-shell.is-grid-navigating .month-calendar,
-        .schedule-shell.is-grid-navigating .schedule-list-table {
-            opacity: .72;
-            transition: opacity .12s ease-out;
+        @media (max-width: 640px) {
+            .schedule-card-hdr {
+                align-items: stretch;
+                gap: 12px !important;
+                padding: 14px 12px 16px;
+            }
+            .schedule-card-hdr > div:first-child {
+                width: 100%;
+                text-align: left;
+            }
+            .schedule-card-hdr .card-ttl {
+                font-size: 15px;
+                line-height: 1.3;
+            }
+            .schedule-caption-line {
+                align-items: flex-start;
+                gap: 6px;
+            }
+            .schedule-caption-warning {
+                max-width: 100%;
+                white-space: normal;
+                text-align: left;
+            }
+            .schedule-card-actions {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr);
+                justify-items: center;
+                width: 100%;
+                gap: 8px;
+                margin-left: 0;
+                flex: 1 1 100%;
+            }
+            .schedule-card-actions .sched-datenav {
+                display: grid;
+                grid-template-columns: 36px minmax(0, 1fr) 36px;
+                align-items: center;
+                gap: 6px;
+                width: min(100%, 236px);
+            }
+            .schedule-card-actions .sched-datenav-arrow {
+                width: 36px;
+                height: 36px;
+            }
+            .schedule-card-actions .sched-datenav-stack,
+            .schedule-card-actions .sched-datenav-picker,
+            .schedule-card-actions .sched-datenav .tdi-wrap {
+                width: 100%;
+                min-width: 0;
+                flex: 1 1 auto;
+            }
+            .schedule-card-actions .sched-datenav-input {
+                height: 36px;
+                font-size: 12.5px;
+                text-align: center;
+                padding-left: 8px;
+                padding-right: 34px;
+            }
+            .schedule-card-actions .period-toggle {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                width: min(100%, 168px);
+            }
+            .schedule-card-actions .schedule-toggle {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                width: min(100%, 176px);
+            }
+            .schedule-card-actions .period-toggle a,
+            .schedule-card-actions .schedule-toggle button {
+                min-height: 34px;
+                padding: 6px 8px;
+                font-size: 11.5px;
+            }
+            .schedule-card-actions .weekend-toggle {
+                width: min(100%, 168px);
+                min-height: 34px;
+            }
         }
         .sched-datenav-arrow {
             display: inline-flex;
@@ -1119,6 +1201,8 @@
         /* ── โหมดรายการ (list) — ตารางคอลัมน์ อ่านง่าย ───────────────── */
         .sched-list-wrap {
             overflow-x: auto;
+            max-width: 100%;
+            -webkit-overflow-scrolling: touch;
             border: 1px solid var(--schedule-border-strong);
             border-radius: 10px;
             background: var(--surface);
@@ -2012,6 +2096,86 @@
             border-color: color-mix(in oklch, var(--brand-navy) 32%, var(--schedule-border));
             font-size: 9.5px;
         }
+        @media (max-width: 640px) {
+            [data-testid="schedule-grid-view"],
+            [data-testid="schedule-grid-view-co"] {
+                max-width: 100%;
+                overflow-x: auto;
+                overflow-y: visible;
+                -webkit-overflow-scrolling: touch;
+            }
+            [data-testid="schedule-grid-view-co"] {
+                padding: 10px !important;
+            }
+            .schedule-grid.is-precise {
+                width: max-content;
+                min-width: calc(48px + (var(--grid-day-count) * 118px));
+                max-width: none;
+                overflow: visible;
+            }
+            .schedule-grid.is-precise .grid-cell {
+                padding: 4px 5px;
+            }
+            .schedule-grid.is-precise .grid-head {
+                min-height: 40px;
+                font-size: 10px;
+                line-height: 1.2;
+            }
+            .schedule-grid.is-precise .grid-head .caption {
+                font-size: 9px;
+                line-height: 1.15;
+            }
+            .schedule-grid.is-precise .grid-time {
+                font-size: 10px;
+                padding-right: 4px;
+            }
+            .schedule-grid.is-precise .grid-cell-activity {
+                padding: 3px;
+            }
+            .schedule-grid.is-precise .grid-cell-activity .grid-activity {
+                padding: 6px 6px;
+                border-left-width: 2px;
+            }
+            .schedule-grid.is-precise .grid-activity-card.is-stacked-card {
+                padding: 6px 6px !important;
+            }
+            .schedule-grid.is-precise .grid-activity-title,
+            .schedule-grid.is-precise .grid-activity-card.is-stacked-card .grid-activity-title {
+                font-size: 10.5px;
+                line-height: 1.24;
+            }
+            .schedule-grid.is-precise .grid-activity-time,
+            .schedule-grid.is-precise .grid-activity-card.is-stacked-card .grid-activity-time {
+                display: block;
+                font-size: 9.5px;
+                line-height: 1.2;
+            }
+            .schedule-grid.is-precise .schedule-conflict-pill {
+                min-height: 17px;
+                padding: 1px 5px;
+                font-size: 8.5px;
+            }
+            .schedule-grid.is-precise .grid-activity-foot {
+                min-height: 18px;
+            }
+            .schedule-grid.is-precise .grid-activity-groups {
+                min-height: 17px;
+                padding: 1px 5px;
+                font-size: 8.5px;
+            }
+            .schedule-grid.is-precise .stack-indicator {
+                right: 4px;
+                bottom: 4px;
+                max-width: calc(100% - 8px);
+                padding: 3px 5px;
+                font-size: 8.5px;
+                gap: 3px;
+            }
+            .schedule-grid.is-precise .stack-sync-icon {
+                width: 10px;
+                height: 10px;
+            }
+        }
         .month-calendar {
             display: grid;
             grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -2093,27 +2257,30 @@
         .month-activity {
             width: 100%;
             min-width: 0;
-            border: 1px solid color-mix(in oklch, var(--activity-color) 30%, var(--schedule-border));
-            border-radius: 6px;
-            background: color-mix(in oklch, var(--activity-color) 7%, var(--surface));
-            padding: 5px 6px;
+            border: 1px solid color-mix(in oklch, var(--activity-color) 26%, var(--schedule-border));
+            border-left: 3px solid var(--activity-color);
+            border-radius: 7px;
+            background: var(--surface);
+            padding: 6px 7px;
             cursor: pointer;
             text-align: left;
             font: inherit;
+            color: var(--fg-2);
+            box-shadow: 0 1px 3px oklch(0% 0 0 / 0.07);
         }
         .month-activity:focus-visible {
             outline: 2px solid var(--brand-navy);
             outline-offset: 2px;
         }
         .month-activity-time {
-            color: var(--brand-navy);
-            font-size: 10px;
+            color: var(--fg-1);
+            font-size: 10.5px;
             font-weight: 900;
             font-variant-numeric: tabular-nums;
             line-height: 1.2;
         }
         .month-activity-title {
-            margin-top: 1px;
+            margin-top: 2px;
             color: var(--fg-1);
             font-size: 10.6px;
             font-weight: 850;
@@ -2136,10 +2303,10 @@
             align-items: center;
             min-height: 17px;
             padding: 1px 6px;
-            border: 1px solid var(--schedule-border);
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--schedule-border));
             border-radius: 999px;
-            color: var(--schedule-muted);
-            background: var(--surface);
+            color: var(--fg-2);
+            background: oklch(96.5% 0.014 232);
             font-size: 9.5px;
             font-weight: 850;
         }
@@ -2166,7 +2333,7 @@
             display: none;
         }
         [data-testid="schedule-month-calendar"] .month-activity {
-            padding: 5px 6px;
+            padding: 6px 7px;
         }
         [data-testid="schedule-month-calendar"] .month-activity-meta,
         [data-testid="schedule-month-calendar"] .month-activity .activity-tag,
@@ -2195,7 +2362,10 @@
         [data-testid="schedule-month-calendar"] .month-activity:focus-visible,
         [data-testid="schedule-month-calendar-co"] .month-activity:hover,
         [data-testid="schedule-month-calendar-co"] .month-activity:focus-visible {
-            box-shadow: 0 8px 18px oklch(0% 0 0 / 0.12);
+            border-color: color-mix(in oklch, var(--activity-color) 44%, var(--schedule-border-strong));
+            background: color-mix(in oklch, var(--activity-color) 5%, var(--surface));
+            box-shadow: 0 3px 10px oklch(0% 0 0 / 0.08);
+            outline: none;
             position: relative;
             z-index: 4;
         }
@@ -2223,6 +2393,14 @@
         [data-testid="schedule-month-calendar-co"] .month-activity:hover .month-group-summary,
         [data-testid="schedule-month-calendar-co"] .month-activity:focus-visible .month-group-summary {
             display: inline-flex;
+        }
+        @media (max-width: 640px) {
+            .month-calendar {
+                min-width: 720px;
+            }
+            .sched-list {
+                min-width: 640px;
+            }
         }
         .schedule-modal-backdrop {
             position: fixed;
@@ -2718,11 +2896,42 @@
             }
         }
         @media (max-width: 640px) {
+            .offerings-dropdown-panel {
+                padding: 10px 12px;
+            }
+            .offerings-panel-meta {
+                align-items: flex-start;
+                gap: 6px;
+            }
+            .offering-selector-wrapper {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 6px;
+            }
+            .offering-selector-label {
+                white-space: normal;
+            }
+            .offering-select-control {
+                min-width: 0;
+                width: 100%;
+                font-size: 12.5px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
             .course-overview {
                 grid-template-columns: 1fr;
             }
             .course-overview-actions {
                 justify-content: flex-start;
+                width: 100%;
+            }
+            .course-overview-actions .btn {
+                flex: 1 1 150px;
+                justify-content: center;
+            }
+            .course-overview-name {
+                font-size: 18px;
             }
             .schedule-filter-bar {
                 grid-template-columns: 1fr;
@@ -2860,8 +3069,7 @@
             width: 100%;
             height: 100%;
             min-height: 80px;
-            /* overflow visible so ghost peek cards can show slightly outside */
-            overflow: visible;
+            overflow: hidden;
         }
         .grid-activity-card {
             position: absolute !important;
@@ -3076,7 +3284,6 @@
                 }
                 sessionStorage.setItem('tpss-schedule-scroll-y', window.scrollY);
                 sessionStorage.setItem('tpss-schedule-scroll-height', document.documentElement.scrollHeight);
-                this.$el.classList.add('is-grid-navigating');
                 window.location.href = url.toString();
             },
             jumpToGridDate(value) {
@@ -3318,13 +3525,14 @@
                             @php
                                 $availCourse = $availOffering->course;
                                 $isSelected = ! $isWorkspace && $courseOffering && $courseOffering->id === $availOffering->id;
+                                $optionCourseName = $availCourse?->name_th ?? $availCourse?->name_en ?? 'ไม่มีชื่อรายวิชา';
                                 $optUrl = route('maker.course_offerings.schedules.index', array_filter([
                                     $availOffering,
                                     ...$selectorQuery,
                                 ]));
                             @endphp
                             <option value="{{ $optUrl }}" {{ $isSelected ? 'selected' : '' }}>
-                                {{ $availCourse?->course_code ?? '-' }} - {{ $availCourse?->name_th ?? $availCourse?->name_en ?? 'ไม่มีชื่อรายวิชา' }}
+                                {{ $availCourse?->course_code ?? '-' }} - {{ \Illuminate\Support\Str::limit($optionCourseName, 36) }}
                             </option>
                         @endforeach
                     </select>
@@ -3399,9 +3607,9 @@
                 </div>
             </label>
             <div class="period-toggle" aria-label="ช่วงเวลาที่แสดง" x-show="view === 'grid'" x-cloak>
-                <button type="button" data-period-url="{{ $dayViewUrl }}" @click="changeGridPeriod('day')" class="{{ ($schedulePeriod ?? 'week') === 'day' ? 'is-active' : '' }}">วัน</button>
-                <button type="button" data-period-url="{{ $weekViewUrl }}" @click="changeGridPeriod('week')" class="{{ ($schedulePeriod ?? 'week') === 'week' ? 'is-active' : '' }}">สัปดาห์</button>
-                <button type="button" data-period-url="{{ $monthViewUrl }}" @click="changeGridPeriod('month')" class="{{ ($schedulePeriod ?? 'week') === 'month' ? 'is-active' : '' }}">เดือน</button>
+                <a href="{{ $dayViewUrl }}" class="{{ ($schedulePeriod ?? 'week') === 'day' ? 'is-active' : '' }}">วัน</a>
+                <a href="{{ $weekViewUrl }}" class="{{ ($schedulePeriod ?? 'week') === 'week' ? 'is-active' : '' }}">สัปดาห์</a>
+                <a href="{{ $monthViewUrl }}" class="{{ ($schedulePeriod ?? 'week') === 'month' ? 'is-active' : '' }}">เดือน</a>
             </div>
             <button
                 type="button"
@@ -3529,9 +3737,9 @@
                             </a>
                         </div>
                         <div class="period-toggle" aria-label="ช่วงเวลาที่แสดง" x-show="view === 'grid'" x-cloak>
-                            <button type="button" data-period-url="{{ $dayViewUrl }}" @click="changeGridPeriod('day')" class="{{ ($schedulePeriod ?? 'week') === 'day' ? 'is-active' : '' }}">วัน</button>
-                            <button type="button" data-period-url="{{ $weekViewUrl }}" @click="changeGridPeriod('week')" class="{{ ($schedulePeriod ?? 'week') === 'week' ? 'is-active' : '' }}">สัปดาห์</button>
-                            <button type="button" data-period-url="{{ $monthViewUrl }}" @click="changeGridPeriod('month')" class="{{ ($schedulePeriod ?? 'week') === 'month' ? 'is-active' : '' }}">เดือน</button>
+                            <a href="{{ $dayViewUrl }}" class="{{ ($schedulePeriod ?? 'week') === 'day' ? 'is-active' : '' }}">วัน</a>
+                            <a href="{{ $weekViewUrl }}" class="{{ ($schedulePeriod ?? 'week') === 'week' ? 'is-active' : '' }}">สัปดาห์</a>
+                            <a href="{{ $monthViewUrl }}" class="{{ ($schedulePeriod ?? 'week') === 'month' ? 'is-active' : '' }}">เดือน</a>
                         </div>
                         <button
                             type="button"
@@ -3757,7 +3965,7 @@
                             @endforeach
                         </div>
                     @else
-                    <div class="schedule-grid is-precise" style="--grid-minute-row-height: {{ $gridMinuteRowHeight }}px; grid-template-columns: 68px repeat({{ max(1, $weekDays->count()) }}, minmax({{ ($includeWeekends ?? false) && ($schedulePeriod ?? 'week') === 'week' ? 122 : 146 }}px, 1fr)); grid-template-rows: 44px repeat({{ $gridMinuteRowCount }}, var(--grid-minute-row-height));">
+                    <div class="schedule-grid is-precise" style="--grid-day-count: {{ max(1, $weekDays->count()) }}; --grid-minute-row-height: {{ $gridMinuteRowHeight }}px; grid-template-columns: 68px repeat({{ max(1, $weekDays->count()) }}, minmax({{ ($includeWeekends ?? false) && ($schedulePeriod ?? 'week') === 'week' ? 122 : 146 }}px, 1fr)); grid-template-rows: 44px repeat({{ $gridMinuteRowCount }}, var(--grid-minute-row-height));">
                         <div class="grid-cell grid-head" style="grid-area:1 / 1;"></div>
                         @foreach($weekDays as $dayIndex => $day)
                             <div class="grid-cell grid-head" style="grid-area:1 / {{ $dayIndex + 2 }};">
@@ -3886,10 +4094,10 @@
                                                             const dist = page * 3 - idx; /* 1 = closest */
                                                             const baseOpacity = Math.max(0.12, 0.45 - (dist - 1) * 0.08);
                                                             const scale = Math.max(0.84, 0.95 - (dist - 1) * 0.04);
-                                                            const leftOffset = (-6 - (dist - 1) * 4);
+                                                            const leftOffset = Math.max(0, 4 - (dist - 1) * 2);
                                                             return {
                                                                 left: leftOffset + '%',
-                                                                width: '78%',
+                                                                width: '72%',
                                                                 zIndex: 6 - dist,
                                                                 opacity: baseOpacity,
                                                                 pointerEvents: 'none',
@@ -3902,10 +4110,10 @@
                                                             const dist = idx - (page + 1) * 3 + 1; /* 1 = closest */
                                                             const baseOpacity = Math.max(0.12, 0.45 - (dist - 1) * 0.08);
                                                             const scale = Math.max(0.84, 0.95 - (dist - 1) * 0.04);
-                                                            const leftOffset = (28 + (dist - 1) * 4);
+                                                            const leftOffset = Math.min(24, 16 + (dist - 1) * 3);
                                                             return {
                                                                 left: leftOffset + '%',
-                                                                width: '78%',
+                                                                width: '72%',
                                                                 zIndex: 6 - dist,
                                                                 opacity: baseOpacity,
                                                                 pointerEvents: 'none',
@@ -4158,7 +4366,7 @@
                         @endforeach
                     </div>
                 @else
-                <div class="schedule-grid is-precise" style="--grid-minute-row-height: {{ $gridMinuteRowHeight }}px; grid-template-columns: 68px repeat({{ max(1, $weekDays->count()) }}, minmax({{ ($includeWeekends ?? false) && ($schedulePeriod ?? 'week') === 'week' ? 122 : 146 }}px, 1fr)); grid-template-rows: 44px repeat({{ $gridMinuteRowCount }}, var(--grid-minute-row-height));">
+                <div class="schedule-grid is-precise" style="--grid-day-count: {{ max(1, $weekDays->count()) }}; --grid-minute-row-height: {{ $gridMinuteRowHeight }}px; grid-template-columns: 68px repeat({{ max(1, $weekDays->count()) }}, minmax({{ ($includeWeekends ?? false) && ($schedulePeriod ?? 'week') === 'week' ? 122 : 146 }}px, 1fr)); grid-template-rows: 44px repeat({{ $gridMinuteRowCount }}, var(--grid-minute-row-height));">
                     <div class="grid-cell grid-head" style="grid-area:1 / 1;"></div>
                     @foreach($weekDays as $dayIndex => $day)
                         <div class="grid-cell grid-head" style="grid-area:1 / {{ $dayIndex + 2 }};">
@@ -4313,10 +4521,10 @@
                                                         const dist = page * 3 - idx; /* 1 = closest */
                                                         const baseOpacity = Math.max(0.12, 0.45 - (dist - 1) * 0.08);
                                                         const scale = Math.max(0.84, 0.95 - (dist - 1) * 0.04);
-                                                        const leftOffset = (-6 - (dist - 1) * 4);
+                                                        const leftOffset = Math.max(0, 4 - (dist - 1) * 2);
                                                         return {
                                                             left: leftOffset + '%',
-                                                            width: '78%',
+                                                            width: '72%',
                                                             zIndex: 6 - dist,
                                                             opacity: baseOpacity,
                                                             pointerEvents: 'none',
@@ -4329,10 +4537,10 @@
                                                         const dist = idx - (page + 1) * 3 + 1; /* 1 = closest */
                                                         const baseOpacity = Math.max(0.12, 0.45 - (dist - 1) * 0.08);
                                                         const scale = Math.max(0.84, 0.95 - (dist - 1) * 0.04);
-                                                        const leftOffset = (28 + (dist - 1) * 4);
+                                                        const leftOffset = Math.min(24, 16 + (dist - 1) * 3);
                                                         return {
                                                             left: leftOffset + '%',
-                                                            width: '78%',
+                                                            width: '72%',
                                                             zIndex: 6 - dist,
                                                             opacity: baseOpacity,
                                                             pointerEvents: 'none',

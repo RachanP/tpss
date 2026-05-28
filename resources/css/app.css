@@ -920,11 +920,18 @@ body {
   width: 100%;
   min-width: 0;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
+}
+
+@media (max-width: 640px) {
+  .table-responsive table {
+    min-width: 640px;
+  }
 }
 
 th {
