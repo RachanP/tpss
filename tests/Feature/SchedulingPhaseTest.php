@@ -13,6 +13,7 @@ use App\Models\LocationType;
 use App\Models\StudentGroup;
 use App\Models\User;
 use App\Models\UserRole;
+use Database\Seeders\CourseOfferingSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -71,25 +72,78 @@ class SchedulingPhaseTest extends TestCase
         $this->assertSame('published', $publishedYear->fresh()->phase);
     }
 
-    public function test_open_creates_offerings_for_all_active_courses_regardless_of_semester(): void
+    public function test_open_creates_offerings_only_for_active_courses_matching_academic_year_semester(): void
     {
-        // After M2 hardening, the openSchedulingWindow no longer filters by
-        // default_semester — course.status is the source of truth.
         $admin = $this->makeAdmin();
         $head  = $this->makeInstructor();
         $year  = $this->makeYear(['semester' => 1, 'phase' => 'preparation']);
         $sem1Course = $this->makeCourse(['default_semester' => 1, 'head_instructor_id' => $head->id]);
         $sem2Course = $this->makeCourse(['default_semester' => 2, 'head_instructor_id' => $head->id]);
-        // Inactive course → skipped entirely (status filter).
-        $this->makeCourse(['default_semester' => 1, 'head_instructor_id' => $head->id, 'status' => 'inactive']);
+        $inactiveCourse = $this->makeCourse(['default_semester' => 1, 'head_instructor_id' => $head->id, 'status' => 'inactive']);
+        $inactiveCurriculum = Curriculum::create([
+            'name' => 'Inactive Phase Curriculum',
+            'effective_year' => 2569,
+            'is_active' => false,
+        ]);
+        $inactiveCurriculumCourse = $this->makeCourse([
+            'default_semester' => 1,
+            'head_instructor_id' => $head->id,
+            'curriculum_id' => $inactiveCurriculum->id,
+        ]);
 
         $this->seedCriticalsBaseline();
         $this->actingAsAdmin($admin);
-        $this->patch(route('admin.settings.scheduling.open', $year));
+        $this->patch(route('admin.settings.scheduling.open', $year))
+            ->assertRedirect(route('admin.settings', ['tab' => 'academic']))
+            ->assertSessionHas('success');
 
-        $this->assertDatabaseCount('course_offerings', 2);
         $this->assertDatabaseHas('course_offerings', ['course_id' => $sem1Course->id, 'academic_year_id' => $year->id]);
-        $this->assertDatabaseHas('course_offerings', ['course_id' => $sem2Course->id, 'academic_year_id' => $year->id]);
+        $this->assertDatabaseMissing('course_offerings', ['course_id' => $sem2Course->id, 'academic_year_id' => $year->id]);
+        $this->assertDatabaseMissing('course_offerings', ['course_id' => $inactiveCourse->id, 'academic_year_id' => $year->id]);
+        $this->assertDatabaseMissing('course_offerings', ['course_id' => $inactiveCurriculumCourse->id, 'academic_year_id' => $year->id]);
+        $this->assertSame(1, CourseOffering::query()
+            ->where('academic_year_id', $year->id)
+            ->whereIn('course_id', [
+                $sem1Course->id,
+                $sem2Course->id,
+                $inactiveCourse->id,
+                $inactiveCurriculumCourse->id,
+            ])
+            ->count());
+    }
+
+    public function test_course_offering_seeder_filters_active_courses_by_active_academic_year_semester(): void
+    {
+        $head = $this->makeInstructor();
+        $activeYear = $this->makeYear(['name' => '2570', 'semester' => 2, 'is_active' => true]);
+        $sem2Course = $this->makeCourse(['default_semester' => 2, 'head_instructor_id' => $head->id]);
+        $sem1Course = $this->makeCourse(['default_semester' => 1, 'head_instructor_id' => $head->id]);
+        $headlessCourse = $this->makeCourse(['default_semester' => 2, 'head_instructor_id' => null]);
+        $inactiveCourse = $this->makeCourse(['default_semester' => 2, 'head_instructor_id' => $head->id, 'status' => 'inactive']);
+        $inactiveCurriculum = Curriculum::create([
+            'name' => 'Inactive Seeder Curriculum',
+            'effective_year' => 2570,
+            'is_active' => false,
+        ]);
+        $inactiveCurriculumCourse = $this->makeCourse([
+            'default_semester' => 2,
+            'head_instructor_id' => $head->id,
+            'curriculum_id' => $inactiveCurriculum->id,
+        ]);
+
+        $this->seed(CourseOfferingSeeder::class);
+
+        $this->assertDatabaseHas('course_offerings', [
+            'course_id' => $sem2Course->id,
+            'academic_year_id' => $activeYear->id,
+        ]);
+        $this->assertDatabaseMissing('course_offerings', [
+            'course_id' => $sem1Course->id,
+            'academic_year_id' => $activeYear->id,
+        ]);
+        $this->assertDatabaseMissing('course_offerings', ['course_id' => $headlessCourse->id]);
+        $this->assertDatabaseMissing('course_offerings', ['course_id' => $inactiveCourse->id]);
+        $this->assertDatabaseMissing('course_offerings', ['course_id' => $inactiveCurriculumCourse->id]);
     }
 
     public function test_open_is_idempotent_when_offering_already_exists(): void
@@ -111,6 +165,30 @@ class SchedulingPhaseTest extends TestCase
         $this->patch(route('admin.settings.scheduling.open', $year));
 
         $this->assertDatabaseCount('course_offerings', 1);
+    }
+
+    public function test_open_does_not_sync_existing_offerings_for_courses_in_other_semesters(): void
+    {
+        $admin = $this->makeAdmin();
+        $oldHead = $this->makeInstructor();
+        $newHead = $this->makeInstructor();
+        $year = $this->makeYear(['semester' => 1, 'phase' => 'preparation']);
+        $this->makeCourse(['default_semester' => 1, 'head_instructor_id' => $newHead->id]);
+        $otherSemesterCourse = $this->makeCourse(['default_semester' => 2, 'head_instructor_id' => $newHead->id]);
+        $otherSemesterOffering = CourseOffering::create([
+            'course_id' => $otherSemesterCourse->id,
+            'academic_year_id' => $year->id,
+            'coordinator_id' => $oldHead->id,
+            'approval_status' => 'draft',
+            'total_student_count' => 12,
+        ]);
+
+        $this->seedCriticalsBaseline();
+        $this->actingAsAdmin($admin);
+        $this->patch(route('admin.settings.scheduling.open', $year));
+
+        $this->assertSame($oldHead->id, $otherSemesterOffering->fresh()->coordinator_id);
+        $this->assertSame(12, $otherSemesterOffering->fresh()->total_student_count);
     }
 
     public function test_open_blocked_when_criticals_exist(): void

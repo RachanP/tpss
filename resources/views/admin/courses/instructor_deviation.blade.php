@@ -168,7 +168,7 @@
                         @endif
                     </div>
                 </div>
-                <a href="{{ route('admin.master_data', ['tab' => 'courses']) }}#course-{{ $course->course_code }}"
+                <a href="{{ route('admin.master_data', ['tab' => 'courses', 'edit_course' => $course->id]) }}"
                    class="dash-action-btn"
                    data-testid="edit-template-link">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
