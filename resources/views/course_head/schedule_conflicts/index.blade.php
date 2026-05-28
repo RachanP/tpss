@@ -75,22 +75,34 @@
             font-size: 13px;
             line-height: 1.55;
         }
-        .conflict-filter {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
+        .conflict-year-badge {
+            display: inline-flex;
             align-items: center;
+            gap: 8px;
             margin-top: 12px;
-        }
-        .conflict-filter select {
-            min-width: 210px;
-            border: 1px solid var(--bd);
-            border-radius: 8px;
-            background: var(--surface);
+            padding: 6px 12px;
+            border: 1px solid var(--schedule-border-strong);
+            border-radius: 999px;
+            background: var(--schedule-soft);
             color: var(--fg-1);
-            padding: 8px 10px;
-            font-size: 13px;
-            font-weight: 700;
+            font-size: 12.5px;
+            font-weight: 850;
+            line-height: 1.3;
+        }
+        .conflict-year-badge svg {
+            flex-shrink: 0;
+            color: var(--brand-navy);
+        }
+        .conflict-year-phase {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: var(--brand-navy);
+            color: oklch(98% 0.004 240);
+            font-size: 10.5px;
+            font-weight: 900;
+            letter-spacing: 0.02em;
         }
         .conflict-total {
             display: inline-flex;
@@ -256,36 +268,77 @@
             padding: 8px 10px;
         }
         .conflict-compare-title {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 6px;
             color: var(--fg-1);
             font-size: 12px;
-            font-weight: 850;
+            font-weight: 700;
             line-height: 1.35;
         }
-        .conflict-reasons,
+        .conflict-compare-prefix {
+            color: var(--schedule-muted);
+            font-weight: 700;
+        }
+        .conflict-compare-target {
+            color: var(--brand-navy);
+            font-size: 13px;
+            font-weight: 900;
+            line-height: 1.3;
+        }
+        .conflict-reason-list {
+            list-style: none;
+            margin: 8px 0 0;
+            padding: 0;
+            display: grid;
+            gap: 5px;
+        }
+        .conflict-reason-row {
+            display: grid;
+            grid-template-columns: 18px auto 1fr;
+            align-items: baseline;
+            gap: 6px;
+            color: var(--fg-1);
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        .conflict-reason-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--status-conflict-fg);
+            transform: translateY(2px);
+        }
+        .conflict-reason-row--room_overlap .conflict-reason-icon { color: oklch(52% 0.16 28); }
+        .conflict-reason-row--instructor_overlap .conflict-reason-icon { color: oklch(48% 0.14 268); }
+        .conflict-reason-row--group_overlap .conflict-reason-icon { color: oklch(48% 0.14 168); }
+        .conflict-reason-label {
+            color: var(--schedule-muted);
+            font-weight: 800;
+            white-space: nowrap;
+        }
+        .conflict-reason-value {
+            color: var(--fg-1);
+            font-weight: 700;
+            min-width: 0;
+            word-break: break-word;
+        }
+        .conflict-reason-value strong {
+            font-weight: 900;
+            color: var(--fg-1);
+        }
+        .conflict-reason-value--muted {
+            color: var(--schedule-muted);
+            font-weight: 700;
+            font-style: italic;
+        }
         .conflict-detail-actions {
             display: flex;
             flex-wrap: wrap;
             align-items: center;
-            gap: 5px;
-            margin-top: 6px;
-        }
-        .conflict-detail-actions {
             gap: 8px;
             margin-top: 8px;
-        }
-        .conflict-reason {
-            display: inline-flex;
-            align-items: center;
-            max-width: 100%;
-            min-height: 22px;
-            padding: 2px 8px;
-            border: 1px solid var(--status-conflict-border);
-            border-radius: 999px;
-            background: var(--surface);
-            color: var(--status-conflict-fg);
-            font-size: 11px;
-            font-weight: 800;
-            line-height: 1.25;
         }
         .conflict-detail-toggle {
             min-height: 30px;
@@ -512,16 +565,14 @@
                 <div class="conflict-copy">
                     แสดงรายการชนของทุกรายวิชาที่คุณรับผิดชอบ ระบบจะแสดงข้อมูลสรุปก่อนและโหลดรายละเอียดทั้งหมดเมื่อกดดูเพิ่มเติม
                 </div>
-                @if(($availableYears ?? collect())->isNotEmpty())
-                    <form class="conflict-filter" method="GET" action="{{ route('maker.schedule_conflicts.index') }}">
-                        <select name="academic_year_id" onchange="this.form.submit()" aria-label="Academic year">
-                            @foreach($availableYears as $year)
-                                <option value="{{ $year->id }}" @selected((int) $selectedAcademicYearId === (int) $year->id)>
-                                    {{ $year->name }} / {{ $year->semester }} @if($year->phase === 'scheduling') - scheduling @elseif($year->is_active) - active @endif
-                                </option>
-                            @endforeach
-                        </select>
-                    </form>
+                @if($selectedAcademicYear)
+                    <div class="conflict-year-badge" data-testid="maker-conflict-year">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                        ปีการศึกษา {{ $selectedAcademicYear->name }} / ภาค {{ $selectedAcademicYear->semester }}
+                        @if($selectedAcademicYear->phase === 'scheduling')
+                            <span class="conflict-year-phase">ช่วงจัดตาราง</span>
+                        @endif
+                    </div>
                 @endif
             </div>
             <div class="conflict-total" data-testid="maker-conflict-total">
