@@ -367,8 +367,20 @@
                 tdiSelectedIso: '',
                 tdiPopStyle: '',
                 tdiPositionHandler: null,
+                tdiGlobalCloseHandler: null,
+                tdiPopMoved: false,
 
                 // มาส์กข้อความให้เป็นรูปแบบ วว/ดด/พ.ศ.
+                init() {
+                    this.tdiGlobalCloseHandler = () => this.tdiClose();
+                    document.addEventListener('tpss:close-date-popovers', this.tdiGlobalCloseHandler);
+                },
+                destroy() {
+                    if (this.tdiGlobalCloseHandler) {
+                        document.removeEventListener('tpss:close-date-popovers', this.tdiGlobalCloseHandler);
+                    }
+                    this.tdiDetachPositionListeners();
+                },
                 maskThaiDate(value) {
                     const raw = String(value || '').trim();
                     const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -415,6 +427,13 @@
                         this.tdiSync();
                         this.calOpen = true;
                         this.tdiCloseMenus();
+                        // Move pop element to document.body once so it isn't clipped by modal stacking contexts
+                        try {
+                            if (!this.tdiPopMoved && this.$refs && this.$refs.tdiPop) {
+                                document.body.appendChild(this.$refs.tdiPop);
+                                this.tdiPopMoved = true;
+                            }
+                        } catch (e) {}
                         this.tdiPositionPop();
                         this.tdiAttachPositionListeners();
                         return;
@@ -434,7 +453,7 @@
                 tdiPositionPop() {
                     this.$nextTick(() => {
                         const control = this.$refs.tdiControl;
-                        const pop = control ? control.querySelector('.tdi-pop') : null;
+                        const pop = (this.$refs && this.$refs.tdiPop) ? this.$refs.tdiPop : (control ? control.querySelector('.tdi-pop') : null);
                         if (!control || !pop) return;
 
                         const gap = 12;
@@ -723,7 +742,14 @@
             var label  = btn.getAttribute('data-label') || '';
             var warn   = btn.getAttribute('data-warn')  || 'การดำเนินการนี้ไม่สามารถย้อนกลับได้';
 
-            function doSubmit() { document.getElementById(formId).submit(); }
+            function doSubmit() {
+                try {
+                    sessionStorage.setItem('tpss-schedule-scroll-y', window.scrollY);
+                    sessionStorage.setItem('tpss-schedule-scroll-height', document.documentElement.scrollHeight);
+                } catch (e) {}
+
+                document.getElementById(formId).submit();
+            }
 
             if (typeof Swal === 'undefined') {
                 if (confirm('ยืนยันการลบ?\n\n' + label + '\n' + warn)) doSubmit();
