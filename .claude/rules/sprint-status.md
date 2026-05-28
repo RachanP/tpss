@@ -188,6 +188,48 @@
 - บันทึกผลใน System Test Checklist
 - เอกสาร (SRS / User Manual) อัปเดตแล้ว (ถ้าเกี่ยวข้อง)
 
+## Bug Report — 28 พ.ค. 2569 รอบ 2 🟡 BACKLOG
+
+หลัง close 12 bugs รอบแรก ลูกค้า/Rachan แจ้งเพิ่ม 3 รายการ (priority: #0+#1 → #2 → #3)
+
+### #0+#1 — Location Type "ใช้ร่วมกันได้" (Bug + UX) — S/M effort
+
+Field `location_types.requires_capacity` มีอยู่แล้วแต่ครอบคลุมแค่ capacity alert — ต้องขยาย:
+
+| ติ๊ก (`is_shared=true`) | ไม่ติ๊ก (default) |
+|---|---|
+| ❌ ไม่เตือน capacity | ✅ เตือน capacity |
+| ❌ ไม่เช็ค room overlap ข้ามวิชา | ✅ เช็ค cross-course room conflict |
+| ❌ ไม่เช็ค in-course room overlap | ✅ เช็ค (มีอยู่แล้ว) |
+
+**UX:**
+- เปลี่ยน label: `"ต้องระบุความจุ (จำนวนที่นั่ง)"` → `"สถานที่ใช้ร่วมกันได้ (ขนาดใหญ่)"`
+- พลิก semantic — ต้อง migration พลิกค่า OR rename column → `is_shared`
+- เพิ่ม description: `"เช่น โรงพยาบาล, ชุมชน, สนามฝึก — กิจกรรมหลายวิชาใช้สถานที่เดียวกันพร้อมกันได้"`
+
+**ไฟล์เกี่ยวข้อง:** `database/migrations/...rename_or_add_is_shared.php`, `shared/master_data/index.blade.php`, `ScheduleConflictChecker.php` หรือ `ScheduleConflictIndex.php` (skip room overlap ถ้า `room.locationType.is_shared`), `Admin/AlertController.php` (skip capacity alert)
+
+### #2 — Filter ตารางตามอาจารย์ (Enhancement) — S effort
+
+หน้าตารางสอนหัวหน้าวิชา เพิ่ม dropdown filter "เลือกอาจารย์" ใน toolbar → ดูเฉพาะ slot ที่อาจารย์คนนั้นสอน รองรับทุก view (list/week/day/month)
+
+**ไฟล์เกี่ยวข้อง:** `CourseHead/ScheduleController.php` (รับ `?instructor_id=` ใน `schedulePageData()`), `course_head/schedules/index.blade.php` (toolbar + filter UI + join `schedule_instructors`)
+
+### #3 — Auto-duplicate กิจกรรมรายสัปดาห์ (Feature ใหญ่) — L effort, sprint ใหม่
+
+หัวหน้าวิชาควรสร้าง slot ต้นแบบ (วันในสัปดาห์ + เวลา + ช่วงสัปดาห์) → ระบบ auto-generate slot ลูกทุกสัปดาห์ → แก้แค่ห้อง+กลุ่ม นศ. ต่อสัปดาห์ (workflow ของ practicum rotation จริง)
+
+**Schema:** `schedules.practicum_series_id` มีอยู่แล้ว — อาจต้อง table ใหม่ `schedule_templates` ถ้า design ต้องการ separate template/instance
+
+**คำถามที่ต้องถามลูกค้าก่อน design:**
+- แก้ template ภายหลัง → slot ลูกที่แก้ไปแล้ว ควรถูก overwrite ไหม?
+- จำนวนสัปดาห์ default = `course.teaching_weeks` หรือไม่?
+- วันหยุด → skip auto หรือ user ลบเอง?
+
+**Effort:** ~2-3 วัน, ขนาดเท่า Schedule Suite phase ย่อย — ควรเป็น sprint ของตัวเอง
+
+---
+
 ## Bug Report — 28 พ.ค. 2569 (อัพเดต_แก้บัค.pdf) ✅ ปิดหมดแล้ว
 
 12 รายการจาก test รอบ Schedule Suite — แบ่ง 3 branch ทำขนาน, merge เข้า sprint ครบทั้งหมด:
