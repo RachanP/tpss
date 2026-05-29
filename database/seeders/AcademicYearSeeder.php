@@ -16,15 +16,15 @@ class AcademicYearSeeder extends Seeder
             [
                 'name' => '2568',
                 'semester' => 1,
-                'start_date' => '2025-06-01',
+                'start_date' => '2025-06-02',
                 'end_date' => '2025-10-15',
                 'is_active' => false,
             ],
             [
                 'name' => '2568',
                 'semester' => 2,
-                'start_date' => '2025-11-01',
-                'end_date' => '2026-03-15',
+                'start_date' => '2025-11-03',
+                'end_date' => '2026-03-13',
                 'is_active' => false,
             ],
             [
@@ -37,7 +37,7 @@ class AcademicYearSeeder extends Seeder
             [
                 'name' => '2569',
                 'semester' => 2,
-                'start_date' => '2026-11-01',
+                'start_date' => '2026-11-02',
                 'end_date' => '2027-03-15',
                 'is_active' => false,
             ],
