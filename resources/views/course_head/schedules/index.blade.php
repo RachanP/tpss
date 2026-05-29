@@ -174,6 +174,12 @@
         : null;
     $canCreateInCurrentPeriod = $canEdit && ! $calendarOutsideAcademicYear;
     $outsideCreateHint = 'เลือกวันที่ในช่วงปีการศึกษาก่อนเพิ่มรายการสอน';
+    // เช็คว่าวันนี้ตกนอกช่วงปีการศึกษาไหม (per-day)
+    $isDayOutsideAcademic = function ($day) use ($academicStartDate, $academicEndDate) {
+        if (! $academicStartDate || ! $academicEndDate || ! $day) return false;
+        $d = \Carbon\CarbonImmutable::parse($day)->startOfDay();
+        return $d->lt($academicStartDate) || $d->gt($academicEndDate);
+    };
     $weekNumberForDate = function ($date) use ($academicStartDate) {
         if (! $academicStartDate || ! $date) return null;
         return max(1, (int) floor(
@@ -1723,6 +1729,29 @@
             background: var(--surface);
             box-shadow: none;
             margin-top: 0;
+        }
+        /* ── วันนอกช่วงปีการศึกษา — soft gray + disable interaction ── */
+        .is-outside-academic {
+            background: oklch(96.2% 0.003 232) !important;
+            color: oklch(62% 0.012 232) !important;
+            cursor: not-allowed;
+        }
+        .grid-cell.grid-head.is-outside-academic {
+            color: oklch(58% 0.012 232) !important;
+            font-weight: 600;
+        }
+        .grid-cell.grid-head.is-outside-academic .caption {
+            opacity: 0.7;
+        }
+        .month-calendar-day.is-outside-academic .month-day-number {
+            color: oklch(62% 0.012 232);
+            opacity: 0.75;
+        }
+        .month-calendar-day.is-outside-academic .month-empty {
+            display: none;
+        }
+        .month-calendar-day.is-outside-academic .month-day-items {
+            pointer-events: none;
         }
         /* ── หัวกลุ่ม "วัน" ในตารางแบบรายการ — กดได้เพื่อย่อ/ขยาย ── */
         .sched-day-group-header {
@@ -5079,8 +5108,10 @@
                                 @php
                                     $dayOccurrences = $gridOccurrencesByDate->get($day->toDateString(), collect());
                                     $isOutsideMonth = $day->month !== $weekStart->month;
+                                    $isOutsideAcademic = $isDayOutsideAcademic($day);
                                 @endphp
-                                <div class="month-calendar-day {{ $isOutsideMonth ? 'is-outside' : '' }}">
+                                <div class="month-calendar-day {{ $isOutsideMonth ? 'is-outside' : '' }} {{ $isOutsideAcademic ? 'is-outside-academic' : '' }}"
+                                    @if($isOutsideAcademic) title="นอกช่วงปีการศึกษา" @endif>
                                     <div class="month-day-top">
                                         <span class="month-day-number">{{ $day->day }}</span>
                                         @if($dayOccurrences->isNotEmpty())
@@ -5127,7 +5158,8 @@
                     <div class="schedule-grid is-precise" data-grid-minute-step="{{ $gridMinuteStep }}" style="--grid-day-count: {{ max(1, $weekDays->count()) }}; --grid-minute-row-height: {{ $gridMinuteRowHeight }}px; grid-template-columns: 68px repeat({{ max(1, $weekDays->count()) }}, minmax({{ ($includeWeekends ?? false) && ($schedulePeriod ?? 'week') === 'week' ? 122 : 146 }}px, 1fr)); grid-template-rows: 44px repeat({{ $gridMinuteRowCount }}, var(--grid-minute-row-height));">
                         <div class="grid-cell grid-head" style="grid-area:1 / 1;"></div>
                         @foreach($weekDays as $dayIndex => $day)
-                            <div class="grid-cell grid-head" style="grid-area:1 / {{ $dayIndex + 2 }};">
+                            @php $dayOutside = $isDayOutsideAcademic($day); @endphp
+                            <div class="grid-cell grid-head {{ $dayOutside ? 'is-outside-academic' : '' }}" style="grid-area:1 / {{ $dayIndex + 2 }};" @if($dayOutside) title="นอกช่วงปีการศึกษา" @endif>
                                 {{ $thaiDays[$day->dayOfWeekIso] ?? $day->format('l') }}<br>
                                 <span class="caption">{{ $formatDate($day) }}</span>
                             </div>
@@ -5139,7 +5171,8 @@
                             @endphp
                             <div class="grid-cell grid-time" style="grid-column:1; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};">{{ $slot }}</div>
                             @foreach($weekDays as $dayIndex => $day)
-                                <div class="grid-cell" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};"></div>
+                                @php $dayOutside = $isDayOutsideAcademic($day); @endphp
+                                <div class="grid-cell {{ $dayOutside ? 'is-outside-academic' : '' }}" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};"></div>
                             @endforeach
                         @endforeach
 
@@ -5558,7 +5591,8 @@
                 <div class="schedule-grid is-precise" data-grid-minute-step="{{ $gridMinuteStep }}" style="--grid-day-count: {{ max(1, $weekDays->count()) }}; --grid-minute-row-height: {{ $gridMinuteRowHeight }}px; grid-template-columns: 68px repeat({{ max(1, $weekDays->count()) }}, minmax({{ ($includeWeekends ?? false) && ($schedulePeriod ?? 'week') === 'week' ? 122 : 146 }}px, 1fr)); grid-template-rows: 44px repeat({{ $gridMinuteRowCount }}, var(--grid-minute-row-height));">
                     <div class="grid-cell grid-head" style="grid-area:1 / 1;"></div>
                     @foreach($weekDays as $dayIndex => $day)
-                        <div class="grid-cell grid-head" style="grid-area:1 / {{ $dayIndex + 2 }};">
+                        @php $dayOutside = $isDayOutsideAcademic($day); @endphp
+                        <div class="grid-cell grid-head {{ $dayOutside ? 'is-outside-academic' : '' }}" style="grid-area:1 / {{ $dayIndex + 2 }};" @if($dayOutside) title="นอกช่วงปีการศึกษา" @endif>
                             {{ $thaiDays[$day->dayOfWeekIso] ?? $day->format('l') }}<br>
                             <span class="caption">{{ $formatDate($day) }}</span>
                         </div>
@@ -5570,7 +5604,8 @@
                         @endphp
                         <div class="grid-cell grid-time" style="grid-column:1; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};">{{ $slot }}</div>
                         @foreach($weekDays as $dayIndex => $day)
-                            <div class="grid-cell" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};"></div>
+                            @php $dayOutside = $isDayOutsideAcademic($day); @endphp
+                            <div class="grid-cell {{ $dayOutside ? 'is-outside-academic' : '' }}" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};"></div>
                         @endforeach
                     @endforeach
 
