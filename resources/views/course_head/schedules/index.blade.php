@@ -19,7 +19,7 @@
     $queryOfferingId = request('course_offering_id');
     $selectedOfferingId = (string) old('course_offering_id', $queryOfferingId ?: ($schedulingOfferings->first()?->id ?? $courseOffering?->id ?? ''));
     $oldModalMode = old('modal_mode');
-    $defaultCreateMode = (! $isWorkspace && $courseOffering) ? 'series' : 'single';
+    $defaultCreateMode = 'single';
     $oldCreateMode = (! $isWorkspace && $courseOffering)
         ? old('create_mode', $defaultCreateMode)
         : 'single';
@@ -1467,6 +1467,26 @@
             line-height: 1.55;
             margin-top: 6px;
         }
+        /* ── ตัวบอกวันที่กำลังแก้ ใน modal สร้างรายวัน ──────────────── */
+        .create-date-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: oklch(93% 0.06 245);
+            color: var(--brand-navy);
+            font-size: 11.5px;
+            font-weight: 800;
+            line-height: 1.35;
+            margin-bottom: 6px;
+            border: 1px solid oklch(82% 0.09 245);
+            white-space: nowrap;
+        }
+        .create-date-indicator svg {
+            flex: 0 0 auto;
+        }
+
         @media (max-width: 760px) {
             .series-summary {
                 grid-template-columns: 1fr;
@@ -6176,6 +6196,10 @@
 
                                 <div x-show="createMode !== 'series'" x-cloak>
                                     <label class="modal-label" for="start_date">วันที่เริ่ม <span class="required-mark">*</span></label>
+                                    <div class="create-date-indicator" x-show="createStartDate" x-cloak aria-live="polite">
+                                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                        <span x-text="'วันที่เลือก: ' + createStartDate"></span>
+                                    </div>
                                     <x-thai-date-input
                                         name="start_date"
                                         id="start_date"

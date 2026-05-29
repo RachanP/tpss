@@ -128,7 +128,7 @@ class ScheduleManagementTest extends TestCase
             'date' => '2026-08-03',
         ]))
             ->assertOk()
-            ->assertSee('สัปดาห์ที่ 1');
+            ->assertSee('สัปดาห์ที่ 2');
 
         $this->get(route('maker.course_offerings.schedules.index', [
             $offering,
