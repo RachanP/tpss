@@ -16,6 +16,9 @@
     $seriesCreateAction = (! $isWorkspace && $courseOffering)
         ? route('maker.course_offerings.schedules.series.store', $courseOffering)
         : $createAction;
+    $createCheckUrl = (! $isWorkspace && $courseOffering)
+        ? route('maker.course_offerings.schedules.check', $courseOffering)
+        : null;
     $queryOfferingId = request('course_offering_id');
     $selectedOfferingId = (string) old('course_offering_id', $queryOfferingId ?: ($schedulingOfferings->first()?->id ?? $courseOffering?->id ?? ''));
     $oldModalMode = old('modal_mode');
@@ -1486,6 +1489,33 @@
         .create-date-indicator svg {
             flex: 0 0 auto;
         }
+
+        /* ── Realtime conflict / warning UI ──────────────────────────────── */
+        .field-conflict-msg {
+            display: flex; align-items: flex-start; gap: 5px;
+            margin-top: 5px; padding: 5px 8px; border-radius: 6px;
+            border: 1px solid oklch(80% 0.15 30);
+            background: oklch(97.5% 0.02 30); color: oklch(42% 0.18 30);
+            font-size: 11.5px; font-weight: 750; line-height: 1.45;
+        }
+        .field-conflict-msg svg { flex: 0 0 auto; margin-top: 1px; }
+        .check-warning-pill {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 4px 10px; border-radius: 999px;
+            background: oklch(95% 0.06 85); color: oklch(46% 0.15 80);
+            border: 1px solid oklch(85% 0.10 85);
+            font-size: 11.5px; font-weight: 800; line-height: 1.35;
+        }
+        .check-warning-pill svg { flex: 0 0 auto; }
+        .check-warnings-row {
+            display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 2px;
+        }
+        .check-loading-dot {
+            display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+            background: var(--fg-3); animation: check-blink 1s ease-in-out infinite;
+            margin-left: 4px; vertical-align: middle;
+        }
+        @keyframes check-blink { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
 
         @media (max-width: 760px) {
             .series-summary {
@@ -3790,6 +3820,15 @@
             defaultSeriesEndWeek: @js(max(1, (int) ($courseOffering->teaching_weeks ?? 1))),
             createStartDate: @js(old('start_date') ? $formatDate(\Carbon\CarbonImmutable::parse(old('start_date'))) : ''),
             createEndDate: @js(old('end_date') ? $formatDate(\Carbon\CarbonImmutable::parse(old('end_date'))) : ''),
+            // ── Realtime conflict check state ────────────────────────────────
+            createCheckConflicts: [],
+            createCheckWarnings: [],
+            createCheckLoading: false,
+            createCheckTimer: null,
+            editCheckConflicts: {},
+            editCheckWarnings: {},
+            editCheckLoading: false,
+            editCheckTimer: null,
             init() {
                 this.$watch('view', val => sessionStorage.setItem('tpss-schedule-view', val));
                 this.$watch('selectedOfferingId', () => {
@@ -4015,7 +4054,109 @@
                 setSelect('lead_instructor_id', source.lead_instructor_id);
                 setTextarea('remark', source.remark);
                 setCheckedGroup('instructor_ids', source.instructor_ids);
+                setCheckedGroup('instructor_ids', source.instructor_ids);
                 setCheckedGroup('student_group_ids', source.student_group_ids);
+            },
+            // ── Realtime conflict check ──────────────────────────────────────
+            scheduleRealtimeCheck(mode, checkUrl, ignoreScheduleId = null) {
+                const stateKey = mode === 'create' ? 'create' : 'edit';
+                clearTimeout(stateKey === 'create' ? this.createCheckTimer : this.editCheckTimer);
+
+                const timer = setTimeout(async () => {
+                    const form = stateKey === 'create'
+                        ? this.$refs.createForm
+                        : document.getElementById('edit-form-' + ignoreScheduleId);
+                    if (!form) return;
+
+                    // Collect field values
+                    const fd = new FormData(form);
+                    const body = new URLSearchParams();
+
+                    // ── Date / time fields ─────────────────────────────────
+                    const startDateIso = this.thaiDateToIso(fd.get('start_date') || '');
+                    const endDateIso   = this.thaiDateToIso(fd.get('end_date') || '') || startDateIso;
+                    if (startDateIso) body.append('start_date', startDateIso);
+                    if (endDateIso)   body.append('end_date',   endDateIso);
+
+                    const startTime = fd.get('start_time') || '';
+                    const endTime   = fd.get('end_time')   || '';
+                    if (startTime) body.append('start_time', startTime);
+                    if (endTime)   body.append('end_time',   endTime);
+
+                    // ── Room, activity ─────────────────────────────────────
+                    const roomId = fd.get('room_id') || '';
+                    const activityId = fd.get('activity_type_id') || '';
+                    if (roomId)     body.append('room_id', roomId);
+                    if (activityId) body.append('activity_type_id', activityId);
+
+                    // ── Instructors (multi-checkbox) ───────────────────────
+                    fd.getAll('instructor_ids[]').forEach(id => body.append('instructor_ids[]', id));
+
+                    // ── Student groups (multi-checkbox) ────────────────────
+                    fd.getAll('student_group_ids[]').forEach(id => body.append('student_group_ids[]', id));
+
+                    // Skip check if date/time not yet filled (no point calling)
+                    if (!startDateIso || !startTime || !endTime) {
+                        if (stateKey === 'create') {
+                            this.createCheckConflicts = [];
+                            this.createCheckWarnings  = [];
+                        } else {
+                            this.$set(this.editCheckConflicts, ignoreScheduleId, []);
+                            this.$set(this.editCheckWarnings,  ignoreScheduleId, []);
+                        }
+                        return;
+                    }
+
+                    if (stateKey === 'create') this.createCheckLoading = true;
+                    else this.editCheckLoading = true;
+
+                    try {
+                        const csrf = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+                        const res  = await fetch(checkUrl, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': csrf,
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                            },
+                            body: body.toString(),
+                        });
+
+                        if (!res.ok) return;
+                        const data = await res.json();
+
+                        if (stateKey === 'create') {
+                            this.createCheckConflicts = data.conflicts ?? [];
+                            this.createCheckWarnings  = data.warnings  ?? [];
+                        } else {
+                            this.editCheckConflicts = { ...this.editCheckConflicts, [ignoreScheduleId]: data.conflicts ?? [] };
+                            this.editCheckWarnings  = { ...this.editCheckWarnings,  [ignoreScheduleId]: data.warnings  ?? [] };
+                        }
+                    } catch (e) {
+                        // silent fail
+                    } finally {
+                        if (stateKey === 'create') this.createCheckLoading = false;
+                        else this.editCheckLoading = false;
+                    }
+                }, 300);
+
+                if (stateKey === 'create') this.createCheckTimer = timer;
+                else this.editCheckTimer = timer;
+            },
+            createHasConflict(field) {
+                return this.createCheckConflicts.some(c => c.field === field || !c.field);
+            },
+            createConflictMsg(field) {
+                const c = this.createCheckConflicts.find(c => c.field === field) ?? this.createCheckConflicts[0];
+                return c?.message ?? '';
+            },
+            editHasConflict(scheduleId, field) {
+                return (this.editCheckConflicts[scheduleId] ?? []).some(c => c.field === field || !c.field);
+            },
+            editConflictMsg(scheduleId, field) {
+                const list = this.editCheckConflicts[scheduleId] ?? [];
+                const c = list.find(c => c.field === field) ?? list[0];
+                return c?.message ?? '';
             },
             toThaiDateDisplay(value) {
                 const trimmed = String(value || '').trim();
@@ -5786,7 +5927,10 @@
                         <form
                             method="POST"
                             action="{{ route('maker.course_offerings.schedules.update', [$offering, $schedule]) }}"
+                            id="edit-form-{{ $schedule->id }}"
                             data-testid="schedule-edit-form"
+                            @change="scheduleRealtimeCheck('edit', '{{ route('maker.course_offerings.schedules.check_edit', [$offering, $schedule]) }}', '{{ $schedule->id }}')"
+                            @input="scheduleRealtimeCheck('edit', '{{ route('maker.course_offerings.schedules.check_edit', [$offering, $schedule]) }}', '{{ $schedule->id }}')"
                             x-data="{
                                 startDateDisplay: @js($editDateDisplay('start_date', $schedule->start_date)),
                                 endDateDisplay: @js($editDateDisplay('end_date', $schedule->end_date)),
@@ -5986,6 +6130,9 @@
                                                 </option>
                                             @endforeach
                                         </select>
+                                        <template x-if="editHasConflict('{{ $schedule->id }}', 'room_id')">
+                                            <div class="field-conflict-msg" role="alert"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span x-text="editConflictMsg('{{ $schedule->id }}', 'room_id')"></span></div>
+                                        </template>
                                         @if($roomConflictNote)
                                             <div class="modal-conflict-field">{{ $roomConflictNote }}</div>
                                         @endif
@@ -6021,6 +6168,9 @@
                                         @endforeach
                                     </div>
                                     <div class="modal-choice-empty" x-show="hasCreateSearch(editInstructorSearch) && !hasCreateSearchMatches(@js($editInstructorSearchItems), editInstructorSearch)" x-cloak>ไม่พบข้อมูลที่ค้นหา</div>
+                                    <template x-if="editHasConflict('{{ $schedule->id }}', 'instructor_ids')">
+                                        <div class="field-conflict-msg" role="alert"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span x-text="editConflictMsg('{{ $schedule->id }}', 'instructor_ids')"></span></div>
+                                    </template>
                                     @if($instructorConflictNote)
                                         <div class="modal-conflict-field">{{ $instructorConflictNote }}</div>
                                     @endif
@@ -6046,14 +6196,46 @@
                                         @endforeach
                                     </div>
                                     <div class="modal-choice-empty" x-show="hasCreateSearch(editGroupSearch) && !hasCreateSearchMatches(@js($editGroupSearchItems), editGroupSearch)" x-cloak>ไม่พบข้อมูลที่ค้นหา</div>
+                                    <template x-if="editHasConflict('{{ $schedule->id }}', 'student_group_ids')">
+                                        <div class="field-conflict-msg" role="alert"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span x-text="editConflictMsg('{{ $schedule->id }}', 'student_group_ids')"></span></div>
+                                    </template>
                                     @if($groupConflictNote)
                                         <div class="modal-conflict-field">{{ $groupConflictNote }}</div>
                                     @endif
                                 </div>
                             </div>
                             <div class="modal-actions">
+                                {{-- Realtime conflict/warning for edit modal --}}
+                                <div style="flex: 1 1 auto; min-width: 0;">
+                                    <template x-if="(editCheckConflicts['{{ $schedule->id }}'] ?? []).length > 0">
+                                        <div class="field-conflict-msg" role="alert" aria-live="polite">
+                                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                            <span x-text="(editCheckConflicts['{{ $schedule->id }}'] ?? [])[0]?.message ?? 'พบการชนตารางสอน'"></span>
+                                            <template x-if="(editCheckConflicts['{{ $schedule->id }}'] ?? []).length > 1">
+                                                <span style="opacity:.75;" x-text="'(+' + ((editCheckConflicts['{{ $schedule->id }}'] ?? []).length - 1) + ' อื่นๆ)'"></span>
+                                            </template>
+                                        </div>
+                                    </template>
+                                    <div class="check-warnings-row" x-show="(editCheckWarnings['{{ $schedule->id }}'] ?? []).length > 0" x-cloak>
+                                        <template x-for="warn in (editCheckWarnings['{{ $schedule->id }}'] ?? [])" :key="warn.type + (warn.field ?? '')">
+                                            <div class="check-warning-pill">
+                                                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                                <span x-text="warn.message"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
                                 <button type="button" class="btn btn-secondary" @click="const r = new URLSearchParams(window.location.search).get('return_url'); if(r){ window.location.href=r; }else{ closeEdit(); }">ยกเลิก</button>
-                                <button type="submit" class="btn btn-primary" data-testid="schedule-submit">บันทึกการแก้ไข</button>
+                                <button
+                                    type="submit"
+                                    class="btn btn-primary"
+                                    data-testid="schedule-submit"
+                                    :disabled="(editCheckConflicts['{{ $schedule->id }}'] ?? []).length > 0"
+                                    :title="(editCheckConflicts['{{ $schedule->id }}'] ?? []).length > 0 ? 'มีการชนตารางสอน — กรุณาแก้ไขก่อนบันทึก' : ''"
+                                >
+                                    บันทึกการแก้ไข
+                                    <span class="check-loading-dot" x-show="editCheckLoading" x-cloak></span>
+                                </button>
                             </div>
                         </form>
                     </section>
@@ -6087,7 +6269,7 @@
                         </div>
                         <button type="button" class="modal-close" @click="closeCreate()" aria-label="ปิด">×</button>
                     </div>
-                    <form method="POST" action="{{ $createAction }}" x-bind:action="createMode === 'series' ? seriesCreateAction : normalCreateAction" @submit="$el.action = createMode === 'series' ? seriesCreateAction : normalCreateAction" data-testid="schedule-form" x-ref="createForm">
+                    <form method="POST" action="{{ $createAction }}" x-bind:action="createMode === 'series' ? seriesCreateAction : normalCreateAction" @submit="$el.action = createMode === 'series' ? seriesCreateAction : normalCreateAction" @change="if(createMode !== 'series' && createCheckUrl) scheduleRealtimeCheck('create', createCheckUrl)" @input="if(createMode !== 'series' && createCheckUrl) scheduleRealtimeCheck('create', createCheckUrl)" data-testid="schedule-form" x-ref="createForm">
                         @csrf
                         <input type="hidden" name="modal_mode" value="create">
                         <input type="hidden" name="create_mode" x-bind:value="createMode">
@@ -6338,6 +6520,9 @@
                                             </option>
                                         @endforeach
                                     </select>
+                                    <template x-if="createMode !== 'series' && createHasConflict('room_id')">
+                                        <div class="field-conflict-msg" role="alert"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span x-text="createConflictMsg('room_id')"></span></div>
+                                    </template>
                                 </div>
                                 <div class="modal-field-full">
                                     <label class="modal-label" for="topic">หัวข้อกิจกรรม <span class="required-mark">*</span></label>
@@ -6373,6 +6558,9 @@
                                             @endforeach
                                         </div>
                                         <div class="modal-choice-empty" x-show="hasCreateSearch(createInstructorSearch) && !hasCreateSearchMatches(@js($createInstructorSearchItems), createInstructorSearch)" x-cloak>ไม่พบข้อมูลที่ค้นหา</div>
+                                        <template x-if="createMode !== 'series' && createHasConflict('instructor_ids')">
+                                            <div class="field-conflict-msg" role="alert"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span x-text="createConflictMsg('instructor_ids')"></span></div>
+                                        </template>
                                     </div>
 
                                     <div class="modal-section">
@@ -6396,13 +6584,45 @@
                                             @endforeach
                                         </div>
                                         <div class="modal-choice-empty" x-show="hasCreateSearch(createGroupSearch) && !hasCreateSearchMatches(@js($createGroupSearchItems), createGroupSearch)" x-cloak>ไม่พบข้อมูลที่ค้นหา</div>
+                                        <template x-if="createMode !== 'series' && createHasConflict('student_group_ids')">
+                                            <div class="field-conflict-msg" role="alert"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span x-text="createConflictMsg('student_group_ids')"></span></div>
+                                        </template>
                                     </div>
                                 </div>
                             @endforeach
                         </div>
                         <div class="modal-actions">
+                            {{-- Realtime conflict/warning display --}}
+                            <div style="flex: 1 1 auto; min-width: 0;">
+                                <template x-if="createMode !== 'series' && createCheckConflicts.length > 0">
+                                    <div class="field-conflict-msg" role="alert" aria-live="polite">
+                                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                        <span x-text="createCheckConflicts[0]?.message ?? 'พบการชนตารางสอน'"></span>
+                                        <template x-if="createCheckConflicts.length > 1">
+                                            <span style="opacity:.75;" x-text="'(+' + (createCheckConflicts.length - 1) + ' อื่นๆ)'"></span>
+                                        </template>
+                                    </div>
+                                </template>
+                                <div class="check-warnings-row" x-show="createMode !== 'series' && createCheckWarnings.length > 0" x-cloak>
+                                    <template x-for="warn in createCheckWarnings" :key="warn.type + (warn.field ?? '')">
+                                        <div class="check-warning-pill">
+                                            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                            <span x-text="warn.message"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
                             <button type="button" class="btn btn-secondary" @click="closeCreate()">ยกเลิก</button>
-                            <button type="submit" class="btn btn-primary" data-testid="schedule-submit">บันทึกรายการสอน</button>
+                            <button
+                                type="submit"
+                                class="btn btn-primary"
+                                data-testid="schedule-submit"
+                                :disabled="createMode !== 'series' && createCheckConflicts.length > 0"
+                                :title="createMode !== 'series' && createCheckConflicts.length > 0 ? 'มีการชนตารางสอน — กรุณาแก้ไขก่อนบันทึก' : ''"
+                            >
+                                บันทึกรายการสอน
+                                <span class="check-loading-dot" x-show="createCheckLoading" x-cloak></span>
+                            </button>
                         </div>
                     </form>
                 </section>
