@@ -24,7 +24,8 @@
 ## เอกสารบังคับอ่าน (ตามลำดับ)
 
 1. `Doc/เอกสารเพิ่มเติม/TPSS_Product_Backlog_v2.1.docx` ← **แหล่งอ้างอิงหลัก**
-2. `Doc/จากอาจารย์/รายละเอียดระบบจัดตารางสอน_V1.pdf` — workflow, ลักษณะตารางสอน
+2. `Doc/จากอาจารย์/เอกสาร/รายละเอียดระบบจัดตารางสอน_V1.pdf` — workflow, ลักษณะตารางสอน
+   - `storage/tpss_detail_pages/page-00.jpg` ถึง `page-25.jpg` — export เป็นภาพเรียงหน้า อ่าน comment สีน้ำเงินจากอาจารย์ได้ชัดกว่า PDF
 3. `Doc/เอกสาร ISO/WP-03_Software-Requirements-Specification_ProjectName_v1.0.pdf` ← **อ่านก่อนพัฒนาทุก Sprint**
 4. `Doc/เอกสาร ISO/WP-02_Project-Plan_ProjectName_v1.0.pdf` — Project plan
 5. `Doc/เอกสาร ISO/WP-01_Agreement_Statement-of-Work_ProjectName_v1.0.pdf` — SOW
@@ -55,6 +56,7 @@
 
 - อ้างอิง Module ID (M1, M2...) และ User Story ID (M3-01...) เมื่อพูดถึงฟีเจอร์
 - ตรวจสอบ Product Backlog **v2.1** ก่อนเสนอ design หรือ implementation ใดๆ
+- Requirement update 29 พ.ค. 2569: ระบบต้องเน้น **ฟอร์มกรอกตารางที่ใช้ง่าย + smart check + publish/report** มากกว่า auto scheduling; ดู `.claude/rules/architecture.md`
 - เมื่อเริ่มงาน UI ให้รัน `node .agents/skills/impeccable/scripts/load-context.mjs`
 - **ผู้บริหาร = Read-only + Approve/Reject เท่านั้น** — ห้าม implement UI ให้แก้ไขตาราง
 - Export รายงานเป็น PDF และ Excel; รองรับ PC, tablet, mobile เบื้องต้น
