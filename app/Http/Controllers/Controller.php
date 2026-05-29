@@ -29,7 +29,92 @@ abstract class Controller
 
     protected function normalizeCsvHeader(array $header): array
     {
-        return array_map(fn($h) => trim(rtrim(trim((string) $h), '*')), $header);
+        return array_map(function ($h) {
+            $normalized = trim(rtrim(trim((string) $h), '*'));
+            $normalized = ltrim($normalized, "\xEF\xBB\xBF");
+
+            return $this->csvHeaderAliases()[$normalized] ?? $normalized;
+        }, $header);
+    }
+
+    /**
+     * Thai template headers are user-facing; importers keep using stable English field names internally.
+     *
+     * @return array<string, string>
+     */
+    protected function csvHeaderAliases(): array
+    {
+        return [
+            // Users
+            'คำนำหน้า' => 'prefix',
+            'ชื่อ-นามสกุล' => 'name',
+            'อีเมล' => 'email',
+            'ชื่อผู้ใช้' => 'username',
+            'รหัสผ่านเริ่มต้น' => 'password',
+            'บทบาท' => 'roles',
+            'บทบาทหลัก' => 'primary_role',
+            'รหัสพนักงาน' => 'employee_id',
+            'ตำแหน่งทางวิชาการ' => 'title',
+            'วุฒิการศึกษา' => 'academic_degree',
+            'ภาควิชา' => 'department_name',
+            'ประเภทการจ้างงาน' => 'employment_type',
+            'วันที่บรรจุ' => 'hired_date',
+            'สัดส่วนการสอน' => 'teaching_pct',
+            'สัดส่วนวิจัย' => 'research_pct',
+            'สัดส่วนบริการวิชาการ' => 'service_pct',
+            'สัดส่วนศิลปวัฒนธรรม' => 'culture_pct',
+            'สัดส่วนงานอื่นๆ' => 'other_pct',
+            'บทบาท (คั่นด้วย |)' => 'roles',
+            'ชื่อภาควิชา' => 'department_name',
+            'วันที่บรรจุ (DD/MM/ปีพ.ศ.)' => 'hired_date',
+            '% การสอน' => 'teaching_pct',
+            '% วิจัย' => 'research_pct',
+            '% บริการวิชาการ' => 'service_pct',
+            '% ศิลปวัฒนธรรม' => 'culture_pct',
+            '% งานอื่นๆ' => 'other_pct',
+
+            // Rooms
+            'รหัสห้อง/สถานที่' => 'room_code',
+            'ชื่อห้อง/สถานที่' => 'room_name',
+            'ชื่อห้องหรือสถานที่' => 'room_name',
+            'ประเภทสถานที่' => 'location_type_name',
+            'อาคาร' => 'building',
+            'ชื่ออาคาร' => 'building',
+            'ความจุ' => 'capacity',
+            'ความจุ (จำนวนที่นั่ง)' => 'capacity',
+            'ที่อยู่' => 'address',
+            'ที่อยู่ (สำหรับสถานที่ภายนอก)' => 'address',
+            'อุปกรณ์' => 'equipment_type',
+            'อุปกรณ์ (คั่นด้วย ,)' => 'equipment_type',
+            'สถานะ' => 'status',
+
+            // Courses
+            'รหัสวิชา' => 'course_code',
+            'ชื่อรายวิชาภาษาไทย' => 'name_th',
+            'ชื่อวิชา (ภาษาไทย)' => 'name_th',
+            'ชื่อรายวิชาภาษาอังกฤษ' => 'name_en',
+            'ชื่อวิชา (ภาษาอังกฤษ)' => 'name_en',
+            'หลักสูตร' => 'curriculum_name',
+            'ชื่อหลักสูตร' => 'curriculum_name',
+            'รหัสพนักงานหัวหน้าวิชา' => 'head_instructor_employee_id',
+            'ประเภทรายวิชา' => 'course_type',
+            'หน่วยกิต' => 'credits',
+            'ชั่วโมงบรรยาย' => 'lecture_hours',
+            'ชั่วโมงบรรยาย/สัปดาห์' => 'lecture_hours',
+            'ชั่วโมงปฏิบัติ' => 'lab_hours',
+            'ชั่วโมงปฏิบัติ/สัปดาห์' => 'lab_hours',
+            'ชั่วโมงศึกษาด้วยตนเอง' => 'self_study_hours',
+            'ชั่วโมงศึกษาด้วยตนเอง/สัปดาห์' => 'self_study_hours',
+            'จำนวนนักศึกษาสูงสุด' => 'capacity',
+            'ชั้นปีตามแผน' => 'default_year_level',
+            'ภาคเรียนตามแผน' => 'default_semester',
+            'หมุนเวียนฝึกปฏิบัติ' => 'requires_practicum_rotation',
+            'หมุนเวียนกลุ่มปฏิบัติ' => 'requires_practicum_rotation',
+            'วิชาบังคับ' => 'is_required',
+            'วิชาบังคับ/เลือก' => 'is_required',
+            'สีรายวิชา' => 'color_code',
+            'รหัสสี HEX' => 'color_code',
+        ];
     }
 
     protected function missingCsvHeaders(array $header, array $required): array

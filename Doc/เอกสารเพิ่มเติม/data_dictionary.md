@@ -2,10 +2,10 @@
 
 **Teaching & Practicum Scheduling System (TPSS) - คณะพยาบาลศาสตร์ มหาวิทยาลัยมหิดล**
 
-อัปเดตล่าสุด: 27 พฤษภาคม 2569  
-แหล่งอ้างอิงหลัก: `database/migrations/` จำนวน 35 ไฟล์, `app/Models/`, และ seeders เฉพาะ master data
+อัปเดตล่าสุด: 29 พฤษภาคม 2569
+แหล่งอ้างอิงหลัก: `database/migrations/` จำนวน 39 ไฟล์, `app/Models/`, seeders เฉพาะ master data, และ `tpss_er_diagram.html`
 
-เอกสารนี้สรุปโครงสร้างฐานข้อมูลทั้งระบบ รวมตาราง domain ของ TPSS และตารางระบบของ Laravel เช่น `sessions`, `cache`, `cache_locks`
+เอกสารนี้สรุปโครงสร้างฐานข้อมูลทั้งระบบ รวมตาราง domain ของ TPSS และตารางระบบของ Laravel เช่น `migrations`, `sessions`, `cache`, `cache_locks`, `jobs`
 
 ---
 
@@ -30,39 +30,42 @@
 | 13 | `practicum_series` | ชุด/รอบฝึกปฏิบัติ |
 | 14 | `student_groups` | กลุ่มนักศึกษาของรายวิชาที่เปิดสอน |
 | 15 | `schedules` | รายการตารางสอน/ตารางฝึก |
-| 16 | `system_settings` | ค่าตั้งค่าระบบ |
+| 16 | `schedule_templates` | แม่แบบตารางสอนรายสัปดาห์สำหรับสร้างตารางซ้ำอัตโนมัติ |
+| 17 | `system_settings` | ค่าตั้งค่าระบบ |
 
 ### Pivot / Relation Tables
 
 | # | ตาราง | ความหมาย |
 |---|---|---|
-| 17 | `user_roles` | บทบาทผู้ใช้หลายบทบาท |
-| 18 | `course_prerequisites` | วิชาบังคับก่อน |
-| 19 | `course_staff` | เจ้าหน้าที่ที่รับผิดชอบรายวิชาแม่แบบ |
-| 20 | `course_instructors` | อาจารย์ใน pool รายวิชาแม่แบบ |
-| 21 | `course_offering_instructors` | อาจารย์ใน pool ของรอบเปิดสอน |
-| 22 | `schedule_instructors` | อาจารย์ผู้สอนในรายการตาราง |
-| 23 | `schedule_student_groups` | กลุ่มนักศึกษาที่เข้าร่วมรายการตาราง |
+| 18 | `user_roles` | บทบาทผู้ใช้หลายบทบาท |
+| 19 | `course_prerequisites` | วิชาบังคับก่อน |
+| 20 | `course_staff` | เจ้าหน้าที่ที่รับผิดชอบรายวิชาแม่แบบ |
+| 21 | `course_instructors` | อาจารย์ใน pool รายวิชาแม่แบบ |
+| 22 | `course_offering_instructors` | อาจารย์ใน pool ของรอบเปิดสอน |
+| 23 | `schedule_instructors` | อาจารย์ผู้สอนในรายการตาราง |
+| 24 | `schedule_student_groups` | กลุ่มนักศึกษาที่เข้าร่วมรายการตาราง |
 
 ### Workflow / Audit / Conflict Tables
 
 | # | ตาราง | ความหมาย |
 |---|---|---|
-| 24 | `notifications` | การแจ้งเตือน |
-| 25 | `audit_logs` | ประวัติการเปลี่ยนแปลง |
-| 26 | `course_offering_approvals` | ประวัติการอนุมัติรายวิชาที่เปิดสอน |
-| 27 | `schedule_conflicts` | ผล conflict/warning แบบเดิมรายรายการ |
-| 28 | `schedule_conflict_runs` | รอบการประมวลผล conflict แบบ batch |
-| 29 | `schedule_conflict_results` | ผล conflict ของแต่ละรอบ |
-| 30 | `schedule_conflict_result_scopes` | สิทธิ์/ขอบเขตการมองเห็นผล conflict |
+| 25 | `notifications` | การแจ้งเตือน |
+| 26 | `audit_logs` | ประวัติการเปลี่ยนแปลง |
+| 27 | `course_offering_approvals` | ประวัติการอนุมัติรายวิชาที่เปิดสอน |
+| 28 | `schedule_conflicts` | ผล conflict/warning แบบเดิมรายรายการ |
+| 29 | `schedule_conflict_runs` | รอบการประมวลผล conflict แบบ batch |
+| 30 | `schedule_conflict_results` | ผล conflict ของแต่ละรอบ |
+| 31 | `schedule_conflict_result_scopes` | สิทธิ์/ขอบเขตการมองเห็นผล conflict |
 
 ### Laravel / System Tables
 
 | # | ตาราง | ความหมาย |
 |---|---|---|
-| 31 | `sessions` | session ของ Laravel |
-| 32 | `cache` | cache key/value ของ Laravel |
-| 33 | `cache_locks` | cache lock ของ Laravel |
+| 32 | `migrations` | ประวัติ migration ของ Laravel |
+| 33 | `sessions` | session ของ Laravel |
+| 34 | `cache` | cache key/value ของ Laravel |
+| 35 | `cache_locks` | cache lock ของ Laravel |
+| 36 | `jobs` | คิวงาน background ของ Laravel |
 
 ---
 
@@ -347,6 +350,8 @@ Unique: `course_offering_id + group_code`
 | `activity_type_id` | BIGINT UNSIGNED | FK -> `activity_types.id` | ประเภทกิจกรรม |
 | `room_id` | BIGINT UNSIGNED | FK -> `rooms.id`, NULL | ห้อง/สถานที่ |
 | `practicum_series_id` | BIGINT UNSIGNED | FK -> `practicum_series.id`, NULL | ชุด/รอบฝึกปฏิบัติ |
+| `schedule_template_id` | BIGINT UNSIGNED | FK -> `schedule_templates.id`, NULL | แม่แบบที่ใช้สร้างรายการตารางนี้ |
+| `series_week_number` | TINYINT UNSIGNED | NULL | สัปดาห์ลำดับที่ในชุดตารางที่สร้างจากแม่แบบ |
 | `start_date` | DATE | NULL | วันที่เริ่ม block schedule |
 | `end_date` | DATE | NULL | วันที่สิ้นสุด block schedule |
 | `teaching_date` | DATE | NULL หลัง migration 2026-05-20 | วันที่สอนแบบวันเดียว legacy/compatibility |
@@ -360,11 +365,37 @@ Unique: `course_offering_id + group_code`
 | `created_at` | TIMESTAMP | NULL | วันที่สร้าง |
 | `updated_at` | TIMESTAMP | NULL | วันที่แก้ไข |
 
-Indexes: `teaching_date + course_offering_id`, `course_offering_id + start_date + end_date`, `course_offering_id`, `room_id + start_date + end_date`
+Indexes: `teaching_date + course_offering_id`, `course_offering_id + start_date + end_date`, `course_offering_id + start_date + end_date + start_time`, `course_offering_id`, `room_id + start_date + end_date`, `schedule_template_id + series_week_number`
 
 ---
 
-## 16. `system_settings` - ค่าตั้งค่าระบบ
+## 16. `schedule_templates` - แม่แบบตารางสอนรายสัปดาห์
+
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
+| `id` | BIGINT UNSIGNED | PK, AI | รหัสแม่แบบตาราง |
+| `course_offering_id` | BIGINT UNSIGNED | FK -> `course_offerings.id` | รายวิชาที่เปิดสอน |
+| `activity_type_id` | BIGINT UNSIGNED | FK -> `activity_types.id` | ประเภทกิจกรรม |
+| `weekday` | TINYINT UNSIGNED | NOT NULL | วันในสัปดาห์: 1=Monday, 7=Sunday |
+| `start_time` | TIME | NOT NULL | เวลาเริ่ม |
+| `end_time` | TIME | NOT NULL | เวลาสิ้นสุด |
+| `start_week` | TINYINT UNSIGNED | NOT NULL | สัปดาห์แรกที่ใช้แม่แบบ |
+| `end_week` | TINYINT UNSIGNED | NOT NULL | สัปดาห์สุดท้ายที่ใช้แม่แบบ |
+| `starts_on` | DATE | NULL | วันที่เริ่มจริงของช่วงแม่แบบ |
+| `ends_on` | DATE | NULL | วันที่สิ้นสุดจริงของช่วงแม่แบบ |
+| `topic` | VARCHAR(255) | NULL | หัวข้อ/กิจกรรม |
+| `capacity_required` | INT UNSIGNED | NULL | จำนวนผู้เรียนที่ต้องรองรับ |
+| `sub_group_label` | VARCHAR(20) | NULL | ป้ายกลุ่มย่อย เช่น a, b, 1, 2 |
+| `created_by` | BIGINT UNSIGNED | FK -> `users.id`, NULL | ผู้สร้างแม่แบบ |
+| `updated_by` | BIGINT UNSIGNED | FK -> `users.id`, NULL | ผู้แก้ไขแม่แบบล่าสุด |
+| `created_at` | TIMESTAMP | NULL | วันที่สร้าง |
+| `updated_at` | TIMESTAMP | NULL | วันที่แก้ไข |
+
+Indexes: `course_offering_id + start_week + end_week`, `course_offering_id + weekday + start_time`
+
+---
+
+## 17. `system_settings` - ค่าตั้งค่าระบบ
 
 | คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
 |---|---|---|---|
@@ -377,7 +408,7 @@ Indexes: `teaching_date + course_offering_id`, `course_offering_id + start_date 
 
 ---
 
-## 17. `user_roles` - บทบาทผู้ใช้
+## 18. `user_roles` - บทบาทผู้ใช้
 
 | คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
 |---|---|---|---|
@@ -390,7 +421,7 @@ Primary key: `user_id + role`
 
 ---
 
-## 18. `course_prerequisites` - วิชาบังคับก่อน
+## 19. `course_prerequisites` - วิชาบังคับก่อน
 
 | คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
 |---|---|---|---|
@@ -401,7 +432,7 @@ Primary key: `course_id + prerequisite_course_id`
 
 ---
 
-## 19. `course_staff` - เจ้าหน้าที่ประจำรายวิชา
+## 20. `course_staff` - เจ้าหน้าที่ประจำรายวิชา
 
 | คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
 |---|---|---|---|
@@ -412,7 +443,7 @@ Primary key: `course_id + user_id`
 
 ---
 
-## 20. `course_instructors` - อาจารย์ใน pool รายวิชาแม่แบบ
+## 21. `course_instructors` - อาจารย์ใน pool รายวิชาแม่แบบ
 
 | คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
 |---|---|---|---|
@@ -427,7 +458,7 @@ Unique: `course_id + user_id`
 
 ---
 
-## 21. `course_offering_instructors` - อาจารย์ใน pool รอบเปิดสอน
+## 22. `course_offering_instructors` - อาจารย์ใน pool รอบเปิดสอน
 
 | คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
 |---|---|---|---|
@@ -440,7 +471,7 @@ Primary key: `course_offering_id + user_id`
 
 ---
 
-## 22. `schedule_instructors` - อาจารย์ผู้สอนในรายการตาราง
+## 23. `schedule_instructors` - อาจารย์ผู้สอนในรายการตาราง
 
 | คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
 |---|---|---|---|
@@ -453,7 +484,7 @@ Indexes: `schedule_id + is_lead`, `user_id + schedule_id`
 
 ---
 
-## 23. `schedule_student_groups` - กลุ่มนักศึกษาในรายการตาราง
+## 24. `schedule_student_groups` - กลุ่มนักศึกษาในรายการตาราง
 
 | คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
 |---|---|---|---|
@@ -465,7 +496,7 @@ Index: `student_group_id + schedule_id`
 
 ---
 
-## 24. `notifications` - การแจ้งเตือน
+## 25. `notifications` - การแจ้งเตือน
 
 | คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
 |---|---|---|---|
@@ -480,7 +511,7 @@ Index: `student_group_id + schedule_id`
 
 ---
 
-## 25. `audit_logs` - ประวัติการเปลี่ยนแปลง
+## 26. `audit_logs` - ประวัติการเปลี่ยนแปลง
 
 | คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
 |---|---|---|---|
@@ -497,7 +528,7 @@ Index: `student_group_id + schedule_id`
 
 ---
 
-## 26. `course_offering_approvals` - ประวัติการอนุมัติ
+## 27. `course_offering_approvals` - ประวัติการอนุมัติ
 
 | คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
 |---|---|---|---|
@@ -514,7 +545,7 @@ Index: `course_offering_id + created_at`
 
 ---
 
-## 27. `schedule_conflicts` - ผล conflict/warning แบบเดิม
+## 28. `schedule_conflicts` - ผล conflict/warning แบบเดิม
 
 | คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
 |---|---|---|---|
@@ -533,7 +564,7 @@ Indexes: `severity + is_resolved`, `schedule_id + is_resolved`
 
 ---
 
-## 28. `schedule_conflict_runs` - รอบประมวลผล conflict
+## 29. `schedule_conflict_runs` - รอบประมวลผล conflict
 
 | คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
 |---|---|---|---|
@@ -557,7 +588,7 @@ Indexes: `academic_year_id + status`, `status`
 
 ---
 
-## 29. `schedule_conflict_results` - ผล conflict แบบ batch
+## 30. `schedule_conflict_results` - ผล conflict แบบ batch
 
 | คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
 |---|---|---|---|
@@ -579,7 +610,7 @@ Indexes: `run_id + schedule_id`, `academic_year_id + schedule_id`, `academic_yea
 
 ---
 
-## 30. `schedule_conflict_result_scopes` - ขอบเขตการมองเห็นผล conflict
+## 31. `schedule_conflict_result_scopes` - ขอบเขตการมองเห็นผล conflict
 
 | คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
 |---|---|---|---|
@@ -598,7 +629,17 @@ Indexes: `scope_type + user_id + academic_year_id`, `scope_type + role + academi
 
 ---
 
-## 31. `sessions` - Laravel Session
+## 32. `migrations` - Laravel Migrations
+
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
+| `id` | INT UNSIGNED | PK, AI | รหัสรายการ migration |
+| `migration` | VARCHAR(255) | NOT NULL | ชื่อไฟล์ migration ที่รันแล้ว |
+| `batch` | INT | NOT NULL | รอบ batch ที่ Laravel ใช้จัดกลุ่มการ migrate/rollback |
+
+---
+
+## 33. `sessions` - Laravel Session
 
 | คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
 |---|---|---|---|
@@ -611,7 +652,7 @@ Indexes: `scope_type + user_id + academic_year_id`, `scope_type + role + academi
 
 ---
 
-## 32. `cache` - Laravel Cache
+## 34. `cache` - Laravel Cache
 
 | คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
 |---|---|---|---|
@@ -621,13 +662,27 @@ Indexes: `scope_type + user_id + academic_year_id`, `scope_type + role + academi
 
 ---
 
-## 33. `cache_locks` - Laravel Cache Locks
+## 35. `cache_locks` - Laravel Cache Locks
 
 | คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
 |---|---|---|---|
 | `key` | VARCHAR(255) | PK | lock key |
 | `owner` | VARCHAR(255) | NOT NULL | owner token |
 | `expiration` | BIGINT | NOT NULL, INDEX | เวลา expiration |
+
+---
+
+## 36. `jobs` - Laravel Queue Jobs
+
+| คอลัมน์ | ประเภท | Constraint / Default | คำอธิบาย |
+|---|---|---|---|
+| `id` | BIGINT UNSIGNED | PK, AI | รหัสงานในคิว |
+| `queue` | VARCHAR(255) | NOT NULL, INDEX | ชื่อ queue |
+| `payload` | LONGTEXT | NOT NULL | ข้อมูล serialized job |
+| `attempts` | TINYINT UNSIGNED | NOT NULL | จำนวนครั้งที่พยายามรัน |
+| `reserved_at` | INT UNSIGNED | NULL | timestamp ตอน worker จองงาน |
+| `available_at` | INT UNSIGNED | NOT NULL | timestamp ที่งานพร้อมรัน |
+| `created_at` | INT UNSIGNED | NOT NULL | timestamp ตอนสร้างงาน |
 
 ---
 
@@ -645,6 +700,7 @@ users
   -> course_offerings.coordinator_id
   -> course_offering_instructors.user_id
   -> schedule_instructors.user_id
+  -> schedule_templates.created_by / updated_by
   -> notifications.user_id
   -> audit_logs.user_id
   -> course_offering_approvals.actor_user_id
@@ -670,6 +726,7 @@ rooms
 
 activity_types
   -> schedules.activity_type_id
+  -> schedule_templates.activity_type_id
 
 courses
   -> course_prerequisites.course_id / prerequisite_course_id
@@ -686,11 +743,15 @@ course_offerings
   -> practicum_series.course_offering_id
   -> student_groups.course_offering_id
   -> schedules.course_offering_id
+  -> schedule_templates.course_offering_id
   -> notifications.course_offering_id
   -> course_offering_approvals.course_offering_id
 
 practicum_series
   -> schedules.practicum_series_id
+
+schedule_templates
+  -> schedules.schedule_template_id
 
 student_groups
   -> schedule_student_groups.student_group_id
@@ -727,7 +788,8 @@ schedule_conflict_results
 | `courses` | UNIQUE | `course_code + curriculum_id` |
 | `course_offerings` | INDEX | `academic_year_id + coordinator_id` |
 | `student_groups` | UNIQUE | `course_offering_id + group_code` |
-| `schedules` | INDEX | `teaching_date + course_offering_id`, `course_offering_id + start_date + end_date`, `course_offering_id`, `room_id + start_date + end_date` |
+| `schedules` | INDEX | `teaching_date + course_offering_id`, `course_offering_id + start_date + end_date`, `course_offering_id + start_date + end_date + start_time`, `course_offering_id`, `room_id + start_date + end_date`, `schedule_template_id + series_week_number` |
+| `schedule_templates` | INDEX | `course_offering_id + start_week + end_week`, `course_offering_id + weekday + start_time` |
 | `user_roles` | PK composite | `user_id + role` |
 | `course_prerequisites` | PK composite | `course_id + prerequisite_course_id` |
 | `course_staff` | PK composite | `course_id + user_id` |
@@ -739,11 +801,13 @@ schedule_conflict_results
 | `course_offering_approvals` | INDEX | `course_offering_id + created_at` |
 | `schedule_conflicts` | INDEX | `severity + is_resolved`, `schedule_id + is_resolved` |
 | `schedule_conflict_runs` | UNIQUE + INDEX | `academic_year_id + generation`, `academic_year_id + status`, `status` |
-| `schedule_conflict_results` | UNIQUE + INDEX | `run_id + pair_key + schedule_id`, `run_id + schedule_id`, `academic_year_id + schedule_id`, `academic_year_id + conflict_type`, `resource_type + resource_id` |
-| `schedule_conflict_result_scopes` | INDEX | scope/user/role/offering lookup indexes |
+| `schedule_conflict_results` | UNIQUE + INDEX | `run_id + pair_key + schedule_id`, `run_id + schedule_id`, `academic_year_id + schedule_id`, `academic_year_id + conflict_type`, `resource_type + resource_id`, `run_id + academic_year_id + schedule_id + conflict_type` |
+| `schedule_conflict_result_scopes` | INDEX | `scope_type + user_id + academic_year_id`, `scope_type + role + academic_year_id`, `course_offering_id + academic_year_id`, `run_id + scope_type`, `result_id`, `scope_type + user_id + academic_year_id + run_id + result_id` |
+| `migrations` | PK | `id` |
 | `sessions` | PK + INDEX | `id`, `user_id`, `last_activity` |
 | `cache` | PK + INDEX | `key`, `expiration` |
 | `cache_locks` | PK + INDEX | `key`, `expiration` |
+| `jobs` | PK + INDEX | `id`, `queue` |
 
 ---
 
@@ -756,6 +820,7 @@ schedule_conflict_results
 5. instructor pool มีสองระดับ: แม่แบบที่ `course_instructors` และรอบเปิดสอนที่ `course_offering_instructors`
 6. ตารางสอนรองรับทั้งแบบวันเดียวผ่าน `teaching_date` และแบบ block ผ่าน `start_date`/`end_date`; หลัง migration 2026-05-20 `teaching_date` เป็น nullable เพื่อรองรับ block schedule
 7. ตารางฝึกปฏิบัติใช้ `practicum_series` เป็นตัวแบ่งชุด/รอบ และผูกกับ `schedules.practicum_series_id`
-8. conflict มีสองแนวทางที่อยู่ร่วมกัน: `schedule_conflicts` สำหรับผลรายรายการแบบเดิม และ `schedule_conflict_runs/results/scopes` สำหรับการตรวจแบบ batch/async
-9. `notifications` ผูกได้ทั้งระดับ `schedule_id` และ `course_offering_id` เพื่อรองรับทั้ง conflict/warning และ approval update
-10. ตาราง Laravel/system (`sessions`, `cache`, `cache_locks`) เป็น infrastructure ไม่ใช่ business data แต่รวมในเอกสารเพื่อให้ dictionary ครบทั้ง database
+8. `schedule_templates` เป็นแม่แบบรายสัปดาห์สำหรับสร้างตารางซ้ำอัตโนมัติ โดยรายการที่ถูกสร้างจะผูกกลับผ่าน `schedules.schedule_template_id` และเก็บลำดับสัปดาห์ไว้ใน `schedules.series_week_number`
+9. conflict มีสองแนวทางที่อยู่ร่วมกัน: `schedule_conflicts` สำหรับผลรายรายการแบบเดิม และ `schedule_conflict_runs/results/scopes` สำหรับการตรวจแบบ batch/async
+10. `notifications` ผูกได้ทั้งระดับ `schedule_id` และ `course_offering_id` เพื่อรองรับทั้ง conflict/warning และ approval update
+11. ตาราง Laravel/system (`migrations`, `sessions`, `cache`, `cache_locks`, `jobs`) เป็น infrastructure ไม่ใช่ business data แต่รวมในเอกสารเพื่อให้ dictionary ครบทั้ง database

@@ -13,6 +13,8 @@ class Schedule extends Model
         'activity_type_id',
         'room_id',
         'practicum_series_id',
+        'schedule_template_id',
+        'series_week_number',
         'start_date',
         'end_date',
         'teaching_date',
@@ -30,6 +32,7 @@ class Schedule extends Model
         'end_date' => 'date',
         'teaching_date' => 'date',
         'capacity_required' => 'integer',
+        'series_week_number' => 'integer',
     ];
 
     public function getStartDateAttribute($value)
@@ -59,6 +62,11 @@ class Schedule extends Model
     public function room(): BelongsTo
     {
         return $this->belongsTo(Room::class);
+    }
+
+    public function scheduleTemplate(): BelongsTo
+    {
+        return $this->belongsTo(ScheduleTemplate::class);
     }
 
     public function instructors(): BelongsToMany
