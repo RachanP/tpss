@@ -140,12 +140,26 @@ class ScheduleController extends Controller
         $repository = app(ScheduleConflictReadRepository::class);
         $page = max(1, (int) $request->query('page', 1));
         $conflictStatus = $repository->getStatusForUser($userId, $selectedAcademicYearId);
+        $selectedYearIsScheduling = $selectedAcademicYear?->phase === 'scheduling';
+        $conflictChecking = $selectedYearIsScheduling
+            && in_array($conflictStatus['status'] ?? 'missing', ['missing', 'pending', 'processing'], true);
 
-        if (($conflictStatus['status'] ?? 'missing') === 'missing' && $selectedAcademicYearId) {
+        if ($selectedYearIsScheduling && ($conflictStatus['status'] ?? 'missing') === 'missing' && $selectedAcademicYearId) {
             app(ScheduleConflictInvalidationService::class)->markDirty($selectedAcademicYearId, 'manual');
         }
 
-        $resultPage = $repository->getScheduleSummaryPageForUser($userId, $selectedAcademicYearId, $page);
+        $resultPage = $conflictChecking
+            ? new LengthAwarePaginator(
+                collect(),
+                0,
+                25,
+                $page,
+                [
+                    'path' => $request->url(),
+                    'query' => $request->query(),
+                ]
+            )
+            : $repository->getScheduleSummaryPageForUser($userId, $selectedAcademicYearId, $page);
         $conflictGroups = $this->conflictGroupsFromSummaries($resultPage->getCollection());
 
         return view('course_head.schedule_conflicts.index', [
@@ -156,9 +170,10 @@ class ScheduleController extends Controller
             'conflictSchedules' => $resultPage,
             'conflictGroups' => $conflictGroups,
             'conflictMap' => collect(),
-            'totalConflictCount' => $repository->getCountForUser($userId, $selectedAcademicYearId),
-            'conflictTypeCounts' => $repository->getTypeCountsForUser($userId, $selectedAcademicYearId),
+            'totalConflictCount' => $conflictChecking ? null : $repository->getCountForUser($userId, $selectedAcademicYearId),
+            'conflictTypeCounts' => $conflictChecking ? [] : $repository->getTypeCountsForUser($userId, $selectedAcademicYearId),
             'conflictStatus' => $conflictStatus,
+            'conflictChecking' => $conflictChecking,
             'conflictEmptyStateKey' => $emptyStateKey ?? $this->conflictEmptyStateKey($availableYears),
             'asyncConflictReads' => true,
         ]);
@@ -738,9 +753,15 @@ class ScheduleController extends Controller
 
     private function coordinatorScheduleOfferingRedirectTarget(Request $request): ?int
     {
+        if (\App\Support\CoordinatorEmptyState::forCoordinator((int) Auth::id())
+            !== \App\Support\CoordinatorEmptyState::READY) {
+            return null;
+        }
+
         $query = CourseOffering::query()
             ->withActiveCourse()
-            ->where('coordinator_id', Auth::id());
+            ->where('coordinator_id', Auth::id())
+            ->whereHas('academicYear', fn ($query) => $query->where('phase', 'scheduling'));
 
         $selectedId = (int) $request->query('course_offering_id');
 
@@ -749,7 +770,8 @@ class ScheduleController extends Controller
         }
 
         return $this->coordinatorScheduleOfferings(includeSchedulingData: false)
-            ->first()?->id;
+            ->first(fn (CourseOffering $offering) => $offering->academicYear?->phase === 'scheduling')
+            ?->id;
     }
 
     private function coordinatorScheduleOfferings(bool $includeSchedulingData = true): Collection
@@ -1505,7 +1527,8 @@ class ScheduleController extends Controller
         $validated['activity_type_id'] = $schedule->activity_type_id;
         $validated['start_date'] = $schedule->start_date?->toDateString() ?? $schedule->teaching_date?->toDateString();
         $validated['end_date'] = $schedule->end_date?->toDateString() ?? $schedule->teaching_date?->toDateString();
-        // start_time / end_time: ไม่ lock — อนุญาตให้แก้แยกรายสัปดาห์ได้
+        $validated['start_time'] = substr((string) $schedule->start_time, 0, 5);
+        $validated['end_time'] = substr((string) $schedule->end_time, 0, 5);
         $validated['topic'] = $schedule->topic;
         $validated['capacity_required'] = $schedule->capacity_required;
         $validated['sub_group_label'] = $schedule->sub_group_label;
