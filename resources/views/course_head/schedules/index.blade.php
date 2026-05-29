@@ -1743,6 +1743,97 @@
             box-shadow: none;
             margin-top: 0;
         }
+        .co-sched-day-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 12px 0;
+        }
+        .co-day-section {
+            border: 1px solid var(--schedule-border);
+            border-radius: 10px;
+            background: var(--surface);
+            overflow: hidden;
+        }
+        .co-day-section[open] {
+            border-color: var(--schedule-border-strong);
+        }
+        .co-day-summary {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-height: 58px;
+            padding: 12px 16px;
+            cursor: pointer;
+            user-select: none;
+            background: oklch(96.5% 0.016 232);
+            list-style: none;
+        }
+        .co-day-summary::-webkit-details-marker {
+            display: none;
+        }
+        .co-day-summary:hover {
+            background: oklch(95% 0.02 232);
+        }
+        .co-day-summary-spacer {
+            flex: 1 1 auto;
+            min-width: 12px;
+        }
+        .co-day-summary-conflict-count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 26px;
+            padding: 3px 10px;
+            border: 1px solid var(--status-conflict-border);
+            border-radius: 999px;
+            background: var(--status-conflict-bg);
+            color: var(--status-conflict-fg);
+            font-size: 12.5px;
+            font-weight: 900;
+            line-height: 1.35;
+            white-space: nowrap;
+        }
+        .co-day-summary-count {
+            margin-left: 0;
+            font-size: 12.5px;
+            font-weight: 850;
+            color: var(--fg-2);
+            white-space: nowrap;
+        }
+        .co-day-summary-chevron {
+            width: 18px;
+            height: 18px;
+            color: var(--fg-2);
+            transition: transform 0.18s ease;
+            flex-shrink: 0;
+        }
+        @media (max-width: 640px) {
+            .co-day-summary {
+                flex-wrap: wrap;
+                align-items: center;
+            }
+            .co-day-summary-spacer {
+                flex-basis: 100%;
+                min-width: 0;
+                height: 0;
+            }
+            .co-day-summary-conflict-count,
+            .co-day-summary-count {
+                font-size: 12px;
+            }
+            .co-day-summary-chevron {
+                margin-left: auto;
+            }
+        }
+        .co-day-section[open] .co-day-summary-chevron {
+            transform: rotate(90deg);
+        }
+        .co-sched-table-wrap--day {
+            border: 0;
+            border-top: 1px solid var(--schedule-border);
+            border-radius: 0;
+        }
         .co-sched-table {
             width: 100%;
             table-layout: fixed;
@@ -4712,140 +4803,135 @@
                 </div>
 
                 <div x-show="view === 'list'" x-cloak data-testid="schedule-list-view">
-                    <div class="co-sched-table-wrap">
-                        <table class="co-sched-table">
-                            <thead>
-                                <tr>
-                                    <th class="co-col-date">วัน / ช่วงวันที่</th>
-                                    <th class="co-col-time">เวลา</th>
-                                    <th class="co-col-activity">กิจกรรม</th>
-                                    <th class="co-col-groups">กลุ่ม</th>
-                                    <th class="co-col-instructors">ผู้สอน</th>
-                                    <th class="co-col-location">สถานที่</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @if($allSchedules->isEmpty())
-                                    <tr>
-                                        <td colspan="6" style="padding:32px 16px;text-align:center;color:var(--fg-3);font-size:14px;">
-                                            ยังไม่มีรายการสอน
-                                            @if($canEdit)
-                                                <div style="font-size:13px;margin-top:6px;">เพิ่มรายการสอนแรกของรายวิชาเพื่อเริ่มต้นตารางและความพร้อมของกลุ่ม</div>
+                    @if($allSchedules->isEmpty())
+                        <div class="schedule-empty" style="margin:16px;">
+                            <div style="font-weight:800;color:var(--fg-2);margin-bottom:4px;">ยังไม่มีรายการสอน</div>
+                            @if($canEdit)
+                                <div>เพิ่มรายการสอนแรกของรายวิชาเพื่อเริ่มต้นตารางและความพร้อมของกลุ่ม</div>
+                            @endif
+                        </div>
+                    @else
+                        <div class="co-sched-day-list">
+                            @foreach($thaiDays as $dayIso => $dayName)
+                                @php
+                                    $daySchedules = $groupedSchedules->get($dayIso, collect());
+                                    $dayScheduleIds = $daySchedules->pluck('id')->map(fn ($id) => (string) $id)->values();
+                                    $dayConflictCount = $daySchedules->sum(fn ($schedule) => $scheduleConflicts->get($schedule->id, collect())->count());
+                                @endphp
+                                @if($daySchedules->isNotEmpty())
+                                    <details class="co-day-section" x-show="dayHasMatches(@js($dayScheduleIds))" x-cloak>
+                                        <summary class="co-day-summary">
+                                            <span class="co-day-badge day-{{ $dayIso }}" style="margin-bottom:0;font-size:13px;padding:4px 12px;border-radius:6px;">{{ $dayName }}</span>
+                                            <span class="co-day-summary-spacer" aria-hidden="true"></span>
+                                            @if($dayConflictCount > 0)
+                                                <span class="co-day-summary-conflict-count">ชน {{ $dayConflictCount }} รายการ</span>
                                             @endif
-                                        </td>
-                                    </tr>
-                                @else
-                                    @foreach($thaiDays as $dayIso => $dayName)
-                                        @php
-                                            $daySchedules = $groupedSchedules->get($dayIso, collect());
-                                            $dayScheduleIds = $daySchedules->pluck('id')->map(fn ($id) => (string) $id)->values();
-                                        @endphp
-                                        @if($daySchedules->isNotEmpty())
-                                            <tr class="sched-day-group-header" x-show="dayHasMatches(@js($dayScheduleIds))" x-cloak>
-                                                <td colspan="6" style="background: oklch(93.5% 0.022 232); border-top: 1px solid var(--schedule-border-strong); border-bottom: 1px solid var(--schedule-border-strong); padding: 10px 16px;">
-                                                    <div style="display: flex; align-items: center; gap: 8px;">
-                                                        <span class="co-day-badge day-{{ $dayIso }}" style="margin-bottom: 0; font-size: 13px; padding: 4px 12px; border-radius: 6px;">{{ $dayName }}</span>
-                                                        <span style="font-size: 12.5px; font-weight: 800; color: var(--fg-2);">· {{ $daySchedules->count() }} รายการสอน</span>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            @foreach($daySchedules as $as)
-                                                @php
-                                                    $asActivity = $as->activityType;
-                                                    $asRoom = $as->room;
-                                                    $asInstructorText = $scheduleInstructorText($as);
-                                                    $asConflicts = $scheduleConflicts->get($as->id, collect());
-                                                    $asIncompleteReasons = $scheduleIncompleteReasons($as);
-                                                    $asSameDay = $as->start_date?->format('d/m/Y') === $as->end_date?->format('d/m/Y');
-
-                                                    $dayOfWeekName = $thaiDays[$as->start_date->dayOfWeekIso] ?? '';
-                                                    if (! $asSameDay) {
-                                                        $endDayName = $thaiDays[$as->end_date->dayOfWeekIso] ?? '';
-                                                        if ($dayOfWeekName && $endDayName && $dayOfWeekName !== $endDayName) {
-                                                            $dayOfWeekName = $dayOfWeekName . ' - ' . $endDayName;
-                                                        }
-                                                    }
-                                                    $isMultiDay = ! $asSameDay;
-                                                @endphp
-                                                <tr role="button" tabindex="0" class="co-sched-row" :class="focusedScheduleClass('{{ $as->id }}')" style="--activity-color: {{ $activityTone($as) }};" x-show="matchesSchedule('{{ $as->id }}')" x-cloak data-schedule-id="{{ $as->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $as->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $as->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $as->id }}'">
-                                                    <td class="co-col-date" style="font-weight: 800; color: var(--fg-1); font-variant-numeric: tabular-nums; vertical-align: middle;">
-                                                        @if($asSameDay)
-                                                            {{ $formatDate($as->start_date) }}
-                                                        @else
-                                                            <div style="font-size: 12px; line-height: 1.35;">
-                                                                {{ $formatDate($as->start_date) }}<br>
-                                                                <span style="color: var(--fg-3); font-weight: 600; font-size: 11px;">ถึง</span> {{ $formatDate($as->end_date) }}
-                                                            </div>
-                                                        @endif
-                                                    </td>
-                                                    <td class="co-col-time">
-                                                        <div class="co-time-range">{{ $formatTime($as->start_time) }} - {{ $formatTime($as->end_time) }}</div>
-                                                        <div class="co-time-duration">{{ $formatDuration($durationForSchedule($as)) }}</div>
-                                                    </td>
-                                                    <td class="co-col-activity">
-                                                        @if($as->topic)
-                                                            <div class="co-activity-topic-main">{{ $as->topic }}</div>
-                                                            <div class="co-activity-type-badge" style="--activity-color: {{ $activityTone($as) }};">
-                                                                <span class="co-activity-dot-small" aria-hidden="true"></span>
-                                                                <span>{{ $asActivity?->name ?? 'กิจกรรม' }}</span>
-                                                            </div>
-                                                        @else
-                                                            <div class="co-activity-topic-main">{{ $asActivity?->name ?? 'กิจกรรม' }}</div>
-                                                        @endif
-                                                        @if($as->schedule_template_id)
-                                                            <div style="margin-top:6px;">
-                                                                @include('course_head.schedules._series_badge', ['schedule' => $as])
-                                                            </div>
-                                                        @endif
-                                                        @if($asIncompleteReasons->isNotEmpty())
-                                                            <div style="margin-top:6px;">
-                                                                @include('course_head.schedules._incomplete_badge', ['reasons' => $asIncompleteReasons])
-                                                            </div>
-                                                        @endif
-                                                        @if($asConflicts->isNotEmpty())
-                                                            <div style="margin-top:6px;">
-                                                                @include('course_head.schedules._conflict_pill', ['conflicts' => $asConflicts])
-                                                            </div>
-                                                        @endif
-                                                    </td>
-                                                    <td class="co-col-groups">
-                                                        <div class="co-groups-list">
-                                                            @foreach($as->studentGroups as $group)
-                                                                <span class="co-group-badge" style="--group-color: {{ $groupTone($group) }};">
-                                                                    <span class="co-group-dot" aria-hidden="true"></span>
-                                                                    <span>{{ $group->group_code }}</span>
-                                                                </span>
-                                                            @endforeach
-                                                        </div>
-                                                    </td>
-                                                    <td class="co-col-instructors">
-                                                        <div class="co-instructor-text">{{ $asInstructorText }}</div>
-                                                    </td>
-                                                    <td class="co-col-location">
-                                                        <div class="co-location-room">{{ $asRoom?->room_name ?? $asRoom?->room_code ?? 'ไม่ระบุสถานที่' }}</div>
-                                                        @if($asRoom?->building)
-                                                            <div class="co-location-building">{{ $asRoom->building }}</div>
-                                                        @endif
-                                                    </td>
-                                                </tr>
-                                            @endforeach
-                                        @endif
-                                    @endforeach
-                                    <tr x-show="matchedScheduleCount() === 0" x-cloak>
-                                        <td colspan="6">
-                                            <div class="schedule-empty" style="margin:16px;">
-                                                <div style="font-weight:800;color:var(--fg-2);margin-bottom:4px;">ไม่พบรายการที่ตรงกับตัวกรอง</div>
-                                                <div>ลองปรับคำค้นหา ประเภทกิจกรรม กลุ่ม หรือผู้สอนอีกครั้ง</div>
-                                                <div style="margin-top:12px;">
-                                                    <button type="button" class="btn btn-ghost" @click="resetScheduleFilters()">ล้างตัวกรอง</button>
-                                                </div>
-                                            </div>
-                                        </td>
-                                    </tr>
+                                            <span class="co-day-summary-count">{{ $daySchedules->count() }} รายการสอน</span>
+                                            <svg class="co-day-summary-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                <polyline points="9 18 15 12 9 6"></polyline>
+                                            </svg>
+                                        </summary>
+                                        <div class="co-sched-table-wrap co-sched-table-wrap--day">
+                                            <table class="co-sched-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th class="co-col-date">วัน / ช่วงวันที่</th>
+                                                        <th class="co-col-time">เวลา</th>
+                                                        <th class="co-col-activity">กิจกรรม</th>
+                                                        <th class="co-col-groups">กลุ่ม</th>
+                                                        <th class="co-col-instructors">ผู้สอน</th>
+                                                        <th class="co-col-location">สถานที่</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach($daySchedules as $as)
+                                                        @php
+                                                            $asActivity = $as->activityType;
+                                                            $asRoom = $as->room;
+                                                            $asInstructorText = $scheduleInstructorText($as);
+                                                            $asConflicts = $scheduleConflicts->get($as->id, collect());
+                                                            $asIncompleteReasons = $scheduleIncompleteReasons($as);
+                                                            $asSameDay = $as->start_date?->format('d/m/Y') === $as->end_date?->format('d/m/Y');
+                                                        @endphp
+                                                        <tr role="button" tabindex="0" class="co-sched-row" :class="focusedScheduleClass('{{ $as->id }}')" style="--activity-color: {{ $activityTone($as) }};" x-show="matchesSchedule('{{ $as->id }}')" x-cloak data-schedule-id="{{ $as->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $as->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $as->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $as->id }}'">
+                                                            <td class="co-col-date" style="font-weight:800;color:var(--fg-1);font-variant-numeric:tabular-nums;vertical-align:middle;">
+                                                                @if($asSameDay)
+                                                                    {{ $formatDate($as->start_date) }}
+                                                                @else
+                                                                    <div style="font-size:12px;line-height:1.35;">
+                                                                        {{ $formatDate($as->start_date) }}<br>
+                                                                        <span style="color:var(--fg-3);font-weight:600;font-size:11px;">ถึง</span> {{ $formatDate($as->end_date) }}
+                                                                    </div>
+                                                                @endif
+                                                            </td>
+                                                            <td class="co-col-time">
+                                                                <div class="co-time-range">{{ $formatTime($as->start_time) }} - {{ $formatTime($as->end_time) }}</div>
+                                                                <div class="co-time-duration">{{ $formatDuration($durationForSchedule($as)) }}</div>
+                                                            </td>
+                                                            <td class="co-col-activity">
+                                                                @if($as->topic)
+                                                                    <div class="co-activity-topic-main">{{ $as->topic }}</div>
+                                                                    <div class="co-activity-type-badge" style="--activity-color: {{ $activityTone($as) }};">
+                                                                        <span class="co-activity-dot-small" aria-hidden="true"></span>
+                                                                        <span>{{ $asActivity?->name ?? 'กิจกรรม' }}</span>
+                                                                    </div>
+                                                                @else
+                                                                    <div class="co-activity-topic-main">{{ $asActivity?->name ?? 'กิจกรรม' }}</div>
+                                                                @endif
+                                                                @if($as->schedule_template_id)
+                                                                    <div style="margin-top:6px;">
+                                                                        @include('course_head.schedules._series_badge', ['schedule' => $as])
+                                                                    </div>
+                                                                @endif
+                                                                @if($asIncompleteReasons->isNotEmpty())
+                                                                    <div style="margin-top:6px;">
+                                                                        @include('course_head.schedules._incomplete_badge', ['reasons' => $asIncompleteReasons])
+                                                                    </div>
+                                                                @endif
+                                                                @if($asConflicts->isNotEmpty())
+                                                                    <div style="margin-top:6px;">
+                                                                        @include('course_head.schedules._conflict_pill', ['conflicts' => $asConflicts])
+                                                                    </div>
+                                                                @endif
+                                                            </td>
+                                                            <td class="co-col-groups">
+                                                                <div class="co-groups-list">
+                                                                    @foreach($as->studentGroups as $group)
+                                                                        <span class="co-group-badge" style="--group-color: {{ $groupTone($group) }};">
+                                                                            <span class="co-group-dot" aria-hidden="true"></span>
+                                                                            <span>{{ $group->group_code }}</span>
+                                                                        </span>
+                                                                    @endforeach
+                                                                </div>
+                                                            </td>
+                                                            <td class="co-col-instructors">
+                                                                <div class="co-instructor-text">{{ $asInstructorText }}</div>
+                                                            </td>
+                                                            <td class="co-col-location">
+                                                                <div class="co-location-room">{{ $asRoom?->room_name ?? $asRoom?->room_code ?? 'ไม่ระบุสถานที่' }}</div>
+                                                                @if($asRoom?->building)
+                                                                    <div class="co-location-building">{{ $asRoom->building }}</div>
+                                                                @endif
+                                                            </td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </details>
                                 @endif
-                            </tbody>
-                        </table>
-                    </div>
+                            @endforeach
+                        </div>
+                        <div x-show="matchedScheduleCount() === 0" x-cloak>
+                            <div class="schedule-empty" style="margin:16px;">
+                                <div style="font-weight:800;color:var(--fg-2);margin-bottom:4px;">ไม่พบรายการที่ตรงกับตัวกรอง</div>
+                                <div>ลองปรับคำค้นหา ประเภทกิจกรรม กลุ่ม หรือผู้สอนอีกครั้ง</div>
+                                <div style="margin-top:12px;">
+                                    <button type="button" class="btn btn-ghost" @click="resetScheduleFilters()">ล้างตัวกรอง</button>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
                 </div>
 
                 {{-- Grid view + week nav --}}

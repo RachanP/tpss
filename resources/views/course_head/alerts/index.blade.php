@@ -381,7 +381,7 @@
                     $colors = $warningTypeColors[$type];
                 @endphp
                 @if($groupItems->isNotEmpty())
-                    <div class="alert-group" x-data="{ collapsed: false }">
+                    <div class="alert-group" x-data="{ collapsed: true }">
                         <div class="alert-group-head" @click="collapsed = !collapsed" style="cursor: pointer; user-select: none;">
                             <div style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;background:{{ $colors['bg'] }};color:{{ $colors['fg'] }};flex-shrink:0;">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">{!! $colors['svg'] !!}</svg>

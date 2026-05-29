@@ -80,6 +80,37 @@ class ScheduleManagementTest extends TestCase
             ->assertSee($room->room_name);
     }
 
+    public function test_schedule_day_summary_shows_conflict_count_when_collapsed(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $secondInstructor = $this->makeUser('instructor');
+        $offering->instructorPool()->attach($secondInstructor->id, ['role_in_course' => 'instructor']);
+        $secondGroup = StudentGroup::create([
+            'course_offering_id' => $offering->id,
+            'group_code' => 'A2',
+            'student_count' => 15,
+        ]);
+
+        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'topic' => 'First room conflict',
+        ]);
+        $this->makeSchedule($offering, $activityType, $room, [$secondInstructor], [$secondGroup], [
+            'topic' => 'Second room conflict',
+        ]);
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.course_offerings.schedules.index', [$offering, 'week_start' => '2026-08-03']))
+            ->assertOk()
+            ->assertSee('co-day-summary-conflict-count', false)
+            ->assertSee('ชน 2 รายการ')
+            ->assertDontSee('ชน 0 รายการ')
+            ->assertSee('First room conflict')
+            ->assertSee('Second room conflict')
+            ->assertSee($room->room_name)
+            ->assertSee('data-conflict-pill', false);
+    }
+
     public function test_schedule_grid_includes_dynamic_evening_time_slots(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
