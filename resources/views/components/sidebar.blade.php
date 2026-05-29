@@ -210,24 +210,15 @@
                     <rect x="14" y="14" width="7" height="7"></rect>
                     <rect x="3" y="14" width="7" height="7"></rect>
                 </svg>
-                ภาพรวมและแจ้งเตือน
+                ภาพรวมระบบ
             </a>
-            <a href="{{ route('maker.schedules.index') }}" class="nv {{ Request::routeIs('maker.schedules.*') || Request::routeIs('maker.course_offerings.schedules.*') ? 'on' : '' }}">
-                <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                </svg>
-                ตารางสอน
-            </a>
-            <a href="{{ route('maker.schedule_conflicts.index') }}" class="nv {{ Request::routeIs('maker.schedule_conflicts.*') ? 'on' : '' }}">
+            <a href="{{ route('maker.alerts.index') }}" class="nv {{ Request::routeIs('maker.alerts.*') || Request::routeIs('maker.schedule_conflicts.*') ? 'on' : '' }}">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
                     <line x1="12" y1="9" x2="12" y2="13"></line>
                     <line x1="12" y1="17" x2="12.01" y2="17"></line>
                 </svg>
-                <span>การแจ้งเตือนการชน</span>
+                <span>การแจ้งเตือน</span>
                 <span
                     class="nv-alert-badges"
                     data-conflict-badge
@@ -243,6 +234,15 @@
                         title="{{ $makerConflictTitle }}"
                     >{{ $makerConflictText }}</span>
                 </span>
+            </a>
+            <a href="{{ route('maker.schedules.index') }}" class="nv {{ Request::routeIs('maker.schedules.*') || Request::routeIs('maker.course_offerings.schedules.*') ? 'on' : '' }}">
+                <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                ตารางสอน
             </a>
             <a href="{{ route('maker.course_offerings.index') }}" class="nv {{ Request::routeIs('maker.course_offerings.*') && ! Request::routeIs('maker.course_offerings.schedules.*') ? 'on' : '' }}">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

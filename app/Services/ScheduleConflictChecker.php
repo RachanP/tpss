@@ -229,10 +229,21 @@ class ScheduleConflictChecker
      * Requires schedules pre-loaded with relations: courseOffering.course, instructors, studentGroups, room.
      *
      * @param Collection<int, Schedule> $schedules
+     * @param array{
+     *   instructor_changed?: bool,
+     *   room_changed?: bool,
+     *   groups_changed?: bool,
+     * } $diffHint Hint เพื่อ skip การตรวจเฉพาะ resource ที่ไม่เปลี่ยน
+     *             ถ้าไม่ส่ง → ตรวจทุก type เหมือนเดิม (backward compatible)
      * @return Collection<int, Collection<int, array{type:string,message:string,schedule_id:int}>>
      */
-    public function bulkConflictMap(Collection $schedules): Collection
+    public function bulkConflictMap(Collection $schedules, array $diffHint = []): Collection
     {
+        // ตรวจว่า hint บอกให้ข้าม type ใดบ้าง
+        $skipInstructor = array_key_exists('instructor_changed', $diffHint) && ! $diffHint['instructor_changed'];
+        $skipRoom       = array_key_exists('room_changed', $diffHint)       && ! $diffHint['room_changed'];
+        $skipGroups     = array_key_exists('groups_changed', $diffHint)     && ! $diffHint['groups_changed'];
+
         // Pre-extract data once per schedule — avoid repeated relation traversal
         $rows = $schedules->map(fn (Schedule $s) => [
             'schedule'   => $s,
@@ -278,27 +289,29 @@ class ScheduleConflictChecker
                 $labelB = $this->scheduleLabel($b['schedule']);
 
                 // Instructor overlap — emit one entry per shared instructor (both directions)
-                $sharedInstructors = array_intersect($a['inst_ids'], $b['inst_ids']);
-                if (! empty($sharedInstructors)) {
-                    $instructorsById = $a['schedule']->instructors->keyBy('id');
-                    foreach ($sharedInstructors as $instructorId) {
-                        $name = ($instructorsById[$instructorId]->formatted_name ?? $instructorsById[$instructorId]->name ?? "#{$instructorId}");
-                        $conflictMap[$a['id']][] = [
-                            'type'        => 'instructor_overlap',
-                            'schedule_id' => $b['id'],
-                            'message'     => "อาจารย์ {$name} มีตารางซ้อนกับ {$labelB}",
-                        ];
-                        $conflictMap[$b['id']][] = [
-                            'type'        => 'instructor_overlap',
-                            'schedule_id' => $a['id'],
-                            'message'     => "อาจารย์ {$name} มีตารางซ้อนกับ {$labelA}",
-                        ];
+                if (! $skipInstructor) {
+                    $sharedInstructors = array_intersect($a['inst_ids'], $b['inst_ids']);
+                    if (! empty($sharedInstructors)) {
+                        $instructorsById = $a['schedule']->instructors->keyBy('id');
+                        foreach ($sharedInstructors as $instructorId) {
+                            $name = ($instructorsById[$instructorId]->formatted_name ?? $instructorsById[$instructorId]->name ?? "#{$instructorId}");
+                            $conflictMap[$a['id']][] = [
+                                'type'        => 'instructor_overlap',
+                                'schedule_id' => $b['id'],
+                                'message'     => "อาจารย์ {$name} มีตารางซ้อนกับ {$labelB}",
+                            ];
+                            $conflictMap[$b['id']][] = [
+                                'type'        => 'instructor_overlap',
+                                'schedule_id' => $a['id'],
+                                'message'     => "อาจารย์ {$name} มีตารางซ้อนกับ {$labelA}",
+                            ];
+                        }
                     }
                 }
 
                 // Room overlap — single entry per pair (room is scalar)
                 // ข้ามถ้า room ประเภท is_shared (ห้องใช้ร่วมกันได้ข้ามตาราง)
-                if ($a['room_id'] && $a['room_id'] === $b['room_id'] && ! $a['is_shared']) {
+                if (! $skipRoom && $a['room_id'] && $a['room_id'] === $b['room_id'] && ! $a['is_shared']) {
                     $roomName = $a['schedule']->room?->room_name ?? $a['schedule']->room?->room_code ?? 'ที่เลือก';
                     $conflictMap[$a['id']][] = [
                         'type'        => 'room_overlap',
@@ -313,21 +326,23 @@ class ScheduleConflictChecker
                 }
 
                 // Student group overlap — one entry per shared group
-                $sharedGroups = array_intersect($a['group_ids'], $b['group_ids']);
-                if (! empty($sharedGroups)) {
-                    $groupsById = $a['schedule']->studentGroups->keyBy('id');
-                    foreach ($sharedGroups as $groupId) {
-                        $code = $groupsById[$groupId]->group_code ?? "#{$groupId}";
-                        $conflictMap[$a['id']][] = [
-                            'type'        => 'group_overlap',
-                            'schedule_id' => $b['id'],
-                            'message'     => "กลุ่มนักศึกษา {$code} มีตารางซ้อนกับ {$labelB}",
-                        ];
-                        $conflictMap[$b['id']][] = [
-                            'type'        => 'group_overlap',
-                            'schedule_id' => $a['id'],
-                            'message'     => "กลุ่มนักศึกษา {$code} มีตารางซ้อนกับ {$labelA}",
-                        ];
+                if (! $skipGroups) {
+                    $sharedGroups = array_intersect($a['group_ids'], $b['group_ids']);
+                    if (! empty($sharedGroups)) {
+                        $groupsById = $a['schedule']->studentGroups->keyBy('id');
+                        foreach ($sharedGroups as $groupId) {
+                            $code = $groupsById[$groupId]->group_code ?? "#{$groupId}";
+                            $conflictMap[$a['id']][] = [
+                                'type'        => 'group_overlap',
+                                'schedule_id' => $b['id'],
+                                'message'     => "กลุ่มนักศึกษา {$code} มีตารางซ้อนกับ {$labelB}",
+                            ];
+                            $conflictMap[$b['id']][] = [
+                                'type'        => 'group_overlap',
+                                'schedule_id' => $a['id'],
+                                'message'     => "กลุ่มนักศึกษา {$code} มีตารางซ้อนกับ {$labelA}",
+                            ];
+                        }
                     }
                 }
             }

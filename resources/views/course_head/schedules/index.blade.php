@@ -4136,7 +4136,7 @@
             closeCreate() { this.showCreate = false; },
             closeEdit() {
                 @if(request()->boolean('from_conflict'))
-                    window.location.href = @js(route('maker.schedule_conflicts.index'));
+                    window.location.href = "{{ route('maker.schedule_conflicts.index') }}";
                 @else
                     this.editModal = null;
                     this.$nextTick(() => {
@@ -5527,7 +5527,7 @@
                                 @include('course_head.schedules._incomplete_badge', ['reasons' => $detailIncompleteReasons])
                             </span>
                         </div>
-                        <button type="button" class="modal-close" @click="detailModal = null" aria-label="ปิด">×</button>
+                        <button type="button" class="modal-close" @click="const r = new URLSearchParams(window.location.search).get('return_url'); if(r){ window.location.href=r; }else{ detailModal = null; }" aria-label="ปิด">×</button>
                     </div>
                     <div class="detail-body">
                         <div class="detail-grid">
@@ -5602,24 +5602,23 @@
                         </div>
                     </div>
                     @if($scheduleCanEdit)
-                        <div class="modal-actions">
                             <form id="delete-schedule-{{ $schedule->id }}" method="POST" action="{{ route('maker.course_offerings.schedules.destroy', [$offering, $schedule]) }}" style="display:none;">
                                 @csrf
                                 @method('DELETE')
-                                <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
+                                <input type="hidden" name="return_url" value="{{ request()->input('return_url', request()->fullUrl()) }}">
                             </form>
                             @if($schedule->schedule_template_id && $schedule->scheduleTemplate)
                                 <form id="delete-series-from-{{ $schedule->id }}" method="POST" action="{{ route('maker.course_offerings.schedules.destroy', [$offering, $schedule]) }}" style="display:none;">
                                     @csrf
                                     @method('DELETE')
                                     <input type="hidden" name="series_delete_scope" value="from_current">
-                                    <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
+                                    <input type="hidden" name="return_url" value="{{ request()->input('return_url', request()->fullUrl()) }}">
                                 </form>
                                 <form id="delete-series-all-{{ $schedule->id }}" method="POST" action="{{ route('maker.course_offerings.schedules.destroy', [$offering, $schedule]) }}" style="display:none;">
                                     @csrf
                                     @method('DELETE')
                                     <input type="hidden" name="series_delete_scope" value="all">
-                                    <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
+                                    <input type="hidden" name="return_url" value="{{ request()->input('return_url', request()->fullUrl()) }}">
                                 </form>
                             @endif
                             @php
@@ -5672,14 +5671,14 @@
                                     <div class="modal-title" id="schedule-series-edit-title-{{ $schedule->id }}">แก้ชุดทำซ้ำรายสัปดาห์</div>
                                     <div style="font-size:12px;font-weight:700;color:var(--fg-2);margin-top:3px;">การเปลี่ยนวัน เวลา ประเภทกิจกรรม และหัวข้อ จะ sync ไปยังรายการในชุดนี้ โดยไม่ทับห้องและกลุ่มรายสัปดาห์</div>
                                 </div>
-                                <button type="button" class="modal-close" @click="editSeriesModal = null" aria-label="ปิด">×</button>
+                                <button type="button" class="modal-close" @click="const r = new URLSearchParams(window.location.search).get('return_url'); if(r){ window.location.href=r; }else{ editSeriesModal = null; }" aria-label="ปิด">×</button>
                             </div>
                             <form method="POST" action="{{ route('maker.course_offerings.schedules.templates.update', [$offering, $seriesTemplate]) }}" data-testid="schedule-series-edit-form">
                                 @csrf
                                 @method('PUT')
                                 <input type="hidden" name="modal_mode" value="series_edit">
                                 <input type="hidden" name="edit_series_template_id" value="{{ $schedule->id }}">
-                                <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
+                                <input type="hidden" name="return_url" value="{{ request()->input('return_url', request()->fullUrl()) }}">
                                 <div class="modal-form-body">
                                     @if($seriesUsesOld && $errors->any())
                                         @php
@@ -5734,7 +5733,7 @@
                                     </div>
                                 </div>
                                 <div class="modal-actions">
-                                    <button type="button" class="btn btn-secondary" @click="editSeriesModal = null">ยกเลิก</button>
+                                    <button type="button" class="btn btn-secondary" @click="const r = new URLSearchParams(window.location.search).get('return_url'); if(r){ window.location.href=r; }else{ editSeriesModal = null; }">ยกเลิก</button>
                                     <button type="submit" class="btn btn-primary" data-testid="schedule-series-submit">บันทึกชุดทำซ้ำ</button>
                                 </div>
                             </form>
@@ -5782,7 +5781,7 @@
                                 <!-- removed edit tag -->
                                 <div class="modal-title" id="schedule-edit-title-{{ $schedule->id }}">แก้ไขรายละเอียดกิจกรรม</div>
                             </div>
-                            <button type="button" class="modal-close" @click="closeEdit()" aria-label="ปิด">×</button>
+                            <button type="button" class="modal-close" @click="const r = new URLSearchParams(window.location.search).get('return_url'); if(r){ window.location.href=r; }else{ closeEdit(); }" aria-label="ปิด">×</button>
                         </div>
                         <form
                             method="POST"
@@ -5800,7 +5799,7 @@
                             @method('PUT')
                             <input type="hidden" name="modal_mode" value="edit">
                             <input type="hidden" name="edit_schedule_id" value="{{ $schedule->id }}">
-                            <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
+                            <input type="hidden" name="return_url" value="{{ request()->input('return_url', request()->fullUrl()) }}">
                             @if(request()->boolean('from_conflict'))
                                 <input type="hidden" name="return_to_conflicts" value="1">
                             @endif
@@ -6053,7 +6052,7 @@
                                 </div>
                             </div>
                             <div class="modal-actions">
-                                <button type="button" class="btn btn-secondary" @click="closeEdit()">ยกเลิก</button>
+                                <button type="button" class="btn btn-secondary" @click="const r = new URLSearchParams(window.location.search).get('return_url'); if(r){ window.location.href=r; }else{ closeEdit(); }">ยกเลิก</button>
                                 <button type="submit" class="btn btn-primary" data-testid="schedule-submit">บันทึกการแก้ไข</button>
                             </div>
                         </form>
@@ -6093,7 +6092,7 @@
                         <input type="hidden" name="modal_mode" value="create">
                         <input type="hidden" name="create_mode" x-bind:value="createMode">
                         <input type="hidden" name="repeat_weekly" value="1" x-bind:disabled="createMode !== 'series'">
-                        <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
+                        <input type="hidden" name="return_url" value="{{ request()->input('return_url', request()->fullUrl()) }}">
                         <div class="modal-form-body">
                             @if($errors->any())
                                 @php
