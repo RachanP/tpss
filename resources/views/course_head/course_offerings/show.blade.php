@@ -63,112 +63,49 @@
         <script>
             document.addEventListener('alpine:init', () => {
                 if (! Alpine.store('offeringPage')) {
-                    Alpine.store('offeringPage', { editing: false });
+                    Alpine.store('offeringPage', {
+                        editing: {
+                            courseInfo: false,
+                            instructors: false,
+                            studentGroups: false,
+                        },
+                    });
                 }
             });
         </script>
 
-        {{-- Edit-mode toggle banner --}}
-        <div
-            x-data
-            class="offering-edit-banner"
-            :class="$store.offeringPage.editing ? 'is-editing' : ''"
-            data-testid="edit-mode-banner"
-        >
-            <div class="offering-edit-banner-text">
-                <svg x-show="$store.offeringPage.editing" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="offering-edit-banner-icon">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                </svg>
-                <svg x-show="!$store.offeringPage.editing" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="offering-edit-banner-icon">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                    <circle cx="12" cy="12" r="3"/>
-                </svg>
-                <div class="offering-edit-banner-copy">
-                    <div class="offering-edit-banner-title" x-text="$store.offeringPage.editing ? 'โหมดแก้ไข' : 'โหมดดูอย่างเดียว'"></div>
-                    <div class="offering-edit-banner-sub" x-text="$store.offeringPage.editing ? 'การเปลี่ยนแปลงจะบันทึกอัตโนมัติ' : 'กดปุ่มขวาเพื่อเริ่มแก้ไข'"></div>
-                </div>
-            </div>
-            <button
-                type="button"
-                @click="$store.offeringPage.editing = !$store.offeringPage.editing"
-                data-testid="edit-mode-toggle"
-                class="offering-edit-banner-btn"
-                x-text="$store.offeringPage.editing ? 'ปิดโหมดแก้ไข' : 'เปิดโหมดแก้ไข'"
-            ></button>
-        </div>
-
         <style>
-            .offering-edit-banner {
-                display: grid;
-                grid-template-columns: 1fr auto;
-                align-items: center;
-                gap: 16px;
-                padding: 12px 18px;
-                margin-bottom: 20px;
-                border: 1px solid var(--border-1);
-                border-radius: 8px;
-                background: var(--bg-2);
-                color: var(--fg-2);
-                transition: background 0.15s, border-color 0.15s, color 0.15s;
-            }
-            .offering-edit-banner.is-editing {
-                background: var(--status-success-bg);
-                border-color: var(--status-success-border);
-                color: var(--status-success-fg);
-            }
-            .offering-edit-banner-text {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                min-width: 0;
-            }
-            .offering-edit-banner-icon {
-                flex-shrink: 0;
-            }
-            .offering-edit-banner-copy {
-                min-width: 0;
-            }
-            .offering-edit-banner-title {
-                font-weight: 700;
-                font-size: 0.9375rem;
-            }
-            .offering-edit-banner-sub {
-                margin-top: 2px;
-                font-size: 0.75rem;
-                color: inherit;
-                opacity: 0.85;
-            }
-            .offering-edit-banner-btn {
+            /* ── Section quick toggle ("แก้ไข" ใน card-hdr ของแต่ละ section) ── */
+            .section-edit-quick-toggle {
                 display: inline-flex;
                 align-items: center;
+                justify-content: center;
                 gap: 6px;
-                padding: 8px 18px;
-                font-size: 0.875rem;
-                font-weight: 600;
-                border: 1px solid var(--brand-navy);
-                background: var(--brand-navy);
-                color: #fff;
+                height: 32px;
+                padding: 0 14px;
+                margin-left: auto;
+                border: 1px solid var(--border-1);
+                background: var(--bg-2);
+                color: var(--fg-2);
                 border-radius: 8px;
+                font-size: 13px;
+                font-weight: 600;
+                line-height: 1;
                 cursor: pointer;
                 font-family: inherit;
                 outline: none;
                 white-space: nowrap;
                 transition: all 0.15s;
+                flex-shrink: 0;
             }
-            .offering-edit-banner.is-editing .offering-edit-banner-btn {
-                border-color: var(--status-success-fg);
-                background: var(--status-success-fg);
+            .section-edit-quick-toggle:hover {
+                border-color: var(--brand-navy);
+                color: var(--brand-navy);
+                background: var(--brand-navy-50);
             }
-            /* Narrow viewport — hide sub-text so banner stays single-row */
-            @media (max-width: 1024px) {
-                .offering-edit-banner-sub {
-                    display: none;
-                }
-                .offering-edit-banner-btn {
-                    padding: 7px 14px;
-                    font-size: 0.8125rem;
-                }
+            /* override .is-locked-section button opacity — ปุ่มนี้ต้องเด่นเสมอ */
+            .is-locked-section button.section-edit-quick-toggle {
+                opacity: 1 !important;
             }
         </style>
     @endif
@@ -327,6 +264,17 @@
                     <div class="caption" style="margin-top:4px;">ข้อมูลจากรายวิชาหลักและการตั้งค่าระบบ</div>
                 </div>
             </div>
+            @if($canEdit)
+                <button
+                    type="button"
+                    x-data
+                    @click="$store.offeringPage.editing.courseInfo = !$store.offeringPage.editing.courseInfo"
+                    class="section-edit-quick-toggle"
+                    :aria-pressed="$store.offeringPage.editing.courseInfo ? 'true' : 'false'"
+                    data-testid="section-edit-quick-toggle-course-info"
+                    x-text="$store.offeringPage.editing.courseInfo ? 'เสร็จสิ้น' : 'แก้ไข'"
+                ></button>
+            @endif
         </div>
         <div style="padding:20px;">
             @if($courseInfoErrorKey)
@@ -411,7 +359,7 @@
                 </div>
                 <div class="caption" style="margin-bottom:14px;">ข้อมูลข้างต้นมาจาก Master Data (อ่านอย่างเดียว) — ส่วนนี้คือค่าที่หัวหน้าวิชาปรับได้ตามสถานการณ์ของภาคเรียน</div>
 
-                <fieldset :disabled="!$store.offeringPage.editing" style="border:0;padding:0;margin:0;min-width:0;">
+                <fieldset :disabled="!$store.offeringPage.editing.courseInfo" style="border:0;padding:0;margin:0;min-width:0;">
                     <div class="form-group" style="margin-bottom:14px;">
                         <label>การจัดรอบฝึกปฏิบัติ</label>
                         <select x-model="rotation" @change="onRotationChange()">
@@ -559,7 +507,7 @@
         $courseDeptId = $course?->department_id;
     @endphp
 
-    <div class="card" id="instructors" @if($canEdit) :class="!$store.offeringPage.editing ? 'is-locked-section' : ''" :inert="!$store.offeringPage.editing" @endif style="overflow:visible;scroll-margin-top:72px;" x-data="{
+    <div class="card" id="instructors" @if($canEdit) :class="!$store.offeringPage.editing.instructors ? 'is-locked-section' : ''" @endif style="overflow:visible;scroll-margin-top:72px;" x-data="{
         pool: {{ $poolData->toJson() }},
         all: {{ $allInstructors->toJson() }},
         roles: {{ $courseRolesData->toJson() }},
@@ -650,8 +598,18 @@
                     <div class="caption" style="margin-top:4px;" x-text="pool.length ? pool.length + ' คน' : 'ยังไม่มีผู้สอน'"></div>
                 </div>
             </div>
+            @if($canEdit)
+                <button
+                    type="button"
+                    @click="$store.offeringPage.editing.instructors = !$store.offeringPage.editing.instructors"
+                    class="section-edit-quick-toggle"
+                    :aria-pressed="$store.offeringPage.editing.instructors ? 'true' : 'false'"
+                    data-testid="section-edit-quick-toggle-instructors"
+                    x-text="$store.offeringPage.editing.instructors ? 'เสร็จสิ้น' : 'แก้ไข'"
+                ></button>
+            @endif
         </div>
-        <div style="padding:20px;">
+        <div style="padding:20px;" @if($canEdit) :inert="!$store.offeringPage.editing.instructors" @endif>
             @if($instructorErrorKey)
                 <div class="section-error-alert">
                     {{ $errors->first($instructorErrorKey) }}
@@ -1661,6 +1619,17 @@
                     </div>
                 </div>
             </div>
+            @if($canEdit)
+                <button
+                    type="button"
+                    x-data
+                    @click="$store.offeringPage.editing.studentGroups = !$store.offeringPage.editing.studentGroups"
+                    class="section-edit-quick-toggle"
+                    :aria-pressed="$store.offeringPage.editing.studentGroups ? 'true' : 'false'"
+                    data-testid="section-edit-quick-toggle-student-groups"
+                    x-text="$store.offeringPage.editing.studentGroups ? 'เสร็จสิ้น' : 'แก้ไข'"
+                ></button>
+            @endif
         </div>
         <div
             style="padding:20px;"
@@ -1701,7 +1670,7 @@
 
             @if($canEdit)
             @php $hasExistingGroups = $courseOffering->studentGroups->isNotEmpty(); @endphp
-            <div x-show="$store.offeringPage.editing" x-cloak x-data="{
+            <div x-show="$store.offeringPage.editing.studentGroups" x-cloak x-data="{
                     open: {{ ($hasExistingGroups || $ungrouped <= 0) ? 'false' : 'true' }},
                     ungroupedCount: {{ (int) $ungrouped }},
                     showSuccessFlash: false,
@@ -1962,7 +1931,7 @@
                     @csrf
                     @method('DELETE')
                 </form>
-                <div class="student-group-bulkbar" x-show="$store.offeringPage.editing" x-cloak>
+                <div class="student-group-bulkbar" x-show="$store.offeringPage.editing.studentGroups" x-cloak>
                     <div class="caption">
                         เลือกกลุ่มที่ต้องการลบได้หลายกลุ่ม
                         <span x-show="selectedGroups.length > 0" x-text="'· เลือกแล้ว ' + selectedGroups.length + ' กลุ่ม'"></span>
@@ -2037,8 +2006,8 @@
                 })"
                 x-init="emitCount()"
                 @student-groups-balance.window="balanceAcrossAll($event.detail.studentLimit)"
-                :class="!$store.offeringPage.editing ? 'is-locked-section' : ''"
-                :inert="!$store.offeringPage.editing"
+                :class="!$store.offeringPage.editing.studentGroups ? 'is-locked-section' : ''"
+                :inert="!$store.offeringPage.editing.studentGroups"
                 style="background:var(--bg-1);border:1px solid var(--border-1);border-radius:10px;overflow:visible;">
                     {{-- Column header --}}
                     <div class="student-group-editor-row" style="display:grid;grid-template-columns:32px 36px 1fr 110px 32px;align-items:center;gap:12px;padding:10px 16px;background:var(--bg-2);border-bottom:1px solid var(--border-1);font-size:0.7rem;font-weight:700;color:var(--fg-3);letter-spacing:0.04em;text-transform:uppercase;">

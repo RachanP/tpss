@@ -4443,14 +4443,21 @@
                         <span>รายละเอียดรายวิชา</span>
                     </a>
                     @if($canEdit)
+                        @php
+                            $hasStudentGroups = $courseOffering->studentGroups->isNotEmpty();
+                            $canCreateScheduleNow = $canCreateInCurrentPeriod && $hasStudentGroups;
+                            $createDisabledHint = ! $canCreateInCurrentPeriod
+                                ? $outsideCreateHint
+                                : (! $hasStudentGroups ? 'สร้างกลุ่มนักศึกษาก่อนจึงจะเพิ่มรายการสอนได้' : '');
+                        @endphp
                         <button
                             type="button"
-                            class="btn btn-primary {{ ! $canCreateInCurrentPeriod ? 'is-disabled' : '' }}"
+                            class="btn btn-primary {{ ! $canCreateScheduleNow ? 'is-disabled' : '' }}"
                             data-testid="schedule-create-link"
                             @click="openCreate()"
-                            @disabled(! $canCreateInCurrentPeriod)
-                            title="{{ ! $canCreateInCurrentPeriod ? $outsideCreateHint : '' }}"
-                            aria-disabled="{{ ! $canCreateInCurrentPeriod ? 'true' : 'false' }}"
+                            @disabled(! $canCreateScheduleNow)
+                            title="{{ $createDisabledHint }}"
+                            aria-disabled="{{ ! $canCreateScheduleNow ? 'true' : 'false' }}"
                             style="min-height:34px;padding:6px 12px;font-size:12.5px;"
                         >+ เพิ่มรายการสอน</button>
                     @endif
@@ -4461,6 +4468,53 @@
                     <span class="course-stat"><strong>{{ $eligibleScheduleInstructors($courseOffering)->count() }}</strong> ผู้สอน</span>
                 </div>
             </section>
+
+            {{-- ── แจ้งเตือน: ยังไม่มีกลุ่มนักศึกษา ── --}}
+            @if($courseOffering->studentGroups->isEmpty())
+                <div
+                    class="no-student-groups-banner"
+                    role="alert"
+                    data-testid="schedule-no-student-groups-banner"
+                    style="
+                        display:flex;
+                        align-items:center;
+                        gap:14px;
+                        flex-wrap:wrap;
+                        margin-bottom:14px;
+                        padding:14px 18px;
+                        border:1px solid var(--status-warning-border);
+                        background:var(--status-warning-bg);
+                        color:var(--status-warning-fg);
+                        border-radius:10px;
+                        font-size:13px;
+                        font-weight:600;
+                    "
+                >
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0;">
+                        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    <div style="flex:1;min-width:200px;">
+                        <div style="font-weight:800;margin-bottom:2px;">ยังไม่มีกลุ่มนักศึกษาในรายวิชานี้</div>
+                        <div style="font-weight:500;font-size:12.5px;opacity:0.85;">ต้องสร้างกลุ่มนักศึกษาก่อนจึงจะเพิ่มรายการสอนได้</div>
+                    </div>
+                    @if($canEdit)
+                        <a
+                            href="{{ route('maker.course_offerings.show', $courseOffering) }}#student-groups"
+                            class="btn btn-primary"
+                            data-testid="schedule-go-create-student-groups"
+                            style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:6px 14px;font-size:12.5px;"
+                        >
+                            <span>ไปสร้างกลุ่มนักศึกษา</span>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                                <polyline points="12 5 19 12 12 19"></polyline>
+                            </svg>
+                        </a>
+                    @endif
+                </div>
+            @endif
 
             {{-- ── รายการตารางสอน (Card Layout) ── --}}
             <div class="card">
