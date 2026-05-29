@@ -394,8 +394,10 @@ class ScheduleManagementTest extends TestCase
         $this->followingRedirects()
             ->get(route('maker.schedules.index'))
             ->assertOk()
-            ->assertSee('การแจ้งเตือนการชน')
-            ->assertSee('href="' . route('maker.schedule_conflicts.index') . '"', false);
+            // label ถูกเปลี่ยนเป็น "การแจ้งเตือน" (sidebar.blade.php งาน 5)
+            ->assertSee('การแจ้งเตือน')
+            // route ใหม่ maker.alerts.index ถูกเพิ่มเข้า sidebar
+            ->assertSee('href="' . route('maker.alerts.index') . '"', false);
     }
 
     public function test_nested_schedule_routes_activate_schedule_sidebar_item(): void
@@ -894,16 +896,22 @@ class ScheduleManagementTest extends TestCase
 
         $this->actingAsCourseHead($head);
 
+        // Modal create ยังต้อง filter instructor ต่างภาค ออกจาก dropdown
         $this->get(route('maker.course_offerings.schedules.index', [$offering, 'modal' => 'create']))
             ->assertOk()
             ->assertSee($instructor->name)
             ->assertDontSee($outsideInstructor->name);
 
+        // งาน 2 — dept mismatch เปลี่ยนจาก hard block เป็น soft warning:
+        // save สำเร็จ แต่ flash schedule_conflict_warning มีข้อความเตือน
         $this->post(route('maker.course_offerings.schedules.store', $offering), $this->schedulePayload($outsideInstructor, $group, $activityType, $room))
-            ->assertSessionHasErrors('instructor_ids');
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('schedule_conflict_warning');
 
-        $this->assertDatabaseCount('schedules', 0);
+        // schedule ถูกสร้างแม้จะมี warning (ไม่ block อีกต่อไป)
+        $this->assertDatabaseCount('schedules', 1);
     }
+
 
     public function test_schedule_page_hides_existing_schedule_instructors_from_other_departments(): void
     {

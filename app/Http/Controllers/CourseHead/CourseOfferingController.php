@@ -198,16 +198,22 @@ class CourseOfferingController extends Controller
                 ->withInput();
         }
 
-        if (
+        // Department mismatch → warning เท่านั้น (ไม่ block) — แจ้ง phuwadon ให้แสดง confirm dialog ฝั่ง frontend
+        $isDeptMismatch = (
             $courseOffering->course?->department_id
             && (int) $user->instructorProfile->department_id !== (int) $courseOffering->course->department_id
-        ) {
+        );
+        // ถ้า frontend ไม่อยาก force → return warning ให้ confirm ก่อน
+        if ($isDeptMismatch && ! $request->boolean('force_dept_mismatch')) {
             if ($request->expectsJson()) {
-                return response()->json(['message' => 'เลือกได้เฉพาะอาจารย์ในภาควิชาของรายวิชานี้'], 422);
+                return response()->json([
+                    'department_warning' => true,
+                    'message'            => 'อาจารย์ ' . ($user->formatted_name ?? $user->name) . ' อยู่ภาควิชาอื่น ต้องการเพิ่มหรือไม่?',
+                ], 200);
             }
 
             return $this->redirectToInstructors($courseOffering)
-                ->withErrors(['user_id' => 'เลือกได้เฉพาะอาจารย์ในภาควิชาของรายวิชานี้'])
+                ->with('warning', 'อาจารย์ ' . ($user->formatted_name ?? $user->name) . ' อยู่ภาควิชาอื่น กรุณายืนยันก่อนเพิ่ม')
                 ->withInput();
         }
 
@@ -238,12 +244,13 @@ class CourseOfferingController extends Controller
         if ($request->expectsJson()) {
             $role = $roleId ? CourseRole::find($roleId) : null;
             return response()->json([
-                'id'             => $user->id,
-                'name'           => $user->formatted_name,
-                'department'     => $user->instructorProfile?->department?->name ?? '-',
-                'course_role_id' => $roleId,
-                'role_name'      => $role?->name_th,
-                'is_coordinator' => false,
+                'id'                 => $user->id,
+                'name'               => $user->formatted_name,
+                'department'         => $user->instructorProfile?->department?->name ?? '-',
+                'course_role_id'     => $roleId,
+                'role_name'          => $role?->name_th,
+                'is_coordinator'     => false,
+                'department_warning' => $isDeptMismatch,
             ]);
         }
 
