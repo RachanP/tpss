@@ -798,6 +798,20 @@
     <style>
         @keyframes spin { to { transform: translateY(-50%) rotate(360deg); } }
 
+        /* Major section separation — medium navy outline on the 3 primary cards */
+        .card#course-info,
+        .card#instructors,
+        .card#student-groups {
+            border: 1px solid var(--brand-navy-500);
+        }
+        .card#course-info > .card-hdr,
+        .card#instructors > .card-hdr,
+        .card#student-groups > .card-hdr {
+            border-bottom: 1px solid var(--brand-navy-500);
+            border-top-left-radius: var(--r-lg);
+            border-top-right-radius: var(--r-lg);
+        }
+
         .back-link {
             display: inline-flex;
             align-items: center;
@@ -1437,11 +1451,33 @@
             justify-content: space-between;
             gap: 12px;
             flex-wrap: wrap;
-            margin-bottom: 10px;
-            padding: 10px 12px;
-            border: 1px solid oklch(89% 0.018 235);
+            margin-bottom: 12px;
+            padding: 10px 14px;
+            border: 1px solid var(--brand-navy-300);
             border-radius: 8px;
-            background: oklch(98% 0.006 235);
+            background: var(--brand-navy-50);
+        }
+
+        .student-group-bulkbar-info {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.8125rem;
+            color: var(--fg-2);
+            font-weight: 600;
+        }
+
+        .student-group-bulkbar-count {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 9px;
+            border-radius: 999px;
+            background: var(--brand-navy);
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 700;
+            line-height: 1.2;
         }
 
         .student-group-bulkbar-actions {
@@ -1449,6 +1485,13 @@
             align-items: center;
             gap: 8px;
             flex-wrap: wrap;
+        }
+
+        .student-group-bulkbar-divider {
+            width: 1px;
+            height: 22px;
+            background: var(--brand-navy-300);
+            opacity: 0.6;
         }
 
         .btn-bulk-delete {
@@ -1585,6 +1628,167 @@
             .course-instructor-search input {
                 font-size: 13px;
             }
+        }
+
+        /* Student-group section dividers — clear visual separation between create form and list */
+        .sg-section {
+            margin-top: 22px;
+        }
+        .sg-section:first-of-type {
+            margin-top: 0;
+        }
+        .sg-section-divider {
+            margin: 22px 0 18px;
+            border: 0;
+            border-top: 1px dashed var(--border-1);
+        }
+        .sg-section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--brand-navy);
+        }
+        .sg-section-header-title {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--brand-navy);
+            line-height: 1.2;
+        }
+        .sg-section-header-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            background: var(--brand-navy-50);
+            color: var(--brand-navy);
+            flex-shrink: 0;
+        }
+        .sg-section-header-meta {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.75rem;
+            color: var(--fg-3);
+            font-weight: 600;
+        }
+        .sg-section-header-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            border-radius: 999px;
+            background: var(--brand-navy-50);
+            color: var(--brand-navy);
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+
+        /* Student-group color swatch + palette popover (Mahidol Navy theme) */
+        .sg-swatch-trigger {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: 2px solid #fff;
+            box-shadow: 0 0 0 1px var(--border-1);
+            cursor: pointer;
+            outline: none;
+            transition: box-shadow 0.15s ease, transform 0.1s ease;
+            padding: 0;
+        }
+        .sg-swatch-trigger:hover {
+            box-shadow: 0 0 0 1px var(--brand-navy-300), 0 2px 6px rgba(15, 23, 42, 0.12);
+        }
+        .sg-swatch-trigger.sg-swatch-open {
+            box-shadow: 0 0 0 2px var(--brand-navy);
+        }
+        .sg-color-popover {
+            position: absolute;
+            top: 38px;
+            left: 0;
+            z-index: 30;
+            min-width: 232px;
+            background: #fff;
+            border: 1px solid var(--border-1);
+            border-top: 3px solid var(--brand-navy);
+            border-radius: 8px;
+            box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16);
+            overflow: hidden;
+        }
+        .sg-color-popover-hdr {
+            padding: 12px 14px 10px;
+            background: var(--brand-navy-50);
+            border-bottom: 1px solid var(--border-1);
+        }
+        .sg-color-popover-ttl {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 0.875rem;
+            color: var(--brand-navy);
+            letter-spacing: 0.01em;
+            line-height: 1.2;
+        }
+        .sg-color-popover-sub {
+            margin-top: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            color: var(--fg-2);
+            font-weight: 600;
+        }
+        .sg-color-popover-chip {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.18);
+        }
+        .sg-color-popover-section {
+            padding: 12px 14px 14px;
+        }
+        .sg-color-popover-label {
+            font-size: 0.6875rem;
+            font-weight: 700;
+            color: var(--fg-3);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 8px;
+        }
+        .sg-color-swatches {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+        }
+        .sg-color-swatch {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            border: 1px solid rgba(15, 23, 42, 0.12);
+            cursor: pointer;
+            outline: none;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            transition: transform 0.1s ease, box-shadow 0.15s ease;
+        }
+        .sg-color-swatch:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(15, 23, 42, 0.18);
+        }
+        .sg-color-swatch.is-selected {
+            box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--brand-navy);
         }
 
         /* Inline student group editor — at narrow widths fold to simpler 2-col layout */
@@ -1932,23 +2136,29 @@
                     @method('DELETE')
                 </form>
                 <div class="student-group-bulkbar" x-show="$store.offeringPage.editing.studentGroups" x-cloak>
-                    <div class="caption">
-                        เลือกกลุ่มที่ต้องการลบได้หลายกลุ่ม
-                        <span x-show="selectedGroups.length > 0" x-text="'· เลือกแล้ว ' + selectedGroups.length + ' กลุ่ม'"></span>
+                    <div class="student-group-bulkbar-info">
+                        <span x-show="selectedGroups.length === 0">เลือกกลุ่มเพื่อลบหลายกลุ่มพร้อมกัน</span>
+                        <template x-if="selectedGroups.length > 0">
+                            <span style="display:inline-flex;align-items:center;gap:8px;">
+                                <span class="student-group-bulkbar-count" x-text="selectedGroups.length + ' กลุ่ม'"></span>
+                                <span>ถูกเลือก</span>
+                            </span>
+                        </template>
                     </div>
                     <div class="student-group-bulkbar-actions">
                         @if($courseOffering->studentGroups->count() >= 2)
                             <button type="button"
                                 @click="balanceAll()"
                                 data-testid="balance-all-groups"
-                                style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:600;padding:7px 14px;border-radius:6px;font-family:inherit;border:1px solid var(--brand-navy-300);background:var(--brand-navy-50);color:var(--brand-navy);outline:none;transition:all 0.15s;"
+                                style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:600;padding:7px 14px;border-radius:6px;font-family:inherit;border:1px solid var(--brand-navy-300);background:#fff;color:var(--brand-navy);outline:none;transition:all 0.15s;"
                                 onmouseover="this.style.background='var(--brand-navy)';this.style.color='#fff'"
-                                onmouseout="this.style.background='var(--brand-navy-50)';this.style.color='var(--brand-navy)'">
+                                onmouseout="this.style.background='#fff';this.style.color='var(--brand-navy)'">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                     <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
                                 </svg>
                                 ปรับยอดเท่ากัน
                             </button>
+                            <span class="student-group-bulkbar-divider"></span>
                         @endif
                         <label class="student-group-select-all">
                             <input
@@ -1957,11 +2167,8 @@
                                 @change="toggleAllGroups($event.target.checked)"
                                 data-testid="bulk-group-select-all"
                             >
-                            ทั้งหมด
+                            เลือกทั้งหมด
                         </label>
-                        <button type="button" class="btn btn-ghost" style="min-height:34px;padding:6px 12px;font-size:13px;" @click="selectedGroups = []" x-show="selectedGroups.length > 0">
-                            ล้างที่เลือก
-                        </button>
                         <button
                             type="button"
                             class="btn-bulk-delete"
@@ -2014,7 +2221,7 @@
                         <div></div>
                         <div>สี</div>
                         <div>รหัสกลุ่ม</div>
-                        <div>นักศึกษา</div>
+                        <div style="text-align:right;">นักศึกษา</div>
                         <div></div>
                     </div>
 
@@ -2038,21 +2245,42 @@
                             </div>
 
                             {{-- Color swatch + palette popover --}}
-                            <div style="position:relative;">
+                            <div style="position:relative;" @click.outside="row.palOpen = false">
                                 <button type="button"
                                     @click="row.palOpen = !row.palOpen"
-                                    @click.outside="row.palOpen = false"
                                     :style="`background:${row.color_code};`"
-                                    style="width:28px;height:28px;border-radius:6px;border:2px solid #fff;box-shadow:0 0 0 1px var(--border-1);cursor:pointer;outline:none;"
-                                    :title="'เปลี่ยนสีกลุ่ม ' + row.group_code"></button>
-                                <div x-show="row.palOpen" x-cloak x-transition.opacity
-                                     style="position:absolute;top:36px;left:0;z-index:30;display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:10px;background:#fff;border:1px solid var(--border-1);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.12);min-width:170px;">
-                                    <template x-for="color in palette" :key="color">
-                                        <button type="button"
-                                            @click="setColor(idx, color)"
-                                            :style="`background:${color};${row.color_code === color ? 'box-shadow:0 0 0 2px var(--brand-navy);' : ''}`"
-                                            style="width:24px;height:24px;border-radius:5px;border:1px solid rgba(0,0,0,0.1);cursor:pointer;outline:none;"></button>
-                                    </template>
+                                    :class="row.palOpen ? 'sg-swatch-trigger sg-swatch-open' : 'sg-swatch-trigger'"
+                                    :title="'เปลี่ยนสีกลุ่ม ' + row.group_code"
+                                    :aria-expanded="row.palOpen ? 'true' : 'false'"
+                                    aria-haspopup="dialog"></button>
+                                <div x-show="row.palOpen" x-cloak x-transition.opacity.duration.120ms
+                                     class="sg-color-popover"
+                                     role="dialog"
+                                     :aria-label="'เลือกสีกลุ่ม ' + row.group_code">
+                                    {{-- Header --}}
+                                    <div class="sg-color-popover-hdr">
+                                        <div class="sg-color-popover-ttl">เลือกสีกลุ่ม</div>
+                                        <div class="sg-color-popover-sub">
+                                            <span class="sg-color-popover-chip" :style="`background:${row.color_code};`"></span>
+                                            <span x-text="row.group_code || '—'"></span>
+                                        </div>
+                                    </div>
+                                    {{-- Palette section --}}
+                                    <div class="sg-color-popover-section">
+                                        <div class="sg-color-popover-label">จานสีมาตรฐาน</div>
+                                        <div class="sg-color-swatches">
+                                            <template x-for="color in palette" :key="color">
+                                                <button type="button"
+                                                    @click="setColor(idx, color)"
+                                                    :style="`background:${color};`"
+                                                    :class="row.color_code === color ? 'sg-color-swatch is-selected' : 'sg-color-swatch'"
+                                                    :aria-label="'เลือกสี ' + color"
+                                                    :aria-pressed="row.color_code === color ? 'true' : 'false'">
+                                                    <svg x-show="row.color_code === color" x-cloak viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                                </button>
+                                            </template>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
