@@ -311,18 +311,6 @@
                     </span>
                 @endif
             </div>
-            @if($availableYears->count() > 1)
-                <form method="GET" class="alert-year-select">
-                    <label for="alert-year-sel" style="font-size:12px;font-weight:800;color:var(--fg-2);">ปีการศึกษา</label>
-                    <select id="alert-year-sel" name="academic_year_id" onchange="this.form.submit()">
-                        @foreach($availableYears as $year)
-                            <option value="{{ $year->id }}" {{ (int)$selectedAcademicYearId === (int)$year->id ? 'selected' : '' }}>
-                                {{ $year->name }} / {{ $year->semester }}
-                            </option>
-                        @endforeach
-                    </select>
-                </form>
-            @endif
         </section>
 
         {{-- Summary Cards --}}

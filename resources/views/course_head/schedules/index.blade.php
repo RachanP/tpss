@@ -4111,7 +4111,7 @@
                     else this.editCheckLoading = true;
 
                     try {
-                        const csrf = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+                        const csrf = document.querySelector('meta[name=csrf-token]')?.content ?? '';
                         const res  = await fetch(checkUrl, {
                             method: 'POST',
                             headers: {
@@ -6395,6 +6395,10 @@
                                 </div>
                                 <div x-show="createMode !== 'series'" x-cloak>
                                     <label class="modal-label" for="end_date">วันที่สิ้นสุด <span class="required-mark">*</span></label>
+                                    {{-- Spacer to align exactly with the start_date indicator --}}
+                                    <div class="create-date-indicator" style="visibility: hidden; pointer-events: none;" x-show="createStartDate" x-cloak>
+                                        <svg viewBox="0 0 24 24" width="13" height="13"></svg><span>Spacer</span>
+                                    </div>
                                     <x-thai-date-input
                                         name="end_date"
                                         id="end_date"
