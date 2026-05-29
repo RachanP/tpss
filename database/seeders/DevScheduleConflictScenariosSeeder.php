@@ -50,6 +50,10 @@ class DevScheduleConflictScenariosSeeder extends Seeder
             $year->update(['is_active' => true]);
         }
 
+        if ($year->phase !== 'scheduling') {
+            $year->update(['phase' => 'scheduling']);
+        }
+
         Course::whereNotNull('head_instructor_id')
             ->where('status', '!=', 'active')
             ->update(['status' => 'active']);
@@ -197,20 +201,32 @@ class DevScheduleConflictScenariosSeeder extends Seeder
     {
         $offerings = CourseOffering::query()
             ->where('academic_year_id', $year->id)
+            ->whereNotNull('coordinator_id')
             ->with('course')
             ->orderBy('id')
             ->get()
             ->filter(fn (CourseOffering $o) => $o->course?->department_id);
 
-        $byDepartment = $offerings->groupBy(fn (CourseOffering $o) => (int) $o->course->department_id);
+        // เลือก coordinator ที่มี offering ≥ 2 ในภาควิชาเดียวกัน → login คนเดียวเห็นครบ
+        $byCoordinator = $offerings->groupBy(fn (CourseOffering $o) => (int) $o->coordinator_id);
+        foreach ($byCoordinator as $group) {
+            $sameDept = $group->groupBy(fn (CourseOffering $o) => (int) $o->course->department_id);
+            foreach ($sameDept as $deptGroup) {
+                if ($deptGroup->count() >= 2) {
+                    return [$deptGroup->values()[0], $deptGroup->values()[1]];
+                }
+            }
+        }
 
+        // fallback: คนละ coordinator แต่ภาควิชาเดียวกัน
+        $byDepartment = $offerings->groupBy(fn (CourseOffering $o) => (int) $o->course->department_id);
         foreach ($byDepartment as $group) {
             if ($group->count() >= 2) {
                 return [$group->values()[0], $group->values()[1]];
             }
         }
 
-        // fallback: คนละภาควิชาก็เอา (cross-course department gate อาจล้ม แต่ใช้ทดสอบ in-course ได้)
+        // last resort: คนละภาควิชาก็เอา
         return [$offerings->values()[0] ?? null, $offerings->values()[1] ?? null];
     }
 

@@ -175,7 +175,13 @@
     $canCreateInCurrentPeriod = $canEdit && ! $calendarOutsideAcademicYear;
     $outsideCreateHint = 'เลือกวันที่ในช่วงปีการศึกษาก่อนเพิ่มรายการสอน';
     $weekNumberFromAcademicYear = $academicStartDate
-        ? max(1, (int) floor($academicStartDate->diffInDays(\Carbon\CarbonImmutable::parse($weekStart)->startOfDay(), false) / 7) + 1)
+        ? max(1, (int) floor(
+            $academicStartDate->startOfWeek(\Carbon\CarbonInterface::MONDAY)
+                ->diffInDays(
+                    \Carbon\CarbonImmutable::parse($weekStart)->startOfDay()->startOfWeek(\Carbon\CarbonInterface::MONDAY),
+                    false
+                ) / 7
+        ) + 1)
         : null;
     $calendarHeadingText = match ($schedulePeriod ?? 'week') {
         'day' => $formatDate($weekStart),
@@ -5705,10 +5711,6 @@
                                             <label class="modal-label" for="series_edit_topic_{{ $schedule->id }}">หัวข้อกิจกรรม <span class="required-mark">*</span></label>
                                             <input id="series_edit_topic_{{ $schedule->id }}" name="topic" type="text" maxlength="255" required class="modal-control" value="{{ $seriesOld('topic', $seriesTemplate->topic) }}">
                                         </div>
-                                        <div class="modal-field-full">
-                                            <label class="modal-label" for="series_edit_capacity_required_{{ $schedule->id }}">จำนวนที่รองรับ <span class="optional-note">ไม่ระบุ = ไม่จำกัดจำนวน</span></label>
-                                            <input id="series_edit_capacity_required_{{ $schedule->id }}" name="capacity_required" type="number" min="1" class="modal-control" value="{{ $seriesOld('capacity_required', $seriesTemplate->capacity_required) }}">
-                                        </div>
                                     </div>
                                 </div>
                                 <div class="modal-actions">
@@ -5828,7 +5830,7 @@
                                                     คัดลอกรายละเอียด
                                                 </button>
                                             </div>
-                                            <div class="resource-copy-note">คัดลอกเฉพาะห้อง ผู้สอน ผู้สอนหลัก กลุ่มนักศึกษา และหมายเหตุ แล้วกดบันทึกเพื่อใช้กับสัปดาห์นี้</div>
+                                            <div class="resource-copy-note">คัดลอกเฉพาะห้อง ผู้สอน กลุ่มนักศึกษา และหมายเหตุ แล้วกดบันทึกเพื่อใช้กับสัปดาห์นี้</div>
                                         </div>
                                     @endif
                                 @endif
@@ -5973,10 +5975,6 @@
                                         <label class="modal-label" for="edit_topic_{{ $schedule->id }}">หัวข้อกิจกรรม <span class="required-mark">*</span></label>
                                         <input id="edit_topic_{{ $schedule->id }}" name="topic" type="text" maxlength="255" required class="modal-control" value="{{ $editOld('topic', $schedule->topic) }}" placeholder="เช่น บรรยายเรื่องการประเมินผู้ป่วย">
                                     </div>
-                                    <div>
-                                        <label class="modal-label" for="edit_capacity_required_{{ $schedule->id }}">จำนวนที่รองรับ <span class="optional-note">ไม่ระบุ = ไม่จำกัดจำนวน</span></label>
-                                        <input id="edit_capacity_required_{{ $schedule->id }}" name="capacity_required" type="number" min="1" class="modal-control" value="{{ $editOld('capacity_required', $schedule->capacity_required) }}">
-                                    </div>
                                     <div class="modal-field-full">
                                         <label class="modal-label" for="edit_remark_{{ $schedule->id }}">หมายเหตุ</label>
                                         <textarea id="edit_remark_{{ $schedule->id }}" name="remark" rows="2" class="modal-control" placeholder="เช่น ให้นักศึกษาเตรียมเอกสารก่อนเข้าเรียน หรือแจ้งอุปกรณ์ที่ต้องใช้">{{ $editOld('remark', $schedule->remark) }}</textarea>
@@ -6007,18 +6005,6 @@
                                     @if($instructorConflictNote)
                                         <div class="modal-conflict-field">{{ $instructorConflictNote }}</div>
                                     @endif
-                                </div>
-
-                                <div class="modal-section">
-                                    <label class="modal-label" for="edit_lead_instructor_id_{{ $schedule->id }}">ผู้สอนหลัก</label>
-                                    <select id="edit_lead_instructor_id_{{ $schedule->id }}" name="lead_instructor_id" class="modal-control">
-                                        <option value="">ไม่ระบุ</option>
-                                        @foreach($editInstructorOptions as $instructor)
-                                            <option value="{{ $instructor->id }}" @selected($editLeadInstructorId === (string) $instructor->id)>
-                                                {{ $instructor->formatted_name ?? $instructor->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
                                 </div>
 
                                 <div class="modal-section {{ $groupConflictNote ? 'modal-field-has-conflict' : '' }}">
@@ -6334,10 +6320,6 @@
                                     <label class="modal-label" for="topic">หัวข้อกิจกรรม <span class="required-mark">*</span></label>
                                     <input id="topic" name="topic" type="text" maxlength="255" required class="modal-control" value="{{ old('topic') }}" placeholder="เช่น บรรยายเรื่องการประเมินผู้ป่วย">
                                 </div>
-                                <div>
-                                    <label class="modal-label" for="capacity_required">จำนวนที่รองรับ <span class="optional-note">ไม่ระบุ = ไม่จำกัดจำนวน</span></label>
-                                    <input id="capacity_required" name="capacity_required" type="number" min="1" class="modal-control" value="{{ old('capacity_required') }}">
-                                </div>
                                 <div class="modal-field-full">
                                     <label class="modal-label" for="remark">หมายเหตุ</label>
                                     <textarea id="remark" name="remark" rows="2" class="modal-control" placeholder="เช่น ให้นักศึกษาเตรียมเอกสารก่อนเข้าเรียน หรือแจ้งอุปกรณ์ที่ต้องใช้">{{ old('remark') }}</textarea>
@@ -6368,18 +6350,6 @@
                                             @endforeach
                                         </div>
                                         <div class="modal-choice-empty" x-show="hasCreateSearch(createInstructorSearch) && !hasCreateSearchMatches(@js($createInstructorSearchItems), createInstructorSearch)" x-cloak>ไม่พบข้อมูลที่ค้นหา</div>
-                                    </div>
-
-                                    <div class="modal-section">
-                                        <label class="modal-label" for="lead_instructor_id_{{ $offeringOption->id }}">ผู้สอนหลัก <span class="optional-note">ไม่บังคับ</span></label>
-                                        <select id="lead_instructor_id_{{ $offeringOption->id }}" name="lead_instructor_id" class="modal-control" :disabled="selectedOfferingId !== '{{ $offeringOption->id }}'">
-                                            <option value="">ไม่ระบุ</option>
-                                            @foreach($createInstructorOptions as $instructor)
-                                                <option value="{{ $instructor->id }}" @selected($leadInstructorId === (string) $instructor->id)>
-                                                    {{ $instructor->formatted_name ?? $instructor->name }}
-                                                </option>
-                                            @endforeach
-                                        </select>
                                     </div>
 
                                     <div class="modal-section">
