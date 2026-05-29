@@ -63,11 +63,31 @@
         <script>
             document.addEventListener('alpine:init', () => {
                 if (! Alpine.store('offeringPage')) {
+                    const COLLAPSE_KEY = 'tpss.offeringPage.collapsed';
+                    let saved = {};
+                    try { saved = JSON.parse(localStorage.getItem(COLLAPSE_KEY) || '{}') || {}; } catch (e) {}
                     Alpine.store('offeringPage', {
                         editing: {
                             courseInfo: false,
                             instructors: false,
                             studentGroups: false,
+                        },
+                        collapsed: {
+                            courseInfo: !!saved.courseInfo,
+                            instructors: !!saved.instructors,
+                            studentGroups: !!saved.studentGroups,
+                        },
+                        toggleCollapse(key) {
+                            this.collapsed[key] = !this.collapsed[key];
+                            try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify(this.collapsed)); } catch (e) {}
+                        },
+                        startEditing(key) {
+                            // เปิด edit mode → expand section อัตโนมัติ
+                            this.editing[key] = !this.editing[key];
+                            if (this.editing[key] && this.collapsed[key]) {
+                                this.collapsed[key] = false;
+                                try { localStorage.setItem('tpss.offeringPage.collapsed', JSON.stringify(this.collapsed)); } catch (e) {}
+                            }
                         },
                     });
                 }
@@ -75,6 +95,48 @@
         </script>
 
         <style>
+            /* ── Section collapse chevron ── */
+            .section-collapse-toggle {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 32px;
+                height: 32px;
+                margin-left: 4px;
+                border: 1px solid var(--border-1);
+                background: var(--bg-2);
+                color: var(--fg-2);
+                border-radius: 8px;
+                cursor: pointer;
+                font-family: inherit;
+                transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.2s;
+            }
+            .section-collapse-toggle:hover {
+                background: var(--brand-navy-50);
+                color: var(--brand-navy);
+                border-color: var(--brand-navy-300);
+            }
+            .section-collapse-toggle svg {
+                transition: transform 0.2s ease;
+            }
+            .section-collapse-toggle.is-collapsed svg {
+                transform: rotate(-90deg);
+            }
+            .section-collapse-summary {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+                margin-top: 4px;
+                font-size: 0.75rem;
+                color: var(--fg-3);
+                font-weight: 500;
+            }
+            .section-collapse-summary strong {
+                color: var(--fg-2);
+                font-weight: 600;
+            }
+
             /* ── Section quick toggle ("แก้ไข" ใน card-hdr ของแต่ละ section) ── */
             .section-edit-quick-toggle {
                 display: inline-flex;
@@ -261,22 +323,35 @@
                 </div>
                 <div>
                     <div class="card-ttl">ข้อมูลรายวิชา</div>
-                    <div class="caption" style="margin-top:4px;">ข้อมูลจากรายวิชาหลักและการตั้งค่าระบบ</div>
+                    <div class="caption" style="margin-top:4px;" x-data x-show="!$store.offeringPage.collapsed.courseInfo">ข้อมูลจากรายวิชาหลักและการตั้งค่าระบบ</div>
+                    <div x-data x-show="$store.offeringPage.collapsed.courseInfo" x-cloak class="section-collapse-summary">
+                        <strong>{{ $course->course_code ?? '-' }}</strong>
+                        <span>·</span>
+                        <span>{{ $course->name_th ?? '-' }}</span>
+                    </div>
                 </div>
             </div>
-            @if($canEdit)
-                <button
-                    type="button"
-                    x-data
-                    @click="$store.offeringPage.editing.courseInfo = !$store.offeringPage.editing.courseInfo"
-                    class="section-edit-quick-toggle"
-                    :aria-pressed="$store.offeringPage.editing.courseInfo ? 'true' : 'false'"
-                    data-testid="section-edit-quick-toggle-course-info"
-                    x-text="$store.offeringPage.editing.courseInfo ? 'เสร็จสิ้น' : 'แก้ไข'"
-                ></button>
-            @endif
+            <div style="display:inline-flex;align-items:center;gap:0;margin-left:auto;" x-data>
+                @if($canEdit)
+                    <button
+                        type="button"
+                        @click="$store.offeringPage.startEditing('courseInfo')"
+                        class="section-edit-quick-toggle"
+                        :aria-pressed="$store.offeringPage.editing.courseInfo ? 'true' : 'false'"
+                        data-testid="section-edit-quick-toggle-course-info"
+                        x-text="$store.offeringPage.editing.courseInfo ? 'เสร็จสิ้น' : 'แก้ไข'"
+                    ></button>
+                @endif
+                <button type="button"
+                    @click="$store.offeringPage.toggleCollapse('courseInfo')"
+                    :class="$store.offeringPage.collapsed.courseInfo ? 'section-collapse-toggle is-collapsed' : 'section-collapse-toggle'"
+                    :aria-label="$store.offeringPage.collapsed.courseInfo ? 'ขยายส่วนข้อมูลรายวิชา' : 'ยุบส่วนข้อมูลรายวิชา'"
+                    :aria-expanded="$store.offeringPage.collapsed.courseInfo ? 'false' : 'true'">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+            </div>
         </div>
-        <div style="padding:20px;">
+        <div style="padding:20px;" x-data x-show="!$store.offeringPage.collapsed.courseInfo" x-cloak>
             @if($courseInfoErrorKey)
                 <div class="section-error-alert">
                     {{ $errors->first($courseInfoErrorKey) }}
@@ -507,6 +582,8 @@
         $courseDeptId = $course?->department_id;
     @endphp
 
+    <div class="offering-2col-grid">
+
     <div class="card" id="instructors" @if($canEdit) :class="!$store.offeringPage.editing.instructors ? 'is-locked-section' : ''" @endif style="overflow:visible;scroll-margin-top:72px;" x-data="{
         pool: {{ $poolData->toJson() }},
         all: {{ $allInstructors->toJson() }},
@@ -595,21 +672,39 @@
                 </div>
                 <div>
                     <div class="card-ttl">ชุดผู้สอน</div>
-                    <div class="caption" style="margin-top:4px;" x-text="pool.length ? pool.length + ' คน' : 'ยังไม่มีผู้สอน'"></div>
+                    <div class="caption" style="margin-top:4px;" x-show="!$store.offeringPage.collapsed.instructors" x-text="pool.length ? pool.length + ' คน' : 'ยังไม่มีผู้สอน'"></div>
+                    <div x-show="$store.offeringPage.collapsed.instructors" x-cloak class="section-collapse-summary">
+                        <strong x-text="pool.length + ' คน'"></strong>
+                        <template x-if="pool.length > 0">
+                            <span>·</span>
+                        </template>
+                        <template x-if="pool.length > 0">
+                            <span x-text="pool[0].name + (pool.length > 1 ? ' +' + (pool.length - 1) : '')"></span>
+                        </template>
+                    </div>
                 </div>
             </div>
-            @if($canEdit)
-                <button
-                    type="button"
-                    @click="$store.offeringPage.editing.instructors = !$store.offeringPage.editing.instructors"
-                    class="section-edit-quick-toggle"
-                    :aria-pressed="$store.offeringPage.editing.instructors ? 'true' : 'false'"
-                    data-testid="section-edit-quick-toggle-instructors"
-                    x-text="$store.offeringPage.editing.instructors ? 'เสร็จสิ้น' : 'แก้ไข'"
-                ></button>
-            @endif
+            <div style="display:inline-flex;align-items:center;gap:0;margin-left:auto;">
+                @if($canEdit)
+                    <button
+                        type="button"
+                        @click="$store.offeringPage.startEditing('instructors')"
+                        class="section-edit-quick-toggle"
+                        :aria-pressed="$store.offeringPage.editing.instructors ? 'true' : 'false'"
+                        data-testid="section-edit-quick-toggle-instructors"
+                        x-text="$store.offeringPage.editing.instructors ? 'เสร็จสิ้น' : 'แก้ไข'"
+                    ></button>
+                @endif
+                <button type="button"
+                    @click="$store.offeringPage.toggleCollapse('instructors')"
+                    :class="$store.offeringPage.collapsed.instructors ? 'section-collapse-toggle is-collapsed' : 'section-collapse-toggle'"
+                    :aria-label="$store.offeringPage.collapsed.instructors ? 'ขยายส่วนชุดผู้สอน' : 'ยุบส่วนชุดผู้สอน'"
+                    :aria-expanded="$store.offeringPage.collapsed.instructors ? 'false' : 'true'">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+            </div>
         </div>
-        <div style="padding:20px;" @if($canEdit) :inert="!$store.offeringPage.editing.instructors" @endif>
+        <div style="padding:20px;" x-show="!$store.offeringPage.collapsed.instructors" x-cloak @if($canEdit) :inert="!$store.offeringPage.editing.instructors" @endif>
             @if($instructorErrorKey)
                 <div class="section-error-alert">
                     {{ $errors->first($instructorErrorKey) }}
@@ -798,6 +893,23 @@
     <style>
         @keyframes spin { to { transform: translateY(-50%) rotate(360deg); } }
 
+        /* 2-column layout for instructors + student-groups (desktop ≥1200px) */
+        .offering-2col-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 24px;
+            align-items: start;
+        }
+        .offering-2col-grid > .card {
+            margin-bottom: 0;
+            min-width: 0;
+        }
+        @media (min-width: 1200px) {
+            .offering-2col-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
         /* Major section separation — medium navy outline on the 3 primary cards */
         .card#course-info,
         .card#instructors,
@@ -871,7 +983,7 @@
         .course-role-control {
             position: relative;
             flex-shrink: 0;
-            width: 250px;
+            width: 170px;
         }
 
         .course-role-trigger,
@@ -923,7 +1035,7 @@
 
         .course-role-badge-head {
             flex-shrink: 0;
-            width: 250px;
+            width: 170px;
             background: oklch(96% 0.055 150);
             border: 1px solid oklch(78% 0.12 150);
             color: oklch(33% 0.11 150);
@@ -1791,6 +1903,66 @@
             box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--brand-navy);
         }
 
+        /* Custom color picker section */
+        .sg-color-popover-custom {
+            border-top: 1px dashed var(--border-1);
+            padding-top: 12px;
+        }
+        .sg-color-custom-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px;
+            border: 1px solid var(--border-1);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: border-color 0.15s ease, background 0.15s ease;
+        }
+        .sg-color-custom-row:hover {
+            border-color: var(--brand-navy-300);
+            background: var(--brand-navy-50);
+        }
+        .sg-color-custom-swatch {
+            position: relative;
+            display: inline-block;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            border: 1px solid rgba(15, 23, 42, 0.12);
+            box-shadow: inset 0 0 0 2px #fff;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+        .sg-color-custom-swatch input[type="color"] {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+            padding: 0;
+            background: transparent;
+            cursor: pointer;
+            opacity: 0;
+        }
+        .sg-color-custom-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            line-height: 1.2;
+        }
+        .sg-color-custom-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--fg-2);
+        }
+        .sg-color-custom-hex {
+            font-size: 0.6875rem;
+            font-weight: 700;
+            color: var(--brand-navy);
+            font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+            letter-spacing: 0.04em;
+        }
+
         /* Inline student group editor — at narrow widths fold to simpler 2-col layout */
         @media (max-width: 900px) {
             .student-group-editor-row {
@@ -1815,28 +1987,46 @@
                 </div>
                 <div style="flex:1;">
                     <div class="card-ttl">กลุ่มนักศึกษา</div>
-                    <div class="caption" style="margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                    <div class="caption" style="margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;" x-data x-show="!$store.offeringPage.collapsed.studentGroups">
                         <span>เปิดรับ {{ $studentLimit ?: '-' }} คน · จัดกลุ่มแล้ว {{ $studentTotal }} คน</span>
                         @if($ungrouped > 0)
                             <span class="badge badge-warn" style="font-size:0.7rem;">ยังไม่ได้จัดกลุ่ม {{ $ungrouped }} คน</span>
                         @endif
                     </div>
+                    <div x-data x-show="$store.offeringPage.collapsed.studentGroups" x-cloak class="section-collapse-summary">
+                        <strong>{{ $courseOffering->studentGroups->count() }} กลุ่ม</strong>
+                        <span>·</span>
+                        <span>{{ $studentTotal }} / {{ $studentLimit ?: '-' }} คน</span>
+                        @if($ungrouped > 0)
+                            <span class="badge badge-warn" style="font-size:0.65rem;margin-left:4px;">ยังไม่ครบ {{ $ungrouped }}</span>
+                        @endif
+                    </div>
                 </div>
             </div>
-            @if($canEdit)
-                <button
-                    type="button"
-                    x-data
-                    @click="$store.offeringPage.editing.studentGroups = !$store.offeringPage.editing.studentGroups"
-                    class="section-edit-quick-toggle"
-                    :aria-pressed="$store.offeringPage.editing.studentGroups ? 'true' : 'false'"
-                    data-testid="section-edit-quick-toggle-student-groups"
-                    x-text="$store.offeringPage.editing.studentGroups ? 'เสร็จสิ้น' : 'แก้ไข'"
-                ></button>
-            @endif
+            <div style="display:inline-flex;align-items:center;gap:0;margin-left:auto;" x-data>
+                @if($canEdit)
+                    <button
+                        type="button"
+                        @click="$store.offeringPage.startEditing('studentGroups')"
+                        class="section-edit-quick-toggle"
+                        :aria-pressed="$store.offeringPage.editing.studentGroups ? 'true' : 'false'"
+                        data-testid="section-edit-quick-toggle-student-groups"
+                        x-text="$store.offeringPage.editing.studentGroups ? 'เสร็จสิ้น' : 'แก้ไข'"
+                    ></button>
+                @endif
+                <button type="button"
+                    @click="$store.offeringPage.toggleCollapse('studentGroups')"
+                    :class="$store.offeringPage.collapsed.studentGroups ? 'section-collapse-toggle is-collapsed' : 'section-collapse-toggle'"
+                    :aria-label="$store.offeringPage.collapsed.studentGroups ? 'ขยายส่วนกลุ่มนักศึกษา' : 'ยุบส่วนกลุ่มนักศึกษา'"
+                    :aria-expanded="$store.offeringPage.collapsed.studentGroups ? 'false' : 'true'">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+            </div>
         </div>
         <div
             style="padding:20px;"
+            x-show="!$store.offeringPage.collapsed.studentGroups"
+            x-cloak
             x-data="{
                 selectedGroups: [],
                 groupIds: {{ Js::from($courseOffering->studentGroups->pluck('id')->map(fn ($id) => (string) $id)->values()) }},
@@ -1959,7 +2149,7 @@
                     total: {{ (int) max(1, $ungrouped) }},
                     customMode: {{ old('group_counts') ? 'true' : 'false' }},
                     customCounts: {{ Js::from(array_map('intval', old('group_counts', []))) }},
-                    palette: ['#2563eb', '#16a34a', '#ca8a04', '#dc2626', '#7c3aed', '#0891b2', '#db2777', '#4f46e5', '#65a30d', '#ea580c'],
+                    palette: ['#3b82f6', '#2563eb', '#1e40af', '#0891b2', '#06b6d4', '#22c55e', '#16a34a', '#166534', '#65a30d', '#84cc16', '#f59e0b', '#ca8a04', '#ea580c', '#f97316', '#92400e', '#ef4444', '#dc2626', '#db2777', '#7c3aed', '#a855f7'],
                     get safeCount() { return Math.max(1, parseInt(this.count) || 1); },
                     get safeTotal() { return Math.max(1, parseInt(this.total) || 1); },
                     get base() { return Math.floor(this.safeTotal / this.safeCount); },
@@ -2136,8 +2326,19 @@
                     @method('DELETE')
                 </form>
                 <div class="student-group-bulkbar" x-show="$store.offeringPage.editing.studentGroups" x-cloak>
+                    {{-- Left: selection state (checkbox + count) --}}
                     <div class="student-group-bulkbar-info">
-                        <span x-show="selectedGroups.length === 0">เลือกกลุ่มเพื่อลบหลายกลุ่มพร้อมกัน</span>
+                        <label class="student-group-select-all">
+                            <input
+                                type="checkbox"
+                                :checked="allGroupsSelected"
+                                @change="toggleAllGroups($event.target.checked)"
+                                data-testid="bulk-group-select-all"
+                            >
+                            เลือกทั้งหมด
+                        </label>
+                        <span class="student-group-bulkbar-divider"></span>
+                        <span x-show="selectedGroups.length === 0" style="color:var(--fg-3);font-weight:500;">ติ๊กเลือกกลุ่มที่ต้องการลบ</span>
                         <template x-if="selectedGroups.length > 0">
                             <span style="display:inline-flex;align-items:center;gap:8px;">
                                 <span class="student-group-bulkbar-count" x-text="selectedGroups.length + ' กลุ่ม'"></span>
@@ -2145,6 +2346,8 @@
                             </span>
                         </template>
                     </div>
+
+                    {{-- Right: actions (utility · destructive) --}}
                     <div class="student-group-bulkbar-actions">
                         @if($courseOffering->studentGroups->count() >= 2)
                             <button type="button"
@@ -2158,17 +2361,7 @@
                                 </svg>
                                 ปรับยอดเท่ากัน
                             </button>
-                            <span class="student-group-bulkbar-divider"></span>
                         @endif
-                        <label class="student-group-select-all">
-                            <input
-                                type="checkbox"
-                                :checked="allGroupsSelected"
-                                @change="toggleAllGroups($event.target.checked)"
-                                data-testid="bulk-group-select-all"
-                            >
-                            เลือกทั้งหมด
-                        </label>
                         <button
                             type="button"
                             class="btn-bulk-delete"
@@ -2176,6 +2369,9 @@
                             :disabled="selectedGroups.length < 1"
                             @click="if (selectedGroups.length > 0) confirmBulkDeleteOpen = true"
                         >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;vertical-align:-2px;">
+                                <path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                            </svg>
                             ลบกลุ่มที่เลือก
                         </button>
                     </div>
@@ -2192,7 +2388,7 @@
                 <div class="student-group-empty">ยังไม่มีกลุ่มนักศึกษา</div>
             @elseif($canEdit)
                 @php
-                    $palette = ['#2563eb', '#16a34a', '#ca8a04', '#dc2626', '#7c3aed', '#0891b2', '#db2777', '#4f46e5', '#65a30d', '#ea580c'];
+                    $palette = ['#3b82f6', '#2563eb', '#1e40af', '#0891b2', '#06b6d4', '#22c55e', '#16a34a', '#166534', '#65a30d', '#84cc16', '#f59e0b', '#ca8a04', '#ea580c', '#f97316', '#92400e', '#ef4444', '#dc2626', '#db2777', '#7c3aed', '#a855f7'];
                     $groupsJson = $courseOffering->studentGroups->map(fn($g) => [
                         'id' => $g->id,
                         'group_code' => $g->group_code,
@@ -2220,8 +2416,8 @@
                     <div class="student-group-editor-row" style="display:grid;grid-template-columns:32px 36px 1fr 110px 32px;align-items:center;gap:12px;padding:10px 16px;background:var(--bg-2);border-bottom:1px solid var(--border-1);font-size:0.7rem;font-weight:700;color:var(--fg-3);letter-spacing:0.04em;text-transform:uppercase;">
                         <div></div>
                         <div>สี</div>
-                        <div>รหัสกลุ่ม</div>
-                        <div style="text-align:right;">นักศึกษา</div>
+                        <div style="padding-left:11px;">รหัสกลุ่ม</div>
+                        <div style="text-align:right;padding-right:11px;">นักศึกษา</div>
                         <div></div>
                     </div>
 
@@ -2273,13 +2469,30 @@
                                                 <button type="button"
                                                     @click="setColor(idx, color)"
                                                     :style="`background:${color};`"
-                                                    :class="row.color_code === color ? 'sg-color-swatch is-selected' : 'sg-color-swatch'"
+                                                    :class="row.color_code.toLowerCase() === color.toLowerCase() ? 'sg-color-swatch is-selected' : 'sg-color-swatch'"
                                                     :aria-label="'เลือกสี ' + color"
-                                                    :aria-pressed="row.color_code === color ? 'true' : 'false'">
-                                                    <svg x-show="row.color_code === color" x-cloak viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                                    :aria-pressed="row.color_code.toLowerCase() === color.toLowerCase() ? 'true' : 'false'">
+                                                    <svg x-show="row.color_code.toLowerCase() === color.toLowerCase()" x-cloak viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                                                 </button>
                                             </template>
                                         </div>
+                                    </div>
+
+                                    {{-- Custom color picker section --}}
+                                    <div class="sg-color-popover-section sg-color-popover-custom">
+                                        <div class="sg-color-popover-label">สีกำหนดเอง</div>
+                                        <label class="sg-color-custom-row">
+                                            <span class="sg-color-custom-swatch" :style="`background:${row.color_code};`">
+                                                <input type="color"
+                                                    :value="row.color_code"
+                                                    @input="setColor(idx, $event.target.value)"
+                                                    :aria-label="'เลือกสีกำหนดเองสำหรับกลุ่ม ' + row.group_code">
+                                            </span>
+                                            <span class="sg-color-custom-info">
+                                                <span class="sg-color-custom-label">คลิกเพื่อเลือกสีอิสระ</span>
+                                                <span class="sg-color-custom-hex" x-text="row.color_code.toUpperCase()"></span>
+                                            </span>
+                                        </label>
                                     </div>
                                 </div>
                             </div>
@@ -2406,7 +2619,7 @@
                             }
                             window.dispatchEvent(new CustomEvent('student-groups-balanced'));
                         },
-                        async save(idx) {
+                        async save(idx, { isRetry = false } = {}) {
                             const row = this.rows[idx];
                             if (!row.group_code || !row.student_count) return;
                             // Cancel ในคิวก่อนหน้าของ row นี้ — กัน race ตอน user พิมพ์เร็ว ๆ
@@ -2416,6 +2629,7 @@
                             row.error = '';
                             row.saving = true;
                             row.savedFlash = false;
+                            let succeeded = false;
                             try {
                                 const formData = new FormData();
                                 formData.append('_method', 'PUT');
@@ -2437,6 +2651,7 @@
                                     row.savedFlash = true;
                                     setTimeout(() => { row.savedFlash = false; }, 1500);
                                     this.emitCount();
+                                    succeeded = true;
                                 }
                             } catch (e) {
                                 if (e.name === 'AbortError') return;
@@ -2445,6 +2660,21 @@
                                 if (row._abort === controller) {
                                     row._abort = null;
                                     row.saving = false;
+                                }
+                            }
+                            // หลัง save สำเร็จ → retry row อื่นที่ยังค้าง error
+                            // (เช่น ผู้ใช้แก้กลุ่ม B ลด count เพื่อทำให้ A ที่ error เพราะเกิน capacity ผ่านได้)
+                            // ไม่ retry ซ้อน retry — ป้องกัน loop
+                            if (succeeded && !isRetry) {
+                                this.retryErrorRows(idx);
+                            }
+                        },
+                        async retryErrorRows(skipIdx) {
+                            for (let i = 0; i < this.rows.length; i++) {
+                                if (i === skipIdx) continue;
+                                const r = this.rows[i];
+                                if (r.error && !r.saving) {
+                                    await this.save(i, { isRetry: true });
                                 }
                             }
                         },
@@ -2515,5 +2745,7 @@
             @endif
         </div>
     </div>
+
+    </div>{{-- /offering-2col-grid --}}
 
 </x-app-layout>
