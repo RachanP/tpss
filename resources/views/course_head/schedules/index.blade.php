@@ -174,15 +174,31 @@
         : null;
     $canCreateInCurrentPeriod = $canEdit && ! $calendarOutsideAcademicYear;
     $outsideCreateHint = 'เลือกวันที่ในช่วงปีการศึกษาก่อนเพิ่มรายการสอน';
-    $weekNumberFromAcademicYear = $academicStartDate
-        ? max(1, (int) floor(
+    $weekNumberForDate = function ($date) use ($academicStartDate) {
+        if (! $academicStartDate || ! $date) return null;
+        return max(1, (int) floor(
             $academicStartDate->startOfWeek(\Carbon\CarbonInterface::MONDAY)
                 ->diffInDays(
-                    \Carbon\CarbonImmutable::parse($weekStart)->startOfDay()->startOfWeek(\Carbon\CarbonInterface::MONDAY),
+                    \Carbon\CarbonImmutable::parse($date)->startOfDay()->startOfWeek(\Carbon\CarbonInterface::MONDAY),
                     false
                 ) / 7
-        ) + 1)
-        : null;
+        ) + 1);
+    };
+    $weekNumberFromAcademicYear = $weekNumberForDate($weekStart);
+    // จำนวนสัปดาห์รวมของปีการศึกษา (Monday-aligned)
+    $totalAcademicWeeks = ($academicStartDate && $academicEndDate)
+        ? max(1, (int) ceil(
+            $academicStartDate->startOfWeek(\Carbon\CarbonInterface::MONDAY)
+                ->diffInDays($academicEndDate->endOfWeek(\Carbon\CarbonInterface::SUNDAY), false) / 7
+        ))
+        : 0;
+    // Monday-อิงตามสัปดาห์ที่ N ของปีการศึกษา → คืน date string 'YYYY-MM-DD'
+    $mondayOfAcademicWeek = function (int $weekNumber) use ($academicStartDate) {
+        if (! $academicStartDate || $weekNumber < 1) return null;
+        return $academicStartDate->startOfWeek(\Carbon\CarbonInterface::MONDAY)
+            ->addWeeks($weekNumber - 1)
+            ->toDateString();
+    };
     $calendarHeadingText = match ($schedulePeriod ?? 'week') {
         'day' => $formatDate($weekStart),
         'month' => ($thaiMonthNames[(int) $weekStart->month] ?? '') . ' ' . ((int) $weekStart->year + 543),
@@ -300,7 +316,7 @@
             ->sortBy(fn ($instructor) => $instructor->formatted_name ?? $instructor->name)
             ->values()
         : $eligibleScheduleInstructors($courseOffering)->sortBy(fn ($instructor) => $instructor->formatted_name ?? $instructor->name);
-    $scheduleFilterItems = $singleCourseSchedules->map(function ($schedule) use ($formatDate, $formatTime, $scheduleDepartmentInstructors) {
+    $scheduleFilterItems = $singleCourseSchedules->map(function ($schedule) use ($formatDate, $formatTime, $scheduleDepartmentInstructors, $weekNumberForDate) {
         $instructors = $scheduleDepartmentInstructors($schedule);
 
         return [
@@ -308,6 +324,7 @@
             'activity' => (string) $schedule->activity_type_id,
             'groups' => $schedule->studentGroups->pluck('id')->map(fn ($id) => (string) $id)->values(),
             'instructors' => $instructors->pluck('id')->map(fn ($id) => (string) $id)->values(),
+            'week' => (string) ($weekNumberForDate($schedule->start_date) ?? ''),
             'search' => mb_strtolower(collect([
                 $formatDate($schedule->start_date),
                 $formatDate($schedule->end_date),
@@ -323,6 +340,19 @@
             ])->filter()->implode(' '), 'UTF-8'),
         ];
     })->values();
+    // ลิสต์สัปดาห์ทั้งหมดของปีการศึกษา (1..N) พร้อม count + Monday ของสัปดาห์
+    // user เลือกสัปดาห์ว่างก็ได้ เพื่อ jump ไปสร้างรายการ
+    $countsByWeek = $scheduleFilterItems
+        ->filter(fn ($item) => $item['week'] !== '')
+        ->groupBy('week')
+        ->map(fn ($items) => $items->count());
+    $scheduleWeekOptions = collect(range(1, max(1, $totalAcademicWeeks)))
+        ->map(fn ($week) => [
+            'week' => $week,
+            'count' => (int) ($countsByWeek->get((string) $week) ?? 0),
+            'monday' => $mondayOfAcademicWeek($week),
+        ])
+        ->values();
 
     $groupOccurrencesIntoStacks = function($dayOccurrences) {
         $stacks = [];
@@ -1188,7 +1218,7 @@
         }
         .schedule-filter-bar {
             display: grid;
-            grid-template-columns: minmax(220px, 1.2fr) repeat(4, minmax(130px, .7fr));
+            grid-template-columns: minmax(180px, 1fr) minmax(220px, 1.4fr) repeat(3, minmax(130px, .7fr));
             gap: 10px;
             padding: 12px 16px;
             border-top: 1px solid var(--schedule-border);
@@ -1687,11 +1717,220 @@
         /* ── โหมดรายการตารางสอนของรายวิชาเดี่ยว (co-sched-table) ── */
         .co-sched-table-wrap {
             overflow-x: hidden;
+            overflow-y: visible;
             border: 1px solid var(--schedule-border);
             border-radius: 0 0 10px 10px;
             background: var(--surface);
             box-shadow: none;
             margin-top: 0;
+        }
+        /* ── หัวกลุ่ม "วัน" ในตารางแบบรายการ — กดได้เพื่อย่อ/ขยาย ── */
+        .sched-day-group-header {
+            scroll-margin-top: 80px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .sched-day-group-header:focus-visible {
+            outline: 2px solid var(--brand-navy);
+            outline-offset: -2px;
+        }
+        .sched-day-group-cell {
+            position: sticky;
+            top: 52px; /* offset = topbar height */
+            z-index: 5;
+            padding: 12px 18px;
+            background: oklch(94% 0.022 232);
+            /* ใช้ inset shadow แทน border — sticky + border-collapse:collapse ทำให้ border หาย */
+            box-shadow:
+                inset 0 1px 0 var(--schedule-border-strong),
+                inset 0 -1px 0 var(--schedule-border-strong);
+            transition: background 0.15s;
+        }
+        .sched-day-group-header.is-collapsed .sched-day-group-cell {
+            background: oklch(96% 0.014 232);
+        }
+        .sched-day-group-inner {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .sched-day-group-chevron {
+            color: var(--brand-navy);
+            transition: transform 0.2s ease;
+            flex-shrink: 0;
+        }
+        .sched-day-group-chevron.is-collapsed {
+            transform: rotate(-90deg);
+        }
+        .sched-day-group-hint {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--fg-3);
+            font-style: italic;
+        }
+        .sched-day-group-badge {
+            margin-bottom: 0;
+            font-size: 14px !important;
+            font-weight: 900 !important;
+            padding: 5px 14px !important;
+            border-radius: 6px;
+            letter-spacing: 0.02em;
+        }
+        .sched-day-group-date {
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--fg-1);
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.01em;
+        }
+        .sched-day-group-week {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 9px;
+            border: 1px solid var(--brand-navy);
+            border-radius: 999px;
+            background: #fff;
+            color: var(--brand-navy);
+            font-size: 11.5px;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            white-space: nowrap;
+        }
+        .sched-day-group-count {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--brand-navy);
+        }
+        /* ── Week filter — custom dropdown ── */
+        .week-filter {
+            position: relative;
+        }
+        .week-filter-trigger {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            min-height: 42px;
+            padding: 7px 14px;
+            border: 2px solid var(--brand-navy);
+            border-radius: 8px;
+            background: var(--brand-navy-50);
+            color: var(--brand-navy);
+            font: inherit;
+            font-size: 14px;
+            font-weight: 800;
+            letter-spacing: 0.01em;
+            cursor: pointer;
+            white-space: nowrap;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+            transition: background 0.12s;
+        }
+        .week-filter-trigger:hover {
+            background: oklch(94% 0.04 232);
+        }
+        .week-filter-trigger.is-active {
+            background: var(--brand-navy);
+            color: #fff;
+        }
+        .week-filter-trigger-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .week-filter-trigger-chevron {
+            flex-shrink: 0;
+            transition: transform 0.18s;
+        }
+        .week-filter-trigger-chevron.is-open {
+            transform: rotate(180deg);
+        }
+        .week-filter-pop {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            z-index: 30;
+            max-height: 320px;
+            overflow-y: auto;
+            padding: 4px;
+            border: 1px solid var(--schedule-border-strong);
+            border-radius: 10px;
+            background: #fff;
+            box-shadow: 0 12px 28px -8px rgba(15, 30, 60, 0.22), 0 2px 6px rgba(15, 30, 60, 0.08);
+        }
+        .week-filter-pop::-webkit-scrollbar {
+            width: 10px;
+        }
+        .week-filter-pop::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .week-filter-pop::-webkit-scrollbar-thumb {
+            background: oklch(82% 0.025 232);
+            border-radius: 999px;
+            border: 2px solid #fff;
+        }
+        .week-filter-section {
+            padding: 8px 12px 4px;
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--fg-3);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .week-filter-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            width: 100%;
+            padding: 8px 12px;
+            border: 0;
+            border-radius: 7px;
+            background: transparent;
+            color: var(--fg-1);
+            font: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: left;
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+        .week-filter-item:hover {
+            background: var(--brand-navy-50);
+        }
+        .week-filter-item.is-selected {
+            background: var(--brand-navy);
+            color: #fff;
+        }
+        .week-filter-item.is-empty {
+            color: var(--fg-3);
+            font-weight: 500;
+        }
+        .week-filter-item.is-empty.is-selected {
+            color: #fff;
+        }
+        .week-filter-item.is-all {
+            font-weight: 800;
+            color: var(--brand-navy);
+        }
+        .week-filter-item.is-all.is-selected {
+            color: #fff;
+        }
+        .week-filter-count {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--brand-navy);
+            white-space: nowrap;
+        }
+        .week-filter-item.is-selected .week-filter-count {
+            color: oklch(92% 0.018 232);
+        }
+        .week-filter-check {
+            font-weight: 900;
+            color: inherit;
         }
         .co-sched-table {
             width: 100%;
@@ -3756,6 +3995,8 @@
             scheduleActivity: '',
             scheduleGroup: '',
             scheduleInstructor: '',
+            scheduleWeek: '',
+            collapsedDays: @js($groupedSchedules->keys()->mapWithKeys(fn ($k) => [str_replace('-', '', $k) => false])->toArray() ?: (object) []),
             schedulePeriod: @js($schedulePeriod ?? 'week'),
             includeWeekends: @js((bool) ($includeWeekends ?? false)),
             gridJumpDate: @js($formatDate($selectedScheduleDate ?? $weekStart)),
@@ -4013,7 +4254,8 @@
                 return (!keyword || item.search.includes(keyword))
                     && (!this.scheduleActivity || item.activity === this.scheduleActivity)
                     && (!this.scheduleGroup || item.groups.includes(this.scheduleGroup))
-                    && (!this.scheduleInstructor || item.instructors.includes(this.scheduleInstructor));
+                    && (!this.scheduleInstructor || item.instructors.includes(this.scheduleInstructor))
+                    && (!this.scheduleWeek || item.week === this.scheduleWeek);
             },
             matchedScheduleCount() {
                 return this.scheduleItems.filter((item) => this.matchesSchedule(item.id)).length;
@@ -4021,11 +4263,15 @@
             dayHasMatches(ids) {
                 return ids.some((id) => this.matchesSchedule(id));
             },
+            toggleDay(dateKey) {
+                this.collapsedDays = { ...this.collapsedDays, [dateKey]: ! this.collapsedDays[dateKey] };
+            },
             resetScheduleFilters() {
                 this.scheduleSearch = '';
                 this.scheduleActivity = '';
                 this.scheduleGroup = '';
                 this.scheduleInstructor = '';
+                this.scheduleWeek = '';
             },
             resetCreateForm(date = null) {
                 const form = this.$refs.createForm;
@@ -4573,6 +4819,52 @@
                     </div>
                 </div>
                 <div class="schedule-filter-bar" x-show="view === 'list'" x-cloak>
+                    @php
+                        $activeWeeks = $scheduleWeekOptions->filter(fn ($w) => $w['count'] > 0)->values();
+                        $emptyWeeks = $scheduleWeekOptions->filter(fn ($w) => $w['count'] === 0)->values();
+                    @endphp
+                    <div class="week-filter" x-data="{ weekOpen: false }" @click.outside="weekOpen = false" @keydown.escape.window="weekOpen = false">
+                        <button
+                            type="button"
+                            class="week-filter-trigger"
+                            :class="scheduleWeek ? 'is-active' : ''"
+                            @click="weekOpen = !weekOpen"
+                            :aria-expanded="weekOpen ? 'true' : 'false'"
+                            aria-haspopup="listbox"
+                            data-testid="schedule-week-filter"
+                        >
+                            <span class="week-filter-trigger-label">
+                                <span aria-hidden="true">📅</span>
+                                <span x-text="scheduleWeek ? 'สัปดาห์ที่ ' + scheduleWeek : 'ทุกสัปดาห์'"></span>
+                            </span>
+                            <svg class="week-filter-trigger-chevron" :class="weekOpen ? 'is-open' : ''" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <polyline points="6 9 12 15 18 9"/>
+                            </svg>
+                        </button>
+                        <div class="week-filter-pop" x-show="weekOpen" x-transition.opacity.duration.120ms x-cloak role="listbox">
+                            <button type="button" class="week-filter-item is-all" :class="!scheduleWeek ? 'is-selected' : ''" @click="scheduleWeek = ''; weekOpen = false">
+                                <span>📅 ทุกสัปดาห์</span>
+                                <span class="week-filter-check" x-show="!scheduleWeek" x-cloak>✓</span>
+                            </button>
+                            @if($activeWeeks->isNotEmpty())
+                                <div class="week-filter-section">มีรายการสอน · {{ $activeWeeks->count() }} สัปดาห์</div>
+                                @foreach($activeWeeks as $option)
+                                    <button type="button" class="week-filter-item" :class="scheduleWeek === '{{ $option['week'] }}' ? 'is-selected' : ''" @click="scheduleWeek = '{{ $option['week'] }}'; weekOpen = false">
+                                        <span>สัปดาห์ที่ {{ $option['week'] }}</span>
+                                        <span class="week-filter-count">{{ $option['count'] }} รายการ</span>
+                                    </button>
+                                @endforeach
+                            @endif
+                            @if($emptyWeeks->isNotEmpty())
+                                <div class="week-filter-section">สัปดาห์อื่นๆ · {{ $emptyWeeks->count() }} สัปดาห์</div>
+                                @foreach($emptyWeeks as $option)
+                                    <button type="button" class="week-filter-item is-empty" :class="scheduleWeek === '{{ $option['week'] }}' ? 'is-selected' : ''" @click="scheduleWeek = '{{ $option['week'] }}'; weekOpen = false">
+                                        <span>สัปดาห์ที่ {{ $option['week'] }}</span>
+                                    </button>
+                                @endforeach
+                            @endif
+                        </div>
+                    </div>
                     <input
                         type="search"
                         class="schedule-filter-control"
@@ -4628,17 +4920,43 @@
                                         </td>
                                     </tr>
                                 @else
-                                    @foreach($thaiDays as $dayIso => $dayName)
+                                    @foreach($groupedSchedules as $dateString => $daySchedules)
                                         @php
-                                            $daySchedules = $groupedSchedules->get($dayIso, collect());
+                                            $firstSchedule = $daySchedules->first();
+                                            $dateObj = $firstSchedule?->start_date;
+                                            $dayIso = $dateObj?->dayOfWeekIso ?? 1;
+                                            $dayName = $thaiDays[$dayIso] ?? '';
+                                            $dateKey = str_replace('-', '', $dateString);
+                                            $dayWeekNumber = $weekNumberForDate($dateObj);
                                             $dayScheduleIds = $daySchedules->pluck('id')->map(fn ($id) => (string) $id)->values();
                                         @endphp
-                                        @if($daySchedules->isNotEmpty())
-                                            <tr class="sched-day-group-header" x-show="dayHasMatches(@js($dayScheduleIds))" x-cloak>
-                                                <td colspan="6" style="background: oklch(93.5% 0.022 232); border-top: 1px solid var(--schedule-border-strong); border-bottom: 1px solid var(--schedule-border-strong); padding: 10px 16px;">
-                                                    <div style="display: flex; align-items: center; gap: 8px;">
-                                                        <span class="co-day-badge day-{{ $dayIso }}" style="margin-bottom: 0; font-size: 13px; padding: 4px 12px; border-radius: 6px;">{{ $dayName }}</span>
-                                                        <span style="font-size: 12.5px; font-weight: 800; color: var(--fg-2);">· {{ $daySchedules->count() }} รายการสอน</span>
+                                        @if($daySchedules->isNotEmpty() && $dateObj)
+                                            <tr
+                                                class="sched-day-group-header"
+                                                id="schedule-day-group-{{ $dateKey }}"
+                                                x-show="dayHasMatches(@js($dayScheduleIds))"
+                                                x-cloak
+                                                role="button"
+                                                tabindex="0"
+                                                :aria-expanded="!collapsedDays['{{ $dateKey }}'] ? 'true' : 'false'"
+                                                aria-label="สลับการแสดงรายการ {{ $dayName }} {{ $formatDate($dateObj) }}"
+                                                @click="toggleDay('{{ $dateKey }}')"
+                                                @keydown.enter.prevent="toggleDay('{{ $dateKey }}')"
+                                                @keydown.space.prevent="toggleDay('{{ $dateKey }}')"
+                                                :class="collapsedDays['{{ $dateKey }}'] ? 'is-collapsed' : ''"
+                                                data-testid="schedule-day-group-toggle"
+                                            >
+                                                <td colspan="6" class="sched-day-group-cell">
+                                                    <div class="sched-day-group-inner">
+                                                        <svg class="sched-day-group-chevron" :class="collapsedDays['{{ $dateKey }}'] ? 'is-collapsed' : ''" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                            <polyline points="6 9 12 15 18 9"/>
+                                                        </svg>
+                                                        <span class="co-day-badge day-{{ $dayIso }} sched-day-group-badge">{{ $dayName }}</span>
+                                                        <span class="sched-day-group-date">{{ $formatDate($dateObj) }}</span>
+                                                        @if($dayWeekNumber)
+                                                            <span class="sched-day-group-week">สัปดาห์ที่ {{ $dayWeekNumber }}</span>
+                                                        @endif
+                                                        <span class="sched-day-group-count">· {{ $daySchedules->count() }} รายการสอน</span>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -4660,7 +4978,7 @@
                                                     }
                                                     $isMultiDay = ! $asSameDay;
                                                 @endphp
-                                                <tr role="button" tabindex="0" class="co-sched-row" :class="focusedScheduleClass('{{ $as->id }}')" style="--activity-color: {{ $activityTone($as) }};" x-show="matchesSchedule('{{ $as->id }}')" x-cloak data-schedule-id="{{ $as->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $as->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $as->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $as->id }}'">
+                                                <tr role="button" tabindex="0" class="co-sched-row" :class="focusedScheduleClass('{{ $as->id }}')" style="--activity-color: {{ $activityTone($as) }};" x-show="matchesSchedule('{{ $as->id }}') && !collapsedDays['{{ $dateKey }}']" x-cloak data-schedule-id="{{ $as->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $as->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $as->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $as->id }}'">
                                                     <td class="co-col-date" style="font-weight: 800; color: var(--fg-1); font-variant-numeric: tabular-nums; vertical-align: middle;">
                                                         @if($asSameDay)
                                                             {{ $formatDate($as->start_date) }}
@@ -4724,7 +5042,14 @@
                                             @endforeach
                                         @endif
                                     @endforeach
-                                    <tr x-show="matchedScheduleCount() === 0" x-cloak>
+                                    <tr x-show="matchedScheduleCount() === 0 && scheduleWeek" x-cloak>
+                                        <td colspan="6">
+                                            <div class="schedule-empty" style="margin:16px;">
+                                                <div style="font-weight:800;color:var(--fg-2);">ยังไม่มีกิจกรรมในสัปดาห์นี้</div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr x-show="matchedScheduleCount() === 0 && !scheduleWeek" x-cloak>
                                         <td colspan="6">
                                             <div class="schedule-empty" style="margin:16px;">
                                                 <div style="font-weight:800;color:var(--fg-2);margin-bottom:4px;">ไม่พบรายการที่ตรงกับตัวกรอง</div>

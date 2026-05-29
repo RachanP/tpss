@@ -489,7 +489,12 @@ class ScheduleController extends Controller
         $occurrences = $this->scheduleOccurrences($schedules, $periodStart, $gridEnd, $includeWeekends);
         $timeSlots = $this->scheduleTimeSlots($occurrences);
         $occurrencesByDate = $occurrences->groupBy(fn ($item) => $item['date']->toDateString());
-        $groupedSchedules = $allSchedules->groupBy(fn (Schedule $schedule) => $schedule->start_date?->dayOfWeekIso);
+        // List view: group by actual calendar date (start_date) เรียงตามวันที่จริง
+        // เดิมใช้ dayOfWeekIso → ทุกวันจันทร์ของหลายสัปดาห์ clump รวมกัน
+        $groupedSchedules = $allSchedules
+            ->filter(fn (Schedule $schedule) => $schedule->start_date)
+            ->sortBy(fn (Schedule $schedule) => $schedule->start_date->toDateString() . ' ' . ($schedule->start_time ?? '00:00:00'))
+            ->groupBy(fn (Schedule $schedule) => $schedule->start_date->toDateString());
         $selectedDate = CarbonImmutable::parse($baseDate)->startOfDay();
         $previousPeriod = match ($period) {
             'day' => $selectedDate->subDay(),
