@@ -194,6 +194,21 @@
 > อ้างอิงภาพเรียงหน้า: `storage/tpss_detail_pages/page-00.jpg` ถึง `page-25.jpg`
 > สิ่งสำคัญคือ comment สีน้ำเงินจากอาจารย์ ซึ่งชี้ว่า TPSS ควรเป็นเครื่องมือกรอกตาราง ตรวจสอบ เผยแพร่ และสรุปภาระงาน มากกว่า auto scheduler เต็มรูปแบบ
 
+### Phase 1 Triage (ทบทวน 29 พ.ค. — เทียบกับ state จริงในโค้ด)
+
+comment อาจารย์ดึงงานที่เดิม label Phase 2 (M6/M9/M11) ขึ้นมาเป็น priority — ลำดับแนะนำสำหรับ Phase 1:
+
+| Priority | งาน | Module | สถานะจริง | ลำดับ Phase 1 |
+|----------|-----|--------|-----------|---------------|
+| 3 | Activity Type Workload flag | M1 | ❌ `activity_types` ยังไม่มี `counts_toward_workload` | **1 (S, ปลดล็อกของอื่น)** |
+| 1 | PDF/Excel Report | M9 | ❌ ไม่มี ReportController | **2 (สูงสุดจากอาจารย์)** |
+| Bug #2 | Filter ตารางตามอาจารย์ | M3 | ❌ ScheduleController ยังไม่อ่าน `?instructor_id` | **2 (quick win ขนานได้)** |
+| 4 | Publish Views ตาม role | M8 | ❌ instructor/executive มีแค่ dashboard | **3 (M)** |
+| 5 | Approval/Revision Flow | M11 | ❌ ไม่มี ApprovalController (table `course_offering_approvals` เตรียมแล้ว) | **3 (M)** |
+| 2 | Workload Dashboard จาก schedule จริง | M6 | ⚠️ widget ใช้ quota (`teachingWeeks × hoursPerWeek`) ไม่ใช่ schedule | **4 (L, ขึ้นกับ #3 — defer ได้ถ้าเวลาไม่พอ)** |
+| 6 | Duplicate/Series | M3 | ✅ `schedule_templates` + `storeSeries()` merge แล้ว | — done |
+| 7 | Curriculum version/intl metadata | M1 | ⚠️ `education_level` มี — version/นานาชาติ ยังไม่ครบ | Phase 2 |
+
 ### Priority 1 — PDF Report สำหรับแจกตาราง
 
 - เพิ่ม report/export PDF ที่ใช้งานจริงได้สำหรับตารางรายวิชาและรายกลุ่มนักศึกษา
@@ -231,11 +246,11 @@
 - Operation phase: เมื่อแก้ระหว่างภาคให้ตรวจ conflict ใหม่, เปลี่ยนสถานะเป็น `revised`, เก็บประวัติแก้ไข
 - การแจ้งผู้เกี่ยวข้องเป็น optional ใน v1
 
-### Priority 6 — Duplicate/Series สำหรับ pattern ป.ตรีปี 3-4
+### Priority 6 — Duplicate/Series สำหรับ pattern ป.ตรีปี 3-4 ✅ DONE
 
 - ป.ตรีปี 3-4 สอนซ้ำเดิม 2 ครั้งใน 1 ภาค แต่เปลี่ยนกลุ่ม
 - ควรรองรับการคัดลอกโครงตาราง/series แล้วเปลี่ยนกลุ่มต่อรอบ
-- งานนี้ต่อยอดจาก `schedule_templates` และ series generator ที่มีอยู่
+- ✅ implement แล้ว: table `schedule_templates` (`2026_05_28_000003`) + `schedules` template fields (`..000004`) + routes `schedules.series.store` / `templates.update` / `templates.destroy` + `ScheduleController::storeSeries()` — ตรงกับ Bug #3 ด้านล่าง
 
 ### Priority 7 — Curriculum/Program Metadata
 
@@ -243,11 +258,14 @@
 - เพิ่ม/รองรับ metadata หลักสูตรนานาชาติหรือสองภาษา
 - ระวังการผูกชื่อวิชากับหลักสูตรที่เปลี่ยน version ไม่ให้ report ปนกัน
 
-## Bug Report — 28 พ.ค. 2569 รอบ 2 🟡 BACKLOG
+## Bug Report — 28 พ.ค. 2569 รอบ 2 ✅ ปิดหมดแล้ว
 
 หลัง close 12 bugs รอบแรก ลูกค้า/Rachan แจ้งเพิ่ม 3 รายการ (priority: #0+#1 → #2 → #3)
+สถานะ ณ 29 พ.ค.: **#0+#1 ✅ done · #3 ✅ done · #2 ✅ done (wire backend filter เสร็จ)**
 
-### #0+#1 — Location Type "ใช้ร่วมกันได้" (Bug + UX) — S/M effort
+### #0+#1 — Location Type "ใช้ร่วมกันได้" (Bug + UX) — S/M effort ✅ DONE
+
+> ✅ implement แล้ว: migration `2026_05_28_065050_add_is_shared_to_location_types` + `2026_05_28_083032_drop_requires_capacity_from_location_types` — `requires_capacity` ถูกแทนด้วย `is_shared` (พลิก semantic) เรียบร้อย
 
 Field `location_types.requires_capacity` มีอยู่แล้วแต่ครอบคลุมแค่ capacity alert — ต้องขยาย:
 
@@ -264,17 +282,26 @@ Field `location_types.requires_capacity` มีอยู่แล้วแต่
 
 **ไฟล์เกี่ยวข้อง:** `database/migrations/...rename_or_add_is_shared.php`, `shared/master_data/index.blade.php`, `ScheduleConflictChecker.php` หรือ `ScheduleConflictIndex.php` (skip room overlap ถ้า `room.locationType.is_shared`), `Admin/AlertController.php` (skip capacity alert)
 
-### #2 — Filter ตารางตามอาจารย์ (Enhancement) — S effort
+### #2 — Filter ตารางตามอาจารย์ (Enhancement) — S effort ✅ DONE
+
+> ✅ wire backend เสร็จ 29 พ.ค.:
+> - `schedulePageData()` อ่าน `$request->integer('instructor_id')` → closure `$instructorFilter` ใช้ `->tap()` บนทั้ง query `$schedules` (period) และ `$allSchedules` (list) → `whereHas('instructors', fn => where('users.id', $id))`
+> - ส่ง `selectedInstructorId` กลับ view → dropdown คง selection หลัง redirect
+> - `schedulePeriodUrl()` รับ `$instructorId` → ปุ่มเปลี่ยน period / prev-next / weekend-toggle พา `instructor_id` ไปด้วย (filter ไม่หลุดตอนนำทาง)
+> - JS `applyInstructorFilter()` + dropdown UI มีอยู่แล้ว (`index.blade.php:4513, 4642`)
+> - Test: `ScheduleManagementTest::test_schedule_index_filters_by_instructor` (unfiltered เห็นทั้งสอง / filtered เห็นเฉพาะของ instructor นั้น)
 
 หน้าตารางสอนหัวหน้าวิชา เพิ่ม dropdown filter "เลือกอาจารย์" ใน toolbar → ดูเฉพาะ slot ที่อาจารย์คนนั้นสอน รองรับทุก view (list/week/day/month)
 
 **ไฟล์เกี่ยวข้อง:** `CourseHead/ScheduleController.php` (รับ `?instructor_id=` ใน `schedulePageData()`), `course_head/schedules/index.blade.php` (toolbar + filter UI + join `schedule_instructors`)
 
-### #3 — Auto-duplicate กิจกรรมรายสัปดาห์ (Feature ใหญ่) — L effort, sprint ใหม่
+### #3 — Auto-duplicate กิจกรรมรายสัปดาห์ (Feature ใหญ่) — L effort ✅ DONE
+
+> ✅ implement แล้ว: table `schedule_templates` (`2026_05_28_000003`) + `schedules` template fields (`..000004`) + `ScheduleController::storeSeries()` / `updateSeriesTemplate()` / `destroySeriesTemplate()` — ตรงกับ Priority 6 ด้านบน
 
 หัวหน้าวิชาควรสร้าง slot ต้นแบบ (วันในสัปดาห์ + เวลา + ช่วงสัปดาห์) → ระบบ auto-generate slot ลูกทุกสัปดาห์ → แก้แค่ห้อง+กลุ่ม นศ. ต่อสัปดาห์ (workflow ของ practicum rotation จริง)
 
-**Schema:** `schedules.practicum_series_id` มีอยู่แล้ว — อาจต้อง table ใหม่ `schedule_templates` ถ้า design ต้องการ separate template/instance
+**Schema:** ใช้ table `schedule_templates` แยก template/instance (ไม่ได้ใช้ `schedules.practicum_series_id` ตามที่เคยคาด)
 
 **คำถามที่ต้องถามลูกค้าก่อน design:**
 - แก้ template ภายหลัง → slot ลูกที่แก้ไปแล้ว ควรถูก overwrite ไหม?
