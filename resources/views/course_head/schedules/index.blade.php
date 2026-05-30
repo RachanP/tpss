@@ -19,7 +19,8 @@
     $queryOfferingId = request('course_offering_id');
     $selectedOfferingId = (string) old('course_offering_id', $queryOfferingId ?: ($schedulingOfferings->first()?->id ?? $courseOffering?->id ?? ''));
     $oldModalMode = old('modal_mode');
-    $defaultCreateMode = (! $isWorkspace && $courseOffering) ? 'series' : 'single';
+    // Default = สร้างรายการเดียว (รายวัน) — series เป็น opt-in ผ่าน checkbox ใน modal
+    $defaultCreateMode = 'single';
     $oldCreateMode = (! $isWorkspace && $courseOffering)
         ? old('create_mode', $defaultCreateMode)
         : 'single';
@@ -174,15 +175,37 @@
         : null;
     $canCreateInCurrentPeriod = $canEdit && ! $calendarOutsideAcademicYear;
     $outsideCreateHint = 'เลือกวันที่ในช่วงปีการศึกษาก่อนเพิ่มรายการสอน';
-    $weekNumberFromAcademicYear = $academicStartDate
-        ? max(1, (int) floor(
+    // เช็คว่าวันนี้ตกนอกช่วงปีการศึกษาไหม (per-day)
+    $isDayOutsideAcademic = function ($day) use ($academicStartDate, $academicEndDate) {
+        if (! $academicStartDate || ! $academicEndDate || ! $day) return false;
+        $d = \Carbon\CarbonImmutable::parse($day)->startOfDay();
+        return $d->lt($academicStartDate) || $d->gt($academicEndDate);
+    };
+    $weekNumberForDate = function ($date) use ($academicStartDate) {
+        if (! $academicStartDate || ! $date) return null;
+        return max(1, (int) floor(
             $academicStartDate->startOfWeek(\Carbon\CarbonInterface::MONDAY)
                 ->diffInDays(
-                    \Carbon\CarbonImmutable::parse($weekStart)->startOfDay()->startOfWeek(\Carbon\CarbonInterface::MONDAY),
+                    \Carbon\CarbonImmutable::parse($date)->startOfDay()->startOfWeek(\Carbon\CarbonInterface::MONDAY),
                     false
                 ) / 7
-        ) + 1)
-        : null;
+        ) + 1);
+    };
+    $weekNumberFromAcademicYear = $weekNumberForDate($weekStart);
+    // จำนวนสัปดาห์รวมของปีการศึกษา (Monday-aligned)
+    $totalAcademicWeeks = ($academicStartDate && $academicEndDate)
+        ? max(1, (int) ceil(
+            $academicStartDate->startOfWeek(\Carbon\CarbonInterface::MONDAY)
+                ->diffInDays($academicEndDate->endOfWeek(\Carbon\CarbonInterface::SUNDAY), false) / 7
+        ))
+        : 0;
+    // Monday-อิงตามสัปดาห์ที่ N ของปีการศึกษา → คืน date string 'YYYY-MM-DD'
+    $mondayOfAcademicWeek = function (int $weekNumber) use ($academicStartDate) {
+        if (! $academicStartDate || $weekNumber < 1) return null;
+        return $academicStartDate->startOfWeek(\Carbon\CarbonInterface::MONDAY)
+            ->addWeeks($weekNumber - 1)
+            ->toDateString();
+    };
     $calendarHeadingText = match ($schedulePeriod ?? 'week') {
         'day' => $formatDate($weekStart),
         'month' => ($thaiMonthNames[(int) $weekStart->month] ?? '') . ' ' . ((int) $weekStart->year + 543),
@@ -300,7 +323,7 @@
             ->sortBy(fn ($instructor) => $instructor->formatted_name ?? $instructor->name)
             ->values()
         : $eligibleScheduleInstructors($courseOffering)->sortBy(fn ($instructor) => $instructor->formatted_name ?? $instructor->name);
-    $scheduleFilterItems = $singleCourseSchedules->map(function ($schedule) use ($formatDate, $formatTime, $scheduleDepartmentInstructors) {
+    $scheduleFilterItems = $singleCourseSchedules->map(function ($schedule) use ($formatDate, $formatTime, $scheduleDepartmentInstructors, $weekNumberForDate) {
         $instructors = $scheduleDepartmentInstructors($schedule);
 
         return [
@@ -308,6 +331,8 @@
             'activity' => (string) $schedule->activity_type_id,
             'groups' => $schedule->studentGroups->pluck('id')->map(fn ($id) => (string) $id)->values(),
             'instructors' => $instructors->pluck('id')->map(fn ($id) => (string) $id)->values(),
+            'week' => (string) ($weekNumberForDate($schedule->start_date) ?? ''),
+            'date' => $schedule->start_date?->toDateString(),
             'search' => mb_strtolower(collect([
                 $formatDate($schedule->start_date),
                 $formatDate($schedule->end_date),
@@ -323,6 +348,19 @@
             ])->filter()->implode(' '), 'UTF-8'),
         ];
     })->values();
+    // ลิสต์สัปดาห์ทั้งหมดของปีการศึกษา (1..N) พร้อม count + Monday ของสัปดาห์
+    // user เลือกสัปดาห์ว่างก็ได้ เพื่อ jump ไปสร้างรายการ
+    $countsByWeek = $scheduleFilterItems
+        ->filter(fn ($item) => $item['week'] !== '')
+        ->groupBy('week')
+        ->map(fn ($items) => $items->count());
+    $scheduleWeekOptions = collect(range(1, max(1, $totalAcademicWeeks)))
+        ->map(fn ($week) => [
+            'week' => $week,
+            'count' => (int) ($countsByWeek->get((string) $week) ?? 0),
+            'monday' => $mondayOfAcademicWeek($week),
+        ])
+        ->values();
 
     $groupOccurrencesIntoStacks = function($dayOccurrences) {
         $stacks = [];
@@ -1188,7 +1226,7 @@
         }
         .schedule-filter-bar {
             display: grid;
-            grid-template-columns: minmax(220px, 1.2fr) repeat(4, minmax(130px, .7fr));
+            grid-template-columns: minmax(180px, 1fr) minmax(220px, 1.4fr) repeat(3, minmax(130px, .7fr));
             gap: 10px;
             padding: 12px 16px;
             border-top: 1px solid var(--schedule-border);
@@ -1402,6 +1440,249 @@
             grid-template-columns: repeat(2, minmax(220px, 1fr));
             gap: 14px 18px;
             align-items: start;
+        }
+        /* ── Copy week ─────────────────────────────────────────── */
+        .copy-week-trigger { cursor: pointer; }
+        .copy-week-subtitle {
+            margin-top: 4px;
+            color: var(--fg-3);
+            font-size: 12.5px;
+            font-weight: 650;
+            line-height: 1.5;
+        }
+        .copy-week-weeks {
+            display: flex;
+            align-items: stretch;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+        .copy-week-pill {
+            flex: 1 1 200px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 12px 14px;
+            border: 1px solid var(--schedule-border);
+            border-radius: 8px;
+            background: color-mix(in oklch, var(--surface) 80%, oklch(97.5% 0.01 232));
+        }
+        .copy-week-pill.is-target {
+            border-color: color-mix(in oklch, var(--brand-navy) 30%, var(--schedule-border));
+        }
+        .copy-week-pill-label {
+            color: var(--fg-3);
+            font-size: 11.5px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .copy-week-pill-date {
+            color: var(--fg-1);
+            font-size: 14px;
+            font-weight: 850;
+        }
+        .copy-week-arrow {
+            align-self: center;
+            color: var(--fg-3);
+            font-size: 20px;
+            font-weight: 900;
+        }
+        .copy-week-target-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .copy-week-step {
+            width: 26px;
+            height: 26px;
+            border: 1px solid var(--schedule-border);
+            border-radius: 6px;
+            background: var(--surface);
+            color: var(--fg-1);
+            font-size: 16px;
+            font-weight: 900;
+            line-height: 1;
+            cursor: pointer;
+        }
+        .copy-week-step:hover { background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface)); }
+        .copy-week-status {
+            padding: 10px 12px;
+            border: 1px solid var(--schedule-border);
+            border-radius: 8px;
+            color: var(--fg-2);
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+        .copy-week-status.is-error {
+            border-color: var(--status-conflict-border);
+            background: var(--status-conflict-bg);
+            color: var(--status-conflict-fg);
+        }
+        .copy-week-summary {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        .copy-week-badge {
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 850;
+            border: 1px solid transparent;
+        }
+        .copy-week-badge.is-ready {
+            border-color: color-mix(in oklch, var(--status-ok-border, #16a34a) 60%, transparent);
+            background: var(--status-ok-bg, #ecfdf5);
+            color: var(--status-ok-fg, #166534);
+        }
+        .copy-week-badge.is-blocked {
+            border-color: var(--status-conflict-border);
+            background: var(--status-conflict-bg);
+            color: var(--status-conflict-fg);
+        }
+        .copy-week-list {
+            list-style: none;
+            margin: 0 0 12px;
+            padding: 0;
+            display: grid;
+            gap: 6px;
+        }
+        .copy-week-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px 12px;
+            border: 1px solid var(--schedule-border);
+            border-radius: 8px;
+            background: var(--surface);
+        }
+        .copy-week-item.is-blocked {
+            border-color: var(--status-conflict-border);
+            background: var(--status-conflict-bg);
+        }
+        .copy-week-mark { font-size: 14px; line-height: 1.5; flex: 0 0 auto; }
+        .copy-week-item-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+        .copy-week-item-body strong { color: var(--fg-1); font-size: 13.5px; font-weight: 850; }
+        .copy-week-item-body small { color: var(--fg-3); font-size: 12px; font-weight: 650; }
+        .copy-week-reason { color: var(--status-conflict-fg) !important; font-weight: 750 !important; }
+        /* ── Realtime inline conflict warnings ─────────────────── */
+        .field-live-error {
+            margin-top: 6px;
+            padding: 7px 10px;
+            border: 1px solid var(--status-conflict-border);
+            border-radius: 6px;
+            background: var(--status-conflict-bg);
+            color: var(--status-conflict-fg);
+            font-size: 12px;
+            font-weight: 750;
+            line-height: 1.45;
+            display: grid;
+            gap: 2px;
+        }
+        .has-live-error {
+            border-color: var(--status-conflict-border) !important;
+            box-shadow: 0 0 0 2px color-mix(in oklch, var(--status-conflict-border) 30%, transparent);
+        }
+        .schedule-live-block {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0 0 10px;
+            padding: 9px 12px;
+            border: 1px solid var(--status-conflict-border);
+            border-radius: 8px;
+            background: var(--status-conflict-bg);
+            color: var(--status-conflict-fg);
+            font-size: 12.5px;
+            font-weight: 800;
+        }
+        .schedule-live-block-icon { font-size: 14px; }
+        /* ── Date hint + multi-day toggle ──────────────────────── */
+        .date-day-hint {
+            margin-top: 5px;
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 9px;
+            border-radius: 999px;
+            background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface));
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 20%, var(--schedule-border));
+            color: var(--brand-navy);
+            font-size: 12px;
+            font-weight: 800;
+        }
+        .schedule-multiday-toggle {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            margin-top: 9px;
+            cursor: pointer;
+            color: var(--fg-2);
+            font-size: 12.5px;
+            font-weight: 750;
+            line-height: 1.4;
+        }
+        .schedule-multiday-toggle input {
+            width: 16px;
+            height: 16px;
+            margin-top: 1px;
+            accent-color: var(--brand-navy);
+            flex: 0 0 auto;
+        }
+        .schedule-multiday-toggle small {
+            display: block;
+            margin-top: 1px;
+            color: var(--fg-3);
+            font-weight: 650;
+            font-size: 11.5px;
+        }
+        .schedule-date-fields {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px 18px;
+            align-items: start;
+        }
+        @media (max-width: 640px) {
+            .schedule-date-fields { grid-template-columns: 1fr; }
+        }
+        .schedule-type-head {
+            font-size: 12px;
+            font-weight: 850;
+            color: var(--fg-2);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            margin-bottom: 8px;
+        }
+        .schedule-type-seg {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+        }
+        .schedule-type-opt {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding: 10px 12px;
+            border: 1px solid var(--schedule-border);
+            border-radius: 8px;
+            background: var(--surface);
+            cursor: pointer;
+            text-align: left;
+            transition: border-color 0.12s, background 0.12s;
+        }
+        .schedule-type-opt strong { font-size: 13.5px; font-weight: 850; color: var(--fg-1); }
+        .schedule-type-opt small { font-size: 11.5px; font-weight: 650; color: var(--fg-3); line-height: 1.35; }
+        .schedule-type-opt:hover { border-color: var(--schedule-border-strong); }
+        .schedule-type-opt.is-active {
+            border-color: var(--brand-navy);
+            background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface));
+            box-shadow: inset 0 0 0 1px var(--brand-navy);
+        }
+        .schedule-type-opt.is-active strong { color: var(--brand-navy); }
+        @media (max-width: 640px) {
+            .schedule-type-seg { grid-template-columns: 1fr; }
         }
         .series-range-switch {
             min-height: 44px;
@@ -1687,11 +1968,282 @@
         /* ── โหมดรายการตารางสอนของรายวิชาเดี่ยว (co-sched-table) ── */
         .co-sched-table-wrap {
             overflow-x: hidden;
+            overflow-y: visible;
             border: 1px solid var(--schedule-border);
             border-radius: 0 0 10px 10px;
             background: var(--surface);
             box-shadow: none;
             margin-top: 0;
+        }
+        /* ── วันนอกช่วงปีการศึกษา — soft gray + disable interaction ── */
+        .is-outside-academic {
+            background: oklch(96.2% 0.003 232) !important;
+            color: oklch(62% 0.012 232) !important;
+            cursor: not-allowed;
+        }
+        .grid-cell.grid-head.is-outside-academic {
+            color: oklch(58% 0.012 232) !important;
+            font-weight: 600;
+        }
+        .grid-cell.grid-head.is-outside-academic .caption {
+            opacity: 0.7;
+        }
+        .month-calendar-day.is-outside-academic .month-day-number {
+            color: oklch(62% 0.012 232);
+            opacity: 0.75;
+        }
+        .month-calendar-day.is-outside-academic .month-empty {
+            display: none;
+        }
+        .month-calendar-day.is-outside-academic .month-day-items {
+            pointer-events: none;
+        }
+        /* ── หัวกลุ่ม "วัน" ในตารางแบบรายการ — กดได้เพื่อย่อ/ขยาย ── */
+        .sched-day-group-header {
+            scroll-margin-top: 80px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .sched-day-group-header:focus-visible {
+            outline: 2px solid var(--brand-navy);
+            outline-offset: -2px;
+        }
+        /* selector เจาะจง (tr+td) เพื่อชนะ .co-sched-row td:first-child ที่ specificity สูง — กันแถบแรกสีเพี้ยน */
+        tr.sched-day-group-header td.sched-day-group-cell {
+            padding: 11px 16px;
+            /* หัวข้อวัน = พื้น tint + แถบซ้ายบาง ๆ → อ่านออกว่าเป็นหัวข้อ แต่เส้นบาง สีอ่อน ไม่เข้ม */
+            background: oklch(96% 0.008 232);
+            color: var(--fg-1);
+            /* เลิกใช้ position:sticky — บน border-collapse ทำให้เกิดช่องว่าง 13px ใต้หัวคอลัมน์ (Chromium) */
+            border-top: 1px solid var(--schedule-border);
+            border-bottom: 1px solid var(--schedule-border);
+            box-shadow: inset 3px 0 0 0 color-mix(in oklch, var(--brand-navy) 45%, transparent);
+        }
+        .sched-day-group-header.is-collapsed td.sched-day-group-cell {
+            background: oklch(97.5% 0.004 232);
+            box-shadow: inset 3px 0 0 0 var(--schedule-border-strong);
+        }
+        .sched-day-group-inner {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .sched-day-group-chevron {
+            color: var(--brand-navy);
+            transition: transform 0.2s ease;
+            flex-shrink: 0;
+        }
+        .sched-day-group-chevron.is-collapsed {
+            transform: rotate(-90deg);
+        }
+        .sched-day-group-hint {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--fg-3);
+            font-style: italic;
+        }
+        .sched-day-group-badge {
+            margin-bottom: 0;
+            font-size: 14px !important;
+            font-weight: 900 !important;
+            padding: 5px 14px !important;
+            border-radius: 6px;
+            letter-spacing: 0.02em;
+        }
+        .sched-day-group-date {
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--fg-1);
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.01em;
+        }
+        .sched-day-group-week {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 9px;
+            border: 1px solid var(--brand-navy);
+            border-radius: 999px;
+            background: #fff;
+            color: var(--brand-navy);
+            font-size: 11.5px;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            white-space: nowrap;
+        }
+        .sched-day-group-count {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--brand-navy);
+        }
+        .sched-day-add {
+            margin-left: auto;
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border: 1px solid var(--brand-navy);
+            border-radius: 6px;
+            background: var(--surface);
+            color: var(--brand-navy);
+            font-size: 12px;
+            font-weight: 800;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: background 0.12s, color 0.12s;
+        }
+        .sched-day-add:hover {
+            background: var(--brand-navy);
+            color: #fff;
+        }
+        .sched-day-group-header.is-empty-day {
+            cursor: default;
+        }
+        tr.sched-day-group-header.is-empty-day td.sched-day-group-cell {
+            background: oklch(97.7% 0.006 232);
+            box-shadow: inset 3px 0 0 0 color-mix(in oklch, var(--schedule-muted) 34%, transparent);
+        }
+        .sched-day-group-count.is-muted {
+            color: var(--fg-3);
+            font-weight: 700;
+        }
+        .sched-day-empty-copy {
+            margin-left: 2px;
+            color: var(--fg-3);
+            font-size: 12.5px;
+            font-weight: 600;
+        }
+        /* ── Week filter — custom dropdown ── */
+        .week-filter {
+            position: relative;
+        }
+        .week-filter-trigger {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            width: 100%;
+            min-height: 42px;
+            padding: 8px 14px;
+            border: 1px solid var(--schedule-border-strong);
+            border-radius: 8px;
+            background: var(--surface);
+            color: var(--fg-1);
+            font: inherit;
+            font-size: 14px;
+            font-weight: 800;
+            letter-spacing: 0.01em;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: border-color 0.12s, background 0.12s;
+        }
+        .week-filter-trigger:hover {
+            border-color: var(--brand-navy);
+        }
+        .week-filter-trigger.is-active {
+            background: var(--brand-navy);
+            border-color: var(--brand-navy);
+            color: #fff;
+        }
+        .week-filter-trigger-chevron { color: var(--fg-3); }
+        .week-filter-trigger.is-active .week-filter-trigger-chevron { color: rgba(255, 255, 255, 0.8); }
+        .week-filter-trigger-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .week-filter-trigger-chevron {
+            flex-shrink: 0;
+            transition: transform 0.18s;
+        }
+        .week-filter-trigger-chevron.is-open {
+            transform: rotate(180deg);
+        }
+        .week-filter-pop {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            z-index: 30;
+            max-height: 320px;
+            overflow-y: auto;
+            padding: 4px;
+            border: 1px solid var(--schedule-border-strong);
+            border-radius: 10px;
+            background: #fff;
+            box-shadow: 0 12px 28px -8px rgba(15, 30, 60, 0.22), 0 2px 6px rgba(15, 30, 60, 0.08);
+        }
+        .week-filter-pop::-webkit-scrollbar {
+            width: 10px;
+        }
+        .week-filter-pop::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .week-filter-pop::-webkit-scrollbar-thumb {
+            background: oklch(82% 0.025 232);
+            border-radius: 999px;
+            border: 2px solid #fff;
+        }
+        .week-filter-section {
+            padding: 8px 12px 4px;
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--fg-3);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .week-filter-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            width: 100%;
+            padding: 8px 12px;
+            border: 0;
+            border-radius: 7px;
+            background: transparent;
+            color: var(--fg-1);
+            font: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: left;
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+        .week-filter-item:hover {
+            background: var(--brand-navy-50);
+        }
+        .week-filter-item.is-selected {
+            background: var(--brand-navy);
+            color: #fff;
+        }
+        .week-filter-item.is-empty {
+            color: var(--fg-3);
+            font-weight: 500;
+        }
+        .week-filter-item.is-empty.is-selected {
+            color: #fff;
+        }
+        .week-filter-item.is-all {
+            font-weight: 800;
+            color: var(--brand-navy);
+        }
+        .week-filter-item.is-all.is-selected {
+            color: #fff;
+        }
+        .week-filter-count {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--brand-navy);
+            white-space: nowrap;
+        }
+        .week-filter-item.is-selected .week-filter-count {
+            color: oklch(92% 0.018 232);
+        }
+        .week-filter-check {
+            font-weight: 900;
+            color: inherit;
         }
         .co-sched-table {
             width: 100%;
@@ -1711,12 +2263,8 @@
             white-space: nowrap;
         }
         .co-sched-row {
-            transition: all 0.2s ease;
             cursor: pointer;
             border-bottom: 1px solid var(--schedule-border);
-        }
-        .co-sched-row:hover {
-            background: oklch(97% 0.012 232) !important;
         }
         .co-sched-row:focus-within {
             background: oklch(97% 0.012 232) !important;
@@ -1965,6 +2513,53 @@
             text-align: center;
             font-size: 11.5px;
             font-weight: 900;
+        }
+        /* ช่องว่างในตาราง grid — คลิกเพื่อเพิ่มกิจกรรม (เติมวัน+เวลาให้) */
+        .grid-cell.is-addable {
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.16s, box-shadow 0.16s;
+        }
+        .grid-cell.is-addable::before {
+            content: "+";
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            width: 24px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 7px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 10%, var(--schedule-border));
+            border-bottom-color: color-mix(in oklch, var(--brand-navy) 16%, var(--schedule-border));
+            background: linear-gradient(
+                180deg,
+                color-mix(in oklch, var(--surface) 96%, oklch(96% 0.016 232)),
+                color-mix(in oklch, var(--brand-navy) 2%, var(--surface))
+            );
+            color: color-mix(in oklch, var(--brand-navy) 30%, var(--schedule-muted));
+            font-size: 15px;
+            font-weight: 800;
+            line-height: 1;
+            opacity: 0.34;
+            pointer-events: none;
+            box-shadow: 0 1px 2px oklch(0% 0 0 / 0.025), inset 0 1px 0 oklch(100% 0 0 / 0.5);
+            transition: opacity 0.16s, border-color 0.16s, background 0.16s, color 0.16s, transform 0.16s, box-shadow 0.16s;
+        }
+        .grid-cell.is-addable:hover,
+        .grid-cell.is-addable:focus-visible {
+            background-color: color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
+            box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--brand-navy) 16%, transparent);
+        }
+        .grid-cell.is-addable:hover::before,
+        .grid-cell.is-addable:focus-visible::before {
+            opacity: 1;
+            border-color: color-mix(in oklch, var(--brand-navy) 72%, var(--schedule-border));
+            background: var(--brand-navy);
+            color: var(--surface);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px oklch(0% 0 0 / 0.11);
         }
         .grid-time {
             background: oklch(97% 0.007 232);
@@ -3756,6 +4351,12 @@
             scheduleActivity: '',
             scheduleGroup: '',
             scheduleInstructor: '',
+            scheduleWeek: '',
+            scheduleWeeks: @js($scheduleWeekOptions->mapWithKeys(fn ($option) => [(string) $option['week'] => [
+                'week' => (string) $option['week'],
+                'monday' => $option['monday'],
+            ]])->toArray() ?: (object) []),
+            collapsedDays: @js($groupedSchedules->keys()->mapWithKeys(fn ($k) => [str_replace('-', '', $k) => false])->toArray() ?: (object) []),
             schedulePeriod: @js($schedulePeriod ?? 'week'),
             includeWeekends: @js((bool) ($includeWeekends ?? false)),
             gridJumpDate: @js($formatDate($selectedScheduleDate ?? $weekStart)),
@@ -3770,6 +4371,26 @@
             defaultSeriesEndWeek: @js(max(1, (int) ($courseOffering->teaching_weeks ?? 1))),
             createStartDate: @js(old('start_date') ? $formatDate(\Carbon\CarbonImmutable::parse(old('start_date'))) : ''),
             createEndDate: @js(old('end_date') ? $formatDate(\Carbon\CarbonImmutable::parse(old('end_date'))) : ''),
+            createMultiDay: @js((bool) (old('start_date') && old('end_date') && old('start_date') !== old('end_date'))),
+            academicStartMonday: @js($academicStartDate ? $academicStartDate->startOfWeek(\Carbon\CarbonInterface::MONDAY)->toDateString() : null),
+            scheduleDateHint(thaiStr) {
+                const info = window.tpssDateInfo(thaiStr, this.academicStartMonday);
+                if (!info) return '';
+                return info.week ? `${info.dayName} · สัปดาห์ที่ ${info.week}` : info.dayName;
+            },
+            csrf: @js(csrf_token()),
+            copyWeekOpen: false,
+            copyWeekCurrent: @js(($weekStart ?? null) ? $weekStart->toDateString() : null),
+            copyWeekSource: @js(($weekStart ?? null) ? $weekStart->subDays(7)->toDateString() : null),
+            copyWeekTarget: @js(($weekStart ?? null) ? $weekStart->toDateString() : null),
+            copyWeekPreview: null,
+            copyWeekLoading: false,
+            copyWeekError: '',
+            liveIssues: {},
+            liveChecking: false,
+            liveTimer: null,
+            get liveBlocking() { return Object.keys(this.liveIssues).length > 0; },
+            liveIssue(field) { return this.liveIssues[field] || []; },
             init() {
                 this.$watch('view', val => sessionStorage.setItem('tpss-schedule-view', val));
                 this.$watch('selectedOfferingId', () => {
@@ -3804,9 +4425,19 @@
                         this.$nextTick(() => { window.tpssInitChoices(document.querySelector('.schedule-modal.is-form')); });
                     }
                 });
+                // กิจกรรมวันเดียว: ให้วันจบ = วันเริ่ม อัตโนมัติ (ผู้ใช้กรอกช่องเดียว)
+                this.$watch('createStartDate', (v) => { if (!this.createMultiDay) this.createEndDate = v; });
+                this.$watch('createMultiDay', (v) => { if (!v) this.createEndDate = this.createStartDate; });
                 this.$watch('editModal', (val) => {
+                    this.liveIssues = {};
+                    if (this.liveTimer) { clearTimeout(this.liveTimer); this.liveTimer = null; }
                     if (val) {
-                        this.$nextTick(() => { window.tpssInitChoices(document.querySelector('.schedule-modal.is-form')); });
+                        this.$nextTick(() => {
+                            window.tpssInitChoices(document.querySelector('.schedule-modal.is-form'));
+                            // ตรวจการชนทันทีจากค่าที่กรอกไว้แล้วในรายการที่เปิดแก้ (selector ใช้ single quote เท่านั้น — กัน x-data attribute พัง)
+                            const editForm = document.querySelector('form[data-schedule-check]');
+                            if (editForm) this.runScheduleCheck(editForm);
+                        });
                     }
                 });
                 this.$watch('detailModal', (val) => {
@@ -3838,6 +4469,76 @@
             },
             closeCreateDatePickers() {
                 document.dispatchEvent(new CustomEvent('tpss:close-date-popovers'));
+            },
+            openCopyWeek() {
+                this.copyWeekError = '';
+                this.copyWeekPreview = null;
+                // มาที่ = สัปดาห์ที่กำลังดูอยู่ (มักเป็นสัปดาห์ว่าง), ดึงจาก = สัปดาห์ก่อนหน้าเป็น default
+                this.copyWeekTarget = this.copyWeekCurrent;
+                this.copyWeekSource = window.tpssShiftIso(this.copyWeekCurrent, -7);
+                this.copyWeekOpen = true;
+                this.$nextTick(() => this.refreshCopyWeekPreview());
+            },
+            shiftCopyWeekSource(weeks) {
+                if (!this.copyWeekSource) return;
+                const next = window.tpssShiftIso(this.copyWeekSource, weeks * 7);
+                if (next === this.copyWeekTarget) return; // ต้นทางต้องไม่ใช่สัปดาห์เดียวกับปลายทาง
+                this.copyWeekSource = next;
+                this.refreshCopyWeekPreview();
+            },
+            shiftCopyWeekTarget(weeks) {
+                if (!this.copyWeekTarget) return;
+                const next = window.tpssShiftIso(this.copyWeekTarget, weeks * 7);
+                if (next === this.copyWeekSource) return; // ปลายทางต้องไม่ใช่สัปดาห์เดียวกับต้นทาง
+                this.copyWeekTarget = next;
+                this.refreshCopyWeekPreview();
+            },
+            async refreshCopyWeekPreview() {
+                const url = @js((! $isWorkspace && $courseOffering) ? route('maker.course_offerings.schedules.copy_week.preview', $courseOffering) : '');
+                if (!url || !this.copyWeekSource || !this.copyWeekTarget) return;
+                this.copyWeekLoading = true;
+                this.copyWeekError = '';
+                try {
+                    const res = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': this.csrf },
+                        body: JSON.stringify({ source_week_start: this.copyWeekSource, target_week_start: this.copyWeekTarget }),
+                    });
+                    if (!res.ok) throw new Error('preview failed');
+                    this.copyWeekPreview = await res.json();
+                } catch (e) {
+                    this.copyWeekError = 'ไม่สามารถตรวจสอบได้ ลองใหม่อีกครั้ง';
+                } finally {
+                    this.copyWeekLoading = false;
+                }
+            },
+            submitCopyWeek() {
+                if (this.$refs.copyWeekForm) this.$refs.copyWeekForm.submit();
+            },
+            queueScheduleCheck(formEl) {
+                const form = formEl || this.$refs.createForm;
+                if (this.liveTimer) clearTimeout(this.liveTimer);
+                this.liveTimer = setTimeout(() => this.runScheduleCheck(form), 400);
+            },
+            async runScheduleCheck(formEl) {
+                const url = @js((! $isWorkspace && $courseOffering) ? route('maker.course_offerings.schedules.check_conflicts', $courseOffering) : '');
+                const form = formEl || this.$refs.createForm;
+                if (!url || !form) return;
+                this.liveChecking = true;
+                try {
+                    const res = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': this.csrf },
+                        body: new FormData(form),
+                    });
+                    if (!res.ok) throw new Error('check failed');
+                    const data = await res.json();
+                    this.liveIssues = data.fields || {};
+                } catch (e) {
+                    this.liveIssues = {};
+                } finally {
+                    this.liveChecking = false;
+                }
             },
             restoreSeriesWeekDefaults() {
                 this.$nextTick(() => {
@@ -4013,7 +4714,8 @@
                 return (!keyword || item.search.includes(keyword))
                     && (!this.scheduleActivity || item.activity === this.scheduleActivity)
                     && (!this.scheduleGroup || item.groups.includes(this.scheduleGroup))
-                    && (!this.scheduleInstructor || item.instructors.includes(this.scheduleInstructor));
+                    && (!this.scheduleInstructor || item.instructors.includes(this.scheduleInstructor))
+                    && (!this.scheduleWeek || item.week === this.scheduleWeek);
             },
             matchedScheduleCount() {
                 return this.scheduleItems.filter((item) => this.matchesSchedule(item.id)).length;
@@ -4021,17 +4723,69 @@
             dayHasMatches(ids) {
                 return ids.some((id) => this.matchesSchedule(id));
             },
+            hasActiveScheduleFilters() {
+                return !!(this.normalizedScheduleSearch()
+                    || this.scheduleActivity
+                    || this.scheduleGroup
+                    || this.scheduleInstructor);
+            },
+            scheduleDateHasMatches(date) {
+                return this.scheduleItems.some((item) => item.date === date && this.matchesSchedule(item.id));
+            },
+            scheduleWeekDays() {
+                if (!this.scheduleWeek || !this.scheduleWeeks[this.scheduleWeek]?.monday) return [];
+
+                const base = new Date(`${this.scheduleWeeks[this.scheduleWeek].monday}T00:00:00`);
+                if (Number.isNaN(base.getTime())) return [];
+
+                const dayNames = {
+                    1: 'จันทร์',
+                    2: 'อังคาร',
+                    3: 'พุธ',
+                    4: 'พฤหัสบดี',
+                    5: 'ศุกร์',
+                    6: 'เสาร์',
+                    7: 'อาทิตย์',
+                };
+                const length = this.includeWeekends ? 7 : 5;
+
+                return Array.from({ length }, (_, index) => {
+                    const date = new Date(base);
+                    date.setDate(base.getDate() + index);
+                    const iso = [
+                        date.getFullYear(),
+                        String(date.getMonth() + 1).padStart(2, '0'),
+                        String(date.getDate()).padStart(2, '0'),
+                    ].join('-');
+                    const isoDay = index + 1;
+
+                    return {
+                        iso,
+                        isoDay,
+                        name: dayNames[isoDay] || '',
+                        display: this.toThaiDateDisplay(iso),
+                        week: this.scheduleWeek,
+                    };
+                });
+            },
+            toggleDay(dateKey) {
+                this.collapsedDays = { ...this.collapsedDays, [dateKey]: ! this.collapsedDays[dateKey] };
+            },
             resetScheduleFilters() {
                 this.scheduleSearch = '';
                 this.scheduleActivity = '';
                 this.scheduleGroup = '';
                 this.scheduleInstructor = '';
+                this.scheduleWeek = '';
             },
             resetCreateForm(date = null) {
                 const form = this.$refs.createForm;
                 this.createInstructorSearch = '';
                 this.createGroupSearch = '';
                 this.selectedOfferingId = this.initialSelectedOfferingId;
+                this.liveIssues = {};
+                this.createMultiDay = false;
+                if (this.liveTimer) { clearTimeout(this.liveTimer); this.liveTimer = null; }
                 this.setCreateMode(this.defaultCreateMode);
 
                 if (!form) return;
@@ -4098,8 +4852,17 @@
 
                 this.detailModal = null;
                 this.editModal = null;
-                this.resetCreateForm(date || this.defaultCreateDate);
+                // เติมวันที่ให้เฉพาะตอนกดจากหัววันใน grid หรือคลิกช่องว่าง (ส่ง date มาตรง ๆ) — ปุ่มเพิ่มทั่วไปเว้นว่างให้ผู้ใช้เลือกเอง
+                this.resetCreateForm(date);
                 this.showCreate = true;
+            },
+            // คลิกช่องว่างใน grid → เปิด modal พร้อมเติมวัน + เวลาเริ่มของช่องนั้น
+            openCreateAt(date, time) {
+                if (!this.calendarAllowsCreate) return;
+                this.openCreate(date);
+                this.$nextTick(() => {
+                    setTimeout(() => { window.tpssSetTimePicker('start_time', time); }, 50);
+                });
             },
             openEdit(id) {
                 this.detailModal = null;
@@ -4245,6 +5008,64 @@
                 window.location.href = url.toString();
             }
 
+            // ── Copy-week helpers (วันที่แบบ local ไม่โดน UTC shift) ──
+            window.tpssShiftIso = function (iso, days) {
+                if (!iso) return iso;
+                const dt = new Date(iso + 'T00:00:00');
+                dt.setDate(dt.getDate() + days);
+                const y = dt.getFullYear();
+                const m = String(dt.getMonth() + 1).padStart(2, '0');
+                const d = String(dt.getDate()).padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            };
+            window.tpssThaiWeekLabel = function (iso) {
+                if (!iso) return '-';
+                const months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+                const [y, m, d] = iso.split('-').map(Number);
+                const end = window.tpssShiftIso(iso, 6).split('-').map(Number);
+                return `${d} ${months[m - 1]} ${y + 543} – ${end[2]} ${months[end[1] - 1]} ${end[0] + 543}`;
+            };
+            // แปลงวันที่ พ.ศ. (วว/ดด/พ.ศ.) → { dayName, week } สำหรับ hint ใต้ช่องวันที่
+            window.tpssDateInfo = function (thaiStr, academicMondayIso) {
+                const m = (thaiStr || '').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+                if (!m) return null;
+                const date = new Date(+m[3] - 543, +m[2] - 1, +m[1]);
+                if (isNaN(date.getTime())) return null;
+                const days = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
+                const dayName = 'วัน' + days[date.getDay()];
+                let week = null;
+                if (academicMondayIso) {
+                    const toMonday = (dt) => { const x = new Date(dt); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
+                    const a = toMonday(new Date(academicMondayIso + 'T00:00:00'));
+                    const t = toMonday(date);
+                    week = Math.max(1, Math.floor((t - a) / (7 * 86400000)) + 1);
+                }
+                return { dayName, week };
+            };
+            // ตั้งค่า time-picker (custom widget) แบบ programmatic — ใช้ตอนคลิกช่องว่างใน grid
+            window.tpssSetTimePicker = function (hiddenId, value) {
+                const hidden = document.getElementById(hiddenId);
+                const picker = document.querySelector(`.time-picker[data-tp-hidden='${hiddenId}']`);
+                const m = String(value || '').match(/^(\d{1,2}):(\d{2})$/);
+                if (!hidden || !picker || !m) return;
+                const h = m[1].padStart(2, '0');
+                const mi = m[2];
+                hidden.value = h + ':' + mi;
+                picker.dataset.tpHour = h;
+                picker.dataset.tpMin = mi;
+                const hourEl = picker.querySelector('.tp-val-hour');
+                const minEl = picker.querySelector('.tp-val-min');
+                if (hourEl) hourEl.textContent = h;
+                if (minEl) minEl.textContent = mi;
+                const drop = picker.querySelector('.tp-drop');
+                if (drop) {
+                    drop.querySelectorAll('.tp-hour-item').forEach((li) => li.classList.toggle('tp-sel', li.dataset.val === h && li.dataset.cycle === '1'));
+                    drop.querySelectorAll('.tp-min-item').forEach((li) => li.classList.toggle('tp-sel', li.dataset.val === mi && li.dataset.cycle === '1'));
+                }
+                hidden.dispatchEvent(new Event('input', { bubbles: true }));
+                hidden.dispatchEvent(new Event('change', { bubbles: true }));
+            };
+
             // Recompute grid-row start/span for activity items based on visible times.
             // This helps the grid reflect edited start/end times without a full reload.
             window.tpssRecomputeGridRows = function () {
@@ -4284,7 +5105,7 @@
                             const minutesFromStart = Math.max(0, minStart - gridStartMinutes);
                             const rowsStart = Math.floor(minutesFromStart / minuteStep) + 2;
                             const span = Math.max(1, Math.ceil(Math.max(5, maxEnd - minStart) / minuteStep));
-                            cell.style.gridRow = \ / span \;
+                            cell.style.gridRow = `${rowsStart} / span ${span}`;
                             const stackDuration = maxEnd - minStart;
                             stack.querySelectorAll('.grid-activity-card').forEach(card => {
                                 const timeEl = card.querySelector('.grid-activity-time');
@@ -4315,7 +5136,7 @@
                         const minutesFromStart = Math.max(0, startMinutes - gridStartMinutes);
                         const rowsStart = Math.floor(minutesFromStart / minuteStep) + 2;
                         const span = Math.max(1, Math.ceil((endMinutes - startMinutes) / minuteStep));
-                        cell.style.gridRow = \ / span \;
+                        cell.style.gridRow = `${rowsStart} / span ${span}`;
                     });
                 } catch (err) {
                     console.error('tpssRecomputeGridRows error', err);
@@ -4443,14 +5264,21 @@
                         <span>รายละเอียดรายวิชา</span>
                     </a>
                     @if($canEdit)
+                        @php
+                            $hasStudentGroups = $courseOffering->studentGroups->isNotEmpty();
+                            $canCreateScheduleNow = $canCreateInCurrentPeriod && $hasStudentGroups;
+                            $createDisabledHint = ! $canCreateInCurrentPeriod
+                                ? $outsideCreateHint
+                                : (! $hasStudentGroups ? 'สร้างกลุ่มนักศึกษาก่อนจึงจะเพิ่มรายการสอนได้' : '');
+                        @endphp
                         <button
                             type="button"
-                            class="btn btn-primary {{ ! $canCreateInCurrentPeriod ? 'is-disabled' : '' }}"
+                            class="btn btn-primary {{ ! $canCreateScheduleNow ? 'is-disabled' : '' }}"
                             data-testid="schedule-create-link"
                             @click="openCreate()"
-                            @disabled(! $canCreateInCurrentPeriod)
-                            title="{{ ! $canCreateInCurrentPeriod ? $outsideCreateHint : '' }}"
-                            aria-disabled="{{ ! $canCreateInCurrentPeriod ? 'true' : 'false' }}"
+                            @disabled(! $canCreateScheduleNow)
+                            title="{{ $createDisabledHint }}"
+                            aria-disabled="{{ ! $canCreateScheduleNow ? 'true' : 'false' }}"
                             style="min-height:34px;padding:6px 12px;font-size:12.5px;"
                         >+ เพิ่มรายการสอน</button>
                     @endif
@@ -4461,6 +5289,53 @@
                     <span class="course-stat"><strong>{{ $eligibleScheduleInstructors($courseOffering)->count() }}</strong> ผู้สอน</span>
                 </div>
             </section>
+
+            {{-- ── แจ้งเตือน: ยังไม่มีกลุ่มนักศึกษา ── --}}
+            @if($courseOffering->studentGroups->isEmpty())
+                <div
+                    class="no-student-groups-banner"
+                    role="alert"
+                    data-testid="schedule-no-student-groups-banner"
+                    style="
+                        display:flex;
+                        align-items:center;
+                        gap:14px;
+                        flex-wrap:wrap;
+                        margin-bottom:14px;
+                        padding:14px 18px;
+                        border:1px solid var(--status-warning-border);
+                        background:var(--status-warning-bg);
+                        color:var(--status-warning-fg);
+                        border-radius:10px;
+                        font-size:13px;
+                        font-weight:600;
+                    "
+                >
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0;">
+                        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    <div style="flex:1;min-width:200px;">
+                        <div style="font-weight:800;margin-bottom:2px;">ยังไม่มีกลุ่มนักศึกษาในรายวิชานี้</div>
+                        <div style="font-weight:500;font-size:12.5px;opacity:0.85;">ต้องสร้างกลุ่มนักศึกษาก่อนจึงจะเพิ่มรายการสอนได้</div>
+                    </div>
+                    @if($canEdit)
+                        <a
+                            href="{{ route('maker.course_offerings.show', $courseOffering) }}#student-groups"
+                            class="btn btn-primary"
+                            data-testid="schedule-go-create-student-groups"
+                            style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:6px 14px;font-size:12.5px;"
+                        >
+                            <span>ไปสร้างกลุ่มนักศึกษา</span>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                                <polyline points="12 5 19 12 12 19"></polyline>
+                            </svg>
+                        </a>
+                    @endif
+                </div>
+            @endif
 
             {{-- ── รายการตารางสอน (Card Layout) ── --}}
             <div class="card">
@@ -4512,6 +5387,16 @@
                             @click="toggleWeekends()"
                             aria-pressed="{{ ($includeWeekends ?? false) ? 'true' : 'false' }}"
                         >เสาร์-อาทิตย์</button>
+                        @if($canEdit)
+                        <button
+                            type="button"
+                            class="weekend-toggle copy-week-trigger"
+                            x-show="schedulePeriod === 'week'"
+                            x-cloak
+                            @click="openCopyWeek()"
+                            data-testid="schedule-copy-week-button"
+                        >คัดลอกกิจกรรมจากสัปดาห์อื่น</button>
+                        @endif
                         <div class="schedule-toggle" role="group" aria-label="รูปแบบการแสดงตาราง">
                             <button type="button" :class="{ 'is-active': view === 'list' }" @click="view = 'list'" data-testid="schedule-list-toggle">แบบรายการ</button>
                             <button type="button" :class="{ 'is-active': view === 'grid' }" @click="view = 'grid'" data-testid="schedule-grid-toggle">แบบตาราง</button>
@@ -4519,6 +5404,51 @@
                     </div>
                 </div>
                 <div class="schedule-filter-bar" x-show="view === 'list'" x-cloak>
+                    @php
+                        $activeWeeks = $scheduleWeekOptions->filter(fn ($w) => $w['count'] > 0)->values();
+                        $emptyWeeks = $scheduleWeekOptions->filter(fn ($w) => $w['count'] === 0)->values();
+                    @endphp
+                    <div class="week-filter" x-data="{ weekOpen: false }" @click.outside="weekOpen = false" @keydown.escape.window="weekOpen = false">
+                        <button
+                            type="button"
+                            class="week-filter-trigger"
+                            :class="scheduleWeek ? 'is-active' : ''"
+                            @click="weekOpen = !weekOpen"
+                            :aria-expanded="weekOpen ? 'true' : 'false'"
+                            aria-haspopup="listbox"
+                            data-testid="schedule-week-filter"
+                        >
+                            <span class="week-filter-trigger-label">
+                                <span x-text="scheduleWeek ? 'สัปดาห์ที่ ' + scheduleWeek : 'ทุกสัปดาห์'"></span>
+                            </span>
+                            <svg class="week-filter-trigger-chevron" :class="weekOpen ? 'is-open' : ''" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <polyline points="6 9 12 15 18 9"/>
+                            </svg>
+                        </button>
+                        <div class="week-filter-pop" x-show="weekOpen" x-transition.opacity.duration.120ms x-cloak role="listbox">
+                            <button type="button" class="week-filter-item is-all" :class="!scheduleWeek ? 'is-selected' : ''" @click="scheduleWeek = ''; weekOpen = false">
+                                <span>ทุกสัปดาห์</span>
+                                <svg class="week-filter-check" x-show="!scheduleWeek" x-cloak width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                            </button>
+                            @if($activeWeeks->isNotEmpty())
+                                <div class="week-filter-section">มีรายการสอน · {{ $activeWeeks->count() }} สัปดาห์</div>
+                                @foreach($activeWeeks as $option)
+                                    <button type="button" class="week-filter-item" :class="scheduleWeek === '{{ $option['week'] }}' ? 'is-selected' : ''" @click="scheduleWeek = '{{ $option['week'] }}'; weekOpen = false">
+                                        <span>สัปดาห์ที่ {{ $option['week'] }}</span>
+                                        <span class="week-filter-count">{{ $option['count'] }} รายการ</span>
+                                    </button>
+                                @endforeach
+                            @endif
+                            @if($emptyWeeks->isNotEmpty())
+                                <div class="week-filter-section">สัปดาห์อื่นๆ · {{ $emptyWeeks->count() }} สัปดาห์</div>
+                                @foreach($emptyWeeks as $option)
+                                    <button type="button" class="week-filter-item is-empty" :class="scheduleWeek === '{{ $option['week'] }}' ? 'is-selected' : ''" @click="scheduleWeek = '{{ $option['week'] }}'; weekOpen = false">
+                                        <span>สัปดาห์ที่ {{ $option['week'] }}</span>
+                                    </button>
+                                @endforeach
+                            @endif
+                        </div>
+                    </div>
                     <input
                         type="search"
                         class="schedule-filter-control"
@@ -4574,17 +5504,46 @@
                                         </td>
                                     </tr>
                                 @else
-                                    @foreach($thaiDays as $dayIso => $dayName)
+                                    @foreach($groupedSchedules as $dateString => $daySchedules)
                                         @php
-                                            $daySchedules = $groupedSchedules->get($dayIso, collect());
+                                            $firstSchedule = $daySchedules->first();
+                                            $dateObj = $firstSchedule?->start_date;
+                                            $dayIso = $dateObj?->dayOfWeekIso ?? 1;
+                                            $dayName = $thaiDays[$dayIso] ?? '';
+                                            $dateKey = str_replace('-', '', $dateString);
+                                            $dayWeekNumber = $weekNumberForDate($dateObj);
                                             $dayScheduleIds = $daySchedules->pluck('id')->map(fn ($id) => (string) $id)->values();
                                         @endphp
-                                        @if($daySchedules->isNotEmpty())
-                                            <tr class="sched-day-group-header" x-show="dayHasMatches(@js($dayScheduleIds))" x-cloak>
-                                                <td colspan="6" style="background: oklch(93.5% 0.022 232); border-top: 1px solid var(--schedule-border-strong); border-bottom: 1px solid var(--schedule-border-strong); padding: 10px 16px;">
-                                                    <div style="display: flex; align-items: center; gap: 8px;">
-                                                        <span class="co-day-badge day-{{ $dayIso }}" style="margin-bottom: 0; font-size: 13px; padding: 4px 12px; border-radius: 6px;">{{ $dayName }}</span>
-                                                        <span style="font-size: 12.5px; font-weight: 800; color: var(--fg-2);">· {{ $daySchedules->count() }} รายการสอน</span>
+                                        @if($daySchedules->isNotEmpty() && $dateObj)
+                                            <tr
+                                                class="sched-day-group-header"
+                                                id="schedule-day-group-{{ $dateKey }}"
+                                                x-show="dayHasMatches(@js($dayScheduleIds))"
+                                                x-cloak
+                                                role="button"
+                                                tabindex="0"
+                                                :aria-expanded="!collapsedDays['{{ $dateKey }}'] ? 'true' : 'false'"
+                                                aria-label="สลับการแสดงรายการ {{ $dayName }} {{ $formatDate($dateObj) }}"
+                                                @click="toggleDay('{{ $dateKey }}')"
+                                                @keydown.enter.prevent="toggleDay('{{ $dateKey }}')"
+                                                @keydown.space.prevent="toggleDay('{{ $dateKey }}')"
+                                                :class="collapsedDays['{{ $dateKey }}'] ? 'is-collapsed' : ''"
+                                                data-testid="schedule-day-group-toggle"
+                                            >
+                                                <td colspan="6" class="sched-day-group-cell">
+                                                    <div class="sched-day-group-inner">
+                                                        <svg class="sched-day-group-chevron" :class="collapsedDays['{{ $dateKey }}'] ? 'is-collapsed' : ''" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                            <polyline points="6 9 12 15 18 9"/>
+                                                        </svg>
+                                                        <span class="co-day-badge day-{{ $dayIso }} sched-day-group-badge">{{ $dayName }}</span>
+                                                        <span class="sched-day-group-date">{{ $formatDate($dateObj) }}</span>
+                                                        @if($dayWeekNumber)
+                                                            <span class="sched-day-group-week">สัปดาห์ที่ {{ $dayWeekNumber }}</span>
+                                                        @endif
+                                                        <span class="sched-day-group-count">· {{ $daySchedules->count() }} รายการสอน</span>
+                                                        @if($canEdit)
+                                                            <button type="button" class="sched-day-add" @click.stop="openCreate('{{ $dateObj->toDateString() }}')" data-testid="list-day-add" title="เพิ่มกิจกรรมในวันนี้">+ เพิ่มกิจกรรม</button>
+                                                        @endif
                                                     </div>
                                                 </td>
                                             </tr>
@@ -4606,7 +5565,7 @@
                                                     }
                                                     $isMultiDay = ! $asSameDay;
                                                 @endphp
-                                                <tr role="button" tabindex="0" class="co-sched-row" :class="focusedScheduleClass('{{ $as->id }}')" style="--activity-color: {{ $activityTone($as) }};" x-show="matchesSchedule('{{ $as->id }}')" x-cloak data-schedule-id="{{ $as->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $as->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $as->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $as->id }}'">
+                                                <tr role="button" tabindex="0" class="co-sched-row" :class="focusedScheduleClass('{{ $as->id }}')" style="--activity-color: {{ $activityTone($as) }};" x-show="matchesSchedule('{{ $as->id }}') && !collapsedDays['{{ $dateKey }}']" x-cloak data-schedule-id="{{ $as->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $as->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $as->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $as->id }}'">
                                                     <td class="co-col-date" style="font-weight: 800; color: var(--fg-1); font-variant-numeric: tabular-nums; vertical-align: middle;">
                                                         @if($asSameDay)
                                                             {{ $formatDate($as->start_date) }}
@@ -4670,7 +5629,30 @@
                                             @endforeach
                                         @endif
                                     @endforeach
-                                    <tr x-show="matchedScheduleCount() === 0" x-cloak>
+                                    <template x-for="day in scheduleWeekDays()" :key="'empty-week-day-' + day.iso">
+                                        <tr class="sched-day-group-header is-empty-day" x-show="scheduleWeek && !scheduleDateHasMatches(day.iso)" x-cloak>
+                                            <td colspan="6" class="sched-day-group-cell">
+                                                <div class="sched-day-group-inner">
+                                                    <span class="co-day-badge sched-day-group-badge" :class="'day-' + day.isoDay" x-text="day.name"></span>
+                                                    <span class="sched-day-group-date" x-text="day.display"></span>
+                                                    <span class="sched-day-group-week" x-text="'สัปดาห์ที่ ' + day.week"></span>
+                                                    <span class="sched-day-group-count is-muted">· 0 รายการสอน</span>
+                                                    <span class="sched-day-empty-copy" x-text="hasActiveScheduleFilters() ? 'ไม่มีรายการที่ตรงกับตัวกรองในวันนี้' : 'ยังไม่มีกิจกรรมในวันนี้'"></span>
+                                                    @if($canEdit)
+                                                        <button type="button" class="sched-day-add" @click.stop="openCreate(day.iso)" data-testid="list-empty-day-add" title="เพิ่มกิจกรรมในวันนี้">+ เพิ่มกิจกรรม</button>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                    <tr x-show="matchedScheduleCount() === 0 && scheduleWeek && scheduleWeekDays().length === 0" x-cloak>
+                                        <td colspan="6">
+                                            <div class="schedule-empty" style="margin:16px;">
+                                                <div style="font-weight:800;color:var(--fg-2);">ยังไม่มีกิจกรรมในสัปดาห์นี้</div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr x-show="matchedScheduleCount() === 0 && !scheduleWeek" x-cloak>
                                         <td colspan="6">
                                             <div class="schedule-empty" style="margin:16px;">
                                                 <div style="font-weight:800;color:var(--fg-2);margin-bottom:4px;">ไม่พบรายการที่ตรงกับตัวกรอง</div>
@@ -4700,8 +5682,10 @@
                                 @php
                                     $dayOccurrences = $gridOccurrencesByDate->get($day->toDateString(), collect());
                                     $isOutsideMonth = $day->month !== $weekStart->month;
+                                    $isOutsideAcademic = $isDayOutsideAcademic($day);
                                 @endphp
-                                <div class="month-calendar-day {{ $isOutsideMonth ? 'is-outside' : '' }}">
+                                <div class="month-calendar-day {{ $isOutsideMonth ? 'is-outside' : '' }} {{ $isOutsideAcademic ? 'is-outside-academic' : '' }}"
+                                    @if($isOutsideAcademic) title="นอกช่วงปีการศึกษา" @endif>
                                     <div class="month-day-top">
                                         <span class="month-day-number">{{ $day->day }}</span>
                                         @if($dayOccurrences->isNotEmpty())
@@ -4748,7 +5732,8 @@
                     <div class="schedule-grid is-precise" data-grid-minute-step="{{ $gridMinuteStep }}" style="--grid-day-count: {{ max(1, $weekDays->count()) }}; --grid-minute-row-height: {{ $gridMinuteRowHeight }}px; grid-template-columns: 68px repeat({{ max(1, $weekDays->count()) }}, minmax({{ ($includeWeekends ?? false) && ($schedulePeriod ?? 'week') === 'week' ? 122 : 146 }}px, 1fr)); grid-template-rows: 44px repeat({{ $gridMinuteRowCount }}, var(--grid-minute-row-height));">
                         <div class="grid-cell grid-head" style="grid-area:1 / 1;"></div>
                         @foreach($weekDays as $dayIndex => $day)
-                            <div class="grid-cell grid-head" style="grid-area:1 / {{ $dayIndex + 2 }};">
+                            @php $dayOutside = $isDayOutsideAcademic($day); @endphp
+                            <div class="grid-cell grid-head {{ $dayOutside ? 'is-outside-academic' : '' }}" style="grid-area:1 / {{ $dayIndex + 2 }};" @if($dayOutside) title="นอกช่วงปีการศึกษา" @endif>
                                 {{ $thaiDays[$day->dayOfWeekIso] ?? $day->format('l') }}<br>
                                 <span class="caption">{{ $formatDate($day) }}</span>
                             </div>
@@ -4760,7 +5745,8 @@
                             @endphp
                             <div class="grid-cell grid-time" style="grid-column:1; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};">{{ $slot }}</div>
                             @foreach($weekDays as $dayIndex => $day)
-                                <div class="grid-cell" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};"></div>
+                                @php $dayOutside = $isDayOutsideAcademic($day); @endphp
+                                <div class="grid-cell {{ $dayOutside ? 'is-outside-academic' : '' }} {{ $canEdit && ! $dayOutside ? 'is-addable' : '' }}" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};" @if($canEdit && ! $dayOutside) @click="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" @keydown.enter.prevent="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" @keydown.space.prevent="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" role="button" tabindex="0" aria-label="เพิ่มรายการสอน {{ $formatDate($day) }} เวลา {{ $slot }}" data-testid="grid-empty-cell" title="คลิกเพื่อเพิ่มกิจกรรม {{ $slot }}" @endif></div>
                             @endforeach
                         @endforeach
 
@@ -5179,7 +6165,8 @@
                 <div class="schedule-grid is-precise" data-grid-minute-step="{{ $gridMinuteStep }}" style="--grid-day-count: {{ max(1, $weekDays->count()) }}; --grid-minute-row-height: {{ $gridMinuteRowHeight }}px; grid-template-columns: 68px repeat({{ max(1, $weekDays->count()) }}, minmax({{ ($includeWeekends ?? false) && ($schedulePeriod ?? 'week') === 'week' ? 122 : 146 }}px, 1fr)); grid-template-rows: 44px repeat({{ $gridMinuteRowCount }}, var(--grid-minute-row-height));">
                     <div class="grid-cell grid-head" style="grid-area:1 / 1;"></div>
                     @foreach($weekDays as $dayIndex => $day)
-                        <div class="grid-cell grid-head" style="grid-area:1 / {{ $dayIndex + 2 }};">
+                        @php $dayOutside = $isDayOutsideAcademic($day); @endphp
+                        <div class="grid-cell grid-head {{ $dayOutside ? 'is-outside-academic' : '' }}" style="grid-area:1 / {{ $dayIndex + 2 }};" @if($dayOutside) title="นอกช่วงปีการศึกษา" @endif>
                             {{ $thaiDays[$day->dayOfWeekIso] ?? $day->format('l') }}<br>
                             <span class="caption">{{ $formatDate($day) }}</span>
                         </div>
@@ -5191,7 +6178,8 @@
                         @endphp
                         <div class="grid-cell grid-time" style="grid-column:1; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};">{{ $slot }}</div>
                         @foreach($weekDays as $dayIndex => $day)
-                            <div class="grid-cell" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};"></div>
+                            @php $dayOutside = $isDayOutsideAcademic($day); @endphp
+                            <div class="grid-cell {{ $dayOutside ? 'is-outside-academic' : '' }} {{ $canEdit && ! $dayOutside ? 'is-addable' : '' }}" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};" @if($canEdit && ! $dayOutside) @click="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" @keydown.enter.prevent="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" @keydown.space.prevent="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" role="button" tabindex="0" aria-label="เพิ่มรายการสอน {{ $formatDate($day) }} เวลา {{ $slot }}" data-testid="grid-empty-cell" title="คลิกเพื่อเพิ่มกิจกรรม {{ $slot }}" @endif></div>
                         @endforeach
                     @endforeach
 
@@ -5768,18 +6756,27 @@
                             method="POST"
                             action="{{ route('maker.course_offerings.schedules.update', [$offering, $schedule]) }}"
                             data-testid="schedule-edit-form"
+                            data-schedule-check
+                            @input="queueScheduleCheck($el)"
+                            @change="queueScheduleCheck($el)"
                             x-data="{
                                 startDateDisplay: @js($editDateDisplay('start_date', $schedule->start_date)),
                                 endDateDisplay: @js($editDateDisplay('end_date', $schedule->end_date)),
+                                multiDay: @js((bool) ($schedule->start_date && $schedule->end_date && $schedule->start_date->toDateString() !== $schedule->end_date->toDateString())),
                                 editInstructorSearch: '',
                                 editGroupSearch: '',
                                 resourceCopySource: '',
+                                init() {
+                                    this.$watch('multiDay', (v) => { if (!v) this.endDateDisplay = this.startDateDisplay; });
+                                    this.$watch('startDateDisplay', (v) => { if (!this.multiDay) this.endDateDisplay = v; });
+                                },
                             }"
                         >
                             @csrf
                             @method('PUT')
                             <input type="hidden" name="modal_mode" value="edit">
                             <input type="hidden" name="edit_schedule_id" value="{{ $schedule->id }}">
+                            <input type="hidden" name="schedule_id" value="{{ $schedule->id }}">
                             <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
                             @if(request()->boolean('from_conflict'))
                                 <input type="hidden" name="return_to_conflicts" value="1">
@@ -5837,7 +6834,7 @@
 
                                 <div class="modal-form-grid">
                                     <div class="{{ $dateTimeConflictNote ? 'modal-field-has-conflict' : '' }}">
-                                        <label class="modal-label" for="edit_start_date_{{ $schedule->id }}">วันที่เริ่ม <span class="required-mark">*</span></label>
+                                        <label class="modal-label" for="edit_start_date_{{ $schedule->id }}"><span x-text="multiDay ? 'วันที่เริ่ม' : 'วันที่'">วันที่</span> <span class="required-mark">*</span></label>
                                         <x-thai-date-input
                                             name="start_date"
                                             :value="$editOld('start_date', $schedule->start_date?->format('Y-m-d'))"
@@ -5848,20 +6845,32 @@
                                             :year-start="$scheduleDatePickerYearStart"
                                             :year-end="$scheduleDatePickerYearEnd"
                                             x-model="startDateDisplay" />
+                                        <div class="date-day-hint" x-show="scheduleDateHint(startDateDisplay)" x-cloak x-text="scheduleDateHint(startDateDisplay)"></div>
+                                        <label class="schedule-multiday-toggle">
+                                            <input type="checkbox" :checked="multiDay" @change="multiDay = $event.target.checked" data-testid="edit-multiday-toggle">
+                                            <span>กิจกรรมต่อเนื่องหลายวัน <small>(เช่น บล็อกฝึกปฏิบัติ)</small></span>
+                                        </label>
                                     </div>
-                                    <div class="{{ $dateTimeConflictNote ? 'modal-field-has-conflict' : '' }}">
-                                        <label class="modal-label" for="edit_end_date_{{ $schedule->id }}">วันที่สิ้นสุด <span class="required-mark">*</span></label>
+                                    <div class="{{ $dateTimeConflictNote ? 'modal-field-has-conflict' : '' }}" x-show="multiDay" x-cloak>
+                                        <label class="modal-label" for="edit_end_date_{{ $schedule->id }}">ถึงวันที่ <span class="required-mark">*</span></label>
                                         <x-thai-date-input
                                             name="end_date"
                                             :value="$editOld('end_date', $schedule->end_date?->format('Y-m-d'))"
                                             id="edit_end_date_{{ $schedule->id }}"
                                             class="modal-control"
-                                            :required="true"
+                                            :required="false"
                                             :helper="false"
                                             :year-start="$scheduleDatePickerYearStart"
                                             :year-end="$scheduleDatePickerYearEnd"
+                                            x-bind:required="multiDay"
                                             x-model="endDateDisplay" />
+                                        <div class="date-day-hint" x-show="scheduleDateHint(endDateDisplay)" x-cloak x-text="scheduleDateHint(endDateDisplay)"></div>
                                     </div>
+                                    <template x-if="liveIssue('start_date').length || liveIssue('schedule').length">
+                                        <div class="modal-field-full field-live-error" data-testid="live-error-start_date">
+                                            <template x-for="msg in [...liveIssue('start_date'), ...liveIssue('schedule')]" :key="msg"><div x-text="msg"></div></template>
+                                        </div>
+                                    </template>
                                     <div class="{{ $dateTimeConflictNote ? 'modal-field-has-conflict' : '' }}">
                                         <label class="modal-label" for="edit_start_time_{{ $schedule->id }}">เวลาเริ่ม <span class="required-mark">*</span></label>
                                             @php
@@ -5959,7 +6968,7 @@
                                     </div>
                                     <div class="{{ $roomConflictNote ? 'modal-field-has-conflict' : '' }}">
                                         <label class="modal-label" for="edit_room_id_{{ $schedule->id }}">ห้อง/สถานที่</label>
-                                        <select id="edit_room_id_{{ $schedule->id }}" name="room_id" class="modal-control tpss-choices">
+                                        <select id="edit_room_id_{{ $schedule->id }}" name="room_id" class="modal-control tpss-choices" :class="liveIssue('room_id').length ? 'has-live-error' : ''">
                                             <option value="">ไม่ระบุสถานที่</option>
                                             @foreach($rooms as $roomOption)
                                                 <option value="{{ $roomOption->id }}" @selected((string) $editOld('room_id', $schedule->room_id) === (string) $roomOption->id)>
@@ -5967,6 +6976,11 @@
                                                 </option>
                                             @endforeach
                                         </select>
+                                        <template x-if="liveIssue('room_id').length">
+                                            <div class="field-live-error" data-testid="live-error-room_id">
+                                                <template x-for="msg in liveIssue('room_id')" :key="msg"><div x-text="msg"></div></template>
+                                            </div>
+                                        </template>
                                         @if($roomConflictNote)
                                             <div class="modal-conflict-field">{{ $roomConflictNote }}</div>
                                         @endif
@@ -5983,6 +6997,11 @@
 
                                 <div class="modal-section {{ $instructorConflictNote ? 'modal-field-has-conflict' : '' }}">
                                     <div class="modal-section-title">ผู้สอน <span class="required-mark">*</span></div>
+                                    <template x-if="liveIssue('instructor_ids').length || liveIssue('lead_instructor_id').length">
+                                        <div class="field-live-error" data-testid="live-error-instructor_ids">
+                                            <template x-for="msg in [...liveIssue('instructor_ids'), ...liveIssue('lead_instructor_id')]" :key="msg"><div x-text="msg"></div></template>
+                                        </div>
+                                    </template>
                                     @php
                                         $editInstructorOptions = $eligibleScheduleInstructors($offering);
                                         $editInstructorSearchItems = $editInstructorOptions
@@ -6009,6 +7028,11 @@
 
                                 <div class="modal-section {{ $groupConflictNote ? 'modal-field-has-conflict' : '' }}">
                                     <div class="modal-section-title">กลุ่มนักศึกษา <span class="required-mark">*</span></div>
+                                    <template x-if="liveIssue('student_group_ids').length">
+                                        <div class="field-live-error" data-testid="live-error-student_group_ids">
+                                            <template x-for="msg in liveIssue('student_group_ids')" :key="msg"><div x-text="msg"></div></template>
+                                        </div>
+                                    </template>
                                     @php
                                         $editGroupSearchItems = $offering->studentGroups
                                             ->map(fn ($group) => mb_strtolower($group->group_code . ' ' . $group->student_count . ' คน', 'UTF-8'))
@@ -6032,9 +7056,13 @@
                                     @endif
                                 </div>
                             </div>
+                            <div class="schedule-live-block" x-show="liveBlocking" x-cloak data-testid="schedule-live-block">
+                                <span class="schedule-live-block-icon" aria-hidden="true">⛔</span>
+                                <span>พบการชน/ข้อมูลไม่ถูกต้อง — แก้ไขจุดที่ไฮไลต์สีแดงก่อนจึงจะบันทึกได้</span>
+                            </div>
                             <div class="modal-actions">
                                 <button type="button" class="btn btn-secondary" @click="closeEdit()">ยกเลิก</button>
-                                <button type="submit" class="btn btn-primary" data-testid="schedule-submit">บันทึกการแก้ไข</button>
+                                <button type="submit" class="btn btn-primary" data-testid="schedule-submit" x-bind:disabled="liveBlocking" x-bind:title="liveBlocking ? 'แก้ไขการชนก่อนบันทึก' : ''">บันทึกการแก้ไข</button>
                             </div>
                         </form>
                     </section>
@@ -6068,7 +7096,7 @@
                         </div>
                         <button type="button" class="modal-close" @click="closeCreate()" aria-label="ปิด">×</button>
                     </div>
-                    <form method="POST" action="{{ $createAction }}" x-bind:action="createMode === 'series' ? seriesCreateAction : normalCreateAction" @submit="$el.action = createMode === 'series' ? seriesCreateAction : normalCreateAction" data-testid="schedule-form" x-ref="createForm">
+                    <form method="POST" action="{{ $createAction }}" x-bind:action="createMode === 'series' ? seriesCreateAction : normalCreateAction" @submit="$el.action = createMode === 'series' ? seriesCreateAction : normalCreateAction" @input="queueScheduleCheck($el)" @change="queueScheduleCheck($el)" data-testid="schedule-form" x-ref="createForm">
                         @csrf
                         <input type="hidden" name="modal_mode" value="create">
                         <input type="hidden" name="create_mode" x-bind:value="createMode">
@@ -6090,12 +7118,20 @@
                                 <div
                                     class="series-toggle-panel series-range-panel"
                                 >
-                                    <div class="series-toggle-choice series-summary" data-testid="schedule-repeat-weekly">
-                                        <div>
-                                            <div class="series-summary-title">สร้างรายการรายสัปดาห์อัตโนมัติ</div>
-                                            <div class="series-summary-copy">ระบบจะสร้างรายการวันและเวลาเดียวกันตามช่วงรายวิชา โดยเก็บรายละเอียดผู้สอน กลุ่มนักศึกษา ห้อง และหมายเหตุไว้ที่รายการแรก</div>
-                                        </div>
-                                        <div class="series-summary-note">สัปดาห์ถัดไปเติมผู้สอนและกลุ่มภายหลังได้</div>
+                                    <div class="schedule-type-head">ประเภทการจัดตาราง</div>
+                                    <div class="schedule-type-seg" role="group" aria-label="ประเภทการจัดตาราง" data-testid="schedule-repeat-weekly">
+                                        <button type="button" class="schedule-type-opt" :class="{ 'is-active': createMode !== 'series' && !createMultiDay }" @click="setCreateMode('single'); createMultiDay = false" data-testid="schedule-type-single">
+                                            <strong>วันเดียว</strong>
+                                            <small>กิจกรรมจบในวันเดียว</small>
+                                        </button>
+                                        <button type="button" class="schedule-type-opt" :class="{ 'is-active': createMode !== 'series' && createMultiDay }" @click="setCreateMode('single'); createMultiDay = true" data-testid="schedule-type-block">
+                                            <strong>ต่อเนื่องหลายวัน</strong>
+                                            <small>บล็อกฝึกปฏิบัติ</small>
+                                        </button>
+                                        <button type="button" class="schedule-type-opt" :class="{ 'is-active': createMode === 'series' }" @click="setCreateMode('series')" data-testid="schedule-series-toggle">
+                                            <strong>ซ้ำรายสัปดาห์</strong>
+                                            <small>Series ทั้งเทอม</small>
+                                        </button>
                                     </div>
                                     <div class="series-fields" x-show="createMode === 'series'" x-cloak>
                                         @php
@@ -6174,34 +7210,45 @@
                                     <input type="hidden" name="course_offering_id" value="{{ $courseOffering->id }}" data-testid="schedule-course-offering">
                                 @endif
 
-                                <div x-show="createMode !== 'series'" x-cloak>
-                                    <label class="modal-label" for="start_date">วันที่เริ่ม <span class="required-mark">*</span></label>
-                                    <x-thai-date-input
-                                        name="start_date"
-                                        id="start_date"
-                                        class="modal-control"
-                                        :required="false"
-                                        :helper="false"
-                                        :year-start="$scheduleDatePickerYearStart"
-                                        :year-end="$scheduleDatePickerYearEnd"
-                                        x-bind:required="createMode !== 'series'"
-                                        x-bind:disabled="createMode === 'series'"
-                                        x-model="createStartDate" />
+                                <div class="modal-field-full schedule-date-block" x-show="createMode !== 'series'" x-cloak>
+                                    <div class="schedule-date-fields">
+                                        <div>
+                                            <label class="modal-label" for="start_date"><span x-text="createMultiDay ? 'วันที่เริ่ม' : 'วันที่'">วันที่</span> <span class="required-mark">*</span></label>
+                                            <x-thai-date-input
+                                                name="start_date"
+                                                id="start_date"
+                                                class="modal-control"
+                                                :required="false"
+                                                :helper="false"
+                                                :year-start="$scheduleDatePickerYearStart"
+                                                :year-end="$scheduleDatePickerYearEnd"
+                                                x-bind:required="createMode !== 'series'"
+                                                x-bind:disabled="createMode === 'series'"
+                                                x-model="createStartDate" />
+                                            <div class="date-day-hint" x-show="scheduleDateHint(createStartDate)" x-cloak x-text="scheduleDateHint(createStartDate)" data-testid="create-date-hint"></div>
+                                        </div>
+                                        <div x-show="createMultiDay" x-cloak>
+                                            <label class="modal-label" for="end_date">ถึงวันที่ <span class="required-mark">*</span></label>
+                                            <x-thai-date-input
+                                                name="end_date"
+                                                id="end_date"
+                                                class="modal-control"
+                                                :required="false"
+                                                :helper="false"
+                                                :year-start="$scheduleDatePickerYearStart"
+                                                :year-end="$scheduleDatePickerYearEnd"
+                                                x-bind:required="createMode !== 'series' && createMultiDay"
+                                                x-bind:disabled="createMode === 'series'"
+                                                x-model="createEndDate" />
+                                            <div class="date-day-hint" x-show="scheduleDateHint(createEndDate)" x-cloak x-text="scheduleDateHint(createEndDate)"></div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div x-show="createMode !== 'series'" x-cloak>
-                                    <label class="modal-label" for="end_date">วันที่สิ้นสุด <span class="required-mark">*</span></label>
-                                    <x-thai-date-input
-                                        name="end_date"
-                                        id="end_date"
-                                        class="modal-control"
-                                        :required="false"
-                                        :helper="false"
-                                        :year-start="$scheduleDatePickerYearStart"
-                                        :year-end="$scheduleDatePickerYearEnd"
-                                        x-bind:required="createMode !== 'series'"
-                                        x-bind:disabled="createMode === 'series'"
-                                        x-model="createEndDate" />
-                                </div>
+                                <template x-if="liveIssue('start_date').length || liveIssue('schedule').length">
+                                    <div class="modal-field-full field-live-error" data-testid="live-error-start_date">
+                                        <template x-for="msg in [...liveIssue('start_date'), ...liveIssue('schedule')]" :key="msg"><div x-text="msg"></div></template>
+                                    </div>
+                                </template>
                                 <div>
                                     <label class="modal-label" for="start_time">เวลาเริ่ม <span class="required-mark">*</span></label>
                                     @php
@@ -6307,7 +7354,7 @@
                                 </div>
                                 <div>
                                     <label class="modal-label" for="room_id">ห้อง/สถานที่</label>
-                                    <select id="room_id" name="room_id" class="modal-control tpss-choices">
+                                    <select id="room_id" name="room_id" class="modal-control tpss-choices" :class="liveIssue('room_id').length ? 'has-live-error' : ''">
                                         <option value="">ไม่ระบุสถานที่</option>
                                         @foreach($rooms as $room)
                                             <option value="{{ $room->id }}" @selected((string) old('room_id') === (string) $room->id)>
@@ -6315,6 +7362,11 @@
                                             </option>
                                         @endforeach
                                     </select>
+                                    <template x-if="liveIssue('room_id').length">
+                                        <div class="field-live-error" data-testid="live-error-room_id">
+                                            <template x-for="msg in liveIssue('room_id')" :key="msg"><div x-text="msg"></div></template>
+                                        </div>
+                                    </template>
                                 </div>
                                 <div class="modal-field-full">
                                     <label class="modal-label" for="topic">หัวข้อกิจกรรม <span class="required-mark">*</span></label>
@@ -6330,6 +7382,11 @@
                                 <div x-show="selectedOfferingId === '{{ $offeringOption->id }}'" x-cloak>
                                     <div class="modal-section">
                                         <div class="modal-section-title">ผู้สอน <span class="required-mark">*</span></div>
+                                        <template x-if="liveIssue('instructor_ids').length || liveIssue('lead_instructor_id').length">
+                                            <div class="field-live-error" data-testid="live-error-instructor_ids">
+                                                <template x-for="msg in [...liveIssue('instructor_ids'), ...liveIssue('lead_instructor_id')]" :key="msg"><div x-text="msg"></div></template>
+                                            </div>
+                                        </template>
                                         <div class="optional-note" x-show="createMode === 'series'" x-cloak style="margin-bottom:8px;">ถ้าเลือกไว้ ระบบจะใส่ให้เฉพาะการ์ดสัปดาห์แรก สัปดาห์ถัดไปเติมหรือคัดลอกภายหลังได้</div>
                                         @php
                                             $createInstructorOptions = $eligibleScheduleInstructors($offeringOption);
@@ -6354,6 +7411,11 @@
 
                                     <div class="modal-section">
                                         <div class="modal-section-title">กลุ่มนักศึกษา <span class="required-mark">*</span></div>
+                                        <template x-if="liveIssue('student_group_ids').length">
+                                            <div class="field-live-error" data-testid="live-error-student_group_ids">
+                                                <template x-for="msg in liveIssue('student_group_ids')" :key="msg"><div x-text="msg"></div></template>
+                                            </div>
+                                        </template>
                                         <div class="optional-note" x-show="createMode === 'series'" x-cloak style="margin-bottom:8px;">ถ้าเลือกไว้ ระบบจะใส่ให้เฉพาะการ์ดสัปดาห์แรก สัปดาห์ถัดไปเติมหรือคัดลอกจากการ์ดที่ครบแล้วได้</div>
                                         @php
                                             $createGroupSearchItems = $offeringOption->studentGroups
@@ -6377,11 +7439,110 @@
                                 </div>
                             @endforeach
                         </div>
+                        <div class="schedule-live-block" x-show="liveBlocking" x-cloak data-testid="schedule-live-block">
+                            <span class="schedule-live-block-icon" aria-hidden="true">⛔</span>
+                            <span>พบการชน/ข้อมูลไม่ถูกต้อง — แก้ไขจุดที่ไฮไลต์สีแดงก่อนจึงจะบันทึกได้</span>
+                        </div>
                         <div class="modal-actions">
                             <button type="button" class="btn btn-secondary" @click="closeCreate()">ยกเลิก</button>
-                            <button type="submit" class="btn btn-primary" data-testid="schedule-submit">บันทึกรายการสอน</button>
+                            <button type="submit" class="btn btn-primary" data-testid="schedule-submit" x-bind:disabled="liveBlocking" x-bind:title="liveBlocking ? 'แก้ไขการชนก่อนบันทึก' : ''">บันทึกรายการสอน</button>
                         </div>
                     </form>
+                </section>
+            </div>
+        @endif
+
+        @if(! $isWorkspace && $courseOffering && $canEdit)
+            <form method="POST" action="{{ route('maker.course_offerings.schedules.copy_week', $courseOffering) }}" x-ref="copyWeekForm" style="display:none;">
+                @csrf
+                <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
+                <input type="hidden" name="source_week_start" :value="copyWeekSource">
+                <input type="hidden" name="target_week_start" :value="copyWeekTarget">
+            </form>
+
+            <div class="schedule-modal-backdrop" x-show="copyWeekOpen" x-cloak @click.self="copyWeekOpen = false" @keydown.escape.window="copyWeekOpen = false" data-testid="schedule-copy-week-modal">
+                <section class="schedule-modal is-form" role="dialog" aria-modal="true" aria-labelledby="copy-week-title">
+                    <div class="modal-handle"></div>
+                    <div class="modal-head">
+                        <div>
+                            <div class="modal-title" id="copy-week-title">คัดลอกกิจกรรมจากสัปดาห์อื่น</div>
+                            <div class="copy-week-subtitle">ดึงทุกกิจกรรมจากสัปดาห์ที่จัดไว้แล้วมาลงสัปดาห์นี้ — ระบบจะข้ามรายการที่ชนให้อัตโนมัติ</div>
+                        </div>
+                        <button type="button" class="modal-close" @click="copyWeekOpen = false" aria-label="ปิด">×</button>
+                    </div>
+                    <div class="modal-form-body">
+                        <div class="copy-week-weeks">
+                            <div class="copy-week-pill">
+                                <span class="copy-week-pill-label">ดึงจากสัปดาห์</span>
+                                <span class="copy-week-target-control">
+                                    <button type="button" class="copy-week-step" @click="shiftCopyWeekSource(-1)" aria-label="สัปดาห์ก่อนหน้า">‹</button>
+                                    <span class="copy-week-pill-date" x-text="window.tpssThaiWeekLabel(copyWeekSource)"></span>
+                                    <button type="button" class="copy-week-step" @click="shiftCopyWeekSource(1)" aria-label="สัปดาห์ถัดไป">›</button>
+                                </span>
+                            </div>
+                            <span class="copy-week-arrow" aria-hidden="true">→</span>
+                            <div class="copy-week-pill is-target">
+                                <span class="copy-week-pill-label">มาที่สัปดาห์</span>
+                                <span class="copy-week-target-control">
+                                    <button type="button" class="copy-week-step" @click="shiftCopyWeekTarget(-1)" aria-label="สัปดาห์ก่อนหน้า">‹</button>
+                                    <span class="copy-week-pill-date" x-text="window.tpssThaiWeekLabel(copyWeekTarget)"></span>
+                                    <button type="button" class="copy-week-step" @click="shiftCopyWeekTarget(1)" aria-label="สัปดาห์ถัดไป">›</button>
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="copy-week-status" x-show="copyWeekLoading">กำลังตรวจสอบการชน…</div>
+                        <div class="copy-week-status is-error" x-show="copyWeekError" x-text="copyWeekError"></div>
+
+                        <template x-if="copyWeekPreview && !copyWeekLoading">
+                            <div>
+                                <div class="copy-week-status" x-show="copyWeekPreview.total === 0">ไม่พบรายการในสัปดาห์ต้นทางให้คัดลอก</div>
+
+                                <div class="copy-week-summary" x-show="copyWeekPreview.total > 0">
+                                    <span class="copy-week-badge is-ready" x-text="'พร้อมคัดลอก ' + copyWeekPreview.ready.length + ' รายการ'"></span>
+                                    <span class="copy-week-badge is-blocked" x-show="copyWeekPreview.blocked.length" x-text="'ชน ' + copyWeekPreview.blocked.length + ' รายการ'"></span>
+                                </div>
+
+                                <ul class="copy-week-list" x-show="copyWeekPreview.ready.length">
+                                    <template x-for="item in copyWeekPreview.ready" :key="'r' + item.target_date + item.time + (item.topic || '')">
+                                        <li class="copy-week-item is-ready">
+                                            <span class="copy-week-mark" aria-hidden="true">✓</span>
+                                            <span class="copy-week-item-body">
+                                                <strong x-text="item.topic || item.activity || 'กิจกรรม'"></strong>
+                                                <small x-text="item.target_date + ' · ' + item.time + (item.room ? ' · ' + item.room : '')"></small>
+                                            </span>
+                                        </li>
+                                    </template>
+                                </ul>
+
+                                <ul class="copy-week-list" x-show="copyWeekPreview.blocked.length">
+                                    <template x-for="item in copyWeekPreview.blocked" :key="'b' + item.target_date + item.time + (item.topic || '')">
+                                        <li class="copy-week-item is-blocked">
+                                            <span class="copy-week-mark" aria-hidden="true">⛔</span>
+                                            <span class="copy-week-item-body">
+                                                <strong x-text="item.topic || item.activity || 'กิจกรรม'"></strong>
+                                                <small x-text="item.target_date + ' · ' + item.time"></small>
+                                                <template x-for="reason in item.reasons" :key="reason">
+                                                    <small class="copy-week-reason" x-text="reason"></small>
+                                                </template>
+                                            </span>
+                                        </li>
+                                    </template>
+                                </ul>
+                            </div>
+                        </template>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" @click="copyWeekOpen = false">ยกเลิก</button>
+                        <button
+                            type="button"
+                            class="btn btn-primary"
+                            @click="submitCopyWeek()"
+                            x-bind:disabled="copyWeekLoading || !copyWeekPreview || copyWeekPreview.ready.length === 0"
+                            data-testid="schedule-copy-week-confirm"
+                            x-text="(copyWeekPreview && copyWeekPreview.ready.length) ? ('คัดลอก ' + copyWeekPreview.ready.length + ' รายการ') : 'คัดลอก'"
+                        >คัดลอก</button>
+                    </div>
                 </section>
             </div>
         @endif

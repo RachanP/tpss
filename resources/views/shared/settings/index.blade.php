@@ -392,11 +392,17 @@
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>วันที่เริ่ม</label>
-                                    <x-thai-date-input name="start_date" x-model="currentYear.start_date" required />
+                                    <x-thai-date-input name="start_date" x-model="currentYear.start_date" required block-weekends
+                                        helper="เลือกเฉพาะวันจันทร์-ศุกร์"
+                                        style="{{ $errors->has('start_date') ? 'border-color: var(--red, #dc2626);' : '' }}" />
+                                    @error('start_date')
+                                        <span style="color: var(--red, #dc2626); font-size: 12px; margin-top: 4px; display: block;">{{ $message }}</span>
+                                    @enderror
                                 </div>
                                 <div class="form-group">
                                     <label>วันที่สิ้นสุด</label>
-                                    <x-thai-date-input name="end_date" x-model="currentYear.end_date" required
+                                    <x-thai-date-input name="end_date" x-model="currentYear.end_date" required block-weekends
+                                        helper="เลือกเฉพาะวันจันทร์-ศุกร์"
                                         style="{{ $errors->has('end_date') ? 'border-color: var(--red, #dc2626);' : '' }}" />
                                     @error('end_date')
                                         <span style="color: var(--red, #dc2626); font-size: 12px; margin-top: 4px; display: block;">{{ $message }}</span>

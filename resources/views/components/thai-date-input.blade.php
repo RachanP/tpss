@@ -8,6 +8,7 @@
     'yearFuture' => 1,
     'yearStart' => null,
     'yearEnd' => null,
+    'blockWeekends' => false,
 ])
 
 @php
@@ -31,7 +32,7 @@
 
 <div
     class="tdi-wrap"
-    x-data="thaiDateInput()"
+    x-data="thaiDateInput({ blockWeekends: @js((bool) $blockWeekends) })"
     @if($calendar) @click.outside="tdiClose()" @keydown.escape="tdiClose()" @endif>
     <div class="tdi-control" x-ref="tdiControl">
         <input
@@ -101,9 +102,11 @@
                         :class="{
                             'is-blank': !cell.day,
                             'is-today': cell.day && tdiDayIso(cell.day) === tdiTodayIso,
-                            'is-selected': cell.day && tdiDayIso(cell.day) === tdiSelectedIso,
+                            'is-selected': cell.day && tdiDayIso(cell.day) === tdiSelectedIso && !tdiIsBlockedDay(cell.day),
+                            'is-blocked': cell.day && tdiIsBlockedDay(cell.day),
                         }"
-                        :disabled="!cell.day"
+                        :disabled="!cell.day || tdiIsBlockedDay(cell.day)"
+                        :title="cell.day && tdiIsBlockedDay(cell.day) ? 'ไม่สามารถเลือกวันเสาร์-อาทิตย์ได้' : null"
                         @click="tdiPick(cell.day)"
                         x-text="cell.day || ''"></button>
                 </template>

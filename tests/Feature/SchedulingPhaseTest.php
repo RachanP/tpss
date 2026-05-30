@@ -146,6 +146,25 @@ class SchedulingPhaseTest extends TestCase
         $this->assertDatabaseMissing('course_offerings', ['course_id' => $inactiveCurriculumCourse->id]);
     }
 
+    public function test_academic_year_start_and_end_dates_must_be_weekdays(): void
+    {
+        $admin = $this->makeAdmin();
+        $this->actingAsAdmin($admin);
+
+        $this->post(route('admin.settings.years.store'), [
+            'name' => '2571',
+            'semester' => 1,
+            'start_date' => '01/08/2569',
+            'end_date' => '02/08/2569',
+        ])
+            ->assertSessionHasErrors(['start_date', 'end_date']);
+
+        $this->assertDatabaseMissing('academic_years', [
+            'name' => '2571',
+            'semester' => 1,
+        ]);
+    }
+
     public function test_open_is_idempotent_when_offering_already_exists(): void
     {
         $admin  = $this->makeAdmin();
@@ -284,7 +303,7 @@ class SchedulingPhaseTest extends TestCase
             'semester' => 2,
             'is_active' => false,
             'phase' => 'preparation',
-            'start_date' => '2026-11-01',
+            'start_date' => '2026-11-02',
             'end_date' => '2027-03-15',
         ]);
 
@@ -294,7 +313,7 @@ class SchedulingPhaseTest extends TestCase
             'year_id' => $targetYear->id,
             'name' => $targetYear->name,
             'semester' => $targetYear->semester,
-            'start_date' => '01/11/2569',
+            'start_date' => '02/11/2569',
             'end_date' => '15/03/2570',
             'is_active' => '1',
         ])
@@ -318,7 +337,7 @@ class SchedulingPhaseTest extends TestCase
         $nextYear = $this->makeYear([
             'name' => '2569',
             'semester' => 2,
-            'start_date' => '2026-11-01',
+            'start_date' => '2026-11-02',
             'end_date' => '2027-03-15',
             'is_active' => false,
             'phase' => 'preparation',
@@ -329,7 +348,7 @@ class SchedulingPhaseTest extends TestCase
         $this->put(route('admin.settings.years.update', $nextYear), [
             'name' => '2569',
             'semester' => 2,
-            'start_date' => '01/11/2569',
+            'start_date' => '02/11/2569',
             'end_date' => '15/03/2570',
             'is_active' => '1',
         ])->assertRedirect(route('admin.settings', ['tab' => 'academic']))
@@ -351,7 +370,7 @@ class SchedulingPhaseTest extends TestCase
         ]);
         $targetYear = $this->makeYear([
             'name' => '2569', 'semester' => 2, 'is_active' => false, 'phase' => 'preparation',
-            'start_date' => '2026-11-01', 'end_date' => '2027-03-15',
+            'start_date' => '2026-11-02', 'end_date' => '2027-03-15',
         ]);
 
         $this->actingAsAdmin($admin);
@@ -360,7 +379,7 @@ class SchedulingPhaseTest extends TestCase
         $this->put(route('admin.settings.years.update', $targetYear), [
             'name' => $targetYear->name,
             'semester' => $targetYear->semester,
-            'start_date' => '01/11/2569',
+            'start_date' => '02/11/2569',
             'end_date' => '15/03/2570',
             'is_active' => '1',
         ])
@@ -664,7 +683,7 @@ class SchedulingPhaseTest extends TestCase
         return AcademicYear::create(array_merge([
             'name'       => '2569',
             'semester'   => 1,
-            'start_date' => '2026-08-01',
+            'start_date' => '2026-08-03',
             'end_date'   => '2026-12-31',
             'is_active'  => true,
             'phase'      => 'preparation',

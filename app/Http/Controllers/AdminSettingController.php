@@ -13,6 +13,7 @@ use App\Services\AuditLogger;
 use App\Services\NavigationBadgeService;
 use App\Support\ThaiDate;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Carbon;
 
 class AdminSettingController extends Controller
 {
@@ -98,8 +99,8 @@ class AdminSettingController extends Controller
         $validated = $request->validate([
             'name'       => ['required', 'string', \Illuminate\Validation\Rule::unique('academic_years')->where('semester', $request->integer('semester'))],
             'semester'   => 'required|integer',
-            'start_date' => 'required|date',
-            'end_date'   => 'required|date|after_or_equal:start_date',
+            'start_date' => ['required', 'date', $this->weekdayDateRule('วันที่เริ่ม')],
+            'end_date'   => ['required', 'date', 'after_or_equal:start_date', $this->weekdayDateRule('วันที่สิ้นสุด')],
         ], [
             'name.unique'            => 'ปีการศึกษา ' . $request->input('name') . ' ภาคเรียนที่ ' . $request->input('semester') . ' มีอยู่แล้วในระบบ',
             'end_date.after_or_equal' => 'วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่มต้น',
@@ -165,8 +166,8 @@ class AdminSettingController extends Controller
         $validated = $request->validate([
             'name'       => ['required', 'string', \Illuminate\Validation\Rule::unique('academic_years')->where('semester', $request->integer('semester'))->ignore($year->id)],
             'semester'   => 'required|integer',
-            'start_date' => 'required|date',
-            'end_date'   => 'required|date|after_or_equal:start_date',
+            'start_date' => ['required', 'date', $this->weekdayDateRule('วันที่เริ่ม')],
+            'end_date'   => ['required', 'date', 'after_or_equal:start_date', $this->weekdayDateRule('วันที่สิ้นสุด')],
         ], [
             'name.unique'            => 'ปีการศึกษา ' . $request->input('name') . ' ภาคเรียนที่ ' . $request->input('semester') . ' มีอยู่แล้วในระบบ',
             'end_date.after_or_equal' => 'วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่มต้น',
@@ -506,5 +507,24 @@ class AdminSettingController extends Controller
                 $request->merge([$field => $iso]);
             }
         }
+    }
+
+    private function weekdayDateRule(string $label): \Closure
+    {
+        return function (string $attribute, mixed $value, \Closure $fail) use ($label): void {
+            if ($value === null || trim((string) $value) === '') {
+                return;
+            }
+
+            try {
+                $date = Carbon::parse($value);
+            } catch (\Throwable $e) {
+                return;
+            }
+
+            if ($date->isWeekend()) {
+                $fail("{$label}ต้องเป็นวันจันทร์-ศุกร์เท่านั้น");
+            }
+        };
     }
 }

@@ -349,6 +349,13 @@
         }
         .tdi-pop-day:hover:not(.is-blank) { background: var(--bg-2, #f1f5f9); }
         .tdi-pop-day.is-blank { visibility: hidden; cursor: default; }
+        .tdi-pop-day.is-blocked {
+            color: var(--fg-3, #6b7280);
+            background: var(--bg-1, #f8fafc);
+            cursor: not-allowed;
+            opacity: 0.62;
+        }
+        .tdi-pop-day.is-blocked:hover { background: var(--bg-1, #f8fafc); }
         .tdi-pop-day.is-today { border-color: var(--brand-navy, #1e3a5f); font-weight: 800; }
         .tdi-pop-day.is-selected {
             background: var(--brand-navy, #1e3a5f);
@@ -358,7 +365,8 @@
     </style>
     <script>
         document.addEventListener('alpine:init', () => {
-            Alpine.data('thaiDateInput', () => ({
+            Alpine.data('thaiDateInput', (options = {}) => ({
+                blockWeekends: !!options.blockWeekends,
                 calOpen: false,
                 calYear: new Date().getFullYear(),
                 calMonth: new Date().getMonth(),
@@ -404,6 +412,11 @@
                 },
                 tdiDayIso(day) {
                     return this.calYear + '-' + String(this.calMonth + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+                },
+                tdiIsBlockedDay(day) {
+                    if (!this.blockWeekends || !day) return false;
+                    const dayOfWeek = new Date(this.calYear, this.calMonth, day).getDay();
+                    return dayOfWeek === 0 || dayOfWeek === 6;
                 },
                 // sync เดือน/ปีในปฏิทินจากค่าที่พิมพ์ไว้ในช่อง (วว/ดด/พ.ศ.)
                 tdiSync() {
@@ -532,7 +545,7 @@
                     this.tdiPositionPop();
                 },
                 tdiPick(day) {
-                    if (!day) return;
+                    if (!day || this.tdiIsBlockedDay(day)) return;
                     const thai = String(day).padStart(2, '0')
                         + '/' + String(this.calMonth + 1).padStart(2, '0')
                         + '/' + (this.calYear + 543);

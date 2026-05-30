@@ -63,112 +63,111 @@
         <script>
             document.addEventListener('alpine:init', () => {
                 if (! Alpine.store('offeringPage')) {
-                    Alpine.store('offeringPage', { editing: false });
+                    const COLLAPSE_KEY = 'tpss.offeringPage.collapsed';
+                    let saved = {};
+                    try { saved = JSON.parse(localStorage.getItem(COLLAPSE_KEY) || '{}') || {}; } catch (e) {}
+                    Alpine.store('offeringPage', {
+                        editing: {
+                            courseInfo: false,
+                            instructors: false,
+                            studentGroups: false,
+                        },
+                        collapsed: {
+                            courseInfo: !!saved.courseInfo,
+                            instructors: !!saved.instructors,
+                            studentGroups: !!saved.studentGroups,
+                        },
+                        toggleCollapse(key) {
+                            this.collapsed[key] = !this.collapsed[key];
+                            try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify(this.collapsed)); } catch (e) {}
+                        },
+                        startEditing(key) {
+                            // เปิด edit mode → expand section อัตโนมัติ
+                            this.editing[key] = !this.editing[key];
+                            if (this.editing[key] && this.collapsed[key]) {
+                                this.collapsed[key] = false;
+                                try { localStorage.setItem('tpss.offeringPage.collapsed', JSON.stringify(this.collapsed)); } catch (e) {}
+                            }
+                        },
+                    });
                 }
             });
         </script>
 
-        {{-- Edit-mode toggle banner --}}
-        <div
-            x-data
-            class="offering-edit-banner"
-            :class="$store.offeringPage.editing ? 'is-editing' : ''"
-            data-testid="edit-mode-banner"
-        >
-            <div class="offering-edit-banner-text">
-                <svg x-show="$store.offeringPage.editing" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="offering-edit-banner-icon">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                </svg>
-                <svg x-show="!$store.offeringPage.editing" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="offering-edit-banner-icon">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                    <circle cx="12" cy="12" r="3"/>
-                </svg>
-                <div class="offering-edit-banner-copy">
-                    <div class="offering-edit-banner-title" x-text="$store.offeringPage.editing ? 'โหมดแก้ไข' : 'โหมดดูอย่างเดียว'"></div>
-                    <div class="offering-edit-banner-sub" x-text="$store.offeringPage.editing ? 'การเปลี่ยนแปลงจะบันทึกอัตโนมัติ' : 'กดปุ่มขวาเพื่อเริ่มแก้ไข'"></div>
-                </div>
-            </div>
-            <button
-                type="button"
-                @click="$store.offeringPage.editing = !$store.offeringPage.editing"
-                data-testid="edit-mode-toggle"
-                class="offering-edit-banner-btn"
-                x-text="$store.offeringPage.editing ? 'ปิดโหมดแก้ไข' : 'เปิดโหมดแก้ไข'"
-            ></button>
-        </div>
-
         <style>
-            .offering-edit-banner {
-                display: grid;
-                grid-template-columns: 1fr auto;
+            /* ── Section collapse chevron ── */
+            .section-collapse-toggle {
+                display: inline-flex;
                 align-items: center;
-                gap: 16px;
-                padding: 12px 18px;
-                margin-bottom: 20px;
+                justify-content: center;
+                width: 32px;
+                height: 32px;
+                margin-left: 4px;
                 border: 1px solid var(--border-1);
-                border-radius: 8px;
                 background: var(--bg-2);
                 color: var(--fg-2);
-                transition: background 0.15s, border-color 0.15s, color 0.15s;
+                border-radius: 8px;
+                cursor: pointer;
+                font-family: inherit;
+                transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.2s;
             }
-            .offering-edit-banner.is-editing {
-                background: var(--status-success-bg);
-                border-color: var(--status-success-border);
-                color: var(--status-success-fg);
+            .section-collapse-toggle:hover {
+                background: var(--brand-navy-50);
+                color: var(--brand-navy);
+                border-color: var(--brand-navy-300);
             }
-            .offering-edit-banner-text {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                min-width: 0;
+            .section-collapse-toggle svg {
+                transition: transform 0.2s ease;
             }
-            .offering-edit-banner-icon {
-                flex-shrink: 0;
+            .section-collapse-toggle.is-collapsed svg {
+                transform: rotate(-90deg);
             }
-            .offering-edit-banner-copy {
-                min-width: 0;
-            }
-            .offering-edit-banner-title {
-                font-weight: 700;
-                font-size: 0.9375rem;
-            }
-            .offering-edit-banner-sub {
-                margin-top: 2px;
-                font-size: 0.75rem;
-                color: inherit;
-                opacity: 0.85;
-            }
-            .offering-edit-banner-btn {
+            .section-collapse-summary {
                 display: inline-flex;
                 align-items: center;
                 gap: 6px;
-                padding: 8px 18px;
-                font-size: 0.875rem;
+                flex-wrap: wrap;
+                margin-top: 4px;
+                font-size: 0.75rem;
+                color: var(--fg-3);
+                font-weight: 500;
+            }
+            .section-collapse-summary strong {
+                color: var(--fg-2);
                 font-weight: 600;
-                border: 1px solid var(--brand-navy);
-                background: var(--brand-navy);
-                color: #fff;
+            }
+
+            /* ── Section quick toggle ("แก้ไข" ใน card-hdr ของแต่ละ section) ── */
+            .section-edit-quick-toggle {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                height: 32px;
+                padding: 0 14px;
+                margin-left: auto;
+                border: 1px solid var(--border-1);
+                background: var(--bg-2);
+                color: var(--fg-2);
                 border-radius: 8px;
+                font-size: 13px;
+                font-weight: 600;
+                line-height: 1;
                 cursor: pointer;
                 font-family: inherit;
                 outline: none;
                 white-space: nowrap;
                 transition: all 0.15s;
+                flex-shrink: 0;
             }
-            .offering-edit-banner.is-editing .offering-edit-banner-btn {
-                border-color: var(--status-success-fg);
-                background: var(--status-success-fg);
+            .section-edit-quick-toggle:hover {
+                border-color: var(--brand-navy);
+                color: var(--brand-navy);
+                background: var(--brand-navy-50);
             }
-            /* Narrow viewport — hide sub-text so banner stays single-row */
-            @media (max-width: 1024px) {
-                .offering-edit-banner-sub {
-                    display: none;
-                }
-                .offering-edit-banner-btn {
-                    padding: 7px 14px;
-                    font-size: 0.8125rem;
-                }
+            /* override .is-locked-section button opacity — ปุ่มนี้ต้องเด่นเสมอ */
+            .is-locked-section button.section-edit-quick-toggle {
+                opacity: 1 !important;
             }
         </style>
     @endif
@@ -324,11 +323,35 @@
                 </div>
                 <div>
                     <div class="card-ttl">ข้อมูลรายวิชา</div>
-                    <div class="caption" style="margin-top:4px;">ข้อมูลจากรายวิชาหลักและการตั้งค่าระบบ</div>
+                    <div class="caption" style="margin-top:4px;" x-data x-show="!$store.offeringPage.collapsed.courseInfo">ข้อมูลจากรายวิชาหลักและการตั้งค่าระบบ</div>
+                    <div x-data x-show="$store.offeringPage.collapsed.courseInfo" x-cloak class="section-collapse-summary">
+                        <strong>{{ $course->course_code ?? '-' }}</strong>
+                        <span>·</span>
+                        <span>{{ $course->name_th ?? '-' }}</span>
+                    </div>
                 </div>
             </div>
+            <div style="display:inline-flex;align-items:center;gap:0;margin-left:auto;" x-data>
+                @if($canEdit)
+                    <button
+                        type="button"
+                        @click="$store.offeringPage.startEditing('courseInfo')"
+                        class="section-edit-quick-toggle"
+                        :aria-pressed="$store.offeringPage.editing.courseInfo ? 'true' : 'false'"
+                        data-testid="section-edit-quick-toggle-course-info"
+                        x-text="$store.offeringPage.editing.courseInfo ? 'เสร็จสิ้น' : 'แก้ไข'"
+                    ></button>
+                @endif
+                <button type="button"
+                    @click="$store.offeringPage.toggleCollapse('courseInfo')"
+                    :class="$store.offeringPage.collapsed.courseInfo ? 'section-collapse-toggle is-collapsed' : 'section-collapse-toggle'"
+                    :aria-label="$store.offeringPage.collapsed.courseInfo ? 'ขยายส่วนข้อมูลรายวิชา' : 'ยุบส่วนข้อมูลรายวิชา'"
+                    :aria-expanded="$store.offeringPage.collapsed.courseInfo ? 'false' : 'true'">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+            </div>
         </div>
-        <div style="padding:20px;">
+        <div style="padding:20px;" x-data x-show="!$store.offeringPage.collapsed.courseInfo" x-cloak>
             @if($courseInfoErrorKey)
                 <div class="section-error-alert">
                     {{ $errors->first($courseInfoErrorKey) }}
@@ -411,7 +434,7 @@
                 </div>
                 <div class="caption" style="margin-bottom:14px;">ข้อมูลข้างต้นมาจาก Master Data (อ่านอย่างเดียว) — ส่วนนี้คือค่าที่หัวหน้าวิชาปรับได้ตามสถานการณ์ของภาคเรียน</div>
 
-                <fieldset :disabled="!$store.offeringPage.editing" style="border:0;padding:0;margin:0;min-width:0;">
+                <fieldset :disabled="!$store.offeringPage.editing.courseInfo" style="border:0;padding:0;margin:0;min-width:0;">
                     <div class="form-group" style="margin-bottom:14px;">
                         <label>การจัดรอบฝึกปฏิบัติ</label>
                         <select x-model="rotation" @change="onRotationChange()">
@@ -559,7 +582,9 @@
         $courseDeptId = $course?->department_id;
     @endphp
 
-    <div class="card" id="instructors" @if($canEdit) :class="!$store.offeringPage.editing ? 'is-locked-section' : ''" :inert="!$store.offeringPage.editing" @endif style="overflow:visible;scroll-margin-top:72px;" x-data="{
+    <div class="offering-2col-grid">
+
+    <div class="card" id="instructors" @if($canEdit) :class="!$store.offeringPage.editing.instructors ? 'is-locked-section' : ''" @endif style="overflow:visible;scroll-margin-top:72px;" x-data="{
         pool: {{ $poolData->toJson() }},
         all: {{ $allInstructors->toJson() }},
         roles: {{ $courseRolesData->toJson() }},
@@ -647,11 +672,39 @@
                 </div>
                 <div>
                     <div class="card-ttl">ชุดผู้สอน</div>
-                    <div class="caption" style="margin-top:4px;" x-text="pool.length ? pool.length + ' คน' : 'ยังไม่มีผู้สอน'"></div>
+                    <div class="caption" style="margin-top:4px;" x-show="!$store.offeringPage.collapsed.instructors" x-text="pool.length ? pool.length + ' คน' : 'ยังไม่มีผู้สอน'"></div>
+                    <div x-show="$store.offeringPage.collapsed.instructors" x-cloak class="section-collapse-summary">
+                        <strong x-text="pool.length + ' คน'"></strong>
+                        <template x-if="pool.length > 0">
+                            <span>·</span>
+                        </template>
+                        <template x-if="pool.length > 0">
+                            <span x-text="pool[0].name + (pool.length > 1 ? ' +' + (pool.length - 1) : '')"></span>
+                        </template>
+                    </div>
                 </div>
             </div>
+            <div style="display:inline-flex;align-items:center;gap:0;margin-left:auto;">
+                @if($canEdit)
+                    <button
+                        type="button"
+                        @click="$store.offeringPage.startEditing('instructors')"
+                        class="section-edit-quick-toggle"
+                        :aria-pressed="$store.offeringPage.editing.instructors ? 'true' : 'false'"
+                        data-testid="section-edit-quick-toggle-instructors"
+                        x-text="$store.offeringPage.editing.instructors ? 'เสร็จสิ้น' : 'แก้ไข'"
+                    ></button>
+                @endif
+                <button type="button"
+                    @click="$store.offeringPage.toggleCollapse('instructors')"
+                    :class="$store.offeringPage.collapsed.instructors ? 'section-collapse-toggle is-collapsed' : 'section-collapse-toggle'"
+                    :aria-label="$store.offeringPage.collapsed.instructors ? 'ขยายส่วนชุดผู้สอน' : 'ยุบส่วนชุดผู้สอน'"
+                    :aria-expanded="$store.offeringPage.collapsed.instructors ? 'false' : 'true'">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+            </div>
         </div>
-        <div style="padding:20px;">
+        <div style="padding:20px;" x-show="!$store.offeringPage.collapsed.instructors" x-cloak @if($canEdit) :inert="!$store.offeringPage.editing.instructors" @endif>
             @if($instructorErrorKey)
                 <div class="section-error-alert">
                     {{ $errors->first($instructorErrorKey) }}
@@ -840,6 +893,37 @@
     <style>
         @keyframes spin { to { transform: translateY(-50%) rotate(360deg); } }
 
+        /* 2-column layout for instructors + student-groups (desktop ≥1200px) */
+        .offering-2col-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 24px;
+            align-items: start;
+        }
+        .offering-2col-grid > .card {
+            margin-bottom: 0;
+            min-width: 0;
+        }
+        @media (min-width: 1200px) {
+            .offering-2col-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        /* Major section separation — medium navy outline on the 3 primary cards */
+        .card#course-info,
+        .card#instructors,
+        .card#student-groups {
+            border: 1px solid var(--brand-navy-500);
+        }
+        .card#course-info > .card-hdr,
+        .card#instructors > .card-hdr,
+        .card#student-groups > .card-hdr {
+            border-bottom: 1px solid var(--brand-navy-500);
+            border-top-left-radius: var(--r-lg);
+            border-top-right-radius: var(--r-lg);
+        }
+
         .back-link {
             display: inline-flex;
             align-items: center;
@@ -899,7 +983,7 @@
         .course-role-control {
             position: relative;
             flex-shrink: 0;
-            width: 250px;
+            width: 170px;
         }
 
         .course-role-trigger,
@@ -951,7 +1035,7 @@
 
         .course-role-badge-head {
             flex-shrink: 0;
-            width: 250px;
+            width: 170px;
             background: oklch(96% 0.055 150);
             border: 1px solid oklch(78% 0.12 150);
             color: oklch(33% 0.11 150);
@@ -1479,11 +1563,33 @@
             justify-content: space-between;
             gap: 12px;
             flex-wrap: wrap;
-            margin-bottom: 10px;
-            padding: 10px 12px;
-            border: 1px solid oklch(89% 0.018 235);
+            margin-bottom: 12px;
+            padding: 10px 14px;
+            border: 1px solid var(--brand-navy-300);
             border-radius: 8px;
-            background: oklch(98% 0.006 235);
+            background: var(--brand-navy-50);
+        }
+
+        .student-group-bulkbar-info {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.8125rem;
+            color: var(--fg-2);
+            font-weight: 600;
+        }
+
+        .student-group-bulkbar-count {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 9px;
+            border-radius: 999px;
+            background: var(--brand-navy);
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 700;
+            line-height: 1.2;
         }
 
         .student-group-bulkbar-actions {
@@ -1491,6 +1597,13 @@
             align-items: center;
             gap: 8px;
             flex-wrap: wrap;
+        }
+
+        .student-group-bulkbar-divider {
+            width: 1px;
+            height: 22px;
+            background: var(--brand-navy-300);
+            opacity: 0.6;
         }
 
         .btn-bulk-delete {
@@ -1629,6 +1742,227 @@
             }
         }
 
+        /* Student-group section dividers — clear visual separation between create form and list */
+        .sg-section {
+            margin-top: 22px;
+        }
+        .sg-section:first-of-type {
+            margin-top: 0;
+        }
+        .sg-section-divider {
+            margin: 22px 0 18px;
+            border: 0;
+            border-top: 1px dashed var(--border-1);
+        }
+        .sg-section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--brand-navy);
+        }
+        .sg-section-header-title {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--brand-navy);
+            line-height: 1.2;
+        }
+        .sg-section-header-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            background: var(--brand-navy-50);
+            color: var(--brand-navy);
+            flex-shrink: 0;
+        }
+        .sg-section-header-meta {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.75rem;
+            color: var(--fg-3);
+            font-weight: 600;
+        }
+        .sg-section-header-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            border-radius: 999px;
+            background: var(--brand-navy-50);
+            color: var(--brand-navy);
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+
+        /* Student-group color swatch + palette popover (Mahidol Navy theme) */
+        .sg-swatch-trigger {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: 2px solid #fff;
+            box-shadow: 0 0 0 1px var(--border-1);
+            cursor: pointer;
+            outline: none;
+            transition: box-shadow 0.15s ease, transform 0.1s ease;
+            padding: 0;
+        }
+        .sg-swatch-trigger:hover {
+            box-shadow: 0 0 0 1px var(--brand-navy-300), 0 2px 6px rgba(15, 23, 42, 0.12);
+        }
+        .sg-swatch-trigger.sg-swatch-open {
+            box-shadow: 0 0 0 2px var(--brand-navy);
+        }
+        .sg-color-popover {
+            position: absolute;
+            top: 38px;
+            left: 0;
+            z-index: 30;
+            min-width: 232px;
+            background: #fff;
+            border: 1px solid var(--border-1);
+            border-top: 3px solid var(--brand-navy);
+            border-radius: 8px;
+            box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16);
+            overflow: hidden;
+        }
+        .sg-color-popover-hdr {
+            padding: 12px 14px 10px;
+            background: var(--brand-navy-50);
+            border-bottom: 1px solid var(--border-1);
+        }
+        .sg-color-popover-ttl {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 0.875rem;
+            color: var(--brand-navy);
+            letter-spacing: 0.01em;
+            line-height: 1.2;
+        }
+        .sg-color-popover-sub {
+            margin-top: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            color: var(--fg-2);
+            font-weight: 600;
+        }
+        .sg-color-popover-chip {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.18);
+        }
+        .sg-color-popover-section {
+            padding: 12px 14px 14px;
+        }
+        .sg-color-popover-label {
+            font-size: 0.6875rem;
+            font-weight: 700;
+            color: var(--fg-3);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 8px;
+        }
+        .sg-color-swatches {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+        }
+        .sg-color-swatch {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            border: 1px solid rgba(15, 23, 42, 0.12);
+            cursor: pointer;
+            outline: none;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            transition: transform 0.1s ease, box-shadow 0.15s ease;
+        }
+        .sg-color-swatch:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(15, 23, 42, 0.18);
+        }
+        .sg-color-swatch.is-selected {
+            box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--brand-navy);
+        }
+
+        /* Custom color picker section */
+        .sg-color-popover-custom {
+            border-top: 1px dashed var(--border-1);
+            padding-top: 12px;
+        }
+        .sg-color-custom-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px;
+            border: 1px solid var(--border-1);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: border-color 0.15s ease, background 0.15s ease;
+        }
+        .sg-color-custom-row:hover {
+            border-color: var(--brand-navy-300);
+            background: var(--brand-navy-50);
+        }
+        .sg-color-custom-swatch {
+            position: relative;
+            display: inline-block;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            border: 1px solid rgba(15, 23, 42, 0.12);
+            box-shadow: inset 0 0 0 2px #fff;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+        .sg-color-custom-swatch input[type="color"] {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+            padding: 0;
+            background: transparent;
+            cursor: pointer;
+            opacity: 0;
+        }
+        .sg-color-custom-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            line-height: 1.2;
+        }
+        .sg-color-custom-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--fg-2);
+        }
+        .sg-color-custom-hex {
+            font-size: 0.6875rem;
+            font-weight: 700;
+            color: var(--brand-navy);
+            font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+            letter-spacing: 0.04em;
+        }
+
         /* Inline student group editor — at narrow widths fold to simpler 2-col layout */
         @media (max-width: 900px) {
             .student-group-editor-row {
@@ -1653,17 +1987,46 @@
                 </div>
                 <div style="flex:1;">
                     <div class="card-ttl">กลุ่มนักศึกษา</div>
-                    <div class="caption" style="margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                    <div class="caption" style="margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;" x-data x-show="!$store.offeringPage.collapsed.studentGroups">
                         <span>เปิดรับ {{ $studentLimit ?: '-' }} คน · จัดกลุ่มแล้ว {{ $studentTotal }} คน</span>
                         @if($ungrouped > 0)
                             <span class="badge badge-warn" style="font-size:0.7rem;">ยังไม่ได้จัดกลุ่ม {{ $ungrouped }} คน</span>
                         @endif
                     </div>
+                    <div x-data x-show="$store.offeringPage.collapsed.studentGroups" x-cloak class="section-collapse-summary">
+                        <strong>{{ $courseOffering->studentGroups->count() }} กลุ่ม</strong>
+                        <span>·</span>
+                        <span>{{ $studentTotal }} / {{ $studentLimit ?: '-' }} คน</span>
+                        @if($ungrouped > 0)
+                            <span class="badge badge-warn" style="font-size:0.65rem;margin-left:4px;">ยังไม่ครบ {{ $ungrouped }}</span>
+                        @endif
+                    </div>
                 </div>
+            </div>
+            <div style="display:inline-flex;align-items:center;gap:0;margin-left:auto;" x-data>
+                @if($canEdit)
+                    <button
+                        type="button"
+                        @click="$store.offeringPage.startEditing('studentGroups')"
+                        class="section-edit-quick-toggle"
+                        :aria-pressed="$store.offeringPage.editing.studentGroups ? 'true' : 'false'"
+                        data-testid="section-edit-quick-toggle-student-groups"
+                        x-text="$store.offeringPage.editing.studentGroups ? 'เสร็จสิ้น' : 'แก้ไข'"
+                    ></button>
+                @endif
+                <button type="button"
+                    @click="$store.offeringPage.toggleCollapse('studentGroups')"
+                    :class="$store.offeringPage.collapsed.studentGroups ? 'section-collapse-toggle is-collapsed' : 'section-collapse-toggle'"
+                    :aria-label="$store.offeringPage.collapsed.studentGroups ? 'ขยายส่วนกลุ่มนักศึกษา' : 'ยุบส่วนกลุ่มนักศึกษา'"
+                    :aria-expanded="$store.offeringPage.collapsed.studentGroups ? 'false' : 'true'">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
             </div>
         </div>
         <div
             style="padding:20px;"
+            x-show="!$store.offeringPage.collapsed.studentGroups"
+            x-cloak
             x-data="{
                 selectedGroups: [],
                 groupIds: {{ Js::from($courseOffering->studentGroups->pluck('id')->map(fn ($id) => (string) $id)->values()) }},
@@ -1701,7 +2064,7 @@
 
             @if($canEdit)
             @php $hasExistingGroups = $courseOffering->studentGroups->isNotEmpty(); @endphp
-            <div x-show="$store.offeringPage.editing" x-cloak x-data="{
+            <div x-show="$store.offeringPage.editing.studentGroups" x-cloak x-data="{
                     open: {{ ($hasExistingGroups || $ungrouped <= 0) ? 'false' : 'true' }},
                     ungroupedCount: {{ (int) $ungrouped }},
                     showSuccessFlash: false,
@@ -1786,7 +2149,7 @@
                     total: {{ (int) max(1, $ungrouped) }},
                     customMode: {{ old('group_counts') ? 'true' : 'false' }},
                     customCounts: {{ Js::from(array_map('intval', old('group_counts', []))) }},
-                    palette: ['#2563eb', '#16a34a', '#ca8a04', '#dc2626', '#7c3aed', '#0891b2', '#db2777', '#4f46e5', '#65a30d', '#ea580c'],
+                    palette: ['#3b82f6', '#2563eb', '#1e40af', '#0891b2', '#06b6d4', '#22c55e', '#16a34a', '#166534', '#65a30d', '#84cc16', '#f59e0b', '#ca8a04', '#ea580c', '#f97316', '#92400e', '#ef4444', '#dc2626', '#db2777', '#7c3aed', '#a855f7'],
                     get safeCount() { return Math.max(1, parseInt(this.count) || 1); },
                     get safeTotal() { return Math.max(1, parseInt(this.total) || 1); },
                     get base() { return Math.floor(this.safeTotal / this.safeCount); },
@@ -1962,25 +2325,9 @@
                     @csrf
                     @method('DELETE')
                 </form>
-                <div class="student-group-bulkbar" x-show="$store.offeringPage.editing" x-cloak>
-                    <div class="caption">
-                        เลือกกลุ่มที่ต้องการลบได้หลายกลุ่ม
-                        <span x-show="selectedGroups.length > 0" x-text="'· เลือกแล้ว ' + selectedGroups.length + ' กลุ่ม'"></span>
-                    </div>
-                    <div class="student-group-bulkbar-actions">
-                        @if($courseOffering->studentGroups->count() >= 2)
-                            <button type="button"
-                                @click="balanceAll()"
-                                data-testid="balance-all-groups"
-                                style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:600;padding:7px 14px;border-radius:6px;font-family:inherit;border:1px solid var(--brand-navy-300);background:var(--brand-navy-50);color:var(--brand-navy);outline:none;transition:all 0.15s;"
-                                onmouseover="this.style.background='var(--brand-navy)';this.style.color='#fff'"
-                                onmouseout="this.style.background='var(--brand-navy-50)';this.style.color='var(--brand-navy)'">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                    <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
-                                </svg>
-                                ปรับยอดเท่ากัน
-                            </button>
-                        @endif
+                <div class="student-group-bulkbar" x-show="$store.offeringPage.editing.studentGroups" x-cloak>
+                    {{-- Left: selection state (checkbox + count) --}}
+                    <div class="student-group-bulkbar-info">
                         <label class="student-group-select-all">
                             <input
                                 type="checkbox"
@@ -1988,11 +2335,33 @@
                                 @change="toggleAllGroups($event.target.checked)"
                                 data-testid="bulk-group-select-all"
                             >
-                            ทั้งหมด
+                            เลือกทั้งหมด
                         </label>
-                        <button type="button" class="btn btn-ghost" style="min-height:34px;padding:6px 12px;font-size:13px;" @click="selectedGroups = []" x-show="selectedGroups.length > 0">
-                            ล้างที่เลือก
-                        </button>
+                        <span class="student-group-bulkbar-divider"></span>
+                        <span x-show="selectedGroups.length === 0" style="color:var(--fg-3);font-weight:500;">ติ๊กเลือกกลุ่มที่ต้องการลบ</span>
+                        <template x-if="selectedGroups.length > 0">
+                            <span style="display:inline-flex;align-items:center;gap:8px;">
+                                <span class="student-group-bulkbar-count" x-text="selectedGroups.length + ' กลุ่ม'"></span>
+                                <span>ถูกเลือก</span>
+                            </span>
+                        </template>
+                    </div>
+
+                    {{-- Right: actions (utility · destructive) --}}
+                    <div class="student-group-bulkbar-actions">
+                        @if($courseOffering->studentGroups->count() >= 2)
+                            <button type="button"
+                                @click="balanceAll()"
+                                data-testid="balance-all-groups"
+                                style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:600;padding:7px 14px;border-radius:6px;font-family:inherit;border:1px solid var(--brand-navy-300);background:#fff;color:var(--brand-navy);outline:none;transition:all 0.15s;"
+                                onmouseover="this.style.background='var(--brand-navy)';this.style.color='#fff'"
+                                onmouseout="this.style.background='#fff';this.style.color='var(--brand-navy)'">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+                                </svg>
+                                ปรับยอดเท่ากัน
+                            </button>
+                        @endif
                         <button
                             type="button"
                             class="btn-bulk-delete"
@@ -2000,6 +2369,9 @@
                             :disabled="selectedGroups.length < 1"
                             @click="if (selectedGroups.length > 0) confirmBulkDeleteOpen = true"
                         >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;vertical-align:-2px;">
+                                <path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                            </svg>
                             ลบกลุ่มที่เลือก
                         </button>
                     </div>
@@ -2016,7 +2388,7 @@
                 <div class="student-group-empty">ยังไม่มีกลุ่มนักศึกษา</div>
             @elseif($canEdit)
                 @php
-                    $palette = ['#2563eb', '#16a34a', '#ca8a04', '#dc2626', '#7c3aed', '#0891b2', '#db2777', '#4f46e5', '#65a30d', '#ea580c'];
+                    $palette = ['#3b82f6', '#2563eb', '#1e40af', '#0891b2', '#06b6d4', '#22c55e', '#16a34a', '#166534', '#65a30d', '#84cc16', '#f59e0b', '#ca8a04', '#ea580c', '#f97316', '#92400e', '#ef4444', '#dc2626', '#db2777', '#7c3aed', '#a855f7'];
                     $groupsJson = $courseOffering->studentGroups->map(fn($g) => [
                         'id' => $g->id,
                         'group_code' => $g->group_code,
@@ -2037,15 +2409,15 @@
                 })"
                 x-init="emitCount()"
                 @student-groups-balance.window="balanceAcrossAll($event.detail.studentLimit)"
-                :class="!$store.offeringPage.editing ? 'is-locked-section' : ''"
-                :inert="!$store.offeringPage.editing"
+                :class="!$store.offeringPage.editing.studentGroups ? 'is-locked-section' : ''"
+                :inert="!$store.offeringPage.editing.studentGroups"
                 style="background:var(--bg-1);border:1px solid var(--border-1);border-radius:10px;overflow:visible;">
                     {{-- Column header --}}
                     <div class="student-group-editor-row" style="display:grid;grid-template-columns:32px 36px 1fr 110px 32px;align-items:center;gap:12px;padding:10px 16px;background:var(--bg-2);border-bottom:1px solid var(--border-1);font-size:0.7rem;font-weight:700;color:var(--fg-3);letter-spacing:0.04em;text-transform:uppercase;">
                         <div></div>
                         <div>สี</div>
-                        <div>รหัสกลุ่ม</div>
-                        <div>นักศึกษา</div>
+                        <div style="padding-left:11px;">รหัสกลุ่ม</div>
+                        <div style="text-align:right;padding-right:11px;">นักศึกษา</div>
                         <div></div>
                     </div>
 
@@ -2069,21 +2441,59 @@
                             </div>
 
                             {{-- Color swatch + palette popover --}}
-                            <div style="position:relative;">
+                            <div style="position:relative;" @click.outside="row.palOpen = false">
                                 <button type="button"
                                     @click="row.palOpen = !row.palOpen"
-                                    @click.outside="row.palOpen = false"
                                     :style="`background:${row.color_code};`"
-                                    style="width:28px;height:28px;border-radius:6px;border:2px solid #fff;box-shadow:0 0 0 1px var(--border-1);cursor:pointer;outline:none;"
-                                    :title="'เปลี่ยนสีกลุ่ม ' + row.group_code"></button>
-                                <div x-show="row.palOpen" x-cloak x-transition.opacity
-                                     style="position:absolute;top:36px;left:0;z-index:30;display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:10px;background:#fff;border:1px solid var(--border-1);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.12);min-width:170px;">
-                                    <template x-for="color in palette" :key="color">
-                                        <button type="button"
-                                            @click="setColor(idx, color)"
-                                            :style="`background:${color};${row.color_code === color ? 'box-shadow:0 0 0 2px var(--brand-navy);' : ''}`"
-                                            style="width:24px;height:24px;border-radius:5px;border:1px solid rgba(0,0,0,0.1);cursor:pointer;outline:none;"></button>
-                                    </template>
+                                    :class="row.palOpen ? 'sg-swatch-trigger sg-swatch-open' : 'sg-swatch-trigger'"
+                                    :title="'เปลี่ยนสีกลุ่ม ' + row.group_code"
+                                    :aria-expanded="row.palOpen ? 'true' : 'false'"
+                                    aria-haspopup="dialog"></button>
+                                <div x-show="row.palOpen" x-cloak x-transition.opacity.duration.120ms
+                                     class="sg-color-popover"
+                                     role="dialog"
+                                     :aria-label="'เลือกสีกลุ่ม ' + row.group_code">
+                                    {{-- Header --}}
+                                    <div class="sg-color-popover-hdr">
+                                        <div class="sg-color-popover-ttl">เลือกสีกลุ่ม</div>
+                                        <div class="sg-color-popover-sub">
+                                            <span class="sg-color-popover-chip" :style="`background:${row.color_code};`"></span>
+                                            <span x-text="row.group_code || '—'"></span>
+                                        </div>
+                                    </div>
+                                    {{-- Palette section --}}
+                                    <div class="sg-color-popover-section">
+                                        <div class="sg-color-popover-label">จานสีมาตรฐาน</div>
+                                        <div class="sg-color-swatches">
+                                            <template x-for="color in palette" :key="color">
+                                                <button type="button"
+                                                    @click="setColor(idx, color)"
+                                                    :style="`background:${color};`"
+                                                    :class="row.color_code.toLowerCase() === color.toLowerCase() ? 'sg-color-swatch is-selected' : 'sg-color-swatch'"
+                                                    :aria-label="'เลือกสี ' + color"
+                                                    :aria-pressed="row.color_code.toLowerCase() === color.toLowerCase() ? 'true' : 'false'">
+                                                    <svg x-show="row.color_code.toLowerCase() === color.toLowerCase()" x-cloak viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                                </button>
+                                            </template>
+                                        </div>
+                                    </div>
+
+                                    {{-- Custom color picker section --}}
+                                    <div class="sg-color-popover-section sg-color-popover-custom">
+                                        <div class="sg-color-popover-label">สีกำหนดเอง</div>
+                                        <label class="sg-color-custom-row">
+                                            <span class="sg-color-custom-swatch" :style="`background:${row.color_code};`">
+                                                <input type="color"
+                                                    :value="row.color_code"
+                                                    @input="setColor(idx, $event.target.value)"
+                                                    :aria-label="'เลือกสีกำหนดเองสำหรับกลุ่ม ' + row.group_code">
+                                            </span>
+                                            <span class="sg-color-custom-info">
+                                                <span class="sg-color-custom-label">คลิกเพื่อเลือกสีอิสระ</span>
+                                                <span class="sg-color-custom-hex" x-text="row.color_code.toUpperCase()"></span>
+                                            </span>
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
 
@@ -2209,7 +2619,7 @@
                             }
                             window.dispatchEvent(new CustomEvent('student-groups-balanced'));
                         },
-                        async save(idx) {
+                        async save(idx, { isRetry = false } = {}) {
                             const row = this.rows[idx];
                             if (!row.group_code || !row.student_count) return;
                             // Cancel ในคิวก่อนหน้าของ row นี้ — กัน race ตอน user พิมพ์เร็ว ๆ
@@ -2219,6 +2629,7 @@
                             row.error = '';
                             row.saving = true;
                             row.savedFlash = false;
+                            let succeeded = false;
                             try {
                                 const formData = new FormData();
                                 formData.append('_method', 'PUT');
@@ -2240,6 +2651,7 @@
                                     row.savedFlash = true;
                                     setTimeout(() => { row.savedFlash = false; }, 1500);
                                     this.emitCount();
+                                    succeeded = true;
                                 }
                             } catch (e) {
                                 if (e.name === 'AbortError') return;
@@ -2248,6 +2660,21 @@
                                 if (row._abort === controller) {
                                     row._abort = null;
                                     row.saving = false;
+                                }
+                            }
+                            // หลัง save สำเร็จ → retry row อื่นที่ยังค้าง error
+                            // (เช่น ผู้ใช้แก้กลุ่ม B ลด count เพื่อทำให้ A ที่ error เพราะเกิน capacity ผ่านได้)
+                            // ไม่ retry ซ้อน retry — ป้องกัน loop
+                            if (succeeded && !isRetry) {
+                                this.retryErrorRows(idx);
+                            }
+                        },
+                        async retryErrorRows(skipIdx) {
+                            for (let i = 0; i < this.rows.length; i++) {
+                                if (i === skipIdx) continue;
+                                const r = this.rows[i];
+                                if (r.error && !r.saving) {
+                                    await this.save(i, { isRetry: true });
                                 }
                             }
                         },
@@ -2318,5 +2745,7 @@
             @endif
         </div>
     </div>
+
+    </div>{{-- /offering-2col-grid --}}
 
 </x-app-layout>

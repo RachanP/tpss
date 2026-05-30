@@ -12,6 +12,7 @@ use App\Models\UserRole;
 use App\Services\ScheduleConflictChecker;
 use Database\Seeders\ScheduleFlowSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
@@ -26,6 +27,10 @@ class DatabaseSeederBaselineTest extends TestCase
 
         $this->assertGreaterThan(0, AcademicYear::count());
         $this->assertSame(0, AcademicYear::where('is_active', true)->count());
+        $this->assertTrue(AcademicYear::all()->every(
+            fn (AcademicYear $year) => Carbon::parse($year->start_date)->isWeekday()
+                && Carbon::parse($year->end_date)->isWeekday()
+        ));
 
         $this->assertGreaterThan(0, Course::count());
         $this->assertSame(0, Course::where('status', 'active')->count());

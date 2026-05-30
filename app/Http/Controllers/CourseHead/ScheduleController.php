@@ -425,6 +425,13 @@ class ScheduleController extends Controller
             ? $availableOfferings->pluck('id')->all()
             : ($courseOffering ? [$courseOffering->id] : []);
 
+        // Bug #2: กรองตามผู้สอน — แสดงเฉพาะ slot ที่อาจารย์คนนี้สอน (ใช้ได้ทุก view)
+        $selectedInstructorId = $request->integer('instructor_id') ?: null;
+        $instructorFilter = fn ($query) => $query->when(
+            $selectedInstructorId,
+            fn ($q) => $q->whereHas('instructors', fn ($iq) => $iq->where('users.id', $selectedInstructorId))
+        );
+
         $firstScheduleDate = empty($offeringIds)
             ? null
             : $this->firstScheduleDate($offeringIds);
@@ -462,7 +469,8 @@ class ScheduleController extends Controller
                 $this->filterSchedulesByDateRange(
                     Schedule::query()
                         ->with($scheduleRelations)
-                        ->whereIn('course_offering_id', $offeringIds),
+                        ->whereIn('course_offering_id', $offeringIds)
+                        ->tap($instructorFilter),
                     $periodStart->toDateString(),
                     $periodEnd->toDateString()
                 )
@@ -476,6 +484,7 @@ class ScheduleController extends Controller
                     Schedule::query()
                         ->with($scheduleRelations)
                         ->whereIn('course_offering_id', $offeringIds)
+                        ->tap($instructorFilter)
                 )->get());
 
         $totalScheduleCount = $isWorkspace
@@ -489,7 +498,12 @@ class ScheduleController extends Controller
         $occurrences = $this->scheduleOccurrences($schedules, $periodStart, $gridEnd, $includeWeekends);
         $timeSlots = $this->scheduleTimeSlots($occurrences);
         $occurrencesByDate = $occurrences->groupBy(fn ($item) => $item['date']->toDateString());
-        $groupedSchedules = $allSchedules->groupBy(fn (Schedule $schedule) => $schedule->start_date?->dayOfWeekIso);
+        // List view: group by actual calendar date (start_date) เรียงตามวันที่จริง
+        // เดิมใช้ dayOfWeekIso → ทุกวันจันทร์ของหลายสัปดาห์ clump รวมกัน
+        $groupedSchedules = $allSchedules
+            ->filter(fn (Schedule $schedule) => $schedule->start_date)
+            ->sortBy(fn (Schedule $schedule) => $schedule->start_date->toDateString() . ' ' . ($schedule->start_time ?? '00:00:00'))
+            ->groupBy(fn (Schedule $schedule) => $schedule->start_date->toDateString());
         $selectedDate = CarbonImmutable::parse($baseDate)->startOfDay();
         $previousPeriod = match ($period) {
             'day' => $selectedDate->subDay(),
@@ -510,6 +524,7 @@ class ScheduleController extends Controller
             'schedules' => $schedules,
             'allSchedules' => $allSchedules,
             'totalScheduleCount' => $totalScheduleCount,
+            'selectedInstructorId' => $selectedInstructorId,
             'schedulePeriod' => $period,
             'includeWeekends' => $includeWeekends,
             'selectedScheduleDate' => $selectedDate,
@@ -524,12 +539,12 @@ class ScheduleController extends Controller
             'timeSlots' => $timeSlots,
             'activityTypes' => app(ReferenceDataCache::class)->activityTypes(),
             'rooms' => app(ReferenceDataCache::class)->activeRooms(),
-            'dayViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'day', $includeWeekends),
-            'weekViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'week', $includeWeekends),
-            'monthViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'month', $includeWeekends),
-            'previousWeekUrl' => $this->schedulePeriodUrl($courseOffering, $previousPeriod, $isWorkspace, $period, $includeWeekends),
-            'nextWeekUrl' => $this->schedulePeriodUrl($courseOffering, $nextPeriod, $isWorkspace, $period, $includeWeekends),
-            'weekendToggleUrl' => $this->schedulePeriodUrl($courseOffering, $selectedDate, $isWorkspace, $period, $period === 'week' ? ! $includeWeekends : $includeWeekends),
+            'dayViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'day', $includeWeekends, $selectedInstructorId),
+            'weekViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'week', $includeWeekends, $selectedInstructorId),
+            'monthViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'month', $includeWeekends, $selectedInstructorId),
+            'previousWeekUrl' => $this->schedulePeriodUrl($courseOffering, $previousPeriod, $isWorkspace, $period, $includeWeekends, $selectedInstructorId),
+            'nextWeekUrl' => $this->schedulePeriodUrl($courseOffering, $nextPeriod, $isWorkspace, $period, $includeWeekends, $selectedInstructorId),
+            'weekendToggleUrl' => $this->schedulePeriodUrl($courseOffering, $selectedDate, $isWorkspace, $period, $period === 'week' ? ! $includeWeekends : $includeWeekends, $selectedInstructorId),
             'coordinatorEmptyStateKey' => \App\Support\CoordinatorEmptyState::forCoordinator((int) Auth::id()),
         ];
     }
@@ -814,7 +829,8 @@ class ScheduleController extends Controller
         CarbonImmutable $date,
         bool $isWorkspace,
         string $period,
-        bool $includeWeekends = false
+        bool $includeWeekends = false,
+        ?int $instructorId = null
     ): string
     {
         $keepWeekendParam = $period === 'week' && $includeWeekends;
@@ -826,6 +842,7 @@ class ScheduleController extends Controller
                 'date' => $date->toDateString(),
                 'period' => $period,
                 'include_weekends' => $keepWeekendParam ? 1 : null,
+                'instructor_id' => $instructorId,
             ]));
         }
 
@@ -835,6 +852,7 @@ class ScheduleController extends Controller
             'date' => $date->toDateString(),
             'period' => $period,
             'include_weekends' => $keepWeekendParam ? 1 : null,
+            'instructor_id' => $instructorId,
         ]));
     }
 
@@ -1075,6 +1093,342 @@ class ScheduleController extends Controller
         return redirect()
             ->to($this->scheduleReturnUrl($request, $courseOffering, $instances->first()?->start_date?->toDateString()))
             ->with('success', "Updated {$instances->count()} weekly schedule items.");
+    }
+
+    /**
+     * Dry-run: คำนวณว่าถ้าคัดลอกทั้งสัปดาห์ slot ไหน "พร้อมคัดลอก" และ slot ไหน "ชน"
+     * โดยไม่เขียนลง DB — ใช้ render preview ก่อน commit
+     */
+    public function previewCopyWeek(
+        Request $request,
+        CourseOffering $courseOffering,
+        ScheduleConflictChecker $conflictChecker
+    ): JsonResponse {
+        $this->authorizeCourseHeadOffering($courseOffering);
+        [$sourceWeekStart, $targetWeekStart] = $this->validateCopyWeekDates($request);
+        $courseOffering->loadMissing('academicYear');
+
+        $candidates = $this->collectWeekCopyCandidates($courseOffering, $sourceWeekStart, $targetWeekStart);
+
+        $ready = [];
+        $blocked = [];
+
+        foreach ($candidates as $candidate) {
+            $reasons = $this->weekCopyBlockReasons($courseOffering, $candidate, $conflictChecker);
+
+            if (empty($reasons)) {
+                $ready[] = $candidate['preview'];
+            } else {
+                $blocked[] = $candidate['preview'] + ['reasons' => $reasons];
+            }
+        }
+
+        return response()->json([
+            'source_week_start' => $sourceWeekStart,
+            'target_week_start' => $targetWeekStart,
+            'total' => count($candidates),
+            'ready' => $ready,
+            'blocked' => $blocked,
+        ]);
+    }
+
+    /**
+     * Commit: คัดลอกเฉพาะ slot ที่ผ่าน (clean) — slot ที่ชนถูกข้าม ไม่ persist
+     * เช็คแบบ sequential เพื่อจับการชนภายใน batch เอง (slot ที่เพิ่งสร้างนับเป็นของจริง)
+     */
+    public function copyWeek(
+        Request $request,
+        CourseOffering $courseOffering,
+        ScheduleConflictChecker $conflictChecker
+    ): RedirectResponse {
+        $this->authorizeCourseHeadOffering($courseOffering);
+        if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
+
+        [$sourceWeekStart, $targetWeekStart] = $this->validateCopyWeekDates($request);
+        $courseOffering->loadMissing('academicYear');
+
+        $candidates = $this->collectWeekCopyCandidates($courseOffering, $sourceWeekStart, $targetWeekStart);
+
+        if (empty($candidates)) {
+            return redirect()
+                ->to($this->scheduleReturnUrl($request, $courseOffering, $targetWeekStart))
+                ->withErrors(['schedule' => 'ไม่พบรายการในสัปดาห์ต้นทางให้คัดลอก']);
+        }
+
+        $createdCount = 0;
+        $skipped = [];
+
+        DB::transaction(function () use ($candidates, $courseOffering, $conflictChecker, &$createdCount, &$skipped): void {
+            foreach ($candidates as $candidate) {
+                $reasons = $this->weekCopyBlockReasons($courseOffering, $candidate, $conflictChecker);
+
+                if (! empty($reasons)) {
+                    $skipped[] = $candidate['preview'] + ['reason' => implode(' / ', $reasons)];
+                    continue;
+                }
+
+                $payload = $candidate['payload'];
+                $schedule = Schedule::create([
+                    'course_offering_id' => $courseOffering->id,
+                    'activity_type_id' => $payload['activity_type_id'],
+                    'room_id' => $payload['room_id'],
+                    'practicum_series_id' => null,
+                    'start_date' => $payload['start_date'],
+                    'end_date' => $payload['end_date'],
+                    'start_time' => $payload['start_time'],
+                    'end_time' => $payload['end_time'],
+                    'topic' => $payload['topic'],
+                    'capacity_required' => $payload['capacity_required'],
+                    'sub_group_label' => $payload['sub_group_label'],
+                    'status' => 'draft',
+                    'remark' => $payload['remark'],
+                ]);
+
+                $this->syncInstructors($schedule, [
+                    'instructor_ids' => $candidate['instructor_ids'],
+                    'lead_instructor_id' => $candidate['lead_instructor_id'],
+                ]);
+                $schedule->studentGroups()->sync($candidate['group_ids']);
+                app(ScheduleConflictInvalidationService::class)->markScheduleDirty($schedule, 'pivot');
+                $createdCount++;
+            }
+        });
+
+        \App\Services\NavigationBadgeService::flushCourseHead((int) $courseOffering->coordinator_id);
+
+        AuditLogger::log(
+            action: 'schedule.week.copy',
+            table: 'course_offerings',
+            recordId: $courseOffering->id,
+            oldValues: null,
+            newValues: [
+                'course_offering_id' => $courseOffering->id,
+                'source_week_start' => $sourceWeekStart,
+                'target_week_start' => $targetWeekStart,
+                'created' => $createdCount,
+                'skipped' => count($skipped),
+            ],
+            category: 'schedule',
+            description: "คัดลอกสัปดาห์ {$sourceWeekStart} → {$targetWeekStart}",
+        );
+
+        $message = "คัดลอกสำเร็จ {$createdCount} รายการ"
+            . (count($skipped) ? ' · ข้าม ' . count($skipped) . ' รายการที่ชน (ต้องแก้เอง)' : '');
+
+        return redirect()
+            ->to($this->scheduleReturnUrl($request, $courseOffering, $targetWeekStart))
+            ->with('success', $message)
+            ->with('schedule_copy_skipped', $skipped);
+    }
+
+    /**
+     * @return array{0:string,1:string}  [sourceWeekStart, targetWeekStart] เป็น Y-m-d
+     */
+    private function validateCopyWeekDates(Request $request): array
+    {
+        $data = $request->validate([
+            'source_week_start' => ['required', 'date'],
+            'target_week_start' => ['required', 'date', 'different:source_week_start'],
+        ], [
+            'target_week_start.different' => 'สัปดาห์ปลายทางต้องไม่ใช่สัปดาห์เดียวกับต้นทาง',
+        ]);
+
+        return [
+            CarbonImmutable::parse($data['source_week_start'])->startOfDay()->toDateString(),
+            CarbonImmutable::parse($data['target_week_start'])->startOfDay()->toDateString(),
+        ];
+    }
+
+    /**
+     * อ่าน slot ทั้งหมดในสัปดาห์ต้นทาง แล้ว clone เป็น payload สำหรับสัปดาห์ปลายทาง (เลื่อนวันที่ตาม delta)
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function collectWeekCopyCandidates(
+        CourseOffering $courseOffering,
+        string $sourceWeekStart,
+        string $targetWeekStart
+    ): array {
+        $srcStart = CarbonImmutable::parse($sourceWeekStart)->startOfDay();
+        $srcEnd = $srcStart->addDays(6);
+        $deltaDays = $srcStart->diffInDays(CarbonImmutable::parse($targetWeekStart)->startOfDay(), false);
+
+        return Schedule::query()
+            ->where('course_offering_id', $courseOffering->id)
+            ->whereBetween('start_date', [$srcStart->toDateString(), $srcEnd->toDateString()])
+            ->with(['instructors', 'studentGroups', 'activityType', 'room'])
+            ->orderBy('start_date')
+            ->orderBy('start_time')
+            ->get()
+            ->map(function (Schedule $source) use ($courseOffering, $deltaDays) {
+                $newStart = CarbonImmutable::parse($source->start_date)->addDays($deltaDays);
+                $newEnd = $source->end_date
+                    ? CarbonImmutable::parse($source->end_date)->addDays($deltaDays)
+                    : $newStart;
+                $startTime = substr((string) $source->start_time, 0, 5);
+                $endTime = substr((string) $source->end_time, 0, 5);
+                $lead = $source->instructors->first(fn ($user) => (bool) ($user->pivot->is_lead ?? false));
+
+                $payload = [
+                    'course_offering_id' => $courseOffering->id,
+                    'activity_type_id' => $source->activity_type_id,
+                    'room_id' => $source->room_id,
+                    'start_date' => $newStart->toDateString(),
+                    'end_date' => $newEnd->toDateString(),
+                    'start_time' => $startTime,
+                    'end_time' => $endTime,
+                    'topic' => $source->topic,
+                    'capacity_required' => $source->capacity_required,
+                    'sub_group_label' => $source->sub_group_label,
+                    'remark' => $source->remark,
+                ];
+
+                return [
+                    'payload' => $payload,
+                    'instructor_ids' => $source->instructors->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+                    'group_ids' => $source->studentGroups->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+                    'lead_instructor_id' => $lead?->id,
+                    'preview' => [
+                        'source_date' => $source->start_date?->toDateString(),
+                        'target_date' => $newStart->toDateString(),
+                        'time' => $startTime . '–' . $endTime,
+                        'activity' => $source->activityType?->name,
+                        'room' => $source->room?->room_code ?? $source->room?->room_name,
+                        'topic' => $source->topic,
+                    ],
+                ];
+            })
+            ->all();
+    }
+
+    /**
+     * เหตุผลที่ slot นี้คัดลอกไม่ได้ — ว่าง = พร้อมคัดลอก
+     *
+     * @param  array<string, mixed>  $candidate
+     * @return array<int, string>
+     */
+    private function weekCopyBlockReasons(
+        CourseOffering $courseOffering,
+        array $candidate,
+        ScheduleConflictChecker $conflictChecker
+    ): array {
+        $payload = $candidate['payload'];
+
+        if (! $this->scheduleWithinAcademicYear($courseOffering, $payload['start_date'], $payload['end_date'])) {
+            return ['วันที่ปลายทางอยู่นอกช่วงปีการศึกษา'];
+        }
+
+        $conflicts = $conflictChecker->check(
+            $payload,
+            $candidate['instructor_ids'],
+            $candidate['group_ids'],
+            null
+        );
+
+        return collect($conflicts)->pluck('message')->unique()->values()->all();
+    }
+
+    private function scheduleWithinAcademicYear(CourseOffering $courseOffering, string $startDate, string $endDate): bool
+    {
+        $year = $courseOffering->academicYear;
+
+        if (! $year?->start_date || ! $year?->end_date) {
+            return true;
+        }
+
+        $start = CarbonImmutable::parse($startDate)->startOfDay();
+        $end = CarbonImmutable::parse($endDate)->startOfDay();
+
+        return ! ($start->lt(CarbonImmutable::parse($year->start_date)->startOfDay())
+            || $end->gt(CarbonImmutable::parse($year->end_date)->startOfDay()));
+    }
+
+    /**
+     * Realtime conflict/gate check (ไม่บันทึก) — ใช้โดย modal เพื่อแจ้งเตือน inline + บล็อกปุ่มบันทึก
+     * คืน fields map: { instructor_ids:[...], room_id:[...], student_group_ids:[...], lead_instructor_id:[...], start_date:[...] }
+     */
+    public function checkConflicts(
+        Request $request,
+        CourseOffering $courseOffering,
+        ScheduleConflictChecker $conflictChecker
+    ): JsonResponse {
+        $this->authorizeCourseHeadOffering($courseOffering);
+
+        foreach (['start_date', 'end_date'] as $dateField) {
+            $iso = ThaiDate::parseToIso($request->input($dateField));
+            if ($iso !== null) {
+                $request->merge([$dateField => $iso]);
+            }
+        }
+
+        $data = [
+            'course_offering_id' => $courseOffering->id,
+            'start_date' => $request->input('start_date') ?: null,
+            'end_date' => $request->input('end_date') ?: null,
+            'start_time' => $request->input('start_time') ?: null,
+            'end_time' => $request->input('end_time') ?: null,
+            'activity_type_id' => $request->input('activity_type_id') ?: null,
+            'room_id' => $request->input('room_id') ?: null,
+            'capacity_required' => $request->input('capacity_required') ?: null,
+            'sub_group_label' => $request->input('sub_group_label') ?: null,
+            'instructor_ids' => array_values(array_filter(array_map('intval', (array) $request->input('instructor_ids', [])))),
+            'student_group_ids' => array_values(array_filter(array_map('intval', (array) $request->input('student_group_ids', [])))),
+            'lead_instructor_id' => $request->input('lead_instructor_id') ?: null,
+        ];
+        $ignoreScheduleId = $request->integer('schedule_id') ?: null;
+
+        $fields = [];
+        $collect = function (string $field, callable $assert) use (&$fields) {
+            try {
+                $assert();
+            } catch (ValidationException $e) {
+                foreach ($e->errors() as $messages) {
+                    foreach ((array) $messages as $message) {
+                        $fields[$field][] = $message;
+                    }
+                }
+            }
+        };
+
+        // Gates — reuse logic เดียวกับตอน store (ไม่ throw, แค่เก็บข้อความ)
+        if ($data['start_date'] && $data['end_date']) {
+            $collect('start_date', fn () => $this->assertScheduleWithinAcademicYear($courseOffering, $data));
+        }
+        if (! empty($data['instructor_ids'])) {
+            $collect('instructor_ids', fn () => $this->assertInstructorsBelongToCourseDepartment($courseOffering, $data['instructor_ids']));
+            $collect('lead_instructor_id', fn () => $this->assertLeadInstructorSelected($data));
+        }
+        $collect('student_group_ids', fn () => $this->assertSelectedGroupsFitCapacity($courseOffering, $data));
+
+        // Overlap (instructor/room/group ข้ามวิชา) — ต้องมีวัน/เวลา/กิจกรรมครบก่อน
+        if ($data['start_date'] && $data['end_date'] && $data['start_time'] && $data['end_time'] && $data['activity_type_id']) {
+            $conflicts = $conflictChecker->check(
+                Arr::only($data, ['course_offering_id', 'activity_type_id', 'start_date', 'end_date', 'start_time', 'end_time', 'room_id', 'sub_group_label']),
+                $data['instructor_ids'],
+                $data['student_group_ids'],
+                $ignoreScheduleId
+            );
+
+            $fieldByType = [
+                'instructor_overlap' => 'instructor_ids',
+                'room_overlap' => 'room_id',
+                'group_overlap' => 'student_group_ids',
+            ];
+
+            foreach ($conflicts as $conflict) {
+                $field = $fieldByType[$conflict['type']] ?? 'schedule';
+                $fields[$field][] = $conflict['message'];
+            }
+        }
+
+        foreach ($fields as $key => $messages) {
+            $fields[$key] = array_values(array_unique($messages));
+        }
+
+        return response()->json([
+            'blocking' => ! empty($fields),
+            'fields' => (object) $fields,
+        ]);
     }
 
     public function edit(CourseOffering $courseOffering, Schedule $schedule): View|RedirectResponse
