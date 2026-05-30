@@ -1,0 +1,51 @@
+# TPSS — staging stack (app + mysql) สำหรับให้ลูกค้าเข้าทดสอบ
+# ใช้งาน:  docker compose --env-file .env.docker up -d --build
+services:
+  app:
+    build:
+      context: .
+      target: app
+    image: tpss-app:staging
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_NAME: TPSS
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_KEY: ${APP_KEY}
+      APP_URL: ${APP_URL:-http://localhost:8080}
+      APP_LOCALE: th
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_DATABASE: ${DB_DATABASE:-tpss}
+      DB_USERNAME: ${DB_USERNAME:-tpss}
+      DB_PASSWORD: ${DB_PASSWORD:-tpss_secret}
+      SESSION_DRIVER: database
+      CACHE_STORE: database
+      QUEUE_CONNECTION: database
+      # ตั้ง true ครั้งแรกเพื่อ seed ข้อมูล demo แล้วเปลี่ยนเป็น false ตอน restart รอบถัดไป
+      DB_SEED: ${DB_SEED:-false}
+    ports:
+      - "${APP_PORT:-8080}:80"
+
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-tpss}
+      MYSQL_USER: ${DB_USERNAME:-tpss}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-tpss_secret}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_secret}
+    volumes:
+      - tpss-db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_ROOT_PASSWORD:-root_secret}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  tpss-db:
