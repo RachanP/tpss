@@ -783,6 +783,17 @@
             this.currentActivityType = { ...at };
             this.showActivityTypeModal = true;
         },
+        activityCategoryHelp(category = null) {
+            const value = category || this.currentActivityType.category;
+            const descriptions = {
+                lecture: 'ใช้กับกิจกรรมภาคทฤษฎี เช่น บรรยาย สัมมนา หรือ conference และจะถูกจัดกลุ่มเป็นชั่วโมงบรรยายเมื่อทำรายงานในอนาคต',
+                practicum: 'ใช้กับกิจกรรมภาคปฏิบัติ เช่น lab ฝึกปฏิบัติ แหล่งฝึก หอผู้ป่วย หรือกิจกรรมกลุ่มย่อย',
+                thesis: 'ใช้กับกิจกรรมวิทยานิพนธ์ ดุษฎีนิพนธ์ หรือการกำกับงานวิจัยระดับบัณฑิตศึกษา',
+                other: 'ใช้กับกิจกรรมประกอบ เช่น ปฐมนิเทศ SDL วันหยุด หรือกิจกรรมพิเศษที่ไม่ควรจัดเป็นบรรยายหรือปฏิบัติ',
+            };
+
+            return descriptions[value] || 'เลือกหมวดหมู่ให้ตรงกับลักษณะกิจกรรม เพื่อให้การกรอง สรุป และรายงานภายหลังถูกต้อง';
+        },
 
         confirmDelete(formId, itemLabel, warnText) {
             window.tpssConfirmDelete(formId, itemLabel, warnText);
@@ -2890,6 +2901,7 @@
                                         <option value="thesis">วิทยานิพนธ์ (Thesis)</option>
                                         <option value="other">อื่นๆ (Other)</option>
                                     </select>
+                                    <div style="margin-top:6px;font-size:12px;line-height:1.55;color:var(--fg-3);" x-text="activityCategoryHelp()"></div>
                                 </div>
                                 <div class="form-group">
                                     <label>สีแสดงผล <span style="color: var(--status-conflict-fg)">*</span></label>

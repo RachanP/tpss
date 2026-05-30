@@ -47,6 +47,27 @@
    - ต้องเพิ่ม/รองรับกิจกรรม "วิทยานิพนธ์" และ "ดุษฎีนิพนธ์"
    - `activity_types` ควรมี flag เช่น `counts_toward_workload`
 
+### Master Data Scope Decisions — 30 พ.ค. 2569
+
+> ใช้กับ demo/current phase ก่อน ห้ามเสนอเพิ่ม field ซ้ำถ้ายังไม่มี requirement เชิงรายงานหรือ workflow ใหม่มายืนยัน
+
+1. **หลักสูตรใช้โครงสร้างปัจจุบันได้**
+   - `curriculums` มีปีหลักสูตร/ระดับการศึกษา/ระยะเวลา/สถานะใช้งานแล้ว
+   - `courses.curriculum_id` ผูกวิชาเข้าหลักสูตร และตอนเปลี่ยนปีการศึกษาระบบดู active curriculum เพื่อเปิดรายวิชาอัตโนมัติ
+   - ยังไม่ต้องเพิ่ม `academic_year_curriculum` หรือ filter หลักสูตรต่อปี เพราะหลักสูตรที่ใช้งานจริงในปีหนึ่งมีไม่มาก
+   - หลักสูตรนานาชาติ/สองภาษาให้กรอกในชื่อหลักสูตรก่อน ยังไม่ต้องมี field แยกจนกว่าจะต้อง filter/report ตาม track
+2. **ประเภทกิจกรรมเป็น user-configurable**
+   - ผู้ใช้เพิ่ม activity type เองได้ และเลือกหมวด `lecture`, `practicum`, `thesis`, `other` เพื่อจัดกลุ่มชั่วโมงในอนาคต
+   - Demo/current phase ทำ helper text อธิบายหมวดให้ชัดพอ ยังไม่ต้องเพิ่ม `counts_toward_workload`
+   - Workload calculation เป็น Phase 2 จึงยังไม่ต้องบังคับ logic หัก/ไม่นับชั่วโมงสำหรับ SDL, ปฐมนิเทศ ฯลฯ
+3. **ประเภทสถานที่ใช้เพื่อ conflict/capacity**
+   - `location_types` บอกว่าเป็นห้องหรือสถานที่ขนาดใหญ่/สถานที่พิเศษ และใช้กับ logic ชน + ความจุ
+   - รายละเอียดสถานที่อยู่ที่ `rooms` แล้ว เช่น code, name, building, capacity, equipment/address, status
+   - ยังไม่ต้องเพิ่ม campus/location kind แยก เว้นแต่มี requirement ให้ report/filter ตามข้อมูลนั้นจริง
+4. **Course roles ต้อง seed ให้ครบบทบาทจาก requirement**
+   - Course roles ที่ต้องมี: หัวหน้าวิชา, เลขานุการวิชา, ผู้ช่วยเลขานุการวิชา, อาจารย์ผู้สอน, อาจารย์ประจำกลุ่ม, อาจารย์พี่เลี้ยง, Preceptor/ผู้ควบคุมแหล่งฝึก
+   - Seeder ต้อง idempotent และเติม description/sort order ให้ครบเพื่อให้ Course Pool/Offering ใช้งานต่อได้
+
 ### Schedule Workflow Implications
 
 1. **Schedule entry ขั้นต่ำต่อ 1 slot**

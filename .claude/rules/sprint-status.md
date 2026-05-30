@@ -32,6 +32,15 @@
 - Alerts system: `AlertController` + `/admin/alerts` page + dashboard widget
 - PA criteria schema เปลี่ยนจาก string → `{min: int, max: int}` ต่อแต่ละด้าน
 
+### M1 Requirement Re-check — 30 พ.ค. 2569
+
+- ตรวจ requirement V2 เฉพาะส่วน Master Data เทียบกับระบบที่ implement แล้ว
+- ยืนยันว่าไม่ต้องเพิ่ม field หลักสูตรต่อปี/track นานาชาติใน demo ปัจจุบัน เพราะหลักสูตรมี `effective_year`, `education_level`, `duration_years`, `uses_year_level`, `total_credits_required`, `status` และ `courses.curriculum_id` รองรับแล้ว
+- ยืนยันว่าไม่ต้องเพิ่ม field campus/location kind ในตอนนี้ เพราะ `location_types` ใช้แยก logic conflict/capacity และรายละเอียดอยู่ใน `rooms` แล้ว
+- ยืนยันว่า activity types ให้ผู้ใช้สร้างเองได้ โดยเลือกหมวด `lecture`, `practicum`, `thesis`, `other`; workload/hour calculation เป็น Phase 2
+- ทำแล้ว: เพิ่ม helper text อธิบายหมวดกิจกรรมใน Master Data UI เพื่อให้ผู้ใช้เลือกหมวดถูก
+- ทำแล้ว: อัปเดต `CourseRoleSeeder` ให้ seed บทบาทครบ ได้แก่ หัวหน้าวิชา, เลขานุการวิชา, ผู้ช่วยเลขานุการวิชา, อาจารย์ผู้สอน, อาจารย์ประจำกลุ่ม, อาจารย์พี่เลี้ยง, Preceptor/ผู้ควบคุมแหล่งฝึก
+
 ## Sprint 3 (M2) — สิ่งที่เสร็จแล้ว
 
 ### Two-Layer Status System

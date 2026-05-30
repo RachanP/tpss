@@ -332,6 +332,7 @@
             'groups' => $schedule->studentGroups->pluck('id')->map(fn ($id) => (string) $id)->values(),
             'instructors' => $instructors->pluck('id')->map(fn ($id) => (string) $id)->values(),
             'week' => (string) ($weekNumberForDate($schedule->start_date) ?? ''),
+            'date' => $schedule->start_date?->toDateString(),
             'search' => mb_strtolower(collect([
                 $formatDate($schedule->start_date),
                 $formatDate($schedule->end_date),
@@ -2074,6 +2075,42 @@
             font-weight: 700;
             color: var(--brand-navy);
         }
+        .sched-day-add {
+            margin-left: auto;
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border: 1px solid var(--brand-navy);
+            border-radius: 6px;
+            background: var(--surface);
+            color: var(--brand-navy);
+            font-size: 12px;
+            font-weight: 800;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: background 0.12s, color 0.12s;
+        }
+        .sched-day-add:hover {
+            background: var(--brand-navy);
+            color: #fff;
+        }
+        .sched-day-group-header.is-empty-day {
+            cursor: default;
+        }
+        tr.sched-day-group-header.is-empty-day td.sched-day-group-cell {
+            background: oklch(97.7% 0.006 232);
+            box-shadow: inset 3px 0 0 0 color-mix(in oklch, var(--schedule-muted) 34%, transparent);
+        }
+        .sched-day-group-count.is-muted {
+            color: var(--fg-3);
+            font-weight: 700;
+        }
+        .sched-day-empty-copy {
+            margin-left: 2px;
+            color: var(--fg-3);
+            font-size: 12.5px;
+            font-weight: 600;
+        }
         /* ── Week filter — custom dropdown ── */
         .week-filter {
             position: relative;
@@ -2476,6 +2513,53 @@
             text-align: center;
             font-size: 11.5px;
             font-weight: 900;
+        }
+        /* ช่องว่างในตาราง grid — คลิกเพื่อเพิ่มกิจกรรม (เติมวัน+เวลาให้) */
+        .grid-cell.is-addable {
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.16s, box-shadow 0.16s;
+        }
+        .grid-cell.is-addable::before {
+            content: "+";
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            width: 24px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 7px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 10%, var(--schedule-border));
+            border-bottom-color: color-mix(in oklch, var(--brand-navy) 16%, var(--schedule-border));
+            background: linear-gradient(
+                180deg,
+                color-mix(in oklch, var(--surface) 96%, oklch(96% 0.016 232)),
+                color-mix(in oklch, var(--brand-navy) 2%, var(--surface))
+            );
+            color: color-mix(in oklch, var(--brand-navy) 30%, var(--schedule-muted));
+            font-size: 15px;
+            font-weight: 800;
+            line-height: 1;
+            opacity: 0.34;
+            pointer-events: none;
+            box-shadow: 0 1px 2px oklch(0% 0 0 / 0.025), inset 0 1px 0 oklch(100% 0 0 / 0.5);
+            transition: opacity 0.16s, border-color 0.16s, background 0.16s, color 0.16s, transform 0.16s, box-shadow 0.16s;
+        }
+        .grid-cell.is-addable:hover,
+        .grid-cell.is-addable:focus-visible {
+            background-color: color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
+            box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--brand-navy) 16%, transparent);
+        }
+        .grid-cell.is-addable:hover::before,
+        .grid-cell.is-addable:focus-visible::before {
+            opacity: 1;
+            border-color: color-mix(in oklch, var(--brand-navy) 72%, var(--schedule-border));
+            background: var(--brand-navy);
+            color: var(--surface);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px oklch(0% 0 0 / 0.11);
         }
         .grid-time {
             background: oklch(97% 0.007 232);
@@ -4268,6 +4352,10 @@
             scheduleGroup: '',
             scheduleInstructor: '',
             scheduleWeek: '',
+            scheduleWeeks: @js($scheduleWeekOptions->mapWithKeys(fn ($option) => [(string) $option['week'] => [
+                'week' => (string) $option['week'],
+                'monday' => $option['monday'],
+            ]])->toArray() ?: (object) []),
             collapsedDays: @js($groupedSchedules->keys()->mapWithKeys(fn ($k) => [str_replace('-', '', $k) => false])->toArray() ?: (object) []),
             schedulePeriod: @js($schedulePeriod ?? 'week'),
             includeWeekends: @js((bool) ($includeWeekends ?? false)),
@@ -4635,6 +4723,51 @@
             dayHasMatches(ids) {
                 return ids.some((id) => this.matchesSchedule(id));
             },
+            hasActiveScheduleFilters() {
+                return !!(this.normalizedScheduleSearch()
+                    || this.scheduleActivity
+                    || this.scheduleGroup
+                    || this.scheduleInstructor);
+            },
+            scheduleDateHasMatches(date) {
+                return this.scheduleItems.some((item) => item.date === date && this.matchesSchedule(item.id));
+            },
+            scheduleWeekDays() {
+                if (!this.scheduleWeek || !this.scheduleWeeks[this.scheduleWeek]?.monday) return [];
+
+                const base = new Date(`${this.scheduleWeeks[this.scheduleWeek].monday}T00:00:00`);
+                if (Number.isNaN(base.getTime())) return [];
+
+                const dayNames = {
+                    1: 'จันทร์',
+                    2: 'อังคาร',
+                    3: 'พุธ',
+                    4: 'พฤหัสบดี',
+                    5: 'ศุกร์',
+                    6: 'เสาร์',
+                    7: 'อาทิตย์',
+                };
+                const length = this.includeWeekends ? 7 : 5;
+
+                return Array.from({ length }, (_, index) => {
+                    const date = new Date(base);
+                    date.setDate(base.getDate() + index);
+                    const iso = [
+                        date.getFullYear(),
+                        String(date.getMonth() + 1).padStart(2, '0'),
+                        String(date.getDate()).padStart(2, '0'),
+                    ].join('-');
+                    const isoDay = index + 1;
+
+                    return {
+                        iso,
+                        isoDay,
+                        name: dayNames[isoDay] || '',
+                        display: this.toThaiDateDisplay(iso),
+                        week: this.scheduleWeek,
+                    };
+                });
+            },
             toggleDay(dateKey) {
                 this.collapsedDays = { ...this.collapsedDays, [dateKey]: ! this.collapsedDays[dateKey] };
             },
@@ -4719,8 +4852,17 @@
 
                 this.detailModal = null;
                 this.editModal = null;
-                this.resetCreateForm(date || this.defaultCreateDate);
+                // เติมวันที่ให้เฉพาะตอนกดจากหัววันใน grid หรือคลิกช่องว่าง (ส่ง date มาตรง ๆ) — ปุ่มเพิ่มทั่วไปเว้นว่างให้ผู้ใช้เลือกเอง
+                this.resetCreateForm(date);
                 this.showCreate = true;
+            },
+            // คลิกช่องว่างใน grid → เปิด modal พร้อมเติมวัน + เวลาเริ่มของช่องนั้น
+            openCreateAt(date, time) {
+                if (!this.calendarAllowsCreate) return;
+                this.openCreate(date);
+                this.$nextTick(() => {
+                    setTimeout(() => { window.tpssSetTimePicker('start_time', time); }, 50);
+                });
             },
             openEdit(id) {
                 this.detailModal = null;
@@ -4899,6 +5041,29 @@
                     week = Math.max(1, Math.floor((t - a) / (7 * 86400000)) + 1);
                 }
                 return { dayName, week };
+            };
+            // ตั้งค่า time-picker (custom widget) แบบ programmatic — ใช้ตอนคลิกช่องว่างใน grid
+            window.tpssSetTimePicker = function (hiddenId, value) {
+                const hidden = document.getElementById(hiddenId);
+                const picker = document.querySelector(`.time-picker[data-tp-hidden='${hiddenId}']`);
+                const m = String(value || '').match(/^(\d{1,2}):(\d{2})$/);
+                if (!hidden || !picker || !m) return;
+                const h = m[1].padStart(2, '0');
+                const mi = m[2];
+                hidden.value = h + ':' + mi;
+                picker.dataset.tpHour = h;
+                picker.dataset.tpMin = mi;
+                const hourEl = picker.querySelector('.tp-val-hour');
+                const minEl = picker.querySelector('.tp-val-min');
+                if (hourEl) hourEl.textContent = h;
+                if (minEl) minEl.textContent = mi;
+                const drop = picker.querySelector('.tp-drop');
+                if (drop) {
+                    drop.querySelectorAll('.tp-hour-item').forEach((li) => li.classList.toggle('tp-sel', li.dataset.val === h && li.dataset.cycle === '1'));
+                    drop.querySelectorAll('.tp-min-item').forEach((li) => li.classList.toggle('tp-sel', li.dataset.val === mi && li.dataset.cycle === '1'));
+                }
+                hidden.dispatchEvent(new Event('input', { bubbles: true }));
+                hidden.dispatchEvent(new Event('change', { bubbles: true }));
             };
 
             // Recompute grid-row start/span for activity items based on visible times.
@@ -5376,6 +5541,9 @@
                                                             <span class="sched-day-group-week">สัปดาห์ที่ {{ $dayWeekNumber }}</span>
                                                         @endif
                                                         <span class="sched-day-group-count">· {{ $daySchedules->count() }} รายการสอน</span>
+                                                        @if($canEdit)
+                                                            <button type="button" class="sched-day-add" @click.stop="openCreate('{{ $dateObj->toDateString() }}')" data-testid="list-day-add" title="เพิ่มกิจกรรมในวันนี้">+ เพิ่มกิจกรรม</button>
+                                                        @endif
                                                     </div>
                                                 </td>
                                             </tr>
@@ -5461,7 +5629,23 @@
                                             @endforeach
                                         @endif
                                     @endforeach
-                                    <tr x-show="matchedScheduleCount() === 0 && scheduleWeek" x-cloak>
+                                    <template x-for="day in scheduleWeekDays()" :key="'empty-week-day-' + day.iso">
+                                        <tr class="sched-day-group-header is-empty-day" x-show="scheduleWeek && !scheduleDateHasMatches(day.iso)" x-cloak>
+                                            <td colspan="6" class="sched-day-group-cell">
+                                                <div class="sched-day-group-inner">
+                                                    <span class="co-day-badge sched-day-group-badge" :class="'day-' + day.isoDay" x-text="day.name"></span>
+                                                    <span class="sched-day-group-date" x-text="day.display"></span>
+                                                    <span class="sched-day-group-week" x-text="'สัปดาห์ที่ ' + day.week"></span>
+                                                    <span class="sched-day-group-count is-muted">· 0 รายการสอน</span>
+                                                    <span class="sched-day-empty-copy" x-text="hasActiveScheduleFilters() ? 'ไม่มีรายการที่ตรงกับตัวกรองในวันนี้' : 'ยังไม่มีกิจกรรมในวันนี้'"></span>
+                                                    @if($canEdit)
+                                                        <button type="button" class="sched-day-add" @click.stop="openCreate(day.iso)" data-testid="list-empty-day-add" title="เพิ่มกิจกรรมในวันนี้">+ เพิ่มกิจกรรม</button>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                    <tr x-show="matchedScheduleCount() === 0 && scheduleWeek && scheduleWeekDays().length === 0" x-cloak>
                                         <td colspan="6">
                                             <div class="schedule-empty" style="margin:16px;">
                                                 <div style="font-weight:800;color:var(--fg-2);">ยังไม่มีกิจกรรมในสัปดาห์นี้</div>
@@ -5562,7 +5746,7 @@
                             <div class="grid-cell grid-time" style="grid-column:1; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};">{{ $slot }}</div>
                             @foreach($weekDays as $dayIndex => $day)
                                 @php $dayOutside = $isDayOutsideAcademic($day); @endphp
-                                <div class="grid-cell {{ $dayOutside ? 'is-outside-academic' : '' }}" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};"></div>
+                                <div class="grid-cell {{ $dayOutside ? 'is-outside-academic' : '' }} {{ $canEdit && ! $dayOutside ? 'is-addable' : '' }}" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};" @if($canEdit && ! $dayOutside) @click="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" @keydown.enter.prevent="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" @keydown.space.prevent="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" role="button" tabindex="0" aria-label="เพิ่มรายการสอน {{ $formatDate($day) }} เวลา {{ $slot }}" data-testid="grid-empty-cell" title="คลิกเพื่อเพิ่มกิจกรรม {{ $slot }}" @endif></div>
                             @endforeach
                         @endforeach
 
@@ -5995,7 +6179,7 @@
                         <div class="grid-cell grid-time" style="grid-column:1; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};">{{ $slot }}</div>
                         @foreach($weekDays as $dayIndex => $day)
                             @php $dayOutside = $isDayOutsideAcademic($day); @endphp
-                            <div class="grid-cell {{ $dayOutside ? 'is-outside-academic' : '' }}" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};"></div>
+                            <div class="grid-cell {{ $dayOutside ? 'is-outside-academic' : '' }} {{ $canEdit && ! $dayOutside ? 'is-addable' : '' }}" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};" @if($canEdit && ! $dayOutside) @click="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" @keydown.enter.prevent="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" @keydown.space.prevent="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" role="button" tabindex="0" aria-label="เพิ่มรายการสอน {{ $formatDate($day) }} เวลา {{ $slot }}" data-testid="grid-empty-cell" title="คลิกเพื่อเพิ่มกิจกรรม {{ $slot }}" @endif></div>
                         @endforeach
                     @endforeach
 

@@ -57,6 +57,7 @@
 - อ้างอิง Module ID (M1, M2...) และ User Story ID (M3-01...) เมื่อพูดถึงฟีเจอร์
 - ตรวจสอบ Product Backlog **v2.1** ก่อนเสนอ design หรือ implementation ใดๆ
 - Requirement update 29 พ.ค. 2569: ระบบต้องเน้น **ฟอร์มกรอกตารางที่ใช้ง่าย + smart check + publish/report** มากกว่า auto scheduling; ดู `.claude/rules/architecture.md`
+- Master Data decision 30 พ.ค. 2569: สำหรับ demo/current phase อย่าเสนอเพิ่ม field หลักสูตรต่อปี, track นานาชาติ, campus/location kind หรือ workload flag ซ้ำ เว้นแต่มี requirement ใหม่ชัดเจน; ดู `.claude/rules/architecture.md#master-data-scope-decisions--30-พค-2569`
 - เมื่อเริ่มงาน UI ให้รัน `node .agents/skills/impeccable/scripts/load-context.mjs`
 - **ผู้บริหาร = Read-only + Approve/Reject เท่านั้น** — ห้าม implement UI ให้แก้ไขตาราง
 - Export รายงานเป็น PDF และ Excel; รองรับ PC, tablet, mobile เบื้องต้น
