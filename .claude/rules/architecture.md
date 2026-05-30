@@ -292,9 +292,11 @@ V2 ชี้ว่าตารางคณะพยาบาลเป็น "ต
 4. **Auto-open ดูแค่ active curriculum**
    - ตอน Admin เปิด scheduling/เปลี่ยนปี → auto-create offering ของ **ทุกวิชาที่ `course.curriculum.is_active = true`** (เลิก logic ผูกเทอม/`default_semester`)
    - คง critical-gate `active_courses_missing_head` ไว้ ตัดเงื่อนไขที่อิงเทอม
-5. **เทอม = dimension ของ "ตารางนักศึกษา/cohort" ไม่ใช่ Master Data**
-   - ตาราง `semesters`/rotation เป็นงาน **phase ถัดไป** (schedule) — Master Data cleanup ยังไม่ต้องสร้าง
-   - schedule slot จะถือ `semester_id`/`rotation_round_id` ตอนทำ schedule phase
+5. **เทอม = dimension ของ "slot/กิจกรรม" (ตั้งแต่หัวหน้าวิชาจัด) — ไม่ใช่ของวิชา**
+   - หัวหน้าวิชาจัดกิจกรรม**ครอบทั้งปี** แล้วติดป้ายว่าแต่ละ slot อยู่เทอมไหน — เพราะ **เทอม 2 อาจเปลี่ยนคนสอน/เวลา** จากเทอม 1
+   - instructor pool ของ offering = **superset ทั้งปี** · แต่ละ slot เลือกอาจารย์เองผ่าน `schedule_instructors` (มีอยู่แล้ว) → เทอม 2 เปลี่ยนคนได้โดยไม่กระทบเทอม 1
+   - ตอนจัดกลุ่มหลังอนุมัติ: slot ติดป้ายเทอมไว้แล้ว → แมพ "กิจกรรมเทอมนี้ → กลุ่มไหน" ได้ตรง (ฐานของ rotation)
+   - ตาราง `semesters`/rotation = งาน **phase ถัดไป** (schedule) — Master Data cleanup ยังไม่ต้องสร้าง · แต่ schedule phase ต้องมี `schedules.semester_id` ให้หัวหน้าวิชาระบุเทอมต่อ slot
 
 ### Candidate cleanups (เคาะว่าเอาเข้ารอบนี้ไหม)
 - `activity_types.counts_toward_workload` (ปฐมนิเทศ/SDL = 0 ชม. — V2 ข้อ 7) · เพิ่มประเภท วิทยานิพนธ์/ดุษฎีนิพนธ์ (มี category `thesis` แล้ว)
