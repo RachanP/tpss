@@ -56,6 +56,7 @@
    - `courses.curriculum_id` ผูกวิชาเข้าหลักสูตร และตอนเปลี่ยนปีการศึกษาระบบดู active curriculum เพื่อเปิดรายวิชาอัตโนมัติ
    - ยังไม่ต้องเพิ่ม `academic_year_curriculum` หรือ filter หลักสูตรต่อปี เพราะหลักสูตรที่ใช้งานจริงในปีหนึ่งมีไม่มาก
    - หลักสูตรนานาชาติ/สองภาษาให้กรอกในชื่อหลักสูตรก่อน ยังไม่ต้องมี field แยกจนกว่าจะต้อง filter/report ตาม track
+   - ⚠️ **SUPERSEDED บางส่วน (30 พ.ค. — ดู "Master Data Cleanup Phase (V2)")**: ส่วน "เปิดรายวิชาอัตโนมัติตอนเปลี่ยนปี" ยังถูกต้อง แต่ scope ของ `academic_years` เปลี่ยนจาก "เทอม" → "ปี" และ auto-open ดูแค่ active curriculum (ไม่ผูกเทอม)
 2. **ประเภทกิจกรรมเป็น user-configurable**
    - ผู้ใช้เพิ่ม activity type เองได้ และเลือกหมวด `lecture`, `practicum`, `thesis`, `other` เพื่อจัดกลุ่มชั่วโมงในอนาคต
    - Demo/current phase ทำ helper text อธิบายหมวดให้ชัดพอ ยังไม่ต้องเพิ่ม `counts_toward_workload`
@@ -148,9 +149,10 @@
 ```
 Curriculum (Master Plan) → education_level, duration_years, uses_year_level, total_credits_required
 └── Course → default_year_level (nullable เมื่อ !uses_year_level), default_semester, is_required
+    ⚠️ default_semester จะถูกตัดใน Master Data Cleanup (V2) — วิชาเปิดทั้งปี
 
-Course Offerings (ต่อเทอม — ตัวกลาง Master ↔ Schedule)
-├── สร้างอัตโนมัติเมื่อ Admin เปิด scheduling phase
+Course Offerings (ปัจจุบัน=ต่อเทอม → จะเปลี่ยนเป็น ราย-ปี ใน Cleanup V2 — ตัวกลาง Master ↔ Schedule)
+├── สร้างอัตโนมัติเมื่อ Admin เปิด scheduling phase (Cleanup V2: auto-open ทุกวิชาใน active curriculum)
 └── Sync planning fields + instructor pool จาก course template
 ```
 
@@ -262,9 +264,46 @@ V2 ชี้ว่าตารางคณะพยาบาลเป็น "ต
 - ✅ **ผู้อนุมัติ = ผู้บริหาร (executive)** ตรวจภาระงาน + เวลา/ชน (ไม่ดูกลุ่ม) — ตรงระบบปัจจุบัน ไม่เปลี่ยน
 - ✅ **กลุ่มนักศึกษาเกิดหลังอนุมัติ** โดยอาจารย์ — slot อนุมัติได้โดยไม่ผูกกลุ่ม
 - ✅ **วิชาเปิดทั้งปี · เทอม = dimension ของตารางนักศึกษา/cohort** ไม่ใช่ของวิชา
+- ✅ **course_offering = ราย-ปี** (เลิก ราย-เทอม) — `academic_years` เป็น "ปี" · ดู Master Data Cleanup Phase ด้านล่าง
+- ✅ **กลุ่มชั้นปี (cohort) ใน Master Data** — implement แล้ว branch `feat/v2-requirement` (`student_cohorts`)
 
-### Open Questions (ต้องเคาะใน demo 2 มิ.ย. ก่อน implement)
-1. **course_offering ราย-ปี หรือ ราย-เทอม?** — ถ้าวิชาเปิดทั้งปี offering ควรราย-ปี + slot ถือ semester (จุดตัดสินกระทบมากสุด, ข้อ 3)
-2. **capacity gate deferred** — ยอมให้ save/อนุมัติ slot โดยไม่มีกลุ่มได้ (เลื่อน capacity check ไป step 4) ใช่ไหม?
-3. **รอบ rotation = 2 เสมอไหม** หรือ config ต่อเทอม/ต่อวิชา?
-4. **ตารางรายกลุ่มชั้นปี (step 5)** เป็น phase หลัง publish แยกต่างหาก — scope Phase 1 หรือ Phase 2?
+### Open Questions (เหลือไว้เคาะภายหลัง — ไม่บล็อก Master Data cleanup)
+1. **capacity gate deferred** — ยอมให้ save/อนุมัติ slot โดยไม่มีกลุ่มได้ (เลื่อน capacity check ไป step 4) ใช่ไหม?
+2. **รอบ rotation = 2 เสมอไหม** หรือ config ต่อเทอม/ต่อวิชา?
+3. **ตารางรายกลุ่มชั้นปี (step 5)** เป็น phase หลัง publish แยกต่างหาก — scope Phase 1 หรือ Phase 2?
+
+## Master Data Cleanup Phase (V2) — ✅ DECIDED 30 พ.ค. · ทำก่อนงาน V2 อื่น
+
+> ทิศทาง: เคลียร์ Master Data ให้นิ่ง (วิชาเปิดทั้งปี + ปีการศึกษาเป็นปีจริง) **เป็นฐานก่อน** แล้วค่อยทำ schedule/rotation/publish
+> ทำบน branch `feat/v2-requirement` — `sprint` ยังเป็น demo fallback (term-based เดิม)
+> ⚠️ ของจริงคือ refactor ใหญ่ที่แตะ guard/seeder/test ทั้งระบบ — **อย่า deploy ทับ sprint สำหรับ demo 2 มิ.ย.** จนกว่า test เขียว + verify
+
+### สิ่งที่จะแก้ (Master Data scope)
+
+1. **ปีการศึกษา = "ปี" ไม่ใช่ "เทอม"**
+   - `academic_years`: ตัด column `semester` ออก → unique(`name`) แทน unique(`name`,`semester`) · `phase`/`is_active` ต่อ "ปี"
+   - 1 ปีการศึกษา = 1 row (เลิกมี row แยกต่อเทอม)
+2. **เลิกผูกรายวิชากับเทอม**
+   - `courses`: ตัด `default_semester` (วิชาเปิดทั้งปี ไม่ผูกภาค)
+   - UI Master Data รายวิชา: เอา field/คอลัมน์ "ภาค" ออก
+3. **course_offering = ราย-ปี**
+   - `course_offerings.academic_year_id` → ชี้ "ปี" · 1 วิชา = 1 offering ต่อปี (เลิกซ้ำต่อเทอม)
+   - ปรับ unique/index `(course_id, academic_year_id)`
+4. **Auto-open ดูแค่ active curriculum**
+   - ตอน Admin เปิด scheduling/เปลี่ยนปี → auto-create offering ของ **ทุกวิชาที่ `course.curriculum.is_active = true`** (เลิก logic ผูกเทอม/`default_semester`)
+   - คง critical-gate `active_courses_missing_head` ไว้ ตัดเงื่อนไขที่อิงเทอม
+5. **เทอม = dimension ของ "ตารางนักศึกษา/cohort" ไม่ใช่ Master Data**
+   - ตาราง `semesters`/rotation เป็นงาน **phase ถัดไป** (schedule) — Master Data cleanup ยังไม่ต้องสร้าง
+   - schedule slot จะถือ `semester_id`/`rotation_round_id` ตอนทำ schedule phase
+
+### Candidate cleanups (เคาะว่าเอาเข้ารอบนี้ไหม)
+- `activity_types.counts_toward_workload` (ปฐมนิเทศ/SDL = 0 ชม. — V2 ข้อ 7) · เพิ่มประเภท วิทยานิพนธ์/ดุษฎีนิพนธ์ (มี category `thesis` แล้ว)
+- `rooms.campus` (ศาลายา/บางกอกน้อย — V2 ข้อ 7) — display ก่อน ยังไม่ผูก conflict
+
+### Impact / ต้องแก้ตาม (forward-only, ทีมใช้ `migrate:fresh --seed`)
+- Migrations: consolidate เข้า create-table baselines ของ `academic_years`/`courses`/`course_offerings` (ไม่ทำ alter แยก — pattern Sprint 3 Hardening)
+- Guard `phase != 'scheduling'` + `AdminSettingController::storeYear/updateYear` activation lock → เปลี่ยนจาก per-term เป็น per-year
+- `openSchedulingWindow` (sync planning + instructor pool) → loop ตาม active curriculum
+- Seeders: `AcademicYearSeeder` (1 row/ปี), `CourseSeeder` (ตัด default_semester), `CourseOfferingSeeder` (ราย-ปี)
+- Tests: `SchedulingPhaseTest`, `CourseOfferingManagementTest`, `MasterDataRedirectTest`, schedule suite — ปรับ assertion ที่อิงเทอม
+- Views: Master Data รายวิชา (ตัดภาค), Settings ปีการศึกษา (ตัด column semester)

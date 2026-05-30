@@ -4,9 +4,22 @@
 
 - **เป้าหมาย**: deploy Docker ขึ้น server บริษัทก่อน demo → demo บน URL จริง + ลูกค้าเข้าทดสอบต่อได้เอง
 - **Docker setup**: ✅ สร้างแล้ว (`Dockerfile` multi-stage, `docker-compose.yml` app+mysql, `docker/entrypoint.sh`, `.env.docker.example`) — ⚠️ **ยังไม่ build/test** (เครื่อง dev ไม่มี Docker → จะ build บน server ตอน SSH access มา)
-- **กฎเหล็กก่อน demo**: ห้ามแตะ migration `academic_years`/`course_offerings` — demo โชว์ระบบปัจจุบัน + เคสจริง (ปี 3 rotation seed) ไม่ใช่ V2 refactor
+- **กฎเหล็กก่อน demo**: ห้ามแตะ migration `academic_years`/`course_offerings` บน `sprint` — demo จาก `sprint` (term-based เดิม) ไม่ใช่ V2 refactor
 - **ใช้ demo เป็นเวทีเคาะ open questions** ของ V2 → ดู `architecture.md` "Requirement V2 Direction"
-- **V2 direction documented**: `architecture.md` + `database.md` (label 🔲 PROPOSED, ยังไม่ implement)
+- **V2 direction documented**: `architecture.md` + `database.md`
+
+## 🧹 Next Work — Master Data Cleanup Phase (V2) — ✅ DECIDED 30 พ.ค.
+
+> เคลียร์ Master Data ให้นิ่งก่อนทำ schedule/rotation — ดูรายละเอียด `architecture.md` "Master Data Cleanup Phase (V2)"
+> ทำบน `feat/v2-requirement` · `sprint` ยังเป็น demo fallback
+
+- **Done (รอบนี้)**: ✅ กลุ่มชั้นปี `student_cohorts` ใน Master Data (commit `ec25ba2`)
+- **ถัดไป (cleanup)**:
+  1. `academic_years` เป็น "ปี" (ตัด `semester`)
+  2. `courses` ตัด `default_semester` (วิชาเปิดทั้งปี) + เอา field ภาคออกจาก UI
+  3. `course_offerings` ราย-ปี + auto-open = ทุกวิชาใน active curriculum
+  4. candidate: `activity_types.counts_toward_workload`, `rooms.campus`
+- ⚠️ **เป็น refactor ใหญ่ (แตะ guard/seeder/test ทั้งระบบ)** — ทำหลัง demo ปลอดภัยกว่า · ห้าม merge เข้า sprint จน test เขียว + verify · **อย่าใช้ build นี้ deploy demo 2 มิ.ย.**
 
 ## Phase Overview
 
