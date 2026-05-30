@@ -37,4 +37,9 @@ class Curriculum extends Model
     {
         return $this->hasMany(Course::class);
     }
+
+    public function studentCohorts(): HasMany
+    {
+        return $this->hasMany(StudentCohort::class);
+    }
 }

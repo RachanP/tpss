@@ -120,6 +120,11 @@ Route::middleware(['auth', 'no-back'])->group(function () {
         Route::put('/admin/master-data/activity-types/{activityType}', 'App\Http\Controllers\Admin\MasterDataController@updateActivityType')->name('admin.activity_types.update');
         Route::delete('/admin/master-data/activity-types/{activityType}', 'App\Http\Controllers\Admin\MasterDataController@destroyActivityType')->name('admin.activity_types.destroy');
 
+        // กลุ่มชั้นปี (cohort — V2) — Admin เท่านั้น (staff เห็น read-only ใน tab)
+        Route::post('/admin/master-data/student-cohorts', 'App\Http\Controllers\Admin\MasterDataController@storeStudentCohort')->name('admin.student_cohorts.store');
+        Route::put('/admin/master-data/student-cohorts/{studentCohort}', 'App\Http\Controllers\Admin\MasterDataController@updateStudentCohort')->name('admin.student_cohorts.update');
+        Route::delete('/admin/master-data/student-cohorts/{studentCohort}', 'App\Http\Controllers\Admin\MasterDataController@destroyStudentCohort')->name('admin.student_cohorts.destroy');
+
     });
 
     // ── Staff only ─────────────────────────────────────────────────────

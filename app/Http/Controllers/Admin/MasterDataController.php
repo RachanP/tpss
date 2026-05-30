@@ -11,6 +11,7 @@ use App\Models\Course;
 use App\Models\CourseOffering;
 use App\Models\CourseRole;
 use App\Models\Curriculum;
+use App\Models\StudentCohort;
 use App\Models\ActivityType;
 use App\Services\AuditLogger;
 use App\Services\ReferenceDataCache;
@@ -175,6 +176,15 @@ class MasterDataController extends Controller
         // Curriculums with course count and courses list
         $curriculums = Curriculum::withCount('courses')->with(['courses' => fn($q) => $q->orderBy('course_code')])->get();
 
+        // กลุ่มนักศึกษา (cohort — V2) — ทุกระดับหลักสูตร
+        // หลักสูตรที่ใช้ระบบชั้นปี (ป.ตรี) มี year_level / หลักสูตรที่ไม่ใช้ (ป.โท-เอก) year_level = null
+        $cohortCurriculums = Curriculum::query()
+            ->with(['studentCohorts' => fn ($q) => $q->orderBy('year_level')->orderBy('code')])
+            ->orderBy('education_level')
+            ->orderBy('effective_year', 'desc')
+            ->orderBy('name')
+            ->get();
+
         // Activity Types
         $activityTypes = app(ReferenceDataCache::class)->activityTypes();
 
@@ -200,6 +210,7 @@ class MasterDataController extends Controller
             'rooms',
             'courses',
             'curriculums',
+            'cohortCurriculums',
             'activityTypes',
             'staffUsers',
             'courseRoles',
@@ -1238,6 +1249,132 @@ class MasterDataController extends Controller
         } catch (\Illuminate\Database\QueryException $e) {
             return redirect()->back()->with('error', 'ไม่สามารถลบได้เนื่องจากมีข้อมูลผูกพันอยู่');
         }
+    }
+
+    // ── Student Cohorts (กลุ่มชั้นปี — V2) ─────────────────────────────
+
+    /**
+     * Validation rules สำหรับกลุ่มชั้นปี
+     * cohort ใช้เฉพาะหลักสูตร ป.ตรี ที่ใช้ระบบชั้นปี (uses_year_level=true)
+     */
+    private function studentCohortValidationRules(Request $request, ?StudentCohort $cohort = null): array
+    {
+        $curriculum = Curriculum::find($request->input('curriculum_id'));
+        $usesYear = (bool) ($curriculum?->uses_year_level ?? false);
+        $maxYear = $curriculum?->duration_years ?? 8;
+
+        // หลักสูตรที่ไม่ใช้ระบบชั้นปี (ป.โท/ป.เอก) → year_level = null → uniqueness บน (curriculum, code)
+        $yearLevel = $usesYear ? $request->input('year_level') : null;
+        $uniqueRule = Rule::unique('student_cohorts')
+            ->where(fn ($q) => $q
+                ->where('curriculum_id', $request->input('curriculum_id'))
+                ->where('year_level', $yearLevel));
+        if ($cohort) {
+            $uniqueRule->ignore($cohort->id);
+        }
+
+        return [
+            'curriculum_id' => ['required', Rule::exists('curriculums', 'id')],
+            'year_level' => $usesYear
+                ? ['required', 'integer', 'min:1', 'max:' . $maxYear]
+                : ['nullable'],
+            'code' => ['required', 'string', 'max:50', $uniqueRule],
+            'student_count' => ['required', 'integer', 'min:0', 'max:9999'],
+            'note' => ['nullable', 'string', 'max:255'],
+        ];
+    }
+
+    private function studentCohortValidationMessages(): array
+    {
+        return [
+            'curriculum_id.required' => 'กรุณาเลือกหลักสูตร',
+            'curriculum_id.exists' => 'ไม่พบหลักสูตรที่เลือก',
+            'year_level.required' => 'กรุณาเลือกชั้นปี',
+            'year_level.max' => 'ชั้นปีต้องไม่เกินจำนวนปีของหลักสูตร',
+            'code.required' => 'กรุณาระบุรหัสกลุ่ม',
+            'code.unique' => 'มีรหัสกลุ่มนี้ในชั้นปีเดียวกันของหลักสูตรนี้แล้ว',
+            'student_count.required' => 'กรุณาระบุจำนวนนักศึกษา',
+        ];
+    }
+
+    /**
+     * หลักสูตรไม่ใช้ระบบชั้นปี → บังคับ year_level = null (ไม่สน input ที่ส่งมา)
+     */
+    private function normalizeCohortYearLevel(array $validated): array
+    {
+        $curriculum = Curriculum::find($validated['curriculum_id']);
+        if (! ($curriculum?->uses_year_level)) {
+            $validated['year_level'] = null;
+        }
+        return $validated;
+    }
+
+    public function storeStudentCohort(Request $request)
+    {
+        $validated = $this->normalizeCohortYearLevel($request->validate(
+            $this->studentCohortValidationRules($request),
+            $this->studentCohortValidationMessages()
+        ));
+
+        $cohort = StudentCohort::create($validated);
+
+        $this->logMasterDataCreate(
+            'student_cohorts',
+            $cohort->id,
+            $this->auditSnapshot($cohort, ['curriculum_id', 'year_level', 'code', 'student_count']),
+            'สร้างกลุ่ม ' . $this->cohortLabel($cohort),
+        );
+
+        return $this->redirectToMasterData('student_cohorts')->with('success', 'เพิ่มกลุ่มชั้นปีเรียบร้อยแล้ว');
+    }
+
+    private function cohortLabel(StudentCohort $cohort): string
+    {
+        return $cohort->code . ($cohort->year_level ? " (ปี {$cohort->year_level})" : '');
+    }
+
+    public function updateStudentCohort(Request $request, StudentCohort $studentCohort)
+    {
+        $validated = $this->normalizeCohortYearLevel($request->validate(
+            $this->studentCohortValidationRules($request, $studentCohort),
+            $this->studentCohortValidationMessages()
+        ));
+
+        $fields = ['curriculum_id', 'year_level', 'code', 'student_count', 'note'];
+        $before = $this->auditSnapshot($studentCohort, $fields);
+
+        $studentCohort->update($validated);
+
+        $after = $this->auditSnapshot($studentCohort->fresh(), $fields);
+        [$oldValues, $newValues] = $this->auditDiff($before, $after);
+        $this->logMasterDataUpdate(
+            'student_cohorts',
+            $studentCohort->id,
+            $oldValues,
+            $newValues,
+            'แก้ไขกลุ่ม ' . $this->cohortLabel($studentCohort),
+        );
+
+        return $this->redirectToMasterData('student_cohorts')->with('success', 'อัปเดตกลุ่มชั้นปีเรียบร้อยแล้ว');
+    }
+
+    public function destroyStudentCohort(Request $request, StudentCohort $studentCohort)
+    {
+        $snapshot = $this->auditSnapshot($studentCohort, ['curriculum_id', 'year_level', 'code', 'student_count']);
+        $id = $studentCohort->id;
+        $label = $this->cohortLabel($studentCohort);
+
+        $studentCohort->delete();
+
+        $this->logMasterDataDelete(
+            'student_cohorts',
+            $id,
+            $snapshot,
+            null,
+            "ลบกลุ่มชั้นปี {$label}",
+        );
+
+        return $this->redirectToMasterData('student_cohorts')->with('success', 'ลบกลุ่มชั้นปีเรียบร้อยแล้ว');
     }
 
     // ── Activity Types ────────────────────────────────────────────────

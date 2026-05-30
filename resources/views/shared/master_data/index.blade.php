@@ -57,6 +57,7 @@
             courses: { keyword: '', department_id: '', curriculum_id: '', year_level: '', status: '' },
             curriculums: { keyword: '', is_active: '' },
             activity_types: { keyword: '', category: '' },
+            student_cohorts: { keyword: '', curriculum_id: '' },
         },
         validFilterIds: {
             departments: {{ Js::from($departments->pluck('id')->map(fn($id) => (string) $id)->values()) }},
@@ -783,6 +784,35 @@
             this.currentActivityType = { ...at };
             this.showActivityTypeModal = true;
         },
+        showCohortModal: false,
+        editCohortMode: false,
+        cohortCurriculumDurations: {{ Js::from($cohortCurriculums->mapWithKeys(fn($c) => [(string) $c->id => (int) $c->duration_years])) }},
+        cohortCurriculumUsesYear: {{ Js::from($cohortCurriculums->mapWithKeys(fn($c) => [(string) $c->id => (bool) $c->uses_year_level])) }},
+        currentCohort: { id: '', curriculum_id: '', year_level: '', code: '', student_count: '', note: '' },
+        cohortUsesYear() {
+            return !!this.cohortCurriculumUsesYear[String(this.currentCohort.curriculum_id)];
+        },
+        cohortYearOptions() {
+            const dur = this.cohortCurriculumDurations[String(this.currentCohort.curriculum_id)] || 0;
+            return Array.from({ length: dur }, (_, i) => i + 1);
+        },
+        openAddCohort(curriculumId = '') {
+            this.editCohortMode = false;
+            this.currentCohort = { id: '', curriculum_id: curriculumId ? String(curriculumId) : '', year_level: '', code: '', student_count: '', note: '' };
+            this.showCohortModal = true;
+        },
+        openEditCohort(co) {
+            this.editCohortMode = true;
+            this.currentCohort = {
+                id: co.id,
+                curriculum_id: String(co.curriculum_id),
+                year_level: co.year_level != null ? String(co.year_level) : '',
+                code: co.code,
+                student_count: String(co.student_count),
+                note: co.note || '',
+            };
+            this.showCohortModal = true;
+        },
         activityCategoryHelp(category = null) {
             const value = category || this.currentActivityType.category;
             const descriptions = {
@@ -800,7 +830,7 @@
         }
     }"
     x-init="
-        if (!['departments', 'curriculums', 'courses', 'instructors', 'location_types', 'activity_types'].includes(activeTab)) {
+        if (!['departments', 'curriculums', 'student_cohorts', 'courses', 'instructors', 'location_types', 'activity_types'].includes(activeTab)) {
             activeTab = 'instructors';
             cleanMasterDataUrl(activeTab);
         }
@@ -847,6 +877,20 @@
             };
             showCurriculumModal = true;
         @endif
+        @if(old('cohort_form') && $errors->hasAny(['curriculum_id','year_level','code','student_count','note']))
+            activeTab = 'student_cohorts';
+            showCourseModal = false;
+            editCohortMode = {{ old('cohort_form_id') ? 'true' : 'false' }};
+            currentCohort = {
+                id: {{ Js::from(old('cohort_form_id', '')) }},
+                curriculum_id: {{ Js::from(old('curriculum_id', '')) }},
+                year_level: {{ Js::from(old('year_level', '')) }},
+                code: {{ Js::from(old('code', '')) }},
+                student_count: {{ Js::from(old('student_count', '')) }},
+                note: {{ Js::from(old('note', '')) }},
+            };
+            showCohortModal = true;
+        @endif
         @if(old('clone_curriculum_form') && $errors->hasAny(['name','effective_year']))
             activeTab = 'curriculums';
             cloneSourceCurriculum = {
@@ -888,6 +932,20 @@
                         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                     </svg>
                     หลักสูตร
+                    @if(!$isAdmin)@include('shared.master_data._lock_icon')@endif
+                </button>
+                {{-- 2b. กลุ่มชั้นปี (cohort — V2, ป.ตรี) --}}
+                <button type="button" data-testid="master-data-tab-student-cohorts" @click="activeTab = 'student_cohorts'"
+                    :class="activeTab === 'student_cohorts' ? 'btn-primary' : 'btn btn-ghost'"
+                    style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+                        style="margin-right: 6px;">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    กลุ่มนักศึกษา
                     @if(!$isAdmin)@include('shared.master_data._lock_icon')@endif
                 </button>
                 {{-- 3. รายวิชา (ต้องมีหลักสูตรก่อน) --}}
@@ -2952,6 +3010,219 @@
                 </div>
             </div>
         </template>
+
+        <!-- Tab: Student Cohorts (กลุ่มนักศึกษา — V2) -->
+        @php
+            $eduLabel = ['bachelor' => 'ปริญญาตรี', 'master' => 'ปริญญาโท', 'doctorate' => 'ปริญญาเอก'];
+        @endphp
+        <div x-show="activeTab === 'student_cohorts'" x-cloak>
+            <div class="card">
+                <div class="card-hdr">
+                    <div>
+                        <div class="card-ttl">กลุ่มนักศึกษาแต่ละหลักสูตร</div>
+                    </div>
+                    @if($isAdmin)
+                    <div class="card-actions">
+                        <button class="btn btn-primary" @click="openAddCohort()">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            เพิ่มกลุ่มนักศึกษา
+                        </button>
+                    </div>
+                    @endif
+                </div>
+
+                <div class="curriculum-list" x-data="{ expandedCohort: null }" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 8px;">
+                    @forelse($cohortCurriculums as $cur)
+                        <div class="curriculum-list-item" style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+
+                            {{-- Header --}}
+                            <div @click="expandedCohort = expandedCohort === {{ $cur->id }} ? null : {{ $cur->id }}"
+                                style="cursor: pointer; user-select: none; transition: background 0.15s;"
+                                :style="expandedCohort === {{ $cur->id }} ? 'background: #f0f4ff;' : 'background: #fff;'">
+                            <div class="curriculum-card-head" style="display: flex; align-items: center; gap: 16px; padding: 14px 16px;">
+
+                                {{-- Chevron --}}
+                                <div class="curriculum-card-chevron" style="flex-shrink: 0; width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: background 0.15s;"
+                                    :style="expandedCohort === {{ $cur->id }} ? 'background: var(--brand-navy);' : 'background: var(--bg-3);'">
+                                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                                        style="transition: transform 0.2s;"
+                                        :style="expandedCohort === {{ $cur->id }} ? 'transform:rotate(90deg); color:#fff' : 'color: var(--fg-3)'">
+                                        <polyline points="9 18 15 12 9 6"/>
+                                    </svg>
+                                </div>
+
+                                {{-- Name + level --}}
+                                <div class="curriculum-card-title-block" style="flex: 1; min-width: 0;">
+                                    <div class="curriculum-card-title" style="font-weight: 600; font-size: 14px; color: var(--fg-1);">{{ $cur->name }}</div>
+                                    <div class="curriculum-card-year" style="margin-top: 3px; font-size: 12px; color: var(--fg-3);">
+                                        {{ $eduLabel[$cur->education_level] ?? $cur->education_level }}@if($cur->uses_year_level) · แบ่งตามชั้นปี (ปี 1-{{ $cur->duration_years }})@else · ไม่ผูกชั้นปี@endif
+                                    </div>
+                                </div>
+
+                                {{-- Group count --}}
+                                @if($cur->studentCohorts->count() > 0)
+                                <div class="curriculum-card-count" style="flex-shrink: 0; background: var(--bg-3); border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 700; color: var(--fg-2);">
+                                    {{ $cur->studentCohorts->count() }} กลุ่ม
+                                </div>
+                                @else
+                                <div class="curriculum-card-count" style="flex-shrink: 0; font-size: 12px; color: var(--fg-4, #94a3b8);">ยังไม่มีกลุ่ม</div>
+                                @endif
+
+                                {{-- Actions (admin only) — เพิ่มกลุ่มในหลักสูตรนี้ (auto-fill หลักสูตรใน modal) --}}
+                                @if($isAdmin)
+                                <div class="curriculum-card-actions" @click.stop style="flex-shrink: 0; display: flex; gap: 4px;">
+                                    <button type="button" class="action-btn" title="เพิ่มกลุ่มในหลักสูตรนี้" @click.stop="openAddCohort({{ $cur->id }})" style="color: var(--brand-navy);">
+                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                    </button>
+                                </div>
+                                @endif
+
+                            </div>{{-- /flex inner --}}
+                            </div>{{-- /click outer --}}
+
+                            {{-- Expanded cohort list --}}
+                            <div x-show="expandedCohort === {{ $cur->id }}" x-cloak
+                                x-transition:enter="transition ease-out duration-150"
+                                x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                                x-transition:leave="transition ease-in duration-100"
+                                x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                                style="border-top: 1px solid var(--border);">
+
+                                @if($cur->studentCohorts->count() > 0)
+                                    <table style="width: 100%; border-collapse: collapse;">
+                                        <thead>
+                                            <tr style="background: var(--bg-2);">
+                                                @if($cur->uses_year_level)
+                                                <th style="padding: 8px 16px 8px 56px; text-align: left; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">ชั้นปี</th>
+                                                <th style="padding: 8px 16px; text-align: left; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">รหัสกลุ่ม</th>
+                                                @else
+                                                <th style="padding: 8px 16px 8px 56px; text-align: left; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">รหัสกลุ่ม</th>
+                                                @endif
+                                                <th style="padding: 8px 16px; text-align: center; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em; width: 180px;">จำนวนนักศึกษา</th>
+                                                @if($isAdmin)<th style="padding: 8px 16px; text-align: center; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em; width: 80px;">จัดการ</th>@endif
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($cur->studentCohorts as $co)
+                                                <tr style="border-top: 1px solid var(--border); transition: background 0.1s;"
+                                                    onmouseover="this.style.background='var(--bg-2)'" onmouseout="this.style.background=''">
+                                                    @if($cur->uses_year_level)
+                                                    <td style="padding: 11px 16px 11px 56px; font-size: 13px; color: var(--fg-2);">@if($co->year_level)ปี {{ $co->year_level }}@else<span style="color: var(--fg-3);">—</span>@endif</td>
+                                                    <td style="padding: 11px 16px; font-size: 13px; font-weight: 600; color: var(--fg-1);">{{ $co->code }}</td>
+                                                    @else
+                                                    <td style="padding: 11px 16px 11px 56px; font-size: 13px; font-weight: 600; color: var(--fg-1);">{{ $co->code }}</td>
+                                                    @endif
+                                                    <td style="padding: 11px 16px; font-size: 13px; color: var(--fg-2); text-align: center; font-family: var(--font-mono, monospace);">{{ number_format($co->student_count) }} คน</td>
+                                                    @if($isAdmin)
+                                                    <td style="padding: 11px 16px; text-align: center;">
+                                                        <button type="button" class="action-btn" title="แก้ไข"
+                                                            @click="openEditCohort({{ Js::from(['id' => $co->id, 'curriculum_id' => $co->curriculum_id, 'year_level' => $co->year_level, 'code' => $co->code, 'student_count' => $co->student_count, 'note' => $co->note]) }})">
+                                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                                        </button>
+                                                    </td>
+                                                    @endif
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                @else
+                                    <div style="padding: 20px 56px; font-size: 13px; color: var(--fg-3);">ยังไม่มีกลุ่มในหลักสูตรนี้@if($isAdmin) — กดปุ่ม "เพิ่มกลุ่มนักศึกษา" ด้านบน@endif</div>
+                                @endif
+                            </div>
+
+                        </div>
+                    @empty
+                        <div style="text-align: center; padding: 48px 20px; color: var(--fg-3);">ยังไม่มีหลักสูตร — เพิ่มหลักสูตรในแท็บ "หลักสูตร" ก่อน</div>
+                    @endforelse
+                </div>
+            </div>
+        </div>
+
+        @if($isAdmin)
+        <!-- Add/Edit Modal (Student Cohort) -->
+        <template x-if="showCohortModal">
+            <div class="overlay" x-cloak>
+                <div class="modal-center" style="max-width: 520px;"
+                    x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95"
+                    x-transition:enter-end="opacity-100 scale-100">
+                    <div class="modal-hdr" style="background: var(--bg-2);">
+                        <div class="modal-ttl" style="font-family: var(--font-display);"
+                            x-text="editCohortMode ? 'แก้ไขกลุ่มชั้นปี' : 'เพิ่มกลุ่มชั้นปีใหม่'"></div>
+                        <button type="button" class="modal-cls" @click="showCohortModal = false">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <form :action="editCohortMode ? '{{ url('admin/master-data/student-cohorts') }}/' + currentCohort.id : '{{ route('admin.student_cohorts.store') }}'" method="POST">
+                        @csrf
+                        <input type="hidden" name="cohort_form" value="1">
+                        <input type="hidden" name="cohort_form_id" :value="currentCohort.id">
+                        <input type="hidden" name="_method" value="PUT" :disabled="!editCohortMode">
+                        <div class="modal-body">
+                            <div class="form-group" style="margin-bottom: 18px;">
+                                <label>หลักสูตร <span style="color: var(--status-conflict-fg)">*</span></label>
+                                <select name="curriculum_id" x-model="currentCohort.curriculum_id" required
+                                    @change="if (!cohortYearOptions().includes(Number(currentCohort.year_level))) currentCohort.year_level = ''">
+                                    <option value="">— เลือกหลักสูตร —</option>
+                                    @foreach($cohortCurriculums as $cur)
+                                        <option value="{{ $cur->id }}">{{ $cur->name }}@if($cur->uses_year_level) (ปี 1-{{ $cur->duration_years }})@endif</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 18px;" x-show="cohortUsesYear()">
+                                <label>ชั้นปี <span style="color: var(--status-conflict-fg)">*</span></label>
+                                <select name="year_level" x-model="currentCohort.year_level" :required="cohortUsesYear()" :disabled="!currentCohort.curriculum_id">
+                                    <option value="">— เลือกชั้นปี —</option>
+                                    <template x-for="y in cohortYearOptions()" :key="y">
+                                        <option :value="y" x-text="'ปี ' + y"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 18px;" x-show="currentCohort.curriculum_id && !cohortUsesYear()" x-cloak>
+                                <div style="font-size:12px;line-height:1.55;color:var(--fg-3);padding:8px 10px;background:var(--bg-2);border-radius:6px;">
+                                    หลักสูตรนี้ไม่ใช้ระบบชั้นปี (ใช้ prerequisite + หน่วยกิตสะสม) — กลุ่มนี้จะไม่ผูกกับชั้นปี
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 18px;">
+                                <label>จำนวนนักศึกษา <span style="color: var(--status-conflict-fg)">*</span></label>
+                                <input type="number" name="student_count" x-model="currentCohort.student_count" min="0" max="9999" required placeholder="เช่น 80">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 18px;">
+                                <label>รหัสกลุ่ม <span style="color: var(--status-conflict-fg)">*</span></label>
+                                <input type="text" name="code" x-model="currentCohort.code" maxlength="50" required placeholder="เช่น กลุ่ม 1, A">
+                                <div style="margin-top:6px;font-size:12px;color:var(--fg-3);">รหัสกลุ่มต้องไม่ซ้ำในชั้นปีเดียวกันของหลักสูตรนี้</div>
+                            </div>
+                            <div class="form-group">
+                                <label>หมายเหตุ</label>
+                                <input type="text" name="note" x-model="currentCohort.note" maxlength="255" placeholder="(ถ้ามี)">
+                            </div>
+                        </div>
+                        <div class="modal-foot" style="display: flex; justify-content: space-between;">
+                            <div>
+                                <button type="button" class="btn btn-ghost" x-show="editCohortMode"
+                                    @click="confirmDelete('deleteCohortForm', currentCohort.code, 'กลุ่มชั้นปีที่ลบแล้วจะไม่สามารถกู้คืนได้')"
+                                    style="color: var(--status-conflict-fg);">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; display: inline-block; vertical-align: middle;"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                    ลบข้อมูล
+                                </button>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" class="btn btn-ghost" @click="showCohortModal = false">ยกเลิก</button>
+                                <button type="submit" class="btn btn-primary">บันทึกข้อมูล</button>
+                            </div>
+                        </div>
+                    </form>
+                    <form id="deleteCohortForm" :action="'{{ url('admin/master-data/student-cohorts') }}/' + currentCohort.id" method="POST" style="display: none;">
+                        @csrf
+                        @method('DELETE')
+                    </form>
+                </div>
+            </div>
+        </template>
+        @endif
 
         <!-- Clone Curriculum Modal -->
         <template x-if="showCloneCurriculumModal">
