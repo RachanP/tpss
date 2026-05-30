@@ -192,3 +192,51 @@ Course Offerings (ต่อเทอม — ตัวกลาง Master ↔ Sch
 - ห้าม hardcode ข้อมูลอาจารย์ — ดึงจาก `users` + `instructor_profiles` เสมอ
 - `instructor_profiles.employee_id` = Global Instructor ID สำหรับ Conflict Check (Sprint 4)
 - System Settings URL: `?tab=pa` หรือ `?tab=academic` เพื่อ Active Tab Persistence
+
+## Requirement V2 Direction — 🔲 PROPOSED (ยังไม่ implement · pending demo 2 มิ.ย. 2569)
+
+> แหล่งอ้างอิง: `Doc/จากอาจารย์/เอกสาร/รายละเอียดระบบจัดตารางสอน_V2.docx`
+> ทั้งหมดนี้เป็น **ทิศทางที่ยังไม่ได้ลงมือ** — ห้ามถือว่ามีในโค้ดจนกว่าจะมี commit จริง + ลบ label นี้
+> Schema ที่เสนอ ดู `database.md` หัวข้อ "V2 Proposed Schema"
+
+V2 ชี้ว่าตารางคณะพยาบาลเป็น "ตารางบริหารการเรียนการสอน/ฝึกปฏิบัติแบบหลายกลุ่ม หลายกิจกรรม หลายสถานที่ หลายผู้สอน" ไม่ใช่ timetable รายสัปดาห์ — มี 7 implication ที่กระทบ design ปัจจุบัน:
+
+### 1. หัวหน้าวิชา = เจ้าของรายวิชา + มอบหมายสิทธิ์จัดตารางได้ (per-offering)
+- doc บรรทัด 98/123: ภาคปฏิบัติ ป.ตรี อาจารย์มักแบ่งกันจัดเอง + เปิดสิทธิ์ให้อาจารย์จัดกลุ่ม นศ.
+- ปัจจุบัน: `instructor` = read-only แข็ง (rbac.md), `course_head` จัดคนเดียว
+- เสนอ: permission ระดับ offering บน pivot `course_offering_instructors.schedule_permission enum('view','schedule','manage_groups')` — `ScheduleController`/`CourseOfferingController` เช็คจาก pivot ไม่ใช่ role อย่างเดียว
+- **ส่งขออนุมัติขั้นสุดท้ายยังเป็นของหัวหน้าวิชา** (ไม่ delegate)
+
+### 2. กลุ่มนักศึกษา 2 ระดับ — cohort (Master) + subgroup (per-offering)
+- doc บรรทัด 11/122-125: ปี 3-4 = 4 กลุ่มใหญ่ (~80 คน) ตั้งแต่ต้น → ซอยเป็น subgroup ต่อวิชา
+- ปัจจุบัน: `student_groups` ผูก `course_offering_id` อย่างเดียว → ไม่มี identity ข้ามวิชา → publish รายกลุ่มข้ามวิชาไม่ได้
+- เสนอ: `student_cohorts` ระดับ Setup Data + `student_groups.cohort_group_id` FK
+
+### 3. ปีการศึกษา = "ปี" ไม่ใช่ "เทอม" · วิชาเปิดทั้งปี · เทอม/รอบ = dimension ของ slot
+- doc บรรทัด 159: schedule entry ระบุ ปี + ภาค + ปีปรับปรุงหลักสูตร ต่อรายการ (ไม่ผูกที่ตัววิชา)
+- ปัจจุบัน: `academic_years` จริง ๆ คือ "เทอม" (`unique(name,semester)`, phase/is_active ต่อเทอม) → เปิดจัดตารางทีละเทอม, `course_offerings` ราย-เทอม
+- เสนอ: ยกระดับ `academic_years` เป็นปีจริง + ตาราง `semesters/terms` (child) + `course_offerings` ราย-ปี + slot ถือ `semester_id`
+- **ขัด decision เดิม** "เปิดทั้งภาคเรียนพร้อมกัน (scope = เทอม)" → ต้อง re-confirm ว่าเปลี่ยน scope เป็นปี
+
+### 4. Rotation หลังสอบ — 2 รอบต่อเทอม (สำคัญสุด)
+- doc บรรทัด 311: ป.ตรี ปี 3-4 ขึ้นฝึก **สลับวนกลุ่ม 2 ครั้งใน 1 ภาค** → ต้องสรุปภาระงานแยก 2 รอบ/ภาค
+- ตัวอย่างปี 3: สัปดาห์ 1-8 A1=RANS326/A2=RANS327 → **สอบ** → สัปดาห์ 9-16 สลับ A1↔A2 (exam week = เส้นแบ่งรอบ)
+- เสนอ: `rotation_rounds` (เทอม → รอบ 1|2, start/end) + `rotation_assignments` (cohort_group × offering × round) เป็น "แผนหมุนเวียน" ที่ scaffold schedule + workload per-round
+
+### 5. Cross-course GROUP conflict — ต้องเพิ่มใหม่ (ปัจจุบัน by-design ไม่เช็ค)
+- ⚠️ database.md: ตอนนี้เช็คแค่ room + instructor "ไม่เช็ค student overlap ข้ามวิชา"
+- พอกลุ่มเป็น cohort ใช้ร่วมข้ามวิชา → กลุ่มเดียวห้ามอยู่ 2 วิชาพร้อมกัน กลายเป็นเรื่องจริง
+- เสนอ: ขยาย `ScheduleConflictChecker::bulkConflictMap()` ให้ pairwise compare cohort_group ข้ามวิชาเพิ่มจาก instructor/room
+
+### 6. Copy-with-group-swap + workload per-round
+- Priority 6 (`schedule_templates`+`storeSeries`) ทำ "ซ้ำรายสัปดาห์" แล้ว — rotation ต้องการ "คัดลอกโครงรอบ 1 → รอบ 2 สลับ mapping กลุ่ม" (เช็คว่า series รับ remap group ต่อรอบได้ไหม)
+- workload widget ใช้ quota — Phase 2 ต้องคำนวณจาก schedule จริง group by `rotation_round_id`
+
+### 7. รายละเอียดที่ V2 เพิ่มใหม่ (กระทบ master-data decision เดิม)
+- **2 วิทยาเขต** (doc บรรทัด 19): ทฤษฎี→ศาลายา LRC, ปฏิบัติ→ศิริราช (บางกอกน้อย) — ขัด master-data decision 30 พ.ค. ที่เลื่อน campus field → reconsider
+- **activity_type 0 ชั่วโมง** (doc บรรทัด 141/144): ปฐมนิเทศ/SDL ไม่นับ workload — ตรงกับ Priority 3 backlog (`counts_toward_workload`)
+
+### Open Questions (ต้องเคาะใน demo 2 มิ.ย. ก่อน implement)
+1. **ใครอนุมัติตาราง?** — V2 doc บรรทัด 255/417 บอก "หัวหน้าวิชา" แต่ระบบปัจจุบันให้ **executive** approve (`course_offerings.approval_status`) → ชั้นเดียวหรือสองชั้น (schedule-level head → offering-level executive)?
+2. **course_offering ราย-ปี หรือ ราย-เทอม?** — จุดตัดสินที่กระทบมากสุด (ข้อ 3 ด้านบน)
+3. **รอบ rotation = 2 เสมอไหม** หรือ config ต่อเทอม/ต่อวิชา?

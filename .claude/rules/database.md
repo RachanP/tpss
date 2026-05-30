@@ -226,3 +226,36 @@ course_offerings
 
 **Phase 2 tables (เตรียมไว้แล้ว):** `course_offering_approvals`, `schedule_conflicts`
 ER Diagram: `mock/er_v1.jpg`
+
+## V2 Proposed Schema — 🔲 PROPOSED, ยังไม่ migrate (pending demo 2 มิ.ย. 2569)
+
+> ⚠️ **ยังไม่มีในโค้ดจริง** — อย่าอ้างว่ามี table/column เหล่านี้จนกว่าจะมี migration จริง + ลบ label นี้
+> Rationale + open questions ดู `architecture.md` หัวข้อ "Requirement V2 Direction"
+
+```
+-- 1. ปีการศึกษา → ยกระดับเป็น "ปี" จริง + แยก term ออกมา (ข้อ 3)
+academic_years   :  ตัด semester ออก → (name/year, start, end, phase, is_active)
+semesters        :  NEW (academic_year_id FK, sequence 1|2|3, start_date, end_date)
+course_offerings :  academic_year_id → ราย-ปี (วิชาเปิดทั้งปี)   ← เคาะก่อน (open Q2)
+schedules        :  + semester_id FK, + rotation_round_id FK
+
+-- 2. กลุ่มนักศึกษา 2 ระดับ (ข้อ 2)
+student_cohorts  :  NEW (curriculum_id, academic_year_id, year_level, code "กลุ่ม 1..4", student_count)
+student_groups   :  + cohort_group_id FK nullable  ← subgroup อ้างกลุ่มใหญ่
+
+-- 3. Rotation หลังสอบ (ข้อ 4)
+rotation_rounds      : NEW (semester_id, sequence 1|2, label, start_date, end_date)
+rotation_assignments : NEW (cohort_group_id, course_offering_id, rotation_round_id)
+                       = แผน "กลุ่มไหนเรียนวิชาไหนรอบไหน" → scaffold schedule + workload per-round
+
+-- 4. มอบหมายสิทธิ์จัดตาราง (ข้อ 1)
+course_offering_instructors : + schedule_permission enum('view','schedule','manage_groups') default 'view'
+
+-- 5. ส่วนเสริม V2
+activity_types : + counts_toward_workload boolean  (Priority 3 backlog — ปฐมนิเทศ/SDL = false)
+rooms/location_types : reconsider campus field (ศาลายา/บางกอกน้อย — doc บรรทัด 19)
+```
+
+**Cross-course GROUP conflict (ข้อ 5):** ไม่ใช่ schema ใหม่ แต่ต้องขยาย logic — `ScheduleConflictChecker::bulkConflictMap()` เพิ่ม pairwise compare `cohort_group` ข้ามวิชา (ปัจจุบันเช็คแค่ instructor/room)
+
+**หมายเหตุ flow:** ทีมใช้ `migrate:fresh --seed` เสมอ → ถ้าตัดสินใจทำ ให้ consolidate เข้า create-table baselines ไม่ทำ alter แยก (ตาม pattern Sprint 3 Hardening)

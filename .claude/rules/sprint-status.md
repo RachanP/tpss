@@ -1,4 +1,12 @@
-# Sprint Status — ณ 29 พ.ค. 2569
+# Sprint Status — ณ 30 พ.ค. 2569
+
+## 🔔 Active Milestone — Client Demo + Staging Deploy (2 มิ.ย. 2569)
+
+- **เป้าหมาย**: deploy Docker ขึ้น server บริษัทก่อน demo → demo บน URL จริง + ลูกค้าเข้าทดสอบต่อได้เอง
+- **Docker setup**: ✅ สร้างแล้ว (`Dockerfile` multi-stage, `docker-compose.yml` app+mysql, `docker/entrypoint.sh`, `.env.docker.example`) — ⚠️ **ยังไม่ build/test** (เครื่อง dev ไม่มี Docker → จะ build บน server ตอน SSH access มา)
+- **กฎเหล็กก่อน demo**: ห้ามแตะ migration `academic_years`/`course_offerings` — demo โชว์ระบบปัจจุบัน + เคสจริง (ปี 3 rotation seed) ไม่ใช่ V2 refactor
+- **ใช้ demo เป็นเวทีเคาะ open questions** ของ V2 → ดู `architecture.md` "Requirement V2 Direction"
+- **V2 direction documented**: `architecture.md` + `database.md` (label 🔲 PROPOSED, ยังไม่ implement)
 
 ## Phase Overview
 
@@ -7,7 +15,7 @@
 | Phase 1–3 | Initiation → Design | ✅ เสร็จ |
 | Phase 4–5 | Development | 🟢 Sprint 1+2+3+M7 merge แล้ว, Schedule Suite (M3+M4+M8) Phase A/B/C ส่งบน branch `4-m3-schedule-suite-testPat` |
 | Phase 5 | Testing | 🟡 Internal Testing กำลังดำเนินการ |
-| Phase 6–7 | Deployment → Closure | ยังไม่เริ่ม (4–7 มิ.ย. 2569) |
+| Phase 6–7 | Deployment → Closure | 🟢 Staging deploy (Docker) เริ่ม 30 พ.ค. สำหรับ client demo 2 มิ.ย. — production closure 4–7 มิ.ย. 2569 |
 
 ## Sprint Plan — Phase 1 (193 SP)
 
