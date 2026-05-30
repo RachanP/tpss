@@ -924,6 +924,205 @@ class ScheduleManagementTest extends TestCase
             ->assertDontSee($outsideInstructor->name);
     }
 
+    public function test_schedule_index_filters_by_instructor(): void
+    {
+        [$head, $offering, $instructorA, $group, $activityType, $room] = $this->makeReadyOffering();
+        $instructorB = $this->makeUser('instructor');
+        $offering->instructorPool()->attach($instructorB->id, ['role_in_course' => 'instructor']);
+
+        $this->makeSchedule($offering, $activityType, $room, [$instructorA], [$group], ['topic' => 'TopicAlpha']);
+        $this->makeSchedule($offering, $activityType, $room, [$instructorB], [$group], [
+            'topic' => 'TopicBravo',
+            'start_time' => '10:00',
+            'end_time' => '12:00',
+        ]);
+
+        $this->actingAsCourseHead($head);
+
+        // ไม่กรอง → เห็นทั้งสองกิจกรรม
+        $this->get(route('maker.course_offerings.schedules.index', $offering))
+            ->assertOk()
+            ->assertSee('TopicAlpha')
+            ->assertSee('TopicBravo');
+
+        // กรองตาม instructorA → เห็นเฉพาะ slot ของ A
+        $this->get(route('maker.course_offerings.schedules.index', [$offering, 'instructor_id' => $instructorA->id]))
+            ->assertOk()
+            ->assertSee('TopicAlpha')
+            ->assertDontSee('TopicBravo');
+    }
+
+    public function test_check_conflicts_endpoint_flags_instructor_overlap_on_field(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        [, $otherOffering, , $otherGroup, $otherActivityType, $otherRoom] = $this->makeReadyOffering();
+        $otherOffering->instructorPool()->attach($instructor->id, ['role_in_course' => 'instructor']);
+        // วิชาอื่นจองผู้สอนคนเดียวกันไว้ในวัน/เวลาเดียวกัน
+        $this->makeSchedule($otherOffering, $otherActivityType, $otherRoom, [$instructor], [$otherGroup]);
+
+        $this->actingAsCourseHead($head);
+
+        $this->postJson(route('maker.course_offerings.schedules.check_conflicts', $offering), [
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-07',
+            'start_time' => '08:00',
+            'end_time' => '10:00',
+            'activity_type_id' => $activityType->id,
+            'room_id' => $room->id,
+            'instructor_ids' => [$instructor->id],
+            'lead_instructor_id' => $instructor->id,
+            'student_group_ids' => [$group->id],
+        ])->assertOk()
+            ->assertJsonPath('blocking', true)
+            ->assertJsonStructure(['blocking', 'fields' => ['instructor_ids']]);
+    }
+
+    public function test_check_conflicts_endpoint_returns_clear_when_no_conflict(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+
+        $this->actingAsCourseHead($head);
+
+        $this->postJson(route('maker.course_offerings.schedules.check_conflicts', $offering), [
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-07',
+            'start_time' => '08:00',
+            'end_time' => '10:00',
+            'activity_type_id' => $activityType->id,
+            'room_id' => $room->id,
+            'instructor_ids' => [$instructor->id],
+            'lead_instructor_id' => $instructor->id,
+            'student_group_ids' => [$group->id],
+        ])->assertOk()->assertJson(['blocking' => false]);
+    }
+
+    public function test_check_conflicts_ignores_the_schedule_being_edited(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $schedule = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'start_time' => '08:00',
+            'end_time' => '10:00',
+        ]);
+
+        $this->actingAsCourseHead($head);
+
+        $payload = [
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-07',
+            'start_time' => '08:00',
+            'end_time' => '10:00',
+            'activity_type_id' => $activityType->id,
+            'room_id' => $room->id,
+            'instructor_ids' => [$instructor->id],
+            'lead_instructor_id' => $instructor->id,
+            'student_group_ids' => [$group->id],
+        ];
+
+        // ไม่ส่ง schedule_id → ชนกับตัวเอง
+        $this->postJson(route('maker.course_offerings.schedules.check_conflicts', $offering), $payload)
+            ->assertOk()->assertJsonPath('blocking', true);
+
+        // ส่ง schedule_id ของรายการที่กำลังแก้ → ต้องไม่ชนกับตัวเอง
+        $this->postJson(route('maker.course_offerings.schedules.check_conflicts', $offering), $payload + ['schedule_id' => $schedule->id])
+            ->assertOk()->assertJson(['blocking' => false]);
+    }
+
+    public function test_schedule_page_renders_copy_week_button(): void
+    {
+        [$head, $offering] = $this->makeReadyOffering();
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.course_offerings.schedules.index', $offering))
+            ->assertOk()
+            ->assertSee('schedule-copy-week-button')
+            ->assertSee('schedule-copy-week-modal');
+    }
+
+    public function test_course_head_can_copy_week_into_empty_target_week(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-03',
+            'topic' => 'WeekOneActivity',
+        ]);
+
+        $this->actingAsCourseHead($head);
+
+        $this->post(route('maker.course_offerings.schedules.copy_week', $offering), [
+            'source_week_start' => '2026-08-03',
+            'target_week_start' => '2026-08-10',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('schedules', [
+            'course_offering_id' => $offering->id,
+            'start_date' => '2026-08-10',
+            'topic' => 'WeekOneActivity',
+            'status' => 'draft',
+        ]);
+    }
+
+    public function test_copy_week_skips_slot_conflicting_with_another_course(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-03',
+            'start_time' => '08:00',
+            'end_time' => '10:00',
+            'topic' => 'WillConflict',
+        ]);
+
+        // วิชาอื่นจองผู้สอนคนเดียวกันไว้แล้วในวัน/เวลาปลายทาง (cross-course conflict)
+        [, $otherOffering, , $otherGroup, $otherActivity, $otherRoom] = $this->makeReadyOffering();
+        $this->makeSchedule($otherOffering, $otherActivity, $otherRoom, [$instructor], [$otherGroup], [
+            'start_date' => '2026-08-10',
+            'end_date' => '2026-08-10',
+            'start_time' => '08:00',
+            'end_time' => '10:00',
+            'topic' => 'Blocker',
+        ]);
+
+        $this->actingAsCourseHead($head);
+
+        $this->post(route('maker.course_offerings.schedules.copy_week', $offering), [
+            'source_week_start' => '2026-08-03',
+            'target_week_start' => '2026-08-10',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        // slot ที่ชนต้องไม่ถูกสร้าง
+        $this->assertDatabaseMissing('schedules', [
+            'course_offering_id' => $offering->id,
+            'start_date' => '2026-08-10',
+            'topic' => 'WillConflict',
+        ]);
+        $this->assertEquals(['WillConflict'], collect(session('schedule_copy_skipped'))->pluck('topic')->all());
+    }
+
+    public function test_copy_week_preview_classifies_ready_and_blocked(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-03',
+            'start_time' => '08:00',
+            'end_time' => '10:00',
+            'topic' => 'Clean',
+        ]);
+
+        $this->actingAsCourseHead($head);
+
+        $this->post(route('maker.course_offerings.schedules.copy_week.preview', $offering), [
+            'source_week_start' => '2026-08-03',
+            'target_week_start' => '2026-08-10',
+        ])->assertOk()->assertJson([
+            'total' => 1,
+            'ready' => [['topic' => 'Clean', 'target_date' => '2026-08-10']],
+            'blocked' => [],
+        ]);
+    }
+
     public function test_course_head_can_update_schedule_and_pivots(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
