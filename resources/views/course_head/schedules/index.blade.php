@@ -5376,6 +5376,22 @@
                             data-testid="schedule-copy-week-button"
                         >คัดลอกกิจกรรมจากสัปดาห์อื่น</button>
                         @endif
+                        {{-- V2: filter ภาคเรียน (per-offering) — วิชาเปิดทั้งปี เลือกเทอมเพื่อโฟกัส + เด้งปฏิทิน --}}
+                        @if(($terms ?? collect())->isNotEmpty())
+                        <div class="term-filter-wrap">
+                            <select
+                                class="schedule-filter-control"
+                                aria-label="เลือกภาคเรียน"
+                                onchange="applyTermFilter(this.value)"
+                                data-testid="schedule-term-filter-offering"
+                            >
+                                <option value="">ทุกเทอม</option>
+                                @foreach($terms as $t)
+                                    <option value="{{ $t->id }}" {{ ($selectedTermId ?? null) == $t->id ? 'selected' : '' }}>{{ $t->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        @endif
                         <div class="schedule-toggle" role="group" aria-label="รูปแบบการแสดงตาราง">
                             <button type="button" :class="{ 'is-active': view === 'list' }" @click="view = 'list'" data-testid="schedule-list-toggle">แบบรายการ</button>
                             <button type="button" :class="{ 'is-active': view === 'grid' }" @click="view = 'grid'" data-testid="schedule-grid-toggle">แบบตาราง</button>
