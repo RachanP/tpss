@@ -101,6 +101,22 @@ class AcademicYearV2Test extends TestCase
         ])->assertSessionHasErrors('terms');
     }
 
+    public function test_final_exam_before_midterm_is_rejected(): void
+    {
+        $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
+
+        $this->post(route('admin.settings.years.store'), [
+            'name'  => '2570',
+            'terms' => [
+                ['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '2026-06-01', 'end_date' => '2026-10-15',
+                 'midterm_start' => '2026-09-01', 'midterm_end' => '2026-09-05',
+                 'final_start' => '2026-07-01', 'final_end' => '2026-07-05'], // ปลายภาคมาก่อนกลางภาค
+            ],
+        ])->assertSessionHasErrors('terms');
+
+        $this->assertDatabaseMissing('academic_years', ['name' => '2570']);
+    }
+
     public function test_overlapping_terms_are_rejected(): void
     {
         $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);

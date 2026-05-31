@@ -185,6 +185,13 @@ class AdminSettingController extends Controller
                     }
                 }
             }
+
+            // สอบกลางภาคต้องมาก่อนสอบปลายภาค
+            $midtermEnd = $t['midterm_end'] ?? null;
+            $finalStart = $t['final_start'] ?? null;
+            if ($midtermEnd && $finalStart && $finalStart <= $midtermEnd) {
+                $errors[] = "{$label}: สอบปลายภาคต้องอยู่หลังสอบกลางภาค";
+            }
         }
 
         // ห้ามช่วงเทอมซ้อนทับกัน (เรียงตามวันเริ่ม)
