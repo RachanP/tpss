@@ -2887,6 +2887,7 @@
                             @forelse($activityTypes as $at)
                                 @php
                                     $catLabel = ['lecture' => 'บรรยาย', 'practicum' => 'ปฏิบัติ', 'thesis' => 'วิทยานิพนธ์', 'other' => 'อื่นๆ'];
+                                    $pillShape = 'border-radius:999px;padding:0 11px;height:21px;';
                                     $catStyle = [
                                         'lecture'   => 'background:#eef4ff;color:#1e40af;border:1px solid #c7d7fe;',
                                         'practicum' => 'background:#f3effd;color:#6b21a8;border:1px solid #ddd0f7;',
@@ -2903,13 +2904,13 @@
                                     </td>
                                     <td style="font-weight: 600; color: var(--fg-1);">{{ $at->name }}</td>
                                     <td>
-                                        <span class="pill" style="{{ $catStyle[$at->category] ?? $catStyle['other'] }}">{{ $catLabel[$at->category] ?? $at->category }}</span>
+                                        <span class="pill" style="{{ $catStyle[$at->category] ?? $catStyle['other'] }}{{ $pillShape }}">{{ $catLabel[$at->category] ?? $at->category }}</span>
                                     </td>
                                     <td>
                                         @if($at->counts_toward_workload)
-                                            <span class="pill" style="background:#e6fffa;color:#047481;border:1px solid #b2f5ea;">นับภาระงาน</span>
+                                            <span class="pill" style="background:#e6fffa;color:#047481;border:1px solid #b2f5ea;{{ $pillShape }}">นับภาระงาน</span>
                                         @else
-                                            <span class="pill" style="background:#f7fafc;color:#718096;border:1px solid #e2e8f0;">ไม่นับ</span>
+                                            <span class="pill" style="background:#f7fafc;color:#718096;border:1px solid #e2e8f0;{{ $pillShape }}">ไม่นับ</span>
                                         @endif
                                     </td>
                                     @if($isAdmin)
