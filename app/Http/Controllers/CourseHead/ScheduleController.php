@@ -7,6 +7,7 @@ use App\Models\AcademicYear;
 use App\Models\CourseOffering;
 use App\Models\Schedule;
 use App\Models\ScheduleTemplate;
+use App\Services\AcademicCalendar;
 use App\Services\AuditLogger;
 use App\Services\NavigationBadgeService;
 use App\Services\ReferenceDataCache;
@@ -548,6 +549,7 @@ class ScheduleController extends Controller
             'terms' => $terms,
             'selectedTermId' => $selectedTermId,
             'currentTermId' => $currentTerm?->id,
+            'academicCalendar' => AcademicCalendar::forYear($calendarYear),
             'schedulePeriod' => $period,
             'includeWeekends' => $includeWeekends,
             'selectedScheduleDate' => $selectedDate,

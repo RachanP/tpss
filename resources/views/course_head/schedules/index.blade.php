@@ -181,6 +181,13 @@
         $d = \Carbon\CarbonImmutable::parse($day)->startOfDay();
         return $d->lt($academicStartDate) || $d->gt($academicEndDate);
     };
+    // V2: จำแนกวัน (วันหยุด/สัปดาห์สอบ/ปิดภาคเรียน) สำหรับลงสีปฏิทิน — จาก AcademicCalendar
+    $academicCalendar = $academicCalendar ?? null;
+    $dayInfo = function ($day) use ($academicCalendar) {
+        $fallback = ['kind' => 'normal', 'label' => null, 'blocked' => false, 'term_id' => null, 'term_name' => null];
+        if (! $academicCalendar || ! $day) return $fallback;
+        return $academicCalendar->classifyDay($day);
+    };
     $weekNumberForDate = function ($date) use ($academicStartDate) {
         if (! $academicStartDate || ! $date) return null;
         return max(1, (int) floor(
@@ -1997,6 +2004,37 @@
         }
         .month-calendar-day.is-outside-academic .month-day-items {
             pointer-events: none;
+        }
+        /* ── V2: วันพิเศษในปฏิทิน (วันหยุด / สัปดาห์สอบ / ปิดภาคเรียน) ── */
+        .grid-cell.day-holiday { background: oklch(97% 0.035 85); }
+        .grid-cell.day-exam    { background: oklch(93.5% 0.004 232); cursor: not-allowed; }
+        .grid-cell.day-break   { background: oklch(95.5% 0.008 250); cursor: not-allowed; }
+        .grid-cell.grid-head.day-holiday { color: oklch(52% 0.09 70) !important; }
+        .grid-cell.grid-head.day-exam,
+        .grid-cell.grid-head.day-break { color: oklch(50% 0.012 232) !important; }
+        .grid-day-chip {
+            display: inline-block; margin-top: 3px; padding: 0 6px; border-radius: 2px;
+            font-size: 9.5px; font-weight: 700; line-height: 15px; letter-spacing: 0.02em;
+        }
+        .grid-day-chip.is-holiday { background: oklch(90% 0.07 80); color: oklch(42% 0.1 65); }
+        .grid-day-chip.is-exam    { background: oklch(88% 0.006 232); color: oklch(40% 0.014 232); }
+        .grid-day-chip.is-break   { background: oklch(90% 0.01 250); color: oklch(42% 0.014 250); }
+        .month-calendar-day.day-holiday { background: oklch(97.5% 0.03 85); }
+        .month-calendar-day.day-exam    { background: oklch(94.5% 0.004 232); }
+        .month-calendar-day.day-break   { background: oklch(96% 0.008 250); }
+        .month-day-flag {
+            font-size: 9.5px; font-weight: 700; padding: 0 5px; border-radius: 2px; line-height: 14px;
+            display: inline-block; margin-top: 2px;
+        }
+        .month-day-flag.is-holiday { background: oklch(90% 0.07 80); color: oklch(42% 0.1 65); }
+        .month-day-flag.is-exam    { background: oklch(88% 0.006 232); color: oklch(40% 0.014 232); }
+        .month-day-flag.is-break   { background: oklch(90% 0.01 250); color: oklch(42% 0.014 250); }
+        /* list: day badge เป็นสีเทาเมื่อเป็นสัปดาห์สอบ (แทนสีวัน) */
+        .co-day-badge.is-exam-day { background: oklch(88% 0.006 232) !important; color: oklch(40% 0.014 232) !important; }
+        /* term badge บนการ์ดกิจกรรม + แถวรายการ */
+        .term-badge {
+            display: inline-block; padding: 0 7px; border-radius: 2px; font-size: 10px; font-weight: 700;
+            background: oklch(92% 0.03 255); color: oklch(40% 0.08 262); border: 1px solid oklch(86% 0.04 258); white-space: nowrap;
         }
         /* ── หัวกลุ่ม "วัน" ในตารางแบบรายการ — กดได้เพื่อย่อ/ขยาย ── */
         .sched-day-group-header {
@@ -5508,6 +5546,8 @@
                                             $dateKey = str_replace('-', '', $dateString);
                                             $dayWeekNumber = $weekNumberForDate($dateObj);
                                             $dayScheduleIds = $daySchedules->pluck('id')->map(fn ($id) => (string) $id)->values();
+                                            $di = $dayInfo($dateObj);
+                                            $dayTermName = $firstSchedule?->term?->name ?? $di['term_name'];
                                         @endphp
                                         @if($daySchedules->isNotEmpty() && $dateObj)
                                             <tr
@@ -5530,8 +5570,14 @@
                                                         <svg class="sched-day-group-chevron" :class="collapsedDays['{{ $dateKey }}'] ? 'is-collapsed' : ''" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                                             <polyline points="6 9 12 15 18 9"/>
                                                         </svg>
-                                                        <span class="co-day-badge day-{{ $dayIso }} sched-day-group-badge">{{ $dayName }}</span>
+                                                        <span class="co-day-badge {{ $di['kind'] === 'exam' ? 'is-exam-day' : 'day-' . $dayIso }} sched-day-group-badge">{{ $dayName }}</span>
                                                         <span class="sched-day-group-date">{{ $formatDate($dateObj) }}</span>
+                                                        @if($dayTermName)
+                                                            <span class="term-badge">{{ $dayTermName }}</span>
+                                                        @endif
+                                                        @if($di['kind'] !== 'normal' && $di['kind'] !== 'outside')
+                                                            <span class="grid-day-chip is-{{ $di['kind'] }}">{{ $di['label'] }}</span>
+                                                        @endif
                                                         @if($dayWeekNumber)
                                                             <span class="sched-day-group-week">สัปดาห์ที่ {{ $dayWeekNumber }}</span>
                                                         @endif
@@ -5678,15 +5724,18 @@
                                     $dayOccurrences = $gridOccurrencesByDate->get($day->toDateString(), collect());
                                     $isOutsideMonth = $day->month !== $weekStart->month;
                                     $isOutsideAcademic = $isDayOutsideAcademic($day);
+                                    $di = $dayInfo($day);
+                                    $dayKindClass = ! $isOutsideAcademic && $di['kind'] !== 'normal' ? 'day-' . $di['kind'] : '';
                                 @endphp
-                                <div class="month-calendar-day {{ $isOutsideMonth ? 'is-outside' : '' }} {{ $isOutsideAcademic ? 'is-outside-academic' : '' }}"
-                                    @if($isOutsideAcademic) title="นอกช่วงปีการศึกษา" @endif>
+                                <div class="month-calendar-day {{ $isOutsideMonth ? 'is-outside' : '' }} {{ $isOutsideAcademic ? 'is-outside-academic' : '' }} {{ $dayKindClass }}"
+                                    @if($isOutsideAcademic) title="นอกช่วงปีการศึกษา" @elseif($di['label']) title="{{ $di['label'] }}" @endif>
                                     <div class="month-day-top">
                                         <span class="month-day-number">{{ $day->day }}</span>
                                         @if($dayOccurrences->isNotEmpty())
                                             <span class="month-day-count">{{ $dayOccurrences->count() }} รายการ</span>
                                         @endif
                                     </div>
+                                    @if($dayKindClass)<span class="month-day-flag is-{{ $di['kind'] }}">{{ $di['label'] }}</span>@endif
                                     <div class="month-day-items">
                                         @forelse($dayOccurrences as $occurrence)
                                             @php
@@ -5727,10 +5776,11 @@
                     <div class="schedule-grid is-precise" data-grid-minute-step="{{ $gridMinuteStep }}" style="--grid-day-count: {{ max(1, $weekDays->count()) }}; --grid-minute-row-height: {{ $gridMinuteRowHeight }}px; grid-template-columns: 68px repeat({{ max(1, $weekDays->count()) }}, minmax({{ ($includeWeekends ?? false) && ($schedulePeriod ?? 'week') === 'week' ? 122 : 146 }}px, 1fr)); grid-template-rows: 44px repeat({{ $gridMinuteRowCount }}, var(--grid-minute-row-height));">
                         <div class="grid-cell grid-head" style="grid-area:1 / 1;"></div>
                         @foreach($weekDays as $dayIndex => $day)
-                            @php $dayOutside = $isDayOutsideAcademic($day); @endphp
-                            <div class="grid-cell grid-head {{ $dayOutside ? 'is-outside-academic' : '' }}" style="grid-area:1 / {{ $dayIndex + 2 }};" @if($dayOutside) title="นอกช่วงปีการศึกษา" @endif>
+                            @php $dayOutside = $isDayOutsideAcademic($day); $di = $dayInfo($day); $dayKindClass = ! $dayOutside && $di['kind'] !== 'normal' ? 'day-' . $di['kind'] : ''; @endphp
+                            <div class="grid-cell grid-head {{ $dayOutside ? 'is-outside-academic' : '' }} {{ $dayKindClass }}" style="grid-area:1 / {{ $dayIndex + 2 }};" @if($dayOutside) title="นอกช่วงปีการศึกษา" @elseif($di['label']) title="{{ $di['label'] }}" @endif>
                                 {{ $thaiDays[$day->dayOfWeekIso] ?? $day->format('l') }}<br>
                                 <span class="caption">{{ $formatDate($day) }}</span>
+                                @if($dayKindClass)<span class="grid-day-chip is-{{ $di['kind'] }}">{{ $di['label'] }}</span>@endif
                             </div>
                         @endforeach
 
