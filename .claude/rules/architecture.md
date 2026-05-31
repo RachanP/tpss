@@ -228,13 +228,14 @@ V2 ชี้ว่าตารางคณะพยาบาลเป็น "ต
 - doc บรรทัด 98/123: ภาคปฏิบัติ ป.ตรี อาจารย์มักแบ่งกันจัด → **delegate ไปที่ instructor** (ไม่ใช่หัวหน้าวิชา)
 - เสนอ (delegation): `course_offering_instructors.schedule_permission enum('view','schedule','manage_groups')` — เปิดให้อาจารย์ที่ได้รับมอบหมายช่วยจัด (รวมจัดกลุ่มย่อย)
 
-### 2. กลุ่มนักศึกษา = 2 ระดับ + เกิด *หลังอนุมัติ* (ไม่ใช่งานหัวหน้าวิชา)
+### 2. กลุ่มนักศึกษา = 2 ระดับ + เกิด *หลังอนุมัติ* (ไม่ใช่งานหัวหน้าวิชา) ✅ ถอด UI หัวหน้าวิชาแล้ว
 - **ระดับ cohort (Master/Setup โดย Admin)**: กลุ่มชั้นปีต่อหลักสูตร ป.ตรี + จำนวนคน (ปี1=กลุ่มใหญ่, ปี3-4=4 กลุ่ม) — Admin กรอกตั้งแต่ Setup
 - **ระดับ subgroup (หลังอนุมัติ โดยอาจารย์)**: อาจารย์ทุกคนในวิชาคุยกัน + ซอยกลุ่มย่อยเอง (step 4 ของ pipeline) — ไม่ใช่หัวหน้าวิชา ไม่ใช่ Admin
 - doc บรรทัด 11/122-125: ปี 3-4 = 4 กลุ่มใหญ่ (~80 คน) ตั้งแต่ต้น → ซอยเป็น subgroup ต่อวิชา
 - ปัจจุบัน: `student_groups` ผูก `course_offering_id` อย่างเดียว → ไม่มี identity ข้ามวิชา → publish รายกลุ่มข้ามวิชาไม่ได้
 - เสนอ: `student_cohorts` ระดับ Setup Data + `student_groups.cohort_group_id` FK
-- **slot ไม่บังคับมีกลุ่มตอนสร้าง/อนุมัติ** → capacity gate ต้อง deferred (ดู ⚠️ ใน Phase Pipeline)
+- ✅ **DONE (เคาะ + ทำแล้ว):** ถอดหน้าจัดกลุ่มย่อยออกจาก course management ของหัวหน้าวิชาทั้งหมด — ลบ 5 controller methods (`storeStudentGroup`/`bulkStoreStudentGroups`/`updateStudentGroup`/`bulkDestroyStudentGroups`/`destroyStudentGroup`) + 5 routes `maker.course_offerings.student_groups.*` + card "กลุ่มนักศึกษา" ใน show + badge ในหน้า list · **เก็บตาราง `student_groups` + model + pivot `schedule_student_groups` ไว้** สำหรับเฟส "อาจารย์จัดกลุ่มหลังอนุมัติ"
+- ✅ **slot decouple แล้ว:** `ScheduleController::validateSchedule` ทำ `student_group_ids` เป็น `['nullable','array']` เสมอ (คง instructor required) · เอา gate "ต้องสร้างกลุ่มก่อนจึงเพิ่ม slot" ออกจากหน้าจัดตาราง · capacity gate no-op เมื่อไม่มีกลุ่ม (มีอยู่แล้ว) · modal slot โชว์ group selector เป็น optional + note "จัดกลุ่มหลังอนุมัติ"
 
 ### 3. ปีการศึกษา = "ปี" ไม่ใช่ "เทอม" · วิชาเปิดทั้งปี · เทอม/รอบ = dimension ของ slot
 - doc บรรทัด 159: schedule entry ระบุ ปี + ภาค + ปีปรับปรุงหลักสูตร ต่อรายการ (ไม่ผูกที่ตัววิชา)
@@ -270,9 +271,9 @@ V2 ชี้ว่าตารางคณะพยาบาลเป็น "ต
 - ✅ **กลุ่มชั้นปี (cohort) ใน Master Data** — implement แล้ว (`student_cohorts`)
 
 ### Open Questions (เหลือไว้เคาะภายหลัง — ไม่บล็อก Master Data cleanup)
-1. **กลุ่มนักศึกษาตั้งเมื่อไหร่/ใคร?** — เดิม (30 พ.ค.) ว่า "หลังอนุมัติ โดยอาจารย์" แต่เอกสารพิม ข้อ 7 ว่า "หัวหน้าวิชาตั้งตอน config offering (ก่อนจัดตาราง)" → ต้อง re-confirm
+1. ✅ **RESOLVED (31 พ.ค.): กลุ่มนักศึกษา หัวหน้าวิชา *ไม่* จัด** — เคาะแล้วว่ายึดโมเดล 30 พ.ค. (subgroup เกิดหลังอนุมัติ โดยอาจารย์) ไม่ใช่ตามเอกสารพิม ข้อ 7 · ถอด UI/route/controller จัดกลุ่มออกจาก course management ของหัวหน้าวิชาแล้ว (ดูข้อ 2 ด้านบน)
 2. **ปี 3-4 = 2 กลุ่มใหญ่ (A/B) หรือ 4 กลุ่ม?** — เอกสารพิมว่า 2 (A/B สลับเทอม) · ก่อนหน้าว่า 4 — cohort feature รองรับกี่กลุ่มก็ได้ ไม่บล็อก
-3. **capacity gate deferred** — ยอมให้ save/อนุมัติ slot โดยไม่มีกลุ่มได้ใช่ไหม?
+3. ✅ **RESOLVED (31 พ.ค.): capacity gate deferred = ใช่** — slot save/อนุมัติได้โดยไม่มีกลุ่ม · `student_group_ids` optional, capacity gate no-op เมื่อไม่มีกลุ่ม (เช็คเฉพาะตอนมีกลุ่มจริง)
 4. **รอบ rotation = 2 เสมอไหม** · **ตารางรายกลุ่มชั้นปี** Phase 1 หรือ 2?
 5. **ใครกรอกกิจกรรมภาคปฏิบัติ** (เอกสารพิม ข้อ 11 — แผน A/B/C) → V1 ใช้แผน C (อาจารย์แจ้ง offline, เจ้าหน้าที่/หัวหน้ากรอก) · V1.5 ทำแผน B (instructor จัดเอง = Option B/delegation)
 

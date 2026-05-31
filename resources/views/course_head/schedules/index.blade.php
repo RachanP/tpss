@@ -5265,11 +5265,9 @@
                     </a>
                     @if($canEdit)
                         @php
-                            $hasStudentGroups = $courseOffering->studentGroups->isNotEmpty();
-                            $canCreateScheduleNow = $canCreateInCurrentPeriod && $hasStudentGroups;
-                            $createDisabledHint = ! $canCreateInCurrentPeriod
-                                ? $outsideCreateHint
-                                : (! $hasStudentGroups ? 'สร้างกลุ่มนักศึกษาก่อนจึงจะเพิ่มรายการสอนได้' : '');
+                            // V2: ไม่บังคับมีกลุ่มก่อนสร้าง slot (กลุ่มย่อยมาหลังอนุมัติ โดยอาจารย์)
+                            $canCreateScheduleNow = $canCreateInCurrentPeriod;
+                            $createDisabledHint = ! $canCreateInCurrentPeriod ? $outsideCreateHint : '';
                         @endphp
                         <button
                             type="button"
@@ -5285,57 +5283,9 @@
                 </div>
                 <div class="course-overview-stats">
                     <span class="course-stat"><strong>{{ $totalScheduleCount ?? $allSchedules->count() }}</strong> รายการสอน</span>
-                    <span class="course-stat"><strong>{{ $courseOffering->studentGroups->count() }}</strong> กลุ่มนักศึกษา</span>
                     <span class="course-stat"><strong>{{ $eligibleScheduleInstructors($courseOffering)->count() }}</strong> ผู้สอน</span>
                 </div>
             </section>
-
-            {{-- ── แจ้งเตือน: ยังไม่มีกลุ่มนักศึกษา ── --}}
-            @if($courseOffering->studentGroups->isEmpty())
-                <div
-                    class="no-student-groups-banner"
-                    role="alert"
-                    data-testid="schedule-no-student-groups-banner"
-                    style="
-                        display:flex;
-                        align-items:center;
-                        gap:14px;
-                        flex-wrap:wrap;
-                        margin-bottom:14px;
-                        padding:14px 18px;
-                        border:1px solid var(--status-warning-border);
-                        background:var(--status-warning-bg);
-                        color:var(--status-warning-fg);
-                        border-radius:10px;
-                        font-size:13px;
-                        font-weight:600;
-                    "
-                >
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0;">
-                        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                        <line x1="12" y1="9" x2="12" y2="13"></line>
-                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                    </svg>
-                    <div style="flex:1;min-width:200px;">
-                        <div style="font-weight:800;margin-bottom:2px;">ยังไม่มีกลุ่มนักศึกษาในรายวิชานี้</div>
-                        <div style="font-weight:500;font-size:12.5px;opacity:0.85;">ต้องสร้างกลุ่มนักศึกษาก่อนจึงจะเพิ่มรายการสอนได้</div>
-                    </div>
-                    @if($canEdit)
-                        <a
-                            href="{{ route('maker.course_offerings.show', $courseOffering) }}#student-groups"
-                            class="btn btn-primary"
-                            data-testid="schedule-go-create-student-groups"
-                            style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:6px 14px;font-size:12.5px;"
-                        >
-                            <span>ไปสร้างกลุ่มนักศึกษา</span>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <line x1="5" y1="12" x2="19" y2="12"></line>
-                                <polyline points="12 5 19 12 12 19"></polyline>
-                            </svg>
-                        </a>
-                    @endif
-                </div>
-            @endif
 
             {{-- ── รายการตารางสอน (Card Layout) ── --}}
             <div class="card">
@@ -7027,30 +6977,34 @@
                                 </div>
 
                                 <div class="modal-section {{ $groupConflictNote ? 'modal-field-has-conflict' : '' }}">
-                                    <div class="modal-section-title">กลุ่มนักศึกษา <span class="required-mark">*</span></div>
+                                    <div class="modal-section-title">กลุ่มนักศึกษา <span class="caption" style="font-weight:500;color:var(--fg-3);">(ไม่บังคับ — จัดกลุ่มหลังอนุมัติ)</span></div>
                                     <template x-if="liveIssue('student_group_ids').length">
                                         <div class="field-live-error" data-testid="live-error-student_group_ids">
                                             <template x-for="msg in liveIssue('student_group_ids')" :key="msg"><div x-text="msg"></div></template>
                                         </div>
                                     </template>
-                                    @php
-                                        $editGroupSearchItems = $offering->studentGroups
-                                            ->map(fn ($group) => mb_strtolower($group->group_code . ' ' . $group->student_count . ' คน', 'UTF-8'))
-                                            ->values();
-                                    @endphp
-                                    <input type="search" class="modal-choice-search" x-model="editGroupSearch" placeholder="ค้นหารหัสกลุ่มนักศึกษา" aria-label="ค้นหากลุ่มนักศึกษา">
-                                    <div class="modal-choice-grid">
-                                        @foreach($offering->studentGroups as $group)
-                                            @php
-                                                $editGroupSearchText = mb_strtolower($group->group_code . ' ' . $group->student_count . ' คน', 'UTF-8');
-                                            @endphp
-                                            <label class="modal-choice" x-show="matchesCreateSearch(@js($editGroupSearchText), editGroupSearch)" x-cloak>
-                                                <input type="checkbox" name="student_group_ids[]" value="{{ $group->id }}" @checked(in_array((string) $group->id, $editGroupIds, true)) data-testid="schedule-student-group">
-                                                <span>{{ $group->group_code }} · {{ $group->student_count }} คน</span>
-                                            </label>
-                                        @endforeach
-                                    </div>
-                                    <div class="modal-choice-empty" x-show="hasCreateSearch(editGroupSearch) && !hasCreateSearchMatches(@js($editGroupSearchItems), editGroupSearch)" x-cloak>ไม่พบข้อมูลที่ค้นหา</div>
+                                    @if($offering->studentGroups->isEmpty())
+                                        <div class="optional-note" style="margin:0;">ยังไม่มีกลุ่มนักศึกษาในรายวิชานี้ — กลุ่มย่อยจะถูกจัดหลังผู้บริหารอนุมัติ (โดยอาจารย์ในวิชา) จึงข้ามขั้นนี้ไปก่อนได้</div>
+                                    @else
+                                        @php
+                                            $editGroupSearchItems = $offering->studentGroups
+                                                ->map(fn ($group) => mb_strtolower($group->group_code . ' ' . $group->student_count . ' คน', 'UTF-8'))
+                                                ->values();
+                                        @endphp
+                                        <input type="search" class="modal-choice-search" x-model="editGroupSearch" placeholder="ค้นหารหัสกลุ่มนักศึกษา" aria-label="ค้นหากลุ่มนักศึกษา">
+                                        <div class="modal-choice-grid">
+                                            @foreach($offering->studentGroups as $group)
+                                                @php
+                                                    $editGroupSearchText = mb_strtolower($group->group_code . ' ' . $group->student_count . ' คน', 'UTF-8');
+                                                @endphp
+                                                <label class="modal-choice" x-show="matchesCreateSearch(@js($editGroupSearchText), editGroupSearch)" x-cloak>
+                                                    <input type="checkbox" name="student_group_ids[]" value="{{ $group->id }}" @checked(in_array((string) $group->id, $editGroupIds, true)) data-testid="schedule-student-group">
+                                                    <span>{{ $group->group_code }} · {{ $group->student_count }} คน</span>
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                        <div class="modal-choice-empty" x-show="hasCreateSearch(editGroupSearch) && !hasCreateSearchMatches(@js($editGroupSearchItems), editGroupSearch)" x-cloak>ไม่พบข้อมูลที่ค้นหา</div>
+                                    @endif
                                     @if($groupConflictNote)
                                         <div class="modal-conflict-field">{{ $groupConflictNote }}</div>
                                     @endif
@@ -7410,31 +7364,35 @@
                                     </div>
 
                                     <div class="modal-section">
-                                        <div class="modal-section-title">กลุ่มนักศึกษา <span class="required-mark">*</span></div>
+                                        <div class="modal-section-title">กลุ่มนักศึกษา <span class="caption" style="font-weight:500;color:var(--fg-3);">(ไม่บังคับ — จัดกลุ่มหลังอนุมัติ)</span></div>
                                         <template x-if="liveIssue('student_group_ids').length">
                                             <div class="field-live-error" data-testid="live-error-student_group_ids">
                                                 <template x-for="msg in liveIssue('student_group_ids')" :key="msg"><div x-text="msg"></div></template>
                                             </div>
                                         </template>
-                                        <div class="optional-note" x-show="createMode === 'series'" x-cloak style="margin-bottom:8px;">ถ้าเลือกไว้ ระบบจะใส่ให้เฉพาะการ์ดสัปดาห์แรก สัปดาห์ถัดไปเติมหรือคัดลอกจากการ์ดที่ครบแล้วได้</div>
-                                        @php
-                                            $createGroupSearchItems = $offeringOption->studentGroups
-                                                ->map(fn ($group) => mb_strtolower($group->group_code . ' ' . $group->student_count . ' คน', 'UTF-8'))
-                                                ->values();
-                                        @endphp
-                                        <input type="search" class="modal-choice-search" x-model="createGroupSearch" placeholder="ค้นหารหัสกลุ่มนักศึกษา" aria-label="ค้นหากลุ่มนักศึกษา">
-                                        <div class="modal-choice-grid">
-                                            @foreach($offeringOption->studentGroups as $group)
-                                                @php
-                                                    $groupSearchText = mb_strtolower($group->group_code . ' ' . $group->student_count . ' คน', 'UTF-8');
-                                                @endphp
-                                                <label class="modal-choice" x-show="matchesCreateSearch(@js($groupSearchText), createGroupSearch)" x-cloak>
-                                                    <input type="checkbox" name="student_group_ids[]" value="{{ $group->id }}" @checked(in_array((string) $group->id, $selectedGroupIds, true)) :disabled="selectedOfferingId !== '{{ $offeringOption->id }}'" data-testid="schedule-student-group">
-                                                    <span>{{ $group->group_code }} · {{ $group->student_count }} คน</span>
-                                                </label>
-                                            @endforeach
-                                        </div>
-                                        <div class="modal-choice-empty" x-show="hasCreateSearch(createGroupSearch) && !hasCreateSearchMatches(@js($createGroupSearchItems), createGroupSearch)" x-cloak>ไม่พบข้อมูลที่ค้นหา</div>
+                                        @if($offeringOption->studentGroups->isEmpty())
+                                            <div class="optional-note" style="margin:0;">ยังไม่มีกลุ่มนักศึกษาในรายวิชานี้ — กลุ่มย่อยจะถูกจัดหลังผู้บริหารอนุมัติ (โดยอาจารย์ในวิชา) จึงข้ามขั้นนี้ไปก่อนได้</div>
+                                        @else
+                                            <div class="optional-note" x-show="createMode === 'series'" x-cloak style="margin-bottom:8px;">ถ้าเลือกไว้ ระบบจะใส่ให้เฉพาะการ์ดสัปดาห์แรก สัปดาห์ถัดไปเติมหรือคัดลอกจากการ์ดที่ครบแล้วได้</div>
+                                            @php
+                                                $createGroupSearchItems = $offeringOption->studentGroups
+                                                    ->map(fn ($group) => mb_strtolower($group->group_code . ' ' . $group->student_count . ' คน', 'UTF-8'))
+                                                    ->values();
+                                            @endphp
+                                            <input type="search" class="modal-choice-search" x-model="createGroupSearch" placeholder="ค้นหารหัสกลุ่มนักศึกษา" aria-label="ค้นหากลุ่มนักศึกษา">
+                                            <div class="modal-choice-grid">
+                                                @foreach($offeringOption->studentGroups as $group)
+                                                    @php
+                                                        $groupSearchText = mb_strtolower($group->group_code . ' ' . $group->student_count . ' คน', 'UTF-8');
+                                                    @endphp
+                                                    <label class="modal-choice" x-show="matchesCreateSearch(@js($groupSearchText), createGroupSearch)" x-cloak>
+                                                        <input type="checkbox" name="student_group_ids[]" value="{{ $group->id }}" @checked(in_array((string) $group->id, $selectedGroupIds, true)) :disabled="selectedOfferingId !== '{{ $offeringOption->id }}'" data-testid="schedule-student-group">
+                                                        <span>{{ $group->group_code }} · {{ $group->student_count }} คน</span>
+                                                    </label>
+                                                @endforeach
+                                            </div>
+                                            <div class="modal-choice-empty" x-show="hasCreateSearch(createGroupSearch) && !hasCreateSearchMatches(@js($createGroupSearchItems), createGroupSearch)" x-cloak>ไม่พบข้อมูลที่ค้นหา</div>
+                                        @endif
                                     </div>
                                 </div>
                             @endforeach

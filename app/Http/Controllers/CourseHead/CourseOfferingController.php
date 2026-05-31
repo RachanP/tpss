@@ -2,11 +2,9 @@
 
 namespace App\Http\Controllers\CourseHead;
 
-use App\Exceptions\BulkDestroyBlockedException;
 use App\Http\Controllers\Controller;
 use App\Models\CourseOffering;
 use App\Models\CourseRole;
-use App\Models\StudentGroup;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Services\AuditLogger;
@@ -16,8 +14,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -47,8 +43,7 @@ class CourseOfferingController extends Controller
             ->select('course_offerings.*')
             ->distinct()
             ->with(['course.curriculum', 'course.department', 'academicYear'])
-            ->withCount(['studentGroups', 'instructorPool'])
-            ->withSum('studentGroups as allocated_student_count', 'student_count')
+            ->withCount(['instructorPool'])
             ->withActiveCourse()
             ->where('coordinator_id', $coordinatorId)
             ->when($defaultYearId, fn ($q) => $q->where('academic_year_id', $defaultYearId))
@@ -81,7 +76,6 @@ class CourseOfferingController extends Controller
             'course.department',
             'academicYear',
             'coordinator',
-            'studentGroups' => fn ($query) => $query->orderBy('group_code'),
             'instructorPool.instructorProfile.department',
         ])->loadCount('schedules');
 
@@ -337,363 +331,6 @@ class CourseOfferingController extends Controller
         return back()->with('success', 'ลบอาจารย์ออกจากชุดผู้สอนเรียบร้อยแล้ว');
     }
 
-    public function storeStudentGroup(Request $request, CourseOffering $courseOffering): RedirectResponse
-    {
-        $this->authorizeCourseHeadOffering($courseOffering);
-        if ($redirect = $this->requireSchedulingPhase($courseOffering, 'student-groups')) return $redirect;
-
-        $validated = $request->validate([
-            'group_code' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('student_groups', 'group_code')
-                    ->where(fn ($query) => $query->where('course_offering_id', $courseOffering->id)),
-            ],
-            'student_count' => ['required', 'integer', 'min:1', 'max:9999'],
-            'color_code' => ['nullable', 'string', 'max:10'],
-        ]);
-
-        if ($message = $this->studentCountLimitError($courseOffering, (int) $validated['student_count'])) {
-            return $this->redirectToStudentGroups($courseOffering)
-                ->withErrors(['student_count' => $message])
-                ->withInput();
-        }
-
-        $studentGroup = $courseOffering->studentGroups()->create($validated);
-        NavigationBadgeService::flushCourseHead((int) $courseOffering->coordinator_id);
-
-        $this->logCourseManagementCreate(
-            table: 'student_groups',
-            recordId: $studentGroup->id,
-            newValues: $this->studentGroupAuditValues($courseOffering, $studentGroup),
-            description: "สร้างกลุ่มนักศึกษา {$studentGroup->group_code} ใน {$this->offeringCourseLabel($courseOffering)}",
-        );
-
-        return $this->redirectToStudentGroups($courseOffering)
-            ->with('success', 'เพิ่มกลุ่มนักศึกษาเรียบร้อยแล้ว');
-    }
-
-    public function bulkStoreStudentGroups(Request $request, CourseOffering $courseOffering): RedirectResponse
-    {
-        $this->authorizeCourseHeadOffering($courseOffering);
-        if ($redirect = $this->requireSchedulingPhase($courseOffering, 'student-groups')) return $redirect;
-
-        $validated = $request->validate([
-            'group_prefix'   => ['required', 'string', 'max:20', 'regex:/^[A-Za-z0-9ก-๙_-]+$/u'],
-            'start_number'   => ['required', 'integer', 'min:0', 'max:999'],
-            'group_count'    => ['required', 'integer', 'min:1', 'max:100'],
-            'group_counts'   => ['nullable', 'array'],
-            'group_counts.*' => ['required_with:group_counts', 'integer', 'min:1', 'max:9999'],
-        ], [
-            'group_prefix.regex' => 'รหัสนำหน้ากลุ่มใช้ได้เฉพาะตัวอักษร ตัวเลข ขีดกลาง และขีดล่าง',
-        ]);
-
-        $groupCount = (int) $validated['group_count'];
-        $customCounts = collect($validated['group_counts'] ?? [])
-            ->take($groupCount)
-            ->map(fn ($count) => (int) $count)
-            ->values();
-
-        $remainingStudents = $this->remainingStudentCount($courseOffering);
-        if ($remainingStudents < 1) {
-            return $this->redirectToStudentGroups($courseOffering)
-                ->withErrors(['group_count' => 'จัดกลุ่มครบตามจำนวนนักศึกษาที่เปิดรับแล้ว'])
-                ->withInput();
-        }
-
-        if ($customCounts->isNotEmpty() && $customCounts->count() !== $groupCount) {
-            return $this->redirectToStudentGroups($courseOffering)
-                ->withErrors(['group_counts' => 'จำนวนช่องนักศึกษาต่อกลุ่มต้องตรงกับจำนวนกลุ่ม'])
-                ->withInput();
-        }
-
-        $totalStudents = $customCounts->isNotEmpty()
-            ? $customCounts->sum()
-            : $remainingStudents;
-
-        if ($totalStudents < $groupCount) {
-            return $this->redirectToStudentGroups($courseOffering)
-                ->withErrors(['total_students' => 'จำนวนนักศึกษารวมต้องไม่น้อยกว่าจำนวนกลุ่ม'])
-                ->withInput();
-        }
-
-        if ($message = $this->studentCountLimitError($courseOffering, $totalStudents)) {
-            return $this->redirectToStudentGroups($courseOffering)
-                ->withErrors(['total_students' => $message])
-                ->withInput();
-        }
-
-        $prefix = trim($validated['group_prefix']);
-        $startNumber = (int) $validated['start_number'];
-        $groupCodes = collect(range(0, $groupCount - 1))
-            ->map(fn ($offset) => $prefix . ($startNumber + $offset));
-
-        $existingCodes = StudentGroup::query()
-            ->where('course_offering_id', $courseOffering->id)
-            ->whereIn('group_code', $groupCodes)
-            ->pluck('group_code')
-            ->all();
-
-        if (!empty($existingCodes)) {
-            return $this->redirectToStudentGroups($courseOffering)
-                ->withErrors(['group_prefix' => 'มีรหัสกลุ่มซ้ำแล้ว: ' . implode(', ', $existingCodes)])
-                ->withInput();
-        }
-
-        $baseCount = intdiv($totalStudents, $groupCount);
-        $remainder = $totalStudents % $groupCount;
-        $colors = ['#2563eb', '#16a34a', '#ca8a04', '#dc2626', '#7c3aed', '#0891b2', '#db2777', '#4f46e5', '#65a30d', '#ea580c'];
-
-        $createdGroups = [];
-        DB::transaction(function () use ($courseOffering, $groupCodes, $baseCount, $remainder, $customCounts, $colors, &$createdGroups) {
-            foreach ($groupCodes->values() as $index => $groupCode) {
-                $createdGroups[] = $courseOffering->studentGroups()->create([
-                    'group_code' => $groupCode,
-                    'student_count' => $customCounts->isNotEmpty()
-                        ? $customCounts[$index]
-                        : $baseCount + ($index < $remainder ? 1 : 0),
-                    'color_code' => $colors[$index % count($colors)],
-                ]);
-            }
-        });
-        NavigationBadgeService::flushCourseHead((int) $courseOffering->coordinator_id);
-
-        $this->logCourseManagementCreate(
-            table: 'student_groups',
-            recordId: $courseOffering->id,
-            newValues: $this->bulkStudentGroupAuditValues($courseOffering, collect($createdGroups)),
-            description: "สร้างกลุ่มนักศึกษาอัตโนมัติ {$groupCount} กลุ่ม ใน {$this->offeringCourseLabel($courseOffering)}",
-        );
-
-        return $this->redirectToStudentGroups($courseOffering)
-            ->with('success', "สร้างกลุ่มนักศึกษา {$groupCount} กลุ่มเรียบร้อยแล้ว");
-    }
-
-    public function updateStudentGroup(
-        Request $request,
-        CourseOffering $courseOffering,
-        StudentGroup $studentGroup
-    ): RedirectResponse|JsonResponse {
-        $this->authorizeCourseHeadOffering($courseOffering);
-        if ($redirect = $this->requireSchedulingPhase($courseOffering, 'student-groups')) {
-            if ($request->expectsJson()) {
-                return response()->json(['message' => 'ยังไม่เปิดช่วงจัดตาราง'], 403);
-            }
-            return $redirect;
-        }
-        $this->assertStudentGroupBelongsToOffering($courseOffering, $studentGroup);
-
-        try {
-            $validated = $request->validate([
-                'group_code' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    Rule::unique('student_groups', 'group_code')
-                        ->where(fn ($query) => $query->where('course_offering_id', $courseOffering->id))
-                        ->ignore($studentGroup->id),
-                ],
-                'student_count' => ['required', 'integer', 'min:1', 'max:9999'],
-                'color_code' => ['nullable', 'string', 'max:10'],
-            ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'message' => collect($e->errors())->flatten()->first() ?? 'ข้อมูลไม่ถูกต้อง',
-                    'errors'  => $e->errors(),
-                ], 422);
-            }
-            throw $e;
-        }
-
-        if ($message = $this->studentCountLimitError(
-            $courseOffering,
-            (int) $validated['student_count'],
-            $studentGroup
-        )) {
-            if ($request->expectsJson()) {
-                return response()->json(['message' => $message, 'errors' => ['student_count' => [$message]]], 422);
-            }
-            return $this->redirectToStudentGroups($courseOffering)
-                ->withErrors(['student_count' => $message])
-                ->withInput();
-        }
-
-        $auditFields = ['group_code', 'student_count', 'color_code'];
-        $auditBefore = $this->auditModelSnapshot($studentGroup, $auditFields);
-
-        $studentGroup->update($validated);
-        NavigationBadgeService::flushCourseHead((int) $courseOffering->coordinator_id);
-
-        $auditAfter = $this->auditModelSnapshot($studentGroup->fresh(), $auditFields);
-        $diff = AuditLogger::diff($auditBefore, $auditAfter);
-        $this->logCourseManagementUpdate(
-            table: 'student_groups',
-            recordId: $studentGroup->id,
-            oldValues: $diff['old'],
-            newValues: $diff['new'] + $this->offeringAuditContext($courseOffering),
-            description: "แก้ไขกลุ่มนักศึกษา {$studentGroup->group_code} ใน {$this->offeringCourseLabel($courseOffering)}",
-        );
-
-        if ($request->expectsJson()) {
-            return response()->json([
-                'message' => 'บันทึกแล้ว',
-                'group' => [
-                    'id' => $studentGroup->id,
-                    'group_code' => $studentGroup->group_code,
-                    'student_count' => $studentGroup->student_count,
-                    'color_code' => $studentGroup->color_code,
-                ],
-            ]);
-        }
-
-        return $this->redirectToStudentGroups($courseOffering)
-            ->with('success', 'อัปเดตกลุ่มนักศึกษาเรียบร้อยแล้ว');
-    }
-
-    public function bulkDestroyStudentGroups(Request $request, CourseOffering $courseOffering): RedirectResponse
-    {
-        $this->authorizeCourseHeadOffering($courseOffering);
-        if ($redirect = $this->requireSchedulingPhase($courseOffering, 'student-groups')) return $redirect;
-
-        $validated = $request->validate([
-            'group_ids' => ['required', 'array', 'min:1'],
-            'group_ids.*' => ['integer', 'exists:student_groups,id'],
-        ], [
-            'group_ids.required' => 'กรุณาเลือกกลุ่มที่ต้องการลบ',
-            'group_ids.min' => 'กรุณาเลือกกลุ่มที่ต้องการลบ',
-        ]);
-
-        $requestedIds = array_values(array_unique(array_map('intval', $validated['group_ids'])));
-
-        $groups = StudentGroup::query()
-            ->where('course_offering_id', $courseOffering->id)
-            ->whereIn('id', $requestedIds)
-            ->get();
-
-        // If any requested id doesn't belong to this offering → forbidden, not "not found"
-        if ($groups->count() !== count($requestedIds)) {
-            return $this->redirectToStudentGroups($courseOffering)->withErrors([
-                'student_groups' => 'พบกลุ่มนักศึกษาที่ไม่ได้อยู่ในรายวิชานี้ กรุณาโหลดหน้าใหม่และลองอีกครั้ง',
-            ]);
-        }
-
-        // Batch query downstream references once, then re-check inside a transaction
-        // (resolves N+1 + race between check and delete)
-        $deletedCount = 0;
-        $deletedGroupValues = $groups
-            ->sortBy('id')
-            ->map(fn (StudentGroup $group) => $this->studentGroupAuditValues($courseOffering, $group))
-            ->values();
-        try {
-            DB::transaction(function () use ($groups, &$deletedCount) {
-                $ids = $groups->pluck('id')->all();
-                $blockedIds = $this->studentGroupsWithDownstreamReferences($ids);
-
-                if (! empty($blockedIds)) {
-                    $blockedCodes = $groups->whereIn('id', $blockedIds)->pluck('group_code')->all();
-                    throw new BulkDestroyBlockedException(
-                        'ไม่สามารถลบกลุ่มที่ถูกอ้างอิงในตารางสอนได้: ' . implode(', ', $blockedCodes)
-                    );
-                }
-
-                StudentGroup::whereIn('id', $ids)->delete();
-                $deletedCount = count($ids);
-            });
-        } catch (BulkDestroyBlockedException $e) {
-            return $this->redirectToStudentGroups($courseOffering)
-                ->withErrors(['student_groups' => $e->getMessage()]);
-        }
-
-        $this->logCourseManagementDelete(
-            table: 'student_groups',
-            recordId: $courseOffering->id,
-            oldValues: $this->bulkStudentGroupAuditValues($courseOffering, $deletedGroupValues),
-            newValues: [
-                'affected_count' => $deletedCount,
-            ] + $this->offeringAuditContext($courseOffering),
-            description: "ลบกลุ่มนักศึกษา {$deletedCount} กลุ่ม ใน {$this->offeringCourseLabel($courseOffering)}",
-        );
-        NavigationBadgeService::flushCourseHead((int) $courseOffering->coordinator_id);
-
-        return $this->redirectToStudentGroups($courseOffering)
-            ->with('warning', "ลบกลุ่มนักศึกษา {$deletedCount} กลุ่มเรียบร้อยแล้ว");
-    }
-
-    /**
-     * Batch-check which student groups have schedule references (single query per table).
-     * Returns IDs of groups that cannot be safely deleted.
-     *
-     * @param  array<int>  $ids
-     * @return array<int>
-     */
-    private function studentGroupsWithDownstreamReferences(array $ids): array
-    {
-        if (empty($ids)) {
-            return [];
-        }
-
-        $blocked = collect();
-
-        if (Schema::hasTable('schedule_student_groups')) {
-            $blocked = $blocked->merge(
-                DB::table('schedule_student_groups')
-                    ->whereIn('student_group_id', $ids)
-                    ->pluck('student_group_id')
-            );
-        }
-
-        if (Schema::hasTable('schedules') && Schema::hasColumn('schedules', 'student_group_id')) {
-            $blocked = $blocked->merge(
-                DB::table('schedules')
-                    ->whereIn('student_group_id', $ids)
-                    ->pluck('student_group_id')
-            );
-        }
-
-        return $blocked->unique()->values()->all();
-    }
-
-    public function destroyStudentGroup(Request $request, CourseOffering $courseOffering, StudentGroup $studentGroup): RedirectResponse|JsonResponse
-    {
-        $this->authorizeCourseHeadOffering($courseOffering);
-        if ($redirect = $this->requireSchedulingPhase($courseOffering, 'student-groups')) {
-            if ($request->expectsJson()) {
-                return response()->json(['message' => 'ยังไม่เปิดช่วงจัดตาราง'], 403);
-            }
-            return $redirect;
-        }
-        $this->assertStudentGroupBelongsToOffering($courseOffering, $studentGroup);
-
-        if ($this->studentGroupHasDownstreamReferences($studentGroup)) {
-            $msg = 'ไม่สามารถลบกลุ่มที่ถูกอ้างอิงในตารางสอนได้ กรุณาจัดการตารางสอนที่เกี่ยวข้องก่อน';
-            if ($request->expectsJson()) {
-                return response()->json(['message' => $msg], 422);
-            }
-            return $this->redirectToStudentGroups($courseOffering)->withErrors(['student_groups' => $msg]);
-        }
-
-        $auditValues = $this->studentGroupAuditValues($courseOffering, $studentGroup);
-        $studentGroup->delete();
-        NavigationBadgeService::flushCourseHead((int) $courseOffering->coordinator_id);
-
-        $this->logCourseManagementDelete(
-            table: 'student_groups',
-            recordId: $studentGroup->id,
-            oldValues: $auditValues,
-            newValues: $this->offeringAuditContext($courseOffering),
-            description: "ลบกลุ่มนักศึกษา {$auditValues['group_code']} ใน {$this->offeringCourseLabel($courseOffering)}",
-        );
-
-        if ($request->expectsJson()) {
-            return response()->json(['message' => 'ลบกลุ่มแล้ว']);
-        }
-
-        return $this->redirectToStudentGroups($courseOffering)
-            ->with('warning', 'ลบกลุ่มนักศึกษาเรียบร้อยแล้ว');
-    }
-
     private function authorizeCourseHeadOffering(CourseOffering $courseOffering): void
     {
         $courseOffering->loadMissing('course');
@@ -713,70 +350,9 @@ class CourseOfferingController extends Controller
         return null;
     }
 
-    private function assertStudentGroupBelongsToOffering(CourseOffering $courseOffering, StudentGroup $studentGroup): void
-    {
-        abort_unless((int) $studentGroup->course_offering_id === (int) $courseOffering->id, 404);
-    }
-
-    private function redirectToStudentGroups(CourseOffering $courseOffering): RedirectResponse
-    {
-        return redirect()->to(route('maker.course_offerings.show', $courseOffering) . '#student-groups');
-    }
-
     private function redirectToInstructors(CourseOffering $courseOffering): RedirectResponse
     {
         return redirect()->to(route('maker.course_offerings.show', $courseOffering) . '#instructors');
-    }
-
-    private function studentGroupHasDownstreamReferences(StudentGroup $studentGroup): bool
-    {
-        if (Schema::hasTable('schedule_student_groups') &&
-            DB::table('schedule_student_groups')->where('student_group_id', $studentGroup->id)->exists()) {
-            return true;
-        }
-
-        return Schema::hasTable('schedules') &&
-            Schema::hasColumn('schedules', 'student_group_id') &&
-            DB::table('schedules')->where('student_group_id', $studentGroup->id)->exists();
-    }
-
-    private function studentCountLimitError(
-        CourseOffering $courseOffering,
-        int $newStudentCount,
-        ?StudentGroup $ignoreGroup = null
-    ): ?string {
-        $limit = $this->studentCountLimit($courseOffering);
-
-        if (! $limit || $limit < 1) {
-            return 'กรุณากำหนดจำนวนนักศึกษารวมของรายวิชาก่อนเพิ่มกลุ่มนักศึกษา';
-        }
-
-        $currentTotal = $courseOffering->studentGroups()
-            ->when($ignoreGroup, fn ($query) => $query->where('id', '!=', $ignoreGroup->id))
-            ->sum('student_count');
-
-        if ($currentTotal + $newStudentCount > $limit) {
-            return 'จำนวนนักศึกษารวมของทุกกลุ่มต้องไม่เกินจำนวนนักศึกษารวมของรายวิชา';
-        }
-
-        return null;
-    }
-
-    private function remainingStudentCount(CourseOffering $courseOffering): int
-    {
-        $limit = $this->studentCountLimit($courseOffering);
-        if (! $limit || $limit < 1) {
-            return 0;
-        }
-
-        return max(0, $limit - (int) $courseOffering->studentGroups()->sum('student_count'));
-    }
-
-    private function studentCountLimit(CourseOffering $courseOffering): int
-    {
-        $courseOffering->loadMissing('course');
-
-        return (int) ($courseOffering->total_student_count ?: $courseOffering->course?->capacity ?: 0);
     }
 
     private function auditModelSnapshot(object $model, array $fields): array
@@ -796,7 +372,6 @@ class CourseOfferingController extends Controller
             'course_code' => $courseOffering->course?->course_code,
             'course_name' => $courseOffering->course?->name_th,
             'academic_year' => $courseOffering->academicYear?->name,
-            'semester' => $courseOffering->academicYear?->semester,
         ];
     }
 
@@ -819,29 +394,6 @@ class CourseOfferingController extends Controller
             'course_role_id' => $courseRoleId,
             'course_role_name' => $courseRoleId ? CourseRole::find($courseRoleId)?->name_th : null,
             'role_in_course' => $roleInCourse,
-        ] + $this->offeringAuditContext($courseOffering);
-    }
-
-    private function studentGroupAuditValues(CourseOffering $courseOffering, StudentGroup $studentGroup): array
-    {
-        return [
-            'student_group_id' => $studentGroup->id,
-            'group_code' => $studentGroup->group_code,
-            'student_count' => $studentGroup->student_count,
-            'color_code' => $studentGroup->color_code,
-        ] + $this->offeringAuditContext($courseOffering);
-    }
-
-    private function bulkStudentGroupAuditValues(CourseOffering $courseOffering, iterable $groups): array
-    {
-        $collection = collect($groups)->values();
-
-        return [
-            'affected_count' => $collection->count(),
-            'sample_group_ids' => $collection->pluck('student_group_id')->filter()->take(5)->values()->all()
-                ?: $collection->pluck('id')->filter()->take(5)->values()->all(),
-            'sample_group_codes' => $collection->pluck('group_code')->take(5)->values()->all(),
-            'total_student_count' => $collection->sum('student_count'),
         ] + $this->offeringAuditContext($courseOffering);
     }
 

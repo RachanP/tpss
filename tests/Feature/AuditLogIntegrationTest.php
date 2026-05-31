@@ -1034,6 +1034,7 @@ class AuditLogIntegrationTest extends TestCase
             'name' => 'ไม่เปลี่ยนแปลง',
             'color_code' => '#336699',
             'category' => 'lecture',
+            'counts_toward_workload' => true,
         ]);
 
         $this->actingAsAdmin()
@@ -1041,6 +1042,7 @@ class AuditLogIntegrationTest extends TestCase
                 'name' => $activityType->name,
                 'color_code' => $activityType->color_code,
                 'category' => $activityType->category,
+                'counts_toward_workload' => '1',
             ])
             ->assertRedirect();
 
@@ -1138,71 +1140,8 @@ class AuditLogIntegrationTest extends TestCase
         $this->assertSame($roleB->id, $deleteLog->old_values['course_role_id']);
     }
 
-    public function test_student_group_crud_and_bulk_actions_are_audited(): void
-    {
-        $head = $this->makeCourseHead();
-        $offering = $this->makeOffering($head, ['total_student_count' => 40]);
-
-        $this->actingAsCourseHead($head)
-            ->post(route('maker.course_offerings.student_groups.store', $offering), [
-                'group_code' => 'A1',
-                'student_count' => 10,
-                'color_code' => '#2563eb',
-            ])
-            ->assertRedirect();
-
-        $group = StudentGroup::where('course_offering_id', $offering->id)->where('group_code', 'A1')->firstOrFail();
-        $createLog = $this->latestLog('รายวิชาและผู้รับผิดชอบ.สร้าง', 'student_groups');
-        $this->assertSame('A1', $createLog->new_values['group_code']);
-
-        $this->actingAsCourseHead($head)
-            ->put(route('maker.course_offerings.student_groups.update', [$offering, $group]), [
-                'group_code' => 'A1',
-                'student_count' => 12,
-                'color_code' => '#2563eb',
-            ])
-            ->assertRedirect();
-
-        $updateLog = $this->latestLog('รายวิชาและผู้รับผิดชอบ.แก้ไข', 'student_groups');
-        $this->assertSame(['student_count'], array_keys($updateLog->old_values));
-        $this->assertSame(10, $updateLog->old_values['student_count']);
-        $this->assertSame(12, $updateLog->new_values['student_count']);
-
-        $this->actingAsCourseHead($head)
-            ->delete(route('maker.course_offerings.student_groups.destroy', [$offering, $group->fresh()]))
-            ->assertRedirect();
-
-        $deleteLog = $this->latestLog('รายวิชาและผู้รับผิดชอบ.ลบ', 'student_groups');
-        $this->assertSame('A1', $deleteLog->old_values['group_code']);
-
-        $this->actingAsCourseHead($head)
-            ->post(route('maker.course_offerings.student_groups.bulk_store', $offering), [
-                'group_prefix' => 'B',
-                'start_number' => 1,
-                'group_count' => 2,
-                'group_counts' => [10, 10],
-            ])
-            ->assertRedirect();
-
-        $bulkCreateLog = $this->latestLog('รายวิชาและผู้รับผิดชอบ.สร้าง', 'student_groups');
-        $this->assertSame(2, $bulkCreateLog->new_values['affected_count']);
-        $this->assertSame(['B1', 'B2'], $bulkCreateLog->new_values['sample_group_codes']);
-
-        $bulkIds = StudentGroup::where('course_offering_id', $offering->id)
-            ->whereIn('group_code', ['B1', 'B2'])
-            ->pluck('id')
-            ->all();
-
-        $this->actingAsCourseHead($head)
-            ->delete(route('maker.course_offerings.student_groups.bulk_destroy', $offering), [
-                'group_ids' => $bulkIds,
-            ])
-            ->assertRedirect();
-
-        $bulkDeleteLog = $this->latestLog('รายวิชาและผู้รับผิดชอบ.ลบ', 'student_groups');
-        $this->assertSame(2, $bulkDeleteLog->new_values['affected_count']);
-        $this->assertSame(['B1', 'B2'], $bulkDeleteLog->old_values['sample_group_codes']);
-    }
+    // หมายเหตุ: เดิมมี test_student_group_crud_and_bulk_actions_are_audited
+    // ถูกลบเพราะหัวหน้าวิชาไม่จัดกลุ่มย่อยแล้ว (V2 — กลุ่มเกิดหลังอนุมัติ โดยอาจารย์) routes ถูกถอด
 
     public function test_validation_unauthorized_and_phase_blocked_course_management_actions_do_not_log(): void
     {
@@ -1210,11 +1149,10 @@ class AuditLogIntegrationTest extends TestCase
         $otherHead = $this->makeCourseHead();
         $offering = $this->makeOffering($head);
 
+        // validation failure: เพิ่มผู้สอนโดยไม่ส่ง user_id → ไม่ log
         $this->actingAsCourseHead($head)
-            ->post(route('maker.course_offerings.student_groups.store', $offering), [
-                'student_count' => 10,
-            ])
-            ->assertSessionHasErrors('group_code');
+            ->post(route('maker.course_offerings.instructors.store', $offering), [])
+            ->assertSessionHasErrors('user_id');
 
         $this->actingAsCourseHead($otherHead)
             ->put(route('maker.course_offerings.update', $offering), [

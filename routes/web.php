@@ -69,11 +69,8 @@ Route::middleware(['auth', 'no-back'])->group(function () {
             Route::post('/{courseOffering}/instructors', [CourseOfferingController::class, 'storeInstructor'])->name('instructors.store');
             Route::patch('/{courseOffering}/instructors/{user}/role', [CourseOfferingController::class, 'updateInstructorRole'])->name('instructors.role');
             Route::delete('/{courseOffering}/instructors/{user}', [CourseOfferingController::class, 'destroyInstructor'])->name('instructors.destroy');
-            Route::post('/{courseOffering}/student-groups', [CourseOfferingController::class, 'storeStudentGroup'])->name('student_groups.store');
-            Route::post('/{courseOffering}/student-groups/bulk', [CourseOfferingController::class, 'bulkStoreStudentGroups'])->name('student_groups.bulk_store');
-            Route::delete('/{courseOffering}/student-groups/bulk', [CourseOfferingController::class, 'bulkDestroyStudentGroups'])->name('student_groups.bulk_destroy');
-            Route::put('/{courseOffering}/student-groups/{studentGroup}', [CourseOfferingController::class, 'updateStudentGroup'])->name('student_groups.update');
-            Route::delete('/{courseOffering}/student-groups/{studentGroup}', [CourseOfferingController::class, 'destroyStudentGroup'])->name('student_groups.destroy');
+            // หมายเหตุ: กลุ่มย่อยนักศึกษาไม่ใช่งานหัวหน้าวิชา (V2 — กลุ่มเกิดหลังอนุมัติ โดยอาจารย์)
+            // routes student_groups.* ถูกถอดออก · ตาราง/model/pivot ยังอยู่สำหรับเฟส "อาจารย์จัดกลุ่ม" ภายหลัง
         });
 
     // Admin User Management

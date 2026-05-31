@@ -340,53 +340,6 @@ class CourseOfferingShowPageTest extends TestCase
         $response->assertJsonStructure(['message', 'errors' => ['practicum_note']]);
     }
 
-    public function test_student_group_update_returns_json_when_requested(): void
-    {
-        $head = $this->makeUser('course_head');
-        $offering = $this->makeOffering($head);
-
-        $group = \App\Models\StudentGroup::create([
-            'course_offering_id' => $offering->id,
-            'group_code' => 'A1',
-            'student_count' => 20,
-        ]);
-
-        $this->actingAsCourseHead($head);
-
-        $response = $this->putJson(
-            route('maker.course_offerings.student_groups.update', [$offering, $group]),
-            ['group_code' => 'A2', 'student_count' => 25, 'color_code' => '#16a34a'],
-        );
-
-        $response->assertOk();
-        $response->assertJson([
-            'message' => 'บันทึกแล้ว',
-            'group' => ['id' => $group->id, 'group_code' => 'A2', 'student_count' => 25, 'color_code' => '#16a34a'],
-        ]);
-    }
-
-    public function test_student_group_destroy_returns_json_when_requested(): void
-    {
-        $head = $this->makeUser('course_head');
-        $offering = $this->makeOffering($head);
-
-        $group = \App\Models\StudentGroup::create([
-            'course_offering_id' => $offering->id,
-            'group_code' => 'A1',
-            'student_count' => 20,
-        ]);
-
-        $this->actingAsCourseHead($head);
-
-        $response = $this->deleteJson(
-            route('maker.course_offerings.student_groups.destroy', [$offering, $group]),
-        );
-
-        $response->assertOk();
-        $response->assertJson(['message' => 'ลบกลุ่มแล้ว']);
-        $this->assertDatabaseMissing('student_groups', ['id' => $group->id]);
-    }
-
     // ── Helpers ───────────────────────────────────────────────────────
 
     private function seedCourseRoles(): void

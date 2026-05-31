@@ -10,7 +10,6 @@ use App\Models\Curriculum;
 use App\Models\Department;
 use App\Models\InstructorProfile;
 use App\Models\LocationType;
-use App\Models\StudentGroup;
 use App\Models\User;
 use App\Models\UserRole;
 use Database\Seeders\CourseOfferingSeeder;
@@ -526,46 +525,8 @@ class SchedulingPhaseTest extends TestCase
         ]);
     }
 
-    // ── Phase Guard: Student group mutations ──────────────────────────
-
-    public function test_student_group_mutations_blocked_during_preparation(): void
-    {
-        $head    = $this->makeCourseHead();
-        $year    = $this->makeYear(['phase' => 'preparation']);
-        $offering = $this->makeOffering($head, $year);
-        $group   = StudentGroup::create([
-            'course_offering_id' => $offering->id,
-            'group_code'         => 'A1',
-            'student_count'      => 20,
-        ]);
-
-        $this->actingAsCourseHead($head);
-
-        $this->from(route('maker.course_offerings.show', $offering))
-            ->post(route('maker.course_offerings.student_groups.store', $offering), [
-                'group_code'    => 'B1',
-                'student_count' => 10,
-            ])
-            ->assertRedirect(route('maker.course_offerings.show', $offering) . '#student-groups')
-            ->assertSessionHas('error');
-
-        // update
-        $this->from(route('maker.course_offerings.show', $offering))
-            ->put(route('maker.course_offerings.student_groups.update', [$offering, $group]), [
-                'group_code'    => 'A1',
-                'student_count' => 30,
-            ])
-            ->assertRedirect(route('maker.course_offerings.show', $offering) . '#student-groups')
-            ->assertSessionHas('error');
-
-        $this->from(route('maker.course_offerings.show', $offering))
-            ->delete(route('maker.course_offerings.student_groups.destroy', [$offering, $group]))
-            ->assertRedirect(route('maker.course_offerings.show', $offering) . '#student-groups')
-            ->assertSessionHas('error');
-
-        $this->assertDatabaseCount('student_groups', 1);
-        $this->assertDatabaseHas('student_groups', ['id' => $group->id, 'student_count' => 20]);
-    }
+    // หมายเหตุ: เดิมมี test_student_group_mutations_blocked_during_preparation
+    // ถูกลบเพราะหัวหน้าวิชาไม่จัดกลุ่มย่อยแล้ว (V2 — กลุ่มเกิดหลังอนุมัติ โดยอาจารย์) routes ถูกถอด
 
     // Prerequisite + schedule guard tests removed: prerequisites moved to Master Data
     // (per-course, not per-offering), and schedule routes were removed in this branch

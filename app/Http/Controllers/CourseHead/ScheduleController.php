@@ -1825,7 +1825,8 @@ class ScheduleController extends Controller
                 Rule::exists('course_offering_instructors', 'user_id')
                     ->where(fn ($query) => $query->where('course_offering_id', $courseOffering->id)),
             ],
-            'student_group_ids' => $allowEmptyResources ? ['nullable', 'array'] : ['required', 'array', 'min:1'],
+            // V2: กลุ่มย่อยนักศึกษามาหลังอนุมัติ (โดยอาจารย์) → slot สร้างได้โดยยังไม่มีกลุ่ม
+            'student_group_ids' => ['nullable', 'array'],
             'student_group_ids.*' => [
                 'integer',
                 'distinct',
@@ -2124,7 +2125,6 @@ class ScheduleController extends Controller
             'course_code'        => $co?->course?->course_code,
             'course_name_th'     => $co?->course?->name_th,
             'academic_year'      => $year?->name,
-            'semester'           => $year?->semester,
             'start_date'         => $schedule->start_date?->toDateString(),
             'end_date'           => $schedule->end_date?->toDateString(),
             'start_time'         => (string) $schedule->start_time,
