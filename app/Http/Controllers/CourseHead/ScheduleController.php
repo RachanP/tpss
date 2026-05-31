@@ -90,7 +90,8 @@ class ScheduleController extends Controller
                     })
             )->get();
 
-            $warnings = $schedules->flatMap(function (Schedule $schedule) {
+            $calendar = AcademicCalendar::forYear($selectedAcademicYear);
+            $warnings = $schedules->flatMap(function (Schedule $schedule) use ($calendar) {
                 $items = [];
                 $label = $this->scheduleAlertLabel($schedule);
 
@@ -130,8 +131,30 @@ class ScheduleController extends Controller
                     }
                 }
 
+                // 5. กิจกรรมตรงวันหยุดราชการ (เตือน ไม่บล็อก)
+                $di = $calendar->classifyDay($schedule->start_date);
+                if (($di['kind'] ?? null) === 'holiday') {
+                    $items[] = ['type' => 'holiday', 'schedule' => $schedule, 'label' => $label, 'message' => 'ตรงวันหยุด: ' . ($di['label'] ?? '') . ' — งดการเรียนการสอน'];
+                }
+
                 return $items;
             });
+
+            // 🔴 การชนข้ามวิชา — ดึงจาก conflict index ทำเป็น item type 'conflict' (สีแดง ขึ้นบนสุด)
+            $conflictResult = app(ScheduleConflictIndex::class)->conflictsForCoordinator($userId, $selectedAcademicYearId);
+            $conflictMap = $conflictResult['conflictMap'];
+            $typeWord = ['instructor_overlap' => 'ผู้สอน', 'room_overlap' => 'ห้อง', 'group_overlap' => 'กลุ่ม'];
+            $conflictItems = $conflictResult['schedules']->map(function (Schedule $schedule) use ($conflictMap, $typeWord) {
+                $entries = $conflictMap->get($schedule->id, collect());
+                $parts = $entries->groupBy('type')->map(function ($byType, $type) use ($typeWord) {
+                    $res = $byType->pluck('resource_label')->filter()->unique()->implode(', ');
+                    return ($typeWord[$type] ?? 'ชน') . ($res !== '' ? " ({$res})" : '');
+                })->values()->implode(' · ');
+
+                return ['type' => 'conflict', 'schedule' => $schedule, 'label' => $this->scheduleAlertLabel($schedule), 'message' => 'ชนกับรายการอื่น — ' . $parts];
+            });
+
+            $warnings = $conflictItems->merge($warnings); // การชนขึ้นก่อน warning
         }
 
         return view('course_head.alerts.index', [

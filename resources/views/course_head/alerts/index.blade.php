@@ -3,12 +3,22 @@
     $formatTime = fn ($value) => substr((string) $value, 0, 5);
 
     $warningTypeLabels = [
+        'conflict'         => 'การชนข้ามวิชา',
         'incomplete'       => 'ข้อมูลไม่ครบ',
-        'capacity_exceeded'=> 'ความจุเกิน',
         'no_role'          => 'ไม่กำหนดบทบาท',
         'dept_mismatch'    => 'ผู้สอนต่างภาควิชา',
+        'capacity_exceeded'=> 'ความจุเกิน',
+        'holiday'          => 'ตรงวันหยุด',
     ];
     $warningTypeColors = [
+        'conflict'         => [
+            'border' => 'oklch(52% 0.2 25)',   'bg' => 'oklch(96% 0.05 25)',  'fg' => 'oklch(42% 0.19 25)',
+            'svg' => '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'
+        ],
+        'holiday'          => [
+            'border' => 'oklch(72% 0.12 80)',  'bg' => 'oklch(97% 0.05 85)',  'fg' => 'oklch(45% 0.12 70)',
+            'svg' => '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>'
+        ],
         'incomplete'       => [
             'border' => 'oklch(65% 0.12 50)',  'bg' => 'oklch(97% 0.04 50)',  'fg' => 'oklch(40% 0.14 50)',
             'svg' => '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>'

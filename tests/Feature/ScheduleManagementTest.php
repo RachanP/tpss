@@ -410,6 +410,25 @@ class ScheduleManagementTest extends TestCase
             ->assertDontSee('href="' . route('maker.course_offerings.index') . '" class="nv on"', false);
     }
 
+    public function test_maker_alerts_page_shows_warnings_and_cross_course_conflict(): void
+    {
+        config(['conflicts.async_reads' => false]);
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        [, $otherOffering, , $otherGroup, $otherActivityType, $otherRoom] = $this->makeReadyOffering();
+        $otherOffering->instructorPool()->attach($instructor->id, ['role_in_course' => 'instructor']);
+        $this->makeSchedule($otherOffering, $otherActivityType, $otherRoom, [$instructor], [$otherGroup]);
+        // slot ของ head: instructor ชนข้ามวิชา + ไม่ระบุห้อง (ข้อมูลไม่ครบ)
+        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], ['room_id' => null]);
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.alerts.index'))
+            ->assertOk()
+            ->assertSee('การแจ้งเตือน')
+            ->assertSee('การชนข้ามวิชา')   // 🔴 conflict card
+            ->assertSee('ข้อมูลไม่ครบ');    // 🟡 warning (ขาดห้อง)
+    }
+
     public function test_conflict_alert_page_lists_owned_schedule_conflicts_with_edit_links(): void
     {
         config(['conflicts.async_reads' => false]);
