@@ -23,16 +23,18 @@ class StudentCohortSeeder extends Seeder
             return;
         }
 
+        // ปี 1-2 = กลุ่มใหญ่รวมรุ่น · ปี 3-4 = 4 กลุ่ม (A1, B1, A2, B2)
         $cohorts = [
-            ['year_level' => 1, 'code' => 'รุ่นใหญ่', 'student_count' => 300],
-            ['year_level' => 3, 'code' => 'กลุ่ม 1', 'student_count' => 80],
-            ['year_level' => 3, 'code' => 'กลุ่ม 2', 'student_count' => 80],
-            ['year_level' => 3, 'code' => 'กลุ่ม 3', 'student_count' => 80],
-            ['year_level' => 3, 'code' => 'กลุ่ม 4', 'student_count' => 80],
-            ['year_level' => 4, 'code' => 'กลุ่ม 1', 'student_count' => 78],
-            ['year_level' => 4, 'code' => 'กลุ่ม 2', 'student_count' => 78],
-            ['year_level' => 4, 'code' => 'กลุ่ม 3', 'student_count' => 78],
-            ['year_level' => 4, 'code' => 'กลุ่ม 4', 'student_count' => 78],
+            ['year_level' => 1, 'code' => 'กลุ่มใหญ่', 'student_count' => 300],
+            ['year_level' => 2, 'code' => 'กลุ่มใหญ่', 'student_count' => 285],
+            ['year_level' => 3, 'code' => 'A1', 'student_count' => 80],
+            ['year_level' => 3, 'code' => 'B1', 'student_count' => 80],
+            ['year_level' => 3, 'code' => 'A2', 'student_count' => 80],
+            ['year_level' => 3, 'code' => 'B2', 'student_count' => 80],
+            ['year_level' => 4, 'code' => 'A1', 'student_count' => 78],
+            ['year_level' => 4, 'code' => 'B1', 'student_count' => 78],
+            ['year_level' => 4, 'code' => 'A2', 'student_count' => 78],
+            ['year_level' => 4, 'code' => 'B2', 'student_count' => 78],
         ];
 
         foreach ($cohorts as $data) {
