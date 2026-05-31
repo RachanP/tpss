@@ -19,7 +19,6 @@ class Course extends Model
         'name_en',
         'course_type',
         'default_year_level',
-        'default_semester',
         'requires_practicum_rotation',
         'is_required',
         'credits',
@@ -40,7 +39,6 @@ class Course extends Model
         'self_study_hours' => 'integer',
         'capacity' => 'integer',
         'default_year_level' => 'integer',
-        'default_semester' => 'integer',
     ];
 
     protected $attributes = [
@@ -100,13 +98,25 @@ class Course extends Model
         return $this->hasMany(CourseOffering::class);
     }
 
-    public function scopeOfferedInAcademicTerm(Builder $query, AcademicYear $academicYear): Builder
+    /**
+     * วิชาที่พร้อมเปิดสอนในปีการศึกษา (V2: วิชาเปิดทั้งปี — ดูแค่ active + มีหัวหน้า + อยู่ใน active curriculum)
+     * เลิกผูกเทอม (default_semester ถูกตัดออกแล้ว)
+     */
+    public function scopeOfferableForActiveCurriculum(Builder $query): Builder
     {
         return $query
             ->where('status', 'active')
             ->whereNotNull('head_instructor_id')
-            ->where('default_semester', $academicYear->semester)
             ->whereHas('curriculum', fn (Builder $curriculumQuery) => $curriculumQuery->where('is_active', true));
+    }
+
+    /**
+     * @deprecated V2 cleanup — ใช้ scopeOfferableForActiveCurriculum แทน (param ปีไม่ใช้แล้ว)
+     * คงไว้ชั่วคราวให้ caller เดิมยังทำงาน
+     */
+    public function scopeOfferedInAcademicTerm(Builder $query, ?AcademicYear $academicYear = null): Builder
+    {
+        return $this->scopeOfferableForActiveCurriculum($query);
     }
 
     /**

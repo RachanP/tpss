@@ -25,7 +25,7 @@ return new class extends Migration
             $table->enum('course_type', ['theory', 'practicum', 'theory_practicum'])->nullable();
             // ระดับการศึกษาย้ายไปอยู่ที่ curriculums.education_level (เพราะเป็น property ของหลักสูตร ไม่ใช่ของรายวิชา)
             $table->integer('default_year_level')->nullable()->comment('ชั้นปีที่ต้องเรียนตามแผน — null ถ้าหลักสูตรไม่ใช้ระบบชั้นปี');
-            $table->integer('default_semester')->nullable()->comment('ภาคเรียนที่ต้องเรียนตามแผน (1, 2, 3)');
+            // V2 cleanup: ตัด default_semester — วิชาเปิดทั้งปี ไม่ผูกภาค (เทอมเป็นป้ายของแต่ละ slot)
             $table->boolean('requires_practicum_rotation')->default(false);
             $table->boolean('is_required')->default(true)->comment('true=วิชาบังคับของหลักสูตร, false=วิชาเลือก');
             $table->integer('credits');

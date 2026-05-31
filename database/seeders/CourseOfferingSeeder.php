@@ -20,9 +20,9 @@ class CourseOfferingSeeder extends Seeder
         }
 
         // จำลองสถานะหลัง Admin กด "เปิดช่วงจัดตาราง":
-        // สร้าง offering เฉพาะวิชาที่ active และอยู่ในภาคเรียนของปีการศึกษาปัจจุบัน
+        // V2: วิชาเปิดทั้งปี → สร้าง offering สำหรับทุกวิชาที่ active + อยู่ใน active curriculum
         $courses = Course::query()
-            ->offeredInAcademicTerm($year)
+            ->offerableForActiveCurriculum()
             ->get();
 
         $created = 0;
@@ -59,6 +59,6 @@ class CourseOfferingSeeder extends Seeder
         // ตั้ง phase เป็น scheduling เพื่อให้หัวหน้าวิชาจัดการได้ทันที
         $year->update(['phase' => 'scheduling']);
 
-        $this->command->info("CourseOfferingSeeder: สร้างใหม่ {$created} รายวิชา, sync {$synced} course offerings, ตั้ง phase = scheduling สำหรับ {$year->name} ภาค {$year->semester}");
+        $this->command->info("CourseOfferingSeeder: สร้างใหม่ {$created} รายวิชา, sync {$synced} course offerings, ตั้ง phase = scheduling สำหรับปีการศึกษา {$year->name}");
     }
 }

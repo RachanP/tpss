@@ -8,46 +8,49 @@ use Illuminate\Database\Seeder;
 class AcademicYearSeeder extends Seeder
 {
     /**
-     * Run the database seeds.
+     * ปีการศึกษา = "ปี" (1 แถว/ปี) + เทอมเป็นรายการลูก (terms) พร้อมช่วงสอบ
      */
     public function run(): void
     {
         $years = [
             [
                 'name' => '2568',
-                'semester' => 1,
                 'start_date' => '2025-06-02',
-                'end_date' => '2025-10-15',
-                'is_active' => false,
-            ],
-            [
-                'name' => '2568',
-                'semester' => 2,
-                'start_date' => '2025-11-03',
                 'end_date' => '2026-03-13',
                 'is_active' => false,
+                'terms' => [
+                    ['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '2025-06-02', 'end_date' => '2025-10-15',
+                     'midterm_start' => '2025-07-28', 'midterm_end' => '2025-08-01', 'final_start' => '2025-10-06', 'final_end' => '2025-10-10'],
+                    ['sequence' => 2, 'name' => 'ภาคเรียนที่ 2', 'start_date' => '2025-11-03', 'end_date' => '2026-03-13',
+                     'midterm_start' => '2025-12-22', 'midterm_end' => '2025-12-26', 'final_start' => '2026-03-02', 'final_end' => '2026-03-06'],
+                ],
             ],
             [
                 'name' => '2569',
-                'semester' => 1,
                 'start_date' => '2026-06-01',
-                'end_date' => '2026-10-15',
-                'is_active' => false,
-            ],
-            [
-                'name' => '2569',
-                'semester' => 2,
-                'start_date' => '2026-11-02',
                 'end_date' => '2027-03-15',
                 'is_active' => false,
+                'terms' => [
+                    ['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '2026-06-01', 'end_date' => '2026-10-15',
+                     'midterm_start' => '2026-07-27', 'midterm_end' => '2026-07-31', 'final_start' => '2026-10-05', 'final_end' => '2026-10-09'],
+                    ['sequence' => 2, 'name' => 'ภาคเรียนที่ 2', 'start_date' => '2026-11-02', 'end_date' => '2027-03-15',
+                     'midterm_start' => '2026-12-21', 'midterm_end' => '2026-12-25', 'final_start' => '2027-03-01', 'final_end' => '2027-03-05'],
+                ],
             ],
         ];
 
         foreach ($years as $yearData) {
-            AcademicYear::updateOrCreate(
-                ['name' => $yearData['name'], 'semester' => $yearData['semester']],
-                $yearData
-            );
+            $terms = $yearData['terms'];
+            unset($yearData['terms']);
+
+            $year = AcademicYear::updateOrCreate(['name' => $yearData['name']], $yearData);
+
+            foreach ($terms as $termData) {
+                $year->terms()->updateOrCreate(
+                    ['sequence' => $termData['sequence']],
+                    $termData
+                );
+            }
         }
     }
 }
