@@ -6923,39 +6923,43 @@
                                 @endif
 
                                 <div class="modal-form-grid">
-                                    <div class="{{ $dateTimeConflictNote ? 'modal-field-has-conflict' : '' }}">
-                                        <label class="modal-label" for="edit_start_date_{{ $schedule->id }}"><span x-text="multiDay ? 'วันที่เริ่ม' : 'วันที่'">วันที่</span> <span class="required-mark">*</span></label>
-                                        <x-thai-date-input
-                                            name="start_date"
-                                            :value="$editOld('start_date', $schedule->start_date?->format('Y-m-d'))"
-                                            id="edit_start_date_{{ $schedule->id }}"
-                                            class="modal-control"
-                                            :required="true"
-                                            :helper="false"
-                                            :year-start="$scheduleDatePickerYearStart"
-                                            :year-end="$scheduleDatePickerYearEnd"
-                                            x-model="startDateDisplay" />
-                                        <div class="date-day-hint" x-show="scheduleDateHint(startDateDisplay)" x-cloak x-text="scheduleDateHint(startDateDisplay)"></div>
-                                        <div class="date-holiday-warn" x-show="scheduleDateWarning(startDateDisplay)" x-cloak x-text="scheduleDateWarning(startDateDisplay)"></div>
-                                        <label class="schedule-multiday-toggle">
-                                            <input type="checkbox" :checked="multiDay" @change="multiDay = $event.target.checked" data-testid="edit-multiday-toggle">
-                                            <span>กิจกรรมต่อเนื่องหลายวัน <small>(เช่น บล็อกฝึกปฏิบัติ)</small></span>
-                                        </label>
-                                    </div>
-                                    <div class="{{ $dateTimeConflictNote ? 'modal-field-has-conflict' : '' }}" x-show="multiDay" x-cloak>
-                                        <label class="modal-label" for="edit_end_date_{{ $schedule->id }}">ถึงวันที่ <span class="required-mark">*</span></label>
-                                        <x-thai-date-input
-                                            name="end_date"
-                                            :value="$editOld('end_date', $schedule->end_date?->format('Y-m-d'))"
-                                            id="edit_end_date_{{ $schedule->id }}"
-                                            class="modal-control"
-                                            :required="false"
-                                            :helper="false"
-                                            :year-start="$scheduleDatePickerYearStart"
-                                            :year-end="$scheduleDatePickerYearEnd"
-                                            x-bind:required="multiDay"
-                                            x-model="endDateDisplay" />
-                                        <div class="date-day-hint" x-show="scheduleDateHint(endDateDisplay)" x-cloak x-text="scheduleDateHint(endDateDisplay)"></div>
+                                    <div class="modal-field-full schedule-date-block {{ $dateTimeConflictNote ? 'modal-field-has-conflict' : '' }}">
+                                        <div class="schedule-date-fields">
+                                            <div>
+                                                <label class="modal-label" for="edit_start_date_{{ $schedule->id }}"><span x-text="multiDay ? 'วันที่เริ่ม' : 'วันที่'">วันที่</span> <span class="required-mark">*</span></label>
+                                                <x-thai-date-input
+                                                    name="start_date"
+                                                    :value="$editOld('start_date', $schedule->start_date?->format('Y-m-d'))"
+                                                    id="edit_start_date_{{ $schedule->id }}"
+                                                    class="modal-control"
+                                                    :required="true"
+                                                    :helper="false"
+                                                    :year-start="$scheduleDatePickerYearStart"
+                                                    :year-end="$scheduleDatePickerYearEnd"
+                                                    x-model="startDateDisplay" />
+                                                <div class="date-day-hint" x-show="scheduleDateHint(startDateDisplay)" x-cloak x-text="scheduleDateHint(startDateDisplay)"></div>
+                                                <div class="date-holiday-warn" x-show="scheduleDateWarning(startDateDisplay)" x-cloak x-text="scheduleDateWarning(startDateDisplay)"></div>
+                                                <label class="schedule-multiday-toggle">
+                                                    <input type="checkbox" :checked="multiDay" @change="multiDay = $event.target.checked" data-testid="edit-multiday-toggle">
+                                                    <span>กิจกรรมต่อเนื่องหลายวัน <small>(เช่น บล็อกฝึกปฏิบัติ)</small></span>
+                                                </label>
+                                            </div>
+                                            <div x-show="multiDay" x-cloak>
+                                                <label class="modal-label" for="edit_end_date_{{ $schedule->id }}">ถึงวันที่ <span class="required-mark">*</span></label>
+                                                <x-thai-date-input
+                                                    name="end_date"
+                                                    :value="$editOld('end_date', $schedule->end_date?->format('Y-m-d'))"
+                                                    id="edit_end_date_{{ $schedule->id }}"
+                                                    class="modal-control"
+                                                    :required="false"
+                                                    :helper="false"
+                                                    :year-start="$scheduleDatePickerYearStart"
+                                                    :year-end="$scheduleDatePickerYearEnd"
+                                                    x-bind:required="multiDay"
+                                                    x-model="endDateDisplay" />
+                                                <div class="date-day-hint" x-show="scheduleDateHint(endDateDisplay)" x-cloak x-text="scheduleDateHint(endDateDisplay)"></div>
+                                            </div>
+                                        </div>
                                     </div>
                                     <template x-if="liveIssue('start_date').length || liveIssue('schedule').length">
                                         <div class="modal-field-full field-live-error" data-testid="live-error-start_date">
