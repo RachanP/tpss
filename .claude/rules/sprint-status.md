@@ -15,10 +15,11 @@
 
 - **Done (รอบนี้)**: ✅ กลุ่มชั้นปี `student_cohorts` ใน Master Data (commit `ec25ba2`)
 - **ถัดไป (cleanup)**:
-  1. `academic_years` เป็น "ปี" (ตัด `semester`)
+  1. `academic_years` เป็น "ปี" (ตัด `semester`) + ตาราง `terms` (เทอม 1/2 + วันสอบ)
   2. `courses` ตัด `default_semester` (วิชาเปิดทั้งปี) + เอา field ภาคออกจาก UI
   3. `course_offerings` ราย-ปี + auto-open = ทุกวิชาใน active curriculum
-  4. candidate: `activity_types.counts_toward_workload`, `rooms.campus`
+  4. candidate: `activity_types.counts_toward_workload`, `rooms.campus`, ตาราง `holidays` (วันหยุดราชการ — จากเอกสารพิม)
+- **เคาะแล้ว 31 พ.ค.**: ผู้บริหาร **อนุมัติทั้งปี** (per-year ไม่ใช่ราย-เทอม) · สลับกลุ่ม A/B อยู่ใน offering ปีเดียว — ดู `architecture.md` Resolved + เอกสารพิม `tpss_system_summary_v3.md` (แก้ข้อ 5.2 เป็นราย-ปีแล้ว)
 - ⚠️ **เป็น refactor ใหญ่ (แตะ guard/seeder/test ทั้งระบบ)** — ทำหลัง demo ปลอดภัยกว่า · ห้าม merge เข้า sprint จน test เขียว + verify · **อย่าใช้ build นี้ deploy demo 2 มิ.ย.**
 
 ## Phase Overview

@@ -260,17 +260,21 @@ V2 ชี้ว่าตารางคณะพยาบาลเป็น "ต
 - **2 วิทยาเขต** (doc บรรทัด 19): ทฤษฎี→ศาลายา LRC, ปฏิบัติ→ศิริราช (บางกอกน้อย) — ขัด master-data decision 30 พ.ค. ที่เลื่อน campus field → reconsider
 - **activity_type 0 ชั่วโมง** (doc บรรทัด 141/144): ปฐมนิเทศ/SDL ไม่นับ workload — ตรงกับ Priority 3 backlog (`counts_toward_workload`)
 
-### Resolved (ยืนยัน 30 พ.ค.)
-- ✅ **ผู้อนุมัติ = ผู้บริหาร (executive)** ตรวจภาระงาน + เวลา/ชน (ไม่ดูกลุ่ม) — ตรงระบบปัจจุบัน ไม่เปลี่ยน
-- ✅ **กลุ่มนักศึกษาเกิดหลังอนุมัติ** โดยอาจารย์ — slot อนุมัติได้โดยไม่ผูกกลุ่ม
-- ✅ **วิชาเปิดทั้งปี · เทอม = dimension ของตารางนักศึกษา/cohort** ไม่ใช่ของวิชา
-- ✅ **course_offering = ราย-ปี** (เลิก ราย-เทอม) — `academic_years` เป็น "ปี" · ดู Master Data Cleanup Phase ด้านล่าง
-- ✅ **กลุ่มชั้นปี (cohort) ใน Master Data** — implement แล้ว branch `feat/v2-requirement` (`student_cohorts`)
+### Resolved (ยืนยัน 30–31 พ.ค.)
+- ✅ **ผู้อนุมัติ = ผู้บริหาร (executive)** ตรวจภาระงาน + เวลา/ชน — ตรงระบบปัจจุบัน ไม่เปลี่ยน
+- ✅ **อนุมัติ = ทั้งปี (per-year) ไม่ใช่ราย-เทอม** (เคาะ 31 พ.ค.) — ผู้บริหารอนุมัติวิชานั้นทีเดียวทั้งปี
+  - พิจารณา per-term (ตามเอกสารพิม ข้อ 5.2) แล้ว แต่เลือก **per-year** เพื่อให้ approval ก้อนเดียวจบ/ไม่ต้องอนุมัติซ้ำ 2 รอบ
+- ✅ **course_offering = ราย-ปี** — `academic_years` เป็น "ปี"
+- ✅ **การสลับกลุ่ม A/B (semester swapping) อยู่ใน offering ปีเดียว** — offering ถือทั้งกลุ่ม A และ B + อาจารย์ทั้งปี (superset) · แต่ละ slot ติดป้าย เทอม + กลุ่ม → เทอม 1 กลุ่ม A / เทอม 2 กลุ่ม B อยู่ใน offering เดียวกัน อนุมัติทีเดียว
+- ✅ **วิชาเปิดทั้งปี · เทอม = dimension ของ slot** ไม่ใช่ของวิชา
+- ✅ **กลุ่มชั้นปี (cohort) ใน Master Data** — implement แล้ว (`student_cohorts`)
 
 ### Open Questions (เหลือไว้เคาะภายหลัง — ไม่บล็อก Master Data cleanup)
-1. **capacity gate deferred** — ยอมให้ save/อนุมัติ slot โดยไม่มีกลุ่มได้ (เลื่อน capacity check ไป step 4) ใช่ไหม?
-2. **รอบ rotation = 2 เสมอไหม** หรือ config ต่อเทอม/ต่อวิชา?
-3. **ตารางรายกลุ่มชั้นปี (step 5)** เป็น phase หลัง publish แยกต่างหาก — scope Phase 1 หรือ Phase 2?
+1. **กลุ่มนักศึกษาตั้งเมื่อไหร่/ใคร?** — เดิม (30 พ.ค.) ว่า "หลังอนุมัติ โดยอาจารย์" แต่เอกสารพิม ข้อ 7 ว่า "หัวหน้าวิชาตั้งตอน config offering (ก่อนจัดตาราง)" → ต้อง re-confirm
+2. **ปี 3-4 = 2 กลุ่มใหญ่ (A/B) หรือ 4 กลุ่ม?** — เอกสารพิมว่า 2 (A/B สลับเทอม) · ก่อนหน้าว่า 4 — cohort feature รองรับกี่กลุ่มก็ได้ ไม่บล็อก
+3. **capacity gate deferred** — ยอมให้ save/อนุมัติ slot โดยไม่มีกลุ่มได้ใช่ไหม?
+4. **รอบ rotation = 2 เสมอไหม** · **ตารางรายกลุ่มชั้นปี** Phase 1 หรือ 2?
+5. **ใครกรอกกิจกรรมภาคปฏิบัติ** (เอกสารพิม ข้อ 11 — แผน A/B/C) → V1 ใช้แผน C (อาจารย์แจ้ง offline, เจ้าหน้าที่/หัวหน้ากรอก) · V1.5 ทำแผน B (instructor จัดเอง = Option B/delegation)
 
 ## Master Data Cleanup Phase (V2) — ✅ DECIDED 30 พ.ค. · ทำก่อนงาน V2 อื่น
 
@@ -304,6 +308,13 @@ V2 ชี้ว่าตารางคณะพยาบาลเป็น "ต
 ### Candidate cleanups (เคาะว่าเอาเข้ารอบนี้ไหม)
 - `activity_types.counts_toward_workload` (ปฐมนิเทศ/SDL = 0 ชม. — V2 ข้อ 7) · เพิ่มประเภท วิทยานิพนธ์/ดุษฎีนิพนธ์ (มี category `thesis` แล้ว)
 - `rooms.campus` (ศาลายา/บางกอกน้อย — V2 ข้อ 7) — display ก่อน ยังไม่ผูก conflict
+
+### ของใหม่จากเอกสารพิม V3/V4 (`Doc/จากอาจารย์/เอกสาร/tpss_system_summary_v3.md`)
+> เอกสารสรุป requirement ฉบับเพื่อน (พิม) — ยืนยันหลายอย่างที่เราวางไว้ + เพิ่มของใหม่:
+- **ตารางวันหยุดราชการ** `holidays` (date, name, remark) — ตารางขึ้นหมายเหตุ "งดการเรียนการสอน" + ไม่นับภาระงาน (ข้อ 2.4, 12.1) — NEW
+- **กิจกรรมในสัปดาห์สอบ/วันหยุด ไม่นับภาระงานปกติ** — ผูกกับ `terms` (วันสอบ) + `holidays` (ข้อ 2.4) — workload เป็น Phase 2 แต่ data ต้องพร้อม
+- **Dashboard เชิงภาพ** (donut/gauge/Gantt rotation map) แทน text wall — แยกตาม role (ข้อ 8.1) — งาน UI ก้อนใหญ่ Phase ถัดไป
+- ✅ ยืนยัน: `student_cohorts` + semester swapping (ข้อ 12.1) ตรงกับที่ทำ · ตารางสอน=ตารางเรียน คนละมุม (ข้อ 1)
 
 ### Impact / ต้องแก้ตาม (forward-only, ทีมใช้ `migrate:fresh --seed`)
 - Migrations: consolidate เข้า create-table baselines ของ `academic_years`/`courses`/`course_offerings` (ไม่ทำ alter แยก — pattern Sprint 3 Hardening)
