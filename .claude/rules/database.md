@@ -243,6 +243,9 @@ student_cohorts  :  (curriculum_id, year_level nullable, code, student_count)
 ### 🛠️ DECIDED — Master Data Cleanup Phase (ทำก่อนงาน V2 อื่น · branch feat/v2-requirement)
 ```
 academic_years   :  ตัด column semester → unique(name) · phase/is_active ต่อ "ปี"
+terms            :  NEW ลูกของปี (academic_year_id, sequence 1|2, start_date, end_date,
+                    midterm_start, midterm_end, final_start, final_end)  ← ช่วงสอบเก็บเป็น "สัปดาห์สอบ"
+                    เปิดปีใหม่ = ลอกโครงปีก่อนมาเป็นค่าตั้งต้น (วันที่ต่างทุกปี ต้องปรับ)
 courses          :  ตัด default_semester (วิชาเปิดทั้งปี)
 course_offerings :  academic_year_id → ราย-ปี · unique(course_id, academic_year_id)
                     auto-open: ทุกวิชาที่ course.curriculum.is_active = true (เลิกผูกเทอม)
@@ -250,10 +253,9 @@ course_offerings :  academic_year_id → ราย-ปี · unique(course_id, a
 
 ### 🔲 PROPOSED — phase ถัดไป (schedule/rotation · ยังไม่ทำ)
 ```
-semesters        :  NEW (academic_year_id FK, sequence 1|2|3, start/end) — dimension ของตารางนักศึกษา
-schedules        :  + semester_id FK, + rotation_round_id FK
+schedules        :  + term_id FK (slot อยู่เทอมไหน — หัวหน้าวิชาระบุ), + rotation_round_id FK
 student_groups   :  + cohort_group_id FK nullable  ← subgroup อ้าง student_cohorts
-rotation_rounds      : NEW (semester_id, sequence 1|2, label, start/end)
+rotation_rounds      : NEW (term_id, sequence 1|2, label, start/end) — แบ่งด้วยวันสอบใน terms
 rotation_assignments : NEW (cohort_group_id, course_offering_id, rotation_round_id)
 course_offering_instructors : + schedule_permission enum('view','schedule','manage_groups')  (delegation — Option B)
 activity_types : + counts_toward_workload boolean  (ปฐมนิเทศ/SDL = false)

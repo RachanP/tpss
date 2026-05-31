@@ -280,9 +280,12 @@ V2 ชี้ว่าตารางคณะพยาบาลเป็น "ต
 
 ### สิ่งที่จะแก้ (Master Data scope)
 
-1. **ปีการศึกษา = "ปี" ไม่ใช่ "เทอม"**
-   - `academic_years`: ตัด column `semester` ออก → unique(`name`) แทน unique(`name`,`semester`) · `phase`/`is_active` ต่อ "ปี"
-   - 1 ปีการศึกษา = 1 row (เลิกมี row แยกต่อเทอม)
+1. **ปีการศึกษา = "ปี" ไม่ใช่ "เทอม" + มีเทอมเป็นรายการลูก (พร้อมวันสอบ)**
+   - `academic_years`: ตัด column `semester` ออก → unique(`name`) แทน unique(`name`,`semester`) · `phase`/`is_active` ต่อ "ปี" · 1 ปี = 1 row
+   - เพิ่มตาราง `terms` (ลูกของปี): `academic_year_id`, `sequence` (1|2), `start_date`, `end_date`,
+     `midterm_start`/`midterm_end`, `final_start`/`final_end` (ช่วงสอบกลางภาค/ปลายภาค — nullable, เก็บเป็นช่วง "สัปดาห์สอบ")
+   - **ทำไม**: หัวหน้าวิชาเห็นโครงปี + สัปดาห์สอบตอนวางกิจกรรม จะได้ไม่วางทับ · วันสอบยังเป็นเส้นแบ่งรอบหมุนเวียนปี 3-4 (V2 ข้อ 4)
+   - **เปลี่ยนปีต้องกรอกใหม่** (วันที่ต่างทุกปี) — แต่ตอนเปิดปีใหม่ให้ **ลอกโครงปีก่อนมาเป็นค่าตั้งต้น** ให้ผู้ใช้แค่ขยับวันที่
 2. **เลิกผูกรายวิชากับเทอม**
    - `courses`: ตัด `default_semester` (วิชาเปิดทั้งปี ไม่ผูกภาค)
    - UI Master Data รายวิชา: เอา field/คอลัมน์ "ภาค" ออก
@@ -296,7 +299,7 @@ V2 ชี้ว่าตารางคณะพยาบาลเป็น "ต
    - หัวหน้าวิชาจัดกิจกรรม**ครอบทั้งปี** แล้วติดป้ายว่าแต่ละ slot อยู่เทอมไหน — เพราะ **เทอม 2 อาจเปลี่ยนคนสอน/เวลา** จากเทอม 1
    - instructor pool ของ offering = **superset ทั้งปี** · แต่ละ slot เลือกอาจารย์เองผ่าน `schedule_instructors` (มีอยู่แล้ว) → เทอม 2 เปลี่ยนคนได้โดยไม่กระทบเทอม 1
    - ตอนจัดกลุ่มหลังอนุมัติ: slot ติดป้ายเทอมไว้แล้ว → แมพ "กิจกรรมเทอมนี้ → กลุ่มไหน" ได้ตรง (ฐานของ rotation)
-   - ตาราง `semesters`/rotation = งาน **phase ถัดไป** (schedule) — Master Data cleanup ยังไม่ต้องสร้าง · แต่ schedule phase ต้องมี `schedules.semester_id` ให้หัวหน้าวิชาระบุเทอมต่อ slot
+   - ตาราง `terms` (วัน+ช่วงสอบ) สร้างในรอบ cleanup นี้ (ข้อ 1) · ส่วน `schedules.term_id` (ให้ slot ระบุว่าอยู่เทอมไหน) + rotation = งาน **phase ถัดไป** (schedule)
 
 ### Candidate cleanups (เคาะว่าเอาเข้ารอบนี้ไหม)
 - `activity_types.counts_toward_workload` (ปฐมนิเทศ/SDL = 0 ชม. — V2 ข้อ 7) · เพิ่มประเภท วิทยานิพนธ์/ดุษฎีนิพนธ์ (มี category `thesis` แล้ว)
@@ -306,6 +309,7 @@ V2 ชี้ว่าตารางคณะพยาบาลเป็น "ต
 - Migrations: consolidate เข้า create-table baselines ของ `academic_years`/`courses`/`course_offerings` (ไม่ทำ alter แยก — pattern Sprint 3 Hardening)
 - Guard `phase != 'scheduling'` + `AdminSettingController::storeYear/updateYear` activation lock → เปลี่ยนจาก per-term เป็น per-year
 - `openSchedulingWindow` (sync planning + instructor pool) → loop ตาม active curriculum
-- Seeders: `AcademicYearSeeder` (1 row/ปี), `CourseSeeder` (ตัด default_semester), `CourseOfferingSeeder` (ราย-ปี)
+- Migration ใหม่: `create_terms_table` (ลูกของ academic_years + ช่วงสอบ)
+- Seeders: `AcademicYearSeeder` (1 row/ปี + เทอม 1/2 พร้อมวันสอบตัวอย่าง), `CourseSeeder` (ตัด default_semester), `CourseOfferingSeeder` (ราย-ปี)
 - Tests: `SchedulingPhaseTest`, `CourseOfferingManagementTest`, `MasterDataRedirectTest`, schedule suite — ปรับ assertion ที่อิงเทอม
-- Views: Master Data รายวิชา (ตัดภาค), Settings ปีการศึกษา (ตัด column semester)
+- Views: Master Data รายวิชา (ตัดภาค), Settings ปีการศึกษา (ตัด column semester + เพิ่มฟอร์มเทอม 1/2 + ช่วงสอบ + ปุ่ม "ลอกจากปีก่อน")
