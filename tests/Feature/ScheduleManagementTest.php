@@ -442,6 +442,20 @@ class ScheduleManagementTest extends TestCase
             ->assertSee('ไม่พบปัญหาที่ต้องแก้ไข');     // สถานะเขียว (0)
     }
 
+    public function test_maker_alerts_page_handles_warning_only_schedules_without_conflicts(): void
+    {
+        config(['conflicts.async_reads' => false]);
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], ['room_id' => null]);
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.alerts.index'))
+            ->assertOk()
+            ->assertSee('ข้อมูลไม่ครบ')
+            ->assertDontSee('Call to a member function getKey() on array');
+    }
+
     public function test_conflict_alert_page_lists_owned_schedule_conflicts_with_edit_links(): void
     {
         config(['conflicts.async_reads' => false]);

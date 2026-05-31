@@ -144,7 +144,7 @@ class ScheduleController extends Controller
             $conflictResult = app(ScheduleConflictIndex::class)->conflictsForCoordinator($userId, $selectedAcademicYearId);
             $conflictMap = $conflictResult['conflictMap'];
             $typeWord = ['instructor_overlap' => 'ผู้สอน', 'room_overlap' => 'ห้อง', 'group_overlap' => 'กลุ่ม'];
-            $conflictItems = $conflictResult['schedules']->map(function (Schedule $schedule) use ($conflictMap, $typeWord) {
+            $conflictItems = $conflictResult['schedules']->toBase()->map(function (Schedule $schedule) use ($conflictMap, $typeWord) {
                 $entries = $conflictMap->get($schedule->id, collect());
                 $parts = $entries->groupBy('type')->map(function ($byType, $type) use ($typeWord) {
                     $res = $byType->pluck('resource_label')->filter()->unique()->implode(', ');
