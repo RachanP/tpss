@@ -335,20 +335,28 @@
             @endif
         </section>
 
-        {{-- Summary Cards --}}
-        @if($totalWarningCount > 0)
+        {{-- Summary Cards — แสดงตลอด (เห็นจำนวนแม้เป็น 0) --}}
+        @php
+            $hasWarn = $totalWarningCount > 0;
+            $totFg = $hasWarn ? 'oklch(40% 0.14 50)' : 'oklch(38% 0.14 145)';
+            $totBg = $hasWarn ? 'oklch(97% 0.04 50)' : 'oklch(96% 0.04 145)';
+        @endphp
             <section class="alert-summary-container">
                 {{-- Total Card --}}
-                <div class="alert-summary-total-card">
-                    <div class="alert-summary-icon" style="background:oklch(97% 0.04 50); color:oklch(40% 0.14 50); width: 44px; height: 44px;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <div class="alert-summary-total-card" style="border-left-color: {{ $totFg }};">
+                    <div class="alert-summary-icon" style="background:{{ $totBg }}; color:{{ $totFg }}; width: 44px; height: 44px;">
+                        @if($hasWarn)
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        @else
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        @endif
                     </div>
                     <div>
                         <div style="display: flex; align-items: baseline; gap: 8px;">
-                            <span class="alert-summary-value" style="color:oklch(40% 0.14 50); font-size: 28px;">{{ $totalWarningCount }}</span>
+                            <span class="alert-summary-value" style="color:{{ $totFg }}; font-size: 28px;">{{ $totalWarningCount }}</span>
                             <span class="alert-summary-label" style="font-size: 14px; font-weight: 900;">รายการแจ้งเตือนทั้งหมด</span>
                         </div>
-                        <div class="alert-summary-sub">กรุณาตรวจสอบรายละเอียดและทำการแก้ไขข้อมูลตารางสอนให้ครบถ้วนก่อนดำเนินการส่งอนุมัติ</div>
+                        <div class="alert-summary-sub">{{ $hasWarn ? 'กรุณาตรวจสอบรายละเอียดและแก้ไขข้อมูลตารางสอนให้ครบถ้วนก่อนส่งอนุมัติ' : 'ตารางสอนทุกรายการมีข้อมูลครบถ้วน — ไม่พบปัญหาที่ต้องแก้ไข' }}</div>
                     </div>
                 </div>
 
@@ -372,22 +380,9 @@
                     @endforeach
                 </div>
             </section>
-        @endif
 
         {{-- Warning Groups --}}
-        @if($totalWarningCount === 0)
-            <div class="alert-empty-state">
-                <div class="alert-empty-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                </div>
-                <div class="alert-empty-title">ไม่พบรายการแจ้งเตือน</div>
-                <div class="alert-empty-sub">
-                    ตารางสอนทุกรายการมีข้อมูลครบถ้วนและไม่พบปัญหาที่ต้องแก้ไข<br>
-                    ขอบคุณที่ดูแลตารางอย่างครอบคลุม 🎉
-                </div>
-            </div>
-
-        @elseif(! $selectedAcademicYear)
+        @if(! $selectedAcademicYear)
             <div class="alert-empty-state">
                 <div class="alert-empty-icon" style="background:var(--alert-soft); color:var(--alert-muted);">
                     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>

@@ -429,6 +429,19 @@ class ScheduleManagementTest extends TestCase
             ->assertSee('ข้อมูลไม่ครบ');    // 🟡 warning (ขาดห้อง)
     }
 
+    public function test_maker_alerts_page_shows_count_card_even_when_no_warnings(): void
+    {
+        config(['conflicts.async_reads' => false]);
+        [$head] = $this->makeReadyOffering(); // มี offering แต่ยังไม่มี slot → 0 แจ้งเตือน
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.alerts.index'))
+            ->assertOk()
+            ->assertSee('รายการแจ้งเตือนทั้งหมด')   // card นับยังแสดง
+            ->assertSee('ไม่พบปัญหาที่ต้องแก้ไข');     // สถานะเขียว (0)
+    }
+
     public function test_conflict_alert_page_lists_owned_schedule_conflicts_with_edit_links(): void
     {
         config(['conflicts.async_reads' => false]);
