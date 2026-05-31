@@ -107,7 +107,6 @@ abstract class Controller
             'ชั่วโมงศึกษาด้วยตนเอง/สัปดาห์' => 'self_study_hours',
             'จำนวนนักศึกษาสูงสุด' => 'capacity',
             'ชั้นปีตามแผน' => 'default_year_level',
-            'ภาคเรียนตามแผน' => 'default_semester',
             'หมุนเวียนฝึกปฏิบัติ' => 'requires_practicum_rotation',
             'หมุนเวียนกลุ่มปฏิบัติ' => 'requires_practicum_rotation',
             'วิชาบังคับ' => 'is_required',

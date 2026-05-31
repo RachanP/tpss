@@ -89,6 +89,83 @@ class AdminSettingController extends Controller
         Course::whereHas('curriculum', fn ($q) => $q->where('is_active', true))->update(['status' => 'active']);
     }
 
+    /**
+     * แปลงวันที่เทอม (terms[][]) จากรูปแบบ พ.ศ. → ISO ก่อน validate/บันทึก
+     */
+    private function normalizeTermDates(Request $request): void
+    {
+        $terms = $request->input('terms');
+        if (! is_array($terms)) {
+            return;
+        }
+
+        $fields = ['start_date', 'end_date', 'midterm_start', 'midterm_end', 'final_start', 'final_end'];
+        foreach ($terms as $i => $t) {
+            foreach ($fields as $f) {
+                $value = $t[$f] ?? null;
+                if ($value === null || trim((string) $value) === '') {
+                    $terms[$i][$f] = null;
+                    continue;
+                }
+                $terms[$i][$f] = ThaiDate::parseToIso((string) $value) ?: null;
+            }
+        }
+
+        $request->merge(['terms' => $terms]);
+    }
+
+    /**
+     * คำนวณช่วงปีการศึกษาจากเทอม: วันเริ่ม = min(start เทอม), วันสิ้นสุด = max(end เทอม)
+     * (วันที่เป็น ISO แล้ว — sort แบบ string = ตามลำดับเวลา)
+     */
+    private function yearSpanFromTerms(Request $request): array
+    {
+        $starts = [];
+        $ends = [];
+        foreach ($request->input('terms', []) as $t) {
+            if (! empty($t['start_date'])) $starts[] = $t['start_date'];
+            if (! empty($t['end_date'])) $ends[] = $t['end_date'];
+        }
+        if (empty($starts) || empty($ends)) {
+            return [null, null];
+        }
+        sort($starts);
+        sort($ends);
+        return [$starts[0], end($ends)];
+    }
+
+    /**
+     * บันทึกเทอมจากฟอร์ม — ถ้าไม่ส่ง terms มาเลย → สร้างเทอมเริ่มต้นให้ (fallback)
+     */
+    private function syncTerms(AcademicYear $year, Request $request): void
+    {
+        $terms = collect($request->input('terms', []))
+            ->filter(fn ($t) => ! empty($t['name']) && ! empty($t['start_date']) && ! empty($t['end_date']))
+            ->values();
+
+        if ($terms->isEmpty()) {
+            $this->createDefaultTerms($year);
+            return;
+        }
+
+        $keptSeqs = [];
+        foreach ($terms as $i => $t) {
+            $seq = (int) ($t['sequence'] ?? ($i + 1));
+            $keptSeqs[] = $seq;
+            $year->terms()->updateOrCreate(['sequence' => $seq], [
+                'name'          => $t['name'],
+                'start_date'    => $t['start_date'],
+                'end_date'      => $t['end_date'],
+                'midterm_start' => $t['midterm_start'] ?? null,
+                'midterm_end'   => $t['midterm_end'] ?? null,
+                'final_start'   => $t['final_start'] ?? null,
+                'final_end'     => $t['final_end'] ?? null,
+            ]);
+        }
+
+        $year->terms()->whereNotIn('sequence', $keptSeqs)->delete();
+    }
+
     private function hasOtherOpenSchedulingWindow(AcademicYear $year): bool
     {
         return AcademicYear::where('phase', 'scheduling')
@@ -123,17 +200,23 @@ class AdminSettingController extends Controller
 
     public function storeYear(Request $request)
     {
-        $this->normalizeThaiDateInputs($request, ['start_date', 'end_date']);
+        $this->normalizeTermDates($request);
 
         $validated = $request->validate([
-            'name'       => ['required', 'string', \Illuminate\Validation\Rule::unique('academic_years')],
-            'start_date' => ['required', 'date', $this->weekdayDateRule('วันที่เริ่ม')],
-            'end_date'   => ['required', 'date', 'after_or_equal:start_date', $this->weekdayDateRule('วันที่สิ้นสุด')],
+            'name'  => ['required', 'string', \Illuminate\Validation\Rule::unique('academic_years')],
+            'terms' => ['required', 'array', 'min:1'],
         ], [
-            'name.unique'            => 'ปีการศึกษา ' . $request->input('name') . ' มีอยู่แล้วในระบบ',
-            'end_date.after_or_equal' => 'วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่มต้น',
+            'name.unique'    => 'ปีการศึกษา ' . $request->input('name') . ' มีอยู่แล้วในระบบ',
+            'terms.required' => 'ต้องระบุอย่างน้อย 1 ภาคการศึกษา',
         ]);
 
+        // V2: วันเริ่ม-สิ้นสุดของปี = คำนวณจากช่วงเทอม (min ของวันเริ่ม / max ของวันสิ้นสุด)
+        [$start, $end] = $this->yearSpanFromTerms($request);
+        if (! $start || ! $end) {
+            return back()->withInput()->withErrors(['terms' => 'ต้องระบุวันเริ่ม-สิ้นสุดของอย่างน้อย 1 เทอม']);
+        }
+        $validated['start_date'] = $start;
+        $validated['end_date'] = $end;
         $validated['is_active'] = $request->has('is_active');
 
         if ($validated['is_active']) {
@@ -152,7 +235,7 @@ class AdminSettingController extends Controller
         }
 
         $year = AcademicYear::create($validated);
-        $this->createDefaultTerms($year);
+        $this->syncTerms($year, $request);
 
         AuditLogger::log(
             action: 'ข้อมูลหลัก.สร้าง',
@@ -169,17 +252,22 @@ class AdminSettingController extends Controller
 
     public function updateYear(Request $request, AcademicYear $year)
     {
-        $this->normalizeThaiDateInputs($request, ['start_date', 'end_date']);
+        $this->normalizeTermDates($request);
 
         $validated = $request->validate([
-            'name'       => ['required', 'string', \Illuminate\Validation\Rule::unique('academic_years')->ignore($year->id)],
-            'start_date' => ['required', 'date', $this->weekdayDateRule('วันที่เริ่ม')],
-            'end_date'   => ['required', 'date', 'after_or_equal:start_date', $this->weekdayDateRule('วันที่สิ้นสุด')],
+            'name'  => ['required', 'string', \Illuminate\Validation\Rule::unique('academic_years')->ignore($year->id)],
+            'terms' => ['required', 'array', 'min:1'],
         ], [
-            'name.unique'            => 'ปีการศึกษา ' . $request->input('name') . ' มีอยู่แล้วในระบบ',
-            'end_date.after_or_equal' => 'วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่มต้น',
+            'name.unique'    => 'ปีการศึกษา ' . $request->input('name') . ' มีอยู่แล้วในระบบ',
+            'terms.required' => 'ต้องระบุอย่างน้อย 1 ภาคการศึกษา',
         ]);
 
+        [$start, $end] = $this->yearSpanFromTerms($request);
+        if (! $start || ! $end) {
+            return back()->withInput()->withErrors(['terms' => 'ต้องระบุวันเริ่ม-สิ้นสุดของอย่างน้อย 1 เทอม']);
+        }
+        $validated['start_date'] = $start;
+        $validated['end_date'] = $end;
         $validated['is_active'] = $request->has('is_active');
 
         if (!$validated['is_active'] && $year->is_active) {
@@ -205,7 +293,7 @@ class AdminSettingController extends Controller
         }
 
         $year->update($validated);
-        $this->createDefaultTerms($year);
+        $this->syncTerms($year, $request);
 
         $after = $this->auditSnapshot($year->fresh());
         [$oldValues, $newValues] = $this->auditDiff($before, $after);

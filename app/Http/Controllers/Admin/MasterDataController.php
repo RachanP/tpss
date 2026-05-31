@@ -771,7 +771,7 @@ class MasterDataController extends Controller
         unset($validated['staff_ids'], $validated['instructor_ids'], $validated['instructor_role_ids'], $validated['prerequisite_ids']);
 
         // Snapshot auditable fields before update
-        $auditFields = ['course_code', 'name_th', 'status', 'credits', 'head_instructor_id', 'default_semester'];
+        $auditFields = ['course_code', 'name_th', 'status', 'credits', 'head_instructor_id'];
         $auditBefore = $course->only($auditFields);
         $responsibilityBefore = $assignmentsLocked ? null : $this->courseResponsibilitySnapshot($course);
 
@@ -857,7 +857,6 @@ class MasterDataController extends Controller
             'instructor_role_ids'         => 'nullable|array',
             'instructor_role_ids.*'       => 'nullable|integer|exists:course_roles,id',
             'default_year_level'          => $yearRules,
-            'default_semester'            => 'required|integer|min:1|max:3',
             'credits'                     => 'required|integer|min:0',
             'lecture_hours'               => 'required|integer|min:0',
             'lab_hours'                   => 'required|integer|min:0',
@@ -1706,15 +1705,11 @@ class MasterDataController extends Controller
             }
 
             $yearLevel = trim($csv['default_year_level'] ?? '');
-            $semester  = trim($csv['default_semester'] ?? '');
             $curriculumModel = $curriculumModels->get($currId);
             $usesYearLevel = $curriculumModel ? (bool) $curriculumModel->uses_year_level : true;
             $maxYearForCurriculum = $curriculumModel ? max(1, (int) $curriculumModel->duration_years) : 4;
 
-            if ($semester === '') {
-                $errors[] = "แถว {$row}: ต้องระบุ default_semester";
-                continue;
-            }
+            // V2: ตัด default_semester — วิชาเปิดทั้งปี
             if ($usesYearLevel && $yearLevel === '') {
                 $errors[] = "แถว {$row}: หลักสูตร '{$currName}' ใช้ระบบชั้นปี ต้องระบุ default_year_level";
                 continue;
@@ -1774,7 +1769,6 @@ class MasterDataController extends Controller
                         'lab_hours'                   => $lab,
                         'self_study_hours'            => $selfStudy,
                         'default_year_level'          => $yearLevelValue,
-                        'default_semester'            => (int)$semester,
                         'capacity'                    => (int)$capacity,
                         'requires_practicum_rotation' => $rotation,
                         'is_required'                 => $isRequired,

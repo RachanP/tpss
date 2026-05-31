@@ -1576,7 +1576,7 @@
                                         <div style="font-size: 11px; color: var(--fg-3); font-style: italic;">{{ $course->name_en ?? '-' }}</div>
                                         <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px;">
                                             @if($course->default_year_level)
-                                                <span style="font-size: 10px; font-weight: 600; color: var(--fg-1); background: var(--bg-2); border: 1px solid var(--border-strong, #c8cdd6); border-radius: 4px; padding: 2px 7px; white-space: nowrap;">ปี {{ $course->default_year_level }} · ภาค {{ $course->default_semester == 3 ? 'ฤดูร้อน' : $course->default_semester }}</span>
+                                                <span style="font-size: 10px; font-weight: 600; color: var(--fg-1); background: var(--bg-2); border: 1px solid var(--border-strong, #c8cdd6); border-radius: 4px; padding: 2px 7px; white-space: nowrap;">ปี {{ $course->default_year_level }}</span>
                                             @endif
                                             @if($course->capacity)
                                                 <span style="font-size: 10px; font-weight: 600; color: #1a56a0; background: #e8f0fb; border: 1px solid #b3cdf0; border-radius: 4px; padding: 2px 7px; white-space: nowrap;">รับ {{ number_format($course->capacity) }} คน</span>
@@ -2611,15 +2611,7 @@
                                             ไม่ใช้ระบบชั้นปี — กำหนดผ่าน prerequisite/หน่วยกิตสะสม
                                         </div>
                                     </div>
-                                    <div class="form-group">
-                                        <label>ภาคเรียนตามแผน <span style="color:var(--status-conflict-fg)">*</span></label>
-                                        <select name="default_semester" x-model="currentCourse.default_semester" required>
-                                            <option value="">-- เลือกภาคเรียน --</option>
-                                            <option value="1">ภาคเรียนที่ 1</option>
-                                            <option value="2">ภาคเรียนที่ 2</option>
-                                            <option value="3">ภาคฤดูร้อน</option>
-                                        </select>
-                                    </div>
+                                    {{-- V2: วิชาเปิดทั้งปี — ตัด field ภาคเรียนตามแผนออก (เทอมเป็นป้ายของแต่ละ slot) --}}
                                     <div class="form-group">
                                         <label>ประเภทวิชา</label>
                                         <select name="is_required" x-model="currentCourse.is_required">

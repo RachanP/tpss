@@ -6,14 +6,16 @@
         workloadHoursPerWeek: {{ $workloadHoursPerWeek }},
         get totalQuota() { return this.workloadWeeks * this.workloadHoursPerWeek },
         get teachingQuota() { return this.teachingWeeks * this.workloadHoursPerWeek },
-        showModal: {{ $errors->hasAny(['name', 'start_date', 'end_date', 'is_active']) ? 'true' : 'false' }},
-        editMode: {{ ($errors->hasAny(['name', 'start_date', 'end_date', 'is_active'])) && old('_method') === 'PUT' ? 'true' : 'false' }},
+        showModal: {{ $errors->hasAny(['name', 'terms', 'is_active']) ? 'true' : 'false' }},
+        editMode: {{ ($errors->hasAny(['name', 'terms', 'is_active'])) && old('_method') === 'PUT' ? 'true' : 'false' }},
         currentYear: {
             id: '{{ old('year_id', '') }}',
             name: '{{ old('name', '') }}',
             start_date: {{ Js::from(\App\Support\ThaiDate::formatForInput(old('start_date', ''))) }},
             end_date: {{ Js::from(\App\Support\ThaiDate::formatForInput(old('end_date', ''))) }},
-            is_active: {{ old('is_active') ? 'true' : 'false' }}
+            is_active: {{ old('is_active') ? 'true' : 'false' }},
+            hasSummer: false,
+            terms: [],
         },
         openScheduleConfirmForm: null,
         openScheduleConfirmLabel: '',
@@ -23,19 +25,45 @@
         closeScheduleConfirmLabel: '',
         closeScheduleCountdown: 0,
         closeScheduleTimer: null,
+        emptyTerm(name) {
+            return { name: name || '', start_date: '', end_date: '', midterm_start: '', midterm_end: '', final_start: '', final_end: '' };
+        },
+        buildTerms(yearTerms) {
+            const list = Array.isArray(yearTerms) ? yearTerms : [];
+            const slot = (i, fallbackName) => {
+                const t = list[i];
+                if (!t) return this.emptyTerm(fallbackName);
+                return {
+                    name: t.name || fallbackName,
+                    start_date: this.thaiDateForInput(t.start_date),
+                    end_date: this.thaiDateForInput(t.end_date),
+                    midterm_start: this.thaiDateForInput(t.midterm_start),
+                    midterm_end: this.thaiDateForInput(t.midterm_end),
+                    final_start: this.thaiDateForInput(t.final_start),
+                    final_end: this.thaiDateForInput(t.final_end),
+                };
+            };
+            return [slot(0, 'ภาคเรียนที่ 1'), slot(1, 'ภาคเรียนที่ 2'), slot(2, 'ภาคฤดูร้อน')];
+        },
+        resetSummerTerm() {
+            this.currentYear.terms[2] = this.emptyTerm('ภาคฤดูร้อน');
+        },
         openAddModal() {
             this.editMode = false;
-            this.currentYear = { id: '', name: '', start_date: '', end_date: '', is_active: false };
+            this.currentYear = { id: '', name: '', start_date: '', end_date: '', is_active: false, hasSummer: false, terms: this.buildTerms([]) };
             this.showModal = true;
         },
         openEditModal(year) {
             this.editMode = true;
+            const terms = year.terms || [];
             this.currentYear = {
                 id: year.id,
                 name: year.name,
                 start_date: this.thaiDateForInput(year.start_date),
                 end_date: this.thaiDateForInput(year.end_date),
-                is_active: !!year.is_active
+                is_active: !!year.is_active,
+                hasSummer: terms.length >= 3,
+                terms: this.buildTerms(terms),
             };
             this.showModal = true;
         },
@@ -385,28 +413,27 @@
                                     @enderror
                                 </div>
                             </div>
-                            <div style="margin: -4px 0 8px; padding: 8px 10px; background: var(--bg-2); border-radius: 6px; font-size: 12px; color: var(--fg-3); line-height: 1.5;">
-                                ระบบจะสร้าง <strong>เทอม 1 และเทอม 2</strong> ให้อัตโนมัติเมื่อบันทึกปี (แก้ช่วงวัน/วันสอบ และเพิ่มภาคฤดูร้อนได้ภายหลัง)
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>วันที่เริ่ม</label>
-                                    <x-thai-date-input name="start_date" x-model="currentYear.start_date" required block-weekends
-                                        helper="เลือกเฉพาะวันจันทร์-ศุกร์"
-                                        style="{{ $errors->has('start_date') ? 'border-color: var(--red, #dc2626);' : '' }}" />
-                                    @error('start_date')
-                                        <span style="color: var(--red, #dc2626); font-size: 12px; margin-top: 4px; display: block;">{{ $message }}</span>
-                                    @enderror
+                            @error('terms')
+                                <div style="margin-bottom: 10px; padding: 8px 10px; background: oklch(97% 0.02 20); border: 1px solid oklch(82% 0.08 25); border-radius: 6px; color: var(--status-conflict-fg); font-size: 12px;">{{ $message }}</div>
+                            @enderror
+                            <div style="margin-top: 4px; border-top: 1px solid var(--border); padding-top: 14px;">
+                                <div style="font-weight: 600; font-size: 13px; color: var(--fg-1); margin-bottom: 4px;">ภาคการศึกษา (เทอม)</div>
+                                <div style="font-size: 11px; color: var(--fg-3); margin-bottom: 10px; line-height: 1.5;">
+                                    กำหนดช่วงวันของแต่ละเทอม + ช่วงสัปดาห์สอบ (ไม่บังคับ) · <strong>วันเริ่ม-สิ้นสุดของปีการศึกษาคำนวณจากเทอมให้อัตโนมัติ</strong> · ช่วงปิดภาคเรียน = ช่องว่างระหว่างเทอม
                                 </div>
-                                <div class="form-group">
-                                    <label>วันที่สิ้นสุด</label>
-                                    <x-thai-date-input name="end_date" x-model="currentYear.end_date" required block-weekends
-                                        helper="เลือกเฉพาะวันจันทร์-ศุกร์"
-                                        style="{{ $errors->has('end_date') ? 'border-color: var(--red, #dc2626);' : '' }}" />
-                                    @error('end_date')
-                                        <span style="color: var(--red, #dc2626); font-size: 12px; margin-top: 4px; display: block;">{{ $message }}</span>
-                                    @enderror
+                                @include('shared.settings._term_fields', ['index' => 0, 'seq' => 1, 'label' => 'ภาคเรียนที่ 1'])
+                                @include('shared.settings._term_fields', ['index' => 1, 'seq' => 2, 'label' => 'ภาคเรียนที่ 2'])
+                                <div x-show="currentYear.hasSummer" x-cloak>
+                                    @include('shared.settings._term_fields', ['index' => 2, 'seq' => 3, 'label' => 'ภาคฤดูร้อน'])
+                                    <button type="button" @click="currentYear.hasSummer = false; resetSummerTerm()"
+                                        style="font-size: 12px; color: var(--status-conflict-fg); background: none; border: none; cursor: pointer; padding: 2px 0; margin-bottom: 6px;">
+                                        ลบภาคฤดูร้อน
+                                    </button>
                                 </div>
+                                <button type="button" x-show="!currentYear.hasSummer" @click="currentYear.hasSummer = true"
+                                    class="btn btn-ghost" style="font-size: 12px; padding: 5px 12px;">
+                                    + เพิ่มภาคฤดูร้อน
+                                </button>
                             </div>
                             <div class="form-group" style="margin-top: 16px;">
                                 <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; color: var(--fg-1);">

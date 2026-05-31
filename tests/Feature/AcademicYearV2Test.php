@@ -37,21 +37,41 @@ class AcademicYearV2Test extends TestCase
             ->assertSee('ปีการศึกษา');
     }
 
-    public function test_create_year_without_semester_auto_creates_two_terms(): void
+    /** เทอมที่ส่งจากฟอร์ม (รูปแบบ ISO — normalizeTermDates รับได้) */
+    private function termsPayload(): array
+    {
+        return [
+            ['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '2026-06-01', 'end_date' => '2026-10-15',
+             'midterm_start' => '2026-07-27', 'midterm_end' => '2026-07-31', 'final_start' => '2026-10-05', 'final_end' => '2026-10-09'],
+            ['sequence' => 2, 'name' => 'ภาคเรียนที่ 2', 'start_date' => '2026-11-02', 'end_date' => '2027-03-12'],
+        ];
+    }
+
+    public function test_create_year_persists_terms_and_derives_year_span(): void
     {
         $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
 
-        // วันจันทร์-ศุกร์ (กัน weekday rule): 2026-06-01 จันทร์, 2027-03-12 ศุกร์
         $this->post(route('admin.settings.years.store'), [
-            'name'       => '2570',
-            'start_date' => '2026-06-01',
-            'end_date'   => '2027-03-12',
+            'name'  => '2570',
+            'terms' => $this->termsPayload(),
         ])->assertRedirect(route('admin.settings', ['tab' => 'academic']));
 
         $year = AcademicYear::where('name', '2570')->firstOrFail();
         $this->assertCount(2, $year->terms);
         $this->assertSame('ภาคเรียนที่ 1', $year->terms[0]->name);
-        $this->assertSame(1, $year->terms[0]->sequence);
+        // วันปี = min(start)..max(end) ของเทอม
+        $this->assertSame('2026-06-01', $year->start_date);
+        $this->assertSame('2027-03-12', $year->end_date);
+        // วันสอบเก็บถูก
+        $this->assertSame('2026-07-27', $year->terms[0]->midterm_start->format('Y-m-d'));
+    }
+
+    public function test_create_year_requires_terms(): void
+    {
+        $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
+
+        $this->post(route('admin.settings.years.store'), ['name' => '2570'])
+            ->assertSessionHasErrors('terms');
     }
 
     public function test_year_name_is_unique_without_semester(): void
@@ -60,9 +80,8 @@ class AcademicYearV2Test extends TestCase
         AcademicYear::create(['name' => '2570', 'start_date' => '2026-06-01', 'end_date' => '2027-03-12', 'is_active' => false]);
 
         $this->post(route('admin.settings.years.store'), [
-            'name'       => '2570',
-            'start_date' => '2026-06-01',
-            'end_date'   => '2027-03-12',
+            'name'  => '2570',
+            'terms' => $this->termsPayload(),
         ])->assertSessionHasErrors('name');
     }
 
@@ -84,10 +103,9 @@ class AcademicYearV2Test extends TestCase
         $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
 
         $this->post(route('admin.settings.years.store'), [
-            'name'       => '2571',
-            'start_date' => '2026-06-01',
-            'end_date'   => '2027-03-12',
-            'is_active'  => '1',
+            'name'      => '2571',
+            'is_active' => '1',
+            'terms'     => $this->termsPayload(),
         ])->assertRedirect(route('admin.settings', ['tab' => 'academic']));
 
         // วิชาใน active curriculum → เปิด · วิชาใน inactive curriculum → ปิด (ไม่สนเทอม)
