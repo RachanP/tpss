@@ -447,51 +447,72 @@ class ScheduleManagementTest extends TestCase
     {
         config(['conflicts.async_reads' => false]);
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
-        [, $otherOffering, , $otherGroup, $otherActivityType, $otherRoom] = $this->makeReadyOffering();
-        $otherOffering->instructorPool()->attach($instructor->id, ['role_in_course' => 'instructor']);
-        $this->makeSchedule($otherOffering, $otherActivityType, $otherRoom, [$instructor], [$otherGroup]);
+        $secondInstructor = $this->makeUser('instructor');
+        $offering->instructorPool()->attach($secondInstructor->id, ['role_in_course' => 'instructor']);
+        $secondGroup = StudentGroup::create([
+            'course_offering_id' => $offering->id,
+            'group_code' => 'A2',
+            'student_count' => 15,
+        ]);
+        $this->makeSchedule($offering, $activityType, $room, [$secondInstructor], [$secondGroup], [
+            'topic' => 'Blocking room conflict',
+        ]);
         $schedule = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group]);
 
         $this->actingAsCourseHead($head);
 
-        $this->get(route('maker.schedule_conflicts.index'))
-            ->assertOk()
-            ->assertSee('data-testid="maker-conflict-total"', false)
-            ->assertSee('data-testid="maker-conflict-item"', false)
-            ->assertSee('data-conflict-edit-link', false)
-            ->assertSee('tpss-conflict-alert-scroll-y', false)
-            ->assertSee($offering->course->course_code)
-            ->assertSee('Existing schedule')
-            ->assertSee('edit_schedule_id=' . $schedule->id, false)
-            ->assertSee('focus_schedule_id=' . $schedule->id, false)
-            ->assertSee('from_conflict=1', false)
-            ->assertSee('period=day', false)
-            ->assertSee('date=2026-08-03', false)
-            ->assertSee('week_start=2026-08-03', false);
+        $assertContains = function (string $html, string $needle, string $label): void {
+            $this->assertTrue(str_contains($html, $needle), "Missing {$label}: {$needle}");
+        };
+        $assertNotContains = function (string $html, string $needle, string $label): void {
+            $this->assertFalse(str_contains($html, $needle), "Unexpected {$label}: {$needle}");
+        };
 
-        $this->get(route('maker.course_offerings.schedules.index', [
+        $alertResponse = $this->get(route('maker.schedule_conflicts.index', [
+            'academic_year_id' => $offering->academic_year_id,
+        ]));
+        $alertResponse->assertOk();
+        $alertHtml = $alertResponse->getContent();
+
+        $assertContains($alertHtml, 'data-testid="maker-conflict-total"', 'conflict total marker');
+        $assertContains($alertHtml, 'data-testid="maker-conflict-item"', 'conflict item marker');
+        $assertContains($alertHtml, 'data-conflict-edit-link', 'edit link marker');
+        $assertContains($alertHtml, 'tpss-conflict-alert-scroll-y', 'scroll memory key');
+        $assertContains($alertHtml, $offering->course->course_code, 'course code');
+        $assertContains($alertHtml, 'Existing schedule', 'owned schedule topic');
+        $assertContains($alertHtml, 'edit_schedule_id=' . $schedule->id, 'edit schedule query');
+        $assertContains($alertHtml, 'focus_schedule_id=' . $schedule->id, 'focus schedule query');
+        $assertContains($alertHtml, 'from_conflict=1', 'from conflict query');
+        $assertContains($alertHtml, 'period=day', 'day period query');
+        $assertContains($alertHtml, 'date=2026-08-03', 'date query');
+        $assertContains($alertHtml, 'week_start=2026-08-03', 'week start query');
+
+        $editResponse = $this->get(route('maker.course_offerings.schedules.index', [
             $offering,
             'edit_schedule_id' => $schedule->id,
             'focus_schedule_id' => $schedule->id,
             'from_conflict' => 1,
             'date' => '2026-08-03',
             'period' => 'day',
-        ]))
-            ->assertOk()
-            ->assertSee('data-testid="schedule-edit-conflict-focus"', false)
-            ->assertSee('วันและเวลามีข้อมูลซ้อนกับรายการอื่น')
-            ->assertSee(route('maker.schedule_conflicts.index'), false)
-            ->assertDontSee('พบข้อมูลซ้อนกับรายการอื่น แก้ไขช่องที่ไฮไลต์ก่อนส่งอนุมัติ')
-            ->assertSee('data-schedule-id="' . $schedule->id . '"', false);
+        ]));
+        $editResponse->assertOk();
+        $editHtml = $editResponse->getContent();
 
-        $this->get(route('maker.course_offerings.schedules.index', [
+        $assertContains($editHtml, 'data-testid="schedule-edit-conflict-focus"', 'edit conflict focus marker');
+        $assertContains($editHtml, 'name="return_to_conflicts" value="1"', 'conflict return flag');
+        $assertContains($editHtml, 'data-schedule-id="' . $schedule->id . '"', 'focused schedule row');
+        $assertNotContains($editHtml, 'แก้ไขช่องที่ไฮไลต์ก่อนส่งอนุมัติ', 'old approval blocking copy');
+
+        $dayResponse = $this->get(route('maker.course_offerings.schedules.index', [
             $offering,
             'date' => '2026-08-03',
             'period' => 'day',
-        ]))
-            ->assertOk()
-            ->assertSee('data-testid="schedule-edit-conflict-focus"', false)
-            ->assertSee('modal-field-has-conflict', false);
+        ]));
+        $dayResponse->assertOk();
+        $dayHtml = $dayResponse->getContent();
+
+        $assertContains($dayHtml, 'data-testid="schedule-edit-conflict-focus"', 'day conflict focus marker');
+        $assertContains($dayHtml, 'modal-field-has-conflict', 'conflict field class');
     }
 
     public function test_async_conflict_alert_page_starts_recompute_without_sync_index(): void

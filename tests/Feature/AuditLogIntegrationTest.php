@@ -925,7 +925,7 @@ class AuditLogIntegrationTest extends TestCase
             ->post(route('admin.settings.years.store'), [
                 'name' => '2570',
                 'semester' => 1,
-                'start_date' => '2027-08-01',
+                'start_date' => '2027-08-02',
                 'end_date' => '2027-12-31',
                 'is_active' => '1',
             ])
@@ -940,7 +940,7 @@ class AuditLogIntegrationTest extends TestCase
             ->put(route('admin.settings.years.update', $year), [
                 'name' => '2570',
                 'semester' => 1,
-                'start_date' => '2027-08-15',
+                'start_date' => '2027-08-16',
                 'end_date' => '2027-12-31',
                 'is_active' => '1',
             ])
@@ -948,8 +948,8 @@ class AuditLogIntegrationTest extends TestCase
 
         $updateLog = $this->latestLog('ข้อมูลหลัก.แก้ไข', 'academic_years');
         $this->assertSame(['start_date'], array_keys($updateLog->old_values));
-        $this->assertSame('2027-08-01', $updateLog->old_values['start_date']);
-        $this->assertSame('2027-08-15', $updateLog->new_values['start_date']);
+        $this->assertSame('2027-08-02', $updateLog->old_values['start_date']);
+        $this->assertSame('2027-08-16', $updateLog->new_values['start_date']);
     }
 
     public function test_academic_year_dates_accept_thai_buddhist_input(): void

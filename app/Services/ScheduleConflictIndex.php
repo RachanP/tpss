@@ -73,7 +73,7 @@ class ScheduleConflictIndex
         $schedules->loadMissing([
             'activityType',
             'courseOffering.course',
-            'room',
+            'room.locationType',
             'instructors.instructorProfile',
             'studentGroups',
         ]);
@@ -140,12 +140,22 @@ class ScheduleConflictIndex
             ->unique()
             ->values()
             ->all();
+        $academicYearIds = $schedules
+            ->map(fn (Schedule $schedule) => (int) ($schedule->courseOffering?->academic_year_id ?? 0))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
 
         if (! $startDate || ! $endDate || (empty($roomIds) && empty($instructorIds) && empty($groupIds))) {
             return collect();
         }
 
-        $query = $this->filterSchedulesByDateRange($this->baseScheduleQuery(), $startDate, $endDate);
+        $query = $this->filterSchedulesByDateRange($this->baseScheduleQuery(), $startDate, $endDate)
+            ->when($academicYearIds, fn (Builder $query) => $query->whereHas(
+                'courseOffering',
+                fn (Builder $query) => $query->whereIn('academic_year_id', $academicYearIds)
+            ));
 
         $query->where(function (Builder $query) use ($roomIds, $instructorIds, $groupIds): void {
             $hasClause = false;
@@ -176,7 +186,8 @@ class ScheduleConflictIndex
             ->select($this->scheduleSelectColumns())
             ->with([
                 'activityType:id,name,color_code,category',
-                'room:id,room_code,room_name',
+                'room:id,room_code,room_name,location_type_id',
+                'room.locationType:id,is_shared',
                 'courseOffering:id,course_id,academic_year_id,coordinator_id,requires_practicum_rotation,planned_practicum_hours',
                 'courseOffering.course:id,course_code,name_th,name_en,requires_practicum_rotation',
                 'instructors:id,name,prefix',
@@ -242,7 +253,7 @@ class ScheduleConflictIndex
             return $entries;
         }
 
-        if ($schedule->room_id) {
+        if ($schedule->room_id && ! ($schedule->room?->locationType?->is_shared ?? false)) {
             foreach ($dateKeys as $dateKey) {
                 $entries[] = [
                     'type' => 'room_overlap',

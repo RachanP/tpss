@@ -5588,7 +5588,7 @@
                                                             <span class="sched-day-group-week">สัปดาห์ที่ {{ $dayWeekNumber }}</span>
                                                         @endif
                                                         @if($dayConflictCount > 0)
-                                                            <span class="sched-day-group-conflict-count">ชน {{ $dayConflictCount }} รายการ</span>
+                                                            <span class="sched-day-group-conflict-count" data-testid="co-day-summary-conflict-count">ชน {{ $dayConflictCount }} รายการ</span>
                                                         @endif
                                                         <span class="sched-day-group-count">· {{ $daySchedules->count() }} รายการสอน</span>
                                                         @if($canEdit)
