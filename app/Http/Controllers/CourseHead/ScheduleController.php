@@ -38,7 +38,7 @@ class ScheduleController extends Controller
     public function workspace(Request $request): View|RedirectResponse
     {
         if ($targetOfferingId = $this->coordinatorScheduleOfferingRedirectTarget($request)) {
-            return redirect()->route('maker.course_offerings.schedules.index', array_filter([
+            return redirect()->route($this->scheduleRouteName('offering.index'), array_filter([
                 'courseOffering' => $targetOfferingId,
                 'week_start' => $request->query('week_start'),
                 'date' => $request->query('date'),
@@ -56,6 +56,52 @@ class ScheduleController extends Controller
             isWorkspace: true,
             availableOfferings: $offerings,
         ));
+    }
+
+    private function isStaffScheduleContext(): bool
+    {
+        return request()->routeIs('staff.*') || session('active_role') === 'staff';
+    }
+
+    private function scheduleRoutePrefix(): string
+    {
+        return $this->isStaffScheduleContext() ? 'staff' : 'maker';
+    }
+
+    private function scheduleRouteNames(): array
+    {
+        $prefix = $this->scheduleRoutePrefix();
+
+        return [
+            'workspace.index' => "{$prefix}.schedules.index",
+            'workspace.store' => "{$prefix}.schedules.store",
+            'offering.index' => "{$prefix}.course_offerings.schedules.index",
+            'offering.store' => "{$prefix}.course_offerings.schedules.store",
+            'offering.series.store' => "{$prefix}.course_offerings.schedules.series.store",
+            'offering.check_conflicts' => "{$prefix}.course_offerings.schedules.check_conflicts",
+            'offering.copy_week.preview' => "{$prefix}.course_offerings.schedules.copy_week.preview",
+            'offering.copy_week' => "{$prefix}.course_offerings.schedules.copy_week",
+            'offering.templates.update' => "{$prefix}.course_offerings.schedules.templates.update",
+            'offering.destroy' => "{$prefix}.course_offerings.schedules.destroy",
+            'offering.update' => "{$prefix}.course_offerings.schedules.update",
+            'conflicts.index' => $prefix === 'maker' ? 'maker.schedule_conflicts.index' : null,
+            'offering.show' => $prefix === 'maker' ? 'maker.course_offerings.show' : null,
+        ];
+    }
+
+    private function scheduleRouteName(string $key): string
+    {
+        $name = $this->scheduleRouteNames()[$key] ?? null;
+        abort_unless(is_string($name) && $name !== '', 404);
+
+        return $name;
+    }
+
+    private function scheduleConflictIndexUrl(): ?string
+    {
+        $name = $this->scheduleRouteNames()['conflicts.index'] ?? null;
+
+        return $name ? route($name) : null;
     }
 
     /**
@@ -635,7 +681,7 @@ class ScheduleController extends Controller
 
         if ($offerings->isEmpty()) {
             return redirect()
-                ->route('maker.schedules.index')
+                ->route($this->scheduleRouteName('workspace.index'))
                 ->withErrors(['schedule' => 'ยังไม่มีรายวิชาที่ต้องจัดตาราง']);
         }
 
@@ -643,7 +689,7 @@ class ScheduleController extends Controller
         $targetOffering = $selectedOfferingId ? $offerings->firstWhere('id', $selectedOfferingId) : null;
         $targetOffering = $targetOffering ?: $offerings->first();
 
-        return redirect()->route('maker.course_offerings.schedules.index', array_filter([
+        return redirect()->route($this->scheduleRouteName('offering.index'), array_filter([
             'courseOffering' => $targetOffering,
             'modal' => 'create',
             'week_start' => $request->query('week_start'),
@@ -800,13 +846,17 @@ class ScheduleController extends Controller
             'timeSlots' => $timeSlots,
             'activityTypes' => app(ReferenceDataCache::class)->activityTypes(),
             'rooms' => app(ReferenceDataCache::class)->activeRooms(),
+            'scheduleRoutePrefix' => $this->scheduleRoutePrefix(),
+            'scheduleRouteNames' => $this->scheduleRouteNames(),
+            'canManageOfferingDetails' => ! $this->isStaffScheduleContext(),
+            'conflictIndexUrl' => $this->scheduleConflictIndexUrl(),
             'dayViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'day', $includeWeekends, $selectedInstructorId),
             'weekViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'week', $includeWeekends, $selectedInstructorId),
             'monthViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'month', $includeWeekends, $selectedInstructorId),
             'previousWeekUrl' => $this->schedulePeriodUrl($courseOffering, $previousPeriod, $isWorkspace, $period, $includeWeekends, $selectedInstructorId),
             'nextWeekUrl' => $this->schedulePeriodUrl($courseOffering, $nextPeriod, $isWorkspace, $period, $includeWeekends, $selectedInstructorId),
             'weekendToggleUrl' => $this->schedulePeriodUrl($courseOffering, $selectedDate, $isWorkspace, $period, $period === 'week' ? ! $includeWeekends : $includeWeekends, $selectedInstructorId),
-            'coordinatorEmptyStateKey' => \App\Support\CoordinatorEmptyState::forCoordinator((int) Auth::id()),
+            'coordinatorEmptyStateKey' => $this->scheduleEmptyStateKey($availableOfferings),
         ];
     }
 
@@ -841,6 +891,25 @@ class ScheduleController extends Controller
             'scheduleDatePickerYearStart' => min($minAcademicYear - 10, $currentYear - 20),
             'scheduleDatePickerYearEnd' => max($maxAcademicYear + 5, $currentYear + 1),
         ];
+    }
+
+    private function scheduleEmptyStateKey(Collection $availableOfferings): string
+    {
+        if (! $this->isStaffScheduleContext()) {
+            return \App\Support\CoordinatorEmptyState::forCoordinator((int) Auth::id());
+        }
+
+        $systemHasScheduling = AcademicYear::query()
+            ->where('phase', 'scheduling')
+            ->exists();
+
+        if (! $systemHasScheduling) {
+            return \App\Support\CoordinatorEmptyState::PREPARATION;
+        }
+
+        return $availableOfferings->contains(fn (CourseOffering $offering) => $offering->academicYear?->phase === 'scheduling')
+            ? \App\Support\CoordinatorEmptyState::READY
+            : 'staff_no_offerings';
     }
 
     private function scheduleRelations(): array
@@ -1029,14 +1098,13 @@ class ScheduleController extends Controller
 
     private function coordinatorScheduleOfferingRedirectTarget(Request $request): ?int
     {
-        if (\App\Support\CoordinatorEmptyState::forCoordinator((int) Auth::id())
+        if (! $this->isStaffScheduleContext()
+            && \App\Support\CoordinatorEmptyState::forCoordinator((int) Auth::id())
             !== \App\Support\CoordinatorEmptyState::READY) {
             return null;
         }
 
-        $query = CourseOffering::query()
-            ->withActiveCourse()
-            ->where('coordinator_id', Auth::id())
+        $query = $this->scheduleOfferingQuery()
             ->whereHas('academicYear', fn ($query) => $query->where('phase', 'scheduling'));
 
         $selectedId = (int) $request->query('course_offering_id');
@@ -1066,11 +1134,9 @@ class ScheduleController extends Controller
             ];
         }
 
-        return CourseOffering::query()
+        return $this->scheduleOfferingQuery()
             ->with($relations)
             ->withCount(['schedules', 'studentGroups', 'instructorPool'])
-            ->withActiveCourse()
-            ->where('coordinator_id', Auth::id())
             ->get()
             ->sortBy(fn (CourseOffering $offering) => implode('|', [
                 $offering->academicYear?->phase === 'scheduling' ? '0' : '1',
@@ -1078,6 +1144,17 @@ class ScheduleController extends Controller
                 str_pad((string) $offering->id, 10, '0', STR_PAD_LEFT),
             ]), SORT_NATURAL)
             ->values();
+    }
+
+    private function scheduleOfferingQuery()
+    {
+        $query = CourseOffering::query()->withActiveCourse();
+
+        if ($this->isStaffScheduleContext()) {
+            return $query->whereHas('course.assignedStaff', fn ($staffQuery) => $staffQuery->where('users.id', Auth::id()));
+        }
+
+        return $query->where('coordinator_id', Auth::id());
     }
 
     private function scheduleWeekUrl(?CourseOffering $courseOffering, CarbonImmutable $weekStart, bool $isWorkspace): string
@@ -1097,7 +1174,7 @@ class ScheduleController extends Controller
         $keepWeekendParam = $period === 'week' && $includeWeekends;
 
         if ($isWorkspace || ! $courseOffering) {
-            return route('maker.schedules.index', array_filter([
+            return route($this->scheduleRouteName('workspace.index'), array_filter([
                 'course_offering_id' => $courseOffering?->id,
                 'week_start' => $date->toDateString(),
                 'date' => $date->toDateString(),
@@ -1107,7 +1184,7 @@ class ScheduleController extends Controller
             ]));
         }
 
-        return route('maker.course_offerings.schedules.index', array_filter([
+        return route($this->scheduleRouteName('offering.index'), array_filter([
             $courseOffering,
             'week_start' => $date->toDateString(),
             'date' => $date->toDateString(),
@@ -1124,11 +1201,11 @@ class ScheduleController extends Controller
 
         if ($courseOffering->academicYear?->phase !== 'scheduling') {
             return redirect()
-                ->route('maker.course_offerings.schedules.index', $courseOffering)
+                ->route($this->scheduleRouteName('offering.index'), $courseOffering)
                 ->withErrors(['schedule' => 'ยังไม่เปิดช่วงจัดตาราง — Admin ต้องเปิดช่วงจัดตารางก่อน']);
         }
 
-        return redirect()->route('maker.course_offerings.schedules.index', array_filter([
+        return redirect()->route($this->scheduleRouteName('offering.index'), array_filter([
             $courseOffering,
             'modal' => 'create',
             'week_start' => $request->query('week_start'),
@@ -1709,7 +1786,7 @@ class ScheduleController extends Controller
 
         if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
 
-        return redirect()->route('maker.course_offerings.schedules.index', [
+        return redirect()->route($this->scheduleRouteName('offering.index'), [
             $courseOffering,
             'edit_schedule_id' => $schedule->id,
             'week_start' => $schedule->start_date?->toDateString(),
@@ -1963,8 +2040,14 @@ class ScheduleController extends Controller
 
     private function authorizeCourseHeadOffering(CourseOffering $courseOffering): void
     {
-        $courseOffering->loadMissing('course');
-        abort_unless((int) $courseOffering->coordinator_id === (int) Auth::id(), 403);
+        $courseOffering->loadMissing('course.assignedStaff');
+
+        if ($this->isStaffScheduleContext()) {
+            abort_unless($courseOffering->course?->assignedStaff?->contains('id', (int) Auth::id()), 403);
+        } else {
+            abort_unless((int) $courseOffering->coordinator_id === (int) Auth::id(), 403);
+        }
+
         abort_unless($courseOffering->course?->status === 'active', 403);
     }
 
@@ -1979,7 +2062,7 @@ class ScheduleController extends Controller
 
         if ($courseOffering->academicYear?->phase !== 'scheduling') {
             return redirect()
-                ->route('maker.course_offerings.schedules.index', $courseOffering)
+                ->route($this->scheduleRouteName('offering.index'), $courseOffering)
                 ->withErrors(['schedule' => 'ยังไม่เปิดช่วงจัดตาราง — Admin ต้องเปิดช่วงจัดตารางก่อน']);
         }
 
@@ -1990,7 +2073,7 @@ class ScheduleController extends Controller
     {
         $weekStart = CarbonImmutable::parse($date)->startOfWeek(CarbonInterface::MONDAY);
 
-        return route('maker.course_offerings.schedules.index', [
+        return route($this->scheduleRouteName('offering.index'), [
             $courseOffering,
             'week_start' => $weekStart->toDateString(),
         ]);
@@ -2005,7 +2088,8 @@ class ScheduleController extends Controller
         $returnUrl = (string) $request->input('return_url', '');
 
         if ($request->boolean('return_to_conflicts')) {
-            return route('maker.schedule_conflicts.index');
+            return $this->scheduleConflictIndexUrl()
+                ?? route($this->scheduleRouteName('offering.index'), $courseOffering);
         }
 
         if ($this->isScheduleReturnUrl($request, $returnUrl)) {
@@ -2016,7 +2100,7 @@ class ScheduleController extends Controller
             return $this->workspaceRedirectUrl($courseOffering, $date);
         }
 
-        return route('maker.course_offerings.schedules.index', $courseOffering);
+        return route($this->scheduleRouteName('offering.index'), $courseOffering);
     }
 
     private function isScheduleReturnUrl(Request $request, string $url): bool
@@ -2030,8 +2114,12 @@ class ScheduleController extends Controller
         $host = $parts['host'] ?? $requestHost;
         $path = $parts['path'] ?? '';
 
+        $allowedPaths = $this->isStaffScheduleContext()
+            ? ['/staff/course-offerings/', '/staff/schedules']
+            : ['/maker/course-offerings/', '/maker/schedules'];
+
         return $host === $requestHost
-            && (str_starts_with($path, '/maker/course-offerings/') || $path === '/maker/schedules');
+            && (str_starts_with($path, $allowedPaths[0]) || $path === $allowedPaths[1]);
     }
 
     private function scheduleOccurrences($schedules, CarbonImmutable $weekStart, CarbonImmutable $weekEnd, bool $includeWeekends = false)

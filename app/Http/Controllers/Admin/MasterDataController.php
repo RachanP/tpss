@@ -216,6 +216,11 @@ class MasterDataController extends Controller
         return session('active_role') === 'staff' ? 'staff.master_data' : 'admin.master_data';
     }
 
+    private function isStaffMasterDataContext(): bool
+    {
+        return session('active_role') === 'staff' || request()->routeIs('staff.*');
+    }
+
     private function redirectToMasterData(string $tab): \Illuminate\Http\RedirectResponse
     {
         AlertController::flushCache();
@@ -684,6 +689,11 @@ class MasterDataController extends Controller
 
     public function storeCourse(Request $request)
     {
+        if ($this->isStaffMasterDataContext()) {
+            $request->request->remove('instructor_ids');
+            $request->request->remove('instructor_role_ids');
+        }
+
         $curriculum = Curriculum::find($request->input('curriculum_id'));
         $rules = $this->courseValidationRules($request, $curriculum);
 
@@ -701,14 +711,16 @@ class MasterDataController extends Controller
             $validated['default_year_level'] = null;
         }
         $staffIds = $validated['staff_ids'] ?? [];
-        $instructorIds = $validated['instructor_ids'] ?? [];
-        $instructorRoleIds = $validated['instructor_role_ids'] ?? [];
+        $instructorIds = $this->isStaffMasterDataContext() ? [] : ($validated['instructor_ids'] ?? []);
+        $instructorRoleIds = $this->isStaffMasterDataContext() ? [] : ($validated['instructor_role_ids'] ?? []);
         $prerequisiteIds = $validated['prerequisite_ids'] ?? [];
         unset($validated['staff_ids'], $validated['instructor_ids'], $validated['instructor_role_ids'], $validated['prerequisite_ids']);
 
         $course = Course::create($validated);
         $course->assignedStaff()->sync($staffIds);
-        $this->syncCourseInstructors($course, $instructorIds, $instructorRoleIds);
+        if (! $this->isStaffMasterDataContext()) {
+            $this->syncCourseInstructors($course, $instructorIds, $instructorRoleIds);
+        }
         $course->prerequisites()->sync($prerequisiteIds);
 
         AuditLogger::log(
@@ -731,6 +743,11 @@ class MasterDataController extends Controller
 
     public function updateCourse(Request $request, Course $course)
     {
+        if ($this->isStaffMasterDataContext()) {
+            $request->request->remove('instructor_ids');
+            $request->request->remove('instructor_role_ids');
+        }
+
         $assignmentsLocked = $this->isCourseAssignmentLocked($course);
         $curriculum = Curriculum::find($request->input('curriculum_id'));
 
@@ -751,8 +768,9 @@ class MasterDataController extends Controller
             $validated['default_year_level'] = null;
         }
         $staffIds = $validated['staff_ids'] ?? [];
-        $instructorIds = $validated['instructor_ids'] ?? [];
-        $instructorRoleIds = $validated['instructor_role_ids'] ?? [];
+        $isStaffContext = $this->isStaffMasterDataContext();
+        $instructorIds = $isStaffContext ? [] : ($validated['instructor_ids'] ?? []);
+        $instructorRoleIds = $isStaffContext ? [] : ($validated['instructor_role_ids'] ?? []);
         $prerequisiteIds = $validated['prerequisite_ids'] ?? [];
         if ($assignmentsLocked) {
             unset($validated['head_instructor_id']);
@@ -767,7 +785,9 @@ class MasterDataController extends Controller
         $course->update($validated);
         if (! $assignmentsLocked) {
             $course->assignedStaff()->sync($staffIds);
-            $this->syncCourseInstructors($course, $instructorIds, $instructorRoleIds);
+            if (! $isStaffContext) {
+                $this->syncCourseInstructors($course, $instructorIds, $instructorRoleIds);
+            }
         }
         $course->prerequisites()->sync($prerequisiteIds);
 

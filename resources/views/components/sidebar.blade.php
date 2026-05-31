@@ -135,7 +135,7 @@
         @if($activeRole === 'staff')
             <div class="sb-sec">เมนูหลัก</div>
             <!-- Staff Menus -->
-            <a href="#" class="nv {{ str_contains($currentPath, 'overview') ? 'on' : '' }}">
+            <a href="{{ route('staff.dashboard') }}" class="nv {{ Request::routeIs('staff.dashboard') ? 'on' : '' }}">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
                 </svg>
@@ -158,7 +158,7 @@
                 </svg>
                 จัดการข้อมูลหลัก
             </a>
-            <a href="#" class="nv">
+            <a href="{{ route('staff.schedules.index') }}" class="nv {{ Request::routeIs('staff.schedules.*') || Request::routeIs('staff.course_offerings.schedules.*') ? 'on' : '' }}">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                     <line x1="16" y1="2" x2="16" y2="6"></line>
@@ -167,7 +167,7 @@
                 </svg>
                 ตารางสอน
             </a>
-            <a href="#" class="nv">
+            <a href="{{ route('staff.dashboard') }}#staff-report-summary" class="nv">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                     <polyline points="14 2 14 8 20 8"></polyline>
@@ -175,7 +175,7 @@
                     <line x1="16" y1="17" x2="8" y2="17"></line>
                     <polyline points="10 9 9 9 8 9"></polyline>
                 </svg>
-                รายงาน
+                สรุปรายงาน
             </a>
 
         @elseif($activeRole === 'course_head')
@@ -447,14 +447,14 @@
             </svg>
             ตั้งค่าบัญชี
         </button>
-        <a href="#" class="nv">
+        <button type="button" class="nv" disabled style="opacity:.58;cursor:not-allowed;" title="คู่มือการใช้งานจะเพิ่มใน phase ถัดไป">
             <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                 <polyline points="15 3 21 3 21 9"></polyline>
                 <line x1="10" y1="14" x2="21" y2="3"></line>
             </svg>
             คู่มือการใช้งาน
-        </a>
+        </button>
         <form method="POST" action="{{ route('logout') }}" style="margin:0">
             @csrf
             <button type="submit" class="nv" data-testid="sidebar-logout">

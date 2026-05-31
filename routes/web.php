@@ -132,6 +132,33 @@ Route::middleware(['auth', 'no-back'])->group(function () {
 
     // ── Staff only ─────────────────────────────────────────────────────
     Route::middleware(['\App\Http\Middleware\CheckRole:staff'])->group(function () {
+        Route::get('/staff/schedules', [ScheduleController::class, 'workspace'])->name('staff.schedules.index');
+        Route::get('/staff/schedules/create', [ScheduleController::class, 'createGlobal'])->name('staff.schedules.create');
+        Route::post('/staff/schedules', [ScheduleController::class, 'storeGlobal'])->name('staff.schedules.store');
+
+        Route::prefix('staff/course-offerings')
+            ->name('staff.course_offerings.')
+            ->group(function () {
+                Route::get('/{courseOffering}/schedules', [ScheduleController::class, 'index'])->name('schedules.index');
+                Route::get('/{courseOffering}/schedules/create', [ScheduleController::class, 'create'])->name('schedules.create');
+                Route::post('/{courseOffering}/schedules', [ScheduleController::class, 'store'])->name('schedules.store');
+                Route::post('/{courseOffering}/schedules/series', [ScheduleController::class, 'storeSeries'])->name('schedules.series.store');
+                Route::post('/{courseOffering}/schedules/check-conflicts', [ScheduleController::class, 'checkConflicts'])->name('schedules.check_conflicts');
+                Route::post('/{courseOffering}/schedules/check', [ScheduleController::class, 'checkRealtime'])
+                    ->name('schedules.check')
+                    ->middleware('throttle:60,1');
+                Route::post('/{courseOffering}/schedules/copy-week/preview', [ScheduleController::class, 'previewCopyWeek'])->name('schedules.copy_week.preview');
+                Route::post('/{courseOffering}/schedules/copy-week', [ScheduleController::class, 'copyWeek'])->name('schedules.copy_week');
+                Route::put('/{courseOffering}/schedules/templates/{scheduleTemplate}', [ScheduleController::class, 'updateSeriesTemplate'])->name('schedules.templates.update');
+                Route::delete('/{courseOffering}/schedules/templates/{scheduleTemplate}', [ScheduleController::class, 'destroySeriesTemplate'])->name('schedules.templates.destroy');
+                Route::get('/{courseOffering}/schedules/{schedule}/edit', [ScheduleController::class, 'edit'])->name('schedules.edit');
+                Route::put('/{courseOffering}/schedules/{schedule}', [ScheduleController::class, 'update'])->name('schedules.update');
+                Route::delete('/{courseOffering}/schedules/{schedule}', [ScheduleController::class, 'destroy'])->name('schedules.destroy');
+                Route::post('/{courseOffering}/schedules/{schedule}/check', [ScheduleController::class, 'checkRealtimeEdit'])
+                    ->name('schedules.check_edit')
+                    ->middleware('throttle:60,1');
+            });
+
         Route::get('/staff/settings', 'App\Http\Controllers\Staff\SettingController@index')->name('staff.settings');
         Route::post('/staff/settings/academic-years', 'App\Http\Controllers\Staff\SettingController@storeYear')->name('staff.settings.years.store');
         Route::put('/staff/settings/academic-years/{year}', 'App\Http\Controllers\Staff\SettingController@updateYear')->name('staff.settings.years.update');

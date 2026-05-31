@@ -50,6 +50,7 @@
     <div x-data="{
         courseFormErrorState: {{ Js::from($courseFormErrorState) }},
         activeTab: {{ Js::from($courseFormHasErrors ? 'courses' : null) }} || new URLSearchParams(window.location.search).get('tab') || 'instructors',
+        canManageCourseInstructorPool: {{ ($isAdmin ?? false) ? 'true' : 'false' }},
         filters: {
             instructors: { keyword: '', department_id: '' },
             departments: { keyword: '' },
@@ -2335,8 +2336,8 @@
                         </template>
                         <template x-for="user in selectedCourseInstructors" :key="`course-instructor-${user.id}`">
                             <div>
-                                <input type="hidden" name="instructor_ids[]" :value="user.id" :disabled="courseAssignmentsLocked()">
-                                <input type="hidden" :name="`instructor_role_ids[${user.id}]`" :value="user.course_role_id" :disabled="courseAssignmentsLocked()">
+                                <input type="hidden" name="instructor_ids[]" :value="user.id" :disabled="courseAssignmentsLocked() || !canManageCourseInstructorPool">
+                                <input type="hidden" :name="`instructor_role_ids[${user.id}]`" :value="user.course_role_id" :disabled="courseAssignmentsLocked() || !canManageCourseInstructorPool">
                             </div>
                         </template>
                         <div class="modal-body course-modal-body">
@@ -2402,9 +2403,18 @@
                                 <div class="course-assignment-head">
                                     <div>
                                         <div class="course-assignment-title">ผู้รับผิดชอบรายวิชา</div>
-                                        <div class="course-assignment-copy">กำหนดหัวหน้าวิชา เจ้าหน้าที่ดูแล และบทบาทอาจารย์ผู้สอนจาก modal รายวิชานี้</div>
+                                        <div class="course-assignment-copy">
+                                            @if($isAdmin ?? false)
+                                                กำหนดหัวหน้าวิชา เจ้าหน้าที่ดูแล และบทบาทอาจารย์ผู้สอนจาก modal รายวิชานี้
+                                            @else
+                                                Staff แก้หัวหน้าวิชาและเจ้าหน้าที่ดูแลได้ ส่วนอาจารย์ผู้สอนล็อกไว้ให้ Admin/Course Head จัดการ
+                                            @endif
+                                        </div>
                                     </div>
                                     <span class="course-lock-badge" x-show="courseAssignmentsLocked()">ล็อกแล้ว</span>
+                                    @unless($isAdmin ?? false)
+                                        <span class="course-lock-badge" x-show="!courseAssignmentsLocked()">ล็อกผู้สอน</span>
+                                    @endunless
                                 </div>
 
                                 <div class="course-lock-note" x-show="courseAssignmentsLocked()">
@@ -2480,12 +2490,18 @@
                                     <div class="course-instructor-head">
                                         <div>
                                             <label style="display:block;margin-bottom:3px;">อาจารย์ผู้สอน</label>
-                                            <div class="course-assignment-copy">เลือกอาจารย์และกำหนดตำแหน่งในรายวิชา</div>
+                                            <div class="course-assignment-copy">
+                                                @if($isAdmin ?? false)
+                                                    เลือกอาจารย์และกำหนดตำแหน่งในรายวิชา
+                                                @else
+                                                    อ่านได้อย่างเดียวในบทบาท Staff เพื่อรักษา instructor pool เดิมของ Admin/Course Head
+                                                @endif
+                                            </div>
                                         </div>
                                         <span class="course-count-badge" x-text="selectedCourseInstructors.length + ' คน'"></span>
                                     </div>
 
-                                    <div class="course-instructor-search" x-show="!courseAssignmentsLocked()" @click.outside="showCourseInstructorDropdown = false">
+                                    <div class="course-instructor-search" x-show="canManageCourseInstructorPool && !courseAssignmentsLocked()" @click.outside="showCourseInstructorDropdown = false">
                                         <input type="text" x-model="courseInstructorSearch"
                                             @focus="showCourseInstructorDropdown = true"
                                             @input="showCourseInstructorDropdown = true"
@@ -2514,12 +2530,12 @@
                                                     <strong x-text="user.name"></strong>
                                                     <span x-text="user.department"></span>
                                                 </div>
-                                                <select x-model="user.course_role_id" :disabled="courseAssignmentsLocked()">
+                                                <select x-model="user.course_role_id" :disabled="courseAssignmentsLocked() || !canManageCourseInstructorPool">
                                                     <template x-for="role in courseRoleOptions" :key="role.id">
                                                         <option :value="role.id" x-text="role.name"></option>
                                                     </template>
                                                 </select>
-                                                <button type="button" x-show="!courseAssignmentsLocked()" class="course-remove-btn" @click="removeCourseInstructor(user.id)" aria-label="ลบอาจารย์">
+                                                <button type="button" x-show="canManageCourseInstructorPool && !courseAssignmentsLocked()" class="course-remove-btn" @click="removeCourseInstructor(user.id)" aria-label="ลบอาจารย์">
                                                     <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
                                                         <line x1="18" y1="6" x2="6" y2="18"/>
                                                         <line x1="6" y1="6" x2="18" y2="18"/>

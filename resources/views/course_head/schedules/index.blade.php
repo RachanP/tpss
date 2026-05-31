@@ -1,5 +1,24 @@
 @php
-    $availableOfferings = ($availableOfferings ?? collect())->filter(fn ($offering) => $offering->academicYear?->phase === 'scheduling')->values();
+    $scheduleRoutePrefix = $scheduleRoutePrefix ?? 'maker';
+    $isStaffSchedule = $scheduleRoutePrefix === 'staff';
+    $scheduleRouteNames = $scheduleRouteNames ?? [
+        'workspace.store' => 'maker.schedules.store',
+        'offering.index' => 'maker.course_offerings.schedules.index',
+        'offering.store' => 'maker.course_offerings.schedules.store',
+        'offering.series.store' => 'maker.course_offerings.schedules.series.store',
+        'offering.check_conflicts' => 'maker.course_offerings.schedules.check_conflicts',
+        'offering.copy_week.preview' => 'maker.course_offerings.schedules.copy_week.preview',
+        'offering.copy_week' => 'maker.course_offerings.schedules.copy_week',
+        'offering.templates.update' => 'maker.course_offerings.schedules.templates.update',
+        'offering.destroy' => 'maker.course_offerings.schedules.destroy',
+        'offering.update' => 'maker.course_offerings.schedules.update',
+        'offering.show' => 'maker.course_offerings.show',
+    ];
+    $canManageOfferingDetails = (bool) ($canManageOfferingDetails ?? true);
+    $rawAvailableOfferings = ($availableOfferings ?? collect())->values();
+    $availableOfferings = $isStaffSchedule
+        ? $rawAvailableOfferings
+        : $rawAvailableOfferings->filter(fn ($offering) => $offering->academicYear?->phase === 'scheduling')->values();
     $activityTypes = $activityTypes ?? collect();
     $rooms = $rooms ?? collect();
     $scheduleConflicts = $scheduleConflicts ?? collect();
@@ -11,10 +30,10 @@
         ->filter(fn ($offering) => $offering?->academicYear?->phase === 'scheduling')
         ->values();
     $createAction = $isWorkspace
-        ? route('maker.schedules.store')
-        : ($courseOffering ? route('maker.course_offerings.schedules.store', $courseOffering) : '#');
+        ? route($scheduleRouteNames['workspace.store'])
+        : ($courseOffering ? route($scheduleRouteNames['offering.store'], $courseOffering) : '#');
     $seriesCreateAction = (! $isWorkspace && $courseOffering)
-        ? route('maker.course_offerings.schedules.series.store', $courseOffering)
+        ? route($scheduleRouteNames['offering.series.store'], $courseOffering)
         : $createAction;
     $queryOfferingId = request('course_offering_id');
     $selectedOfferingId = (string) old('course_offering_id', $queryOfferingId ?: ($schedulingOfferings->first()?->id ?? $courseOffering?->id ?? ''));
@@ -4532,7 +4551,7 @@
                 this.refreshCopyWeekPreview();
             },
             async refreshCopyWeekPreview() {
-                const url = @js((! $isWorkspace && $courseOffering) ? route('maker.course_offerings.schedules.copy_week.preview', $courseOffering) : '');
+                const url = @js((! $isWorkspace && $courseOffering) ? route($scheduleRouteNames['offering.copy_week.preview'], $courseOffering) : '');
                 if (!url || !this.copyWeekSource || !this.copyWeekTarget) return;
                 this.copyWeekLoading = true;
                 this.copyWeekError = '';
@@ -4559,7 +4578,7 @@
                 this.liveTimer = setTimeout(() => this.runScheduleCheck(form), 400);
             },
             async runScheduleCheck(formEl) {
-                const url = @js((! $isWorkspace && $courseOffering) ? route('maker.course_offerings.schedules.check_conflicts', $courseOffering) : '');
+                const url = @js((! $isWorkspace && $courseOffering) ? route($scheduleRouteNames['offering.check_conflicts'], $courseOffering) : '');
                 const form = formEl || this.$refs.createForm;
                 if (!url || !form) return;
                 this.liveChecking = true;
@@ -4923,7 +4942,7 @@
             },
             closeEdit() {
                 @if(request()->boolean('from_conflict'))
-                    window.location.href = @js(route('maker.schedule_conflicts.index'));
+                    window.location.href = @js($conflictIndexUrl ?? route($scheduleRouteNames['offering.index'], $courseOffering));
                 @else
                     this.editModal = null;
                     this.liveIssues = {};
@@ -4957,7 +4976,9 @@
                     <div style="font-weight:700;">{{ $message }}</div>
                 @endforeach
                 <div style="margin-top:10px;">
-                    <a href="{{ route('maker.schedule_conflicts.index') }}" class="btn btn-secondary" style="text-decoration:none;">ดูการแจ้งเตือนการชน</a>
+                    @if($conflictIndexUrl)
+                        <a href="{{ $conflictIndexUrl }}" class="btn btn-secondary" style="text-decoration:none;">ดูการแจ้งเตือนการชน</a>
+                    @endif
                 </div>
             </div>
         @endif
@@ -4987,7 +5008,7 @@
                                 $availCourse = $availOffering->course;
                                 $isSelected = ! $isWorkspace && $courseOffering && $courseOffering->id === $availOffering->id;
                                 $optionCourseName = $availCourse?->name_th ?? $availCourse?->name_en ?? 'ไม่มีชื่อรายวิชา';
-                                $optUrl = route('maker.course_offerings.schedules.index', array_filter([
+                                $optUrl = route($scheduleRouteNames['offering.index'], array_filter([
                                     $availOffering,
                                     ...$selectorQuery,
                                 ]));
@@ -5306,9 +5327,15 @@
                     </div>
                 </div>
                 <div class="course-overview-actions">
-                    <a href="{{ route('maker.course_offerings.show', $courseOffering) }}" class="btn btn-secondary" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:6px 12px;font-size:12.5px;">
-                        <span>รายละเอียดรายวิชา</span>
-                    </a>
+                    @if($canManageOfferingDetails && ! empty($scheduleRouteNames['offering.show']))
+                        <a href="{{ route($scheduleRouteNames['offering.show'], $courseOffering) }}" class="btn btn-secondary" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:6px 12px;font-size:12.5px;">
+                            <span>รายละเอียดรายวิชา</span>
+                        </a>
+                    @else
+                        <span class="badge badge-gray" title="Phase 1 ให้หัวหน้าวิชา/Admin เตรียม Course Offering, กลุ่มนักศึกษา และผู้สอน">
+                            รายละเอียดรายวิชาล็อกไว้
+                        </span>
+                    @endif
                     @if($canEdit)
                         @php
                             $hasStudentGroups = $courseOffering->studentGroups->isNotEmpty();
@@ -5366,9 +5393,9 @@
                         <div style="font-weight:800;margin-bottom:2px;">ยังไม่มีกลุ่มนักศึกษาในรายวิชานี้</div>
                         <div style="font-weight:500;font-size:12.5px;opacity:0.85;">ต้องสร้างกลุ่มนักศึกษาก่อนจึงจะเพิ่มรายการสอนได้</div>
                     </div>
-                    @if($canEdit)
+                    @if($canEdit && $canManageOfferingDetails)
                         <a
-                            href="{{ route('maker.course_offerings.show', $courseOffering) }}#student-groups"
+                            href="{{ route($scheduleRouteNames['offering.show'], $courseOffering) }}#student-groups"
                             class="btn btn-primary"
                             data-testid="schedule-go-create-student-groups"
                             style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:6px 14px;font-size:12.5px;"
@@ -5379,6 +5406,8 @@
                                 <polyline points="12 5 19 12 12 19"></polyline>
                             </svg>
                         </a>
+                    @elseif(! $canManageOfferingDetails)
+                        <span class="badge badge-gray" style="min-height:34px;display:inline-flex;align-items:center;">ให้หัวหน้าวิชา/Admin เตรียมกลุ่ม</span>
                     @endif
                 </div>
             @endif
@@ -6024,6 +6053,10 @@
                             'title' => 'ไม่พบรายวิชาที่ต้องจัดตารางสอนในระบบ',
                             'sub' => 'ช่วงจัดตารางเปิดอยู่ แต่คุณยังไม่ได้รับมอบหมายเป็นหัวหน้าวิชาในรอบนี้ — ติดต่อผู้ดูแลระบบหากต้องการรับผิดชอบรายวิชา',
                         ],
+                        'staff_no_offerings' => [
+                            'title' => 'ยังไม่มีรายวิชาที่มอบหมายให้ Staff คนนี้',
+                            'sub' => 'ช่วงจัดตารางเปิดอยู่ แต่ยังไม่มี course offering ที่ parent course ผูกกับ Staff คนนี้ผ่าน course_staff ให้ตรวจรายวิชาในข้อมูลหลักหรือให้หัวหน้าวิชา/Admin เตรียม offering ก่อน',
+                        ],
                     ];
                     $msg = $emptyMessages[$emptyKey] ?? $emptyMessages['no_offerings'];
                 @endphp
@@ -6621,19 +6654,19 @@
                     </div>
                     @if($scheduleCanEdit)
                         <div class="modal-actions">
-                            <form id="delete-schedule-{{ $schedule->id }}" method="POST" action="{{ route('maker.course_offerings.schedules.destroy', [$offering, $schedule]) }}" style="display:none;">
+                            <form id="delete-schedule-{{ $schedule->id }}" method="POST" action="{{ route($scheduleRouteNames['offering.destroy'], [$offering, $schedule]) }}" style="display:none;">
                                 @csrf
                                 @method('DELETE')
                                 <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
                             </form>
                             @if($schedule->schedule_template_id && $schedule->scheduleTemplate)
-                                <form id="delete-series-from-{{ $schedule->id }}" method="POST" action="{{ route('maker.course_offerings.schedules.destroy', [$offering, $schedule]) }}" style="display:none;">
+                                <form id="delete-series-from-{{ $schedule->id }}" method="POST" action="{{ route($scheduleRouteNames['offering.destroy'], [$offering, $schedule]) }}" style="display:none;">
                                     @csrf
                                     @method('DELETE')
                                     <input type="hidden" name="series_delete_scope" value="from_current">
                                     <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
                                 </form>
-                                <form id="delete-series-all-{{ $schedule->id }}" method="POST" action="{{ route('maker.course_offerings.schedules.destroy', [$offering, $schedule]) }}" style="display:none;">
+                                <form id="delete-series-all-{{ $schedule->id }}" method="POST" action="{{ route($scheduleRouteNames['offering.destroy'], [$offering, $schedule]) }}" style="display:none;">
                                     @csrf
                                     @method('DELETE')
                                     <input type="hidden" name="series_delete_scope" value="all">
@@ -6692,7 +6725,7 @@
                                 </div>
                                 <button type="button" class="modal-close" @click="editSeriesModal = null" aria-label="ปิด">×</button>
                             </div>
-                            <form method="POST" action="{{ route('maker.course_offerings.schedules.templates.update', [$offering, $seriesTemplate]) }}" data-testid="schedule-series-edit-form">
+                            <form method="POST" action="{{ route($scheduleRouteNames['offering.templates.update'], [$offering, $seriesTemplate]) }}" data-testid="schedule-series-edit-form">
                                 @csrf
                                 @method('PUT')
                                 <input type="hidden" name="modal_mode" value="series_edit">
@@ -6804,7 +6837,7 @@
                         </div>
                         <form
                             method="POST"
-                            action="{{ route('maker.course_offerings.schedules.update', [$offering, $schedule]) }}"
+                            action="{{ route($scheduleRouteNames['offering.update'], [$offering, $schedule]) }}"
                             data-testid="schedule-edit-form"
                             data-schedule-check
                             @input="queueScheduleCheck($el)"
@@ -7519,7 +7552,7 @@
         @endif
 
         @if(! $isWorkspace && $courseOffering && $canEdit)
-            <form method="POST" action="{{ route('maker.course_offerings.schedules.copy_week', $courseOffering) }}" x-ref="copyWeekForm" style="display:none;">
+            <form method="POST" action="{{ route($scheduleRouteNames['offering.copy_week'], $courseOffering) }}" x-ref="copyWeekForm" style="display:none;">
                 @csrf
                 <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
                 <input type="hidden" name="source_week_start" :value="copyWeekSource">
