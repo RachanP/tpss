@@ -8,19 +8,24 @@
 - **ใช้ demo เป็นเวทีเคาะ open questions** ของ V2 → ดู `architecture.md` "Requirement V2 Direction"
 - **V2 direction documented**: `architecture.md` + `database.md`
 
-## 🧹 Next Work — Master Data Cleanup Phase (V2) — ✅ DECIDED 30 พ.ค.
+## 🧹 Master Data Cleanup Phase (V2) — ✅ CORE เสร็จแล้ว (31 พ.ค.) · branch `feat/v2-requirement`
 
 > เคลียร์ Master Data ให้นิ่งก่อนทำ schedule/rotation — ดูรายละเอียด `architecture.md` "Master Data Cleanup Phase (V2)"
-> ทำบน `feat/v2-requirement` · `sprint` ยังเป็น demo fallback
+> ทำบน `feat/v2-requirement` · `sprint` ยังเป็น demo fallback · test suite 472/474 (2 fail = pre-existing ScheduleFlowSeeder)
 
-- **Done (รอบนี้)**: ✅ กลุ่มชั้นปี `student_cohorts` ใน Master Data (commit `ec25ba2`)
-- **ถัดไป (cleanup)**:
-  1. `academic_years` เป็น "ปี" (ตัด `semester`) + ตาราง `terms` (เทอม 1/2 + วันสอบ)
-  2. `courses` ตัด `default_semester` (วิชาเปิดทั้งปี) + เอา field ภาคออกจาก UI
-  3. `course_offerings` ราย-ปี + auto-open = ทุกวิชาใน active curriculum
-  4. candidate: `activity_types.counts_toward_workload`, `rooms.campus`, ตาราง `holidays` (วันหยุดราชการ — จากเอกสารพิม)
-- **เคาะแล้ว 31 พ.ค.**: ผู้บริหาร **อนุมัติทั้งปี** (per-year ไม่ใช่ราย-เทอม) · สลับกลุ่ม A/B อยู่ใน offering ปีเดียว — ดู `architecture.md` Resolved + เอกสารพิม `tpss_system_summary_v3.md` (แก้ข้อ 5.2 เป็นราย-ปีแล้ว)
-- ⚠️ **เป็น refactor ใหญ่ (แตะ guard/seeder/test ทั้งระบบ)** — ทำหลัง demo ปลอดภัยกว่า · ห้าม merge เข้า sprint จน test เขียว + verify · **อย่าใช้ build นี้ deploy demo 2 มิ.ย.**
+**✅ DONE (core — verified migrate:fresh + test):**
+1. `academic_years` = "ปี" (ตัด `semester`, unique(name)) + ตาราง `terms` (เทอม 1/2/ฤดูร้อน + วันสอบกลาง/ปลายภาค) · วันปี derive จากเทอม · validation วันเทอม/สอบครบ
+2. `courses` ตัด `default_semester` (วิชาเปิดทั้งปี) + เอา field ภาคออกจาก UI/CSV/audit
+3. `course_offerings` ราย-ปี + auto-open = ทุกวิชาใน active curriculum + offering route key = course-year
+4. `student_cohorts` กลุ่มชั้นปี (ปี1-2 กลุ่มใหญ่ / ปี3-4 = A1,B1,A2,B2) · location_types.`is_shared`
+- **เคาะ 31 พ.ค.**: อนุมัติทั้งปี (per-year) · สลับกลุ่ม A/B ใน offering ปีเดียว (slot ติดป้ายเทอม)
+
+**🔲 ยังเหลือใน Master/Setup scope (V3 ระบุชัด — additive, ยังไม่ทำ):**
+- `holidays` (date, name, remark) — ตารางวันหยุดราชการ: ปฏิทินขึ้น "งดการเรียนการสอน" + ไม่นับ workload (V3 ข้อ 2.4 + gap 12.1)
+- `activity_types.counts_toward_workload` (bool) — Admin ตั้งได้ว่าประเภทไหนนับ/ไม่นับภาระงาน (V3 ข้อ 5.4 บรรทัด 273; ปฐมนิเทศ/SDL/สอบ/วันหยุด = ไม่นับ)
+- (optional, ไม่อยู่ใน V3) `rooms.campus` ศาลายา/บางกอกน้อย — มาจาก V1/V2 เท่านั้น
+
+**🔲 Phase ถัดไป (schedule/rotation — ไม่ใช่ Master Data):** `schedules.term_id`, rotation_rounds/assignments, cross-course group conflict, visual dashboard (V3 ข้อ 8.1)
 
 ## Phase Overview
 

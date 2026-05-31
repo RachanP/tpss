@@ -276,13 +276,14 @@ V2 ชี้ว่าตารางคณะพยาบาลเป็น "ต
 4. **รอบ rotation = 2 เสมอไหม** · **ตารางรายกลุ่มชั้นปี** Phase 1 หรือ 2?
 5. **ใครกรอกกิจกรรมภาคปฏิบัติ** (เอกสารพิม ข้อ 11 — แผน A/B/C) → V1 ใช้แผน C (อาจารย์แจ้ง offline, เจ้าหน้าที่/หัวหน้ากรอก) · V1.5 ทำแผน B (instructor จัดเอง = Option B/delegation)
 
-## Master Data Cleanup Phase (V2) — ✅ DECIDED 30 พ.ค. · ทำก่อนงาน V2 อื่น
+## Master Data Cleanup Phase (V2) — ✅ CORE เสร็จ (31 พ.ค.) · branch `feat/v2-requirement`
 
 > ทิศทาง: เคลียร์ Master Data ให้นิ่ง (วิชาเปิดทั้งปี + ปีการศึกษาเป็นปีจริง) **เป็นฐานก่อน** แล้วค่อยทำ schedule/rotation/publish
 > ทำบน branch `feat/v2-requirement` — `sprint` ยังเป็น demo fallback (term-based เดิม)
-> ⚠️ ของจริงคือ refactor ใหญ่ที่แตะ guard/seeder/test ทั้งระบบ — **อย่า deploy ทับ sprint สำหรับ demo 2 มิ.ย.** จนกว่า test เขียว + verify
+> สถานะ: ข้อ 1-5 ด้านล่าง **DONE + verified** (migrate:fresh เขียว · test 472/474, 2 fail = pre-existing ScheduleFlowSeeder)
+> ⚠️ ยังไม่ merge เข้า sprint จน verify บนแอปจริงครบ
 
-### สิ่งที่จะแก้ (Master Data scope)
+### ✅ สิ่งที่ทำเสร็จแล้ว (Master Data scope — DONE)
 
 1. **ปีการศึกษา = "ปี" ไม่ใช่ "เทอม" + มีเทอมเป็นรายการลูก (พร้อมวันสอบ)**
    - `academic_years`: ตัด column `semester` ออก → unique(`name`) แทน unique(`name`,`semester`) · `phase`/`is_active` ต่อ "ปี" · 1 ปี = 1 row
@@ -308,9 +309,11 @@ V2 ชี้ว่าตารางคณะพยาบาลเป็น "ต
    - ตอนจัดกลุ่มหลังอนุมัติ: slot ติดป้ายเทอมไว้แล้ว → แมพ "กิจกรรมเทอมนี้ → กลุ่มไหน" ได้ตรง (ฐานของ rotation)
    - ตาราง `terms` (วัน+ช่วงสอบ) สร้างในรอบ cleanup นี้ (ข้อ 1) · ส่วน `schedules.term_id` (ให้ slot ระบุว่าอยู่เทอมไหน) + rotation = งาน **phase ถัดไป** (schedule)
 
-### Candidate cleanups (เคาะว่าเอาเข้ารอบนี้ไหม)
-- `activity_types.counts_toward_workload` (ปฐมนิเทศ/SDL = 0 ชม. — V2 ข้อ 7) · เพิ่มประเภท วิทยานิพนธ์/ดุษฎีนิพนธ์ (มี category `thesis` แล้ว)
-- `rooms.campus` (ศาลายา/บางกอกน้อย — V2 ข้อ 7) — display ก่อน ยังไม่ผูก conflict
+### 🔲 ยังเหลือใน Master/Setup scope (V3 ระบุชัด — additive, ยังไม่ทำ)
+> ตรวจ 31 พ.ค.: เทียบ V3 แล้ว core เสร็จ เหลือ 2 อย่างที่ V3 จัดเป็น Master/Setup data:
+- **`holidays`** (date, name, remark) — ตารางวันหยุดราชการ: ปฏิทินขึ้น "งดการเรียนการสอน" + แจ้งเตือนตอนวางตารางตรงวันหยุด + ไม่นับ workload (V3 ข้อ 2.4 + gap 12.1) — REQUIRED
+- **`activity_types.counts_toward_workload`** (bool) — Admin ตั้งได้ว่าประเภทไหนนับ/ไม่นับภาระงาน (V3 ข้อ 5.4 บรรทัด 273: ปฐมนิเทศ/SDL/สอบ/วันหยุด = ไม่นับ) — REQUIRED · อาจเพิ่มประเภท วิทยานิพนธ์/ดุษฎีนิพนธ์ (มี category `thesis` แล้ว)
+- (optional) `rooms.campus` ศาลายา/บางกอกน้อย — **ไม่อยู่ใน V3** (มาจาก V1/V2) — display ก่อน ยังไม่ผูก conflict
 
 ### ของใหม่จากเอกสารพิม V3/V4 (`Doc/จากอาจารย์/เอกสาร/tpss_system_summary_v3.md`)
 > เอกสารสรุป requirement ฉบับเพื่อน (พิม) — ยืนยันหลายอย่างที่เราวางไว้ + เพิ่มของใหม่:
