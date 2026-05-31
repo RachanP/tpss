@@ -369,10 +369,17 @@
                         </thead>
                         <tbody>
                             @forelse($holidays as $h)
-                                <tr>
+                                @php($isManual = $h->source === 'manual')
+                                <tr @if($isManual) style="background: var(--accent-bg, #eef4ff); box-shadow: inset 3px 0 0 var(--accent-fg, #2563EB);" @endif>
                                     <td style="font-family: var(--font-mono);">{{ \App\Support\ThaiDate::formatForInput($h->date) }}</td>
                                     <td style="color: var(--fg-1);">{{ $h->name }}@if($h->remark)<span style="color: var(--fg-3); font-size: 12px;"> · {{ $h->remark }}</span>@endif</td>
-                                    <td><span class="badge badge-gray">{{ $h->source === 'manual' ? 'เพิ่มเอง' : 'อัตโนมัติ' }}</span></td>
+                                    <td>
+                                        @if($isManual)
+                                            <span class="badge" style="background: var(--accent-fg, #2563EB); color: #fff;">เพิ่มเอง</span>
+                                        @else
+                                            <span class="badge badge-gray">อัตโนมัติ</span>
+                                        @endif
+                                    </td>
                                     <td style="text-align: center;">
                                         <button type="button" class="action-btn" title="แก้ไข"
                                             @click="openEditHoliday({{ Js::from(['id' => $h->id, 'date' => optional($h->date)->format('Y-m-d'), 'name' => $h->name, 'remark' => $h->remark]) }})">
