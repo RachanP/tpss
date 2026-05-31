@@ -19,7 +19,7 @@ class AdminSettingController extends Controller
 {
     private function auditSnapshot(AcademicYear $year): array
     {
-        return collect($year->only(['name', 'semester', 'start_date', 'end_date', 'is_active']))
+        return collect($year->only(['name', 'start_date', 'end_date', 'is_active']))
             ->map(fn ($value) => $value instanceof \DateTimeInterface ? $value->format('Y-m-d') : $value)
             ->all();
     }
@@ -51,13 +51,42 @@ class AdminSettingController extends Controller
             recordId: $year->id,
             oldValues: $oldValues,
             newValues: $newValues,
-            description: "แก้ไขปีการศึกษา {$year->name} ภาค {$year->semester}",
+            description: "แก้ไขปีการศึกษา {$year->name}",
         );
     }
 
     private function schedulingLockMessage(AcademicYear $year): string
     {
-        return "ไม่สามารถตั้งปีการศึกษา {$year->name} ภาค {$year->semester} เป็นปีปัจจุบันได้ เนื่องจากยังมีช่วงจัดตารางที่เปิดใช้งานอยู่ กรุณาปิดช่วงจัดตารางเดิมก่อน";
+        return "ไม่สามารถตั้งปีการศึกษา {$year->name} เป็นปีปัจจุบันได้ เนื่องจากยังมีช่วงจัดตารางที่เปิดใช้งานอยู่ กรุณาปิดช่วงจัดตารางเดิมก่อน";
+    }
+
+    /**
+     * สร้างเทอมเริ่มต้น (เทอม 1/2) ให้ปีใหม่ โดยแบ่งช่วงปีครึ่ง ๆ
+     * วันสอบเว้นว่างไว้ให้ Admin กรอกภายหลัง · ภาคฤดูร้อนเพิ่มเองได้
+     */
+    private function createDefaultTerms(AcademicYear $year): void
+    {
+        if ($year->terms()->exists()) {
+            return;
+        }
+
+        $start = Carbon::parse($year->start_date);
+        $end = Carbon::parse($year->end_date);
+        $mid = $start->copy()->addDays((int) floor($start->diffInDays($end) / 2));
+
+        $year->terms()->createMany([
+            ['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => $start->toDateString(), 'end_date' => $mid->toDateString()],
+            ['sequence' => 2, 'name' => 'ภาคเรียนที่ 2', 'start_date' => $mid->copy()->addDay()->toDateString(), 'end_date' => $end->toDateString()],
+        ]);
+    }
+
+    /**
+     * V2: วิชาเปิดทั้งปี → status ตาม curriculum active เท่านั้น (เลิกผูก default_semester)
+     */
+    private function syncCourseStatusByCurriculum(): void
+    {
+        Course::whereHas('curriculum', fn ($q) => $q->where('is_active', false))->update(['status' => 'inactive']);
+        Course::whereHas('curriculum', fn ($q) => $q->where('is_active', true))->update(['status' => 'active']);
     }
 
     private function hasOtherOpenSchedulingWindow(AcademicYear $year): bool
@@ -69,7 +98,7 @@ class AdminSettingController extends Controller
 
     public function index()
     {
-        $academicYears = AcademicYear::orderBy('name', 'desc')->orderBy('semester', 'desc')->get();
+        $academicYears = AcademicYear::with('terms')->orderBy('name', 'desc')->get();
         $paCriteria = json_decode(SystemSetting::get('pa_criteria_config', '{}'), true);
 
         $workloadWeeks = SystemSetting::get('teaching_quota_weeks', 46);
@@ -84,7 +113,7 @@ class AdminSettingController extends Controller
             $paCriteria = self::defaultPaCriteria();
         }
 
-        $schedulingSummary = AcademicYear::orderBy('name', 'desc')->orderBy('semester', 'desc')->get();
+        $schedulingSummary = AcademicYear::orderBy('name', 'desc')->get();
         $schedulingCriticals = AlertController::getCriticals();
 
         $isAdmin     = true;
@@ -97,22 +126,18 @@ class AdminSettingController extends Controller
         $this->normalizeThaiDateInputs($request, ['start_date', 'end_date']);
 
         $validated = $request->validate([
-            'name'       => ['required', 'string', \Illuminate\Validation\Rule::unique('academic_years')->where('semester', $request->integer('semester'))],
-            'semester'   => 'required|integer',
+            'name'       => ['required', 'string', \Illuminate\Validation\Rule::unique('academic_years')],
             'start_date' => ['required', 'date', $this->weekdayDateRule('วันที่เริ่ม')],
             'end_date'   => ['required', 'date', 'after_or_equal:start_date', $this->weekdayDateRule('วันที่สิ้นสุด')],
         ], [
-            'name.unique'            => 'ปีการศึกษา ' . $request->input('name') . ' ภาคเรียนที่ ' . $request->input('semester') . ' มีอยู่แล้วในระบบ',
+            'name.unique'            => 'ปีการศึกษา ' . $request->input('name') . ' มีอยู่แล้วในระบบ',
             'end_date.after_or_equal' => 'วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่มต้น',
         ]);
 
         $validated['is_active'] = $request->has('is_active');
 
         if ($validated['is_active']) {
-            $newYearGuard = new AcademicYear([
-                'name' => $validated['name'],
-                'semester' => $validated['semester'],
-            ]);
+            $newYearGuard = new AcademicYear(['name' => $validated['name']]);
 
             if ($this->hasOtherOpenSchedulingWindow($newYearGuard)) {
                 return back()
@@ -123,28 +148,11 @@ class AdminSettingController extends Controller
 
             AcademicYear::where('is_active', true)->update(['is_active' => false]);
             $this->closeAllSchedulingWindows();
-
-            // Auto-sync courses status based on default_semester AND curriculum status
-            // 1. Force inactive for any course whose curriculum is inactive
-            \App\Models\Course::whereHas('curriculum', function($q) {
-                $q->where('is_active', false);
-            })->update(['status' => 'inactive']);
-
-            // 2. For active curriculums, open courses matching the semester
-            \App\Models\Course::whereHas('curriculum', function($q) {
-                $q->where('is_active', true);
-            })->where('default_semester', $validated['semester'])->update(['status' => 'active']);
-
-            // 3. For active curriculums, close courses NOT matching the semester
-            \App\Models\Course::whereHas('curriculum', function($q) {
-                $q->where('is_active', true);
-            })->where(function($query) use ($validated) {
-                $query->where('default_semester', '!=', $validated['semester'])
-                      ->orWhereNull('default_semester');
-            })->update(['status' => 'inactive']);
+            $this->syncCourseStatusByCurriculum();
         }
 
         $year = AcademicYear::create($validated);
+        $this->createDefaultTerms($year);
 
         AuditLogger::log(
             action: 'ข้อมูลหลัก.สร้าง',
@@ -152,7 +160,7 @@ class AdminSettingController extends Controller
             recordId: $year->id,
             oldValues: null,
             newValues: $this->auditSnapshot($year),
-            description: "สร้างปีการศึกษา {$year->name} ภาค {$year->semester}",
+            description: "สร้างปีการศึกษา {$year->name}",
         );
 
         AlertController::flushCache();
@@ -164,12 +172,11 @@ class AdminSettingController extends Controller
         $this->normalizeThaiDateInputs($request, ['start_date', 'end_date']);
 
         $validated = $request->validate([
-            'name'       => ['required', 'string', \Illuminate\Validation\Rule::unique('academic_years')->where('semester', $request->integer('semester'))->ignore($year->id)],
-            'semester'   => 'required|integer',
+            'name'       => ['required', 'string', \Illuminate\Validation\Rule::unique('academic_years')->ignore($year->id)],
             'start_date' => ['required', 'date', $this->weekdayDateRule('วันที่เริ่ม')],
             'end_date'   => ['required', 'date', 'after_or_equal:start_date', $this->weekdayDateRule('วันที่สิ้นสุด')],
         ], [
-            'name.unique'            => 'ปีการศึกษา ' . $request->input('name') . ' ภาคเรียนที่ ' . $request->input('semester') . ' มีอยู่แล้วในระบบ',
+            'name.unique'            => 'ปีการศึกษา ' . $request->input('name') . ' มีอยู่แล้วในระบบ',
             'end_date.after_or_equal' => 'วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่มต้น',
         ]);
 
@@ -194,28 +201,11 @@ class AdminSettingController extends Controller
         if ($validated['is_active']) {
             AcademicYear::where('id', '!=', $year->id)->where('is_active', true)->update(['is_active' => false]);
             $this->closeSchedulingWindowsExcept($year);
-
-            // Auto-sync courses status based on default_semester AND curriculum status
-            // 1. Force inactive for any course whose curriculum is inactive
-            \App\Models\Course::whereHas('curriculum', function($q) {
-                $q->where('is_active', false);
-            })->update(['status' => 'inactive']);
-
-            // 2. For active curriculums, open courses matching the semester
-            \App\Models\Course::whereHas('curriculum', function($q) {
-                $q->where('is_active', true);
-            })->where('default_semester', $validated['semester'])->update(['status' => 'active']);
-
-            // 3. For active curriculums, close courses NOT matching the semester
-            \App\Models\Course::whereHas('curriculum', function($q) {
-                $q->where('is_active', true);
-            })->where(function($query) use ($validated) {
-                $query->where('default_semester', '!=', $validated['semester'])
-                      ->orWhereNull('default_semester');
-            })->update(['status' => 'inactive']);
+            $this->syncCourseStatusByCurriculum();
         }
 
         $year->update($validated);
+        $this->createDefaultTerms($year);
 
         $after = $this->auditSnapshot($year->fresh());
         [$oldValues, $newValues] = $this->auditDiff($before, $after);
@@ -230,13 +220,13 @@ class AdminSettingController extends Controller
         if (!$year->is_active) {
             return redirect()
                 ->route('admin.settings', ['tab' => 'academic'])
-                ->with('error', "เปิดช่วงจัดตารางได้เฉพาะปีการศึกษาปัจจุบัน ({$year->name} ภาค {$year->semester} ไม่ใช่ปีปัจจุบัน)");
+                ->with('error', "เปิดช่วงจัดตารางได้เฉพาะปีการศึกษาปัจจุบัน ({$year->name} ไม่ใช่ปีปัจจุบัน)");
         }
 
         if ($year->phase === 'published') {
             return redirect()
                 ->route('admin.settings', ['tab' => 'academic'])
-                ->with('error', "ปีการศึกษา {$year->name} ภาค {$year->semester} เผยแพร่แล้ว ไม่สามารถย้อนกลับได้");
+                ->with('error', "ปีการศึกษา {$year->name} เผยแพร่แล้ว ไม่สามารถย้อนกลับได้");
         }
 
         $criticals = AlertController::getCriticals();
@@ -255,7 +245,7 @@ class AdminSettingController extends Controller
         // Existing offerings for this academic year are synced too, because they may
         // have been seeded or created before the template was finalized.
         $courses = Course::query()
-            ->offeredInAcademicTerm($year)
+            ->offerableForActiveCurriculum()
             ->get();
 
         $created = 0;
@@ -288,7 +278,7 @@ class AdminSettingController extends Controller
 
             $offeringsToSync = CourseOffering::with('course')
                 ->where('academic_year_id', $year->id)
-                ->whereHas('course', fn ($query) => $query->offeredInAcademicTerm($year))
+                ->whereHas('course', fn ($query) => $query->offerableForActiveCurriculum())
                 ->get();
 
             foreach ($offeringsToSync as $offering) {
@@ -314,7 +304,7 @@ class AdminSettingController extends Controller
 
         $total = CourseOffering::withActiveCourse()
             ->where('academic_year_id', $year->id)
-            ->whereHas('course', fn ($query) => $query->offeredInAcademicTerm($year))
+            ->whereHas('course', fn ($query) => $query->offerableForActiveCurriculum())
             ->count();
         $newMsg = $created > 0 ? "สร้างใหม่ {$created} รายวิชา" : "ไม่มีรายวิชาใหม่";
         $syncMsg = $synced > 0 ? "ซิงก์แม่แบบ {$synced} รายวิชา" : "ไม่พบรายวิชาเดิมที่ต้องซิงก์";
@@ -325,7 +315,7 @@ class AdminSettingController extends Controller
             recordId:    $year->id,
             oldValues:   ['phase' => 'preparation'],
             newValues:   ['phase' => 'scheduling', 'offerings_created' => $created, 'offerings_synced' => $synced, 'other_scheduling_windows_closed' => $closedSchedulingWindows],
-            description: "เปิดช่วงจัดตารางปีการศึกษา {$year->name} ภาค {$year->semester}",
+            description: "เปิดช่วงจัดตารางปีการศึกษา {$year->name}",
         );
 
         if ($created > 0 || $synced > 0) {
@@ -337,20 +327,19 @@ class AdminSettingController extends Controller
                 newValues:   [
                     'academic_year_id' => $year->id,
                     'academic_year_name' => $year->name,
-                    'semester' => $year->semester,
                     'offerings_created' => $created,
                     'offerings_synced' => $synced,
                     'affected_count' => $synced ?: $created,
                     'sample_course_codes' => $courses->pluck('course_code')->take(5)->values()->all(),
                 ],
                 category:    'รายวิชาและผู้รับผิดชอบ',
-                description: "ซิงก์ข้อมูลรายวิชาจากต้นแบบไปยังรอบเปิดสอน ปีการศึกษา {$year->name} ภาค {$year->semester}",
+                description: "ซิงก์ข้อมูลรายวิชาจากต้นแบบไปยังรอบเปิดสอน ปีการศึกษา {$year->name}",
             );
         }
 
         return redirect()
             ->route('admin.settings', ['tab' => 'academic'])
-            ->with('success', "เปิดช่วงจัดตารางสำหรับปีการศึกษา {$year->name} ภาค {$year->semester} แล้ว — {$newMsg}, {$syncMsg} รวม {$total} รายวิชาพร้อมจัดตาราง");
+            ->with('success', "เปิดช่วงจัดตารางสำหรับปีการศึกษา {$year->name} แล้ว — {$newMsg}, {$syncMsg} รวม {$total} รายวิชาพร้อมจัดตาราง");
     }
 
     public function closeSchedulingWindow(AcademicYear $year)
@@ -364,7 +353,7 @@ class AdminSettingController extends Controller
         if ($year->phase !== 'scheduling') {
             return redirect()
                 ->route('admin.settings', ['tab' => 'academic'])
-                ->with('error', "ปีการศึกษา {$year->name} ภาค {$year->semester} ไม่ได้อยู่ในช่วงจัดตาราง");
+                ->with('error', "ปีการศึกษา {$year->name} ไม่ได้อยู่ในช่วงจัดตาราง");
         }
 
         $year->update(['phase' => 'preparation']);
@@ -383,12 +372,12 @@ class AdminSettingController extends Controller
             recordId:    $year->id,
             oldValues:   ['phase' => 'scheduling'],
             newValues:   ['phase' => 'preparation'],
-            description: "ปิดช่วงจัดตารางปีการศึกษา {$year->name} ภาค {$year->semester}",
+            description: "ปิดช่วงจัดตารางปีการศึกษา {$year->name}",
         );
 
         return redirect()
             ->route('admin.settings', ['tab' => 'academic'])
-            ->with('success', "ปิดช่วงจัดตารางสำหรับปีการศึกษา {$year->name} ภาค {$year->semester} แล้ว");
+            ->with('success', "ปิดช่วงจัดตารางสำหรับปีการศึกษา {$year->name} แล้ว");
     }
 
     private function settingsRoute(): string

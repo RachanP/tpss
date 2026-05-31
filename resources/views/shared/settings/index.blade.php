@@ -11,7 +11,6 @@
         currentYear: {
             id: '{{ old('year_id', '') }}',
             name: '{{ old('name', '') }}',
-            semester: '{{ old('semester', '1') }}',
             start_date: {{ Js::from(\App\Support\ThaiDate::formatForInput(old('start_date', ''))) }},
             end_date: {{ Js::from(\App\Support\ThaiDate::formatForInput(old('end_date', ''))) }},
             is_active: {{ old('is_active') ? 'true' : 'false' }}
@@ -26,7 +25,7 @@
         closeScheduleTimer: null,
         openAddModal() {
             this.editMode = false;
-            this.currentYear = { id: '', name: '', semester: '1', start_date: '', end_date: '', is_active: false };
+            this.currentYear = { id: '', name: '', start_date: '', end_date: '', is_active: false };
             this.showModal = true;
         },
         openEditModal(year) {
@@ -34,7 +33,6 @@
             this.currentYear = {
                 id: year.id,
                 name: year.name,
-                semester: year.semester,
                 start_date: this.thaiDateForInput(year.start_date),
                 end_date: this.thaiDateForInput(year.end_date),
                 is_active: !!year.is_active
@@ -201,7 +199,13 @@
                             @forelse($academicYears as $year)
                                 <tr>
                                     <td style="font-weight: 600; color: var(--fg-1);">{{ $year->name }}</td>
-                                    <td>ภาคเรียนที่ {{ $year->semester }}</td>
+                                    <td style="font-size: 12px; color: var(--fg-2);">
+                                        @forelse($year->terms as $t)
+                                            <span class="badge badge-gray" style="margin:1px 2px;display:inline-block;">{{ $t->name }}</span>
+                                        @empty
+                                            <span style="color: var(--fg-3);">—</span>
+                                        @endforelse
+                                    </td>
                                     <td style="color: var(--fg-2); font-size: 13px;">
                                         {{ \App\Support\ThaiDate::formatForInput($year->start_date) }} -
                                         {{ \App\Support\ThaiDate::formatForInput($year->end_date) }}
@@ -253,7 +257,7 @@
                                                                     disabled
                                                                     title="ต้องแก้ Critical ให้หมดก่อนเปิดช่วงจัดตาราง"
                                                                 @else
-                                                                    @click="startOpenScheduleCountdown('open-scheduling-{{ $year->id }}', 'ปีการศึกษา {{ $year->name }} ภาค {{ $year->semester }}')"
+                                                                    @click="startOpenScheduleCountdown('open-scheduling-{{ $year->id }}', 'ปีการศึกษา {{ $year->name }}')"
                                                                 @endif>
                                                                 เปิดช่วงจัดตาราง
                                                             </button>
@@ -265,7 +269,7 @@
                                                             <button type="button"
                                                                 class="btn btn-ghost"
                                                                 style="font-size: 13px; padding: 6px 14px; border: 1px solid var(--border);"
-                                                                @click="startCloseScheduleConfirm('close-scheduling-{{ $year->id }}', 'ปีการศึกษา {{ $year->name }} ภาค {{ $year->semester }}')">
+                                                                @click="startCloseScheduleConfirm('close-scheduling-{{ $year->id }}', 'ปีการศึกษา {{ $year->name }}')">
                                                                 ปิดช่วงจัดตาราง
                                                             </button>
                                                         </form>
@@ -380,14 +384,9 @@
                                         <span style="color: var(--red, #dc2626); font-size: 12px; margin-top: 4px; display: block;">{{ $message }}</span>
                                     @enderror
                                 </div>
-                                <div class="form-group">
-                                    <label>ภาคเรียน</label>
-                                    <select name="semester" x-model="currentYear.semester" required>
-                                        <option value="1">ภาคเรียนที่ 1</option>
-                                        <option value="2">ภาคเรียนที่ 2</option>
-                                        <option value="3">ภาคเรียนฤดูร้อน</option>
-                                    </select>
-                                </div>
+                            </div>
+                            <div style="margin: -4px 0 8px; padding: 8px 10px; background: var(--bg-2); border-radius: 6px; font-size: 12px; color: var(--fg-3); line-height: 1.5;">
+                                ระบบจะสร้าง <strong>เทอม 1 และเทอม 2</strong> ให้อัตโนมัติเมื่อบันทึกปี (แก้ช่วงวัน/วันสอบ และเพิ่มภาคฤดูร้อนได้ภายหลัง)
                             </div>
                             <div class="form-row">
                                 <div class="form-group">
