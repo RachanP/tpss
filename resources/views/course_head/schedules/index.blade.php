@@ -1600,6 +1600,37 @@
             font-weight: 800;
         }
         .schedule-live-block-icon { font-size: 14px; }
+        .schedule-live-warning {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            margin: 0 0 10px;
+            padding: 9px 12px;
+            border: 1px solid var(--status-warning-border);
+            border-radius: 8px;
+            background: var(--status-warning-bg);
+            color: var(--status-warning-fg);
+            font-size: 12.5px;
+            font-weight: 750;
+            line-height: 1.45;
+        }
+        .schedule-live-warning-list {
+            display: grid;
+            gap: 2px;
+        }
+        .sched-day-group-conflict-count {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 9px;
+            border: 1px solid var(--status-conflict-border);
+            border-radius: 999px;
+            background: var(--status-conflict-bg);
+            color: var(--status-conflict-fg);
+            font-size: 12px;
+            font-weight: 900;
+            line-height: 1.3;
+            white-space: nowrap;
+        }
         /* ── Date hint + multi-day toggle ──────────────────────── */
         .date-day-hint {
             margin-top: 5px;
@@ -4387,10 +4418,16 @@
             copyWeekLoading: false,
             copyWeekError: '',
             liveIssues: {},
+            liveWarnings: [],
             liveChecking: false,
             liveTimer: null,
             get liveBlocking() { return Object.keys(this.liveIssues).length > 0; },
             liveIssue(field) { return this.liveIssues[field] || []; },
+            liveWarningMessages() {
+                return (this.liveWarnings || [])
+                    .map((warning) => warning?.message || '')
+                    .filter((message, index, items) => message && items.indexOf(message) === index);
+            },
             init() {
                 this.$watch('view', val => sessionStorage.setItem('tpss-schedule-view', val));
                 this.$watch('selectedOfferingId', () => {
@@ -4430,6 +4467,7 @@
                 this.$watch('createMultiDay', (v) => { if (!v) this.createEndDate = this.createStartDate; });
                 this.$watch('editModal', (val) => {
                     this.liveIssues = {};
+                    this.liveWarnings = [];
                     if (this.liveTimer) { clearTimeout(this.liveTimer); this.liveTimer = null; }
                     if (val) {
                         this.$nextTick(() => {
@@ -4534,8 +4572,10 @@
                     if (!res.ok) throw new Error('check failed');
                     const data = await res.json();
                     this.liveIssues = data.fields || {};
+                    this.liveWarnings = data.warnings || [];
                 } catch (e) {
                     this.liveIssues = {};
+                    this.liveWarnings = [];
                 } finally {
                     this.liveChecking = false;
                 }
@@ -4876,12 +4916,18 @@
                 this.editModal = null;
                 this.editSeriesModal = 'schedule-' + id;
             },
-            closeCreate() { this.showCreate = false; },
+            closeCreate() {
+                this.showCreate = false;
+                this.liveIssues = {};
+                this.liveWarnings = [];
+            },
             closeEdit() {
                 @if(request()->boolean('from_conflict'))
                     window.location.href = @js(route('maker.schedule_conflicts.index'));
                 @else
                     this.editModal = null;
+                    this.liveIssues = {};
+                    this.liveWarnings = [];
                     this.$nextTick(() => {
                         // small delay to allow DOM/modal transitions to finish
                         setTimeout(() => {
@@ -5513,6 +5559,7 @@
                                             $dateKey = str_replace('-', '', $dateString);
                                             $dayWeekNumber = $weekNumberForDate($dateObj);
                                             $dayScheduleIds = $daySchedules->pluck('id')->map(fn ($id) => (string) $id)->values();
+                                            $dayConflictCount = $daySchedules->sum(fn ($schedule) => $scheduleConflicts->get($schedule->id, collect())->count());
                                         @endphp
                                         @if($daySchedules->isNotEmpty() && $dateObj)
                                             <tr
@@ -5539,6 +5586,9 @@
                                                         <span class="sched-day-group-date">{{ $formatDate($dateObj) }}</span>
                                                         @if($dayWeekNumber)
                                                             <span class="sched-day-group-week">สัปดาห์ที่ {{ $dayWeekNumber }}</span>
+                                                        @endif
+                                                        @if($dayConflictCount > 0)
+                                                            <span class="sched-day-group-conflict-count">ชน {{ $dayConflictCount }} รายการ</span>
                                                         @endif
                                                         <span class="sched-day-group-count">· {{ $daySchedules->count() }} รายการสอน</span>
                                                         @if($canEdit)
@@ -7060,6 +7110,14 @@
                                 <span class="schedule-live-block-icon" aria-hidden="true">⛔</span>
                                 <span>พบการชน/ข้อมูลไม่ถูกต้อง — แก้ไขจุดที่ไฮไลต์สีแดงก่อนจึงจะบันทึกได้</span>
                             </div>
+                            <div class="schedule-live-warning" x-show="!liveBlocking && liveWarningMessages().length > 0" x-cloak data-testid="schedule-live-warning">
+                                <span aria-hidden="true">!</span>
+                                <span class="schedule-live-warning-list">
+                                    <template x-for="message in liveWarningMessages()" :key="message">
+                                        <span x-text="message"></span>
+                                    </template>
+                                </span>
+                            </div>
                             <div class="modal-actions">
                                 <button type="button" class="btn btn-secondary" @click="closeEdit()">ยกเลิก</button>
                                 <button type="submit" class="btn btn-primary" data-testid="schedule-submit" x-bind:disabled="liveBlocking" x-bind:title="liveBlocking ? 'แก้ไขการชนก่อนบันทึก' : ''">บันทึกการแก้ไข</button>
@@ -7442,6 +7500,14 @@
                         <div class="schedule-live-block" x-show="liveBlocking" x-cloak data-testid="schedule-live-block">
                             <span class="schedule-live-block-icon" aria-hidden="true">⛔</span>
                             <span>พบการชน/ข้อมูลไม่ถูกต้อง — แก้ไขจุดที่ไฮไลต์สีแดงก่อนจึงจะบันทึกได้</span>
+                        </div>
+                        <div class="schedule-live-warning" x-show="!liveBlocking && liveWarningMessages().length > 0" x-cloak data-testid="schedule-live-warning">
+                            <span aria-hidden="true">!</span>
+                            <span class="schedule-live-warning-list">
+                                <template x-for="message in liveWarningMessages()" :key="message">
+                                    <span x-text="message"></span>
+                                </template>
+                            </span>
                         </div>
                         <div class="modal-actions">
                             <button type="button" class="btn btn-secondary" @click="closeCreate()">ยกเลิก</button>

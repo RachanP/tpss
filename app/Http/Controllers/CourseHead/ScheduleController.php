@@ -5,6 +5,7 @@ namespace App\Http\Controllers\CourseHead;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\CourseOffering;
+use App\Models\Room;
 use App\Models\Schedule;
 use App\Models\ScheduleTemplate;
 use App\Services\AuditLogger;
@@ -57,8 +58,268 @@ class ScheduleController extends Controller
         ));
     }
 
+    /**
+     * POST /maker/course-offerings/{offering}/schedules/check
+     * Real-time conflict + warning check สำหรับ modal สร้างใหม่
+     * ไม่ ignore schedule ใด — เช็คทุก schedule ที่ชน
+     *
+     * Response:
+     *   conflicts[] → block บันทึก (instructor/room/group overlap)
+     *   warnings[]  → แสดง pill เหลือง ไม่ block (dept mismatch, capacity exceeded)
+     *   missing[]   → ข้อมูลไม่ครบ (ใช้สำหรับ badge)
+     */
+    public function checkRealtime(
+        Request $request,
+        CourseOffering $courseOffering,
+        ScheduleConflictChecker $conflictChecker
+    ): JsonResponse {
+        $this->authorizeCourseHeadOffering($courseOffering);
+
+        return $this->runRealtimeCheck($request, $courseOffering, $conflictChecker, null);
+    }
+
+    /**
+     * POST /maker/course-offerings/{offering}/schedules/{schedule}/check
+     * Real-time conflict check สำหรับ modal แก้ไข
+     * Ignore schedule ตัวเองเพื่อไม่ให้ชนกับตัวเอง
+     */
+    public function checkRealtimeEdit(
+        Request $request,
+        CourseOffering $courseOffering,
+        Schedule $schedule,
+        ScheduleConflictChecker $conflictChecker
+    ): JsonResponse {
+        $this->authorizeCourseHeadOffering($courseOffering);
+        $this->assertScheduleBelongsToOffering($courseOffering, $schedule);
+
+        return $this->runRealtimeCheck($request, $courseOffering, $conflictChecker, $schedule->id);
+    }
+
+    /**
+     * Logic หลักของ real-time check — ใช้ร่วมกันระหว่าง checkRealtime + checkRealtimeEdit
+     */
+    private function runRealtimeCheck(
+        Request $request,
+        CourseOffering $courseOffering,
+        ScheduleConflictChecker $conflictChecker,
+        ?int $ignoreScheduleId
+    ): JsonResponse {
+        // Validate loosely — field อาจยังไม่ครบ (partial form)
+        $data = $request->validate([
+            'start_date'          => ['nullable', 'date'],
+            'end_date'            => ['nullable', 'date'],
+            'start_time'          => ['nullable', 'date_format:H:i'],
+            'end_time'            => ['nullable', 'date_format:H:i'],
+            'activity_type_id'    => ['nullable', 'integer', 'exists:activity_types,id'],
+            'room_id'             => ['nullable', 'integer', 'exists:rooms,id'],
+            'instructor_ids'      => ['nullable', 'array'],
+            'instructor_ids.*'    => ['integer'],
+            'lead_instructor_id'   => ['nullable', 'integer'],
+            'student_group_ids'   => ['nullable', 'array'],
+            'student_group_ids.*' => ['integer'],
+            'capacity_required'   => ['nullable', 'integer', 'min:1'],
+            'sub_group_label'     => ['nullable', 'string', 'max:20'],
+        ]);
+
+        $data['course_offering_id'] = $courseOffering->id;
+        $instructorIds    = array_map('intval', $data['instructor_ids'] ?? []);
+        $studentGroupIds  = array_map('intval', $data['student_group_ids'] ?? []);
+
+        $conflicts = [];
+        $warnings  = [];
+        $missing   = [];
+
+        // ── Conflict check (เฉพาะถ้ามีข้อมูลวันเวลาครบ) ──────────────────
+        if (
+            ! empty($data['start_date']) && ! empty($data['end_date']) &&
+            ! empty($data['start_time']) && ! empty($data['end_time'])
+        ) {
+            $conflicts = $conflictChecker->check(
+                Arr::only($data, [
+                    'course_offering_id', 'activity_type_id',
+                    'start_date', 'end_date', 'start_time', 'end_time',
+                    'room_id', 'sub_group_label',
+                ]),
+                $instructorIds,
+                $studentGroupIds,
+                $ignoreScheduleId
+            );
+        }
+
+        // ── Missing required fields ────────────────────────────────────────
+        $requiredFields = [
+            'activity_type_id' => 'ประเภทกิจกรรม',
+            'start_date'       => 'วันที่',
+            'start_time'       => 'เวลาเริ่ม',
+            'end_time'         => 'เวลาสิ้นสุด',
+        ];
+
+        foreach ($requiredFields as $field => $label) {
+            if (empty($data[$field])) {
+                $missing[] = ['field' => $field, 'label' => $label];
+            }
+        }
+
+        $warnings = collect($warnings)
+            ->merge($this->scheduleWarningItems($courseOffering, $data))
+            ->unique(fn (array $warning) => ($warning['type'] ?? '') . ':' . ($warning['field'] ?? ''))
+            ->values()
+            ->all();
+
+        $fieldByType = [
+            'instructor_overlap' => 'instructor_ids',
+            'room_overlap' => 'room_id',
+            'group_overlap' => 'student_group_ids',
+        ];
+        $fields = [];
+        foreach ($conflicts as $conflict) {
+            $field = $fieldByType[$conflict['type'] ?? ''] ?? 'schedule';
+            $fields[$field][] = $conflict['message'] ?? 'พบการชนตารางสอน';
+        }
+        foreach ($fields as $field => $messages) {
+            $fields[$field] = array_values(array_unique($messages));
+        }
+
+        return response()->json([
+            'blocking' => ! empty($fields),
+            'fields' => (object) $fields,
+            'conflicts' => $conflicts,
+            'warnings'  => $warnings,
+            'missing'   => $missing,
+        ]);
+    }
+
+    /**
+     * GET /maker/alerts
+     * หน้าแจ้งเตือนทั่วไป (warnings only — conflict ถูก block ใน modal แล้ว)
+     * แสดง: ข้อมูลไม่ครบ, ความจุห้องเกิน, ไม่กำหนดบทบาท, ผู้สอนต่างภาค
+     */
+    public function alerts(Request $request): View
+    {
+        $userId = (int) Auth::id();
+        $availableYears = $this->coordinatorAcademicYears($userId);
+        $defaultAcademicYear = $this->defaultConflictAcademicYear($availableYears);
+        $selectedAcademicYear = $this->selectedConflictAcademicYear($request, $availableYears, $defaultAcademicYear);
+        $selectedAcademicYearId = $selectedAcademicYear?->id ? (int) $selectedAcademicYear->id : null;
+
+        $schedules = collect();
+        $warnings  = collect();
+
+        if ($selectedAcademicYearId) {
+            $schedules = $this->orderSchedulesByDate(
+                Schedule::query()
+                    ->with([
+                        'courseOffering.course.department',
+                        'courseOffering.academicYear',
+                        'courseOffering.instructorPool.instructorProfile.department',
+                        'activityType',
+                        'room',
+                        'instructors.instructorProfile.department',
+                        'studentGroups',
+                    ])
+                    ->whereHas('courseOffering', function ($q) use ($userId, $selectedAcademicYearId) {
+                        $q->where('coordinator_id', $userId)
+                          ->where('academic_year_id', $selectedAcademicYearId)
+                          ->withActiveCourse();
+                    })
+            )->get();
+
+            $warnings = $schedules->flatMap(function (Schedule $schedule) {
+                $items = [];
+                $label = $this->scheduleAlertLabel($schedule);
+
+                // 1. ข้อมูลไม่ครบ — ขาด topic / room / instructor / group
+                $missingParts = [];
+                if (! $schedule->topic)                           $missingParts[] = 'หัวข้อ';
+                if (! $schedule->room_id)                         $missingParts[] = 'ห้อง/สถานที่';
+                if ($schedule->instructors->isEmpty())            $missingParts[] = 'ผู้สอน';
+                if ($schedule->studentGroups->isEmpty())          $missingParts[] = 'กลุ่มนักศึกษา';
+                if (! empty($missingParts)) {
+                    $items[] = [
+                        'type'        => 'incomplete',
+                        'schedule'    => $schedule,
+                        'label'       => $label,
+                        'message'     => 'ข้อมูลไม่ครบ: ' . implode(', ', $missingParts),
+                        'missing'     => $missingParts,
+                    ];
+                }
+
+                // 2. ความจุห้องเกิน (เทียบจำนวนผู้เรียนทั้งหมดกับความจุจริงของห้อง)
+                if ($schedule->room && $schedule->room->capacity && $schedule->studentGroups->isNotEmpty()) {
+                    $studentCount = (int) $schedule->studentGroups->sum('student_count');
+                    if ($studentCount > (int) $schedule->room->capacity) {
+                        $items[] = [
+                            'type'     => 'capacity_exceeded',
+                            'schedule' => $schedule,
+                            'label'    => $label,
+                            'message'  => "จำนวนผู้เรียน ({$studentCount}) เกินความจุห้อง ({$schedule->room->capacity})",
+                        ];
+                    }
+                }
+
+                // 3. ไม่กำหนดบทบาทผู้สอน (course_role_id IS NULL ใน instructorPool ของ courseOffering)
+                $instructorPoolMap = $schedule->courseOffering?->instructorPool->keyBy('id') ?? collect();
+                $noRoleInstructors = $schedule->instructors->filter(function ($i) use ($instructorPoolMap) {
+                    $poolUser = $instructorPoolMap->get($i->id);
+                    return is_null($poolUser?->pivot?->course_role_id ?? null);
+                });
+                if ($noRoleInstructors->isNotEmpty()) {
+                    $names = $noRoleInstructors->map(fn ($i) => $i->formatted_name ?? $i->name)->implode(', ');
+                    $items[] = [
+                        'type'     => 'no_role',
+                        'schedule' => $schedule,
+                        'label'    => $label,
+                        'message'  => "ไม่กำหนดบทบาทผู้สอน: {$names}",
+                    ];
+                }
+
+                // 4. ผู้สอนจากภาควิชาอื่น
+                $deptId = $schedule->courseOffering?->course?->department_id;
+                if ($deptId) {
+                    $outsideInstructors = $schedule->instructors->filter(
+                        fn ($i) => (int) ($i->instructorProfile?->department_id) !== (int) $deptId
+                    );
+                    if ($outsideInstructors->isNotEmpty()) {
+                        $names = $outsideInstructors->map(fn ($i) => $i->formatted_name ?? $i->name)->implode(', ');
+                        $dept  = $outsideInstructors->first()?->instructorProfile?->department?->name ?? 'ภาควิชาอื่น';
+                        $items[] = [
+                            'type'     => 'dept_mismatch',
+                            'schedule' => $schedule,
+                            'label'    => $label,
+                            'message'  => "ผู้สอนจากภาควิชาอื่น ({$dept}): {$names}",
+                        ];
+                    }
+                }
+
+                return $items;
+            });
+        }
+
+        return view('course_head.alerts.index', [
+            'availableYears'     => $availableYears,
+            'selectedAcademicYear' => $selectedAcademicYear,
+            'selectedAcademicYearId' => $selectedAcademicYearId,
+            'warnings'           => $warnings,
+            'totalWarningCount'  => $warnings->count(),
+            'warningTypeCounts'  => $warnings->groupBy('type')->map->count(),
+            'emptyStateKey'      => $this->conflictEmptyStateKey($availableYears),
+        ]);
+    }
+
+    /** Label สั้นสำหรับแสดงใน alerts page */
+    private function scheduleAlertLabel(Schedule $schedule): string
+    {
+        $course = $schedule->courseOffering?->course;
+        $code   = $course?->course_code ?? 'รายวิชา';
+        $date   = optional($schedule->start_date ?? $schedule->teaching_date)->format('d/m/Y') ?? '-';
+        $time   = substr((string) $schedule->start_time, 0, 5) . '–' . substr((string) $schedule->end_time, 0, 5);
+
+        return "{$code} ({$date} {$time})";
+    }
+
     public function conflicts(Request $request): View
     {
+
         $userId = (int) Auth::id();
         $availableYears = $this->coordinatorAcademicYears($userId);
         $defaultAcademicYear = $this->defaultConflictAcademicYear($availableYears);
@@ -898,10 +1159,10 @@ class ScheduleController extends Controller
         $validated = $this->validateSchedule($request, $courseOffering);
         $validated['course_offering_id'] = $courseOffering->id;
         $this->assertScheduleWithinAcademicYear($courseOffering, $validated);
-        $this->assertSelectedGroupsFitCapacity($courseOffering, $validated);
-        $this->assertInstructorsBelongToCourseDepartment($courseOffering, $validated['instructor_ids']);
         $this->assertLeadInstructorSelected($validated);
         $conflicts = $this->detectConflicts($conflictChecker, $validated);
+        $this->assertNoScheduleConflicts($conflicts);
+        $warnings = $this->scheduleWarnings($courseOffering, $validated);
 
         $schedule = null;
 
@@ -922,7 +1183,7 @@ class ScheduleController extends Controller
             ]);
 
             $this->syncInstructors($schedule, $validated);
-            $schedule->studentGroups()->sync($validated['student_group_ids']);
+            $schedule->studentGroups()->sync($validated['student_group_ids'] ?? []);
         });
 
         \App\Services\NavigationBadgeService::flushCourseHead((int) $courseOffering->coordinator_id);
@@ -948,7 +1209,7 @@ class ScheduleController extends Controller
         return redirect()
             ->to($this->scheduleReturnUrl($request, $courseOffering, $validated['start_date'], $redirectToWorkspace))
             ->with('success', 'เพิ่มรายการสอนเรียบร้อยแล้ว')
-            ->with('schedule_conflict_warning', collect($conflicts)->pluck('message')->unique()->values()->all());
+            ->with('schedule_conflict_warning', $warnings);
     }
 
     public function storeSeries(
@@ -961,8 +1222,9 @@ class ScheduleController extends Controller
 
         $validated = $this->validateScheduleSeries($request, $courseOffering);
         $this->assertSelectedGroupsFitCapacity($courseOffering, $validated);
-        $this->assertInstructorsBelongToCourseDepartment($courseOffering, $validated['instructor_ids']);
         $this->assertLeadInstructorSelected($validated);
+        // Department mismatch → warning เท่านั้น ไม่ block save
+        $deptWarnings = $this->checkInstructorDepartmentWarnings($courseOffering, $validated['instructor_ids'] ?? []);
 
         $template = null;
         $instances = collect();
@@ -1376,6 +1638,7 @@ class ScheduleController extends Controller
             'lead_instructor_id' => $request->input('lead_instructor_id') ?: null,
         ];
         $ignoreScheduleId = $request->integer('schedule_id') ?: null;
+        $conflicts = [];
 
         $fields = [];
         $collect = function (string $field, callable $assert) use (&$fields) {
@@ -1394,11 +1657,6 @@ class ScheduleController extends Controller
         if ($data['start_date'] && $data['end_date']) {
             $collect('start_date', fn () => $this->assertScheduleWithinAcademicYear($courseOffering, $data));
         }
-        if (! empty($data['instructor_ids'])) {
-            $collect('instructor_ids', fn () => $this->assertInstructorsBelongToCourseDepartment($courseOffering, $data['instructor_ids']));
-            $collect('lead_instructor_id', fn () => $this->assertLeadInstructorSelected($data));
-        }
-        $collect('student_group_ids', fn () => $this->assertSelectedGroupsFitCapacity($courseOffering, $data));
 
         // Overlap (instructor/room/group ข้ามวิชา) — ต้องมีวัน/เวลา/กิจกรรมครบก่อน
         if ($data['start_date'] && $data['end_date'] && $data['start_time'] && $data['end_time'] && $data['activity_type_id']) {
@@ -1425,9 +1683,22 @@ class ScheduleController extends Controller
             $fields[$key] = array_values(array_unique($messages));
         }
 
+        $warnings = $this->scheduleWarningItems($courseOffering, $data);
+        $missing = collect($warnings)
+            ->filter(fn (array $warning) => str_starts_with((string) ($warning['type'] ?? ''), 'missing_'))
+            ->map(fn (array $warning) => [
+                'field' => $warning['field'] ?? 'schedule',
+                'label' => $warning['message'] ?? 'ข้อมูลไม่ครบ',
+            ])
+            ->values()
+            ->all();
+
         return response()->json([
             'blocking' => ! empty($fields),
             'fields' => (object) $fields,
+            'conflicts' => $conflicts,
+            'warnings' => $warnings,
+            'missing' => $missing,
         ]);
     }
 
@@ -1463,11 +1734,10 @@ class ScheduleController extends Controller
         }
 
         $this->assertScheduleWithinAcademicYear($courseOffering, $validated);
-        $this->assertSelectedGroupsFitCapacity($courseOffering, $validated);
-        $this->assertInstructorsBelongToCourseDepartment($courseOffering, $validated['instructor_ids']);
         $this->assertLeadInstructorSelected($validated);
-
         $conflicts = $this->detectConflicts($conflictChecker, $validated, $schedule->id);
+        $this->assertNoScheduleConflicts($conflicts);
+        $warnings = $this->scheduleWarnings($courseOffering, $validated);
 
         // Snapshot before for diffing
         $schedule->loadMissing([
@@ -1494,7 +1764,7 @@ class ScheduleController extends Controller
             ]);
 
             $this->syncInstructors($schedule, $validated);
-            $schedule->studentGroups()->sync($validated['student_group_ids']);
+            $schedule->studentGroups()->sync($validated['student_group_ids'] ?? []);
         });
 
         \App\Services\NavigationBadgeService::flushCourseHead((int) $courseOffering->coordinator_id);
@@ -1526,7 +1796,7 @@ class ScheduleController extends Controller
         return redirect()
             ->to($this->scheduleReturnUrl($request, $courseOffering, $validated['start_date']))
             ->with('success', 'อัปเดตรายการสอนเรียบร้อยแล้ว')
-            ->with('schedule_conflict_warning', collect($conflicts)->pluck('message')->unique()->values()->all());
+            ->with('schedule_conflict_warning', $warnings);
     }
 
     public function destroy(Request $request, CourseOffering $courseOffering, Schedule $schedule): RedirectResponse
@@ -1819,14 +2089,14 @@ class ScheduleController extends Controller
             'capacity_required' => ['nullable', 'integer', 'min:1'],
             'sub_group_label' => ['nullable', 'string', 'max:20'],
             'lead_instructor_id' => ['nullable', 'integer'],
-            'instructor_ids' => $allowEmptyResources ? ['nullable', 'array'] : ['required', 'array', 'min:1'],
+            'instructor_ids' => ['nullable', 'array'],
             'instructor_ids.*' => [
                 'integer',
                 'distinct',
                 Rule::exists('course_offering_instructors', 'user_id')
                     ->where(fn ($query) => $query->where('course_offering_id', $courseOffering->id)),
             ],
-            'student_group_ids' => $allowEmptyResources ? ['nullable', 'array'] : ['required', 'array', 'min:1'],
+            'student_group_ids' => ['nullable', 'array'],
             'student_group_ids.*' => [
                 'integer',
                 'distinct',
@@ -2038,32 +2308,134 @@ class ScheduleController extends Controller
             return;
         }
 
-        if (! in_array((int) $leadId, array_map('intval', $validated['instructor_ids']), true)) {
+        if (! in_array((int) $leadId, array_map('intval', $validated['instructor_ids'] ?? []), true)) {
             throw ValidationException::withMessages([
                 'lead_instructor_id' => 'ผู้สอนหลักต้องอยู่ในรายชื่อผู้สอนที่เลือก',
             ]);
         }
     }
 
-    private function assertInstructorsBelongToCourseDepartment(CourseOffering $courseOffering, array $instructorIds): void
+    private function assertNoScheduleConflicts(array $conflicts): void
+    {
+        if (empty($conflicts)) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'schedule' => collect($conflicts)->pluck('message')->unique()->values()->all(),
+        ]);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function scheduleWarnings(CourseOffering $courseOffering, array $validated): array
+    {
+        return collect($this->scheduleWarningItems($courseOffering, $validated))
+            ->pluck('message')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, array{type:string,field:string,message:string}>
+     */
+    private function scheduleWarningItems(CourseOffering $courseOffering, array $validated): array
+    {
+        $warnings = [];
+
+        if (empty($validated['room_id'])) {
+            $warnings[] = [
+                'type' => 'missing_room',
+                'field' => 'room_id',
+                'message' => 'ยังไม่ระบุห้อง/สถานที่',
+            ];
+        }
+
+        if (empty($validated['instructor_ids'])) {
+            $warnings[] = [
+                'type' => 'missing_instructors',
+                'field' => 'instructor_ids',
+                'message' => 'ยังไม่ระบุอาจารย์ผู้สอน',
+            ];
+        } elseif (empty($validated['lead_instructor_id'])) {
+            $warnings[] = [
+                'type' => 'missing_lead_instructor',
+                'field' => 'lead_instructor_id',
+                'message' => 'ยังไม่ระบุผู้สอนหลัก',
+            ];
+        }
+
+        if (empty($validated['student_group_ids'])) {
+            $warnings[] = [
+                'type' => 'missing_student_groups',
+                'field' => 'student_group_ids',
+                'message' => 'ยังไม่ระบุกลุ่มนักศึกษา',
+            ];
+        }
+
+        $capacity = $validated['capacity_required'] ?? null;
+        $studentGroupIds = $validated['student_group_ids'] ?? [];
+        $isSharedLocation = false;
+        if (! empty($validated['room_id'])) {
+            $isSharedLocation = (bool) (Room::query()
+                ->with('locationType')
+                ->find($validated['room_id'])
+                ?->locationType
+                ?->is_shared ?? false);
+        }
+
+        if (! $isSharedLocation && $capacity && ! empty($studentGroupIds)) {
+            $selectedStudentCount = (int) $courseOffering->studentGroups()
+                ->whereIn('id', array_map('intval', $studentGroupIds))
+                ->sum('student_count');
+
+            if ($selectedStudentCount > (int) $capacity) {
+                $warnings[] = [
+                    'type' => 'capacity_exceeded',
+                    'field' => 'capacity_required',
+                    'message' => "จำนวนผู้เรียนที่เลือก ({$selectedStudentCount} คน) เกินจำนวนที่รองรับ ({$capacity} คน)",
+                ];
+            }
+        }
+
+        return array_values(array_merge(
+            $warnings,
+            $this->checkInstructorDepartmentWarnings($courseOffering, $validated['instructor_ids'] ?? [])
+        ));
+    }
+
+    /**
+     * ตรวจผู้สอนที่มาจากภาควิชาอื่น → คืน warnings (ไม่ throw)
+     * ใช้แทน assertInstructorsBelongToCourseDepartment ที่เคย block save
+     *
+     * @param  array<int>  $instructorIds
+     * @return array<int, array{type:string,field:string,message:string}>
+     */
+    private function checkInstructorDepartmentWarnings(CourseOffering $courseOffering, array $instructorIds): array
     {
         $courseOffering->loadMissing('course');
         $departmentId = $courseOffering->course?->department_id;
 
-        if (! $departmentId) {
-            return;
+        if (! $departmentId || empty($instructorIds)) {
+            return [];
         }
 
-        $allowedCount = $courseOffering->instructorPool()
+        $outsideCount = $courseOffering->instructorPool()
             ->whereIn('users.id', array_map('intval', $instructorIds))
-            ->whereHas('instructorProfile', fn ($query) => $query->where('department_id', $departmentId))
+            ->whereHas('instructorProfile', fn ($query) => $query->where('department_id', '!=', $departmentId))
             ->count();
 
-        if ($allowedCount !== count(array_unique(array_map('intval', $instructorIds)))) {
-            throw ValidationException::withMessages([
-                'instructor_ids' => 'เลือกได้เฉพาะผู้สอนในภาควิชาของรายวิชานี้',
-            ]);
+        if ($outsideCount === 0) {
+            return [];
         }
+
+        return [[
+            'type'    => 'department_mismatch',
+            'field'   => 'instructor_ids',
+            'message' => 'มีผู้สอน ' . $outsideCount . ' คน มาจากภาควิชาอื่น (อนุญาตให้บันทึก แต่ควรตรวจสอบ)',
+        ]];
     }
 
     private function detectConflicts(

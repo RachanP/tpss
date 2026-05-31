@@ -40,6 +40,7 @@ Route::middleware(['auth', 'no-back'])->group(function () {
     Route::middleware(['\App\Http\Middleware\CheckRole:course_head'])->group(function () {
         Route::get('/maker/schedules', [ScheduleController::class, 'workspace'])->name('maker.schedules.index');
         Route::get('/maker/schedule-conflicts', [ScheduleController::class, 'conflicts'])->name('maker.schedule_conflicts.index');
+        Route::get('/maker/alerts', [ScheduleController::class, 'alerts'])->name('maker.alerts.index');
         Route::get('/maker/conflict-badge-status', ConflictBadgeStatusController::class)
             ->name('maker.conflict_badge_status')
             ->middleware('throttle:30,1');
@@ -57,6 +58,9 @@ Route::middleware(['auth', 'no-back'])->group(function () {
             Route::post('/{courseOffering}/schedules', [ScheduleController::class, 'store'])->name('schedules.store');
             Route::post('/{courseOffering}/schedules/series', [ScheduleController::class, 'storeSeries'])->name('schedules.series.store');
             Route::post('/{courseOffering}/schedules/check-conflicts', [ScheduleController::class, 'checkConflicts'])->name('schedules.check_conflicts');
+            Route::post('/{courseOffering}/schedules/check', [ScheduleController::class, 'checkRealtime'])
+                ->name('schedules.check')
+                ->middleware('throttle:60,1');
             Route::post('/{courseOffering}/schedules/copy-week/preview', [ScheduleController::class, 'previewCopyWeek'])->name('schedules.copy_week.preview');
             Route::post('/{courseOffering}/schedules/copy-week', [ScheduleController::class, 'copyWeek'])->name('schedules.copy_week');
             Route::put('/{courseOffering}/schedules/templates/{scheduleTemplate}', [ScheduleController::class, 'updateSeriesTemplate'])->name('schedules.templates.update');
@@ -64,6 +68,10 @@ Route::middleware(['auth', 'no-back'])->group(function () {
             Route::get('/{courseOffering}/schedules/{schedule}/edit', [ScheduleController::class, 'edit'])->name('schedules.edit');
             Route::put('/{courseOffering}/schedules/{schedule}', [ScheduleController::class, 'update'])->name('schedules.update');
             Route::delete('/{courseOffering}/schedules/{schedule}', [ScheduleController::class, 'destroy'])->name('schedules.destroy');
+            // Real-time conflict check สำหรับ modal แก้ไข (ignore schedule ตัวเอง)
+            Route::post('/{courseOffering}/schedules/{schedule}/check', [ScheduleController::class, 'checkRealtimeEdit'])
+                ->name('schedules.check_edit')
+                ->middleware('throttle:60,1');
             Route::get('/{courseOffering}', [CourseOfferingController::class, 'show'])->name('show');
             Route::put('/{courseOffering}', [CourseOfferingController::class, 'update'])->name('update');
             Route::post('/{courseOffering}/instructors', [CourseOfferingController::class, 'storeInstructor'])->name('instructors.store');
