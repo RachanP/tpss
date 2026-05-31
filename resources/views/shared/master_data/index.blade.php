@@ -2879,6 +2879,7 @@
                                 <th>สี</th>
                                 <th>ชื่อประเภทกิจกรรม</th>
                                 <th>หมวดหมู่</th>
+                                <th>ภาระงาน</th>
                                 @if($isAdmin)<th style="text-align: center;">จัดการ</th>@endif
                             </tr>
                         </thead>
@@ -2897,6 +2898,8 @@
                                     <td style="font-weight: 600; color: var(--fg-1);">{{ $at->name }}</td>
                                     <td>
                                         <span class="pill pill-neutral">{{ $catLabel[$at->category] ?? $at->category }}</span>
+                                    </td>
+                                    <td>
                                         @if($at->counts_toward_workload)
                                             <span class="pill" style="background:#e6fffa;color:#047481;border:1px solid #b2f5ea;">นับภาระงาน</span>
                                         @else
@@ -2914,7 +2917,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" style="text-align: center; color: var(--fg-3); padding: 40px;">ยังไม่มีประเภทกิจกรรม</td>
+                                    <td colspan="{{ $isAdmin ? 5 : 4 }}" style="text-align: center; color: var(--fg-3); padding: 40px;">ยังไม่มีประเภทกิจกรรม</td>
                                 </tr>
                             @endforelse
                             <tr
