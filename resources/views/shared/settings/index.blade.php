@@ -369,12 +369,11 @@
                         </thead>
                         <tbody>
                             @forelse($holidays as $h)
-                                @php($isManual = $h->source === 'manual')
-                                <tr @if($isManual) style="background: var(--accent-bg, #eef4ff); box-shadow: inset 3px 0 0 var(--accent-fg, #2563EB);" @endif>
+                                <tr @if($h->source === 'manual') style="background: var(--accent-bg, #eef4ff); box-shadow: inset 3px 0 0 var(--accent-fg, #2563EB);" @endif>
                                     <td style="font-family: var(--font-mono);">{{ \App\Support\ThaiDate::formatForInput($h->date) }}</td>
                                     <td style="color: var(--fg-1);">{{ $h->name }}@if($h->remark)<span style="color: var(--fg-3); font-size: 12px;"> · {{ $h->remark }}</span>@endif</td>
                                     <td>
-                                        @if($isManual)
+                                        @if($h->source === 'manual')
                                             <span class="badge" style="background: var(--accent-fg, #2563EB); color: #fff;">เพิ่มเอง</span>
                                         @else
                                             <span class="badge badge-gray">อัตโนมัติ</span>
