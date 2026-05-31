@@ -50,6 +50,26 @@ class HolidayManagementTest extends TestCase
         $this->assertDatabaseHas('holidays', ['date' => '2026-01-01', 'source' => 'google']);
     }
 
+    public function test_resync_replaces_stale_auto_but_keeps_manual_and_other_years(): void
+    {
+        // ของเดิม: auto ปี 2026 ที่จะหายจาก ICS ใหม่, manual ปี 2026 (ห้ามลบ), auto ปี 2025 (ปีอื่น ห้ามลบ)
+        Holiday::create(['date' => '2026-05-05', 'name' => 'auto เก่าที่ถูกยกเลิก', 'source' => 'google']);
+        Holiday::create(['date' => '2026-04-13', 'name' => 'งดเรียนเฉพาะคณะ', 'source' => 'manual']);
+        Holiday::create(['date' => '2025-12-31', 'name' => 'auto ปีก่อน', 'source' => 'google']);
+
+        $this->fakeGoogleHolidays();
+        app(HolidayService::class)->syncYear(2026);
+
+        // auto เก่าของ 2026 ที่ไม่อยู่ใน ICS ใหม่ → ถูกลบ
+        $this->assertDatabaseMissing('holidays', ['date' => '2026-05-05']);
+        // manual ของ 2026 → คงอยู่ (ไม่ถูกทับ)
+        $this->assertDatabaseHas('holidays', ['date' => '2026-04-13', 'name' => 'งดเรียนเฉพาะคณะ', 'source' => 'manual']);
+        // ปีอื่น (2025) → คงอยู่
+        $this->assertDatabaseHas('holidays', ['date' => '2025-12-31']);
+        // วันใหม่จาก ICS → เพิ่มเข้ามา
+        $this->assertDatabaseHas('holidays', ['date' => '2026-01-01', 'source' => 'google']);
+    }
+
     public function test_service_fail_safe_returns_null_on_api_error(): void
     {
         Http::fake(['*' => Http::response('err', 500)]);

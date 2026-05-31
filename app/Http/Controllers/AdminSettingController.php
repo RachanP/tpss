@@ -146,10 +146,10 @@ class AdminSettingController extends Controller
             ->syncForAcademicYearSpan((string) $year->start_date, (string) $year->end_date);
 
         if ($count === null) {
-            return ['ok' => false, 'message' => 'ดึงวันหยุดอัตโนมัติไม่สำเร็จ (เพิ่มเองหรือกดดึงซ้ำได้ในตารางวันหยุด)'];
+            return ['ok' => false, 'message' => "ดึงวันหยุดของปีการศึกษา {$year->name} อัตโนมัติไม่สำเร็จ (เพิ่มเอง/กดดึงซ้ำได้ในตารางวันหยุด)"];
         }
 
-        return ['ok' => true, 'message' => "ดึงวันหยุดราชการเข้าระบบแล้ว {$count} วัน"];
+        return ['ok' => true, 'message' => "ดึงวันหยุดราชการของปีการศึกษา {$year->name} แล้ว {$count} วัน"];
     }
 
     /**
@@ -369,13 +369,15 @@ class AdminSettingController extends Controller
 
         $year->update($validated);
         $this->syncTerms($year, $request);
+        $holidayNote = $this->autoFetchHolidays($year->fresh());
 
         $after = $this->auditSnapshot($year->fresh());
         [$oldValues, $newValues] = $this->auditDiff($before, $after);
         $this->logAcademicYearUpdate($year->fresh(), $oldValues, $newValues);
 
         AlertController::flushCache();
-        return redirect()->route($this->settingsRoute(), ['tab' => 'academic'])->with('success', 'อัปเดตปีการศึกษาเรียบร้อยแล้ว');
+        $redirect = redirect()->route($this->settingsRoute(), ['tab' => 'academic'])->with('success', 'อัปเดตปีการศึกษาเรียบร้อยแล้ว — ' . $holidayNote['message']);
+        return $holidayNote['ok'] ? $redirect : $redirect->with('holiday_warning', $holidayNote['message']);
     }
 
     public function openSchedulingWindow(AcademicYear $year)
@@ -596,7 +598,12 @@ class AdminSettingController extends Controller
      */
     public function syncHolidays(Request $request)
     {
-        $year = AcademicYear::where('is_active', true)->first();
+        // ดึงตามปีที่ระบุ (year) ถ้าส่งมา · ไม่งั้นใช้ปีปัจจุบัน · ไม่งั้นปีปฏิทินนี้
+        $year = $request->filled('year')
+            ? AcademicYear::find($request->integer('year'))
+            : AcademicYear::where('is_active', true)->first();
+
+        $label = $year ? "ปีการศึกษา {$year->name}" : 'ปีปฏิทิน ' . date('Y');
         $count = $year
             ? app(HolidayService::class)->syncForAcademicYearSpan((string) $year->start_date, (string) $year->end_date)
             : app(HolidayService::class)->syncYear((int) date('Y'));
@@ -605,8 +612,8 @@ class AdminSettingController extends Controller
         $route = redirect()->route($this->settingsRoute(), ['tab' => 'academic']);
 
         return $count === null
-            ? $route->with('error', 'ดึงวันหยุดอัตโนมัติไม่สำเร็จ — ตรวจอินเทอร์เน็ตแล้วลองใหม่ หรือเพิ่มเอง')
-            : $route->with('success', "ดึงวันหยุดราชการเข้าระบบแล้ว {$count} วัน");
+            ? $route->with('error', "ดึงวันหยุดของ{$label}ไม่สำเร็จ — ตรวจอินเทอร์เน็ตแล้วลองใหม่ หรือเพิ่มเอง")
+            : $route->with('success', "ดึงวันหยุดราชการของ{$label}แล้ว {$count} วัน");
     }
 
     private function settingsRoute(): string

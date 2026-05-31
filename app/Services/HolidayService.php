@@ -38,9 +38,20 @@ class HolidayService
         }
 
         $years = array_map('intval', $calendarYears);
+
+        // รีเฟรช: ลบวันหยุด "อัตโนมัติ" เดิมของช่วงปีปฏิทินที่ดึง (กันวันที่ถูกยกเลิกค้าง)
+        // คงไว้: วันหยุดที่ Admin เพิ่มเอง (source=manual) + วันหยุดของปีอื่น
+        Holiday::where('source', 'google')
+            ->whereBetween('date', [min($years) . '-01-01', max($years) . '-12-31'])
+            ->delete();
+
         $count = 0;
         foreach ($events as $event) {
             if (! in_array((int) substr($event['date'], 0, 4), $years, true)) {
+                continue;
+            }
+            // ไม่ทับวันที่ที่ Admin เพิ่มเอง
+            if (Holiday::where('date', $event['date'])->where('source', 'manual')->exists()) {
                 continue;
             }
             Holiday::updateOrCreate(
