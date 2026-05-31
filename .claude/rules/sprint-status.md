@@ -25,7 +25,9 @@
 **🔲 เหลือ optional (ไม่บล็อก — ไม่อยู่ใน V3):**
 - `rooms.campus` ศาลายา/บางกอกน้อย — มาจาก V1/V2 เท่านั้น · display ก่อน ยังไม่ผูก conflict
 
-**🔲 Phase ถัดไป (schedule/rotation — ไม่ใช่ Master Data):** `schedules.term_id`, rotation_rounds/assignments, cross-course group conflict, visual dashboard (V3 ข้อ 8.1)
+**🟢 Schedule phase (term dimension) — เสร็จแล้ว (1 มิ.ย.):** `schedules.term_id` (observer derive จาก start_date) + `AcademicCalendar` จำแนกวัน + filter เทอม + ลงสีปฏิทิน (วันหยุด/สอบ/ปิดเทอม/เทอมอื่น) + บล็อกจัดกิจกรรมช่วงสอบ/ปิดเทอม + ตัด group selector ออกจาก modal · validation สอบปลายภาคหลังกลางภาค · seeder สอบปลายภาคจบตรงวันจบเทอม
+
+**🔲 Phase ถัดไป (rotation — ไม่ใช่ Master Data):** rotation_rounds/assignments (หมุนกลุ่มปี 3-4 หลังสอบ), cross-course group conflict, delegation (อาจารย์ช่วยจัด — V1.5, ดู memory), visual dashboard (V3 ข้อ 8.1)
 
 ## Phase Overview
 

@@ -253,13 +253,21 @@ holidays         :  NEW (date unique, name, remark, source enum-ish 'google'|'ma
 activity_types   :  + counts_toward_workload boolean default true (default ตามหมวด: other=false)
 ```
 
-### 🔲 PROPOSED — phase ถัดไป (schedule/rotation · ยังไม่ทำ)
+### ✅ DONE — Schedule phase (term dimension · branch feat/v2-requirement)
 ```
-schedules        :  + term_id FK (slot อยู่เทอมไหน — หัวหน้าวิชาระบุ), + rotation_round_id FK
+schedules : + term_id FK (nullable, → terms) · derive อัตโนมัติจาก start_date ผ่าน
+            ScheduleTermObserver (ครอบ store/update/series/copyWeek) · null = ปิดภาคเรียน
+```
+- `App\Services\AcademicCalendar` — จำแนกวัน normal/holiday/exam/break/outside + `blockReasonForRange()`
+- หน้าจัดตาราง: filter เทอม (default เทอมปัจจุบัน + เด้งปฏิทิน) · ลงสี grid/list (วันหยุด=อำพัน, สอบ/ปิดเทอม/เทอมอื่น=เทา) + chip/flag/term badge · บล็อกจัดกิจกรรมช่วงสอบ/ปิดเทอม/เทอมอื่น (server `assertScheduleNotOnBlockedDay` + realtime + client cell) · ตัด group selector ออกจาก modal (หัวหน้าวิชาไม่จัดกลุ่ม)
+
+### 🔲 PROPOSED — phase ถัดไป (rotation · ยังไม่ทำ)
+```
+schedules        :  + rotation_round_id FK
 student_groups   :  + cohort_group_id FK nullable  ← subgroup อ้าง student_cohorts
 rotation_rounds      : NEW (term_id, sequence 1|2, label, start/end) — แบ่งด้วยวันสอบใน terms
 rotation_assignments : NEW (cohort_group_id, course_offering_id, rotation_round_id)
-course_offering_instructors : + schedule_permission enum('view','schedule','manage_groups')  (delegation — Option B)
+course_offering_instructors : + schedule_permission enum('view','schedule')  (delegation — V1.5 · ดู memory project-delegation-deferred)
 rooms : + campus (ศาลายา/บางกอกน้อย — display ก่อน · optional ไม่อยู่ใน V3)
 ```
 
