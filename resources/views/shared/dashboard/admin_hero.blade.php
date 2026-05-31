@@ -86,7 +86,7 @@
         [
             'label' => 'ปีการศึกษา',
             'meta' => $currentAcademicYear
-                ? $currentAcademicYear->name . ' / เทอม ' . $currentAcademicYear->semester
+                ? 'ปีการศึกษา ' . $currentAcademicYear->name
                 : 'ยังไม่ได้ตั้งค่า',
             'status' => $currentAcademicYear ? 'พร้อม' : 'ยังไม่ตั้งค่า',
             'tone' => $currentAcademicYear ? 'success' : 'warning',
@@ -137,7 +137,7 @@
         <div class="admin-status-control-row">
             <span class="admin-year-badge {{ $currentAcademicYear ? '' : 'is-warning' }}">
                 @if($currentAcademicYear)
-                    ปีการศึกษา {{ $currentAcademicYear->name }} / เทอม {{ $currentAcademicYear->semester }}
+                    ปีการศึกษา {{ $currentAcademicYear->name }}
                 @else
                     ยังไม่ได้ตั้งค่าปีการศึกษา
                 @endif

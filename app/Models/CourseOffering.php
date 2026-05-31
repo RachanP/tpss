@@ -72,10 +72,10 @@ class CourseOffering extends Model
     {
         $this->loadMissing(['course', 'academicYear']);
 
+        // V2: offering ราย-ปี (1 วิชา 1 offering/ปี) → URL = course-year (เลิกฝังเทอม)
         return implode('-', [
             $this->routeSlug($this->course?->course_code, 'course'),
             $this->routeSlug($this->academicYear?->name, 'year'),
-            $this->academicYear?->semester ?? 'term',
         ]);
     }
 
@@ -211,8 +211,7 @@ class CourseOffering extends Model
         return $this->newQuery()
             ->with(['course', 'academicYear'])
             ->whereHas('academicYear', fn ($query) => $query
-                ->where('name', $this->academicYear->name)
-                ->where('semester', $this->academicYear->semester))
+                ->where('name', $this->academicYear->name))
             ->get()
             ->filter(fn (self $offering) => $offering->readableRouteKeyBase() === $baseKey)
             ->count() > 1;
@@ -235,20 +234,14 @@ class CourseOffering extends Model
     private function offeringsMatchingReadableRouteKeyBase(string $value)
     {
         $parts = explode('-', $value);
-        if (count($parts) < 3) {
+        if (count($parts) < 2) {
             return collect();
         }
 
-        $semester = array_pop($parts);
-        if (! ctype_digit($semester)) {
-            return collect();
-        }
-
-        $prefix = implode('-', $parts);
-        $academicYears = AcademicYear::query()
-            ->where('semester', (int) $semester)
-            ->get()
-            ->filter(fn (AcademicYear $year) => $this->academicYearMatchesRoutePrefix($prefix, $year));
+        // V2: base key = course-year → segment สุดท้าย = ปี
+        $yearSlug = array_pop($parts);
+        $academicYears = AcademicYear::all()
+            ->filter(fn (AcademicYear $year) => $this->routeSlug($year->name, 'year') === $yearSlug);
 
         if ($academicYears->isEmpty()) {
             return collect();

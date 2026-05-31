@@ -10,7 +10,7 @@ class SettingController extends AdminSettingController
 {
     public function index()
     {
-        $academicYears = AcademicYear::orderBy('name', 'desc')->orderBy('semester', 'asc')->get();
+        $academicYears = AcademicYear::with('terms')->orderBy('name', 'desc')->get();
 
         $paCriteria           = [];
         $workloadWeeks        = SystemSetting::get('teaching_quota_weeks', 46);

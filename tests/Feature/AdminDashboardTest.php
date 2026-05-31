@@ -18,7 +18,6 @@ class AdminDashboardTest extends TestCase
         $admin = $this->makeAdmin();
         AcademicYear::create([
             'name' => '2569',
-            'semester' => 1,
             'start_date' => '2026-08-01',
             'end_date' => '2026-12-31',
             'is_active' => true,
@@ -31,7 +30,7 @@ class AdminDashboardTest extends TestCase
 
         $response->assertOk()
             ->assertSee('สถานะระบบปัจจุบัน')
-            ->assertSee('ปีการศึกษา 2569 / เทอม 1')
+            ->assertSee('ปีการศึกษา 2569')
             ->assertSee('เปิดจัดตาราง')
             ->assertSee('พบเงื่อนไขสำคัญ')
             ->assertSee('ยังเปิดจัดตารางไม่ได้')
@@ -66,7 +65,6 @@ class AdminDashboardTest extends TestCase
             AcademicYear::query()->delete();
             AcademicYear::create([
                 'name' => '2569',
-                'semester' => 1,
                 'start_date' => '2026-08-01',
                 'end_date' => '2026-12-31',
                 'is_active' => true,

@@ -307,13 +307,12 @@ class ScheduleController extends Controller
     private function coordinatorAcademicYears(int $userId): Collection
     {
         return AcademicYear::query()
-            ->select(['id', 'name', 'semester', 'start_date', 'end_date', 'is_active', 'phase'])
+            ->select(['id', 'name', 'start_date', 'end_date', 'is_active', 'phase'])
             ->whereIn('id', CourseOffering::query()
                 ->select('academic_year_id')
                 ->withActiveCourse()
                 ->where('coordinator_id', $userId))
             ->orderByDesc('start_date')
-            ->orderByDesc('semester')
             ->orderByDesc('id')
             ->get();
     }

@@ -35,7 +35,6 @@ class CourseOfferingController extends Controller
                 ->where('coordinator_id', $coordinatorId)
                 ->select('academic_year_id'))
             ->orderByDesc('name')
-            ->orderByDesc('semester')
             ->get();
 
         $activeYear = \App\Models\AcademicYear::where('is_active', true)->first();

@@ -172,7 +172,6 @@ class NavigationBadgeService
             ->whereHas('academicYear', fn ($query) => $query->where('phase', 'scheduling'))
             ->join('academic_years', 'academic_years.id', '=', 'course_offerings.academic_year_id')
             ->orderByDesc('academic_years.start_date')
-            ->orderByDesc('academic_years.semester')
             ->orderByDesc('academic_years.id')
             ->value('academic_years.id');
 

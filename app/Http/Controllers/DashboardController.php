@@ -47,7 +47,6 @@ class DashboardController extends Controller
         $alerts    = AlertController::getSummary();
         $currentAcademicYear = AcademicYear::where('is_active', true)
             ->orderByDesc('name')
-            ->orderByDesc('semester')
             ->first();
 
         $roomsByType = \App\Models\LocationType::withCount('rooms')
@@ -139,7 +138,6 @@ class DashboardController extends Controller
             ->orWhere('phase', 'scheduling')
             ->orderByDesc('is_active')
             ->orderByDesc('start_date')
-            ->orderByDesc('semester')
             ->first();
         $conflictSummary = config('conflicts.async_reads') && $currentAcademicYear
             ? app(ScheduleConflictReadRepository::class)->getExecutiveSummary((int) $currentAcademicYear->id)

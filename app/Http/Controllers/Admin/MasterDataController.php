@@ -1125,7 +1125,7 @@ class MasterDataController extends Controller
         $offerings = $course->courseOfferings()
             ->with(['academicYear', 'coordinator', 'instructorPool.instructorProfile.department'])
             ->get()
-            ->sortByDesc(fn ($o) => [$o->academicYear?->name, $o->academicYear?->semester]);
+            ->sortByDesc(fn ($o) => $o->academicYear?->name);
 
         $course->load([
             'instructors.instructorProfile.department',
