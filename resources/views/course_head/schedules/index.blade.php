@@ -4952,7 +4952,7 @@
             closeCreate() { this.showCreate = false; },
             closeEdit() {
                 @if(request()->boolean('from_conflict'))
-                    window.location.href = @js(route('maker.schedule_conflicts.index'));
+                    window.location.href = @js(route('maker.alerts.index'));
                 @else
                     this.editModal = null;
                     this.$nextTick(() => {
@@ -4984,7 +4984,7 @@
                     <div style="font-weight:700;">{{ $message }}</div>
                 @endforeach
                 <div style="margin-top:10px;">
-                    <a href="{{ route('maker.schedule_conflicts.index') }}" class="btn btn-secondary" style="text-decoration:none;">ดูการแจ้งเตือนการชน</a>
+                    <a href="{{ route('maker.alerts.index') }}" class="btn btn-secondary" style="text-decoration:none;">ดูการแจ้งเตือน</a>
                 </div>
             </div>
         @endif

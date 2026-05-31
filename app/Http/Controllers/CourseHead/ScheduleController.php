@@ -178,128 +178,6 @@ class ScheduleController extends Controller
         return trim("{$activity} · {$date} {$start}-{$end}");
     }
 
-    public function conflicts(Request $request): View
-    {
-        $userId = (int) Auth::id();
-        $availableYears = $this->coordinatorAcademicYears($userId);
-        $defaultAcademicYear = $this->defaultConflictAcademicYear($availableYears);
-        $selectedAcademicYear = $this->selectedConflictAcademicYear($request, $availableYears, $defaultAcademicYear);
-        $selectedAcademicYearId = $selectedAcademicYear?->id ? (int) $selectedAcademicYear->id : null;
-        $emptyStateKey = $this->conflictEmptyStateKey($availableYears);
-
-        if (config('conflicts.async_reads')) {
-            return $this->asyncConflicts($request, $userId, $availableYears, $selectedAcademicYear, $selectedAcademicYearId, $emptyStateKey);
-        }
-
-        $result = app(ScheduleConflictIndex::class)->conflictsForCoordinator($userId, $selectedAcademicYearId);
-
-        if ($defaultAcademicYear && (int) $selectedAcademicYearId === (int) $defaultAcademicYear->id) {
-            app(NavigationBadgeService::class)->putCourseHeadConflictCount($userId, $result['total']);
-        }
-
-        $page = max(1, (int) $request->query('page', 1));
-        $perPage = 50;
-        $conflictSchedules = new LengthAwarePaginator(
-            $result['schedules']->forPage($page, $perPage)->values(),
-            $result['schedules']->count(),
-            $perPage,
-            $page,
-            [
-                'path' => $request->url(),
-                'query' => $request->query(),
-            ]
-        );
-        $schedules = $conflictSchedules->getCollection();
-        $conflictMap = $result['conflictMap'];
-
-        $conflictGroups = $schedules
-            ->groupBy('course_offering_id')
-            ->map(function (Collection $offeringSchedules) use ($conflictMap) {
-                /** @var Schedule $firstSchedule */
-                $firstSchedule = $offeringSchedules->first();
-
-                return [
-                    'offering' => $firstSchedule->courseOffering,
-                    'schedules' => $offeringSchedules->values(),
-                    'conflict_count' => $offeringSchedules->sum(
-                        fn (Schedule $schedule) => $conflictMap->get($schedule->id, collect())->count()
-                    ),
-                ];
-            })
-            ->values();
-
-        $conflictTypeCounts = $conflictMap
-            ->flatten(1)
-            ->groupBy('type')
-            ->map(fn ($items) => $items->count())
-            ->all();
-
-        return view('course_head.schedule_conflicts.index', [
-            'offerings' => collect(),
-            'availableYears' => $availableYears,
-            'selectedAcademicYear' => $selectedAcademicYear,
-            'selectedAcademicYearId' => $selectedAcademicYearId,
-            'conflictSchedules' => $conflictSchedules,
-            'conflictGroups' => $conflictGroups,
-            'conflictMap' => $conflictMap,
-            'totalConflictCount' => $result['total'],
-            'conflictTypeCounts' => $conflictTypeCounts,
-            'conflictStatus' => ['status' => 'ready'],
-            'conflictEmptyStateKey' => $this->conflictEmptyStateKey($availableYears),
-            'asyncConflictReads' => false,
-        ]);
-    }
-
-    private function asyncConflicts(
-        Request $request,
-        int $userId,
-        Collection $availableYears,
-        ?AcademicYear $selectedAcademicYear,
-        ?int $selectedAcademicYearId,
-        ?string $emptyStateKey = null
-    ): View {
-        $repository = app(ScheduleConflictReadRepository::class);
-        $page = max(1, (int) $request->query('page', 1));
-        $conflictStatus = $repository->getStatusForUser($userId, $selectedAcademicYearId);
-        $selectedYearIsScheduling = $selectedAcademicYear?->phase === 'scheduling';
-        $conflictChecking = $selectedYearIsScheduling
-            && in_array($conflictStatus['status'] ?? 'missing', ['missing', 'pending', 'processing'], true);
-
-        if ($selectedYearIsScheduling && ($conflictStatus['status'] ?? 'missing') === 'missing' && $selectedAcademicYearId) {
-            app(ScheduleConflictInvalidationService::class)->markDirty($selectedAcademicYearId, 'manual');
-        }
-
-        $resultPage = $conflictChecking
-            ? new LengthAwarePaginator(
-                collect(),
-                0,
-                25,
-                $page,
-                [
-                    'path' => $request->url(),
-                    'query' => $request->query(),
-                ]
-            )
-            : $repository->getScheduleSummaryPageForUser($userId, $selectedAcademicYearId, $page);
-        $conflictGroups = $this->conflictGroupsFromSummaries($resultPage->getCollection());
-
-        return view('course_head.schedule_conflicts.index', [
-            'offerings' => collect(),
-            'availableYears' => $availableYears,
-            'selectedAcademicYear' => $selectedAcademicYear,
-            'selectedAcademicYearId' => $selectedAcademicYearId,
-            'conflictSchedules' => $resultPage,
-            'conflictGroups' => $conflictGroups,
-            'conflictMap' => collect(),
-            'totalConflictCount' => $conflictChecking ? null : $repository->getCountForUser($userId, $selectedAcademicYearId),
-            'conflictTypeCounts' => $conflictChecking ? [] : $repository->getTypeCountsForUser($userId, $selectedAcademicYearId),
-            'conflictStatus' => $conflictStatus,
-            'conflictChecking' => $conflictChecking,
-            'conflictEmptyStateKey' => $emptyStateKey ?? $this->conflictEmptyStateKey($availableYears),
-            'asyncConflictReads' => true,
-        ]);
-    }
-
     public function conflictDetails(Request $request, Schedule $schedule): JsonResponse
     {
         $validated = $request->validate([
@@ -1887,7 +1765,7 @@ class ScheduleController extends Controller
         $returnUrl = (string) $request->input('return_url', '');
 
         if ($request->boolean('return_to_conflicts')) {
-            return route('maker.schedule_conflicts.index');
+            return route('maker.alerts.index');
         }
 
         if ($this->isScheduleReturnUrl($request, $returnUrl)) {

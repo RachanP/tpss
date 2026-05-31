@@ -415,38 +415,9 @@ class ConflictRecomputeJobTest extends TestCase
             ->assertJsonPath('poll', false);
     }
 
-    public function test_conflict_alert_page_hides_stale_ready_counts_while_recompute_is_pending(): void
-    {
-        Cache::flush();
-        [$year, $head] = $this->makeConflictDataset();
-        $this->attachRole($head, 'course_head');
-
-        $this->artisan('conflicts:recompute', [
-            '--academic-year' => $year->id,
-            '--sync' => true,
-        ])->assertExitCode(0);
-
-        config(['conflicts.async_reads' => true]);
-        $readyCount = app(ScheduleConflictReadRepository::class)->getCountForUser($head->id, $year->id);
-        ScheduleConflictRun::query()->create([
-            'academic_year_id' => $year->id,
-            'status' => 'pending',
-            'generation' => 2,
-            'source' => 'manual',
-            'requested_at' => now(),
-            'result_count' => 0,
-        ]);
-        Cache::flush();
-
-        $this->actingAs($head)
-            ->withSession(['active_role' => 'course_head'])
-            ->get(route('maker.schedule_conflicts.index'))
-            ->assertOk()
-            ->assertSee('data-testid="maker-conflict-pending"', false)
-            ->assertSee('กำลังตรวจสอบรายการชน')
-            ->assertSee('บันทึกข้อมูลแล้ว ระบบกำลังตรวจสอบรายการชนใหม่')
-            ->assertDontSee('<div class="conflict-summary-value">' . $readyCount . '</div>', false);
-    }
+    // หมายเหตุ: เดิมมี test_conflict_alert_page_hides_stale_ready_counts_while_recompute_is_pending
+    // ถูกลบเพราะหน้า /maker/schedule-conflicts ถูกแทนด้วยหน้า /maker/alerts (V2) — async recompute/badge
+    // ยังทดสอบผ่าน test อื่นในไฟล์นี้ + sidebar badge polling
 
     public function test_async_sidebar_badge_starts_recompute_when_results_are_missing(): void
     {

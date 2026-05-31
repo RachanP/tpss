@@ -394,8 +394,8 @@ class ScheduleManagementTest extends TestCase
         $this->followingRedirects()
             ->get(route('maker.schedules.index'))
             ->assertOk()
-            ->assertSee('การแจ้งเตือนการชน')
-            ->assertSee('href="' . route('maker.schedule_conflicts.index') . '"', false);
+            ->assertSee('แจ้งเตือน')
+            ->assertSee('href="' . route('maker.alerts.index') . '"', false);
     }
 
     public function test_nested_schedule_routes_activate_schedule_sidebar_item(): void
@@ -440,21 +440,6 @@ class ScheduleManagementTest extends TestCase
 
         $this->actingAsCourseHead($head);
 
-        $this->get(route('maker.schedule_conflicts.index'))
-            ->assertOk()
-            ->assertSee('data-testid="maker-conflict-total"', false)
-            ->assertSee('data-testid="maker-conflict-item"', false)
-            ->assertSee('data-conflict-edit-link', false)
-            ->assertSee('tpss-conflict-alert-scroll-y', false)
-            ->assertSee($offering->course->course_code)
-            ->assertSee('Existing schedule')
-            ->assertSee('edit_schedule_id=' . $schedule->id, false)
-            ->assertSee('focus_schedule_id=' . $schedule->id, false)
-            ->assertSee('from_conflict=1', false)
-            ->assertSee('period=day', false)
-            ->assertSee('date=2026-08-03', false)
-            ->assertSee('week_start=2026-08-03', false);
-
         $this->get(route('maker.course_offerings.schedules.index', [
             $offering,
             'edit_schedule_id' => $schedule->id,
@@ -466,7 +451,7 @@ class ScheduleManagementTest extends TestCase
             ->assertOk()
             ->assertSee('data-testid="schedule-edit-conflict-focus"', false)
             ->assertSee('วันและเวลามีข้อมูลซ้อนกับรายการอื่น')
-            ->assertSee(route('maker.schedule_conflicts.index'), false)
+            ->assertSee(route('maker.alerts.index'), false)
             ->assertDontSee('พบข้อมูลซ้อนกับรายการอื่น แก้ไขช่องที่ไฮไลต์ก่อนส่งอนุมัติ')
             ->assertSee('data-schedule-id="' . $schedule->id . '"', false);
 
@@ -478,27 +463,6 @@ class ScheduleManagementTest extends TestCase
             ->assertOk()
             ->assertSee('data-testid="schedule-edit-conflict-focus"', false)
             ->assertSee('modal-field-has-conflict', false);
-    }
-
-    public function test_async_conflict_alert_page_starts_recompute_without_sync_index(): void
-    {
-        config(['conflicts.async_reads' => true]);
-        Cache::flush();
-        Queue::fake();
-        [$head] = $this->makeReadyOffering();
-        $index = Mockery::mock(ScheduleConflictIndex::class);
-        $index->shouldNotReceive('conflictsForCoordinator');
-        $this->app->instance(ScheduleConflictIndex::class, $index);
-
-        $this->actingAsCourseHead($head);
-
-        $this->get(route('maker.schedule_conflicts.index'))
-            ->assertOk()
-            ->assertSee('data-testid="maker-conflict-pending"', false)
-            ->assertSee('data-testid="maker-conflict-status"', false)
-            ->assertSee('กำลังตรวจสอบรายการชน');
-
-        Queue::assertPushed(ConflictRecomputeJob::class);
     }
 
     public function test_course_head_sidebar_hides_checking_badge_during_preparation_phase(): void
@@ -524,24 +488,6 @@ class ScheduleManagementTest extends TestCase
             ->assertDontSee('>กำลังตรวจสอบ</span>', false);
     }
 
-    public function test_conflict_alert_page_does_not_enter_checking_state_during_preparation_phase(): void
-    {
-        config(['conflicts.async_reads' => true]);
-        Cache::flush();
-        Queue::fake();
-        [$head] = $this->makeReadyOffering('preparation');
-
-        $this->actingAsCourseHead($head);
-
-        $this->get(route('maker.schedule_conflicts.index'))
-            ->assertOk()
-            ->assertSee('data-testid="maker-conflict-empty"', false)
-            ->assertDontSee('data-testid="maker-conflict-pending"', false)
-            ->assertDontSee('data-testid="maker-conflict-status"', false);
-
-        Queue::assertNothingPushed();
-    }
-
     public function test_conflict_edit_returns_to_conflict_alerts_after_update(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
@@ -555,88 +501,8 @@ class ScheduleManagementTest extends TestCase
         ]);
 
         $this->put(route('maker.course_offerings.schedules.update', [$offering, $schedule]), $payload)
-            ->assertRedirect(route('maker.schedule_conflicts.index'))
+            ->assertRedirect(route('maker.alerts.index'))
             ->assertSessionHasNoErrors();
-    }
-
-    public function test_conflict_alert_page_defaults_to_current_scheduling_academic_year(): void
-    {
-        config(['conflicts.async_reads' => false]);
-        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
-        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
-            'topic' => 'Current term source',
-        ]);
-        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
-            'topic' => 'Current term overlap',
-        ]);
-
-        [, $oldOffering, $oldInstructor, $oldGroup, $oldActivityType, $oldRoom] = $this->makeReadyOffering('published');
-        $oldOffering->forceFill(['coordinator_id' => $head->id])->save();
-        $this->makeSchedule($oldOffering, $oldActivityType, $oldRoom, [$oldInstructor], [$oldGroup], [
-            'topic' => 'Old term source',
-        ]);
-        $this->makeSchedule($oldOffering, $oldActivityType, $oldRoom, [$oldInstructor], [$oldGroup], [
-            'topic' => 'Old term overlap',
-        ]);
-
-        $this->actingAsCourseHead($head);
-
-        $this->get(route('maker.schedule_conflicts.index'))
-            ->assertOk()
-            ->assertSee('Current term source')
-            ->assertSee('Current term overlap')
-            ->assertDontSee('Old term source')
-            ->assertDontSee('Old term overlap');
-    }
-
-    public function test_conflict_alert_page_can_filter_to_selected_academic_year(): void
-    {
-        config(['conflicts.async_reads' => false]);
-        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
-        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
-            'topic' => 'Current term source',
-        ]);
-        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
-            'topic' => 'Current term overlap',
-        ]);
-
-        [, $oldOffering, $oldInstructor, $oldGroup, $oldActivityType, $oldRoom] = $this->makeReadyOffering('published');
-        $oldOffering->forceFill(['coordinator_id' => $head->id])->save();
-        $this->makeSchedule($oldOffering, $oldActivityType, $oldRoom, [$oldInstructor], [$oldGroup], [
-            'topic' => 'Old term source',
-        ]);
-        $this->makeSchedule($oldOffering, $oldActivityType, $oldRoom, [$oldInstructor], [$oldGroup], [
-            'topic' => 'Old term overlap',
-        ]);
-
-        $this->actingAsCourseHead($head);
-
-        $this->get(route('maker.schedule_conflicts.index', [
-            'academic_year_id' => $oldOffering->academic_year_id,
-        ]))
-            ->assertOk()
-            ->assertSee('Old term source')
-            ->assertSee('Old term overlap')
-            ->assertDontSee('Current term source')
-            ->assertDontSee('Current term overlap');
-    }
-
-    public function test_conflict_alert_page_warms_course_head_sidebar_badge_cache(): void
-    {
-        config(['conflicts.async_reads' => false]);
-        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
-        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group]);
-        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
-            'topic' => 'Overlap schedule',
-        ]);
-        Cache::forget("sidebar.badges.course_head.{$head->id}");
-
-        $this->actingAsCourseHead($head);
-
-        $this->get(route('maker.schedule_conflicts.index'))->assertOk();
-
-        $this->assertTrue(Cache::has("sidebar.badges.course_head.{$head->id}"));
-        $this->assertGreaterThan(0, Cache::get("sidebar.badges.course_head.{$head->id}"));
     }
 
     public function test_course_offering_detail_no_longer_shows_prominent_schedule_button(): void
