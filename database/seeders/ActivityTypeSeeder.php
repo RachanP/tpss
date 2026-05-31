@@ -36,7 +36,12 @@ class ActivityTypeSeeder extends Seeder
         foreach ($types as $type) {
             ActivityType::updateOrCreate(
                 ['name' => $type['name']],
-                ['category' => $type['category'], 'color_code' => $type['color_code']]
+                [
+                    'category' => $type['category'],
+                    'color_code' => $type['color_code'],
+                    // default ตามหมวด: other = ไม่นับภาระงาน (ปฐมนิเทศ/SDL/สอบ ฯลฯ)
+                    'counts_toward_workload' => $type['category'] !== 'other',
+                ]
             );
         }
     }

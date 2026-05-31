@@ -20,10 +20,10 @@ class ReferenceDataCache
     public function activityTypes()
     {
         return $this->remember(__FUNCTION__, self::ACTIVITY_TYPES_KEY, fn () => ActivityType::query()
-            ->select(['id', 'name', 'color_code', 'category'])
+            ->select(['id', 'name', 'color_code', 'category', 'counts_toward_workload'])
             ->orderBy('name')
             ->get()
-            ->map(fn (ActivityType $type) => $type->only(['id', 'name', 'color_code', 'category']))
+            ->map(fn (ActivityType $type) => $type->only(['id', 'name', 'color_code', 'category', 'counts_toward_workload']))
             ->values()
             ->all());
     }

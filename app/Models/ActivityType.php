@@ -7,7 +7,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ActivityType extends Model
 {
-    protected $fillable = ['name', 'color_code', 'category'];
+    protected $fillable = ['name', 'color_code', 'category', 'counts_toward_workload'];
+
+    protected $casts = [
+        'counts_toward_workload' => 'boolean',
+    ];
 
     public function schedules(): HasMany
     {

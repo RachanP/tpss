@@ -18,6 +18,8 @@ return new class extends Migration
             $table->string('name', 100);
             $table->string('color_code', 10)->nullable()->default('#3498db');
             $table->enum('category', ["lecture","practicum","thesis","other"]);
+            // V3 ข้อ 5.4: นับเป็นภาระงานสอนไหม — default ตามหมวด (other=ไม่นับ) · Admin override ได้
+            $table->boolean('counts_toward_workload')->default(true);
             $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->nullable();
         });

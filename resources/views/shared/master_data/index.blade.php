@@ -773,16 +773,20 @@
         // Activity Types
         showActivityTypeModal: false,
         editActivityTypeMode: false,
-        currentActivityType: { id: '', name: '', color_code: '#3498db', category: 'lecture' },
+        currentActivityType: { id: '', name: '', color_code: '#3498db', category: 'lecture', counts_toward_workload: true },
         openAddActivityType() {
             this.editActivityTypeMode = false;
-            this.currentActivityType = { id: '', name: '', color_code: '#3498db', category: 'lecture' };
+            this.currentActivityType = { id: '', name: '', color_code: '#3498db', category: 'lecture', counts_toward_workload: true };
             this.showActivityTypeModal = true;
         },
         openEditActivityType(at) {
             this.editActivityTypeMode = true;
-            this.currentActivityType = { ...at };
+            this.currentActivityType = { counts_toward_workload: true, ...at, counts_toward_workload: !!at.counts_toward_workload };
             this.showActivityTypeModal = true;
+        },
+        // default ตามหมวด: other = ไม่นับ · อื่น ๆ = นับ (Admin ติ๊กแก้เองได้)
+        applyWorkloadDefaultFromCategory() {
+            this.currentActivityType.counts_toward_workload = this.currentActivityType.category !== 'other';
         },
         showCohortModal: false,
         editCohortMode: false,
@@ -2893,11 +2897,16 @@
                                     <td style="font-weight: 600; color: var(--fg-1);">{{ $at->name }}</td>
                                     <td>
                                         <span class="pill pill-neutral">{{ $catLabel[$at->category] ?? $at->category }}</span>
+                                        @if($at->counts_toward_workload)
+                                            <span class="pill" style="background:#e6fffa;color:#047481;border:1px solid #b2f5ea;">นับภาระงาน</span>
+                                        @else
+                                            <span class="pill" style="background:#f7fafc;color:#718096;border:1px solid #e2e8f0;">ไม่นับ</span>
+                                        @endif
                                     </td>
                                     @if($isAdmin)
                                     <td style="text-align: center;">
                                         <button type="button" class="action-btn" title="แก้ไข"
-                                            @click="openEditActivityType({{ Js::from(['id' => $at->id, 'name' => $at->name, 'color_code' => $at->color_code, 'category' => $at->category]) }})">
+                                            @click="openEditActivityType({{ Js::from(['id' => $at->id, 'name' => $at->name, 'color_code' => $at->color_code, 'category' => $at->category, 'counts_toward_workload' => $at->counts_toward_workload]) }})">
                                             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                         </button>
                                     </td>
@@ -2945,7 +2954,7 @@
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                                 <div class="form-group">
                                     <label>หมวดหมู่ <span style="color: var(--status-conflict-fg)">*</span></label>
-                                    <select name="category" x-model="currentActivityType.category" required>
+                                    <select name="category" x-model="currentActivityType.category" required @change="applyWorkloadDefaultFromCategory()">
                                         <option value="lecture">บรรยาย (Lecture)</option>
                                         <option value="practicum">ปฏิบัติ (Practicum)</option>
                                         <option value="thesis">วิทยานิพนธ์ (Thesis)</option>
@@ -2979,6 +2988,13 @@
                                     </div>
                                 </div>
                             </div>
+                            <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-2);">
+                                <input type="checkbox" name="counts_toward_workload" value="1" x-model="currentActivityType.counts_toward_workload" style="margin-top: 2px; flex-shrink: 0; width: 16px; height: 16px; accent-color: var(--brand-navy);">
+                                <div>
+                                    <div style="font-size: 13px; font-weight: 600; color: var(--fg-1);">นับเป็นภาระงานสอนของอาจารย์</div>
+                                    <div style="font-size: 12px; color: var(--fg-3); margin-top: 2px;">เช่น ปฐมนิเทศ / SDL / สอบ / วันหยุด มักไม่นับ — ระบบตั้งค่าเริ่มต้นให้ตามหมวด (ปรับเองได้)</div>
+                                </div>
+                            </label>
                         </div>
                         <div class="modal-foot" style="display: flex; justify-content: space-between;">
                             <div>

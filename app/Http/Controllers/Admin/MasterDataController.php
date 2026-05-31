@@ -1385,12 +1385,13 @@ class MasterDataController extends Controller
             'color_code' => 'required|string|max:10',
             'category'   => 'required|in:lecture,practicum,thesis,other',
         ]);
+        $validated['counts_toward_workload'] = $request->boolean('counts_toward_workload');
         $activityType = ActivityType::create($validated);
 
         $this->logMasterDataCreate(
             'activity_types',
             $activityType->id,
-            $this->auditSnapshot($activityType, ['name', 'color_code', 'category']),
+            $this->auditSnapshot($activityType, ['name', 'color_code', 'category', 'counts_toward_workload']),
             "สร้างประเภทกิจกรรม {$activityType->name}",
         );
 
@@ -1404,7 +1405,8 @@ class MasterDataController extends Controller
             'color_code' => 'required|string|max:10',
             'category'   => 'required|in:lecture,practicum,thesis,other',
         ]);
-        $fields = ['name', 'color_code', 'category'];
+        $validated['counts_toward_workload'] = $request->boolean('counts_toward_workload');
+        $fields = ['name', 'color_code', 'category', 'counts_toward_workload'];
         $before = $this->auditSnapshot($activityType, $fields);
 
         $activityType->update($validated);
