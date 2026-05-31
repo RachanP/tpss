@@ -233,33 +233,13 @@ class CourseOffering extends Model
 
     private function offeringsMatchingReadableRouteKeyBase(string $value)
     {
-        $parts = explode('-', $value);
-        if (count($parts) < 2) {
-            return collect();
-        }
-
-        // V2: base key = course-year → segment สุดท้าย = ปี
-        $yearSlug = array_pop($parts);
-        $academicYears = AcademicYear::all()
-            ->filter(fn (AcademicYear $year) => $this->routeSlug($year->name, 'year') === $yearSlug);
-
-        if ($academicYears->isEmpty()) {
-            return collect();
-        }
-
+        // V2: course code/year name อาจมี hyphen → slug มีหลาย segment แยกไม่ได้ด้วย explode
+        // เทียบ base ตรง ๆ แทน (ตาราง offering เล็ก) — กัน 404 จากชื่อปีที่มีขีด เช่น "2569-1"
         return $this->newQuery()
             ->with(['course', 'academicYear'])
-            ->whereIn('academic_year_id', $academicYears->pluck('id'))
             ->get()
             ->filter(fn (self $offering) => $offering->readableRouteKeyBase() === $value)
             ->values();
-    }
-
-    private function academicYearMatchesRoutePrefix(string $prefix, AcademicYear $year): bool
-    {
-        $yearSlug = $this->routeSlug($year->name, 'year');
-
-        return $prefix === $yearSlug || Str::endsWith($prefix, "-{$yearSlug}");
     }
 
     private function routeSlug(?string $value, string $fallback): string
