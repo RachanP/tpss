@@ -22,22 +22,23 @@ class HolidayManagementTest extends TestCase
         return $u;
     }
 
-    private function fakeNager(): void
+    /** fake ปฏิทินวันหยุดไทยของ Google (ICS) — 2 วันปี 2026 + 1 วันปี 2027 */
+    private function fakeGoogleHolidays(): void
     {
-        Http::fake([
-            '*/PublicHolidays/2026/TH' => Http::response([
-                ['date' => '2026-01-01', 'localName' => 'วันขึ้นปีใหม่', 'name' => "New Year's Day"],
-                ['date' => '2026-04-13', 'localName' => 'วันสงกรานต์', 'name' => 'Songkran'],
-            ], 200),
-            '*/PublicHolidays/2027/TH' => Http::response([
-                ['date' => '2027-01-01', 'localName' => 'วันขึ้นปีใหม่', 'name' => "New Year's Day"],
-            ], 200),
+        $ics = implode("\n", [
+            'BEGIN:VCALENDAR',
+            'BEGIN:VEVENT', 'DTSTART;VALUE=DATE:20260101', 'SUMMARY:วันขึ้นปีใหม่', 'END:VEVENT',
+            'BEGIN:VEVENT', 'DTSTART;VALUE=DATE:20260413', 'SUMMARY:วันสงกรานต์', 'END:VEVENT',
+            'BEGIN:VEVENT', 'DTSTART;VALUE=DATE:20270101', 'SUMMARY:วันขึ้นปีใหม่', 'END:VEVENT',
+            'END:VCALENDAR',
         ]);
+
+        Http::fake(['calendar.google.com/*' => Http::response($ics, 200)]);
     }
 
     public function test_service_syncs_and_is_idempotent(): void
     {
-        $this->fakeNager();
+        $this->fakeGoogleHolidays();
         $svc = app(HolidayService::class);
 
         $this->assertSame(2, $svc->syncYear(2026));
@@ -46,7 +47,7 @@ class HolidayManagementTest extends TestCase
         // รันซ้ำ → ไม่เพิ่มซ้ำ (updateOrCreate by date)
         $svc->syncYear(2026);
         $this->assertSame(2, Holiday::count());
-        $this->assertDatabaseHas('holidays', ['date' => '2026-01-01', 'source' => 'nager']);
+        $this->assertDatabaseHas('holidays', ['date' => '2026-01-01', 'source' => 'google']);
     }
 
     public function test_service_fail_safe_returns_null_on_api_error(): void
@@ -58,7 +59,7 @@ class HolidayManagementTest extends TestCase
 
     public function test_creating_year_auto_fetches_holidays_for_spanned_calendar_years(): void
     {
-        $this->fakeNager();
+        $this->fakeGoogleHolidays();
         $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
 
         $this->post(route('admin.settings.years.store'), [

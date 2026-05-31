@@ -7,37 +7,52 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
- * ดึงวันหยุดราชการไทยจาก Nager.Date (ฟรี ไม่ต้อง key) → เก็บลงตาราง holidays
- * idempotent (updateOrCreate by date) · fail-safe (API ล่มไม่ทำให้ flow พัง)
+ * ดึงวันหยุดราชการไทยจากปฏิทินวันหยุดไทยของ Google (ICS สาธารณะ ไม่ต้อง key)
+ * → เก็บลงตาราง holidays · idempotent (updateOrCreate by date) · fail-safe (ดึงไม่ได้ไม่ทำให้ flow พัง)
+ * (Nager.Date ไม่รองรับ TH — คืน 204)
  */
 class HolidayService
 {
-    private const ENDPOINT = 'https://date.nager.at/api/v3/PublicHolidays';
+    private const ICS_URL = 'https://calendar.google.com/calendar/ical/th.th%23holiday%40group.v.calendar.google.com/public/basic.ics';
 
     /**
-     * ดึงวันหยุดของหลายปีปฏิทิน → คืนจำนวนที่ sync สำเร็จ (รวมทุกปี) หรือ null ถ้าล้มเหลวทั้งหมด
+     * CA bundle ที่แนบมากับโปรเจกต์ — กัน cURL error 60 (SSL) บนเครื่องที่ php.ini ไม่ตั้ง curl.cainfo
+     * (เช่น MAMP บน Windows) · ถ้าไม่มีไฟล์ → ใช้ system CA (true)
+     */
+    private function caBundle(): string|bool
+    {
+        $path = resource_path('certs/cacert.pem');
+        return is_file($path) ? $path : true;
+    }
+
+    /**
+     * ดึง + เก็บวันหยุดของหลายปีปฏิทิน → คืนจำนวน upsert หรือ null ถ้าดึง ICS ไม่สำเร็จ
      *
      * @param  int[]  $calendarYears
      */
     public function syncForCalendarYears(array $calendarYears): ?int
     {
-        $total = 0;
-        $anySuccess = false;
-
-        foreach (array_unique($calendarYears) as $year) {
-            $count = $this->syncYear((int) $year);
-            if ($count !== null) {
-                $anySuccess = true;
-                $total += $count;
-            }
+        $events = $this->fetchIcsEvents();
+        if ($events === null) {
+            return null;
         }
 
-        return $anySuccess ? $total : null;
+        $years = array_map('intval', $calendarYears);
+        $count = 0;
+        foreach ($events as $event) {
+            if (! in_array((int) substr($event['date'], 0, 4), $years, true)) {
+                continue;
+            }
+            Holiday::updateOrCreate(
+                ['date' => $event['date']],
+                ['name' => $event['name'], 'source' => 'google']
+            );
+            $count++;
+        }
+
+        return $count;
     }
 
-    /**
-     * ดึงปีปฏิทินที่ปีการศึกษาคร่อม (เช่น เริ่ม 2026 จบ 2027 → [2026, 2027])
-     */
     public function syncForAcademicYearSpan(string $startDate, string $endDate): ?int
     {
         $startYear = (int) substr($startDate, 0, 4);
@@ -49,40 +64,64 @@ class HolidayService
         return $this->syncForCalendarYears(range($startYear, $endYear));
     }
 
-    /**
-     * ดึงวันหยุด 1 ปีปฏิทิน → คืนจำนวน upsert หรือ null ถ้าดึงไม่สำเร็จ (fail-safe)
-     */
     public function syncYear(int $calendarYear): ?int
     {
-        try {
-            $response = Http::timeout(5)->retry(1, 200)->acceptJson()
-                ->get(self::ENDPOINT . "/{$calendarYear}/TH");
+        return $this->syncForCalendarYears([$calendarYear]);
+    }
 
-            if (! $response->successful() || ! is_array($response->json())) {
-                Log::warning("HolidayService: ดึงวันหยุดปี {$calendarYear} ไม่สำเร็จ (status {$response->status()})");
+    /**
+     * ดึง ICS + parse เป็น [['date' => 'Y-m-d', 'name' => ...], ...] · null ถ้าดึงไม่สำเร็จ
+     *
+     * @return array<int, array{date: string, name: string}>|null
+     */
+    private function fetchIcsEvents(): ?array
+    {
+        try {
+            $response = Http::timeout(15)->retry(1, 300)
+                ->withOptions(['verify' => $this->caBundle()])
+                ->get(self::ICS_URL);
+
+            if (! $response->successful() || $response->body() === '') {
+                Log::warning("HolidayService: ดึงปฏิทินวันหยุดไม่สำเร็จ (status {$response->status()})");
                 return null;
             }
 
-            $count = 0;
-            foreach ($response->json() as $item) {
-                $date = $item['date'] ?? null;
-                if (! $date) {
-                    continue;
-                }
-                Holiday::updateOrCreate(
-                    ['date' => $date],
-                    [
-                        'name'   => $item['localName'] ?? $item['name'] ?? 'วันหยุด',
-                        'source' => 'nager',
-                    ]
-                );
-                $count++;
-            }
-
-            return $count;
+            return $this->parseIcs($response->body());
         } catch (\Throwable $e) {
-            Log::warning("HolidayService: ดึงวันหยุดปี {$calendarYear} error — {$e->getMessage()}");
+            Log::warning("HolidayService: ดึงปฏิทินวันหยุด error — {$e->getMessage()}");
             return null;
         }
+    }
+
+    /**
+     * Parse ICS → วันหยุดแบบ all-day (DTSTART;VALUE=DATE:YYYYMMDD + SUMMARY)
+     *
+     * @return array<int, array{date: string, name: string}>
+     */
+    private function parseIcs(string $ics): array
+    {
+        $events = [];
+        if (! preg_match_all('/BEGIN:VEVENT(.*?)END:VEVENT/s', $ics, $blocks)) {
+            return $events;
+        }
+
+        foreach ($blocks[1] as $block) {
+            if (! preg_match('/DTSTART(?:;VALUE=DATE)?:(\d{8})/', $block, $dm)) {
+                continue;
+            }
+            $ymd = $dm[1];
+            $date = substr($ymd, 0, 4) . '-' . substr($ymd, 4, 2) . '-' . substr($ymd, 6, 2);
+
+            $name = 'วันหยุด';
+            if (preg_match('/\nSUMMARY:(.+)/', $block, $sm)) {
+                $name = trim($sm[1]);
+                // unescape ICS
+                $name = str_replace(['\\,', '\\;', '\\n', '\\N'], [',', ';', ' ', ' '], $name);
+            }
+
+            $events[] = ['date' => $date, 'name' => $name];
+        }
+
+        return $events;
     }
 }
