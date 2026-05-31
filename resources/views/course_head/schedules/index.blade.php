@@ -5008,6 +5008,19 @@
                 window.location.href = url.toString();
             }
 
+            /**
+             * V2: applyTermFilter — เลือกภาคเรียน → ตั้ง term_id + ล้างวันที่
+             * เพื่อให้ระบบเด้งปฏิทินไปวันเริ่มของเทอมนั้น (controller jump เมื่อเลือกเทอมชัดเจน)
+             * value="" (ทุกเทอม) → ส่ง term_id=0 ให้ param "มีอยู่" จะได้ไม่ default เทอมปัจจุบัน
+             */
+            function applyTermFilter(termId) {
+                const url = new URL(window.location.href);
+                url.searchParams.set('term_id', termId || '0');
+                url.searchParams.delete('date');
+                url.searchParams.delete('week_start');
+                window.location.href = url.toString();
+            }
+
             // ── Copy-week helpers (วันที่แบบ local ไม่โดน UTC shift) ──
             window.tpssShiftIso = function (iso, days) {
                 if (!iso) return iso;
@@ -5185,6 +5198,22 @@
                 @click="toggleWeekends()"
                 aria-pressed="{{ ($includeWeekends ?? false) ? 'true' : 'false' }}"
             >เสาร์-อาทิตย์</button>
+            {{-- V2: filter ภาคเรียน — วิชาเปิดทั้งปี เลือกเทอมเพื่อโฟกัส + เด้งปฏิทินไปช่วงนั้น --}}
+            @if(($terms ?? collect())->isNotEmpty())
+            <div class="term-filter-wrap">
+                <select
+                    class="schedule-filter-control"
+                    aria-label="เลือกภาคเรียน"
+                    onchange="applyTermFilter(this.value)"
+                    data-testid="schedule-term-filter"
+                >
+                    <option value="">ทุกเทอม</option>
+                    @foreach($terms as $t)
+                        <option value="{{ $t->id }}" {{ ($selectedTermId ?? null) == $t->id ? 'selected' : '' }}>{{ $t->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            @endif
             {{-- Bug #2: instructor server-side filter (ใช้ได้ทุก view) --}}
             @if($instructorFilterOptions->isNotEmpty())
             <div class="instructor-filter-wrap">

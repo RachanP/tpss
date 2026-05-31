@@ -431,6 +431,22 @@ class ScheduleController extends Controller
             fn ($q) => $q->whereHas('instructors', fn ($iq) => $iq->where('users.id', $selectedInstructorId))
         );
 
+        // V2: filter เทอม — วิชาเปิดทั้งปี จึงเลือกเทอมเพื่อโฟกัสช่วงที่จัด
+        $calendarYear = $courseOffering?->academicYear
+            ?? $availableOfferings->first()?->academicYear
+            ?? AcademicYear::where('is_active', true)->first();
+        $terms = $calendarYear ? $calendarYear->terms()->get() : collect();
+        $currentTerm = $terms->first(fn ($t) => $t->start_date && $t->end_date
+            && CarbonImmutable::now()->startOfDay()->betweenIncluded(
+                CarbonImmutable::parse($t->start_date)->startOfDay(),
+                CarbonImmutable::parse($t->end_date)->startOfDay()
+            ));
+        $termIdParam = $request->query('term_id'); // absent = null → default เทอมปัจจุบัน · '' หรือ 0 = ทุกเทอม
+        $termExplicit = $termIdParam !== null;
+        $selectedTermId = $termExplicit ? (((int) $termIdParam) ?: null) : $currentTerm?->id;
+        $selectedTerm = $selectedTermId ? $terms->firstWhere('id', $selectedTermId) : null;
+        $termFilter = fn ($query) => $query->when($selectedTermId, fn ($q) => $q->where('term_id', $selectedTermId));
+
         $firstScheduleDate = empty($offeringIds)
             ? null
             : $this->firstScheduleDate($offeringIds);
@@ -439,6 +455,9 @@ class ScheduleController extends Controller
         $includeWeekends = $request->boolean('include_weekends');
         $baseDate = $this->validScheduleDate($request, 'date')
             ?? $this->validWeekStart($request)
+            // เลือกเทอมชัดเจน → เด้งปฏิทินไปวันเริ่มเทอมนั้น · เทอมปัจจุบัน (default) → อยู่ที่วันนี้
+            ?? ($termExplicit && $selectedTerm?->start_date ? CarbonImmutable::parse($selectedTerm->start_date) : null)
+            ?? ($currentTerm && ! $termExplicit ? CarbonImmutable::now() : null)
             ?? ($firstScheduleDate ? CarbonImmutable::parse($firstScheduleDate) : null)
             ?? ($courseOffering?->academicYear?->start_date ? CarbonImmutable::parse($courseOffering->academicYear->start_date) : null)
             ?? ($availableOfferings->first()?->academicYear?->start_date ? CarbonImmutable::parse($availableOfferings->first()->academicYear->start_date) : null)
@@ -469,7 +488,8 @@ class ScheduleController extends Controller
                     Schedule::query()
                         ->with($scheduleRelations)
                         ->whereIn('course_offering_id', $offeringIds)
-                        ->tap($instructorFilter),
+                        ->tap($instructorFilter)
+                        ->tap($termFilter),
                     $periodStart->toDateString(),
                     $periodEnd->toDateString()
                 )
@@ -484,6 +504,7 @@ class ScheduleController extends Controller
                         ->with($scheduleRelations)
                         ->whereIn('course_offering_id', $offeringIds)
                         ->tap($instructorFilter)
+                        ->tap($termFilter)
                 )->get());
 
         $totalScheduleCount = $isWorkspace
@@ -524,6 +545,9 @@ class ScheduleController extends Controller
             'allSchedules' => $allSchedules,
             'totalScheduleCount' => $totalScheduleCount,
             'selectedInstructorId' => $selectedInstructorId,
+            'terms' => $terms,
+            'selectedTermId' => $selectedTermId,
+            'currentTermId' => $currentTerm?->id,
             'schedulePeriod' => $period,
             'includeWeekends' => $includeWeekends,
             'selectedScheduleDate' => $selectedDate,
@@ -538,12 +562,12 @@ class ScheduleController extends Controller
             'timeSlots' => $timeSlots,
             'activityTypes' => app(ReferenceDataCache::class)->activityTypes(),
             'rooms' => app(ReferenceDataCache::class)->activeRooms(),
-            'dayViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'day', $includeWeekends, $selectedInstructorId),
-            'weekViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'week', $includeWeekends, $selectedInstructorId),
-            'monthViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'month', $includeWeekends, $selectedInstructorId),
-            'previousWeekUrl' => $this->schedulePeriodUrl($courseOffering, $previousPeriod, $isWorkspace, $period, $includeWeekends, $selectedInstructorId),
-            'nextWeekUrl' => $this->schedulePeriodUrl($courseOffering, $nextPeriod, $isWorkspace, $period, $includeWeekends, $selectedInstructorId),
-            'weekendToggleUrl' => $this->schedulePeriodUrl($courseOffering, $selectedDate, $isWorkspace, $period, $period === 'week' ? ! $includeWeekends : $includeWeekends, $selectedInstructorId),
+            'dayViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'day', $includeWeekends, $selectedInstructorId, $selectedTermId),
+            'weekViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'week', $includeWeekends, $selectedInstructorId, $selectedTermId),
+            'monthViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'month', $includeWeekends, $selectedInstructorId, $selectedTermId),
+            'previousWeekUrl' => $this->schedulePeriodUrl($courseOffering, $previousPeriod, $isWorkspace, $period, $includeWeekends, $selectedInstructorId, $selectedTermId),
+            'nextWeekUrl' => $this->schedulePeriodUrl($courseOffering, $nextPeriod, $isWorkspace, $period, $includeWeekends, $selectedInstructorId, $selectedTermId),
+            'weekendToggleUrl' => $this->schedulePeriodUrl($courseOffering, $selectedDate, $isWorkspace, $period, $period === 'week' ? ! $includeWeekends : $includeWeekends, $selectedInstructorId, $selectedTermId),
             'coordinatorEmptyStateKey' => \App\Support\CoordinatorEmptyState::forCoordinator((int) Auth::id()),
         ];
     }
@@ -591,6 +615,7 @@ class ScheduleController extends Controller
             'courseOffering.studentGroups' => fn ($query) => $query->orderBy('group_code'),
             'activityType',
             'scheduleTemplate',
+            'term',
             'room.locationType',
             'instructors.instructorProfile.department',
             'studentGroups',
@@ -829,7 +854,8 @@ class ScheduleController extends Controller
         bool $isWorkspace,
         string $period,
         bool $includeWeekends = false,
-        ?int $instructorId = null
+        ?int $instructorId = null,
+        ?int $termId = null
     ): string
     {
         $keepWeekendParam = $period === 'week' && $includeWeekends;
@@ -842,6 +868,7 @@ class ScheduleController extends Controller
                 'period' => $period,
                 'include_weekends' => $keepWeekendParam ? 1 : null,
                 'instructor_id' => $instructorId,
+                'term_id' => $termId,
             ]));
         }
 
@@ -852,6 +879,7 @@ class ScheduleController extends Controller
             'period' => $period,
             'include_weekends' => $keepWeekendParam ? 1 : null,
             'instructor_id' => $instructorId,
+            'term_id' => $termId,
         ]));
     }
 
