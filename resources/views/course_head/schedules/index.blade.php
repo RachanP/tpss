@@ -6169,14 +6169,19 @@
                             @php
                                 $dayOccurrences = $occurrencesByDate->get($day->toDateString(), collect());
                                 $isOutsideMonth = $day->month !== $weekStart->month;
+                                $isOutsideAcademic = $isDayOutsideAcademic($day);
+                                $di = $dayInfo($day);
+                                $dayKindClass = ! $isOutsideAcademic && $di['kind'] !== 'normal' ? 'day-' . $di['kind'] : '';
                             @endphp
-                            <div class="month-calendar-day {{ $isOutsideMonth ? 'is-outside' : '' }}">
+                            <div class="month-calendar-day {{ $isOutsideMonth ? 'is-outside' : '' }} {{ $isOutsideAcademic ? 'is-outside-academic' : '' }} {{ $dayKindClass }}"
+                                @if($isOutsideAcademic) title="นอกช่วงปีการศึกษา" @elseif($di['label']) title="{{ $di['label'] }}" @endif>
                                 <div class="month-day-top">
                                     <span class="month-day-number">{{ $day->day }}</span>
                                     @if($dayOccurrences->isNotEmpty())
                                         <span class="month-day-count">{{ $dayOccurrences->count() }} รายการ</span>
                                     @endif
                                 </div>
+                                @if($dayKindClass)<span class="month-day-flag is-{{ $di['kind'] }}">{{ $di['label'] }}</span>@endif
                                 <div class="month-day-items">
                                     @forelse($dayOccurrences as $occurrence)
                                         @php
@@ -6224,10 +6229,11 @@
                 <div class="schedule-grid is-precise" data-grid-minute-step="{{ $gridMinuteStep }}" style="--grid-day-count: {{ max(1, $weekDays->count()) }}; --grid-minute-row-height: {{ $gridMinuteRowHeight }}px; grid-template-columns: 68px repeat({{ max(1, $weekDays->count()) }}, minmax({{ ($includeWeekends ?? false) && ($schedulePeriod ?? 'week') === 'week' ? 122 : 146 }}px, 1fr)); grid-template-rows: 44px repeat({{ $gridMinuteRowCount }}, var(--grid-minute-row-height));">
                     <div class="grid-cell grid-head" style="grid-area:1 / 1;"></div>
                     @foreach($weekDays as $dayIndex => $day)
-                        @php $dayOutside = $isDayOutsideAcademic($day); @endphp
-                        <div class="grid-cell grid-head {{ $dayOutside ? 'is-outside-academic' : '' }}" style="grid-area:1 / {{ $dayIndex + 2 }};" @if($dayOutside) title="นอกช่วงปีการศึกษา" @endif>
+                        @php $dayOutside = $isDayOutsideAcademic($day); $di = $dayInfo($day); $dayKindClass = ! $dayOutside && $di['kind'] !== 'normal' ? 'day-' . $di['kind'] : ''; @endphp
+                        <div class="grid-cell grid-head {{ $dayOutside ? 'is-outside-academic' : '' }} {{ $dayKindClass }}" style="grid-area:1 / {{ $dayIndex + 2 }};" @if($dayOutside) title="นอกช่วงปีการศึกษา" @elseif($di['label']) title="{{ $di['label'] }}" @endif>
                             {{ $thaiDays[$day->dayOfWeekIso] ?? $day->format('l') }}<br>
                             <span class="caption">{{ $formatDate($day) }}</span>
+                            @if($dayKindClass)<span class="grid-day-chip is-{{ $di['kind'] }}">{{ $di['label'] }}</span>@endif
                         </div>
                     @endforeach
 
@@ -6237,8 +6243,8 @@
                         @endphp
                         <div class="grid-cell grid-time" style="grid-column:1; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};">{{ $slot }}</div>
                         @foreach($weekDays as $dayIndex => $day)
-                            @php $dayOutside = $isDayOutsideAcademic($day); @endphp
-                            <div class="grid-cell {{ $dayOutside ? 'is-outside-academic' : '' }} {{ $canEdit && ! $dayOutside ? 'is-addable' : '' }}" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};" @if($canEdit && ! $dayOutside) @click="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" @keydown.enter.prevent="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" @keydown.space.prevent="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" role="button" tabindex="0" aria-label="เพิ่มรายการสอน {{ $formatDate($day) }} เวลา {{ $slot }}" data-testid="grid-empty-cell" title="คลิกเพื่อเพิ่มกิจกรรม {{ $slot }}" @endif></div>
+                            @php $dayOutside = $isDayOutsideAcademic($day); $di = $dayInfo($day); $dayBlocked = $dayOutside || $di['blocked']; $dayKindClass = ! $dayOutside && $di['kind'] !== 'normal' ? 'day-' . $di['kind'] : ''; @endphp
+                            <div class="grid-cell {{ $dayOutside ? 'is-outside-academic' : '' }} {{ $dayKindClass }} {{ $canEdit && ! $dayBlocked ? 'is-addable' : '' }}" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};" @if($canEdit && ! $dayBlocked) @click="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" @keydown.enter.prevent="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" @keydown.space.prevent="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" role="button" tabindex="0" aria-label="เพิ่มรายการสอน {{ $formatDate($day) }} เวลา {{ $slot }}" data-testid="grid-empty-cell" title="คลิกเพื่อเพิ่มกิจกรรม {{ $slot }}" @elseif($canEdit && $dayBlocked && $di['label']) title="{{ $di['label'] }} — เพิ่มกิจกรรมไม่ได้" @endif></div>
                         @endforeach
                     @endforeach
 
@@ -7085,39 +7091,10 @@
                                     @endif
                                 </div>
 
-                                <div class="modal-section {{ $groupConflictNote ? 'modal-field-has-conflict' : '' }}">
-                                    <div class="modal-section-title">กลุ่มนักศึกษา <span class="caption" style="font-weight:500;color:var(--fg-3);">(ไม่บังคับ — จัดกลุ่มหลังอนุมัติ)</span></div>
-                                    <template x-if="liveIssue('student_group_ids').length">
-                                        <div class="field-live-error" data-testid="live-error-student_group_ids">
-                                            <template x-for="msg in liveIssue('student_group_ids')" :key="msg"><div x-text="msg"></div></template>
-                                        </div>
-                                    </template>
-                                    @if($offering->studentGroups->isEmpty())
-                                        <div class="optional-note" style="margin:0;">ยังไม่มีกลุ่มนักศึกษาในรายวิชานี้ — กลุ่มย่อยจะถูกจัดหลังผู้บริหารอนุมัติ (โดยอาจารย์ในวิชา) จึงข้ามขั้นนี้ไปก่อนได้</div>
-                                    @else
-                                        @php
-                                            $editGroupSearchItems = $offering->studentGroups
-                                                ->map(fn ($group) => mb_strtolower($group->group_code . ' ' . $group->student_count . ' คน', 'UTF-8'))
-                                                ->values();
-                                        @endphp
-                                        <input type="search" class="modal-choice-search" x-model="editGroupSearch" placeholder="ค้นหารหัสกลุ่มนักศึกษา" aria-label="ค้นหากลุ่มนักศึกษา">
-                                        <div class="modal-choice-grid">
-                                            @foreach($offering->studentGroups as $group)
-                                                @php
-                                                    $editGroupSearchText = mb_strtolower($group->group_code . ' ' . $group->student_count . ' คน', 'UTF-8');
-                                                @endphp
-                                                <label class="modal-choice" x-show="matchesCreateSearch(@js($editGroupSearchText), editGroupSearch)" x-cloak>
-                                                    <input type="checkbox" name="student_group_ids[]" value="{{ $group->id }}" @checked(in_array((string) $group->id, $editGroupIds, true)) data-testid="schedule-student-group">
-                                                    <span>{{ $group->group_code }} · {{ $group->student_count }} คน</span>
-                                                </label>
-                                            @endforeach
-                                        </div>
-                                        <div class="modal-choice-empty" x-show="hasCreateSearch(editGroupSearch) && !hasCreateSearchMatches(@js($editGroupSearchItems), editGroupSearch)" x-cloak>ไม่พบข้อมูลที่ค้นหา</div>
-                                    @endif
-                                    @if($groupConflictNote)
-                                        <div class="modal-conflict-field">{{ $groupConflictNote }}</div>
-                                    @endif
-                                </div>
+                                {{-- V2: หัวหน้าวิชาไม่จัดกลุ่มย่อย (กลุ่มจัดหลังอนุมัติ โดยอาจารย์) — เก็บกลุ่มเดิมไว้ผ่าน hidden กัน update ล้าง --}}
+                                @foreach($editGroupIds as $gid)
+                                    <input type="hidden" name="student_group_ids[]" value="{{ $gid }}">
+                                @endforeach
                             </div>
                             <div class="schedule-live-block" x-show="liveBlocking" x-cloak data-testid="schedule-live-block">
                                 <span class="schedule-live-block-icon" aria-hidden="true">⛔</span>
@@ -7472,37 +7449,7 @@
                                         <div class="modal-choice-empty" x-show="hasCreateSearch(createInstructorSearch) && !hasCreateSearchMatches(@js($createInstructorSearchItems), createInstructorSearch)" x-cloak>ไม่พบข้อมูลที่ค้นหา</div>
                                     </div>
 
-                                    <div class="modal-section">
-                                        <div class="modal-section-title">กลุ่มนักศึกษา <span class="caption" style="font-weight:500;color:var(--fg-3);">(ไม่บังคับ — จัดกลุ่มหลังอนุมัติ)</span></div>
-                                        <template x-if="liveIssue('student_group_ids').length">
-                                            <div class="field-live-error" data-testid="live-error-student_group_ids">
-                                                <template x-for="msg in liveIssue('student_group_ids')" :key="msg"><div x-text="msg"></div></template>
-                                            </div>
-                                        </template>
-                                        @if($offeringOption->studentGroups->isEmpty())
-                                            <div class="optional-note" style="margin:0;">ยังไม่มีกลุ่มนักศึกษาในรายวิชานี้ — กลุ่มย่อยจะถูกจัดหลังผู้บริหารอนุมัติ (โดยอาจารย์ในวิชา) จึงข้ามขั้นนี้ไปก่อนได้</div>
-                                        @else
-                                            <div class="optional-note" x-show="createMode === 'series'" x-cloak style="margin-bottom:8px;">ถ้าเลือกไว้ ระบบจะใส่ให้เฉพาะการ์ดสัปดาห์แรก สัปดาห์ถัดไปเติมหรือคัดลอกจากการ์ดที่ครบแล้วได้</div>
-                                            @php
-                                                $createGroupSearchItems = $offeringOption->studentGroups
-                                                    ->map(fn ($group) => mb_strtolower($group->group_code . ' ' . $group->student_count . ' คน', 'UTF-8'))
-                                                    ->values();
-                                            @endphp
-                                            <input type="search" class="modal-choice-search" x-model="createGroupSearch" placeholder="ค้นหารหัสกลุ่มนักศึกษา" aria-label="ค้นหากลุ่มนักศึกษา">
-                                            <div class="modal-choice-grid">
-                                                @foreach($offeringOption->studentGroups as $group)
-                                                    @php
-                                                        $groupSearchText = mb_strtolower($group->group_code . ' ' . $group->student_count . ' คน', 'UTF-8');
-                                                    @endphp
-                                                    <label class="modal-choice" x-show="matchesCreateSearch(@js($groupSearchText), createGroupSearch)" x-cloak>
-                                                        <input type="checkbox" name="student_group_ids[]" value="{{ $group->id }}" @checked(in_array((string) $group->id, $selectedGroupIds, true)) :disabled="selectedOfferingId !== '{{ $offeringOption->id }}'" data-testid="schedule-student-group">
-                                                        <span>{{ $group->group_code }} · {{ $group->student_count }} คน</span>
-                                                    </label>
-                                                @endforeach
-                                            </div>
-                                            <div class="modal-choice-empty" x-show="hasCreateSearch(createGroupSearch) && !hasCreateSearchMatches(@js($createGroupSearchItems), createGroupSearch)" x-cloak>ไม่พบข้อมูลที่ค้นหา</div>
-                                        @endif
-                                    </div>
+                                    {{-- V2: หัวหน้าวิชาไม่จัดกลุ่มย่อยตอนสร้างกิจกรรม (กลุ่มจัดหลังอนุมัติ โดยอาจารย์) — ตัด selector ออก --}}
                                 </div>
                             @endforeach
                         </div>
