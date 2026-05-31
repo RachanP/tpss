@@ -54,13 +54,13 @@ class CoursePoolManagementTest extends TestCase
             ->assertDontSee('/admin/course-pool/NSBS%20111', false);
     }
 
-    public function test_master_data_course_modal_serializes_planned_year_and_semester_for_editing(): void
+    public function test_master_data_course_modal_serializes_planned_year_for_editing(): void
     {
+        // V2: วิชาเปิดทั้งปี — ตัด default_semester ออกจากฟอร์มแล้ว เหลือเฉพาะชั้นปี
         $admin = $this->makeUser('admin');
         $course = $this->makeCourse([
             'course_code' => 'NSBS 111',
             'default_year_level' => 3,
-            'default_semester' => 1,
         ]);
 
         $this->actingAsRole($admin, 'admin');
@@ -68,7 +68,6 @@ class CoursePoolManagementTest extends TestCase
         $content = $this->get(route('admin.master_data', ['tab' => 'courses']))
             ->assertOk()
             ->assertSee('ปี 3', false)
-            ->assertSee('ภาค 1', false)
             ->assertSee('hydrateCourseForm(course)', false)
             ->assertSee('normalizeCourseFormSelects({ resetInvalidYear = true } = {})', false)
             ->assertSee('$nextTick(() => this.normalizeCourseFormSelects({ resetInvalidYear: false }))', false)
@@ -77,11 +76,10 @@ class CoursePoolManagementTest extends TestCase
             ->assertSee(':disabled="3 > currentCurriculumDurationYears()"', false)
             ->assertDontSee('x-for="y in currentCurriculumYearOptions()"', false)
             ->assertSee('x-model="currentCourse.default_year_level"', false)
-            ->assertSee('x-model="currentCourse.default_semester"', false)
+            ->assertDontSee('x-model="currentCourse.default_semester"', false)
             ->getContent();
 
         $this->assertMatchesRegularExpression('/default_year_level(?:\\\\u0022|")\s*:\s*3/', $content);
-        $this->assertMatchesRegularExpression('/default_semester(?:\\\\u0022|")\s*:\s*1/', $content);
         $this->assertStringContainsString($course->course_code, $content);
     }
 

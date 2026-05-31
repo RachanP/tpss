@@ -232,7 +232,7 @@ class ScheduleSeriesGeneratorTest extends TestCase
             ->assertSee('data-testid="schedule-repeat-weekly"', false)
             ->assertSee('seriesCreateAction', false)
             ->assertSee('schedules\\/series', false)
-            ->assertSee('สร้างรายการรายสัปดาห์อัตโนมัติ');
+            ->assertSee('ซ้ำรายสัปดาห์');
     }
 
     public function test_series_instance_update_preserves_template_owned_fields(): void

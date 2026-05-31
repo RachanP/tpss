@@ -264,9 +264,9 @@ class CourseOfferingManagementTest extends TestCase
         $url = route('maker.course_offerings.show', $offering);
         $path = parse_url($url, PHP_URL_PATH);
 
-        $this->assertStringContainsString('/maker/course-offerings/nsbs-231-2568-2', $url);
+        $this->assertStringContainsString('/maker/course-offerings/nsbs-231-2568', $url);
         $this->assertStringNotContainsString('%20', $url);
-        $this->assertSame('/maker/course-offerings/nsbs-231-2568-2', $path);
+        $this->assertSame('/maker/course-offerings/nsbs-231-2568', $path);
         $this->assertNotSame("/maker/course-offerings/{$offering->id}", $path);
     }
 
@@ -355,8 +355,8 @@ class CourseOfferingManagementTest extends TestCase
             'academic_year_id' => $this->academicYearNamed('2569', 1)->id,
         ]);
 
-        $this->assertSame('/maker/course-offerings/nsbs-233-2568-1', $this->offeringPath($firstOffering));
-        $this->assertSame('/maker/course-offerings/nsbs-233-2569-1', $this->offeringPath($secondOffering));
+        $this->assertSame('/maker/course-offerings/nsbs-233-2568', $this->offeringPath($firstOffering));
+        $this->assertSame('/maker/course-offerings/nsbs-233-2569', $this->offeringPath($secondOffering));
     }
 
     public function test_route_key_appends_id_when_readable_base_collides(): void
@@ -391,11 +391,11 @@ class CourseOfferingManagementTest extends TestCase
         ]);
 
         $this->assertSame(
-            "/maker/course-offerings/nsbs-234-2568-2-{$firstOffering->id}",
+            "/maker/course-offerings/nsbs-234-2568-{$firstOffering->id}",
             $this->offeringPath($firstOffering)
         );
         $this->assertSame(
-            "/maker/course-offerings/nsbs-234-2568-2-{$secondOffering->id}",
+            "/maker/course-offerings/nsbs-234-2568-{$secondOffering->id}",
             $this->offeringPath($secondOffering)
         );
 
@@ -434,7 +434,7 @@ class CourseOfferingManagementTest extends TestCase
 
         $this->actingAsCourseHead($head);
 
-        $this->get('/maker/course-offerings/nsbs-235-2568-2')->assertNotFound();
+        $this->get('/maker/course-offerings/nsbs-235-2568')->assertNotFound();
     }
 
     public function test_detail_renders_core_fields_from_course_master(): void

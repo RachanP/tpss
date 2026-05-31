@@ -924,14 +924,12 @@ class AuditLogIntegrationTest extends TestCase
         $this->actingAsAdmin()
             ->post(route('admin.settings.years.store'), [
                 'name' => '2570',
-                'semester' => 1,
-                'start_date' => '2027-08-01',
-                'end_date' => '2027-12-31',
                 'is_active' => '1',
+                'terms' => [['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '2027-08-01', 'end_date' => '2027-12-31']],
             ])
             ->assertRedirect();
 
-        $year = AcademicYear::where('name', '2570')->where('semester', 1)->firstOrFail();
+        $year = AcademicYear::where('name', '2570')->firstOrFail();
         $createLog = $this->latestLog('ข้อมูลหลัก.สร้าง', 'academic_years');
         $this->assertSame('ข้อมูลหลัก', $createLog->category);
         $this->assertSame('2570', $createLog->new_values['name']);
@@ -939,10 +937,8 @@ class AuditLogIntegrationTest extends TestCase
         $this->actingAsAdmin()
             ->put(route('admin.settings.years.update', $year), [
                 'name' => '2570',
-                'semester' => 1,
-                'start_date' => '2027-08-15',
-                'end_date' => '2027-12-31',
                 'is_active' => '1',
+                'terms' => [['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '2027-08-15', 'end_date' => '2027-12-31']],
             ])
             ->assertRedirect();
 
@@ -957,15 +953,12 @@ class AuditLogIntegrationTest extends TestCase
         $this->actingAsAdmin()
             ->post(route('admin.settings.years.store'), [
                 'name' => '2571',
-                'semester' => 2,
-                'start_date' => '23/06/2569',
-                'end_date' => '24/06/2569',
+                'terms' => [['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '23/06/2569', 'end_date' => '24/06/2569']],
             ])
             ->assertRedirect();
 
         $this->assertDatabaseHas('academic_years', [
             'name' => '2571',
-            'semester' => 2,
             'start_date' => '2026-06-23',
             'end_date' => '2026-06-24',
         ]);

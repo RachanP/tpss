@@ -59,7 +59,6 @@ class LocationTypeSharedTest extends TestCase
         $curr = Curriculum::firstOrCreate(['name' => 'หลักสูตรทดสอบ', 'effective_year' => 2568, 'is_active' => true]);
         $year = AcademicYear::firstOrCreate([
             'name'       => '2568',
-            'semester'   => 1,
             'start_date' => '2025-08-01',
             'end_date'   => '2026-01-31',
             'is_active'  => true,

@@ -141,8 +141,7 @@ class ConflictRecomputeJobTest extends TestCase
         [$year, $firstHead, , $firstSchedule] = $this->makeConflictDataset($year, 'First');
         [$year, $secondHead, , $secondSchedule] = $this->makeConflictDataset($year, 'Second');
         $otherYear = AcademicYear::query()->create([
-            'name' => '2572',
-            'semester' => 2,
+            'name' => '2576',
             'start_date' => '2029-01-01',
             'end_date' => '2029-05-31',
             'is_active' => false,
@@ -557,8 +556,7 @@ class ConflictRecomputeJobTest extends TestCase
         config(['conflicts.async_reads' => false]);
         [$firstYear, , $firstOffering, $firstInstructor, $firstGroup] = $this->makeReadyOffering();
         $secondYear = AcademicYear::query()->create([
-            'name' => '2570',
-            'semester' => 2,
+            'name' => '2577',
             'start_date' => '2027-01-01',
             'end_date' => '2027-05-31',
             'is_active' => false,
@@ -620,8 +618,7 @@ class ConflictRecomputeJobTest extends TestCase
             'phase' => 'published',
         ]);
         $schedulingYear = AcademicYear::query()->create([
-            'name' => '2573',
-            'semester' => 2,
+            'name' => '2578',
             'start_date' => '2030-01-01',
             'end_date' => '2030-05-31',
             'is_active' => false,
