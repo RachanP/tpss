@@ -1,6 +1,6 @@
 <x-app-layout title="{{ $isAdmin ? 'ตั้งค่าระบบ' : 'ตั้งค่าปีการศึกษา' }}">
     <div x-data="{
-        activeTab: new URLSearchParams(window.location.search).get('tab') || 'academic',
+        activeTab: {{ $isAdmin ? "new URLSearchParams(window.location.search).get('tab') || 'academic'" : "'academic'" }},
         workloadWeeks: {{ $workloadWeeks }},
         teachingWeeks: {{ $teachingWeeks }},
         workloadHoursPerWeek: {{ $workloadHoursPerWeek }},
@@ -104,8 +104,7 @@
         }
     }">
 
-        @if($isAdmin)
-        <div class="tabs-container" style="display: flex; justify-content: flex-end; margin-bottom: 24px; width: 100%; overflow: hidden;">
+        <div class="tabs-container" style="display: flex; justify-content: {{ $isAdmin ? 'flex-end' : 'flex-start' }}; margin-bottom: 24px; width: 100%; overflow: hidden;">
             <div class="tabs"
                 style="display: flex; gap: 8px; background: var(--bg-2); padding: 4px; border-radius: 8px; border: 1px solid var(--border); overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; max-width: 100%;">
                 <button type="button" @click="activeTab = 'academic'"
@@ -120,6 +119,7 @@
                     </svg>
                     ปีการศึกษา
                 </button>
+                @if($isAdmin)
                 <button type="button" @click="activeTab = 'pa'"
                     :class="activeTab === 'pa' ? 'btn-primary' : 'btn btn-ghost'"
                     style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
@@ -131,9 +131,9 @@
                     </svg>
                     เกณฑ์ภาระงาน
                 </button>
+                @endif
             </div>
         </div>
-        @endif
 
         <!-- Tab: Academic Year (รวมการจัดการช่วงจัดตารางในตารางเดียวกัน) -->
         @php
@@ -229,7 +229,7 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <div class="academic-year-actions">
+                                        <div class="academic-year-actions {{ $isAdmin ? '' : 'academic-year-actions--staff' }}">
                                             <button class="action-btn" title="แก้ไข"
                                                 @click="openEditModal({{ json_encode($year) }})">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -597,6 +597,11 @@
             justify-content: center;
             margin: 0 auto;
             width: fit-content;
+        }
+        .academic-year-actions--staff {
+            grid-template-columns: 32px;
+            justify-items: center;
+            width: 32px;
         }
         .academic-year-schedule-action {
             display: flex;

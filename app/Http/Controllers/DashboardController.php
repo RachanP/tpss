@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Admin\AlertController;
 use App\Models\AcademicYear;
-use App\Models\AuditLog;
 use App\Models\Course;
 use App\Models\CourseOffering;
 use App\Models\Curriculum;
@@ -109,9 +108,6 @@ class DashboardController extends Controller
 
     public function staff()
     {
-        ['instructors' => $instructors, 'teachingWeeks' => $teachingWeeks, 'hoursPerWeek' => $hoursPerWeek]
-            = $this->instructorWorkloadData();
-
         $currentAcademicYear = AcademicYear::where('is_active', true)
             ->orderByDesc('name')
             ->orderByDesc('semester')
@@ -189,16 +185,7 @@ class DashboardController extends Controller
             $conflictSummary
         );
 
-        $recentAuditLogs = AuditLog::with('user')
-            ->orderedForAudit()
-            ->limit(5)
-            ->get();
-
         return view('staff.dashboard', compact(
-            'instructors',
-            'teachingWeeks',
-            'hoursPerWeek',
-            'recentAuditLogs',
             'currentAcademicYear',
             'currentYearStaffOfferings',
             'masterStats',
@@ -266,7 +253,7 @@ class DashboardController extends Controller
                 'hint' => $conflictStatus === 'disabled'
                     ? 'ยังไม่ได้เปิด async conflict read จึงใช้ summary แบบจำกัด'
                     : 'สรุปรายการชนและ warning จากข้อมูลล่าสุด',
-                'href' => route('staff.dashboard') . '#staff-report-summary',
+                'href' => route('staff.reports.index'),
             ],
         ];
     }

@@ -162,6 +162,7 @@ Route::middleware(['auth', 'no-back'])->group(function () {
         Route::get('/staff/settings', 'App\Http\Controllers\Staff\SettingController@index')->name('staff.settings');
         Route::post('/staff/settings/academic-years', 'App\Http\Controllers\Staff\SettingController@storeYear')->name('staff.settings.years.store');
         Route::put('/staff/settings/academic-years/{year}', 'App\Http\Controllers\Staff\SettingController@updateYear')->name('staff.settings.years.update');
+        Route::view('/staff/reports', 'staff.reports.index')->name('staff.reports.index');
 
         Route::get('/staff/master-data', 'App\Http\Controllers\Staff\MasterDataController@index')->name('staff.master_data');
         Route::post('/staff/master-data/location-types', 'App\Http\Controllers\Staff\MasterDataController@storeLocationType')->name('staff.location_types.store');
@@ -175,6 +176,7 @@ Route::middleware(['auth', 'no-back'])->group(function () {
         Route::post('/staff/master-data/courses/import', 'App\Http\Controllers\Staff\MasterDataController@importCourses')->name('staff.courses.import');
         Route::put('/staff/master-data/courses/{course}', 'App\Http\Controllers\Staff\MasterDataController@updateCourse')->name('staff.courses.update');
         Route::delete('/staff/master-data/courses/{course}', 'App\Http\Controllers\Staff\MasterDataController@destroyCourse')->name('staff.courses.destroy');
+        Route::get('/staff/master-data/courses/{course}/instructor-deviation', 'App\Http\Controllers\Staff\MasterDataController@courseInstructorDeviation')->name('staff.courses.instructor_deviation');
 
     });
 

@@ -46,11 +46,14 @@
                 'instructor_role_ids' => $courseOldInstructorRoleIds,
             ],
         ];
+        $routePrefix = $routePrefix ?? (($isAdmin ?? true) ? 'admin' : 'staff');
     @endphp
     <div x-data="{
         courseFormErrorState: {{ Js::from($courseFormErrorState) }},
         activeTab: {{ Js::from($courseFormHasErrors ? 'courses' : null) }} || new URLSearchParams(window.location.search).get('tab') || 'instructors',
         canManageCourseInstructorPool: {{ ($isAdmin ?? false) ? 'true' : 'false' }},
+        isAdminContext: {{ ($isAdmin ?? false) ? 'true' : 'false' }},
+        currentUserId: {{ (int) auth()->id() }},
         filters: {
             instructors: { keyword: '', department_id: '' },
             departments: { keyword: '' },
@@ -535,6 +538,11 @@
         },
         courseAssignmentsLocked() {
             return this.editCourseMode && !!this.currentCourse.has_locked_offering;
+        },
+        canViewCourseDeviation() {
+            if (!this.currentCourse.course_code) return false;
+            if (this.isAdminContext) return true;
+            return this.currentCourse.status === 'active';
         },
         filteredCourseHeadList() {
             const q = this.courseHeadSearch.toLowerCase();
@@ -1562,9 +1570,9 @@
                                     </td>
                                     <td style="text-align: center;">
                                         <div style="display:inline-flex;gap:6px;align-items:center;">
-                                            @if($isAdmin && $course->has_locked_offering)
+                                            @if((($isAdmin ?? false) && ($course->has_locked_offering ?? false)) || (!($isAdmin ?? false) && $course->status === 'active'))
                                                 <a
-                                                    href="{{ route('admin.courses.instructor_deviation', $course) }}"
+                                                    href="{{ route($routePrefix . '.courses.instructor_deviation', $course) }}"
                                                     class="action-btn"
                                                     data-testid="courses-deviation-button"
                                                     title="{{ ($course->has_deviation ?? false) ? 'มีการเปลี่ยนแปลงนอกเหนือจากแม่แบบ — กดดูรายละเอียด' : 'ดูการใช้งานจริงของแม่แบบผู้สอน' }}"
@@ -2419,17 +2427,18 @@
 
                                 <div class="course-lock-note" x-show="courseAssignmentsLocked()">
                                     <div>แม่แบบผู้รับผิดชอบถูกล็อกแล้ว เพราะรายวิชานี้มี Course Offering ที่อยู่ในช่วงจัดตารางหรือเผยแพร่แล้ว แก้ชุดผู้สอนในหน้า Course Offering ของรอบนั้น</div>
-                                    @if($isAdmin ?? true)
-                                        <a x-show="currentCourse.course_code"
-                                            :href="'{{ url('/admin/master-data/courses') }}/' + encodeURIComponent(currentCourse.course_code) + '/instructor-deviation'"
-                                            data-testid="course-deviation-link"
-                                            style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:0.8125rem;font-weight:600;color:var(--brand-navy);text-decoration:underline;">
-                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                                <path d="M14 3h7v7"/><line x1="10" y1="14" x2="21" y2="3"/><path d="M21 14v7H3V3h7"/>
-                                            </svg>
-                                            ดูการใช้งานจริงของแม่แบบในแต่ละรอบเปิดสอน
-                                        </a>
-                                    @endif
+                                </div>
+
+                                <div class="course-lock-note" x-show="canViewCourseDeviation()">
+                                    <a x-show="canViewCourseDeviation()"
+                                        :href="'{{ url($routePrefix . '/master-data/courses') }}/' + encodeURIComponent(currentCourse.course_code) + '/instructor-deviation'"
+                                        data-testid="course-deviation-link"
+                                        style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:0.8125rem;font-weight:600;color:var(--brand-navy);text-decoration:underline;">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M14 3h7v7"/><line x1="10" y1="14" x2="21" y2="3"/><path d="M21 14v7H3V3h7"/>
+                                        </svg>
+                                        ดูการใช้งานจริงของแม่แบบในแต่ละรอบเปิดสอน
+                                    </a>
                                 </div>
 
                                 <div class="course-assignment-grid">

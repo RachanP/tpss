@@ -42,11 +42,45 @@ class StaffPhaseOneTest extends TestCase
         $this->get(route('staff.dashboard'))
             ->assertOk()
             ->assertSee('ภาพรวมระบบสำหรับเจ้าหน้าที่')
-            ->assertSee('สรุปรายงานสำหรับ Phase 1')
+            ->assertDontSee('กำลังอยู่ในช่วงพัฒนา')
+            ->assertDontSee('สรุปรายงานสำหรับ Phase 1')
             ->assertSee('Readiness ก่อนจัดตาราง')
             ->assertSee(route('staff.schedules.index'), false)
-            ->assertSee(route('staff.dashboard') . '#staff-report-summary', false)
+            ->assertSee(route('staff.reports.index'), false)
+            ->assertDontSee('staff-report-summary')
+            ->assertDontSee('ภาระงานอาจารย์')
+            ->assertDontSee('ขอบเขตข้อมูลหลักของ Staff')
+            ->assertDontSee('กิจกรรมล่าสุด')
             ->assertDontSee('href="#"', false);
+    }
+
+    public function test_staff_reports_page_shows_development_state(): void
+    {
+        $staff = $this->makeUser('staff');
+
+        $this->actingAsStaff($staff);
+
+        $this->get(route('staff.reports.index'))
+            ->assertOk()
+            ->assertSee('รายงาน')
+            ->assertSee('กำลังอยู่ในช่วงพัฒนา')
+            ->assertSee('ส่วนรายงานเต็มจะเปิดใช้งานใน phase ถัดไป');
+    }
+
+    public function test_staff_settings_uses_admin_academic_layout_without_admin_actions(): void
+    {
+        $staff = $this->makeUser('staff');
+        $this->makeYear('preparation');
+
+        $this->actingAsStaff($staff);
+
+        $this->get(route('staff.settings', ['tab' => 'pa']))
+            ->assertOk()
+            ->assertSee('tabs-container', false)
+            ->assertSee('justify-content: flex-start', false)
+            ->assertSee(route('staff.settings.years.store'), false)
+            ->assertDontSee('/admin/settings/update-constants', false)
+            ->assertDontSee('/admin/settings/scheduling/', false);
     }
 
     public function test_staff_dashboard_reads_scoped_conflict_summary_when_async_reads_are_enabled(): void
@@ -68,7 +102,8 @@ class StaffPhaseOneTest extends TestCase
         $this->get(route('staff.dashboard'))
             ->assertOk()
             ->assertSee('Conflict / Warning')
-            ->assertSee(route('staff.dashboard') . '#staff-report-summary', false);
+            ->assertSee(route('staff.reports.index'), false)
+            ->assertDontSee('staff-report-summary');
     }
 
     public function test_staff_course_update_preserves_instructor_pool_even_with_malicious_fields(): void
@@ -107,6 +142,33 @@ class StaffPhaseOneTest extends TestCase
             'course_id' => $course->id,
             'user_id' => $maliciousInstructor->id,
         ]);
+    }
+
+    public function test_staff_can_view_active_course_instructor_deviation_only(): void
+    {
+        [$staff, , $assignedOffering] = $this->makeReadyStaffOffering();
+        [, , $unassignedOffering] = $this->makeReadyStaffOffering(null, 'scheduling', false);
+        [, , $inactiveOffering] = $this->makeReadyStaffOffering(null, 'scheduling', false);
+        $inactiveOffering->course->update(['status' => 'inactive']);
+
+        $this->actingAsStaff($staff);
+
+        $this->get(route('staff.master_data', ['tab' => 'courses']))
+            ->assertOk()
+            ->assertSee(route('staff.courses.instructor_deviation', $assignedOffering->course), false)
+            ->assertSee(route('staff.courses.instructor_deviation', $unassignedOffering->course), false)
+            ->assertDontSee(route('staff.courses.instructor_deviation', $inactiveOffering->course), false);
+
+        $this->get(route('staff.courses.instructor_deviation', $assignedOffering->course))
+            ->assertOk()
+            ->assertSee(route('staff.master_data', ['tab' => 'courses']), false)
+            ->assertDontSee('data-testid="edit-template-link"', false);
+
+        $this->get(route('staff.courses.instructor_deviation', $unassignedOffering->course))
+            ->assertOk();
+
+        $this->get(route('staff.courses.instructor_deviation', $inactiveOffering->course))
+            ->assertForbidden();
     }
 
     public function test_staff_schedule_scope_uses_course_staff_assignment(): void

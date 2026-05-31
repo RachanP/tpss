@@ -9,30 +9,6 @@
         $phase = $currentAcademicYear?->phase;
         $phaseLabel = $phaseLabels[$phase] ?? ($phase ?: 'ไม่ระบุ');
         $phaseTone = $phase === 'scheduling' ? 'ok' : ($phase ? 'warn' : 'muted');
-        $conflictTotal = $conflictSummary['total'] ?? null;
-        $conflictText = $conflictTotal === null ? 'รอข้อมูล' : number_format((int) $conflictTotal);
-        $reportTiles = [
-            [
-                'label' => 'ภาระงานอาจารย์',
-                'value' => number_format($instructors->count()),
-                'sub' => 'อาจารย์ในระบบสำหรับดู workload',
-            ],
-            [
-                'label' => 'รายวิชาที่กำลังจัด',
-                'value' => number_format($masterStats['assigned_offerings']),
-                'sub' => 'เฉพาะ offering ที่ Staff คนนี้ได้รับมอบหมาย',
-            ],
-            [
-                'label' => 'ห้อง/สถานที่ถูกใช้',
-                'value' => number_format($masterStats['room_usage']),
-                'sub' => 'นับจากตารางรอบปีการศึกษาปัจจุบัน',
-            ],
-            [
-                'label' => 'Conflict / Warning',
-                'value' => $conflictText,
-                'sub' => 'ใช้ประกอบ demo ก่อนมีหน้า report/export จริง',
-            ],
-        ];
     @endphp
 
     <style>
@@ -247,31 +223,6 @@
             font-weight: 750;
             line-height: 1.55;
         }
-        .staff-permission-grid,
-        .staff-report-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 10px;
-        }
-        .staff-permission {
-            padding: 12px;
-            border: 1px solid var(--border);
-            border-radius: 7px;
-            background: var(--bg-1);
-        }
-        .staff-permission strong {
-            display: block;
-            margin-bottom: 4px;
-            color: var(--fg-1);
-            font-size: 13px;
-            font-weight: 950;
-        }
-        .staff-permission span {
-            color: var(--fg-3);
-            font-size: 12.5px;
-            line-height: 1.5;
-            font-weight: 650;
-        }
         .staff-offering-list {
             display: grid;
             gap: 9px;
@@ -293,30 +244,6 @@
             font-size: 12px;
             font-weight: 700;
         }
-        .staff-report-tile {
-            padding: 14px;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            background: var(--bg-1);
-        }
-        .staff-report-tile span {
-            color: var(--fg-3);
-            font-size: 12px;
-            font-weight: 850;
-        }
-        .staff-report-tile strong {
-            display: block;
-            margin: 5px 0 3px;
-            color: var(--fg-1);
-            font-size: 24px;
-            font-weight: 950;
-        }
-        .staff-report-tile small {
-            color: var(--fg-3);
-            font-size: 12px;
-            line-height: 1.45;
-            font-weight: 650;
-        }
         @media (max-width: 1100px) {
             .staff-grid,
             .staff-columns,
@@ -331,9 +258,7 @@
             .staff-dash {
                 padding: 18px;
             }
-            .staff-grid,
-            .staff-permission-grid,
-            .staff-report-grid {
+            .staff-grid {
                 grid-template-columns: 1fr;
             }
             .staff-ready-row {
@@ -348,7 +273,7 @@
                 <div class="staff-kicker">Staff Phase 1</div>
                 <h1 class="staff-title">ภาพรวมระบบสำหรับเจ้าหน้าที่</h1>
                 <div class="staff-copy">
-                    บทบาทนี้ช่วยเตรียมข้อมูลหลักที่ได้รับมอบหมายและช่วยกรอกตารางสอนแบบ block/rotation ตามข้อมูลที่หัวหน้าวิชาและ Admin เตรียมไว้ รายงานเต็มและ export จะเป็น phase ถัดไป จึงสรุปข้อมูลสำคัญไว้ในหน้านี้ก่อน
+                    บทบาทนี้ช่วยเตรียมข้อมูลหลักที่ได้รับมอบหมายและช่วยกรอกตารางสอนแบบ block/rotation ตามข้อมูลที่หัวหน้าวิชาและ Admin เตรียมไว้ ส่วนรายงานเต็มและ export ยังอยู่ระหว่างพัฒนาสำหรับ phase ถัดไป
                 </div>
             </div>
             <div class="staff-phase">
@@ -403,26 +328,6 @@
                                 <a class="staff-pill {{ $item['status'] }}" href="{{ $item['href'] }}">{{ $item['status'] === 'ready' ? 'พร้อม' : ($item['status'] === 'critical' ? 'ต้องแก้' : 'ติดตาม') }}</a>
                             </div>
                         @endforeach
-                    </div>
-                </section>
-
-                <section class="staff-panel" aria-label="สิทธิ์จัดการข้อมูลหลัก">
-                    <div class="staff-panel-head">
-                        <div>
-                            <div class="staff-panel-title">ขอบเขตข้อมูลหลักของ Staff</div>
-                            <div class="staff-panel-note">อ้างอิง shared master data จาก Admin แต่ล็อกส่วนที่ไม่อยู่ใน Phase 1</div>
-                        </div>
-                        <a class="staff-soft-link" href="{{ route('staff.master_data') }}">จัดการข้อมูลหลัก</a>
-                    </div>
-                    <div class="staff-permission-grid">
-                        <div class="staff-permission">
-                            <strong>Staff แก้ได้</strong>
-                            <span>รายวิชา, หัวหน้าวิชา, เจ้าหน้าที่ดูแลรายวิชา, ห้อง, ประเภทสถานที่ และข้อมูลนำเข้าที่เกี่ยวข้องกับสองส่วนนี้</span>
-                        </div>
-                        <div class="staff-permission">
-                            <strong>Admin ต้องแก้</strong>
-                            <span>ภาควิชา, หลักสูตร, อาจารย์ผู้สอน, ประเภทกิจกรรม, PA และการเปิด/ปิดช่วงจัดตาราง</span>
-                        </div>
                     </div>
                 </section>
 
@@ -502,57 +407,7 @@
                     @endif
                 </section>
 
-                <section class="staff-panel" aria-label="กิจกรรมล่าสุด">
-                    <div class="staff-panel-head">
-                        <div>
-                            <div class="staff-panel-title">กิจกรรมล่าสุด</div>
-                            <div class="staff-panel-note">ใช้ช่วยเล่า demo ว่าข้อมูลถูกเตรียมอย่างไร</div>
-                        </div>
-                    </div>
-                    @if($recentAuditLogs->isEmpty())
-                        <div class="staff-empty">ยังไม่มีบันทึกกิจกรรมล่าสุด</div>
-                    @else
-                        <div class="staff-action-list">
-                            @foreach($recentAuditLogs as $log)
-                                <div class="staff-action">
-                                    <div class="staff-action-main">
-                                        <div class="staff-action-title">{{ $log->description ?? $log->action }}</div>
-                                        <div class="staff-ready-hint">{{ $log->user?->formatted_name ?? $log->user?->name ?? 'ระบบ' }}</div>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    @endif
-                </section>
             </aside>
         </div>
-
-        <section id="staff-report-summary" class="staff-panel" aria-label="สรุปรายงาน Staff">
-            <div class="staff-panel-head">
-                <div>
-                    <div class="staff-panel-title">สรุปรายงานสำหรับ Phase 1</div>
-                    <div class="staff-panel-note">ยังไม่มีหน้า Reports เต็มหรือ PDF/Excel export ใน Phase 1 จึงสรุปข้อมูลที่ใช้ demo ไว้ตรงนี้</div>
-                </div>
-            </div>
-            <div class="staff-report-grid">
-                @foreach($reportTiles as $tile)
-                    <div class="staff-report-tile">
-                        <span>{{ $tile['label'] }}</span>
-                        <strong>{{ $tile['value'] }}</strong>
-                        <small>{{ $tile['sub'] }}</small>
-                    </div>
-                @endforeach
-            </div>
-        </section>
-
-        <section class="staff-panel" aria-label="ภาระงานอาจารย์">
-            <div class="staff-panel-head">
-                <div>
-                    <div class="staff-panel-title">ภาระงานอาจารย์</div>
-                    <div class="staff-panel-note">ใช้เป็น summary report ชั่วคราวใน Phase 1</div>
-                </div>
-            </div>
-            @include('shared.dashboard.instructors_workload')
-        </section>
     </div>
 </x-app-layout>

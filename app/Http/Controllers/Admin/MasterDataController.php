@@ -1130,6 +1130,12 @@ class MasterDataController extends Controller
 
     public function courseInstructorDeviation(Course $course)
     {
+        $isStaffContext = $this->isStaffMasterDataContext();
+
+        if ($isStaffContext) {
+            abort_unless($course->status === 'active', 403);
+        }
+
         // Include offerings ทุก phase — admin ใช้ดู pattern ข้ามปีเพื่อตัดสินใจ template รอบหน้า
         $offerings = $course->courseOfferings()
             ->with(['academicYear', 'coordinator', 'instructorPool.instructorProfile.department'])
@@ -1177,6 +1183,8 @@ class MasterDataController extends Controller
             'users'              => $users,
             'courseRoles'        => $courseRoles,
             'templateUpdatedAt'  => $templateUpdatedAt,
+            'routePrefix'        => $isStaffContext ? 'staff' : 'admin',
+            'canEditTemplate'     => ! $isStaffContext,
         ]);
     }
 
