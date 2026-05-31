@@ -35,6 +35,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->scoped(\App\Observers\ScheduleTermObserver::class);
         $this->app->scoped(ReferenceDataCache::class);
         $this->app->scoped(ScheduleConflictPolicy::class);
         $this->app->scoped(ScheduleConflictIndex::class);
@@ -70,6 +71,7 @@ class AppServiceProvider extends ServiceProvider
         }
 
         Schedule::observe(ScheduleConflictInvalidationObserver::class);
+        Schedule::observe(\App\Observers\ScheduleTermObserver::class);
 
         View::composer('components.sidebar', function ($view): void {
             $user = auth()->user();

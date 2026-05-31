@@ -10,6 +10,7 @@ class Schedule extends Model
 {
     protected $fillable = [
         'course_offering_id',
+        'term_id',
         'activity_type_id',
         'room_id',
         'practicum_series_id',
@@ -52,6 +53,11 @@ class Schedule extends Model
     public function courseOffering(): BelongsTo
     {
         return $this->belongsTo(CourseOffering::class);
+    }
+
+    public function term(): BelongsTo
+    {
+        return $this->belongsTo(Term::class);
     }
 
     public function activityType(): BelongsTo
