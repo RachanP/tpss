@@ -309,11 +309,11 @@ V2 ชี้ว่าตารางคณะพยาบาลเป็น "ต
    - ตอนจัดกลุ่มหลังอนุมัติ: slot ติดป้ายเทอมไว้แล้ว → แมพ "กิจกรรมเทอมนี้ → กลุ่มไหน" ได้ตรง (ฐานของ rotation)
    - ตาราง `terms` (วัน+ช่วงสอบ) สร้างในรอบ cleanup นี้ (ข้อ 1) · ส่วน `schedules.term_id` (ให้ slot ระบุว่าอยู่เทอมไหน) + rotation = งาน **phase ถัดไป** (schedule)
 
-### 🔲 ยังเหลือใน Master/Setup scope (V3 ระบุชัด — additive, ยังไม่ทำ)
-> ตรวจ 31 พ.ค.: เทียบ V3 แล้ว core เสร็จ เหลือ 2 อย่างที่ V3 จัดเป็น Master/Setup data:
-- **`holidays`** (date, name, remark) — ตารางวันหยุดราชการ: ปฏิทินขึ้น "งดการเรียนการสอน" + แจ้งเตือนตอนวางตารางตรงวันหยุด + ไม่นับ workload (V3 ข้อ 2.4 + gap 12.1) — REQUIRED
-- **`activity_types.counts_toward_workload`** (bool) — Admin ตั้งได้ว่าประเภทไหนนับ/ไม่นับภาระงาน (V3 ข้อ 5.4 บรรทัด 273: ปฐมนิเทศ/SDL/สอบ/วันหยุด = ไม่นับ) — REQUIRED · อาจเพิ่มประเภท วิทยานิพนธ์/ดุษฎีนิพนธ์ (มี category `thesis` แล้ว)
-- (optional) `rooms.campus` ศาลายา/บางกอกน้อย — **ไม่อยู่ใน V3** (มาจาก V1/V2) — display ก่อน ยังไม่ผูก conflict
+### ✅ Master/Setup scope V3 — เสร็จครบ (31 พ.ค.)
+> ตรวจ 31 พ.ค.: เทียบ V3 แล้ว REQUIRED ทั้งหมดปิดครบ เหลือแค่ optional ที่ไม่อยู่ใน V3:
+- ✅ **`holidays`** (date, name, remark, **source**) — auto-fetch จาก Google Thai holidays ICS ตอน `storeYear/updateYear` (ตามช่วงปีปฏิทินที่ปีคร่อม via `HolidayService::syncForAcademicYearSpan`) · fail-safe (ดึงไม่ได้ → flash `holiday_warning` ไม่พัง flow) · ปุ่ม "ดึงวันหยุดซ้ำ" ต้องมีปี active ก่อน (ไม่ fallback ปีปฏิทิน) · refresh ลบเฉพาะ `source=google` ในช่วงปี คงของ `source=manual` + ปีอื่น · CRUD + highlight แถว manual ในหน้าตั้งค่า→ปีการศึกษา · SSL ใช้ bundled `resources/certs/cacert.pem` (MAMP Windows ไม่มี curl.cainfo) — DONE
+- ✅ **`activity_types.counts_toward_workload`** (bool) — Admin ตั้งนับ/ไม่นับภาระงาน · default ตามหมวด (Alpine `applyWorkloadDefaultFromCategory`: other=ไม่นับ, อื่นๆ=นับ) ปรับเองได้ · `ReferenceDataCache` include column · ตาราง master data แยกคอลัมน์ "หมวดหมู่" (badge สีตามหมวด) + "ภาระงาน" (pill) — DONE · category `thesis` มีไว้รองรับวิทยานิพนธ์/ดุษฎีนิพนธ์แล้ว
+- 🔲 (optional) `rooms.campus` ศาลายา/บางกอกน้อย — **ไม่อยู่ใน V3** (มาจาก V1/V2) — display ก่อน ยังไม่ผูก conflict · ยังไม่ทำ ไม่บล็อก
 
 ### ของใหม่จากเอกสารพิม V3/V4 (`Doc/จากอาจารย์/เอกสาร/tpss_system_summary_v3.md`)
 > เอกสารสรุป requirement ฉบับเพื่อน (พิม) — ยืนยันหลายอย่างที่เราวางไว้ + เพิ่มของใหม่:

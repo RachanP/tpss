@@ -233,24 +233,24 @@ ER Diagram: `mock/er_v1.jpg`
 > ⚠️ ทีมใช้ `migrate:fresh --seed` เสมอ → consolidate เข้า create-table baselines ไม่ทำ alter แยก (pattern Sprint 3 Hardening)
 > Rationale ดู `architecture.md` "Requirement V2 Direction" + "Master Data Cleanup Phase (V2)"
 
-### ✅ DONE (branch `feat/v2-requirement`)
+### ✅ DONE (branch `feat/v2-requirement` — Master Data Cleanup เสร็จครบ scope V3)
 ```
 student_cohorts  :  (curriculum_id, year_level nullable, code, student_count)
                     year_level=null สำหรับหลักสูตรที่ uses_year_level=false (ป.โท/ป.เอก)
                     unique(curriculum_id, year_level, code)
-```
-
-### 🛠️ DECIDED — Master Data Cleanup Phase (ทำก่อนงาน V2 อื่น · branch feat/v2-requirement)
-```
 academic_years   :  ตัด column semester → unique(name) · phase/is_active ต่อ "ปี"
 terms            :  NEW ลูกของปี (academic_year_id, sequence, name, start_date, end_date,
                     midterm_start, midterm_end, final_start, final_end)  ← ช่วงสอบเก็บเป็น "สัปดาห์สอบ"
                     เพิ่มได้ตามจริง: ปกติ 2 เทอม · ภาคฤดูร้อน = เพิ่มรายการที่ 3 (optional)
                     ช่วงปิดภาคเรียน = derive จากช่องว่างระหว่างเทอม (ไม่เก็บแยก)
-                    เปิดปีใหม่ = ลอกโครงปีก่อนมาเป็นค่าตั้งต้น (วันที่ต่างทุกปี ต้องปรับ)
+                    วันปีการศึกษา (start/end) = derive จาก min/max ของ terms
 courses          :  ตัด default_semester (วิชาเปิดทั้งปี)
 course_offerings :  academic_year_id → ราย-ปี · unique(course_id, academic_year_id)
                     auto-open: ทุกวิชาที่ course.curriculum.is_active = true (เลิกผูกเทอม)
+holidays         :  NEW (date unique, name, remark, source enum-ish 'google'|'manual')
+                    auto-fetch Google Thai ICS ตอนสร้าง/แก้ปี · refresh ลบเฉพาะ source=google
+                    คงของ manual + ปีอื่น · SSL ใช้ resources/certs/cacert.pem
+activity_types   :  + counts_toward_workload boolean default true (default ตามหมวด: other=false)
 ```
 
 ### 🔲 PROPOSED — phase ถัดไป (schedule/rotation · ยังไม่ทำ)
@@ -260,8 +260,7 @@ student_groups   :  + cohort_group_id FK nullable  ← subgroup อ้าง stu
 rotation_rounds      : NEW (term_id, sequence 1|2, label, start/end) — แบ่งด้วยวันสอบใน terms
 rotation_assignments : NEW (cohort_group_id, course_offering_id, rotation_round_id)
 course_offering_instructors : + schedule_permission enum('view','schedule','manage_groups')  (delegation — Option B)
-activity_types : + counts_toward_workload boolean  (ปฐมนิเทศ/SDL = false)
-rooms : + campus (ศาลายา/บางกอกน้อย — display ก่อน)
+rooms : + campus (ศาลายา/บางกอกน้อย — display ก่อน · optional ไม่อยู่ใน V3)
 ```
 
 **Cross-course GROUP conflict:** ไม่ใช่ schema ใหม่ แต่ต้องขยาย logic — `ScheduleConflictChecker::bulkConflictMap()` เพิ่ม pairwise compare `cohort_group` ข้ามวิชา (ปัจจุบันเช็คแค่ instructor/room)
