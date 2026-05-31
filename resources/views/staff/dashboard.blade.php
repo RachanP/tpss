@@ -1,4 +1,4 @@
-<x-app-layout title="ภาพรวม Staff">
+<x-app-layout title="ภาพรวมเจ้าหน้าที่">
     @php
         $phaseLabels = [
             'preparation' => 'เตรียมข้อมูล',
@@ -6,236 +6,393 @@
             'approving' => 'รออนุมัติ',
             'published' => 'เผยแพร่แล้ว',
         ];
+
         $phase = $currentAcademicYear?->phase;
         $phaseLabel = $phaseLabels[$phase] ?? ($phase ?: 'ไม่ระบุ');
-        $phaseTone = $phase === 'scheduling' ? 'ok' : ($phase ? 'warn' : 'muted');
+        $phaseTone = match($phase) {
+            'scheduling' => 'success',
+            'published' => 'info',
+            'preparation' => 'warning',
+            default => $currentAcademicYear ? 'warning' : 'muted',
+        };
+
+        if ($staffPrimaryAlert) {
+            $systemStatus = [
+                'tone' => 'warning',
+                'title' => 'ต้องอัปเดตข้อมูลหลัก',
+                'label' => 'มีรายการที่ Staff แก้ได้',
+                'desc' => 'ตรวจข้อมูลรายวิชา ห้อง และสถานที่ก่อนเริ่มจัดตาราง',
+                'href' => $staffPrimaryAlert['href'],
+                'action' => $staffPrimaryAlert['action_label'],
+            ];
+        } elseif (! $currentAcademicYear) {
+            $systemStatus = [
+                'tone' => 'warning',
+                'title' => 'ยังไม่ได้ตั้งค่าปีการศึกษา',
+                'label' => 'ต้องตั้งค่าก่อนใช้งาน',
+                'desc' => 'เพิ่มปีการศึกษาและวันที่เริ่มต้นเพื่อให้ระบบประเมินความพร้อม',
+                'href' => route('staff.settings', ['tab' => 'academic']),
+                'action' => 'ตั้งค่าปีการศึกษา',
+            ];
+        } elseif ($phase === 'scheduling') {
+            $systemStatus = [
+                'tone' => 'success',
+                'title' => 'กำลังเปิดจัดตาราง',
+                'label' => 'Staff บันทึกตารางได้',
+                'desc' => 'จัดตารางได้เฉพาะรายวิชาที่ได้รับมอบหมาย',
+                'href' => route('staff.schedules.index'),
+                'action' => 'เปิดตารางสอน',
+            ];
+        } elseif ($phase === 'published') {
+            $systemStatus = [
+                'tone' => 'info',
+                'title' => 'เผยแพร่ตารางแล้ว',
+                'label' => 'รอบนี้เสร็จสิ้น',
+                'desc' => 'ใช้หน้านี้เพื่อติดตามสรุปและข้อมูลที่ต้องดูแล',
+                'href' => route('staff.schedules.index'),
+                'action' => 'ดูตารางสอน',
+            ];
+        } else {
+            $systemStatus = [
+                'tone' => 'success',
+                'title' => 'พร้อมเตรียมข้อมูล',
+                'label' => 'ตรวจข้อมูลก่อนเปิดจัดตาราง',
+                'desc' => 'ข้อมูลหลักและรายวิชาที่เกี่ยวข้องพร้อมให้ตรวจสอบ',
+                'href' => route('staff.master_data', ['tab' => 'courses']),
+                'action' => 'ตรวจข้อมูลหลัก',
+            ];
+        }
+
+        $conflictTotal = $conflictSummary['total'];
+        $conflictValue = $conflictTotal === null ? 'รอข้อมูล' : number_format((int) $conflictTotal);
+        $conflictHint = $conflictTotal === null ? 'ยังไม่มี summary ล่าสุด' : 'conflict/warning';
+
+        $kpis = [
+            [
+                'label' => 'รายวิชาที่ดูแล',
+                'value' => number_format($masterStats['assigned_courses']),
+                'hint' => 'ผูกกับ Staff คนนี้',
+                'href' => route('staff.master_data', ['tab' => 'courses']),
+                'tone' => 'navy',
+            ],
+            [
+                'label' => 'Offering รอบปัจจุบัน',
+                'value' => number_format($masterStats['assigned_offerings']),
+                'hint' => 'เฉพาะปีการศึกษาปัจจุบัน',
+                'href' => route('staff.schedules.index'),
+                'tone' => 'info',
+            ],
+            [
+                'label' => 'ตารางที่บันทึกแล้ว',
+                'value' => number_format($masterStats['staff_schedules']),
+                'hint' => 'รายการสอนของ Staff',
+                'href' => route('staff.schedules.index'),
+                'tone' => 'success',
+            ],
+            [
+                'label' => 'Conflict / Warning',
+                'value' => $conflictValue,
+                'hint' => $conflictHint,
+                'href' => route('staff.reports.index'),
+                'tone' => ($conflictTotal ?? 0) > 0 ? 'warning' : 'muted',
+            ],
+        ];
     @endphp
 
     <style>
         .staff-dash {
-            padding: 28px;
-            color: var(--fg-1);
-        }
-        .staff-hero {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
-            gap: 18px;
-            align-items: end;
-            margin-bottom: 18px;
-        }
-        .staff-kicker {
-            color: var(--brand-navy);
-            font-size: 12px;
-            font-weight: 900;
-            letter-spacing: .02em;
-            text-transform: uppercase;
-        }
-        .staff-title {
-            margin: 4px 0 6px;
-            font-size: 25px;
-            font-weight: 950;
-            line-height: 1.2;
-            color: var(--fg-1);
-        }
-        .staff-copy {
-            max-width: 74ch;
-            color: var(--fg-3);
-            font-size: 13.5px;
-            line-height: 1.65;
-            font-weight: 650;
-        }
-        .staff-phase {
-            display: inline-flex;
+            display: flex;
             flex-direction: column;
-            gap: 3px;
-            min-width: 210px;
-            padding: 13px 15px;
+            gap: 14px;
+            padding: 24px 28px 28px;
+            color: var(--fg-1);
+        }
+        .staff-card,
+        .staff-kpi,
+        .staff-panel,
+        .staff-alert,
+        .staff-offering,
+        .staff-action-row,
+        .staff-ready-row {
             border: 1px solid var(--border);
             border-radius: 8px;
             background: var(--surface);
         }
-        .staff-phase span:first-child,
-        .staff-stat span,
-        .staff-panel-note {
+        .staff-alert {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 12px 16px;
+            color: var(--status-warning-fg);
+            background: color-mix(in oklch, var(--status-warning) 10%, var(--surface));
+            border-color: var(--status-warning-border);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 800;
+            line-height: 1.45;
+            transition: transform var(--dur-fast), box-shadow var(--dur-fast), border-color var(--dur-fast);
+        }
+        .staff-alert:hover,
+        .staff-alert:focus-visible {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 20px color-mix(in oklch, var(--status-warning) 14%, transparent);
+            outline: none;
+        }
+        .staff-alert-main {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+        .staff-alert-icon {
+            width: 22px;
+            height: 22px;
+            flex: 0 0 auto;
+        }
+        .staff-alert-action,
+        .staff-link {
+            color: var(--brand-navy);
+            font-size: 12px;
+            font-weight: 900;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .staff-hero {
+            padding: 22px 24px;
+        }
+        .staff-hero-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+        .staff-kicker {
+            margin-bottom: 4px;
             color: var(--fg-3);
             font-size: 12px;
             font-weight: 800;
         }
-        .staff-phase strong {
-            color: var(--brand-navy);
-            font-size: 18px;
-            font-weight: 950;
+        .staff-title {
+            margin: 0;
+            font-family: var(--font-display);
+            color: var(--fg-1);
+            font-size: 24px;
+            font-weight: 900;
+            line-height: 1.25;
         }
-        .staff-grid {
+        .staff-subtitle {
+            margin-top: 8px;
+            color: var(--fg-3);
+            font-size: 13px;
+            font-weight: 650;
+        }
+        .staff-year-badge,
+        .staff-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 28px;
+            padding: 5px 11px;
+            border: 1px solid var(--border);
+            border-radius: var(--r-pill);
+            background: var(--bg-2);
+            color: var(--fg-2);
+            font-size: 11.5px;
+            font-weight: 900;
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+        .staff-year-badge {
+            min-height: 36px;
+            padding-inline: 16px;
+            color: var(--brand-navy);
+            background: color-mix(in oklch, var(--brand-navy) 6%, var(--surface));
+            border-color: color-mix(in oklch, var(--brand-navy) 16%, var(--border));
+            font-size: 13px;
+        }
+        .staff-status {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 16px;
+            align-items: center;
+            padding: 18px 20px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-1);
+        }
+        .staff-status.is-warning {
+            background: color-mix(in oklch, var(--status-warning) 7%, var(--surface));
+            border-color: var(--status-warning-border);
+        }
+        .staff-status.is-success {
+            background: color-mix(in oklch, var(--status-success) 6%, var(--surface));
+            border-color: var(--status-success-border);
+        }
+        .staff-status.is-info {
+            background: color-mix(in oklch, var(--status-info) 6%, var(--surface));
+            border-color: var(--status-info-border);
+        }
+        .staff-status-label {
+            color: var(--fg-3);
+            font-size: 12px;
+            font-weight: 800;
+        }
+        .staff-status-title {
+            margin-top: 3px;
+            color: var(--fg-1);
+            font-family: var(--font-display);
+            font-size: 20px;
+            font-weight: 900;
+            line-height: 1.25;
+        }
+        .staff-status-desc {
+            margin-top: 7px;
+            color: var(--fg-2);
+            font-size: 12.5px;
+            font-weight: 650;
+            line-height: 1.55;
+        }
+        .staff-status-meta {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .staff-pill.success,
+        .staff-pill.ready {
+            color: var(--status-success-fg);
+            background: var(--status-success-bg);
+            border-color: var(--status-success-border);
+        }
+        .staff-pill.info {
+            color: var(--status-info-fg);
+            background: var(--status-info-bg);
+            border-color: var(--status-info-border);
+        }
+        .staff-pill.warning,
+        .staff-pill.watch,
+        .staff-pill.critical {
+            color: var(--status-warning-fg);
+            background: var(--status-warning-bg);
+            border-color: var(--status-warning-border);
+        }
+        .staff-pill.muted {
+            color: var(--fg-3);
+            background: var(--bg-2);
+        }
+        .staff-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 34px;
+            padding: 8px 14px;
+            border: 1px solid var(--brand-navy);
+            border-radius: 7px;
+            background: var(--brand-navy);
+            color: var(--surface);
+            font-size: 12px;
+            font-weight: 900;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .staff-kpis {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 12px;
-            margin-bottom: 16px;
         }
-        .staff-stat,
-        .staff-panel,
-        .staff-action,
-        .staff-offering {
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            background: var(--surface);
-        }
-        .staff-stat {
-            padding: 14px;
-            min-height: 94px;
-        }
-        .staff-stat strong {
+        .staff-kpi {
             display: block;
-            margin-top: 5px;
-            color: var(--fg-1);
-            font-size: 24px;
-            font-weight: 950;
+            min-height: 104px;
+            padding: 15px;
+            text-decoration: none;
+            transition: transform var(--dur-fast), box-shadow var(--dur-fast), border-color var(--dur-fast);
         }
-        .staff-stat small {
-            display: block;
-            margin-top: 4px;
+        .staff-kpi:hover,
+        .staff-kpi:focus-visible {
+            transform: translateY(-1px);
+            border-color: color-mix(in oklch, var(--brand-navy) 24%, var(--border));
+            box-shadow: 0 8px 20px color-mix(in oklch, var(--brand-navy) 10%, transparent);
+            outline: none;
+        }
+        .staff-kpi-label {
             color: var(--fg-3);
             font-size: 12px;
-            line-height: 1.45;
+            font-weight: 850;
+        }
+        .staff-kpi-value {
+            margin-top: 8px;
+            color: var(--fg-1);
+            font-family: var(--font-display);
+            font-size: 27px;
+            font-weight: 900;
+            line-height: 1;
+        }
+        .staff-kpi-hint {
+            margin-top: 7px;
+            color: var(--fg-3);
+            font-size: 12px;
             font-weight: 650;
         }
-        .staff-columns {
+        .staff-layout {
             display: grid;
-            grid-template-columns: minmax(0, 1.35fr) minmax(320px, .65fr);
+            grid-template-columns: minmax(0, 1.15fr) minmax(320px, .85fr);
             gap: 14px;
             align-items: start;
         }
         .staff-panel {
             padding: 16px;
-            margin-bottom: 14px;
+        }
+        .staff-panel + .staff-panel {
+            margin-top: 14px;
         }
         .staff-panel-head {
             display: flex;
+            align-items: flex-start;
             justify-content: space-between;
             gap: 12px;
-            align-items: flex-start;
             margin-bottom: 12px;
         }
         .staff-panel-title {
             color: var(--fg-1);
             font-size: 16px;
-            font-weight: 950;
+            font-weight: 900;
         }
-        .staff-readiness {
+        .staff-panel-note {
+            margin-top: 3px;
+            color: var(--fg-3);
+            font-size: 12px;
+            font-weight: 650;
+        }
+        .staff-action-list,
+        .staff-offering-list,
+        .staff-ready-list {
             display: grid;
             gap: 9px;
         }
+        .staff-action-row,
+        .staff-offering,
         .staff-ready-row {
-            display: grid;
-            grid-template-columns: 180px minmax(0, 1fr) auto;
-            gap: 12px;
-            align-items: center;
             padding: 11px 12px;
-            border: 1px solid color-mix(in oklch, var(--border) 82%, var(--surface));
-            border-radius: 7px;
-            background: var(--bg-1);
         }
-        .staff-ready-label {
-            color: var(--fg-2);
-            font-size: 12.5px;
-            font-weight: 900;
-        }
-        .staff-ready-value {
-            color: var(--fg-1);
-            font-size: 13px;
-            font-weight: 850;
-        }
-        .staff-ready-hint {
-            margin-top: 2px;
-            color: var(--fg-3);
-            font-size: 12px;
-            line-height: 1.45;
-            font-weight: 600;
-        }
-        .staff-pill {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 24px;
-            padding: 3px 9px;
-            border-radius: 999px;
-            border: 1px solid var(--border);
-            font-size: 11px;
-            font-weight: 900;
-            white-space: nowrap;
-        }
-        .staff-pill.ok,
-        .staff-pill.ready {
-            background: var(--status-ok-bg);
-            border-color: var(--status-ok-border);
-            color: var(--status-ok-fg);
-        }
-        .staff-pill.warn,
-        .staff-pill.watch,
-        .staff-pill.warning {
-            background: var(--status-warning-bg);
-            border-color: var(--status-warning-border);
-            color: var(--status-warning-fg);
-        }
-        .staff-pill.critical {
-            background: var(--status-conflict-bg);
-            border-color: var(--status-conflict-border);
-            color: var(--status-conflict-fg);
-        }
-        .staff-pill.muted {
-            background: var(--bg-2);
-            color: var(--fg-3);
-        }
-        .staff-action-list {
-            display: grid;
-            gap: 8px;
-        }
-        .staff-action {
-            padding: 11px 12px;
+        .staff-action-row {
             display: flex;
-            justify-content: space-between;
-            gap: 10px;
             align-items: center;
+            justify-content: space-between;
+            gap: 12px;
         }
-        .staff-action-main {
-            min-width: 0;
-        }
-        .staff-action-title {
-            color: var(--fg-2);
-            font-size: 12.5px;
+        .staff-action-title,
+        .staff-offering-title,
+        .staff-ready-label {
+            color: var(--fg-1);
+            font-size: 13px;
             font-weight: 850;
             line-height: 1.45;
         }
-        .staff-action a,
-        .staff-soft-link {
-            color: var(--brand-navy);
-            font-size: 12px;
-            font-weight: 900;
-            text-decoration: none;
-        }
-        .staff-empty {
-            padding: 18px;
-            border: 1px dashed var(--border);
-            border-radius: 8px;
-            background: var(--bg-1);
-            color: var(--fg-3);
-            font-size: 13px;
-            font-weight: 750;
-            line-height: 1.55;
-        }
-        .staff-offering-list {
-            display: grid;
-            gap: 9px;
-        }
-        .staff-offering {
-            padding: 12px;
-        }
-        .staff-offering-title {
-            color: var(--fg-1);
-            font-size: 13px;
-            font-weight: 950;
-        }
-        .staff-offering-meta {
+        .staff-offering-meta,
+        .staff-ready-value {
             display: flex;
             flex-wrap: wrap;
             gap: 7px;
@@ -244,116 +401,195 @@
             font-size: 12px;
             font-weight: 700;
         }
-        @media (max-width: 1100px) {
-            .staff-grid,
-            .staff-columns,
-            .staff-hero {
-                grid-template-columns: 1fr;
+        .staff-offering-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 11px;
+        }
+        .staff-empty {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 14px;
+            border: 1px dashed var(--border);
+            border-radius: 8px;
+            background: var(--bg-1);
+            color: var(--fg-3);
+            font-size: 13px;
+            font-weight: 750;
+            line-height: 1.5;
+        }
+        .staff-ready-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 10px;
+            align-items: center;
+            background: var(--bg-1);
+        }
+        @media (max-width: 1200px) {
+            .staff-kpis,
+            .staff-layout {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
-            .staff-phase {
-                min-width: 0;
+            .staff-layout {
+                grid-template-columns: 1fr;
             }
         }
         @media (max-width: 760px) {
             .staff-dash {
                 padding: 18px;
             }
-            .staff-grid {
+            .staff-alert,
+            .staff-hero-top,
+            .staff-status,
+            .staff-empty {
+                align-items: stretch;
+                flex-direction: column;
+            }
+            .staff-hero-top {
+                display: flex;
+            }
+            .staff-status {
                 grid-template-columns: 1fr;
             }
+            .staff-kpis {
+                grid-template-columns: 1fr;
+            }
+            .staff-year-badge,
+            .staff-btn,
+            .staff-alert-action {
+                width: 100%;
+                white-space: normal;
+            }
+            .staff-action-row,
             .staff-ready-row {
                 grid-template-columns: 1fr;
+                flex-direction: column;
+                align-items: flex-start;
             }
         }
     </style>
 
     <div class="staff-dash">
-        <section class="staff-hero" aria-label="ภาพรวม Staff">
-            <div>
-                <div class="staff-kicker">Staff Phase 1</div>
-                <h1 class="staff-title">ภาพรวมระบบสำหรับเจ้าหน้าที่</h1>
-                <div class="staff-copy">
-                    บทบาทนี้ช่วยเตรียมข้อมูลหลักที่ได้รับมอบหมายและช่วยกรอกตารางสอนแบบ block/rotation ตามข้อมูลที่หัวหน้าวิชาและ Admin เตรียมไว้ ส่วนรายงานเต็มและ export ยังอยู่ระหว่างพัฒนาสำหรับ phase ถัดไป
+        @if($staffPrimaryAlert)
+            <a href="{{ $staffPrimaryAlert['href'] }}" class="staff-alert" data-testid="staff-primary-alert">
+                <span class="staff-alert-main">
+                    <svg class="staff-alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                    <span>{{ $staffPrimaryAlert['message'] }}</span>
+                </span>
+                <span class="staff-alert-action">{{ $staffPrimaryAlert['action_label'] }}</span>
+            </a>
+        @endif
+
+        <section class="staff-card staff-hero" aria-label="ภาพรวมเจ้าหน้าที่">
+            <div class="staff-hero-top">
+                <div>
+                    <div class="staff-kicker">ภาพรวม / เจ้าหน้าที่</div>
+                    <h1 class="staff-title">ภาพรวมเจ้าหน้าที่</h1>
+                    <div class="staff-subtitle">ติดตามข้อมูลหลัก ตารางสอน และรายการที่ต้องอัปเดต</div>
                 </div>
+                <span class="staff-year-badge">
+                    @if($currentAcademicYear)
+                        ปีการศึกษา {{ $currentAcademicYear->name }} / เทอม {{ $currentAcademicYear->semester }}
+                    @else
+                        ยังไม่ได้ตั้งค่าปีการศึกษา
+                    @endif
+                </span>
             </div>
-            <div class="staff-phase">
-                <span>ปีการศึกษาปัจจุบัน</span>
-                <strong>{{ $currentAcademicYear ? $currentAcademicYear->name . ' / เทอม ' . $currentAcademicYear->semester : 'ยังไม่ได้ตั้งค่า' }}</strong>
-                <span class="staff-pill {{ $phaseTone }}">{{ $phaseLabel }}</span>
+
+            <div class="staff-status is-{{ $systemStatus['tone'] }}">
+                <div>
+                    <div class="staff-status-label">สถานะปัจจุบัน</div>
+                    <div class="staff-status-title">{{ $systemStatus['title'] }}</div>
+                    <div class="staff-status-desc">{{ $systemStatus['desc'] }}</div>
+                    <div class="staff-status-meta">
+                        <span class="staff-pill {{ $phaseTone }}">{{ $phaseLabel }}</span>
+                        <span class="staff-pill {{ $systemStatus['tone'] }}">{{ $systemStatus['label'] }}</span>
+                    </div>
+                </div>
+                <a href="{{ $systemStatus['href'] }}" class="staff-btn">{{ $systemStatus['action'] }}</a>
             </div>
         </section>
 
-        <section class="staff-grid" aria-label="ตัวเลขภาพรวม">
-            <div class="staff-stat">
-                <span>รายวิชาที่เปิดใช้งาน</span>
-                <strong>{{ number_format($masterStats['courses']) }}</strong>
-                <small>ข้อมูลหลักที่ Staff แก้รายละเอียดรายวิชาได้</small>
-            </div>
-            <div class="staff-stat">
-                <span>ห้อง/สถานที่พร้อมใช้</span>
-                <strong>{{ number_format($masterStats['active_rooms']) }}</strong>
-                <small>{{ number_format($masterStats['location_types']) }} ประเภทสถานที่ในระบบ</small>
-            </div>
-            <div class="staff-stat">
-                <span>Offering รอบปัจจุบัน</span>
-                <strong>{{ number_format($masterStats['course_offerings']) }}</strong>
-                <small>draft {{ number_format($pipeline['draft']) }}, pending {{ number_format($pipeline['pending']) }}, published {{ number_format($pipeline['published']) }}</small>
-            </div>
-            <div class="staff-stat">
-                <span>ตารางของ Staff</span>
-                <strong>{{ number_format($masterStats['staff_schedules']) }}</strong>
-                <small>จาก {{ number_format($masterStats['assigned_offerings']) }} offering ที่ได้รับมอบหมาย</small>
-            </div>
+        <section class="staff-kpis" aria-label="ตัวเลขสำคัญ">
+            @foreach($kpis as $kpi)
+                <a href="{{ $kpi['href'] }}" class="staff-kpi" data-testid="staff-kpi-card">
+                    <div class="staff-kpi-label">{{ $kpi['label'] }}</div>
+                    <div class="staff-kpi-value">{{ $kpi['value'] }}</div>
+                    <div class="staff-kpi-hint">{{ $kpi['hint'] }}</div>
+                </a>
+            @endforeach
         </section>
 
-        <div class="staff-columns">
+        <div class="staff-layout">
             <main>
-                <section class="staff-panel" aria-label="ความพร้อมก่อนจัดตาราง">
+                <section class="staff-panel" aria-label="งานที่ต้องทำโดย Staff">
                     <div class="staff-panel-head">
                         <div>
-                            <div class="staff-panel-title">Readiness ก่อนจัดตาราง</div>
-                            <div class="staff-panel-note">ตรวจจากปีการศึกษา ข้อมูลหลัก offering ตาราง และ conflict summary</div>
+                            <div class="staff-panel-title">งานที่ต้องทำโดย Staff</div>
+                            <div class="staff-panel-note">รายการที่แก้ได้จากสิทธิ์เจ้าหน้าที่</div>
                         </div>
-                        <a class="staff-soft-link" href="{{ route('staff.schedules.index') }}">ไปหน้าตารางสอน</a>
+                        <a class="staff-link" href="{{ route('staff.master_data', ['tab' => 'courses']) }}">ข้อมูลหลัก</a>
                     </div>
 
-                    <div class="staff-readiness">
-                        @foreach($readiness as $item)
-                            <div class="staff-ready-row">
-                                <div class="staff-ready-label">{{ $item['label'] }}</div>
-                                <div>
-                                    <div class="staff-ready-value">{{ $item['value'] }}</div>
-                                    <div class="staff-ready-hint">{{ $item['hint'] }}</div>
+                    @if($staffActionGroups['staff']->isEmpty())
+                        <div class="staff-empty">
+                            <span>ไม่มีรายการที่ต้องแก้ตอนนี้</span>
+                            <a class="staff-link" href="{{ route('staff.master_data', ['tab' => 'courses']) }}">ตรวจข้อมูลหลัก</a>
+                        </div>
+                    @else
+                        <div class="staff-action-list">
+                            @foreach($staffActionGroups['staff'] as $item)
+                                <div class="staff-action-row">
+                                    <div class="staff-action-title">{{ $item['label'] }}</div>
+                                    <a class="staff-link" href="{{ $item['href'] }}">{{ $item['link_text'] }}</a>
                                 </div>
-                                <a class="staff-pill {{ $item['status'] }}" href="{{ $item['href'] }}">{{ $item['status'] === 'ready' ? 'พร้อม' : ($item['status'] === 'critical' ? 'ต้องแก้' : 'ติดตาม') }}</a>
-                            </div>
-                        @endforeach
-                    </div>
+                            @endforeach
+                        </div>
+                    @endif
                 </section>
 
                 <section class="staff-panel" aria-label="รายวิชาที่ได้รับมอบหมาย">
                     <div class="staff-panel-head">
                         <div>
-                            <div class="staff-panel-title">รายวิชาที่ Staff คนนี้ช่วยจัดตาราง</div>
-                            <div class="staff-panel-note">จำกัด scope ด้วย course_staff ตามแผน Phase 1</div>
+                            <div class="staff-panel-title">รายวิชาที่ได้รับมอบหมาย</div>
+                            <div class="staff-panel-note">แสดงเฉพาะรอบปีการศึกษาปัจจุบัน</div>
                         </div>
+                        <a class="staff-link" href="{{ route('staff.schedules.index') }}">ตารางสอน</a>
                     </div>
+
                     @if($currentYearStaffOfferings->isEmpty())
                         <div class="staff-empty">
-                            ยังไม่มี course offering ในปีการศึกษาปัจจุบันที่ผูกกับ Staff คนนี้ ให้ตรวจที่รายวิชาในข้อมูลหลัก หรือให้หัวหน้าวิชา/Admin เตรียม offering ก่อน demo
+                            <span>ยังไม่มีรายวิชาที่ได้รับมอบหมาย</span>
+                            <a class="staff-link" href="{{ route('staff.master_data', ['tab' => 'courses']) }}">ตรวจรายวิชา</a>
                         </div>
                     @else
                         <div class="staff-offering-list">
                             @foreach($currentYearStaffOfferings->take(5) as $offering)
-                                <div class="staff-offering">
-                                    <div class="staff-offering-title">{{ $offering->course?->course_code ?? '-' }} {{ $offering->course?->name_th ?? $offering->course?->name_en ?? 'ไม่ระบุชื่อรายวิชา' }}</div>
+                                <article class="staff-offering">
+                                    <div class="staff-offering-title">
+                                        {{ $offering->course?->course_code ?? '-' }} {{ $offering->course?->name_th ?? $offering->course?->name_en ?? 'ไม่ระบุชื่อรายวิชา' }}
+                                    </div>
                                     <div class="staff-offering-meta">
                                         <span>{{ $offering->student_groups_count }} กลุ่ม</span>
                                         <span>{{ $offering->instructor_pool_count }} ผู้สอน</span>
-                                        <span>{{ $offering->schedules_count }} รายการสอน</span>
-                                        <span class="staff-pill {{ $offering->academicYear?->phase === 'scheduling' ? 'ok' : 'muted' }}">{{ $phaseLabels[$offering->academicYear?->phase] ?? ($offering->academicYear?->phase ?: 'ไม่ระบุ') }}</span>
+                                        <span>{{ $offering->schedules_count }} ตาราง</span>
+                                        <span class="staff-pill {{ $offering->academicYear?->phase === 'scheduling' ? 'success' : 'muted' }}">
+                                            {{ $phaseLabels[$offering->academicYear?->phase] ?? ($offering->academicYear?->phase ?: 'ไม่ระบุ') }}
+                                        </span>
                                     </div>
-                                </div>
+                                    <div class="staff-offering-actions">
+                                        <a class="staff-btn" href="{{ route('staff.course_offerings.schedules.index', $offering) }}">เปิดตาราง</a>
+                                        <a class="staff-link" href="{{ route('staff.master_data', ['tab' => 'courses']) }}">ดูข้อมูล</a>
+                                    </div>
+                                </article>
                             @endforeach
                         </div>
                     @endif
@@ -361,52 +597,30 @@
             </main>
 
             <aside>
-                <section class="staff-panel" aria-label="สิ่งที่ Staff แก้ได้">
+                <section class="staff-panel" aria-label="ความพร้อมข้อมูล">
                     <div class="staff-panel-head">
                         <div>
-                            <div class="staff-panel-title">แก้ได้โดย Staff</div>
-                            <div class="staff-panel-note">รายการที่พาไปยัง settings หรือ master data ฝั่ง Staff</div>
+                            <div class="staff-panel-title">ความพร้อมข้อมูล</div>
+                            <div class="staff-panel-note">สรุปสั้นสำหรับก่อนจัดตาราง</div>
                         </div>
                     </div>
-                    @if($staffActionGroups['staff']->isEmpty())
-                        <div class="staff-empty">ยังไม่มีรายการที่ต้องให้ Staff แก้ในตอนนี้</div>
-                    @else
-                        <div class="staff-action-list">
-                            @foreach($staffActionGroups['staff'] as $item)
-                                <div class="staff-action">
-                                    <div class="staff-action-main">
-                                        <div class="staff-action-title">{{ $item['label'] }}</div>
-                                    </div>
-                                    <a href="{{ $item['href'] }}">{{ $item['link_text'] }}</a>
-                                </div>
-                            @endforeach
-                        </div>
-                    @endif
-                </section>
 
-                <section class="staff-panel" aria-label="ต้องให้ Admin แก้">
-                    <div class="staff-panel-head">
-                        <div>
-                            <div class="staff-panel-title">ต้องให้ Admin แก้</div>
-                            <div class="staff-panel-note">Staff เห็นสถานะเพื่อประสานงาน แต่ไม่เปิดให้แก้ไข</div>
-                        </div>
+                    <div class="staff-ready-list">
+                        @foreach($readiness as $item)
+                            <div class="staff-ready-row">
+                                <div>
+                                    <div class="staff-ready-label">{{ $item['label'] }}</div>
+                                    <div class="staff-ready-value">
+                                        <span>{{ $item['value'] }}</span>
+                                    </div>
+                                </div>
+                                <a class="staff-pill {{ $item['status'] }}" href="{{ $item['href'] }}">
+                                    {{ $item['status'] === 'ready' ? 'พร้อม' : ($item['status'] === 'critical' ? 'ต้องแก้' : 'ติดตาม') }}
+                                </a>
+                            </div>
+                        @endforeach
                     </div>
-                    @if($staffActionGroups['admin']->isEmpty())
-                        <div class="staff-empty">ส่วนที่ล็อกไว้ยังไม่พบปัญหาสำคัญ</div>
-                    @else
-                        <div class="staff-action-list">
-                            @foreach($staffActionGroups['admin'] as $item)
-                                <div class="staff-action">
-                                    <div class="staff-action-main">
-                                        <div class="staff-action-title">{{ $item['label'] }}</div>
-                                    </div>
-                                    <span class="staff-pill muted">{{ $item['link_text'] }}</span>
-                                </div>
-                            @endforeach
-                        </div>
-                    @endif
                 </section>
-
             </aside>
         </div>
     </div>

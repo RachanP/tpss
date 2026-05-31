@@ -41,10 +41,11 @@ class StaffPhaseOneTest extends TestCase
 
         $this->get(route('staff.dashboard'))
             ->assertOk()
-            ->assertSee('ภาพรวมระบบสำหรับเจ้าหน้าที่')
+            ->assertSee('ภาพรวมเจ้าหน้าที่')
+            ->assertDontSee('Staff Phase 1')
             ->assertDontSee('กำลังอยู่ในช่วงพัฒนา')
             ->assertDontSee('สรุปรายงานสำหรับ Phase 1')
-            ->assertSee('Readiness ก่อนจัดตาราง')
+            ->assertSee('ความพร้อมข้อมูล')
             ->assertSee(route('staff.schedules.index'), false)
             ->assertSee(route('staff.reports.index'), false)
             ->assertDontSee('staff-report-summary')
@@ -52,6 +53,59 @@ class StaffPhaseOneTest extends TestCase
             ->assertDontSee('ขอบเขตข้อมูลหลักของ Staff')
             ->assertDontSee('กิจกรรมล่าสุด')
             ->assertDontSee('href="#"', false);
+    }
+
+    public function test_staff_dashboard_primary_alert_shows_two_courses_and_remaining_count(): void
+    {
+        $staff = $this->makeUser('staff');
+        $this->makeYear('preparation');
+
+        foreach (['NURS 3005', 'NURS 4002', 'NURS 5001'] as $code) {
+            Course::create([
+                'course_code' => $code,
+                'curriculum_id' => $this->curriculum()->id,
+                'department_id' => $this->department()->id,
+                'head_instructor_id' => null,
+                'name_th' => "Course {$code}",
+                'name_en' => "Course {$code}",
+                'course_type' => 'theory',
+                'default_year_level' => 2,
+                'default_semester' => 1,
+                'requires_practicum_rotation' => false,
+                'is_required' => true,
+                'credits' => 3,
+                'lecture_hours' => 2,
+                'lab_hours' => 0,
+                'self_study_hours' => 3,
+                'capacity' => 60,
+                'color_code' => '#3b82f6',
+                'status' => 'active',
+            ]);
+        }
+
+        $this->actingAsStaff($staff);
+
+        $this->get(route('staff.dashboard'))
+            ->assertOk()
+            ->assertSee('data-testid="staff-primary-alert"', false)
+            ->assertSee('มีวิชา NURS 3005 และ NURS 4002 และอีก 1 วิชา ที่ยังไม่ได้กำหนดหัวหน้าวิชา กรุณาอัปเดตข้อมูลหลัก')
+            ->assertSee(route('staff.master_data', ['tab' => 'courses']), false)
+            ->assertDontSee('NURS 5001 และอีก', false);
+    }
+
+    public function test_staff_dashboard_handles_empty_state_without_academic_year_or_assignment(): void
+    {
+        $staff = $this->makeUser('staff');
+
+        $this->actingAsStaff($staff);
+
+        $this->get(route('staff.dashboard'))
+            ->assertOk()
+            ->assertSee('ยังไม่ได้ตั้งค่าปีการศึกษา')
+            ->assertSee('ยังไม่มีรายวิชาที่ได้รับมอบหมาย')
+            ->assertDontSee('Staff Phase 1')
+            ->assertDontSee('/admin/settings/scheduling/', false)
+            ->assertDontSee('/admin/settings/update-constants', false);
     }
 
     public function test_staff_reports_page_shows_development_state(): void

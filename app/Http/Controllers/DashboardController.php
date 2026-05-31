@@ -184,6 +184,7 @@ class DashboardController extends Controller
             $alerts,
             $conflictSummary
         );
+        $staffPrimaryAlert = $this->staffPrimaryAlert();
 
         return view('staff.dashboard', compact(
             'currentAcademicYear',
@@ -194,7 +195,86 @@ class DashboardController extends Controller
             'conflictSummary',
             'staffActionGroups',
             'alerts',
+            'staffPrimaryAlert',
         ));
+    }
+
+    private function staffPrimaryAlert(): ?array
+    {
+        $missingHeadCourses = Course::query()
+            ->where('status', 'active')
+            ->whereNull('head_instructor_id')
+            ->orderBy('course_code')
+            ->get(['id', 'course_code']);
+
+        if ($missingHeadCourses->isNotEmpty()) {
+            return $this->staffCourseAlert($missingHeadCourses, 'หัวหน้าวิชา', route('staff.master_data', ['tab' => 'courses']));
+        }
+
+        $missingStaffCourses = Course::query()
+            ->where('status', 'active')
+            ->doesntHave('assignedStaff')
+            ->orderBy('course_code')
+            ->get(['id', 'course_code']);
+
+        if ($missingStaffCourses->isNotEmpty()) {
+            return $this->staffCourseAlert($missingStaffCourses, 'เจ้าหน้าที่ดูแล', route('staff.master_data', ['tab' => 'courses']));
+        }
+
+        $roomIssueCount = Room::where(function ($q) {
+                $q->where(function ($cap) {
+                    $cap->whereHas('locationType', fn ($query) => $query->where('is_shared', false))
+                        ->where(fn ($capacityQuery) => $capacityQuery->whereNull('capacity')->orWhere('capacity', 0));
+                })->orWhere(function ($name) {
+                    $name->whereNull('room_name')->orWhere('room_name', '');
+                });
+            })
+            ->count();
+
+        if ($roomIssueCount > 0) {
+            return [
+                'tone' => 'warning',
+                'icon' => 'alert',
+                'message' => 'มีห้อง/สถานที่ ' . number_format($roomIssueCount) . ' รายการที่ข้อมูลยังไม่ครบ กรุณาอัปเดตข้อมูลหลัก',
+                'href' => route('staff.master_data', ['tab' => 'location_types']),
+                'action_label' => 'อัปเดตข้อมูลหลัก',
+                'count' => $roomIssueCount,
+                'shown_courses' => [],
+                'remaining_count' => 0,
+                'missing_label' => 'ข้อมูลห้อง/สถานที่',
+            ];
+        }
+
+        return null;
+    }
+
+    private function staffCourseAlert($courses, string $missingLabel, string $href): array
+    {
+        $shownCourses = $courses->take(2)->pluck('course_code')->values()->all();
+        $remainingCount = max(0, $courses->count() - count($shownCourses));
+        $courseText = implode(', ', $shownCourses);
+
+        if (count($shownCourses) === 2) {
+            $courseText = $shownCourses[0] . ' และ ' . $shownCourses[1];
+        }
+
+        $message = 'มีวิชา ' . $courseText;
+        if ($remainingCount > 0) {
+            $message .= ' และอีก ' . number_format($remainingCount) . ' วิชา';
+        }
+        $message .= ' ที่ยังไม่ได้กำหนด' . $missingLabel . ' กรุณาอัปเดตข้อมูลหลัก';
+
+        return [
+            'tone' => 'warning',
+            'icon' => 'alert',
+            'message' => $message,
+            'href' => $href,
+            'action_label' => 'อัปเดตข้อมูลหลัก',
+            'count' => $courses->count(),
+            'shown_courses' => $shownCourses,
+            'remaining_count' => $remainingCount,
+            'missing_label' => $missingLabel,
+        ];
     }
 
     private function staffReadinessItems(?AcademicYear $currentAcademicYear, array $masterStats, array $alerts, array $conflictSummary): array
