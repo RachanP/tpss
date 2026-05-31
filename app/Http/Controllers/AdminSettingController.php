@@ -598,22 +598,23 @@ class AdminSettingController extends Controller
      */
     public function syncHolidays(Request $request)
     {
-        // ดึงตามปีที่ระบุ (year) ถ้าส่งมา · ไม่งั้นใช้ปีปัจจุบัน · ไม่งั้นปีปฏิทินนี้
+        // ดึงตามปีที่ระบุ (year) ถ้าส่งมา · ไม่งั้นใช้ปีปัจจุบัน — ต้องมีปีปัจจุบันก่อน
         $year = $request->filled('year')
             ? AcademicYear::find($request->integer('year'))
             : AcademicYear::where('is_active', true)->first();
 
-        $label = $year ? "ปีการศึกษา {$year->name}" : 'ปีปฏิทิน ' . date('Y');
-        $count = $year
-            ? app(HolidayService::class)->syncForAcademicYearSpan((string) $year->start_date, (string) $year->end_date)
-            : app(HolidayService::class)->syncYear((int) date('Y'));
-
-        AlertController::flushCache();
         $route = redirect()->route($this->settingsRoute(), ['tab' => 'academic']);
 
+        if (! $year) {
+            return $route->with('error', 'กรุณาตั้งปีการศึกษาปัจจุบันก่อน จึงจะดึงวันหยุดได้ (วันหยุดจะดึงตามช่วงของปีนั้น)');
+        }
+
+        $count = app(HolidayService::class)->syncForAcademicYearSpan((string) $year->start_date, (string) $year->end_date);
+        AlertController::flushCache();
+
         return $count === null
-            ? $route->with('error', "ดึงวันหยุดของ{$label}ไม่สำเร็จ — ตรวจอินเทอร์เน็ตแล้วลองใหม่ หรือเพิ่มเอง")
-            : $route->with('success', "ดึงวันหยุดราชการของ{$label}แล้ว {$count} วัน");
+            ? $route->with('error', "ดึงวันหยุดของปีการศึกษา {$year->name} ไม่สำเร็จ — ตรวจอินเทอร์เน็ตแล้วลองใหม่ หรือเพิ่มเอง")
+            : $route->with('success', "ดึงวันหยุดราชการของปีการศึกษา {$year->name} แล้ว {$count} วัน");
     }
 
     private function settingsRoute(): string

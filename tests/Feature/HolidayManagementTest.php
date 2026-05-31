@@ -131,6 +131,33 @@ class HolidayManagementTest extends TestCase
             ->assertSessionHasErrors('date');
     }
 
+    public function test_sync_button_requires_active_year(): void
+    {
+        $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
+
+        $this->post(route('admin.settings.holidays.sync'))
+            ->assertRedirect(route('admin.settings', ['tab' => 'academic']))
+            ->assertSessionHas('error');
+
+        $this->assertSame(0, Holiday::count());
+    }
+
+    public function test_sync_button_fetches_active_year_span(): void
+    {
+        \App\Models\AcademicYear::create([
+            'name' => '2569', 'start_date' => '2026-06-01', 'end_date' => '2027-03-12', 'is_active' => true,
+        ]);
+        $this->fakeGoogleHolidays();
+        $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
+
+        $this->post(route('admin.settings.holidays.sync'))
+            ->assertRedirect(route('admin.settings', ['tab' => 'academic']))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('holidays', ['date' => '2026-01-01']);
+        $this->assertDatabaseHas('holidays', ['date' => '2027-01-01']);
+    }
+
     public function test_admin_can_delete_holiday(): void
     {
         $h = Holiday::create(['date' => '2026-12-10', 'name' => 'X', 'source' => 'manual']);
