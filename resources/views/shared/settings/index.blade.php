@@ -48,6 +48,24 @@
         resetSummerTerm() {
             this.currentYear.terms[2] = this.emptyTerm('ภาคฤดูร้อน');
         },
+        showHolidayModal: false,
+        editHolidayMode: false,
+        currentHoliday: { id: '', date: '', name: '', remark: '' },
+        openAddHoliday() {
+            this.editHolidayMode = false;
+            this.currentHoliday = { id: '', date: '', name: '', remark: '' };
+            this.showHolidayModal = true;
+        },
+        openEditHoliday(h) {
+            this.editHolidayMode = true;
+            this.currentHoliday = {
+                id: h.id,
+                date: this.thaiDateForInput(h.date),
+                name: h.name || '',
+                remark: h.remark || '',
+            };
+            this.showHolidayModal = true;
+        },
         openAddModal() {
             this.editMode = false;
             this.currentYear = { id: '', name: '', start_date: '', end_date: '', is_active: false, hasSummer: false, terms: this.buildTerms([]) };
@@ -319,6 +337,57 @@
             </div>
 
             @if($isAdmin)
+            {{-- วันหยุดราชการ (V3 ข้อ 2.4) --}}
+            <div class="card" style="margin-top: 16px;">
+                <div class="card-hdr">
+                    <div>
+                        <div class="card-ttl">วันหยุดราชการ</div>
+                        <div style="font-size: 12px; color: var(--fg-3); margin-top: 4px; line-height: 1.5; max-width: 620px;">
+                            ปฏิทินจัดตารางจะขึ้น "งดการเรียนการสอน" ในวันเหล่านี้ และไม่นับภาระงาน · ระบบดึงให้อัตโนมัติตอนสร้างปีการศึกษา (เพิ่ม/แก้/ลบเองได้)
+                        </div>
+                    </div>
+                    <div class="card-actions" style="display: flex; gap: 8px;">
+                        <form method="POST" action="{{ route('admin.settings.holidays.sync') }}" style="margin: 0;">
+                            @csrf
+                            <button type="submit" class="btn btn-ghost" style="font-size: 13px;">ดึงวันหยุดซ้ำ</button>
+                        </form>
+                        <button type="button" class="btn btn-primary" @click="openAddHoliday()">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right:6px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            เพิ่มวันหยุด
+                        </button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 160px;">วันที่</th>
+                                <th>ชื่อวันหยุด</th>
+                                <th style="width: 110px;">ที่มา</th>
+                                <th style="text-align: center; width: 80px;">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($holidays as $h)
+                                <tr>
+                                    <td style="font-family: var(--font-mono);">{{ \App\Support\ThaiDate::formatForInput($h->date) }}</td>
+                                    <td style="color: var(--fg-1);">{{ $h->name }}@if($h->remark)<span style="color: var(--fg-3); font-size: 12px;"> · {{ $h->remark }}</span>@endif</td>
+                                    <td><span class="badge badge-gray">{{ $h->source === 'manual' ? 'เพิ่มเอง' : 'อัตโนมัติ' }}</span></td>
+                                    <td style="text-align: center;">
+                                        <button type="button" class="action-btn" title="แก้ไข"
+                                            @click="openEditHoliday({{ Js::from(['id' => $h->id, 'date' => optional($h->date)->format('Y-m-d'), 'name' => $h->name, 'remark' => $h->remark]) }})">
+                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                        </button>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="4" style="text-align: center; color: var(--fg-3); padding: 28px;">ยังไม่มีวันหยุด — ระบบดึงให้อัตโนมัติเมื่อสร้างปีการศึกษา หรือกด "ดึงวันหยุดซ้ำ"</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
                 <div x-show="openScheduleConfirmForm" x-cloak
                     style="position:fixed;inset:0;z-index:80;background:rgba(15,23,42,.36);"
                     @keydown.escape.window="cancelOpenScheduleCountdown()">
@@ -460,6 +529,53 @@
         </template>
 
         @if($isAdmin)
+        <!-- Add/Edit Holiday Modal -->
+        <template x-if="showHolidayModal">
+            <div class="overlay" x-cloak>
+                <div class="modal-center" style="max-width: 480px;"
+                    x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+                    <div class="modal-hdr" style="background: var(--bg-2);">
+                        <div class="modal-ttl" style="font-family: var(--font-display);" x-text="editHolidayMode ? 'แก้ไขวันหยุด' : 'เพิ่มวันหยุด'"></div>
+                        <button type="button" class="modal-cls" @click="showHolidayModal = false">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                    </div>
+                    <form :action="editHolidayMode ? '{{ url('admin/settings/holidays') }}/' + currentHoliday.id : '{{ route('admin.settings.holidays.store') }}'" method="POST">
+                        @csrf
+                        <input type="hidden" name="_method" value="PUT" :disabled="!editHolidayMode">
+                        <div class="modal-body">
+                            <div class="form-group" style="margin-bottom: 16px;">
+                                <label>วันที่ <span style="color: var(--status-conflict-fg)">*</span></label>
+                                <x-thai-date-input name="date" x-model="currentHoliday.date" required helper="" />
+                                @error('date')<span style="color: var(--red, #dc2626); font-size: 12px; display: block; margin-top: 4px;">{{ $message }}</span>@enderror
+                            </div>
+                            <div class="form-group" style="margin-bottom: 16px;">
+                                <label>ชื่อวันหยุด <span style="color: var(--status-conflict-fg)">*</span></label>
+                                <input type="text" name="name" x-model="currentHoliday.name" required maxlength="255" placeholder="เช่น วันสงกรานต์">
+                                @error('name')<span style="color: var(--red, #dc2626); font-size: 12px; display: block; margin-top: 4px;">{{ $message }}</span>@enderror
+                            </div>
+                            <div class="form-group">
+                                <label>หมายเหตุ</label>
+                                <input type="text" name="remark" x-model="currentHoliday.remark" maxlength="255" placeholder="(ถ้ามี)">
+                            </div>
+                        </div>
+                        <div class="modal-foot" style="display: flex; justify-content: space-between;">
+                            <button type="button" class="btn btn-ghost" x-show="editHolidayMode"
+                                @click="$refs.deleteHolidayForm.submit()"
+                                style="color: var(--status-conflict-fg);">ลบ</button>
+                            <div style="display: flex; gap: 8px; margin-left: auto;">
+                                <button type="button" class="btn btn-ghost" @click="showHolidayModal = false">ยกเลิก</button>
+                                <button type="submit" class="btn btn-primary">บันทึก</button>
+                            </div>
+                        </div>
+                    </form>
+                    <form x-ref="deleteHolidayForm" :action="'{{ url('admin/settings/holidays') }}/' + currentHoliday.id" method="POST" style="display: none;">
+                        @csrf
+                        @method('DELETE')
+                    </form>
+                </div>
+            </div>
+        </template>
 
         <!-- Tab: PA Rules -->
         <div x-show="activeTab === 'pa'" x-cloak>

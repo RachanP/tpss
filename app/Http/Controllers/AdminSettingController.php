@@ -7,7 +7,9 @@ use App\Models\AcademicYear;
 use App\Models\Course;
 use App\Models\CourseOffering;
 use App\Models\CourseRole;
+use App\Models\Holiday;
 use App\Models\SystemSetting;
+use App\Services\HolidayService;
 use App\Http\Controllers\Admin\AlertController;
 use App\Services\AuditLogger;
 use App\Services\NavigationBadgeService;
@@ -135,6 +137,22 @@ class AdminSettingController extends Controller
     }
 
     /**
+     * เติมวันหยุดราชการอัตโนมัติจาก API ตามปีปฏิทินที่ปีการศึกษาคร่อม (fail-safe)
+     * คืน ['ok'=>bool, 'message'=>string] เพื่อแนบใน flash
+     */
+    private function autoFetchHolidays(AcademicYear $year): array
+    {
+        $count = app(\App\Services\HolidayService::class)
+            ->syncForAcademicYearSpan((string) $year->start_date, (string) $year->end_date);
+
+        if ($count === null) {
+            return ['ok' => false, 'message' => 'ดึงวันหยุดอัตโนมัติไม่สำเร็จ (เพิ่มเองหรือกดดึงซ้ำได้ในตารางวันหยุด)'];
+        }
+
+        return ['ok' => true, 'message' => "ดึงวันหยุดราชการเข้าระบบแล้ว {$count} วัน"];
+    }
+
+    /**
      * ตรวจความถูกต้องของวันเทอม/วันสอบ (วันเป็น ISO แล้ว — เทียบ string ได้)
      * คืน array ข้อความ error (ว่าง = ผ่าน)
      */
@@ -222,6 +240,7 @@ class AdminSettingController extends Controller
     public function index()
     {
         $academicYears = AcademicYear::with('terms')->orderBy('name', 'desc')->get();
+        $holidays = Holiday::orderBy('date')->get();
         $paCriteria = json_decode(SystemSetting::get('pa_criteria_config', '{}'), true);
 
         $workloadWeeks = SystemSetting::get('teaching_quota_weeks', 46);
@@ -241,7 +260,7 @@ class AdminSettingController extends Controller
 
         $isAdmin     = true;
         $routePrefix = 'admin';
-        return view('admin.settings', compact('academicYears', 'paCriteria', 'workloadQuota', 'teachingQuota', 'workloadWeeks', 'teachingWeeks', 'workloadHoursPerWeek', 'isAdmin', 'routePrefix', 'schedulingSummary', 'schedulingCriticals'));
+        return view('admin.settings', compact('academicYears', 'holidays', 'paCriteria', 'workloadQuota', 'teachingQuota', 'workloadWeeks', 'teachingWeeks', 'workloadHoursPerWeek', 'isAdmin', 'routePrefix', 'schedulingSummary', 'schedulingCriticals'));
     }
 
     public function storeYear(Request $request)
@@ -286,6 +305,7 @@ class AdminSettingController extends Controller
 
         $year = AcademicYear::create($validated);
         $this->syncTerms($year, $request);
+        $holidayNote = $this->autoFetchHolidays($year);
 
         AuditLogger::log(
             action: 'ข้อมูลหลัก.สร้าง',
@@ -297,7 +317,8 @@ class AdminSettingController extends Controller
         );
 
         AlertController::flushCache();
-        return redirect()->route($this->settingsRoute(), ['tab' => 'academic'])->with('success', 'เพิ่มปีการศึกษาเรียบร้อยแล้ว');
+        $redirect = redirect()->route($this->settingsRoute(), ['tab' => 'academic'])->with('success', 'เพิ่มปีการศึกษาเรียบร้อยแล้ว — ' . $holidayNote['message']);
+        return $holidayNote['ok'] ? $redirect : $redirect->with('holiday_warning', $holidayNote['message']);
     }
 
     public function updateYear(Request $request, AcademicYear $year)
@@ -520,6 +541,72 @@ class AdminSettingController extends Controller
         return redirect()
             ->route('admin.settings', ['tab' => 'academic'])
             ->with('success', "ปิดช่วงจัดตารางสำหรับปีการศึกษา {$year->name} แล้ว");
+    }
+
+    // ── วันหยุดราชการ (V3 ข้อ 2.4) ──────────────────────────────────────
+
+    public function storeHoliday(Request $request)
+    {
+        $this->normalizeThaiDateInputs($request, ['date']);
+        $validated = $request->validate([
+            'date'   => ['required', 'date', \Illuminate\Validation\Rule::unique('holidays')],
+            'name'   => ['required', 'string', 'max:255'],
+            'remark' => ['nullable', 'string', 'max:255'],
+        ], [
+            'date.unique'   => 'มีวันหยุดวันที่นี้อยู่แล้วในระบบ',
+            'date.required' => 'กรุณาระบุวันที่',
+            'name.required' => 'กรุณาระบุชื่อวันหยุด',
+        ]);
+        $validated['source'] = 'manual';
+
+        Holiday::create($validated);
+        AlertController::flushCache();
+
+        return redirect()->route($this->settingsRoute(), ['tab' => 'academic'])->with('success', 'เพิ่มวันหยุดเรียบร้อยแล้ว');
+    }
+
+    public function updateHoliday(Request $request, Holiday $holiday)
+    {
+        $this->normalizeThaiDateInputs($request, ['date']);
+        $validated = $request->validate([
+            'date'   => ['required', 'date', \Illuminate\Validation\Rule::unique('holidays')->ignore($holiday->id)],
+            'name'   => ['required', 'string', 'max:255'],
+            'remark' => ['nullable', 'string', 'max:255'],
+        ], [
+            'date.unique'   => 'มีวันหยุดวันที่นี้อยู่แล้วในระบบ',
+            'name.required' => 'กรุณาระบุชื่อวันหยุด',
+        ]);
+
+        $holiday->update($validated);
+        AlertController::flushCache();
+
+        return redirect()->route($this->settingsRoute(), ['tab' => 'academic'])->with('success', 'อัปเดตวันหยุดเรียบร้อยแล้ว');
+    }
+
+    public function destroyHoliday(Holiday $holiday)
+    {
+        $holiday->delete();
+        AlertController::flushCache();
+
+        return redirect()->route($this->settingsRoute(), ['tab' => 'academic'])->with('success', 'ลบวันหยุดเรียบร้อยแล้ว');
+    }
+
+    /**
+     * ดึงวันหยุดซ้ำ (manual) — ตามช่วงปีการศึกษาปัจจุบัน หรือปีปฏิทินปัจจุบันถ้ายังไม่มีปี active
+     */
+    public function syncHolidays(Request $request)
+    {
+        $year = AcademicYear::where('is_active', true)->first();
+        $count = $year
+            ? app(HolidayService::class)->syncForAcademicYearSpan((string) $year->start_date, (string) $year->end_date)
+            : app(HolidayService::class)->syncYear((int) date('Y'));
+
+        AlertController::flushCache();
+        $route = redirect()->route($this->settingsRoute(), ['tab' => 'academic']);
+
+        return $count === null
+            ? $route->with('error', 'ดึงวันหยุดอัตโนมัติไม่สำเร็จ — ตรวจอินเทอร์เน็ตแล้วลองใหม่ หรือเพิ่มเอง')
+            : $route->with('success', "ดึงวันหยุดราชการเข้าระบบแล้ว {$count} วัน");
     }
 
     private function settingsRoute(): string

@@ -11,6 +11,7 @@ class SettingController extends AdminSettingController
     public function index()
     {
         $academicYears = AcademicYear::with('terms')->orderBy('name', 'desc')->get();
+        $holidays = \App\Models\Holiday::orderBy('date')->get();
 
         $paCriteria           = [];
         $workloadWeeks        = SystemSetting::get('teaching_quota_weeks', 46);
@@ -23,7 +24,7 @@ class SettingController extends AdminSettingController
         $routePrefix = 'staff';
 
         return view('staff.settings', compact(
-            'academicYears', 'paCriteria', 'workloadQuota', 'teachingQuota',
+            'academicYears', 'holidays', 'paCriteria', 'workloadQuota', 'teachingQuota',
             'workloadWeeks', 'teachingWeeks', 'workloadHoursPerWeek', 'isAdmin', 'routePrefix'
         ));
     }

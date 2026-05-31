@@ -91,6 +91,11 @@ Route::middleware(['auth', 'no-back'])->group(function () {
         Route::post('/admin/settings/update-constants', 'App\Http\Controllers\AdminSettingController@updateConstants')->name('admin.settings.constants.update');
         Route::patch('/admin/settings/scheduling/{year}/open', 'App\Http\Controllers\AdminSettingController@openSchedulingWindow')->name('admin.settings.scheduling.open');
         Route::patch('/admin/settings/scheduling/{year}/close', 'App\Http\Controllers\AdminSettingController@closeSchedulingWindow')->name('admin.settings.scheduling.close');
+        // วันหยุดราชการ (V3 ข้อ 2.4)
+        Route::post('/admin/settings/holidays', 'App\Http\Controllers\AdminSettingController@storeHoliday')->name('admin.settings.holidays.store');
+        Route::put('/admin/settings/holidays/{holiday}', 'App\Http\Controllers\AdminSettingController@updateHoliday')->name('admin.settings.holidays.update');
+        Route::delete('/admin/settings/holidays/{holiday}', 'App\Http\Controllers\AdminSettingController@destroyHoliday')->name('admin.settings.holidays.destroy');
+        Route::post('/admin/settings/holidays/sync', 'App\Http\Controllers\AdminSettingController@syncHolidays')->name('admin.settings.holidays.sync');
 
         Route::get('/admin/master-data', 'App\Http\Controllers\Admin\MasterDataController@index')->name('admin.master_data');
         Route::get('/admin/alerts', [AlertController::class, 'index'])->name('admin.alerts');
