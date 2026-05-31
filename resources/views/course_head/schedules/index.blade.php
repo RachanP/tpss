@@ -2013,8 +2013,9 @@
         .grid-cell.grid-head.day-exam,
         .grid-cell.grid-head.day-break { color: oklch(50% 0.012 232) !important; }
         .grid-day-chip {
-            display: inline-block; margin-top: 3px; padding: 0 6px; border-radius: 2px;
+            display: block; max-width: 100%; margin: 3px auto 0; padding: 0 6px; border-radius: 2px;
             font-size: 9.5px; font-weight: 700; line-height: 15px; letter-spacing: 0.02em;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
         .grid-day-chip.is-holiday { background: oklch(90% 0.07 80); color: oklch(42% 0.1 65); }
         .grid-day-chip.is-exam    { background: oklch(88% 0.006 232); color: oklch(40% 0.014 232); }
