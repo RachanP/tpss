@@ -58,6 +58,7 @@
 - ตรวจสอบ Product Backlog **v2.1** ก่อนเสนอ design หรือ implementation ใดๆ
 - Requirement update 29 พ.ค. 2569: ระบบต้องเน้น **ฟอร์มกรอกตารางที่ใช้ง่าย + smart check + publish/report** มากกว่า auto scheduling; ดู `.claude/rules/architecture.md`
 - Master Data decision 30 พ.ค. 2569: สำหรับ demo/current phase อย่าเสนอเพิ่ม field หลักสูตรต่อปี, track นานาชาติ, campus/location kind หรือ workload flag ซ้ำ เว้นแต่มี requirement ใหม่ชัดเจน; ดู `.claude/rules/architecture.md#master-data-scope-decisions--30-พค-2569`
+- ⚠️ Requirement V3/V4 + Master Data Cleanup (31 พ.ค. 2569): เอกสารลูกค้าฉบับใหม่ `Doc/จากอาจารย์/เอกสาร/tpss_system_summary_v3.md` ยืนยันทิศทาง **academic_year = "ปี" (มีเทอม 1/2/ฤดูร้อน + วันสอบ), วิชาเปิดทั้งปี, offering ราย-ปี, ผู้บริหารอนุมัติทั้งปี** — โน้ต "อย่าเพิ่ม campus" ด้านบนถูก reconsider แล้ว (campus + holidays เข้าแผน cleanup); ทำบน branch `feat/v2-requirement` ดู `.claude/rules/architecture.md#master-data-cleanup-phase-v2` + `sprint-status.md`
 - เมื่อเริ่มงาน UI ให้รัน `node .agents/skills/impeccable/scripts/load-context.mjs`
 - **ผู้บริหาร = Read-only + Approve/Reject เท่านั้น** — ห้าม implement UI ให้แก้ไขตาราง
 - Export รายงานเป็น PDF และ Excel; รองรับ PC, tablet, mobile เบื้องต้น
