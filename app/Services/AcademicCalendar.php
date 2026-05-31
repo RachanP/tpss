@@ -60,6 +60,12 @@ class AcademicCalendar
         return $this->terms->isNotEmpty();
     }
 
+    /** @return array<string, string>  'Y-m-d' => ชื่อวันหยุด (สำหรับเตือนฝั่ง client) */
+    public function holidaysMap(): array
+    {
+        return $this->holidays;
+    }
+
     /** เทอมที่ช่วงวัน [start_date, end_date] คลุมวันนี้ */
     public function termForDate(CarbonInterface|string|null $date): ?Term
     {

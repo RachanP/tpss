@@ -1628,6 +1628,20 @@
             font-size: 12px;
             font-weight: 800;
         }
+        /* V2: เตือนวันหยุด (ไม่บล็อก) — โทนอำพันตาม semantic warning */
+        .date-holiday-warn {
+            margin-top: 5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 2px 9px;
+            border-radius: 999px;
+            background: var(--status-warning-bg, oklch(95% 0.05 85));
+            border: 1px solid var(--status-warning-border, oklch(85% 0.08 80));
+            color: var(--status-warning-fg, oklch(45% 0.1 70));
+            font-size: 12px;
+            font-weight: 800;
+        }
         .schedule-multiday-toggle {
             display: flex;
             align-items: flex-start;
@@ -4430,6 +4444,13 @@
                 if (!info) return '';
                 return info.week ? `${info.dayName} · สัปดาห์ที่ ${info.week}` : info.dayName;
             },
+            // V2: เตือน (ไม่บล็อก) เมื่อวันที่เลือกตรงวันหยุดราชการ
+            scheduleDateWarning(thaiStr) {
+                const info = window.tpssDateInfo(thaiStr, this.academicStartMonday);
+                if (!info || !info.iso) return '';
+                const name = (window.tpssHolidays || {})[info.iso];
+                return name ? `วันหยุด: ${name} — งดการเรียนการสอน` : '';
+            },
             csrf: @js(csrf_token()),
             copyWeekOpen: false,
             copyWeekCurrent: @js(($weekStart ?? null) ? $weekStart->toDateString() : null),
@@ -5091,6 +5112,8 @@
                 return `${d} ${months[m - 1]} ${y + 543} – ${end[2]} ${months[end[1] - 1]} ${end[0] + 543}`;
             };
             // แปลงวันที่ พ.ศ. (วว/ดด/พ.ศ.) → { dayName, week } สำหรับ hint ใต้ช่องวันที่
+            // V2: วันหยุดราชการของปีนี้ (ISO → ชื่อ) สำหรับเตือนตอนเลือกวันใน modal
+            window.tpssHolidays = @js($academicCalendar?->holidaysMap() ?? []);
             window.tpssDateInfo = function (thaiStr, academicMondayIso) {
                 const m = (thaiStr || '').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
                 if (!m) return null;
@@ -5098,6 +5121,8 @@
                 if (isNaN(date.getTime())) return null;
                 const days = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
                 const dayName = 'วัน' + days[date.getDay()];
+                const pad = (n) => String(n).padStart(2, '0');
+                const iso = `${+m[3] - 543}-${pad(+m[2])}-${pad(+m[1])}`;
                 let week = null;
                 if (academicMondayIso) {
                     const toMonday = (dt) => { const x = new Date(dt); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
@@ -5105,7 +5130,7 @@
                     const t = toMonday(date);
                     week = Math.max(1, Math.floor((t - a) / (7 * 86400000)) + 1);
                 }
-                return { dayName, week };
+                return { dayName, week, iso };
             };
             // ตั้งค่า time-picker (custom widget) แบบ programmatic — ใช้ตอนคลิกช่องว่างใน grid
             window.tpssSetTimePicker = function (hiddenId, value) {
@@ -6911,6 +6936,7 @@
                                             :year-end="$scheduleDatePickerYearEnd"
                                             x-model="startDateDisplay" />
                                         <div class="date-day-hint" x-show="scheduleDateHint(startDateDisplay)" x-cloak x-text="scheduleDateHint(startDateDisplay)"></div>
+                                        <div class="date-holiday-warn" x-show="scheduleDateWarning(startDateDisplay)" x-cloak x-text="scheduleDateWarning(startDateDisplay)"></div>
                                         <label class="schedule-multiday-toggle">
                                             <input type="checkbox" :checked="multiDay" @change="multiDay = $event.target.checked" data-testid="edit-multiday-toggle">
                                             <span>กิจกรรมต่อเนื่องหลายวัน <small>(เช่น บล็อกฝึกปฏิบัติ)</small></span>
@@ -7266,6 +7292,7 @@
                                                 x-bind:disabled="createMode === 'series'"
                                                 x-model="createStartDate" />
                                             <div class="date-day-hint" x-show="scheduleDateHint(createStartDate)" x-cloak x-text="scheduleDateHint(createStartDate)" data-testid="create-date-hint"></div>
+                                            <div class="date-holiday-warn" x-show="scheduleDateWarning(createStartDate)" x-cloak x-text="scheduleDateWarning(createStartDate)" data-testid="create-date-holiday-warn"></div>
                                         </div>
                                         <div x-show="createMultiDay" x-cloak>
                                             <label class="modal-label" for="end_date">ถึงวันที่ <span class="required-mark">*</span></label>
