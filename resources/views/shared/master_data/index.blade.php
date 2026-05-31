@@ -2887,6 +2887,12 @@
                             @forelse($activityTypes as $at)
                                 @php
                                     $catLabel = ['lecture' => 'บรรยาย', 'practicum' => 'ปฏิบัติ', 'thesis' => 'วิทยานิพนธ์', 'other' => 'อื่นๆ'];
+                                    $catStyle = [
+                                        'lecture'   => 'background:#eef4ff;color:#1e40af;border:1px solid #c7d7fe;',
+                                        'practicum' => 'background:#f3effd;color:#6b21a8;border:1px solid #ddd0f7;',
+                                        'thesis'    => 'background:#eef6f9;color:#155e75;border:1px solid #cce4ed;',
+                                        'other'     => 'background:#f7fafc;color:#475569;border:1px solid #e2e8f0;',
+                                    ];
                                 @endphp
                                 <tr
                                     data-search="{{ Str::lower($at->name . ' ' . $at->category . ' ' . ($catLabel[$at->category] ?? '') . ' ' . ($at->color_code ?? '')) }}"
@@ -2897,7 +2903,7 @@
                                     </td>
                                     <td style="font-weight: 600; color: var(--fg-1);">{{ $at->name }}</td>
                                     <td>
-                                        <span class="pill pill-neutral">{{ $catLabel[$at->category] ?? $at->category }}</span>
+                                        <span class="pill" style="{{ $catStyle[$at->category] ?? $catStyle['other'] }}">{{ $catLabel[$at->category] ?? $at->category }}</span>
                                     </td>
                                     <td>
                                         @if($at->counts_toward_workload)
