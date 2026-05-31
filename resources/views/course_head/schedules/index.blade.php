@@ -183,10 +183,18 @@
     };
     // V2: จำแนกวัน (วันหยุด/สัปดาห์สอบ/ปิดภาคเรียน) สำหรับลงสีปฏิทิน — จาก AcademicCalendar
     $academicCalendar = $academicCalendar ?? null;
-    $dayInfo = function ($day) use ($academicCalendar) {
+    $selectedTermId = $selectedTermId ?? null;
+    $dayInfo = function ($day) use ($academicCalendar, $selectedTermId) {
         $fallback = ['kind' => 'normal', 'label' => null, 'blocked' => false, 'term_id' => null, 'term_name' => null];
         if (! $academicCalendar || ! $day) return $fallback;
-        return $academicCalendar->classifyDay($day);
+        $info = $academicCalendar->classifyDay($day);
+        // ถ้า filter เทอมเจาะจง และวันนี้เป็น "เทอมอื่น" → off-term (เทา + กดเพิ่มไม่ได้ กันวางผิดเทอม)
+        if ($selectedTermId && $info['term_id'] && (int) $info['term_id'] !== (int) $selectedTermId) {
+            $info['kind'] = 'offterm';
+            $info['label'] = $info['term_name'] ?? 'เทอมอื่น';
+            $info['blocked'] = true;
+        }
+        return $info;
     };
     $weekNumberForDate = function ($date) use ($academicStartDate) {
         if (! $academicStartDate || ! $date) return null;
@@ -2009,9 +2017,11 @@
         .grid-cell.day-holiday { background: oklch(97% 0.035 85); }
         .grid-cell.day-exam    { background: oklch(93.5% 0.004 232); cursor: not-allowed; }
         .grid-cell.day-break   { background: oklch(95.5% 0.008 250); cursor: not-allowed; }
+        .grid-cell.day-offterm { background: oklch(95% 0.003 250); cursor: not-allowed; opacity: 0.85; }
         .grid-cell.grid-head.day-holiday { color: oklch(52% 0.09 70) !important; }
         .grid-cell.grid-head.day-exam,
-        .grid-cell.grid-head.day-break { color: oklch(50% 0.012 232) !important; }
+        .grid-cell.grid-head.day-break,
+        .grid-cell.grid-head.day-offterm { color: oklch(50% 0.012 232) !important; }
         .grid-day-chip {
             display: block; max-width: 100%; margin: 3px auto 0; padding: 0 6px; border-radius: 2px;
             font-size: 9.5px; font-weight: 700; line-height: 15px; letter-spacing: 0.02em;
@@ -2020,6 +2030,7 @@
         .grid-day-chip.is-holiday { background: oklch(90% 0.07 80); color: oklch(42% 0.1 65); }
         .grid-day-chip.is-exam    { background: oklch(88% 0.006 232); color: oklch(40% 0.014 232); }
         .grid-day-chip.is-break   { background: oklch(90% 0.01 250); color: oklch(42% 0.014 250); }
+        .grid-day-chip.is-offterm { background: oklch(89% 0.006 255); color: oklch(42% 0.03 262); }
         .month-calendar-day.day-holiday { background: oklch(97.5% 0.03 85); }
         .month-calendar-day.day-exam    { background: oklch(94.5% 0.004 232); }
         .month-calendar-day.day-break   { background: oklch(96% 0.008 250); }
@@ -2030,6 +2041,8 @@
         .month-day-flag.is-holiday { background: oklch(90% 0.07 80); color: oklch(42% 0.1 65); }
         .month-day-flag.is-exam    { background: oklch(88% 0.006 232); color: oklch(40% 0.014 232); }
         .month-day-flag.is-break   { background: oklch(90% 0.01 250); color: oklch(42% 0.014 250); }
+        .month-day-flag.is-offterm { background: oklch(89% 0.006 255); color: oklch(42% 0.03 262); }
+        .month-calendar-day.day-offterm { background: oklch(96.5% 0.003 250); opacity: 0.8; }
         /* list: day badge เป็นสีเทาเมื่อเป็นสัปดาห์สอบ (แทนสีวัน) */
         .co-day-badge.is-exam-day { background: oklch(88% 0.006 232) !important; color: oklch(40% 0.014 232) !important; }
         /* term badge บนการ์ดกิจกรรม + แถวรายการ */
@@ -5571,7 +5584,7 @@
                                                         <svg class="sched-day-group-chevron" :class="collapsedDays['{{ $dateKey }}'] ? 'is-collapsed' : ''" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                                             <polyline points="6 9 12 15 18 9"/>
                                                         </svg>
-                                                        <span class="co-day-badge {{ $di['kind'] === 'exam' ? 'is-exam-day' : 'day-' . $dayIso }} sched-day-group-badge">{{ $dayName }}</span>
+                                                        <span class="co-day-badge {{ in_array($di['kind'], ['exam', 'offterm', 'break'], true) ? 'is-exam-day' : 'day-' . $dayIso }} sched-day-group-badge">{{ $dayName }}</span>
                                                         <span class="sched-day-group-date">{{ $formatDate($dateObj) }}</span>
                                                         @if($dayTermName)
                                                             <span class="term-badge">{{ $dayTermName }}</span>
