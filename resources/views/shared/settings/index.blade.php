@@ -413,9 +413,13 @@
                                     @enderror
                                 </div>
                             </div>
-                            @error('terms')
-                                <div style="margin-bottom: 10px; padding: 8px 10px; background: oklch(97% 0.02 20); border: 1px solid oklch(82% 0.08 25); border-radius: 6px; color: var(--status-conflict-fg); font-size: 12px;">{{ $message }}</div>
-                            @enderror
+                            @if($errors->has('terms'))
+                                <div style="margin-bottom: 10px; padding: 8px 10px; background: oklch(97% 0.02 20); border: 1px solid oklch(82% 0.08 25); border-radius: 6px; color: var(--status-conflict-fg); font-size: 12px; line-height: 1.6;">
+                                    @foreach($errors->get('terms') as $msg)
+                                        <div>• {{ $msg }}</div>
+                                    @endforeach
+                                </div>
+                            @endif
                             <div style="margin-top: 4px; border-top: 1px solid var(--border); padding-top: 14px;">
                                 <div style="font-weight: 600; font-size: 13px; color: var(--fg-1); margin-bottom: 4px;">ภาคการศึกษา (เทอม)</div>
                                 <div style="font-size: 11px; color: var(--fg-3); margin-bottom: 10px; line-height: 1.5;">

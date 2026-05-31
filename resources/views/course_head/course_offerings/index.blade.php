@@ -61,7 +61,7 @@
                     ">
                         @foreach($availableYears as $year)
                             <option value="{{ $year->id }}" @selected($year->id === $selectedYearId)>
-                                {{ $year->name }} / เทอม {{ $year->semester }}@if($year->is_active) · ปัจจุบัน @endif
+                                ปีการศึกษา {{ $year->name }}@if($year->is_active) · ปัจจุบัน @endif
                             </option>
                         @endforeach
                     </select>
@@ -189,7 +189,7 @@
                             <td>
                                 <div class="body-sm">{{ $course?->curriculum?->name ?? '-' }}</div>
                                 <div class="caption" style="margin-top:4px;">
-                                    {{ $year?->name ?? '-' }} / เทอม {{ $year?->semester ?? '-' }}
+                                    ปีการศึกษา {{ $year?->name ?? '-' }}
                                 </div>
                             </td>
                             <td>

@@ -203,7 +203,7 @@
                 <h1 class="h1" style="margin:0 0 6px;">{{ $course?->course_code ?? '-' }} {{ $course?->name_th ?? $course?->name_en ?? '' }}</h1>
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                     <p class="body-sm" style="margin:0;">
-                        {{ $course?->curriculum?->name ?? '-' }} · {{ $academicYear?->name ?? '-' }} / เทอม {{ $academicYear?->semester ?? '-' }}
+                        {{ $course?->curriculum?->name ?? '-' }} · ปีการศึกษา {{ $academicYear?->name ?? '-' }}
                     </p>
                     @if($courseOffering->requires_practicum_rotation)
                         <span class="badge badge-warn" style="font-size:0.7rem;">ฝึกปฏิบัติ</span>

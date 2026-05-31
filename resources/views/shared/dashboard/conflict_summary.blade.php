@@ -12,7 +12,7 @@
             <div class="card-ttl">Schedule conflict summary</div>
             <div style="font-size:12px;color:var(--fg-3);margin-top:2px;">
                 @if($currentAcademicYear ?? null)
-                    {{ $currentAcademicYear->name }} / {{ $currentAcademicYear->semester }}
+                    ปีการศึกษา {{ $currentAcademicYear->name }}
                 @else
                     No active academic year
                 @endif

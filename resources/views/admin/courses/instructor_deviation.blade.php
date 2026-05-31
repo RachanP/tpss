@@ -255,8 +255,7 @@
                                     :disabled="{{ $count === 0 ? 'true' : 'false' }}"
                                     class="history-row-btn">
                                 <div class="history-term">
-                                    <div class="history-term-year">{{ $offering->academicYear?->name ?? '-' }}</div>
-                                    <div class="history-term-semester">เทอม {{ $offering->academicYear?->semester ?? '-' }}</div>
+                                    <div class="history-term-year">ปีการศึกษา {{ $offering->academicYear?->name ?? '-' }}</div>
                                 </div>
                                 <div class="history-info">
                                     <div class="history-coord">หัวหน้าวิชา: {{ $offering->coordinator?->formatted_name ?? $offering->coordinator?->name ?? '-' }}</div>

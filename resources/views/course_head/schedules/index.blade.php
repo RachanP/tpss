@@ -171,7 +171,7 @@
         ? $calendarPeriodEnd->lt($academicStartDate) || $calendarPeriodStart->gt($academicEndDate)
         : false;
     $calendarOutsideNote = $calendarOutsideAcademicYear
-        ? 'นอกช่วงปีการศึกษา ' . ($academicYear?->name ?? '-') . ' / เทอม ' . ($academicYear?->semester ?? '-')
+        ? 'นอกช่วงปีการศึกษา ' . ($academicYear?->name ?? '-')
         : null;
     $canCreateInCurrentPeriod = $canEdit && ! $calendarOutsideAcademicYear;
     $outsideCreateHint = 'เลือกวันที่ในช่วงปีการศึกษาก่อนเพิ่มรายการสอน';
@@ -5245,7 +5245,7 @@
                     </div>
                     <div class="course-overview-meta">
                         <span>{{ $curriculum?->name ?? 'ไม่ระบุหลักสูตร' }}</span>
-                        <span>ปีการศึกษา {{ $academicYear?->name ?? '-' }} / เทอม {{ $academicYear?->semester ?? '-' }}</span>
+                        <span>ปีการศึกษา {{ $academicYear?->name ?? '-' }}</span>
                         @if($phase === 'scheduling')
                             <span class="badge badge-ok">เปิดจัดตาราง</span>
                         @elseif($phase === 'approving')
@@ -7201,7 +7201,7 @@
                                                     $optionYear = $offeringOption->academicYear;
                                                 @endphp
                                                 <option value="{{ $offeringOption->id }}">
-                                                    {{ $optionCourse?->course_code ?? '-' }} · {{ $optionCourse?->name_th ?? $optionCourse?->name_en ?? '-' }} · {{ $optionYear?->name ?? '-' }}/{{ $optionYear?->semester ?? '-' }}
+                                                    {{ $optionCourse?->course_code ?? '-' }} · {{ $optionCourse?->name_th ?? $optionCourse?->name_en ?? '-' }} · ปี {{ $optionYear?->name ?? '-' }}
                                                 </option>
                                             @endforeach
                                         </select>

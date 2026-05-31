@@ -135,6 +135,52 @@ class AdminSettingController extends Controller
     }
 
     /**
+     * ตรวจความถูกต้องของวันเทอม/วันสอบ (วันเป็น ISO แล้ว — เทียบ string ได้)
+     * คืน array ข้อความ error (ว่าง = ผ่าน)
+     */
+    private function termValidationErrors(Request $request): array
+    {
+        $errors = [];
+        $terms = collect($request->input('terms', []))
+            ->filter(fn ($t) => ! empty($t['name']) && ! empty($t['start_date']) && ! empty($t['end_date']))
+            ->values();
+
+        foreach ($terms as $t) {
+            $label = $t['name'];
+            $ts = $t['start_date'];
+            $te = $t['end_date'];
+
+            if ($te < $ts) {
+                $errors[] = "{$label}: วันสิ้นสุดเทอมต้องไม่ก่อนวันเริ่มเทอม";
+            }
+
+            foreach ([['midterm', 'สอบกลางภาค'], ['final', 'สอบปลายภาค']] as [$key, $examLabel]) {
+                $es = $t["{$key}_start"] ?? null;
+                $ee = $t["{$key}_end"] ?? null;
+                if ($es && $ee && $ee < $es) {
+                    $errors[] = "{$label}: ช่วง{$examLabel} — วันสิ้นสุดก่อนวันเริ่ม";
+                }
+                foreach (array_filter([$es, $ee]) as $d) {
+                    if ($d < $ts || $d > $te) {
+                        $errors[] = "{$label}: วัน{$examLabel}อยู่นอกช่วงเทอม";
+                        break;
+                    }
+                }
+            }
+        }
+
+        // ห้ามช่วงเทอมซ้อนทับกัน (เรียงตามวันเริ่ม)
+        $sorted = $terms->sortBy('start_date')->values();
+        for ($i = 1; $i < $sorted->count(); $i++) {
+            if ($sorted[$i]['start_date'] <= $sorted[$i - 1]['end_date']) {
+                $errors[] = "ช่วงเทอมซ้อนทับกัน: {$sorted[$i]['name']} เริ่มก่อน {$sorted[$i - 1]['name']} จะสิ้นสุด";
+            }
+        }
+
+        return array_values(array_unique($errors));
+    }
+
+    /**
      * บันทึกเทอมจากฟอร์ม — ถ้าไม่ส่ง terms มาเลย → สร้างเทอมเริ่มต้นให้ (fallback)
      */
     private function syncTerms(AcademicYear $year, Request $request): void
@@ -210,6 +256,10 @@ class AdminSettingController extends Controller
             'terms.required' => 'ต้องระบุอย่างน้อย 1 ภาคการศึกษา',
         ]);
 
+        if ($termErrors = $this->termValidationErrors($request)) {
+            return back()->withInput()->withErrors(['terms' => $termErrors]);
+        }
+
         // V2: วันเริ่ม-สิ้นสุดของปี = คำนวณจากช่วงเทอม (min ของวันเริ่ม / max ของวันสิ้นสุด)
         [$start, $end] = $this->yearSpanFromTerms($request);
         if (! $start || ! $end) {
@@ -261,6 +311,10 @@ class AdminSettingController extends Controller
             'name.unique'    => 'ปีการศึกษา ' . $request->input('name') . ' มีอยู่แล้วในระบบ',
             'terms.required' => 'ต้องระบุอย่างน้อย 1 ภาคการศึกษา',
         ]);
+
+        if ($termErrors = $this->termValidationErrors($request)) {
+            return back()->withInput()->withErrors(['terms' => $termErrors]);
+        }
 
         [$start, $end] = $this->yearSpanFromTerms($request);
         if (! $start || ! $end) {

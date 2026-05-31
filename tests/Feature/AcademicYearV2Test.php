@@ -74,6 +74,46 @@ class AcademicYearV2Test extends TestCase
             ->assertSessionHasErrors('terms');
     }
 
+    public function test_term_end_before_start_is_rejected(): void
+    {
+        $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
+
+        $this->post(route('admin.settings.years.store'), [
+            'name'  => '2570',
+            'terms' => [
+                ['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '2026-10-15', 'end_date' => '2026-06-01'],
+            ],
+        ])->assertSessionHasErrors('terms');
+
+        $this->assertDatabaseMissing('academic_years', ['name' => '2570']);
+    }
+
+    public function test_exam_outside_term_range_is_rejected(): void
+    {
+        $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
+
+        $this->post(route('admin.settings.years.store'), [
+            'name'  => '2570',
+            'terms' => [
+                ['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '2026-06-01', 'end_date' => '2026-10-15',
+                 'midterm_start' => '2026-12-01', 'midterm_end' => '2026-12-05'], // นอกช่วงเทอม
+            ],
+        ])->assertSessionHasErrors('terms');
+    }
+
+    public function test_overlapping_terms_are_rejected(): void
+    {
+        $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
+
+        $this->post(route('admin.settings.years.store'), [
+            'name'  => '2570',
+            'terms' => [
+                ['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '2026-06-01', 'end_date' => '2026-10-15'],
+                ['sequence' => 2, 'name' => 'ภาคเรียนที่ 2', 'start_date' => '2026-10-10', 'end_date' => '2027-03-12'], // ซ้อนเทอม 1
+            ],
+        ])->assertSessionHasErrors('terms');
+    }
+
     public function test_year_name_is_unique_without_semester(): void
     {
         $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
