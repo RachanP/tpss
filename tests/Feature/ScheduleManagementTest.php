@@ -861,6 +861,40 @@ class ScheduleManagementTest extends TestCase
         ]);
     }
 
+    public function test_schedule_creation_blocked_on_exam_week_and_break_period(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        // ตั้งเทอม + สัปดาห์สอบ · เทอมจบ 30 พ.ย. → ธ.ค. (ยังในปี) = ปิดภาคเรียน
+        \App\Models\Term::create([
+            'academic_year_id' => $offering->academic_year_id,
+            'sequence' => 1, 'name' => 'ภาคเรียนที่ 1',
+            'start_date' => '2026-08-01', 'end_date' => '2026-11-30',
+            'midterm_start' => '2026-09-21', 'midterm_end' => '2026-09-25',
+        ]);
+
+        $this->actingAsCourseHead($head);
+
+        // สัปดาห์สอบ → บล็อก
+        $this->post(route('maker.course_offerings.schedules.store', $offering),
+            $this->schedulePayload($instructor, $group, $activityType, $room, ['start_date' => '2026-09-21', 'end_date' => '2026-09-25']))
+            ->assertSessionHasErrors('schedule');
+
+        // ปิดภาคเรียน (ธ.ค. ไม่มีเทอมคลุม) → บล็อก
+        $this->post(route('maker.course_offerings.schedules.store', $offering),
+            $this->schedulePayload($instructor, $group, $activityType, $room, ['start_date' => '2026-12-10', 'end_date' => '2026-12-10']))
+            ->assertSessionHasErrors('schedule');
+
+        $this->assertDatabaseCount('schedules', 0);
+
+        // วันปกติในเทอม → ผ่าน + ติด term_id อัตโนมัติ
+        $this->post(route('maker.course_offerings.schedules.store', $offering),
+            $this->schedulePayload($instructor, $group, $activityType, $room, ['start_date' => '2026-08-03', 'end_date' => '2026-08-07']))
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('schedules', ['course_offering_id' => $offering->id, 'start_date' => '2026-08-03']);
+        $this->assertNotNull(Schedule::where('course_offering_id', $offering->id)->value('term_id'));
+    }
+
     public function test_schedule_rejects_student_groups_over_capacity(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();

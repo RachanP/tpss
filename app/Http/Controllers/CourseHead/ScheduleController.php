@@ -927,6 +927,7 @@ class ScheduleController extends Controller
         $validated = $this->validateSchedule($request, $courseOffering);
         $validated['course_offering_id'] = $courseOffering->id;
         $this->assertScheduleWithinAcademicYear($courseOffering, $validated);
+        $this->assertScheduleNotOnBlockedDay($courseOffering, $validated);
         $this->assertSelectedGroupsFitCapacity($courseOffering, $validated);
         $this->assertInstructorsBelongToCourseDepartment($courseOffering, $validated['instructor_ids']);
         $this->assertLeadInstructorSelected($validated);
@@ -1422,6 +1423,7 @@ class ScheduleController extends Controller
         // Gates — reuse logic เดียวกับตอน store (ไม่ throw, แค่เก็บข้อความ)
         if ($data['start_date'] && $data['end_date']) {
             $collect('start_date', fn () => $this->assertScheduleWithinAcademicYear($courseOffering, $data));
+            $collect('schedule', fn () => $this->assertScheduleNotOnBlockedDay($courseOffering, $data));
         }
         if (! empty($data['instructor_ids'])) {
             $collect('instructor_ids', fn () => $this->assertInstructorsBelongToCourseDepartment($courseOffering, $data['instructor_ids']));
@@ -1492,6 +1494,7 @@ class ScheduleController extends Controller
         }
 
         $this->assertScheduleWithinAcademicYear($courseOffering, $validated);
+        $this->assertScheduleNotOnBlockedDay($courseOffering, $validated);
         $this->assertSelectedGroupsFitCapacity($courseOffering, $validated);
         $this->assertInstructorsBelongToCourseDepartment($courseOffering, $validated['instructor_ids']);
         $this->assertLeadInstructorSelected($validated);
@@ -2034,6 +2037,21 @@ class ScheduleController extends Controller
                     . ThaiDate::formatForInput($academicYear->end_date)
                     . ')',
             ]);
+        }
+    }
+
+    /**
+     * V2: บล็อกการจัดกิจกรรมในช่วงสัปดาห์สอบ / ปิดภาคเรียน (วันที่ไม่มีเทอมคลุม)
+     * — เฉพาะปีที่ตั้งเทอมแล้ว (ปียังไม่ตั้งเทอม → ไม่บล็อก)
+     */
+    private function assertScheduleNotOnBlockedDay(CourseOffering $courseOffering, array $validated): void
+    {
+        $courseOffering->loadMissing('academicYear');
+        $reason = AcademicCalendar::forYear($courseOffering->academicYear)
+            ->blockReasonForRange($validated['start_date'], $validated['end_date'] ?? $validated['start_date']);
+
+        if ($reason) {
+            throw ValidationException::withMessages(['schedule' => [$reason['message']]]);
         }
     }
 

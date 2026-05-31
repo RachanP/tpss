@@ -94,6 +94,11 @@ class AcademicCalendar
             return $this->result('outside', 'นอกช่วงปีการศึกษา', true);
         }
 
+        // ปียังไม่ได้ตั้งเทอม → ไม่จำแนก term/exam/break (กันเทา/บล็อกทั้งปฏิทิน) — demo/legacy
+        if (! $this->hasTerms()) {
+            return $this->result('normal', null, false);
+        }
+
         $term = $this->termForDate($d);
         if (! $term) {
             return $this->result('break', 'ปิดภาคเรียน', true);
@@ -117,6 +122,10 @@ class AcademicCalendar
      */
     public function blockReasonForRange(CarbonInterface|string $start, CarbonInterface|string|null $end): ?array
     {
+        if (! $this->hasTerms()) {
+            return null; // ปียังไม่ตั้งเทอม → ไม่บล็อก (ไม่รู้ช่วงสอบ/ปิดเทอม)
+        }
+
         $s = CarbonImmutable::parse($start)->startOfDay();
         $e = $end ? CarbonImmutable::parse($end)->startOfDay() : $s;
         if ($e->lt($s)) {
