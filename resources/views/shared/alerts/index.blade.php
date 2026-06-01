@@ -126,6 +126,9 @@
             border-bottom: 1px solid var(--alert-border);
             background: var(--alert-soft);
         }
+        .alert-group-head.is-collapsed {
+            border-bottom-color: transparent;
+        }
         .alert-group-title {
             font-size: 14px;
             font-weight: 900;
@@ -202,6 +205,48 @@
             background-color: var(--alert-soft) !important;
             border-color: var(--brand-navy) !important;
             color: var(--brand-navy) !important;
+        }
+        .alert-pagination {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 6px;
+            padding: 12px 16px;
+            border-top: 1px solid var(--alert-border);
+            background: oklch(98.5% 0.006 232);
+        }
+        .alert-page-btn {
+            min-width: 34px;
+            height: 34px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--alert-border-strong);
+            border-radius: 8px;
+            background: var(--surface);
+            color: var(--brand-navy);
+            font-size: 12px;
+            font-weight: 900;
+            cursor: pointer;
+        }
+        .alert-page-btn:hover:not(:disabled) {
+            background: var(--alert-soft);
+            border-color: var(--brand-navy);
+        }
+        .alert-page-btn.is-active {
+            background: var(--brand-navy);
+            border-color: var(--brand-navy);
+            color: white;
+        }
+        .alert-page-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+        .alert-page-ellipsis {
+            min-width: 24px;
+            text-align: center;
+            color: var(--alert-muted);
+            font-weight: 900;
         }
         .alert-empty-state {
             display: flex;
@@ -306,8 +351,52 @@
                 font-size: 10px;
                 padding: 1px 8px;
             }
+            .alert-pagination {
+                justify-content: center;
+                flex-wrap: wrap;
+                padding: 10px 12px;
+            }
         }
     </style>
+    <script>
+        window.tpssAlertGroup = function(total) {
+            return {
+                collapsed: true,
+                page: 1,
+                perPage: 10,
+                total: Number(total) || 0,
+                get totalPages() {
+                    return Math.max(1, Math.ceil(this.total / this.perPage));
+                },
+                toggle() {
+                    this.collapsed = !this.collapsed;
+                },
+                visible(index) {
+                    return index >= ((this.page - 1) * this.perPage) && index < (this.page * this.perPage);
+                },
+                setPage(page) {
+                    const next = Number(page);
+                    if (Number.isNaN(next)) return;
+                    this.page = Math.min(this.totalPages, Math.max(1, next));
+                },
+                pageItems() {
+                    const last = this.totalPages;
+                    const current = this.page;
+                    const items = [];
+
+                    for (let i = 1; i <= last; i++) {
+                        if (i === 1 || i === last || Math.abs(i - current) <= 1) {
+                            items.push(i);
+                        } else if (items[items.length - 1] !== '...') {
+                            items.push('...');
+                        }
+                    }
+
+                    return items;
+                },
+            };
+        };
+    </script>
 
     <div class="alert-page">
         {{-- Header --}}
@@ -398,8 +487,19 @@
                     $colors = $warningTypeColors[$type];
                 @endphp
                 @if($groupItems->isNotEmpty())
-                    <div class="alert-group" x-data="{ collapsed: false }">
-                        <div class="alert-group-head" @click="collapsed = !collapsed" style="cursor: pointer; user-select: none;">
+                    <div
+                        class="alert-group"
+                        x-data="tpssAlertGroup({{ $groupItems->count() }})"
+                        data-testid="alert-group-{{ $type }}"
+                        data-alert-initial-collapsed="true"
+                        data-alert-page-size="10"
+                    >
+                        <div
+                            class="alert-group-head"
+                            :class="{ 'is-collapsed': collapsed }"
+                            @click="toggle()"
+                            style="cursor: pointer; user-select: none;"
+                        >
                             <div style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;background:{{ $colors['bg'] }};color:{{ $colors['fg'] }};flex-shrink:0;">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">{!! $colors['svg'] !!}</svg>
                             </div>
@@ -424,7 +524,7 @@
                                         'return_url'       => request()->fullUrl(),
                                     ]);
                                 @endphp
-                                <div class="alert-item">
+                                <div class="alert-item" x-show="visible({{ $loop->index }})" x-cloak>
                                     <div>
                                         <div class="alert-item-label">
                                             {{ $offering?->course?->course_code ?? 'รายวิชา' }}
@@ -451,6 +551,28 @@
                                     </div>
                                 </div>
                             @endforeach
+                            @if($groupItems->count() > 10)
+                                <div
+                                    class="alert-pagination"
+                                    data-testid="alert-pagination-{{ $type }}"
+                                >
+                                    <button type="button" class="alert-page-btn" @click="setPage(page - 1)" :disabled="page <= 1" aria-label="ก่อนหน้า">&lt;</button>
+                                    <template x-for="(item, idx) in pageItems()" :key="`${item}-${idx}`">
+                                        <span>
+                                            <button
+                                                type="button"
+                                                class="alert-page-btn"
+                                                x-show="item !== '...'"
+                                                :class="{ 'is-active': item === page }"
+                                                @click="setPage(item)"
+                                                x-text="item"
+                                            ></button>
+                                            <span class="alert-page-ellipsis" x-show="item === '...'">...</span>
+                                        </span>
+                                    </template>
+                                    <button type="button" class="alert-page-btn" @click="setPage(page + 1)" :disabled="page >= totalPages" aria-label="ถัดไป">&gt;</button>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 @endif

@@ -592,6 +592,32 @@ class ScheduleManagementTest extends TestCase
             ->assertDontSee('Call to a member function getKey() on array');
     }
 
+    public function test_maker_alert_groups_start_collapsed_and_paginate_after_ten_items(): void
+    {
+        config(['conflicts.async_reads' => false]);
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+
+        for ($i = 0; $i < 12; $i++) {
+            $date = '2026-08-' . str_pad((string) (3 + $i), 2, '0', STR_PAD_LEFT);
+            $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+                'room_id' => null,
+                'start_date' => $date,
+                'end_date' => $date,
+                'topic' => "Incomplete {$i}",
+            ]);
+        }
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.alerts.index'))
+            ->assertOk()
+            ->assertSee('data-testid="alert-group-incomplete"', false)
+            ->assertSee('data-alert-initial-collapsed="true"', false)
+            ->assertSee('data-alert-page-size="10"', false)
+            ->assertSee('data-testid="alert-pagination-incomplete"', false)
+            ->assertSee('tpssAlertGroup(12)', false);
+    }
+
     public function test_conflict_alert_page_lists_owned_schedule_conflicts_with_edit_links(): void
     {
         config(['conflicts.async_reads' => false]);

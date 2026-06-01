@@ -54,10 +54,17 @@ class ConflictRecomputeJob implements ShouldQueue, ShouldBeUnique
         ])->save();
 
         try {
-            $sourceSchedules = $this->sourceSchedules();
+            $affectedScheduleIds = $this->affectedScheduleIds($run, $invalidation);
+            $previousReadyRun = $affectedScheduleIds === null ? null : $this->previousReadyRun($run);
+            [$sourceSchedules, $excludedScheduleIds] = $previousReadyRun
+                ? $this->scopedSourceSchedules($affectedScheduleIds, $previousReadyRun, $conflictIndex)
+                : [$this->sourceSchedules(), null];
+
             $conflictMap = $conflictIndex->conflictsFor($sourceSchedules);
             $scheduleMap = $this->scheduleMapWithCandidates($sourceSchedules, $conflictMap);
-            $resultCount = $this->storeResults($run, $sourceSchedules, $scheduleMap, $conflictMap);
+            $resultCount = $previousReadyRun
+                ? $this->storeIncrementalResults($run, $previousReadyRun, $excludedScheduleIds ?? [], $sourceSchedules, $scheduleMap, $conflictMap)
+                : $this->storeResults($run, $sourceSchedules, $scheduleMap, $conflictMap);
 
             $run->forceFill([
                 'status' => 'ready',
@@ -80,6 +87,121 @@ class ConflictRecomputeJob implements ShouldQueue, ShouldBeUnique
 
             throw $exception;
         }
+    }
+
+    /**
+     * @return array<int, int>|null  null means full recompute.
+     */
+    private function affectedScheduleIds(
+        ScheduleConflictRun $run,
+        ScheduleConflictInvalidationService $invalidation
+    ): ?array {
+        $dirtyScope = $invalidation->dirtyScope($this->academicYearId);
+
+        if ($dirtyScope['full']) {
+            return null;
+        }
+
+        $scheduleIds = collect($this->normalizeScheduleIds($run->metadata['affected_schedule_ids'] ?? []))
+            ->merge($dirtyScope['schedule_ids'])
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        return $scheduleIds === [] ? null : $scheduleIds;
+    }
+
+    private function previousReadyRun(ScheduleConflictRun $run): ?ScheduleConflictRun
+    {
+        return ScheduleConflictRun::query()
+            ->where('academic_year_id', $this->academicYearId)
+            ->where('status', 'ready')
+            ->where('generation', '<', (int) $run->generation)
+            ->orderByDesc('generation')
+            ->first();
+    }
+
+    /**
+     * @param  array<int, int>  $seedScheduleIds
+     * @return array{0: Collection<int, Schedule>, 1: array<int, int>}
+     */
+    private function scopedSourceSchedules(
+        array $seedScheduleIds,
+        ScheduleConflictRun $previousReadyRun,
+        ScheduleConflictIndex $conflictIndex
+    ): array {
+        $sourceIds = collect($seedScheduleIds)
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        do {
+            $before = $sourceIds->count();
+            $ids = $sourceIds->all();
+
+            $sourceIds = $sourceIds
+                ->merge($this->previousConflictNeighborIds((int) $previousReadyRun->id, $ids))
+                ->unique()
+                ->values();
+
+            $currentSchedules = $sourceIds->isEmpty()
+                ? collect()
+                : $this->baseScheduleQuery()
+                    ->whereIn('id', $sourceIds->all())
+                    ->get();
+
+            if ($currentSchedules->isNotEmpty()) {
+                $currentConflictMap = $conflictIndex->conflictsFor($currentSchedules);
+                $sourceIds = $sourceIds
+                    ->merge($currentConflictMap
+                        ->flatMap(fn (Collection $conflicts) => $conflicts->pluck('schedule_id'))
+                        ->map(fn ($id) => (int) $id))
+                    ->unique()
+                    ->values();
+            }
+        } while ($sourceIds->count() > $before);
+
+        $schedules = $sourceIds->isEmpty()
+            ? collect()
+            : $this->baseScheduleQuery()
+                ->whereIn('id', $sourceIds->all())
+                ->orderBy('start_date')
+                ->orderBy('end_date')
+                ->orderBy('start_time')
+                ->get();
+
+        return [$schedules, $sourceIds->all()];
+    }
+
+    /**
+     * @param  array<int, int>  $scheduleIds
+     * @return array<int, int>
+     */
+    private function previousConflictNeighborIds(int $previousRunId, array $scheduleIds): array
+    {
+        $scheduleIds = $this->normalizeScheduleIds($scheduleIds);
+
+        if ($scheduleIds === []) {
+            return [];
+        }
+
+        return ScheduleConflictResult::query()
+            ->where('run_id', $previousRunId)
+            ->where(function (Builder $query) use ($scheduleIds): void {
+                $query->whereIn('schedule_id', $scheduleIds)
+                    ->orWhereIn('conflicting_schedule_id', $scheduleIds);
+            })
+            ->get(['schedule_id', 'conflicting_schedule_id'])
+            ->flatMap(fn (ScheduleConflictResult $result) => [
+                (int) $result->schedule_id,
+                (int) $result->conflicting_schedule_id,
+            ])
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**
@@ -167,6 +289,46 @@ class ConflictRecomputeJob implements ShouldQueue, ShouldBeUnique
             $run->scopes()->delete();
             $run->results()->delete();
 
+            return $this->insertComputedResultsWithScopes($run, $sourceSchedules, $scheduleMap, $conflictMap);
+        });
+    }
+
+    /**
+     * @param  array<int, int>  $excludedScheduleIds
+     * @param  Collection<int, Schedule>  $sourceSchedules
+     * @param  Collection<int, Schedule>  $scheduleMap
+     * @param  Collection<int, Collection<int, array{type:string,message:string,schedule_id:int}>>  $conflictMap
+     */
+    private function storeIncrementalResults(
+        ScheduleConflictRun $run,
+        ScheduleConflictRun $previousReadyRun,
+        array $excludedScheduleIds,
+        Collection $sourceSchedules,
+        Collection $scheduleMap,
+        Collection $conflictMap
+    ): int {
+        return DB::transaction(function () use ($run, $previousReadyRun, $excludedScheduleIds, $sourceSchedules, $scheduleMap, $conflictMap): int {
+            $run->scopes()->delete();
+            $run->results()->delete();
+
+            $copiedCount = $this->copyUnchangedResults($previousReadyRun, $run, $excludedScheduleIds);
+            $computedCount = $this->insertComputedResultsWithScopes($run, $sourceSchedules, $scheduleMap, $conflictMap);
+
+            return $copiedCount + $computedCount;
+        });
+    }
+
+    /**
+     * @param  Collection<int, Schedule>  $sourceSchedules
+     * @param  Collection<int, Schedule>  $scheduleMap
+     * @param  Collection<int, Collection<int, array{type:string,message:string,schedule_id:int}>>  $conflictMap
+     */
+    private function insertComputedResultsWithScopes(
+        ScheduleConflictRun $run,
+        Collection $sourceSchedules,
+        Collection $scheduleMap,
+        Collection $conflictMap
+    ): int {
             $resultRows = [];
             $seen = [];
             $now = now();
@@ -217,6 +379,7 @@ class ConflictRecomputeJob implements ShouldQueue, ShouldBeUnique
             $sourceMap = $sourceSchedules->keyBy('id');
             $scopeRows = ScheduleConflictResult::query()
                 ->where('run_id', $run->id)
+                ->whereIn('schedule_id', $sourceMap->keys()->all())
                 ->get(['id', 'schedule_id'])
                 ->flatMap(function (ScheduleConflictResult $result) use ($run, $sourceMap) {
                     $sourceSchedule = $sourceMap->get((int) $result->schedule_id);
@@ -232,7 +395,131 @@ class ConflictRecomputeJob implements ShouldQueue, ShouldBeUnique
                 ->each(fn (Collection $rows) => DB::table('schedule_conflict_result_scopes')->insert($rows->all()));
 
             return count($resultRows);
-        });
+    }
+
+    /**
+     * @param  array<int, int>  $excludedScheduleIds
+     */
+    private function copyUnchangedResults(
+        ScheduleConflictRun $previousReadyRun,
+        ScheduleConflictRun $run,
+        array $excludedScheduleIds
+    ): int {
+        $excludedScheduleIds = $this->normalizeScheduleIds($excludedScheduleIds);
+        $copiedCount = 0;
+
+        $query = ScheduleConflictResult::query()
+            ->where('run_id', $previousReadyRun->id);
+
+        if ($excludedScheduleIds !== []) {
+            $query
+                ->whereNotIn('schedule_id', $excludedScheduleIds)
+                ->whereNotIn('conflicting_schedule_id', $excludedScheduleIds);
+        }
+
+        $query
+            ->orderBy('id')
+            ->chunkById(500, function (Collection $results) use ($run, &$copiedCount): void {
+                if ($results->isEmpty()) {
+                    return;
+                }
+
+                $now = now();
+                $oldIds = $results->pluck('id')->map(fn ($id) => (int) $id)->all();
+                $resultRows = $results->map(fn (ScheduleConflictResult $result) => [
+                    'run_id' => $run->id,
+                    'academic_year_id' => $this->academicYearId,
+                    'schedule_id' => (int) $result->schedule_id,
+                    'conflicting_schedule_id' => (int) $result->conflicting_schedule_id,
+                    'conflict_type' => $result->conflict_type,
+                    'resource_type' => $result->resource_type,
+                    'resource_id' => $result->resource_id,
+                    'message' => $result->message,
+                    'pair_key' => $result->pair_key,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ])->all();
+
+                ScheduleConflictResult::query()->insert($resultRows);
+
+                $newResults = ScheduleConflictResult::query()
+                    ->where('run_id', $run->id)
+                    ->whereIn('pair_key', $results->pluck('pair_key')->unique()->values()->all())
+                    ->whereIn('schedule_id', $results->pluck('schedule_id')->unique()->values()->all())
+                    ->get(['id', 'pair_key', 'schedule_id'])
+                    ->keyBy(fn (ScheduleConflictResult $result) => $this->resultIdentityKey(
+                        (string) $result->pair_key,
+                        (int) $result->schedule_id
+                    ));
+
+                $oldToNewResultIds = $results
+                    ->mapWithKeys(function (ScheduleConflictResult $result) use ($newResults) {
+                        $newResult = $newResults->get($this->resultIdentityKey(
+                            (string) $result->pair_key,
+                            (int) $result->schedule_id
+                        ));
+
+                        return $newResult ? [(int) $result->id => (int) $newResult->id] : [];
+                    })
+                    ->all();
+
+                $scopeRows = DB::table('schedule_conflict_result_scopes')
+                    ->whereIn('result_id', $oldIds)
+                    ->orderBy('id')
+                    ->get()
+                    ->map(function ($scope) use ($run, $oldToNewResultIds, $now) {
+                        $newResultId = $oldToNewResultIds[(int) $scope->result_id] ?? null;
+
+                        if (! $newResultId) {
+                            return null;
+                        }
+
+                        return [
+                            'run_id' => $run->id,
+                            'result_id' => $newResultId,
+                            'academic_year_id' => $this->academicYearId,
+                            'scope_type' => $scope->scope_type,
+                            'user_id' => $scope->user_id,
+                            'role' => $scope->role,
+                            'course_offering_id' => $scope->course_offering_id,
+                            'created_at' => $now,
+                            'updated_at' => $now,
+                        ];
+                    })
+                    ->filter()
+                    ->values();
+
+                $scopeRows
+                    ->chunk(500)
+                    ->each(fn (Collection $rows) => DB::table('schedule_conflict_result_scopes')->insert($rows->all()));
+
+                $copiedCount += $results->count();
+            });
+
+        return $copiedCount;
+    }
+
+    private function resultIdentityKey(string $pairKey, int $scheduleId): string
+    {
+        return $pairKey . ':' . $scheduleId;
+    }
+
+    /**
+     * @param  mixed  $scheduleIds
+     * @return array<int, int>
+     */
+    private function normalizeScheduleIds(mixed $scheduleIds): array
+    {
+        if (! is_iterable($scheduleIds)) {
+            return [];
+        }
+
+        return collect($scheduleIds)
+            ->map(fn ($id) => is_numeric($id) ? (int) $id : null)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**
