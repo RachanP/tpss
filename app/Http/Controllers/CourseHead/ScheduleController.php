@@ -50,7 +50,7 @@ class ScheduleController extends Controller
 
         $offerings = $this->coordinatorScheduleOfferings(includeSchedulingData: false);
 
-        return view('course_head.schedules.index', $this->schedulePageData(
+        return view('shared.schedules.index', $this->schedulePageData(
             request: $request,
             courseOffering: null,
             isWorkspace: true,
@@ -157,7 +157,7 @@ class ScheduleController extends Controller
             $warnings = $conflictItems->merge($warnings); // การชนขึ้นก่อน warning
         }
 
-        return view('course_head.alerts.index', [
+        return view('shared.alerts.index', [
             'availableYears' => $availableYears,
             'selectedAcademicYear' => $selectedAcademicYear,
             'selectedAcademicYearId' => $selectedAcademicYearId,
@@ -356,7 +356,7 @@ class ScheduleController extends Controller
     {
         $this->authorizeCourseHeadOffering($courseOffering);
 
-        return view('course_head.schedules.index', $this->schedulePageData(
+        return view('shared.schedules.index', $this->schedulePageData(
             request: $request,
             courseOffering: $courseOffering,
             isWorkspace: false,

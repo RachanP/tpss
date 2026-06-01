@@ -5672,17 +5672,17 @@
                                                         @endif
                                                         @if($as->schedule_template_id)
                                                             <div style="margin-top:6px;">
-                                                                @include('course_head.schedules._series_badge', ['schedule' => $as])
+                                                                @include('shared.schedules._series_badge', ['schedule' => $as])
                                                             </div>
                                                         @endif
                                                         @if($asIncompleteReasons->isNotEmpty())
                                                             <div style="margin-top:6px;">
-                                                                @include('course_head.schedules._incomplete_badge', ['reasons' => $asIncompleteReasons])
+                                                                @include('shared.schedules._incomplete_badge', ['reasons' => $asIncompleteReasons])
                                                             </div>
                                                         @endif
                                                         @if($asConflicts->isNotEmpty())
                                                             <div style="margin-top:6px;">
-                                                                @include('course_head.schedules._conflict_pill', ['conflicts' => $asConflicts])
+                                                                @include('shared.schedules._conflict_pill', ['conflicts' => $asConflicts])
                                                             </div>
                                                         @endif
                                                     </td>
@@ -5794,11 +5794,11 @@
                                                         <span class="month-group-summary">{{ $schedule->studentGroups->count() }} กลุ่ม</span>
                                                     @endif
                                                     @if($schedule->schedule_template_id)
-                                                        @include('course_head.schedules._series_badge', ['schedule' => $schedule])
+                                                        @include('shared.schedules._series_badge', ['schedule' => $schedule])
                                                     @endif
-                                                    @include('course_head.schedules._incomplete_badge', ['reasons' => $incompleteReasons])
+                                                    @include('shared.schedules._incomplete_badge', ['reasons' => $incompleteReasons])
                                                     @if($itemConflicts->isNotEmpty())
-                                                        @include('course_head.schedules._conflict_pill', ['conflicts' => $itemConflicts])
+                                                        @include('shared.schedules._conflict_pill', ['conflicts' => $itemConflicts])
                                                     @endif
                                                 </div>
                                             </div>
@@ -5878,12 +5878,12 @@
                                             <div class="grid-activity-top">
                                                 <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }};">{{ $activity?->name ?? 'กิจกรรม' }}</span>
                                                 @if($schedule->schedule_template_id)
-                                                    @include('course_head.schedules._series_badge', ['schedule' => $schedule])
+                                                    @include('shared.schedules._series_badge', ['schedule' => $schedule])
                                                 @endif
                                                 @if($itemConflicts->isNotEmpty())
-                                                    @include('course_head.schedules._conflict_pill', ['conflicts' => $itemConflicts])
+                                                    @include('shared.schedules._conflict_pill', ['conflicts' => $itemConflicts])
                                                 @endif
-                                                @include('course_head.schedules._incomplete_badge', ['reasons' => $incompleteReasons])
+                                                @include('shared.schedules._incomplete_badge', ['reasons' => $incompleteReasons])
                                             </div>
                                             <div class="grid-activity-title">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
                                             <div class="grid-activity-time">{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }} · {{ $formatDuration($occurrence['duration_minutes']) }}</div>
@@ -5997,7 +5997,7 @@
                                                 >
                                                     @if($itemConflicts->isNotEmpty())
                                                         <div class="grid-activity-top">
-                                                            @include('course_head.schedules._conflict_pill', ['conflicts' => $itemConflicts])
+                                                            @include('shared.schedules._conflict_pill', ['conflicts' => $itemConflicts])
                                                         </div>
                                                     @endif
                                                     <div class="grid-activity-title">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
@@ -6143,9 +6143,9 @@
                                                     <span class="sched-muted" style="font-size: 10.5px;">· {{ $offeringCourse?->name_th ?? $offeringCourse?->name_en }}</span>
                                                 @endif
                                                 @if($itemConflicts->isNotEmpty())
-                                                    @include('course_head.schedules._conflict_pill', ['conflicts' => $itemConflicts])
+                                                    @include('shared.schedules._conflict_pill', ['conflicts' => $itemConflicts])
                                                 @endif
-                                                @include('course_head.schedules._incomplete_badge', ['reasons' => $incompleteReasons])
+                                                @include('shared.schedules._incomplete_badge', ['reasons' => $incompleteReasons])
                                             </div>
                                         </td>
                                         <td>
@@ -6235,9 +6235,9 @@
                                                     <span class="month-group-summary">{{ $schedule->studentGroups->count() }} กลุ่ม</span>
                                                 @endif
                                                 @if($itemConflicts->isNotEmpty())
-                                                    @include('course_head.schedules._conflict_pill', ['conflicts' => $itemConflicts])
+                                                    @include('shared.schedules._conflict_pill', ['conflicts' => $itemConflicts])
                                                 @endif
-                                                @include('course_head.schedules._incomplete_badge', ['reasons' => $incompleteReasons])
+                                                @include('shared.schedules._incomplete_badge', ['reasons' => $incompleteReasons])
                                                 <span class="badge {{ $status['class'] }}">{{ $status['label'] }}</span>
                                             </div>
                                         </div>
@@ -6321,12 +6321,12 @@
                                             @endif
                                             <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }};">{{ $activity?->name ?? 'กิจกรรม' }}</span>
                                             @if($schedule->schedule_template_id)
-                                                @include('course_head.schedules._series_badge', ['schedule' => $schedule])
+                                                @include('shared.schedules._series_badge', ['schedule' => $schedule])
                                             @endif
                                             @if($itemConflicts->isNotEmpty())
-                                                @include('course_head.schedules._conflict_pill', ['conflicts' => $itemConflicts])
+                                                @include('shared.schedules._conflict_pill', ['conflicts' => $itemConflicts])
                                             @endif
-                                            @include('course_head.schedules._incomplete_badge', ['reasons' => $incompleteReasons])
+                                            @include('shared.schedules._incomplete_badge', ['reasons' => $incompleteReasons])
                                         </div>
                                         <div class="grid-activity-title">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
                                         @if($isWorkspace && ($offeringCourse?->name_th || $offeringCourse?->name_en))
@@ -6471,9 +6471,9 @@
                                                         <span class="grid-course">{{ $offeringCourse->course_code }}</span>
                                                     @endif
                                                 @if($itemConflicts->isNotEmpty())
-                                                    @include('course_head.schedules._conflict_pill', ['conflicts' => $itemConflicts])
+                                                    @include('shared.schedules._conflict_pill', ['conflicts' => $itemConflicts])
                                                 @endif
-                                                @include('course_head.schedules._incomplete_badge', ['reasons' => $incompleteReasons])
+                                                @include('shared.schedules._incomplete_badge', ['reasons' => $incompleteReasons])
                                             </div>
                                                 <div class="grid-activity-title">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
                                                 @if($isWorkspace && ($offeringCourse?->name_th || $offeringCourse?->name_en))
@@ -6582,7 +6582,7 @@
                                 </span>
                             @endif
                             <span style="display:inline-flex;margin-top:5px;">
-                                @include('course_head.schedules._incomplete_badge', ['reasons' => $detailIncompleteReasons])
+                                @include('shared.schedules._incomplete_badge', ['reasons' => $detailIncompleteReasons])
                             </span>
                         </div>
                         <button type="button" class="modal-close" @click="detailModal = null" aria-label="ปิด">×</button>
