@@ -53,6 +53,13 @@ class ClientDemoSeeder extends Seeder
 
     public function run(): void
     {
+        // ข้าม demo data ในโหมดทดสอบ — ให้ $this->seed() คงสถานะ baseline (preparation)
+        // ตามที่ feature/E2E tests คาดหวัง (ดู docblock ด้านบน: "ไม่แตะ DatabaseSeeder")
+        // demo data ยังถูก seed ตามปกติเมื่อรัน migrate:fresh --seed บน env อื่น (local/staging)
+        if (app()->environment('testing')) {
+            return;
+        }
+
         $year = $this->activateSchedulingYear();
         $this->seedHolidays($year);
         $this->activateDemoCourses();

@@ -616,6 +616,6 @@ class AlertSystemTest extends TestCase
             ->get(route('admin.alerts'));
 
         $response->assertStatus(200);
-        $response->assertSee('ไม่มีปัญหา Critical');
+        $response->assertSee('ไม่พบปัญหา Critical');
     }
 }

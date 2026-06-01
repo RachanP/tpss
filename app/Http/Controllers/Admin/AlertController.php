@@ -70,11 +70,7 @@ class AlertController extends Controller
             'dismissedWarnings',
         );
 
-        $alertsViewPath = resource_path('views/admin/alerts/index.blade.php');
-
-        return file_exists($alertsViewPath)
-            ? view()->file($alertsViewPath, $viewData)
-            : view('admin.alerts.index', $viewData);
+        return view('admin.alerts.index', $viewData);
     }
 
     public function updateDismissed(Request $request)

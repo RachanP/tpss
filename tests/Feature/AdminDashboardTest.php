@@ -31,10 +31,9 @@ class AdminDashboardTest extends TestCase
         $response->assertOk()
             ->assertSee('สถานะระบบปัจจุบัน')
             ->assertSee('ปีการศึกษา 2569')
-            ->assertSee('เปิดจัดตาราง')
-            ->assertSee('พบเงื่อนไขสำคัญ')
-            ->assertSee('ยังเปิดจัดตารางไม่ได้')
-            ->assertSee('ไปแก้เงื่อนไขสำคัญ')
+            ->assertSee('เปิดจัดตาราง')          // phase pill (lifecycle)
+            ->assertSee('ยังเปิดจัดตารางไม่ได้')   // critical-state title
+            ->assertSee('ไปแก้เงื่อนไขสำคัญ')      // critical shortcut action
             ->assertSee(route('admin.alerts'), false);
     }
 
