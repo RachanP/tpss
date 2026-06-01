@@ -4,9 +4,32 @@
 
 - **เป้าหมาย**: deploy Docker ขึ้น server บริษัทก่อน demo → demo บน URL จริง + ลูกค้าเข้าทดสอบต่อได้เอง
 - **Docker setup**: ✅ สร้างแล้ว (`Dockerfile` multi-stage, `docker-compose.yml` app+mysql, `docker/entrypoint.sh`, `.env.docker.example`) — ⚠️ **ยังไม่ build/test** (เครื่อง dev ไม่มี Docker → จะ build บน server ตอน SSH access มา)
-- **กฎเหล็กก่อน demo**: ห้ามแตะ migration `academic_years`/`course_offerings` — demo โชว์ระบบปัจจุบัน + เคสจริง (ปี 3 rotation seed) ไม่ใช่ V2 refactor
+- **กฎเหล็กก่อน demo**: ห้ามแตะ migration `academic_years`/`course_offerings` บน `sprint` — demo จาก `sprint` (term-based เดิม) ไม่ใช่ V2 refactor
 - **ใช้ demo เป็นเวทีเคาะ open questions** ของ V2 → ดู `architecture.md` "Requirement V2 Direction"
-- **V2 direction documented**: `architecture.md` + `database.md` (label 🔲 PROPOSED, ยังไม่ implement)
+- **V2 direction documented**: `architecture.md` + `database.md`
+
+## 🧹 Master Data Cleanup Phase (V2) — ✅ เสร็จครบ scope V3 (31 พ.ค.) · branch `feat/v2-requirement`
+
+> เคลียร์ Master Data ให้นิ่งก่อนทำ schedule/rotation — ดูรายละเอียด `architecture.md` "Master Data Cleanup Phase (V2)"
+> ทำบน `feat/v2-requirement` · `sprint` ยังเป็น demo fallback · ทุกรายการ REQUIRED ใน V3 master/setup scope ปิดครบ (เหลือแค่ `rooms.campus` ที่ optional + ไม่อยู่ใน V3)
+
+**✅ DONE (verified migrate:fresh + test + php -l views):**
+1. `academic_years` = "ปี" (ตัด `semester`, unique(name)) + ตาราง `terms` (เทอม 1/2/ฤดูร้อน + วันสอบกลาง/ปลายภาค) · วันปี derive จากเทอม · validation วันเทอม/สอบครบ
+2. `courses` ตัด `default_semester` (วิชาเปิดทั้งปี) + เอา field ภาคออกจาก UI/CSV/audit
+3. `course_offerings` ราย-ปี + auto-open = ทุกวิชาใน active curriculum + offering route key = course-year
+4. `student_cohorts` กลุ่มชั้นปี (ปี1-2 กลุ่มใหญ่ / ปี3-4 = A1,B1,A2,B2) · location_types.`is_shared`
+5. `holidays` (date, name, remark, source) — ตารางวันหยุดราชการ: auto-fetch จาก Google Thai ICS ตอนสร้าง/แก้ปี (ตามช่วงปีปฏิทินที่คร่อม) · ปุ่ม "ดึงวันหยุดซ้ำ" ต้องมีปี active ก่อน · refresh ลบเฉพาะ source=google คงของ manual + ปีอื่น · จัดการในหน้าตั้งค่า→ปีการศึกษา (เพิ่ม/แก้/ลบ + highlight แถว manual) · fail-safe (ดึงไม่ได้ไม่พัง flow)
+6. `activity_types.counts_toward_workload` (bool) — Admin ตั้งนับ/ไม่นับภาระงาน · default ตามหมวด (other=ไม่นับ, อื่นๆ=นับ) ปรับเองได้ · ตาราง master data แยกคอลัมน์ "หมวดหมู่" + "ภาระงาน" เป็น pill
+- **เคาะ 31 พ.ค.**: อนุมัติทั้งปี (per-year) · สลับกลุ่ม A/B ใน offering ปีเดียว (slot ติดป้ายเทอม)
+
+**🔲 เหลือ optional (ไม่บล็อก — ไม่อยู่ใน V3):**
+- `rooms.campus` ศาลายา/บางกอกน้อย — มาจาก V1/V2 เท่านั้น · display ก่อน ยังไม่ผูก conflict
+
+**🟢 Schedule phase (term dimension) — เสร็จแล้ว (1 มิ.ย.):** `schedules.term_id` (observer derive จาก start_date) + `AcademicCalendar` จำแนกวัน + filter เทอม + ลงสีปฏิทิน (วันหยุด/สอบ/ปิดเทอม/เทอมอื่น) + บล็อกจัดกิจกรรมช่วงสอบ/ปิดเทอม + ตัด group selector ออกจาก modal · validation สอบปลายภาคหลังกลางภาค · seeder สอบปลายภาคจบตรงวันจบเทอม
+
+**🟢 Delegation (อาจารย์ + เจ้าหน้าที่ช่วยจัดตาราง) — เสร็จแล้ว (1 มิ.ย.):** `CourseOffering::canBeScheduledBy`/`scopeSchedulableBy` = coordinator หรือ instructor `schedule_permission='schedule'` หรือ staff ใน `course_staff` + toggle รายอาจารย์ในหน้า offering (`instructors.permission`) + staff มอบหมายผ่าน modal รายวิชา + route จัดตาราง = `course_head,instructor,staff` (จัดการ offering + conflict-badge คง course_head) + sidebar อาจารย์/เจ้าหน้าที่เมนู "ช่วยจัดตาราง" (gate `canHelpSchedule`) · 12 tests (`ScheduleDelegationTest`) · ดู memory [[project-delegation-deferred]]
+
+**🔲 Phase ถัดไป (rotation — ไม่ใช่ Master Data):** rotation_rounds/assignments (หมุนกลุ่มปี 3-4 หลังสอบ), cross-course group conflict, visual dashboard (V3 ข้อ 8.1)
 
 ## Phase Overview
 

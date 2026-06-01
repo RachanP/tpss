@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Models\UserRole;
 use App\Http\Controllers\Admin\AlertController;
 use App\Services\ScheduleConflictChecker;
+use App\Services\ScheduleConflictIndex;
 use App\Services\ScheduleConflictPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -59,7 +60,6 @@ class LocationTypeSharedTest extends TestCase
         $curr = Curriculum::firstOrCreate(['name' => 'หลักสูตรทดสอบ', 'effective_year' => 2568, 'is_active' => true]);
         $year = AcademicYear::firstOrCreate([
             'name'       => '2568',
-            'semester'   => 1,
             'start_date' => '2025-08-01',
             'end_date'   => '2026-01-31',
             'is_active'  => true,
@@ -255,6 +255,53 @@ class LocationTypeSharedTest extends TestCase
 
         $s1Conflicts = collect($conflictMap->get($s1->id, []));
         $this->assertGreaterThan(0, $s1Conflicts->where('type', 'room_overlap')->count(), 'ห้องปกติควรมี room_overlap ใน bulkConflictMap');
+    }
+
+    // ══ ScheduleConflictIndex (หน้าแจ้งเตือน / sidebar badge) ═════════
+    // Regression: path นี้เคยไม่เช็ค is_shared → นับห้องใช้ร่วมเป็นการชน (เลขไม่ตรงกับ bulkConflictMap)
+
+    public function test_conflict_index_skips_room_overlap_for_shared_type(): void
+    {
+        $sharedType = LocationType::create(['name' => 'โรงพยาบาล', 'is_shared' => true]);
+        $room = Room::create([
+            'room_code'        => 'HOSP-IDX',
+            'room_name'        => 'โรงพยาบาลทดสอบ',
+            'location_type_id' => $sharedType->id,
+            'status'           => 'active',
+        ]);
+
+        $s1 = $this->makeSchedule($this->makeMinimalOffering('TST-IDX-1'), $room, '08:00', '10:00');
+        $s2 = $this->makeSchedule($this->makeMinimalOffering('TST-IDX-2'), $room, '08:00', '10:00');
+
+        $schedules = Schedule::with(['courseOffering.course', 'instructors', 'studentGroups', 'room.locationType'])
+            ->whereIn('id', [$s1->id, $s2->id])->get();
+
+        $map = app(ScheduleConflictIndex::class)->conflictsFor($schedules);
+
+        $this->assertCount(0, collect($map->get($s1->id, collect()))->where('type', 'room_overlap'), 'is_shared ไม่ควรมี room_overlap ใน conflictsFor');
+        $this->assertCount(0, collect($map->get($s2->id, collect()))->where('type', 'room_overlap'), 'is_shared ไม่ควรมี room_overlap ใน conflictsFor');
+    }
+
+    public function test_conflict_index_emits_room_overlap_for_normal_type(): void
+    {
+        $normalType = LocationType::create(['name' => 'ห้องบรรยายปกติ', 'is_shared' => false]);
+        $room = Room::create([
+            'room_code'        => 'LEC-IDX',
+            'room_name'        => 'ห้องบรรยายทดสอบ',
+            'location_type_id' => $normalType->id,
+            'capacity'         => 40,
+            'status'           => 'active',
+        ]);
+
+        $s1 = $this->makeSchedule($this->makeMinimalOffering('TST-IDX-N1'), $room, '08:00', '10:00');
+        $s2 = $this->makeSchedule($this->makeMinimalOffering('TST-IDX-N2'), $room, '08:00', '10:00');
+
+        $schedules = Schedule::with(['courseOffering.course', 'instructors', 'studentGroups', 'room.locationType'])
+            ->whereIn('id', [$s1->id, $s2->id])->get();
+
+        $map = app(ScheduleConflictIndex::class)->conflictsFor($schedules);
+
+        $this->assertGreaterThan(0, collect($map->get($s1->id, collect()))->where('type', 'room_overlap')->count(), 'ห้องปกติควรมี room_overlap ใน conflictsFor');
     }
 
     // ══ capacity alert for is_shared ═════════════════════════════════

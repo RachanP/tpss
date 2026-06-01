@@ -10,7 +10,6 @@ use App\Models\Curriculum;
 use App\Models\Department;
 use App\Models\InstructorProfile;
 use App\Models\LocationType;
-use App\Models\StudentGroup;
 use App\Models\User;
 use App\Models\UserRole;
 use Database\Seeders\CourseOfferingSeeder;
@@ -55,9 +54,9 @@ class SchedulingPhaseTest extends TestCase
     {
         $admin = $this->makeAdmin();
         $head  = $this->makeInstructor();
-        $targetYear = $this->makeYear(['name' => '2569', 'semester' => 2, 'is_active' => true, 'phase' => 'preparation']);
-        $otherSchedulingYear = $this->makeYear(['name' => '2569', 'semester' => 1, 'is_active' => false, 'phase' => 'scheduling']);
-        $publishedYear = $this->makeYear(['name' => '2568', 'semester' => 2, 'is_active' => false, 'phase' => 'published']);
+        $targetYear = $this->makeYear(['name' => '2569', 'is_active' => true, 'phase' => 'preparation']);
+        $otherSchedulingYear = $this->makeYear(['name' => '2570', 'is_active' => false, 'phase' => 'scheduling']);
+        $publishedYear = $this->makeYear(['name' => '2568', 'is_active' => false, 'phase' => 'published']);
         $this->makeCourse(['head_instructor_id' => $head->id]);
 
         $this->seedCriticalsBaseline();
@@ -72,21 +71,21 @@ class SchedulingPhaseTest extends TestCase
         $this->assertSame('published', $publishedYear->fresh()->phase);
     }
 
-    public function test_open_creates_offerings_only_for_active_courses_matching_academic_year_semester(): void
+    public function test_open_creates_offerings_for_active_courses_in_active_curriculum(): void
     {
+        // V2: วิชาเปิดทั้งปี → สร้าง offering ให้ทุกวิชา active ใน active curriculum (เลิกกรองเทอม)
         $admin = $this->makeAdmin();
         $head  = $this->makeInstructor();
-        $year  = $this->makeYear(['semester' => 1, 'phase' => 'preparation']);
-        $sem1Course = $this->makeCourse(['default_semester' => 1, 'head_instructor_id' => $head->id]);
-        $sem2Course = $this->makeCourse(['default_semester' => 2, 'head_instructor_id' => $head->id]);
-        $inactiveCourse = $this->makeCourse(['default_semester' => 1, 'head_instructor_id' => $head->id, 'status' => 'inactive']);
+        $year  = $this->makeYear(['phase' => 'preparation']);
+        $courseA = $this->makeCourse(['head_instructor_id' => $head->id]);
+        $courseB = $this->makeCourse(['head_instructor_id' => $head->id]);
+        $inactiveCourse = $this->makeCourse(['head_instructor_id' => $head->id, 'status' => 'inactive']);
         $inactiveCurriculum = Curriculum::create([
             'name' => 'Inactive Phase Curriculum',
             'effective_year' => 2569,
             'is_active' => false,
         ]);
         $inactiveCurriculumCourse = $this->makeCourse([
-            'default_semester' => 1,
             'head_instructor_id' => $head->id,
             'curriculum_id' => $inactiveCurriculum->id,
         ]);
@@ -97,72 +96,41 @@ class SchedulingPhaseTest extends TestCase
             ->assertRedirect(route('admin.settings', ['tab' => 'academic']))
             ->assertSessionHas('success');
 
-        $this->assertDatabaseHas('course_offerings', ['course_id' => $sem1Course->id, 'academic_year_id' => $year->id]);
-        $this->assertDatabaseMissing('course_offerings', ['course_id' => $sem2Course->id, 'academic_year_id' => $year->id]);
+        $this->assertDatabaseHas('course_offerings', ['course_id' => $courseA->id, 'academic_year_id' => $year->id]);
+        $this->assertDatabaseHas('course_offerings', ['course_id' => $courseB->id, 'academic_year_id' => $year->id]);
         $this->assertDatabaseMissing('course_offerings', ['course_id' => $inactiveCourse->id, 'academic_year_id' => $year->id]);
         $this->assertDatabaseMissing('course_offerings', ['course_id' => $inactiveCurriculumCourse->id, 'academic_year_id' => $year->id]);
-        $this->assertSame(1, CourseOffering::query()
+        $this->assertSame(2, CourseOffering::query()
             ->where('academic_year_id', $year->id)
-            ->whereIn('course_id', [
-                $sem1Course->id,
-                $sem2Course->id,
-                $inactiveCourse->id,
-                $inactiveCurriculumCourse->id,
-            ])
+            ->whereIn('course_id', [$courseA->id, $courseB->id, $inactiveCourse->id, $inactiveCurriculumCourse->id])
             ->count());
     }
 
-    public function test_course_offering_seeder_filters_active_courses_by_active_academic_year_semester(): void
+    public function test_course_offering_seeder_creates_for_active_courses_in_active_curriculum(): void
     {
         $head = $this->makeInstructor();
-        $activeYear = $this->makeYear(['name' => '2570', 'semester' => 2, 'is_active' => true]);
-        $sem2Course = $this->makeCourse(['default_semester' => 2, 'head_instructor_id' => $head->id]);
-        $sem1Course = $this->makeCourse(['default_semester' => 1, 'head_instructor_id' => $head->id]);
-        $headlessCourse = $this->makeCourse(['default_semester' => 2, 'head_instructor_id' => null]);
-        $inactiveCourse = $this->makeCourse(['default_semester' => 2, 'head_instructor_id' => $head->id, 'status' => 'inactive']);
+        $activeYear = $this->makeYear(['name' => '2570', 'is_active' => true]);
+        $courseA = $this->makeCourse(['head_instructor_id' => $head->id]);
+        $courseB = $this->makeCourse(['head_instructor_id' => $head->id]);
+        $headlessCourse = $this->makeCourse(['head_instructor_id' => null]);
+        $inactiveCourse = $this->makeCourse(['head_instructor_id' => $head->id, 'status' => 'inactive']);
         $inactiveCurriculum = Curriculum::create([
             'name' => 'Inactive Seeder Curriculum',
             'effective_year' => 2570,
             'is_active' => false,
         ]);
         $inactiveCurriculumCourse = $this->makeCourse([
-            'default_semester' => 2,
             'head_instructor_id' => $head->id,
             'curriculum_id' => $inactiveCurriculum->id,
         ]);
 
         $this->seed(CourseOfferingSeeder::class);
 
-        $this->assertDatabaseHas('course_offerings', [
-            'course_id' => $sem2Course->id,
-            'academic_year_id' => $activeYear->id,
-        ]);
-        $this->assertDatabaseMissing('course_offerings', [
-            'course_id' => $sem1Course->id,
-            'academic_year_id' => $activeYear->id,
-        ]);
+        $this->assertDatabaseHas('course_offerings', ['course_id' => $courseA->id, 'academic_year_id' => $activeYear->id]);
+        $this->assertDatabaseHas('course_offerings', ['course_id' => $courseB->id, 'academic_year_id' => $activeYear->id]);
         $this->assertDatabaseMissing('course_offerings', ['course_id' => $headlessCourse->id]);
         $this->assertDatabaseMissing('course_offerings', ['course_id' => $inactiveCourse->id]);
         $this->assertDatabaseMissing('course_offerings', ['course_id' => $inactiveCurriculumCourse->id]);
-    }
-
-    public function test_academic_year_start_and_end_dates_must_be_weekdays(): void
-    {
-        $admin = $this->makeAdmin();
-        $this->actingAsAdmin($admin);
-
-        $this->post(route('admin.settings.years.store'), [
-            'name' => '2571',
-            'semester' => 1,
-            'start_date' => '01/08/2569',
-            'end_date' => '02/08/2569',
-        ])
-            ->assertSessionHasErrors(['start_date', 'end_date']);
-
-        $this->assertDatabaseMissing('academic_years', [
-            'name' => '2571',
-            'semester' => 1,
-        ]);
     }
 
     public function test_open_is_idempotent_when_offering_already_exists(): void
@@ -186,16 +154,16 @@ class SchedulingPhaseTest extends TestCase
         $this->assertDatabaseCount('course_offerings', 1);
     }
 
-    public function test_open_does_not_sync_existing_offerings_for_courses_in_other_semesters(): void
+    public function test_open_syncs_existing_offerings_for_active_courses(): void
     {
+        // V2: เปิดช่วงจัดตาราง → sync offering ของวิชา active ทุกตัว (coordinator → หัวหน้าวิชาปัจจุบัน)
         $admin = $this->makeAdmin();
         $oldHead = $this->makeInstructor();
         $newHead = $this->makeInstructor();
-        $year = $this->makeYear(['semester' => 1, 'phase' => 'preparation']);
-        $this->makeCourse(['default_semester' => 1, 'head_instructor_id' => $newHead->id]);
-        $otherSemesterCourse = $this->makeCourse(['default_semester' => 2, 'head_instructor_id' => $newHead->id]);
-        $otherSemesterOffering = CourseOffering::create([
-            'course_id' => $otherSemesterCourse->id,
+        $year = $this->makeYear(['phase' => 'preparation']);
+        $course = $this->makeCourse(['head_instructor_id' => $newHead->id]);
+        $existingOffering = CourseOffering::create([
+            'course_id' => $course->id,
             'academic_year_id' => $year->id,
             'coordinator_id' => $oldHead->id,
             'approval_status' => 'draft',
@@ -206,8 +174,8 @@ class SchedulingPhaseTest extends TestCase
         $this->actingAsAdmin($admin);
         $this->patch(route('admin.settings.scheduling.open', $year));
 
-        $this->assertSame($oldHead->id, $otherSemesterOffering->fresh()->coordinator_id);
-        $this->assertSame(12, $otherSemesterOffering->fresh()->total_student_count);
+        // coordinator ถูก sync ไปเป็นหัวหน้าวิชาปัจจุบัน
+        $this->assertSame($newHead->id, $existingOffering->fresh()->coordinator_id);
     }
 
     public function test_open_blocked_when_criticals_exist(): void
@@ -294,13 +262,11 @@ class SchedulingPhaseTest extends TestCase
         $admin = $this->makeAdmin();
         $openYear = $this->makeYear([
             'name' => '2569',
-            'semester' => 1,
             'is_active' => true,
             'phase' => 'scheduling',
         ]);
         $targetYear = $this->makeYear([
-            'name' => '2569',
-            'semester' => 2,
+            'name' => '2570',
             'is_active' => false,
             'phase' => 'preparation',
             'start_date' => '2026-11-02',
@@ -312,10 +278,8 @@ class SchedulingPhaseTest extends TestCase
         $this->put(route('admin.settings.years.update', $targetYear), [
             'year_id' => $targetYear->id,
             'name' => $targetYear->name,
-            'semester' => $targetYear->semester,
-            'start_date' => '02/11/2569',
-            'end_date' => '15/03/2570',
             'is_active' => '1',
+            'terms' => [['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '02/11/2569', 'end_date' => '15/03/2570']],
         ])
             ->assertRedirect()
             ->assertSessionHasErrors('is_active')
@@ -333,10 +297,9 @@ class SchedulingPhaseTest extends TestCase
         // หลัง activation lock (22 พ.ค.) admin ต้องปิด scheduling window เก่าก่อนสลับปี active
         // เคสนี้คือสลับปี active ตอนปีเก่าอยู่ใน phase=preparation (ไม่มี scheduling lock)
         $admin = $this->makeAdmin();
-        $currentYear = $this->makeYear(['name' => '2569', 'semester' => 1, 'is_active' => true, 'phase' => 'preparation']);
+        $currentYear = $this->makeYear(['name' => '2569', 'is_active' => true, 'phase' => 'preparation']);
         $nextYear = $this->makeYear([
-            'name' => '2569',
-            'semester' => 2,
+            'name' => '2570',
             'start_date' => '2026-11-02',
             'end_date' => '2027-03-15',
             'is_active' => false,
@@ -346,11 +309,9 @@ class SchedulingPhaseTest extends TestCase
         $this->actingAsAdmin($admin);
 
         $this->put(route('admin.settings.years.update', $nextYear), [
-            'name' => '2569',
-            'semester' => 2,
-            'start_date' => '02/11/2569',
-            'end_date' => '15/03/2570',
+            'name' => '2570',
             'is_active' => '1',
+            'terms' => [['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '02/11/2569', 'end_date' => '15/03/2570']],
         ])->assertRedirect(route('admin.settings', ['tab' => 'academic']))
             ->assertSessionHas('success');
 
@@ -366,10 +327,10 @@ class SchedulingPhaseTest extends TestCase
         // ไม่พึ่ง $request->filled('year_id') ที่อาจหายไปใน path อื่น
         $admin = $this->makeAdmin();
         $openYear = $this->makeYear([
-            'name' => '2569', 'semester' => 1, 'is_active' => true, 'phase' => 'scheduling',
+            'name' => '2569', 'is_active' => true, 'phase' => 'scheduling',
         ]);
         $targetYear = $this->makeYear([
-            'name' => '2569', 'semester' => 2, 'is_active' => false, 'phase' => 'preparation',
+            'name' => '2570', 'is_active' => false, 'phase' => 'preparation',
             'start_date' => '2026-11-02', 'end_date' => '2027-03-15',
         ]);
 
@@ -378,10 +339,8 @@ class SchedulingPhaseTest extends TestCase
         // ส่ง PUT โดยไม่ใส่ year_id (จำลอง path อื่นที่ไม่ใช่ modal edit)
         $this->put(route('admin.settings.years.update', $targetYear), [
             'name' => $targetYear->name,
-            'semester' => $targetYear->semester,
-            'start_date' => '02/11/2569',
-            'end_date' => '15/03/2570',
             'is_active' => '1',
+            'terms' => [['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '02/11/2569', 'end_date' => '15/03/2570']],
         ])
             ->assertSessionHasErrors('is_active');
 
@@ -409,7 +368,6 @@ class SchedulingPhaseTest extends TestCase
         $admin = $this->makeAdmin();
         $year = $this->makeYear([
             'name' => '2568',
-            'semester' => 2,
             'is_active' => true,
             'phase' => 'scheduling',
         ]);
@@ -422,7 +380,7 @@ class SchedulingPhaseTest extends TestCase
         $response
             ->assertOk()
             ->assertSee('close-scheduling-' . $year->id, false)
-            ->assertSee("startCloseScheduleConfirm('close-scheduling-{$year->id}', 'ปีการศึกษา 2568 ภาค 2')", false)
+            ->assertSee("startCloseScheduleConfirm('close-scheduling-{$year->id}', 'ปีการศึกษา 2568')", false)
             ->assertSee('ยืนยันปิดช่วงจัดตาราง')
             ->assertSee('ข้อมูลตารางที่จัดไว้แล้วจะยังอยู่')
             ->assertSee('ระบบจะปิดเฉพาะสิทธิ์การจัด/แก้ไขตารางชั่วคราว')
@@ -567,46 +525,8 @@ class SchedulingPhaseTest extends TestCase
         ]);
     }
 
-    // ── Phase Guard: Student group mutations ──────────────────────────
-
-    public function test_student_group_mutations_blocked_during_preparation(): void
-    {
-        $head    = $this->makeCourseHead();
-        $year    = $this->makeYear(['phase' => 'preparation']);
-        $offering = $this->makeOffering($head, $year);
-        $group   = StudentGroup::create([
-            'course_offering_id' => $offering->id,
-            'group_code'         => 'A1',
-            'student_count'      => 20,
-        ]);
-
-        $this->actingAsCourseHead($head);
-
-        $this->from(route('maker.course_offerings.show', $offering))
-            ->post(route('maker.course_offerings.student_groups.store', $offering), [
-                'group_code'    => 'B1',
-                'student_count' => 10,
-            ])
-            ->assertRedirect(route('maker.course_offerings.show', $offering) . '#student-groups')
-            ->assertSessionHas('error');
-
-        // update
-        $this->from(route('maker.course_offerings.show', $offering))
-            ->put(route('maker.course_offerings.student_groups.update', [$offering, $group]), [
-                'group_code'    => 'A1',
-                'student_count' => 30,
-            ])
-            ->assertRedirect(route('maker.course_offerings.show', $offering) . '#student-groups')
-            ->assertSessionHas('error');
-
-        $this->from(route('maker.course_offerings.show', $offering))
-            ->delete(route('maker.course_offerings.student_groups.destroy', [$offering, $group]))
-            ->assertRedirect(route('maker.course_offerings.show', $offering) . '#student-groups')
-            ->assertSessionHas('error');
-
-        $this->assertDatabaseCount('student_groups', 1);
-        $this->assertDatabaseHas('student_groups', ['id' => $group->id, 'student_count' => 20]);
-    }
+    // หมายเหตุ: เดิมมี test_student_group_mutations_blocked_during_preparation
+    // ถูกลบเพราะหัวหน้าวิชาไม่จัดกลุ่มย่อยแล้ว (V2 — กลุ่มเกิดหลังอนุมัติ โดยอาจารย์) routes ถูกถอด
 
     // Prerequisite + schedule guard tests removed: prerequisites moved to Master Data
     // (per-course, not per-offering), and schedule routes were removed in this branch

@@ -53,7 +53,7 @@
 <div class="card" data-testid="offering-pipeline">
     <div class="card-hdr">
         <div style="display: flex; align-items: center; gap: 10px;">
-            <div class="card-ttl">งานรายวิชาที่ต้องติดตาม</div>
+            <div class="card-ttl">สถานะรายวิชา</div>
         </div>
         <div class="card-actions">
             <span class="pill p-info" style="font-size: 11px;">
@@ -70,8 +70,25 @@
     @else
         <div class="offering-pipeline-list">
             @foreach($queue as $col)
-                @php $pct = $total > 0 ? round($col['count'] / $total * 100) : 0; @endphp
+                @php
+                    $pct = $total > 0 ? round($col['count'] / $total * 100) : 0;
+                    $rowIcon = match($col['key']) {
+                        'published' => '<circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/>',
+                        'rejected'  => '<circle cx="12" cy="12" r="9"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
+                        'pending'   => '<circle cx="12" cy="12" r="9"/><path d="M12 8v4l2.5 1.5"/>',
+                        default     => '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>',
+                    };
+                    $rowTone = match($col['key']) {
+                        'published' => 'success',
+                        'rejected'  => 'conflict',
+                        'pending'   => 'warning',
+                        default     => 'muted',
+                    };
+                @endphp
                 <div class="offering-pipeline-row" style="background: {{ $col['bg'] }};">
+                    <span class="offering-pipeline-icon is-{{ $rowTone }}" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">{!! $rowIcon !!}</svg>
+                    </span>
                     <div class="offering-pipeline-main">
                         <div class="offering-pipeline-title-row">
                             <span class="pill {{ $col['pill'] }}" style="font-size: 11px;">{{ $col['action'] }}</span>
@@ -93,7 +110,6 @@
     .offering-pipeline-list {
         display: flex;
         flex-direction: column;
-        border-top: 1px solid var(--border);
     }
 
     [data-testid="offering-pipeline"] .card-hdr > div:first-child {
@@ -111,6 +127,31 @@
         border-bottom: 1px solid var(--border);
     }
     .offering-pipeline-row:last-child { border-bottom: none; }
+    .offering-pipeline-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    .offering-pipeline-icon.is-success {
+        color: var(--status-success-fg);
+        background: color-mix(in oklch, var(--status-success) 13%, transparent);
+    }
+    .offering-pipeline-icon.is-warning {
+        color: var(--status-warning-fg);
+        background: color-mix(in oklch, var(--status-warning) 16%, transparent);
+    }
+    .offering-pipeline-icon.is-conflict {
+        color: var(--status-conflict-fg);
+        background: color-mix(in oklch, var(--status-conflict) 13%, transparent);
+    }
+    .offering-pipeline-icon.is-muted {
+        color: var(--fg-3);
+        background: var(--bg-2);
+    }
     .offering-pipeline-main {
         flex: 1 1 auto;
         min-width: 0;

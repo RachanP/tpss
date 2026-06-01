@@ -24,6 +24,9 @@ class DatabaseSeeder extends Seeder
             CourseSeeder::class,
             ActivityTypeSeeder::class,
             CourseOfferingSeeder::class,
+            StudentCohortSeeder::class,
+            // Demo helper: seeds holidays, demo course offerings, demo schedules and approval statuses
+            ClientDemoSeeder::class,
         ]);
     }
 }

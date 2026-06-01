@@ -58,6 +58,7 @@
 - ตรวจสอบ Product Backlog **v2.1** ก่อนเสนอ design หรือ implementation ใดๆ
 - Requirement update 29 พ.ค. 2569: ระบบต้องเน้น **ฟอร์มกรอกตารางที่ใช้ง่าย + smart check + publish/report** มากกว่า auto scheduling; ดู `.claude/rules/architecture.md`
 - Master Data decision 30 พ.ค. 2569: สำหรับ demo/current phase อย่าเสนอเพิ่ม field หลักสูตรต่อปี, track นานาชาติ, campus/location kind หรือ workload flag ซ้ำ เว้นแต่มี requirement ใหม่ชัดเจน; ดู `.claude/rules/architecture.md#master-data-scope-decisions--30-พค-2569`
+- ✅ Master Data Cleanup (V3) — เสร็จครบ scope (31 พ.ค. 2569) บน branch `feat/v2-requirement`: **academic_year = "ปี" (เทอม 1/2/ฤดูร้อน + วันสอบ), วิชาเปิดทั้งปี, offering ราย-ปี, ผู้บริหารอนุมัติทั้งปี, student_cohorts, holidays (auto-fetch), activity_types.counts_toward_workload** — REQUIRED ปิดครบ เหลือแค่ `rooms.campus` (optional, ไม่อยู่ใน V3); งานถัดไป = schedule/rotation phase (ไม่ใช่ master data) ดู `.claude/rules/sprint-status.md` + `architecture.md#master-data-cleanup-phase-v2`
 - เมื่อเริ่มงาน UI ให้รัน `node .agents/skills/impeccable/scripts/load-context.mjs`
 - **ผู้บริหาร = Read-only + Approve/Reject เท่านั้น** — ห้าม implement UI ให้แก้ไขตาราง
 - Export รายงานเป็น PDF และ Excel; รองรับ PC, tablet, mobile เบื้องต้น

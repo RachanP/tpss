@@ -13,8 +13,8 @@
 @open-profile-modal.window="open = true">
 
     <div class="overlay" x-show="open" x-cloak style="z-index: 9999;">
-        <div class="modal-center" x-show="open" x-transition:enter="transition ease-out duration-300"
-            x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" style="max-width: 500px;">
+        <div class="modal-center profile-modal-shell" x-show="open" x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
             <div class="modal-hdr" style="background: var(--bg-2);">
                 <div class="modal-ttl" style="font-family: var(--font-display);">ตั้งค่าบัญชี (Account Settings)</div>
                 <button type="button" class="modal-cls" @click="close">
@@ -25,7 +25,7 @@
                 </button>
             </div>
 
-            <div class="modal-body" style="padding: 24px;">
+            <div class="modal-body profile-modal-body">
                 <!-- User Info (Read-only) -->
                 <div style="background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--r-md); padding: 16px; margin-bottom: 24px;">
                     <div style="font-size: 13px; font-weight: 700; color: var(--fg-3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">ข้อมูลผู้ใช้งาน</div>
@@ -86,3 +86,49 @@
         </div>
     </div>
 </div>
+
+<style>
+    .profile-modal-shell {
+        width: min(100%, 560px);
+        max-width: 560px !important;
+        max-height: min(760px, calc(100vh - 40px));
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        overflow: hidden !important;
+        border-radius: var(--r-lg) !important;
+        background: var(--surface);
+    }
+
+    .profile-modal-shell > .modal-hdr {
+        flex: 0 0 auto;
+    }
+
+    .profile-modal-body {
+        min-height: 0;
+        overflow-y: auto;
+        padding: 24px;
+        scrollbar-gutter: stable;
+    }
+
+    @media (max-width: 640px) {
+        .profile-modal-shell {
+            width: calc(100vw - 20px);
+            max-height: calc(100vh - 20px);
+            border-radius: 14px !important;
+        }
+
+        .profile-modal-body {
+            padding: 18px;
+            scrollbar-gutter: auto;
+        }
+
+        .profile-modal-body form > div:last-child {
+            display: grid !important;
+            grid-template-columns: 1fr;
+        }
+
+        .profile-modal-body form > div:last-child .btn {
+            width: 100%;
+        }
+    }
+</style>

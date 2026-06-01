@@ -1,20 +1,21 @@
 <x-app-layout title="{{ $isAdmin ? 'ตั้งค่าระบบ' : 'ตั้งค่าปีการศึกษา' }}">
     <div x-data="{
-        activeTab: {{ $isAdmin ? "new URLSearchParams(window.location.search).get('tab') || 'academic'" : "'academic'" }},
+        activeTab: new URLSearchParams(window.location.search).get('tab') || 'academic',
         workloadWeeks: {{ $workloadWeeks }},
         teachingWeeks: {{ $teachingWeeks }},
         workloadHoursPerWeek: {{ $workloadHoursPerWeek }},
         get totalQuota() { return this.workloadWeeks * this.workloadHoursPerWeek },
         get teachingQuota() { return this.teachingWeeks * this.workloadHoursPerWeek },
-        showModal: {{ $errors->hasAny(['name', 'start_date', 'end_date', 'is_active']) ? 'true' : 'false' }},
-        editMode: {{ ($errors->hasAny(['name', 'start_date', 'end_date', 'is_active'])) && old('_method') === 'PUT' ? 'true' : 'false' }},
+        showModal: {{ $errors->hasAny(['name', 'terms', 'is_active']) ? 'true' : 'false' }},
+        editMode: {{ ($errors->hasAny(['name', 'terms', 'is_active'])) && old('_method') === 'PUT' ? 'true' : 'false' }},
         currentYear: {
             id: '{{ old('year_id', '') }}',
             name: '{{ old('name', '') }}',
-            semester: '{{ old('semester', '1') }}',
             start_date: {{ Js::from(\App\Support\ThaiDate::formatForInput(old('start_date', ''))) }},
             end_date: {{ Js::from(\App\Support\ThaiDate::formatForInput(old('end_date', ''))) }},
-            is_active: {{ old('is_active') ? 'true' : 'false' }}
+            is_active: {{ old('is_active') ? 'true' : 'false' }},
+            hasSummer: false,
+            terms: [],
         },
         openScheduleConfirmForm: null,
         openScheduleConfirmLabel: '',
@@ -24,20 +25,63 @@
         closeScheduleConfirmLabel: '',
         closeScheduleCountdown: 0,
         closeScheduleTimer: null,
+        emptyTerm(name) {
+            return { name: name || '', start_date: '', end_date: '', midterm_start: '', midterm_end: '', final_start: '', final_end: '' };
+        },
+        buildTerms(yearTerms) {
+            const list = Array.isArray(yearTerms) ? yearTerms : [];
+            const slot = (i, fallbackName) => {
+                const t = list[i];
+                if (!t) return this.emptyTerm(fallbackName);
+                return {
+                    name: t.name || fallbackName,
+                    start_date: this.thaiDateForInput(t.start_date),
+                    end_date: this.thaiDateForInput(t.end_date),
+                    midterm_start: this.thaiDateForInput(t.midterm_start),
+                    midterm_end: this.thaiDateForInput(t.midterm_end),
+                    final_start: this.thaiDateForInput(t.final_start),
+                    final_end: this.thaiDateForInput(t.final_end),
+                };
+            };
+            return [slot(0, 'ภาคเรียนที่ 1'), slot(1, 'ภาคเรียนที่ 2'), slot(2, 'ภาคฤดูร้อน')];
+        },
+        resetSummerTerm() {
+            this.currentYear.terms[2] = this.emptyTerm('ภาคฤดูร้อน');
+        },
+        showHolidayModal: false,
+        editHolidayMode: false,
+        currentHoliday: { id: '', date: '', name: '', remark: '' },
+        openAddHoliday() {
+            this.editHolidayMode = false;
+            this.currentHoliday = { id: '', date: '', name: '', remark: '' };
+            this.showHolidayModal = true;
+        },
+        openEditHoliday(h) {
+            this.editHolidayMode = true;
+            this.currentHoliday = {
+                id: h.id,
+                date: this.thaiDateForInput(h.date),
+                name: h.name || '',
+                remark: h.remark || '',
+            };
+            this.showHolidayModal = true;
+        },
         openAddModal() {
             this.editMode = false;
-            this.currentYear = { id: '', name: '', semester: '1', start_date: '', end_date: '', is_active: false };
+            this.currentYear = { id: '', name: '', start_date: '', end_date: '', is_active: false, hasSummer: false, terms: this.buildTerms([]) };
             this.showModal = true;
         },
         openEditModal(year) {
             this.editMode = true;
+            const terms = year.terms || [];
             this.currentYear = {
                 id: year.id,
                 name: year.name,
-                semester: year.semester,
                 start_date: this.thaiDateForInput(year.start_date),
                 end_date: this.thaiDateForInput(year.end_date),
-                is_active: !!year.is_active
+                is_active: !!year.is_active,
+                hasSummer: terms.length >= 3,
+                terms: this.buildTerms(terms),
             };
             this.showModal = true;
         },
@@ -104,7 +148,8 @@
         }
     }">
 
-        <div class="tabs-container" style="display: flex; justify-content: {{ $isAdmin ? 'flex-end' : 'flex-start' }}; margin-bottom: 24px; width: 100%; overflow: hidden;">
+        @if($isAdmin)
+        <div class="tabs-container" style="display: flex; justify-content: flex-end; margin-bottom: 24px; width: 100%; overflow: hidden;">
             <div class="tabs"
                 style="display: flex; gap: 8px; background: var(--bg-2); padding: 4px; border-radius: 8px; border: 1px solid var(--border); overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; max-width: 100%;">
                 <button type="button" @click="activeTab = 'academic'"
@@ -119,7 +164,6 @@
                     </svg>
                     ปีการศึกษา
                 </button>
-                @if($isAdmin)
                 <button type="button" @click="activeTab = 'pa'"
                     :class="activeTab === 'pa' ? 'btn-primary' : 'btn btn-ghost'"
                     style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
@@ -131,9 +175,9 @@
                     </svg>
                     เกณฑ์ภาระงาน
                 </button>
-                @endif
             </div>
         </div>
+        @endif
 
         <!-- Tab: Academic Year (รวมการจัดการช่วงจัดตารางในตารางเดียวกัน) -->
         @php
@@ -169,10 +213,7 @@
             <div class="card">
                 <div class="card-hdr">
                     <div>
-                        <div class="card-ttl">รายการปีการศึกษา</div>
-                        @if($isAdmin)
-                            <div style="font-size: 12px; color: var(--fg-3); margin-top: 4px;">Admin เปิด/ปิดช่วงจัดตาราง — หัวหน้าวิชาทุกท่านจัดตารางได้พร้อมกัน</div>
-                        @endif
+                        <div class="card-ttl">ตั้งค่าปีการศึกษา</div>
                     </div>
                     <div class="card-actions">
                         <button class="btn btn-primary" @click="openAddModal()">
@@ -201,7 +242,13 @@
                             @forelse($academicYears as $year)
                                 <tr>
                                     <td style="font-weight: 600; color: var(--fg-1);">{{ $year->name }}</td>
-                                    <td>ภาคเรียนที่ {{ $year->semester }}</td>
+                                    <td style="font-size: 12px; color: var(--fg-2);">
+                                        @forelse($year->terms as $t)
+                                            <span class="badge badge-gray" style="margin:1px 2px;display:inline-block;">{{ $t->name }}</span>
+                                        @empty
+                                            <span style="color: var(--fg-3);">—</span>
+                                        @endforelse
+                                    </td>
                                     <td style="color: var(--fg-2); font-size: 13px;">
                                         {{ \App\Support\ThaiDate::formatForInput($year->start_date) }} -
                                         {{ \App\Support\ThaiDate::formatForInput($year->end_date) }}
@@ -229,7 +276,7 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <div class="academic-year-actions {{ $isAdmin ? '' : 'academic-year-actions--staff' }}">
+                                        <div class="academic-year-actions">
                                             <button class="action-btn" title="แก้ไข"
                                                 @click="openEditModal({{ json_encode($year) }})">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -253,7 +300,7 @@
                                                                     disabled
                                                                     title="ต้องแก้ Critical ให้หมดก่อนเปิดช่วงจัดตาราง"
                                                                 @else
-                                                                    @click="startOpenScheduleCountdown('open-scheduling-{{ $year->id }}', 'ปีการศึกษา {{ $year->name }} ภาค {{ $year->semester }}')"
+                                                                    @click="startOpenScheduleCountdown('open-scheduling-{{ $year->id }}', 'ปีการศึกษา {{ $year->name }}')"
                                                                 @endif>
                                                                 เปิดช่วงจัดตาราง
                                                             </button>
@@ -265,7 +312,7 @@
                                                             <button type="button"
                                                                 class="btn btn-ghost"
                                                                 style="font-size: 13px; padding: 6px 14px; border: 1px solid var(--border);"
-                                                                @click="startCloseScheduleConfirm('close-scheduling-{{ $year->id }}', 'ปีการศึกษา {{ $year->name }} ภาค {{ $year->semester }}')">
+                                                                @click="startCloseScheduleConfirm('close-scheduling-{{ $year->id }}', 'ปีการศึกษา {{ $year->name }}')">
                                                                 ปิดช่วงจัดตาราง
                                                             </button>
                                                         </form>
@@ -287,6 +334,60 @@
             </div>
 
             @if($isAdmin)
+            {{-- วันหยุดราชการ (V3 ข้อ 2.4) --}}
+            <div class="card" style="margin-top: 16px;">
+                <div class="card-hdr">
+                    <div>
+                        <div class="card-ttl">วันหยุดราชการ (ระบบจะสร้างวันหยุดให้อัติโนมัติเมื่อเลือกปีการศึกษาปัจจุบัน)</div>
+                    </div>
+                    <div class="card-actions" style="display: flex; gap: 8px;">
+                        <form method="POST" action="{{ route('admin.settings.holidays.sync') }}" style="margin: 0;">
+                            @csrf
+                            <button type="submit" class="btn btn-ghost" style="font-size: 13px;">ดึงวันหยุดซ้ำ</button>
+                        </form>
+                        <button type="button" class="btn btn-primary" @click="openAddHoliday()">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right:6px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            เพิ่มวันหยุด
+                        </button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 160px;">วันที่</th>
+                                <th>ชื่อวันหยุด</th>
+                                <th style="width: 110px;">ที่มา</th>
+                                <th style="text-align: center; width: 80px;">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($holidays as $h)
+                                <tr @if($h->source === 'manual') style="background: var(--accent-bg, #eef4ff);" @endif>
+                                    <td style="font-family: var(--font-mono);">{{ \App\Support\ThaiDate::formatForInput($h->date) }}</td>
+                                    <td style="color: var(--fg-1);">{{ $h->name }}@if($h->remark)<span style="color: var(--fg-3); font-size: 12px;"> · {{ $h->remark }}</span>@endif</td>
+                                    <td>
+                                        @if($h->source === 'manual')
+                                            <span class="badge" style="background: var(--accent-fg, #2563EB); color: #fff;">เพิ่มเอง</span>
+                                        @else
+                                            <span class="badge badge-gray">อัตโนมัติ</span>
+                                        @endif
+                                    </td>
+                                    <td style="text-align: center;">
+                                        <button type="button" class="action-btn" title="แก้ไข"
+                                            @click="openEditHoliday({{ Js::from(['id' => $h->id, 'date' => optional($h->date)->format('Y-m-d'), 'name' => $h->name, 'remark' => $h->remark]) }})">
+                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                        </button>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="4" style="text-align: center; color: var(--fg-3); padding: 28px;">ยังไม่มีวันหยุด — ระบบดึงให้อัตโนมัติเมื่อสร้างปีการศึกษา หรือกด "ดึงวันหยุดซ้ำ"</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
                 <div x-show="openScheduleConfirmForm" x-cloak
                     style="position:fixed;inset:0;z-index:80;background:rgba(15,23,42,.36);"
                     @keydown.escape.window="cancelOpenScheduleCountdown()">
@@ -380,34 +481,32 @@
                                         <span style="color: var(--red, #dc2626); font-size: 12px; margin-top: 4px; display: block;">{{ $message }}</span>
                                     @enderror
                                 </div>
-                                <div class="form-group">
-                                    <label>ภาคเรียน</label>
-                                    <select name="semester" x-model="currentYear.semester" required>
-                                        <option value="1">ภาคเรียนที่ 1</option>
-                                        <option value="2">ภาคเรียนที่ 2</option>
-                                        <option value="3">ภาคเรียนฤดูร้อน</option>
-                                    </select>
-                                </div>
                             </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>วันที่เริ่ม</label>
-                                    <x-thai-date-input name="start_date" x-model="currentYear.start_date" required block-weekends
-                                        helper="เลือกเฉพาะวันจันทร์-ศุกร์"
-                                        style="{{ $errors->has('start_date') ? 'border-color: var(--red, #dc2626);' : '' }}" />
-                                    @error('start_date')
-                                        <span style="color: var(--red, #dc2626); font-size: 12px; margin-top: 4px; display: block;">{{ $message }}</span>
-                                    @enderror
+                            @if($errors->has('terms'))
+                                <div style="margin-bottom: 10px; padding: 8px 10px; background: oklch(97% 0.02 20); border: 1px solid oklch(82% 0.08 25); border-radius: 6px; color: var(--status-conflict-fg); font-size: 12px; line-height: 1.6;">
+                                    @foreach($errors->get('terms') as $msg)
+                                        <div>• {{ $msg }}</div>
+                                    @endforeach
                                 </div>
-                                <div class="form-group">
-                                    <label>วันที่สิ้นสุด</label>
-                                    <x-thai-date-input name="end_date" x-model="currentYear.end_date" required block-weekends
-                                        helper="เลือกเฉพาะวันจันทร์-ศุกร์"
-                                        style="{{ $errors->has('end_date') ? 'border-color: var(--red, #dc2626);' : '' }}" />
-                                    @error('end_date')
-                                        <span style="color: var(--red, #dc2626); font-size: 12px; margin-top: 4px; display: block;">{{ $message }}</span>
-                                    @enderror
+                            @endif
+                            <div style="margin-top: 4px; border-top: 1px solid var(--border); padding-top: 14px;">
+                                <div style="font-weight: 600; font-size: 13px; color: var(--fg-1); margin-bottom: 4px;">ภาคการศึกษา (เทอม)</div>
+                                <div style="font-size: 11px; color: var(--fg-3); margin-bottom: 10px; line-height: 1.5;">
+                                    กำหนดช่วงวันของแต่ละเทอม + ช่วงสัปดาห์สอบ (ไม่บังคับ) · <strong>วันเริ่ม-สิ้นสุดของปีการศึกษาคำนวณจากเทอมให้อัตโนมัติ</strong> · ช่วงปิดภาคเรียน = ช่องว่างระหว่างเทอม
                                 </div>
+                                @include('shared.settings._term_fields', ['index' => 0, 'seq' => 1, 'label' => 'ภาคเรียนที่ 1'])
+                                @include('shared.settings._term_fields', ['index' => 1, 'seq' => 2, 'label' => 'ภาคเรียนที่ 2'])
+                                <div x-show="currentYear.hasSummer" x-cloak>
+                                    @include('shared.settings._term_fields', ['index' => 2, 'seq' => 3, 'label' => 'ภาคฤดูร้อน'])
+                                    <button type="button" @click="currentYear.hasSummer = false; resetSummerTerm()"
+                                        style="font-size: 12px; color: var(--status-conflict-fg); background: none; border: none; cursor: pointer; padding: 2px 0; margin-bottom: 6px;">
+                                        ลบภาคฤดูร้อน
+                                    </button>
+                                </div>
+                                <button type="button" x-show="!currentYear.hasSummer" @click="currentYear.hasSummer = true"
+                                    class="btn btn-ghost" style="font-size: 12px; padding: 5px 12px;">
+                                    + เพิ่มภาคฤดูร้อน
+                                </button>
                             </div>
                             <div class="form-group" style="margin-top: 16px;">
                                 <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; color: var(--fg-1);">
@@ -430,6 +529,53 @@
         </template>
 
         @if($isAdmin)
+        <!-- Add/Edit Holiday Modal -->
+        <template x-if="showHolidayModal">
+            <div class="overlay" x-cloak>
+                <div class="modal-center" style="max-width: 480px;"
+                    x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+                    <div class="modal-hdr" style="background: var(--bg-2);">
+                        <div class="modal-ttl" style="font-family: var(--font-display);" x-text="editHolidayMode ? 'แก้ไขวันหยุด' : 'เพิ่มวันหยุด'"></div>
+                        <button type="button" class="modal-cls" @click="showHolidayModal = false">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                    </div>
+                    <form :action="editHolidayMode ? '{{ url('admin/settings/holidays') }}/' + currentHoliday.id : '{{ route('admin.settings.holidays.store') }}'" method="POST">
+                        @csrf
+                        <input type="hidden" name="_method" value="PUT" :disabled="!editHolidayMode">
+                        <div class="modal-body">
+                            <div class="form-group" style="margin-bottom: 16px;">
+                                <label>วันที่ <span style="color: var(--status-conflict-fg)">*</span></label>
+                                <x-thai-date-input name="date" x-model="currentHoliday.date" required helper="" />
+                                @error('date')<span style="color: var(--red, #dc2626); font-size: 12px; display: block; margin-top: 4px;">{{ $message }}</span>@enderror
+                            </div>
+                            <div class="form-group" style="margin-bottom: 16px;">
+                                <label>ชื่อวันหยุด <span style="color: var(--status-conflict-fg)">*</span></label>
+                                <input type="text" name="name" x-model="currentHoliday.name" required maxlength="255" placeholder="เช่น วันสงกรานต์">
+                                @error('name')<span style="color: var(--red, #dc2626); font-size: 12px; display: block; margin-top: 4px;">{{ $message }}</span>@enderror
+                            </div>
+                            <div class="form-group">
+                                <label>หมายเหตุ</label>
+                                <input type="text" name="remark" x-model="currentHoliday.remark" maxlength="255" placeholder="(ถ้ามี)">
+                            </div>
+                        </div>
+                        <div class="modal-foot" style="display: flex; justify-content: space-between;">
+                            <button type="button" class="btn btn-ghost" x-show="editHolidayMode"
+                                @click="$refs.deleteHolidayForm.submit()"
+                                style="color: var(--status-conflict-fg);">ลบ</button>
+                            <div style="display: flex; gap: 8px; margin-left: auto;">
+                                <button type="button" class="btn btn-ghost" @click="showHolidayModal = false">ยกเลิก</button>
+                                <button type="submit" class="btn btn-primary">บันทึก</button>
+                            </div>
+                        </div>
+                    </form>
+                    <form x-ref="deleteHolidayForm" :action="'{{ url('admin/settings/holidays') }}/' + currentHoliday.id" method="POST" style="display: none;">
+                        @csrf
+                        @method('DELETE')
+                    </form>
+                </div>
+            </div>
+        </template>
 
         <!-- Tab: PA Rules -->
         <div x-show="activeTab === 'pa'" x-cloak>
@@ -598,16 +744,163 @@
             margin: 0 auto;
             width: fit-content;
         }
-        .academic-year-actions--staff {
-            grid-template-columns: 32px;
-            justify-items: center;
-            width: 32px;
-        }
         .academic-year-schedule-action {
             display: flex;
             align-items: center;
             justify-content: flex-start;
             min-width: 150px;
+        }
+
+        [x-show="openScheduleConfirmForm"],
+        [x-show="closeScheduleConfirmForm"] {
+            position: fixed !important;
+            inset: 0 !important;
+            z-index: 80 !important;
+            display: grid !important;
+            place-items: center !important;
+            padding: clamp(14px, 2vw, 24px) !important;
+            background:
+                color-mix(in oklch, var(--brand-navy) 18%, transparent) !important;
+            backdrop-filter: blur(3px);
+        }
+
+        [x-show="openScheduleConfirmForm"][style*="display: none"],
+        [x-show="closeScheduleConfirmForm"][style*="display: none"] {
+            display: none !important;
+        }
+
+        [x-show="openScheduleConfirmForm"] > div,
+        [x-show="closeScheduleConfirmForm"] > div {
+            min-height: auto !important;
+            width: min(100%, 560px) !important;
+            display: block !important;
+            padding: 0 !important;
+        }
+
+        [x-show="openScheduleConfirmForm"] > div > div,
+        [x-show="closeScheduleConfirmForm"] > div > div {
+            width: 100% !important;
+            max-height: min(720px, calc(100vh - 32px));
+            overflow: hidden !important;
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr) auto;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 12%, var(--border)) !important;
+            border-radius: var(--r-lg) !important;
+            background: var(--surface) !important;
+            box-shadow:
+                0 1px 2px rgba(0, 36, 84, 0.06),
+                0 28px 76px -38px rgba(0, 36, 84, 0.46) !important;
+        }
+
+        [x-show="openScheduleConfirmForm"] > div > div > div:first-child,
+        [x-show="closeScheduleConfirmForm"] > div > div > div:first-child {
+            position: relative;
+            display: grid;
+            grid-template-columns: 44px minmax(0, 1fr);
+            gap: 14px;
+            align-items: center;
+            padding: 20px 24px !important;
+            border-bottom: 1px solid var(--border) !important;
+            background: color-mix(in oklch, var(--brand-navy) 4%, var(--surface)) !important;
+        }
+
+        [x-show="openScheduleConfirmForm"] > div > div > div:first-child::before,
+        [x-show="closeScheduleConfirmForm"] > div > div > div:first-child::before {
+            content: "";
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border));
+            background:
+                linear-gradient(180deg,
+                    color-mix(in oklch, var(--brand-navy) 10%, var(--surface)),
+                    color-mix(in oklch, var(--brand-navy) 4%, var(--surface)));
+            box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--surface) 72%, transparent);
+        }
+
+        [x-show="closeScheduleConfirmForm"] > div > div > div:first-child::before {
+            border-color: color-mix(in oklch, var(--status-warning-fg) 22%, var(--border));
+            background:
+                linear-gradient(180deg,
+                    color-mix(in oklch, var(--status-warning-bg) 72%, var(--surface)),
+                    color-mix(in oklch, var(--status-warning-bg) 38%, var(--surface)));
+        }
+
+        [x-show="openScheduleConfirmForm"] > div > div > div:first-child > div:first-child,
+        [x-show="closeScheduleConfirmForm"] > div > div > div:first-child > div:first-child {
+            font-size: 18px !important;
+            line-height: 1.25 !important;
+            color: var(--fg-1) !important;
+        }
+
+        [x-show="openScheduleConfirmForm"] > div > div > div:first-child > div:last-child,
+        [x-show="closeScheduleConfirmForm"] > div > div > div:first-child > div:last-child {
+            margin-top: 3px !important;
+            color: var(--fg-3) !important;
+            font-size: 13px !important;
+            line-height: 1.45 !important;
+        }
+
+        [x-show="openScheduleConfirmForm"] > div > div > div:nth-child(2),
+        [x-show="closeScheduleConfirmForm"] > div > div > div:nth-child(2) {
+            overflow-y: auto;
+            padding: 22px 24px !important;
+            background: var(--surface) !important;
+        }
+
+        [x-show="openScheduleConfirmForm"] > div > div > div:nth-child(2) > div:first-child,
+        [x-show="closeScheduleConfirmForm"] > div > div > div:nth-child(2) > div:first-child {
+            color: var(--fg-2) !important;
+            font-size: 14px !important;
+            line-height: 1.7 !important;
+        }
+
+        [x-show="openScheduleConfirmForm"] > div > div > div:nth-child(2) > div:nth-child(n+2),
+        [x-show="closeScheduleConfirmForm"] > div > div > div:nth-child(2) > div:nth-child(n+2) {
+            margin-top: 12px !important;
+            padding: 12px 14px !important;
+            border-radius: var(--r-md) !important;
+            font-size: 13px !important;
+            font-weight: 700 !important;
+            line-height: 1.55 !important;
+        }
+
+        [x-show="openScheduleConfirmForm"] > div > div > div:nth-child(2) > div:last-child,
+        [x-show="closeScheduleConfirmForm"] > div > div > div:nth-child(2) > div:last-child {
+            border: 1px solid var(--status-warning-border) !important;
+            background: var(--status-warning-bg) !important;
+            color: var(--status-warning-fg) !important;
+        }
+
+        [x-show="closeScheduleConfirmForm"] > div > div > div:nth-child(2) > div:nth-child(2) {
+            border: 1px solid var(--status-info-border) !important;
+            background: var(--status-info-bg) !important;
+            color: var(--status-info-fg) !important;
+        }
+
+        [x-show="openScheduleConfirmForm"] > div > div > div:last-child,
+        [x-show="closeScheduleConfirmForm"] > div > div > div:last-child {
+            display: flex !important;
+            justify-content: flex-end !important;
+            gap: 10px !important;
+            padding: 16px 24px !important;
+            border-top: 1px solid var(--border) !important;
+            background: color-mix(in oklch, var(--brand-navy) 3%, var(--bg-2)) !important;
+        }
+
+        [x-show="openScheduleConfirmForm"] > div > div > div:last-child .btn,
+        [x-show="closeScheduleConfirmForm"] > div > div > div:last-child .btn {
+            min-height: 42px;
+            border-radius: var(--r-md);
+            padding-inline: 18px;
+            font-weight: 800;
+        }
+
+        [x-show="openScheduleConfirmForm"] > div > div > div:last-child .btn-primary:disabled,
+        [x-show="closeScheduleConfirmForm"] > div > div > div:last-child .btn-primary:disabled {
+            opacity: .58 !important;
+            cursor: not-allowed !important;
+            filter: saturate(.75);
         }
 
         @media (max-width: 1024px) {
@@ -627,6 +920,54 @@
             .stats-grid { grid-template-columns: 1fr; }
             .tabs-container {
                 justify-content: flex-start !important;
+                width: 100%;
+            }
+
+            [x-show="openScheduleConfirmForm"],
+            [x-show="closeScheduleConfirmForm"] {
+                align-items: end !important;
+                place-items: end center !important;
+                padding: 10px !important;
+            }
+
+            [x-show="openScheduleConfirmForm"] > div,
+            [x-show="closeScheduleConfirmForm"] > div {
+                width: 100% !important;
+            }
+
+            [x-show="openScheduleConfirmForm"] > div > div,
+            [x-show="closeScheduleConfirmForm"] > div > div {
+                max-height: calc(100vh - 20px);
+                border-radius: 14px !important;
+            }
+
+            [x-show="openScheduleConfirmForm"] > div > div > div:first-child,
+            [x-show="closeScheduleConfirmForm"] > div > div > div:first-child {
+                grid-template-columns: 38px minmax(0, 1fr);
+                gap: 12px;
+                padding: 18px !important;
+            }
+
+            [x-show="openScheduleConfirmForm"] > div > div > div:first-child::before,
+            [x-show="closeScheduleConfirmForm"] > div > div > div:first-child::before {
+                width: 38px;
+                height: 38px;
+            }
+
+            [x-show="openScheduleConfirmForm"] > div > div > div:nth-child(2),
+            [x-show="closeScheduleConfirmForm"] > div > div > div:nth-child(2) {
+                padding: 18px !important;
+            }
+
+            [x-show="openScheduleConfirmForm"] > div > div > div:last-child,
+            [x-show="closeScheduleConfirmForm"] > div > div > div:last-child {
+                display: grid !important;
+                grid-template-columns: 1fr;
+                padding: 14px 18px 18px !important;
+            }
+
+            [x-show="openScheduleConfirmForm"] > div > div > div:last-child .btn,
+            [x-show="closeScheduleConfirmForm"] > div > div > div:last-child .btn {
                 width: 100%;
             }
         }

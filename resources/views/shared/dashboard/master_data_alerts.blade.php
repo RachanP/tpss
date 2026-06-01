@@ -24,15 +24,18 @@
     </div>
 
     @if($allClear)
-    <div style="padding: 16px 20px; display: flex; align-items: center; gap: 10px; color: var(--status-success-fg); background: color-mix(in oklch, var(--status-success) 5%, var(--surface)); border-top: 1px solid var(--border);">
+    <div class="admin-alert-body admin-alert-empty">
+        <span class="admin-alert-icon is-success" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>
+        </span>
         <span style="font-size: 13px; font-weight: 600;">ข้อมูลทุกหมวดพร้อมสำหรับการจัดตารางสอน</span>
     </div>
     @else
-    <div style="border-top: 1px solid var(--border);">
+    <div class="admin-alert-body">
 
         {{-- Critical rows --}}
         @if($hasCritical)
-        <div style="padding: 8px 0; background: color-mix(in oklch, var(--status-conflict) 4%, var(--surface));">
+        <div class="admin-alert-group is-critical">
             <div class="admin-alert-group-label is-critical">ต้องแก้ก่อนเปิดจัดตาราง</div>
             @foreach($criticals as $c)
                 @php
@@ -41,6 +44,9 @@
                         : ($c['linkTxt'] ?? 'ไปแก้ไขข้อมูล');
                 @endphp
                 <a href="{{ $c['link'] }}" class="admin-alert-row is-critical" aria-label="{{ $criticalAction }}">
+                    <span class="admin-alert-icon is-critical" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    </span>
                     <span class="admin-alert-main">{{ $c['label'] }}</span>
                     <span class="admin-alert-action">{{ $criticalAction }}</span>
                     <span class="admin-alert-status is-critical" aria-hidden="true">แก้ไข</span>
@@ -76,12 +82,15 @@
                 ],
             ];
         @endphp
-        @if($hasCritical)<div style="border-top: 1px solid var(--border);"></div>@endif
-        <div style="padding: 8px 0;">
+        @if($hasCritical)<div class="admin-alert-divider"></div>@endif
+        <div class="admin-alert-group is-warning">
             <div class="admin-alert-group-label is-warning">ควรตรวจสอบเพื่อให้ข้อมูลครบถ้วน</div>
             @foreach($warningItems as $item)
                 @if($item['count'] > 0)
                 <a href="{{ $item['link'] }}" class="admin-alert-row is-warning" aria-label="{{ $item['action'] }}">
+                    <span class="admin-alert-icon is-warning" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    </span>
                     <span class="admin-alert-main">{{ $item['label'] }}</span>
                     <span class="admin-alert-action">{{ $item['action'] }}</span>
                     <span class="pill p-warning" style="font-size:11px;">{{ $item['count'] }} {{ $item['unit'] }}</span>
@@ -98,6 +107,7 @@
 <style>
     .admin-alert-card {
         border: 1px solid var(--border);
+        min-height: 100%;
     }
 
     .admin-alert-card .card-hdr > div:first-child {
@@ -105,8 +115,35 @@
         min-width: 0;
     }
 
+    .admin-alert-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        background: var(--surface);
+    }
+
+    .admin-alert-empty {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 16px 20px;
+        color: var(--status-success-fg);
+        background: color-mix(in oklch, var(--status-success) 5%, var(--surface));
+    }
+
+    .admin-alert-group {
+        padding: 10px 0 12px;
+    }
+
+    .admin-alert-group.is-critical {
+        background: color-mix(in oklch, var(--status-conflict) 4%, var(--surface));
+    }
+
+    .admin-alert-divider {
+        border-top: 1px solid var(--border);
+    }
+
     .admin-alert-group-label {
-        padding: 4px 16px 6px;
+        padding: 0 20px 8px;
         font-size: 11px;
         font-weight: 800;
         line-height: 1.35;
@@ -121,11 +158,13 @@
     }
 
     .admin-alert-row {
-        display: flex;
+        display: grid;
+        grid-template-columns: 28px minmax(0, 1fr) auto auto;
         align-items: center;
         gap: 12px;
-        margin: 0 12px 6px;
-        padding: 9px 10px;
+        margin: 0 16px 8px;
+        min-height: 68px;
+        padding: 12px 14px;
         border: 1px solid var(--border);
         border-radius: var(--r-sm);
         text-decoration: none;
@@ -145,12 +184,38 @@
         transform: translateY(-1px);
     }
 
+    .admin-alert-row:last-child {
+        margin-bottom: 0;
+    }
+
+    .admin-alert-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    .admin-alert-icon.is-critical {
+        color: var(--status-conflict-fg);
+        background: color-mix(in oklch, var(--status-conflict) 13%, transparent);
+    }
+    .admin-alert-icon.is-warning {
+        color: var(--status-warning-fg);
+        background: color-mix(in oklch, var(--status-warning) 16%, transparent);
+    }
+    .admin-alert-icon.is-success {
+        color: var(--status-success-fg);
+        background: color-mix(in oklch, var(--status-success) 14%, transparent);
+    }
+
     .admin-alert-main {
-        flex: 1;
         min-width: 0;
-        font-size: 12.5px;
+        font-size: 13px;
         font-weight: 700;
         color: var(--fg-1);
+        line-height: 1.4;
     }
 
     .admin-alert-action {
@@ -162,6 +227,7 @@
         transition: opacity var(--dur-fast), transform var(--dur-fast);
         text-align: right;
         white-space: normal;
+        line-height: 1.35;
     }
 
     .admin-alert-status {
@@ -225,14 +291,16 @@
     @media (max-width: 720px) {
         .admin-alert-row {
             align-items: flex-start;
-            flex-wrap: wrap;
+            grid-template-columns: 28px minmax(0, 1fr) auto;
         }
 
         .admin-alert-action {
+            grid-column: 2 / -1;
             order: 3;
             width: 100%;
             opacity: 1;
             transform: none;
+            text-align: left;
         }
 
         .admin-alert-status {
@@ -247,7 +315,7 @@
         }
 
         .admin-alert-main {
-            flex-basis: 100%;
+            grid-column: 2 / -1;
         }
     }
 </style>

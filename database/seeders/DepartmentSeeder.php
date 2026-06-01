@@ -14,12 +14,16 @@ class DepartmentSeeder extends Seeder
     public function run(): void
     {
         $departments = [
-            ['name' => 'ภาควิชาการพยาบาลรากฐาน'],
+            [
+                'name' => 'ภาควิชาการพยาบาลรากฐาน',
+                'head_username' => 'head_med',
+                'secretary_username' => 'instructor_01'
+            ],
             ['name' => 'ภาควิชาการพยาบาลกุมารเวชศาสตร์'],
             [
                 'name' => 'ภาควิชาสุขภาพจิต และการพยาบาลจิตเวชศาสตร์',
-                'head_username' => 'admin_01',
-                'secretary_username' => 'pronpimon'
+                'head_username' => 'head_psy',
+                'secretary_username' => 'head_psy'
             ],
             ['name' => 'ภาควิชาการพยาบาลอายุรศาสตร์'],
             ['name' => 'ภาควิชาการพยาบาลสูติศาสตร์ - นรีเวชวิทยา'],

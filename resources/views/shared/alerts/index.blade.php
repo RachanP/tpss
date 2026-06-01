@@ -3,12 +3,22 @@
     $formatTime = fn ($value) => substr((string) $value, 0, 5);
 
     $warningTypeLabels = [
+        'conflict'         => 'การชนข้ามวิชา',
         'incomplete'       => 'ข้อมูลไม่ครบ',
-        'capacity_exceeded'=> 'ความจุเกิน',
         'no_role'          => 'ไม่กำหนดบทบาท',
         'dept_mismatch'    => 'ผู้สอนต่างภาควิชา',
+        'capacity_exceeded'=> 'ความจุเกิน',
+        'holiday'          => 'ตรงวันหยุด',
     ];
     $warningTypeColors = [
+        'conflict'         => [
+            'border' => 'oklch(52% 0.2 25)',   'bg' => 'oklch(96% 0.05 25)',  'fg' => 'oklch(42% 0.19 25)',
+            'svg' => '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'
+        ],
+        'holiday'          => [
+            'border' => 'oklch(72% 0.12 80)',  'bg' => 'oklch(97% 0.05 85)',  'fg' => 'oklch(45% 0.12 70)',
+            'svg' => '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>'
+        ],
         'incomplete'       => [
             'border' => 'oklch(65% 0.12 50)',  'bg' => 'oklch(97% 0.04 50)',  'fg' => 'oklch(40% 0.14 50)',
             'svg' => '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>'
@@ -116,6 +126,9 @@
             border-bottom: 1px solid var(--alert-border);
             background: var(--alert-soft);
         }
+        .alert-group-head.is-collapsed {
+            border-bottom-color: transparent;
+        }
         .alert-group-title {
             font-size: 14px;
             font-weight: 900;
@@ -192,6 +205,48 @@
             background-color: var(--alert-soft) !important;
             border-color: var(--brand-navy) !important;
             color: var(--brand-navy) !important;
+        }
+        .alert-pagination {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 6px;
+            padding: 12px 16px;
+            border-top: 1px solid var(--alert-border);
+            background: oklch(98.5% 0.006 232);
+        }
+        .alert-page-btn {
+            min-width: 34px;
+            height: 34px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--alert-border-strong);
+            border-radius: 8px;
+            background: var(--surface);
+            color: var(--brand-navy);
+            font-size: 12px;
+            font-weight: 900;
+            cursor: pointer;
+        }
+        .alert-page-btn:hover:not(:disabled) {
+            background: var(--alert-soft);
+            border-color: var(--brand-navy);
+        }
+        .alert-page-btn.is-active {
+            background: var(--brand-navy);
+            border-color: var(--brand-navy);
+            color: white;
+        }
+        .alert-page-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+        .alert-page-ellipsis {
+            min-width: 24px;
+            text-align: center;
+            color: var(--alert-muted);
+            font-weight: 900;
         }
         .alert-empty-state {
             display: flex;
@@ -296,8 +351,52 @@
                 font-size: 10px;
                 padding: 1px 8px;
             }
+            .alert-pagination {
+                justify-content: center;
+                flex-wrap: wrap;
+                padding: 10px 12px;
+            }
         }
     </style>
+    <script>
+        window.tpssAlertGroup = function(total) {
+            return {
+                collapsed: true,
+                page: 1,
+                perPage: 10,
+                total: Number(total) || 0,
+                get totalPages() {
+                    return Math.max(1, Math.ceil(this.total / this.perPage));
+                },
+                toggle() {
+                    this.collapsed = !this.collapsed;
+                },
+                visible(index) {
+                    return index >= ((this.page - 1) * this.perPage) && index < (this.page * this.perPage);
+                },
+                setPage(page) {
+                    const next = Number(page);
+                    if (Number.isNaN(next)) return;
+                    this.page = Math.min(this.totalPages, Math.max(1, next));
+                },
+                pageItems() {
+                    const last = this.totalPages;
+                    const current = this.page;
+                    const items = [];
+
+                    for (let i = 1; i <= last; i++) {
+                        if (i === 1 || i === last || Math.abs(i - current) <= 1) {
+                            items.push(i);
+                        } else if (items[items.length - 1] !== '...') {
+                            items.push('...');
+                        }
+                    }
+
+                    return items;
+                },
+            };
+        };
+    </script>
 
     <div class="alert-page">
         {{-- Header --}}
@@ -307,26 +406,46 @@
                 @if($selectedAcademicYear)
                     <span class="alert-year-inline">
                         <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                        ปีการศึกษา {{ $selectedAcademicYear->name }} / ภาค {{ $selectedAcademicYear->semester }}
+                        ปีการศึกษา {{ $selectedAcademicYear->name }}
                     </span>
                 @endif
             </div>
+            @if($availableYears->count() > 1)
+                <form method="GET" class="alert-year-select">
+                    <label for="alert-year-sel" style="font-size:12px;font-weight:800;color:var(--fg-2);">ปีการศึกษา</label>
+                    <select id="alert-year-sel" name="academic_year_id" onchange="this.form.submit()">
+                        @foreach($availableYears as $year)
+                            <option value="{{ $year->id }}" {{ (int)$selectedAcademicYearId === (int)$year->id ? 'selected' : '' }}>
+                                {{ $year->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </form>
+            @endif
         </section>
 
-        {{-- Summary Cards --}}
-        @if($totalWarningCount > 0)
+        {{-- Summary Cards — แสดงตลอด (เห็นจำนวนแม้เป็น 0) --}}
+        @php
+            $hasWarn = $totalWarningCount > 0;
+            $totFg = $hasWarn ? 'oklch(40% 0.14 50)' : 'oklch(38% 0.14 145)';
+            $totBg = $hasWarn ? 'oklch(97% 0.04 50)' : 'oklch(96% 0.04 145)';
+        @endphp
             <section class="alert-summary-container">
                 {{-- Total Card --}}
-                <div class="alert-summary-total-card">
-                    <div class="alert-summary-icon" style="background:oklch(97% 0.04 50); color:oklch(40% 0.14 50); width: 44px; height: 44px;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <div class="alert-summary-total-card" style="border-left-color: {{ $totFg }};">
+                    <div class="alert-summary-icon" style="background:{{ $totBg }}; color:{{ $totFg }}; width: 44px; height: 44px;">
+                        @if($hasWarn)
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        @else
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        @endif
                     </div>
                     <div>
                         <div style="display: flex; align-items: baseline; gap: 8px;">
-                            <span class="alert-summary-value" style="color:oklch(40% 0.14 50); font-size: 28px;">{{ $totalWarningCount }}</span>
+                            <span class="alert-summary-value" style="color:{{ $totFg }}; font-size: 28px;">{{ $totalWarningCount }}</span>
                             <span class="alert-summary-label" style="font-size: 14px; font-weight: 900;">รายการแจ้งเตือนทั้งหมด</span>
                         </div>
-                        <div class="alert-summary-sub">กรุณาตรวจสอบรายละเอียดและทำการแก้ไขข้อมูลตารางสอนให้ครบถ้วนก่อนดำเนินการส่งอนุมัติ</div>
+                        <div class="alert-summary-sub">{{ $hasWarn ? 'กรุณาตรวจสอบรายละเอียดและแก้ไขข้อมูลตารางสอนให้ครบถ้วนก่อนส่งอนุมัติ' : 'ตารางสอนทุกรายการมีข้อมูลครบถ้วน — ไม่พบปัญหาที่ต้องแก้ไข' }}</div>
                     </div>
                 </div>
 
@@ -350,22 +469,9 @@
                     @endforeach
                 </div>
             </section>
-        @endif
 
         {{-- Warning Groups --}}
-        @if($totalWarningCount === 0)
-            <div class="alert-empty-state">
-                <div class="alert-empty-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                </div>
-                <div class="alert-empty-title">ไม่พบรายการแจ้งเตือน</div>
-                <div class="alert-empty-sub">
-                    ตารางสอนทุกรายการมีข้อมูลครบถ้วนและไม่พบปัญหาที่ต้องแก้ไข<br>
-                    ขอบคุณที่ดูแลตารางอย่างครอบคลุม 🎉
-                </div>
-            </div>
-
-        @elseif(! $selectedAcademicYear)
+        @if(! $selectedAcademicYear)
             <div class="alert-empty-state">
                 <div class="alert-empty-icon" style="background:var(--alert-soft); color:var(--alert-muted);">
                     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -381,8 +487,19 @@
                     $colors = $warningTypeColors[$type];
                 @endphp
                 @if($groupItems->isNotEmpty())
-                    <div class="alert-group" x-data="{ collapsed: true }">
-                        <div class="alert-group-head" @click="collapsed = !collapsed" style="cursor: pointer; user-select: none;">
+                    <div
+                        class="alert-group"
+                        x-data="tpssAlertGroup({{ $groupItems->count() }})"
+                        data-testid="alert-group-{{ $type }}"
+                        data-alert-initial-collapsed="true"
+                        data-alert-page-size="10"
+                    >
+                        <div
+                            class="alert-group-head"
+                            :class="{ 'is-collapsed': collapsed }"
+                            @click="toggle()"
+                            style="cursor: pointer; user-select: none;"
+                        >
                             <div style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;background:{{ $colors['bg'] }};color:{{ $colors['fg'] }};flex-shrink:0;">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">{!! $colors['svg'] !!}</svg>
                             </div>
@@ -407,7 +524,7 @@
                                         'return_url'       => request()->fullUrl(),
                                     ]);
                                 @endphp
-                                <div class="alert-item">
+                                <div class="alert-item" x-show="visible({{ $loop->index }})" x-cloak>
                                     <div>
                                         <div class="alert-item-label">
                                             {{ $offering?->course?->course_code ?? 'รายวิชา' }}
@@ -434,6 +551,28 @@
                                     </div>
                                 </div>
                             @endforeach
+                            @if($groupItems->count() > 10)
+                                <div
+                                    class="alert-pagination"
+                                    data-testid="alert-pagination-{{ $type }}"
+                                >
+                                    <button type="button" class="alert-page-btn" @click="setPage(page - 1)" :disabled="page <= 1" aria-label="ก่อนหน้า">&lt;</button>
+                                    <template x-for="(item, idx) in pageItems()" :key="`${item}-${idx}`">
+                                        <span>
+                                            <button
+                                                type="button"
+                                                class="alert-page-btn"
+                                                x-show="item !== '...'"
+                                                :class="{ 'is-active': item === page }"
+                                                @click="setPage(item)"
+                                                x-text="item"
+                                            ></button>
+                                            <span class="alert-page-ellipsis" x-show="item === '...'">...</span>
+                                        </span>
+                                    </template>
+                                    <button type="button" class="alert-page-btn" @click="setPage(page + 1)" :disabled="page >= totalPages" aria-label="ถัดไป">&gt;</button>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 @endif

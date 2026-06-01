@@ -2,14 +2,6 @@
 
 <div class="audit-page" x-data="auditLogPage()">
 
-{{-- Page Header --}}
-<div class="page-hdr audit-page-hdr">
-    <div>
-        <h1 class="page-title">บันทึกการใช้งาน</h1>
-        <p class="page-sub">ประวัติการดำเนินการสำคัญในระบบ</p>
-    </div>
-</div>
-
 {{-- Filter Bar --}}
 <div class="card audit-filter-card">
     <div class="card-hdr audit-filter-hdr">
@@ -239,6 +231,9 @@ function auditLogPage() {
 <style>
     .audit-page {
         padding: 28px 32px;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
     }
     .audit-page-hdr {
         margin-bottom: 18px;
@@ -261,9 +256,16 @@ function auditLogPage() {
     }
     .audit-filter-grid {
         display: grid;
-        grid-template-columns: minmax(190px, 1.25fr) minmax(150px, 1fr) minmax(150px, 1fr) minmax(145px, .9fr) minmax(145px, .9fr) auto;
+        grid-template-columns:
+            minmax(220px, 1.35fr)
+            minmax(170px, 1fr)
+            minmax(170px, 1fr)
+            minmax(155px, .9fr)
+            minmax(155px, .9fr)
+            minmax(168px, auto);
         gap: 12px;
         align-items: start;
+        min-width: 0;
     }
     .audit-filter-field {
         display: grid;
@@ -301,11 +303,12 @@ function auditLogPage() {
     }
     .audit-filter-actions {
         display: grid;
-        grid-template-columns: 104px 86px;
+        grid-template-columns: minmax(96px, 1fr) minmax(82px, .82fr);
         gap: 8px;
         align-items: start;
         min-height: 94px;
         padding-top: 21px;
+        min-width: 0;
     }
     .audit-filter-submit,
     .audit-filter-reset {
@@ -383,14 +386,58 @@ function auditLogPage() {
             grid-template-columns: repeat(3, minmax(170px, 1fr));
         }
         .audit-filter-actions {
+            grid-column: 1 / -1;
             grid-template-columns: minmax(104px, 1fr) minmax(86px, .85fr);
+            justify-self: end;
+            width: min(320px, 100%);
+            min-height: 0;
+            padding-top: 0;
+        }
+    }
+    @media (max-width: 980px) {
+        .audit-page {
+            padding: 24px 20px;
+        }
+        .audit-filter-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .audit-filter-actions {
+            justify-self: stretch;
+            width: 100%;
         }
     }
     @media (max-width: 720px) {
         .audit-page {
-            padding: 20px 16px;
+            padding: 18px 14px;
+        }
+        .audit-filter-body {
+            padding: 12px;
         }
         .audit-filter-grid {
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+        .audit-filter-field {
+            min-height: 0;
+        }
+        .audit-filter-field .audit-date-input + p {
+            min-height: 0;
+        }
+        .audit-filter-actions {
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            padding-top: 2px;
+        }
+        .audit-filter-submit,
+        .audit-filter-reset {
+            width: 100%;
+        }
+    }
+    @media (max-width: 440px) {
+        .audit-page {
+            padding: 12px 10px;
+        }
+        .audit-filter-actions {
             grid-template-columns: 1fr;
         }
     }

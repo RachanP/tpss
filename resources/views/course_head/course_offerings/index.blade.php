@@ -9,10 +9,6 @@
 
 <x-app-layout title="จัดการรายวิชา">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap;">
-        <div>
-            <h1 class="h1" style="margin:0 0 6px;">จัดการรายวิชาที่รับผิดชอบ</h1>
-            <p class="body-sm" style="margin:0;">แสดงเฉพาะรายวิชาที่กำหนดให้คุณเป็นหัวหน้าวิชาในภาคการศึกษานั้น</p>
-        </div>
         @if($availableYears->count() > 0)
             <form method="GET" action="{{ route('maker.course_offerings.index') }}" style="
                 display:inline-flex;
@@ -61,7 +57,7 @@
                     ">
                         @foreach($availableYears as $year)
                             <option value="{{ $year->id }}" @selected($year->id === $selectedYearId)>
-                                {{ $year->name }} / เทอม {{ $year->semester }}@if($year->is_active) · ปัจจุบัน @endif
+                                ปีการศึกษา {{ $year->name }}@if($year->is_active) · ปัจจุบัน @endif
                             </option>
                         @endforeach
                     </select>
@@ -151,7 +147,6 @@
                     <tr>
                         <th>รายวิชา</th>
                         <th>หลักสูตร / ปีการศึกษา</th>
-                        <th>กลุ่มนักศึกษา</th>
                         <th>ชั่วโมงแผน</th>
                         <th style="white-space:nowrap;">สถานะการจัดตาราง</th>
                         <th style="white-space:nowrap;">สถานะรายวิชา</th>
@@ -169,11 +164,6 @@
                             $lectureHours  = $offering->planned_lecture_hours ?? $course?->lecture_hours ?? 0;
                             $labHours      = $offering->planned_lab_hours ?? $course?->lab_hours ?? 0;
                             $practicumHours = $offering->planned_practicum_hours ?? 0;
-                            $studentTotal = $offering->total_student_count;
-                            $allocatedStudents = (int) ($offering->allocated_student_count ?? 0);
-                            $hasStudentTotal = $studentTotal !== null && (int) $studentTotal > 0;
-                            $studentLimit = (int) ($studentTotal ?? 0);
-                            $remainingStudents = $hasStudentTotal ? max(0, $studentLimit - $allocatedStudents) : null;
                         @endphp
                         <tr class="course-offering-row">
                             <td>
@@ -189,50 +179,8 @@
                             <td>
                                 <div class="body-sm">{{ $course?->curriculum?->name ?? '-' }}</div>
                                 <div class="caption" style="margin-top:4px;">
-                                    {{ $year?->name ?? '-' }} / เทอม {{ $year?->semester ?? '-' }}
+                                    ปีการศึกษา {{ $year?->name ?? '-' }}
                                 </div>
-                            </td>
-                            <td>
-                                <div style="font-weight:700;white-space:nowrap;">
-                                    @if($offering->student_groups_count > 0)
-                                        {{ $offering->student_groups_count }} กลุ่ม
-                                    @else
-                                        ยังไม่ได้จัดกลุ่ม
-                                    @endif
-                                </div>
-                                <div style="margin-top:8px;">
-                                    @if(! $hasStudentTotal)
-                                        <span class="badge badge-gray" data-testid="student-capacity-missing" style="white-space:nowrap;">
-                                            ยังไม่ได้กำหนดจำนวนนักศึกษา
-                                        </span>
-                                    @elseif($offering->student_groups_count < 1)
-                                        <span class="badge badge-gray" data-testid="student-capacity-no-groups" style="white-space:nowrap;">
-                                            ยังไม่มีกลุ่ม
-                                        </span>
-                                        <div class="caption" style="margin-top:4px;white-space:nowrap;">เหลือ {{ $remainingStudents }} คน</div>
-                                    @elseif($allocatedStudents >= $studentLimit)
-                                        <span
-                                            class="badge"
-                                            data-testid="student-capacity-full"
-                                            style="background:var(--status-success-bg);color:var(--status-success-fg);border:1px solid var(--status-success-border);white-space:nowrap;"
-                                        >
-                                            จัดสรรครบ
-                                        </span>
-                                    @elseif($remainingStudents <= 10)
-                                        <span class="badge badge-warn" data-testid="student-capacity-low" style="white-space:nowrap;">
-                                            เหลือ {{ $remainingStudents }} คน
-                                        </span>
-                                    @else
-                                        <span class="badge badge-ok" data-testid="student-capacity-open" style="white-space:nowrap;">
-                                            เหลือ {{ $remainingStudents }} คน
-                                        </span>
-                                    @endif
-                                </div>
-                                @if($hasStudentTotal)
-                                    <div class="caption" style="margin-top:4px;white-space:nowrap;">จัดแล้ว {{ $allocatedStudents }}/{{ $studentLimit }} คน</div>
-                                @else
-                                    <div class="caption" style="margin-top:4px;white-space:nowrap;">รับได้ - คน</div>
-                                @endif
                             </td>
                             <td style="white-space:nowrap;">
                                 <div class="body-sm" style="white-space:nowrap;">
@@ -291,7 +239,7 @@
                             $msg = $emptyMessages[$emptyKey] ?? $emptyMessages['ready'];
                         @endphp
                         <tr>
-                            <td colspan="7" style="text-align:center;padding:34px 20px;" data-empty-state="{{ $emptyKey }}">
+                            <td colspan="6" style="text-align:center;padding:34px 20px;" data-empty-state="{{ $emptyKey }}">
                                 <div style="font-weight:950;font-size:15px;color:var(--brand-navy);margin-bottom:4px;">{{ $msg['title'] }}</div>
                                 <div style="font-weight:700;font-size:12.5px;color:var(--fg-2);line-height:1.55;max-width:520px;margin:0 auto;">{{ $msg['sub'] }}</div>
                             </td>

@@ -73,7 +73,7 @@ class ScheduleConflictIndex
         $schedules->loadMissing([
             'activityType',
             'courseOffering.course',
-            'room.locationType',
+            'room.locationType:id,is_shared',
             'instructors.instructorProfile',
             'studentGroups',
         ]);
@@ -97,7 +97,7 @@ class ScheduleConflictIndex
             $this->baseScheduleQuery()
                 ->whereHas('courseOffering', fn (Builder $query) => $query
                     ->withActiveCourse()
-                    ->where('coordinator_id', $userId)
+                    ->schedulableBy($userId)
                     ->when($academicYearId, fn (Builder $query) => $query->where('academic_year_id', $academicYearId)))
         )->get();
 
@@ -140,22 +140,12 @@ class ScheduleConflictIndex
             ->unique()
             ->values()
             ->all();
-        $academicYearIds = $schedules
-            ->map(fn (Schedule $schedule) => (int) ($schedule->courseOffering?->academic_year_id ?? 0))
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
 
         if (! $startDate || ! $endDate || (empty($roomIds) && empty($instructorIds) && empty($groupIds))) {
             return collect();
         }
 
-        $query = $this->filterSchedulesByDateRange($this->baseScheduleQuery(), $startDate, $endDate)
-            ->when($academicYearIds, fn (Builder $query) => $query->whereHas(
-                'courseOffering',
-                fn (Builder $query) => $query->whereIn('academic_year_id', $academicYearIds)
-            ));
+        $query = $this->filterSchedulesByDateRange($this->baseScheduleQuery(), $startDate, $endDate);
 
         $query->where(function (Builder $query) use ($roomIds, $instructorIds, $groupIds): void {
             $hasClause = false;
@@ -253,6 +243,8 @@ class ScheduleConflictIndex
             return $entries;
         }
 
+        // ข้ามห้อง "ใช้ร่วมกันได้" (is_shared) — หลายวิชาใช้สถานที่เดียวกันพร้อมกันได้ ไม่ถือว่าชน
+        // ต้องตรงกับ ScheduleConflictChecker::bulkConflictMap() + check() ที่ skip is_shared เช่นกัน
         if ($schedule->room_id && ! ($schedule->room?->locationType?->is_shared ?? false)) {
             foreach ($dateKeys as $dateKey) {
                 $entries[] = [

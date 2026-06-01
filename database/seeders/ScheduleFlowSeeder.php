@@ -7,6 +7,8 @@ use App\Models\AcademicYear;
 use App\Models\ActivityType;
 use App\Models\Course;
 use App\Models\CourseOffering;
+use App\Models\CourseRole;
+use App\Models\Department;
 use App\Models\InstructorProfile;
 use App\Models\Room;
 use App\Models\Schedule;
@@ -19,140 +21,221 @@ use App\Services\ScheduleConflictIndex;
 use App\Services\ScheduleConflictInvalidationService;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 
 class ScheduleFlowSeeder extends Seeder
 {
     public function run(): void
     {
         $year = $this->activateSchedulingYear();
-
-        Course::query()
-            ->where('default_semester', $year->semester)
-            ->whereNotNull('head_instructor_id')
-            ->update(['status' => 'active']);
+        $this->activateDemoCourses();
 
         $this->call(CourseOfferingSeeder::class);
 
-        $offerings = CourseOffering::query()
-            ->where('academic_year_id', $year->id)
-            ->with(['course.department', 'academicYear', 'instructorPool', 'studentGroups'])
-            ->orderBy('id')
-            ->get();
-
+        $offerings = $this->activeOfferings($year);
         if ($offerings->count() < 2) {
-            $this->command?->warn('ScheduleFlowSeeder: not enough offerings to build conflict demo.');
+            $this->command?->warn('ScheduleFlowSeeder: not enough active offerings for demo schedules.');
 
             return;
         }
 
-        $offerings->each(function (CourseOffering $offering, int $index): void {
-            $this->ensureStudentGroup($offering, 'A1', 30);
-            $this->ensureGeneratedInstructor($offering, $index + 1);
-        });
+        $this->ensureStudentGroups($offerings);
+        $this->ensureGeneratedInstructors($offerings);
 
-        $activity = ActivityType::query()->orderBy('id')->firstOrFail();
-        $room = Room::query()
-            ->where('status', 'active')
-            ->whereHas('locationType', fn ($query) => $query->where('is_shared', false))
-            ->orderBy('id')
-            ->first()
-            ?? Room::query()->where('status', 'active')->orderBy('id')->firstOrFail();
+        $offerings = $this->activeOfferings($year);
+        $this->seedStackedConflictDemo($year, $offerings);
 
-        $primary = $offerings->first()->fresh(['instructorPool', 'studentGroups', 'academicYear']);
-        $secondary = $offerings->skip(1)->first()->fresh(['instructorPool', 'studentGroups', 'academicYear']);
-        $demoDate = CarbonImmutable::parse($year->start_date)->next('monday')->toDateString();
-
-        $this->clearDemoSchedules($offerings->pluck('id')->all());
-        $this->seedRoomConflict($primary, $secondary, $activity, $room, $demoDate);
-        $this->seedStackDemo($primary, $activity, $room, $demoDate);
-        $this->refreshConflictBadges($year);
-        $this->warmAsyncConflictReadModel($year);
+        if (config('conflicts.async_reads')) {
+            $this->warmAsyncReadModel($year);
+        } else {
+            $this->warmCourseHeadBadges($year);
+        }
     }
 
     private function activateSchedulingYear(): AcademicYear
     {
         $year = AcademicYear::query()
             ->orderByDesc('start_date')
-            ->orderByDesc('semester')
+            ->orderByDesc('id')
             ->firstOrFail();
 
-        AcademicYear::query()->whereKeyNot($year->id)->update([
-            'is_active' => false,
-            'phase' => 'preparation',
-        ]);
+        AcademicYear::query()
+            ->whereKeyNot($year->id)
+            ->update(['is_active' => false]);
 
-        $year->update([
+        $year->forceFill([
             'is_active' => true,
             'phase' => 'scheduling',
-        ]);
+        ])->save();
 
-        return $year->fresh();
+        return $year->refresh();
     }
 
-    private function ensureGeneratedInstructor(CourseOffering $offering, int $number): User
+    private function activateDemoCourses(): void
     {
-        $departmentId = $offering->course?->department_id;
-        $username = "schedule_offering_{$offering->id}_instructor";
-
-        $user = User::query()->updateOrCreate(
-            ['username' => $username],
-            [
-                'prefix' => 'อ.',
-                'employee_id' => "SF{$offering->id}",
-                'name' => "Schedule Offering Instructor {$number}",
-                'email' => "{$username}@example.test",
-                'password' => Hash::make('password'),
-                'is_active' => true,
-            ]
-        );
-
-        UserRole::query()->firstOrCreate(
-            ['user_id' => $user->id, 'role' => 'instructor'],
-            ['is_primary' => true]
-        );
-
-        InstructorProfile::query()->updateOrCreate(
-            ['user_id' => $user->id],
-            [
-                'title' => 'อาจารย์',
-                'department_id' => $departmentId,
-                'teaching_pct' => 50,
-                'research_pct' => 20,
-                'service_pct' => 10,
-                'culture_pct' => 10,
-                'other_pct' => 10,
-            ]
-        );
-
-        $offering->instructorPool()->syncWithoutDetaching([
-            $user->id => ['role_in_course' => 'instructor'],
-        ]);
-
-        return $user;
+        Course::query()
+            ->whereNotNull('head_instructor_id')
+            ->orderBy('course_code')
+            ->limit(6)
+            ->get()
+            ->each(fn (Course $course) => $course->forceFill(['status' => 'active'])->save());
     }
 
-    private function ensureStudentGroup(CourseOffering $offering, string $code, int $count): StudentGroup
+    private function activeOfferings(AcademicYear $year)
     {
-        return StudentGroup::query()->firstOrCreate(
-            [
-                'course_offering_id' => $offering->id,
-                'group_code' => $code,
-            ],
-            [
-                'student_count' => $count,
-                'color_code' => '#2563eb',
-            ]
-        );
+        return CourseOffering::query()
+            ->with(['course', 'academicYear', 'studentGroups', 'instructorPool'])
+            ->where('academic_year_id', $year->id)
+            ->whereHas('course', fn ($query) => $query->where('status', 'active'))
+            ->join('courses', 'courses.id', '=', 'course_offerings.course_id')
+            ->orderBy('courses.course_code')
+            ->select('course_offerings.*')
+            ->get();
     }
 
-    /**
-     * @param  array<int>  $offeringIds
-     */
-    private function clearDemoSchedules(array $offeringIds): void
+    private function ensureStudentGroups($offerings): void
+    {
+        $colors = ['#2563eb', '#0891b2', '#16a34a', '#ca8a04', '#dc2626', '#7c3aed'];
+
+        foreach ($offerings as $index => $offering) {
+            StudentGroup::query()->updateOrCreate(
+                [
+                    'course_offering_id' => $offering->id,
+                    'group_code' => 'A1',
+                ],
+                [
+                    'student_count' => max(1, min((int) ($offering->total_student_count ?: 30), 30)),
+                    'color_code' => $colors[$index % count($colors)],
+                ]
+            );
+        }
+    }
+
+    private function ensureGeneratedInstructors($offerings): void
+    {
+        $roleId = CourseRole::query()->orderBy('id')->value('id');
+        $departmentId = Department::query()->orderBy('id')->value('id');
+
+        foreach ($offerings->values() as $index => $offering) {
+            $number = $index + 1;
+            $username = sprintf('schedule_offering_%03d', $number);
+            $name = sprintf('Schedule Flow Instructor %03d', $number);
+
+            $user = User::query()->updateOrCreate(
+                ['username' => $username],
+                [
+                    'prefix' => null,
+                    'employee_id' => sprintf('SOF%05d', $number),
+                    'name' => $name,
+                    'email' => "{$username}@example.test",
+                    'password' => 'password',
+                    'is_active' => true,
+                ]
+            );
+
+            UserRole::query()->firstOrCreate(
+                ['user_id' => $user->id, 'role' => 'instructor'],
+                ['is_primary' => true]
+            );
+
+            if ($departmentId) {
+                InstructorProfile::query()->updateOrCreate(
+                    ['user_id' => $user->id],
+                    [
+                        'title' => 'Instructor',
+                        'department_id' => $departmentId,
+                        'employment_type' => 'Demo',
+                        'academic_degree' => 'Demo',
+                        'teaching_pct' => 50,
+                        'research_pct' => 20,
+                        'service_pct' => 10,
+                        'culture_pct' => 10,
+                        'other_pct' => 10,
+                    ]
+                );
+            }
+
+            $offering->instructorPool()->syncWithoutDetaching([
+                $user->id => [
+                    'role_in_course' => 'instructor',
+                    'course_role_id' => $roleId,
+                ],
+            ]);
+        }
+    }
+
+    private function seedStackedConflictDemo(AcademicYear $year, $offerings): void
+    {
+        $primary = $offerings->first();
+        $activity = ActivityType::query()
+            ->where('category', 'practicum')
+            ->orderBy('id')
+            ->first()
+            ?? ActivityType::query()->orderBy('id')->firstOrFail();
+        $room = Room::query()
+            ->where('status', 'active')
+            ->whereHas('locationType', fn ($query) => $query->where('is_shared', false))
+            ->orderBy('id')
+            ->first()
+            ?? Room::query()->where('status', 'active')->orderBy('id')->firstOrFail();
+        $group = $primary->studentGroups()->orderBy('group_code')->firstOrFail();
+        $instructor = $primary->instructorPool()
+            ->where('username', 'like', 'schedule_offering_%')
+            ->orderBy('users.id')
+            ->first()
+            ?? $primary->instructorPool()->orderBy('users.id')->first();
+
+        $date = CarbonImmutable::parse($year->start_date)->addDays(2)->toDateString();
+
+        DB::transaction(function () use ($primary, $activity, $room, $group, $instructor, $date): void {
+            $this->deleteExistingScheduleFlowDemo($primary->id);
+
+            $rows = [
+                ['topic' => 'เวียนฐาน A', 'label' => 'A'],
+                ['topic' => 'เวียนฐาน B', 'label' => 'B'],
+                ['topic' => 'เวียนฐาน C', 'label' => 'C'],
+                ['topic' => 'อภิปรายหลังเวียนฐาน D', 'label' => 'D'],
+                ['topic' => 'อภิปรายหลังเวียนฐาน E', 'label' => 'E'],
+                ['topic' => 'สรุปผลการฝึกปฏิบัติรายกลุ่ม F', 'label' => 'F'],
+            ];
+
+            foreach ($rows as $row) {
+                $schedule = Schedule::query()->create([
+                    'course_offering_id' => $primary->id,
+                    'activity_type_id' => $activity->id,
+                    'room_id' => $room->id,
+                    'practicum_series_id' => null,
+                    'start_date' => $date,
+                    'end_date' => $date,
+                    'teaching_date' => $date,
+                    'start_time' => '09:00',
+                    'end_time' => '12:00',
+                    'topic' => $row['topic'],
+                    'capacity_required' => $group->student_count,
+                    'sub_group_label' => $row['label'],
+                    'status' => 'draft',
+                    'remark' => 'schedule_flow_demo',
+                ]);
+
+                if ($instructor) {
+                    $schedule->instructors()->sync([$instructor->id => ['is_lead' => true]]);
+                }
+
+                $schedule->studentGroups()->sync([$group->id]);
+            }
+        });
+    }
+
+    private function deleteExistingScheduleFlowDemo(int $courseOfferingId): void
     {
         Schedule::query()
-            ->whereIn('course_offering_id', $offeringIds)
+            ->where('course_offering_id', $courseOfferingId)
+            ->where(function ($query): void {
+                $query->where('remark', 'schedule_flow_demo')
+                    ->orWhere('topic', 'like', 'เวียนฐาน%')
+                    ->orWhere('topic', 'like', 'อภิปรายหลังเวียนฐาน%')
+                    ->orWhere('topic', 'like', 'สรุปผลการฝึกปฏิบัติรายกลุ่ม%');
+            })
             ->each(function (Schedule $schedule): void {
                 $schedule->instructors()->detach();
                 $schedule->studentGroups()->detach();
@@ -160,102 +243,44 @@ class ScheduleFlowSeeder extends Seeder
             });
     }
 
-    private function seedRoomConflict(
-        CourseOffering $primary,
-        CourseOffering $secondary,
-        ActivityType $activity,
-        Room $room,
-        string $date
-    ): void {
-        $this->makeSchedule($primary, $activity, $room, $date, '09:00', '11:00', 'Demo room conflict A');
-        $this->makeSchedule($secondary, $activity, $room, $date, '10:00', '12:00', 'Demo room conflict B');
-    }
-
-    private function seedStackDemo(CourseOffering $offering, ActivityType $activity, Room $room, string $date): void
+    private function warmCourseHeadBadges(AcademicYear $year): void
     {
-        $slots = [
-            ['09:00', '11:00', 'เวียนฐาน 1', 'A1'],
-            ['09:20', '11:20', 'เวียนฐาน 2', 'A2'],
-            ['09:40', '11:40', 'เวียนฐาน 3', 'A3'],
-            ['10:00', '12:00', 'อภิปรายหลังเวียนฐาน 1', 'A4'],
-            ['10:20', '12:20', 'สรุปผลการฝึกปฏิบัติรายกลุ่ม 1', 'A5'],
-            ['10:40', '12:40', 'สรุปผลการฝึกปฏิบัติรายกลุ่ม 2', 'A6'],
-        ];
-
-        foreach ($slots as [$start, $end, $topic, $label]) {
-            $this->makeSchedule($offering, $activity, $room, $date, $start, $end, $topic, $label);
-        }
-    }
-
-    private function makeSchedule(
-        CourseOffering $offering,
-        ActivityType $activity,
-        Room $room,
-        string $date,
-        string $start,
-        string $end,
-        string $topic,
-        ?string $subGroupLabel = null
-    ): Schedule {
-        $group = $offering->studentGroups()->orderBy('id')->first()
-            ?? $this->ensureStudentGroup($offering, 'A1', 30);
-        $instructor = $offering->instructorPool()->orderBy('users.id')->first();
-
-        $schedule = Schedule::query()->create([
-            'course_offering_id' => $offering->id,
-            'activity_type_id' => $activity->id,
-            'room_id' => $room->id,
-            'start_date' => $date,
-            'end_date' => $date,
-            'start_time' => $start,
-            'end_time' => $end,
-            'topic' => $topic,
-            'capacity_required' => $group->student_count,
-            'sub_group_label' => $subGroupLabel,
-            'status' => 'draft',
-        ]);
-
-        if ($instructor) {
-            $schedule->instructors()->sync([$instructor->id => ['is_lead' => true]]);
-        }
-
-        $schedule->studentGroups()->sync([$group->id]);
-
-        return $schedule;
-    }
-
-    private function refreshConflictBadges(AcademicYear $year): void
-    {
-        $service = app(NavigationBadgeService::class);
+        $badgeService = app(NavigationBadgeService::class);
 
         CourseOffering::query()
             ->where('academic_year_id', $year->id)
+            ->whereHas('course', fn ($query) => $query->where('status', 'active'))
             ->pluck('coordinator_id')
             ->filter()
+            ->map(fn ($id) => (int) $id)
             ->unique()
-            ->each(fn ($userId) => $service->refreshCourseHeadConflictCount((int) $userId, (int) $year->id));
+            ->each(fn (int $userId) => $badgeService->refreshCourseHeadConflictCount($userId, $year->id));
     }
 
-    private function warmAsyncConflictReadModel(AcademicYear $year): void
+    private function warmAsyncReadModel(AcademicYear $year): void
     {
-        if (! config('conflicts.async_reads')) {
-            return;
-        }
-
-        $generation = (int) ScheduleConflictRun::query()
+        $latestGeneration = (int) ScheduleConflictRun::query()
             ->where('academic_year_id', $year->id)
-            ->max('generation') + 1;
+            ->max('generation');
 
         $run = ScheduleConflictRun::query()->create([
             'academic_year_id' => $year->id,
             'status' => 'pending',
-            'generation' => $generation,
+            'generation' => $latestGeneration + 1,
             'source' => 'manual',
             'requested_at' => now(),
             'result_count' => 0,
+            'metadata' => ['seeded_by' => self::class],
         ]);
 
-        (new ConflictRecomputeJob((int) $year->id, (int) $run->id, $generation, 'manual'))
-            ->handle(app(ScheduleConflictIndex::class), app(ScheduleConflictInvalidationService::class));
+        (new ConflictRecomputeJob(
+            (int) $year->id,
+            (int) $run->id,
+            (int) $run->generation,
+            'manual'
+        ))->handle(
+            app(ScheduleConflictIndex::class),
+            app(ScheduleConflictInvalidationService::class)
+        );
     }
 }

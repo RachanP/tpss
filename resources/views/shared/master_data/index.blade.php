@@ -46,14 +46,13 @@
                 'instructor_role_ids' => $courseOldInstructorRoleIds,
             ],
         ];
-        $routePrefix = $routePrefix ?? (($isAdmin ?? true) ? 'admin' : 'staff');
     @endphp
     <div x-data="{
         courseFormErrorState: {{ Js::from($courseFormErrorState) }},
         activeTab: {{ Js::from($courseFormHasErrors ? 'courses' : null) }} || new URLSearchParams(window.location.search).get('tab') || 'instructors',
-        canManageCourseInstructorPool: {{ ($isAdmin ?? false) ? 'true' : 'false' }},
-        isAdminContext: {{ ($isAdmin ?? false) ? 'true' : 'false' }},
-        currentUserId: {{ (int) auth()->id() }},
+        tabLoading: false,
+        tabSwitchMinHeight: 0,
+        tabSwitchTimer: null,
         filters: {
             instructors: { keyword: '', department_id: '' },
             departments: { keyword: '' },
@@ -61,6 +60,7 @@
             courses: { keyword: '', department_id: '', curriculum_id: '', year_level: '', status: '' },
             curriculums: { keyword: '', is_active: '' },
             activity_types: { keyword: '', category: '' },
+            student_cohorts: { keyword: '', curriculum_id: '' },
         },
         validFilterIds: {
             departments: {{ Js::from($departments->pluck('id')->map(fn($id) => (string) $id)->values()) }},
@@ -76,6 +76,27 @@
         linkedCourseId: new URLSearchParams(window.location.search).get('edit_course'),
         cleanMasterDataUrl(tab = this.activeTab) {
             history.replaceState(null, '', window.location.pathname + '?tab=' + encodeURIComponent(tab));
+        },
+        setActiveTab(tab) {
+            if (this.activeTab === tab) return;
+
+            const scrollY = window.scrollY;
+            this.tabLoading = true;
+            this.tabSwitchMinHeight = Math.ceil(this.$root.getBoundingClientRect().height);
+            this.activeTab = tab;
+
+            window.clearTimeout(this.tabSwitchTimer);
+            this.$nextTick(() => {
+                window.requestAnimationFrame(() => {
+                    const maxScrollY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+                    window.scrollTo({ top: Math.min(scrollY, maxScrollY), behavior: 'auto' });
+
+                    this.tabSwitchTimer = window.setTimeout(() => {
+                        this.tabLoading = false;
+                        this.tabSwitchMinHeight = 0;
+                    }, 220);
+                });
+            });
         },
         openLinkedRecordFromQuery() {
             const link = [
@@ -539,11 +560,6 @@
         courseAssignmentsLocked() {
             return this.editCourseMode && !!this.currentCourse.has_locked_offering;
         },
-        canViewCourseDeviation() {
-            if (!this.currentCourse.course_code) return false;
-            if (this.isAdminContext) return true;
-            return this.currentCourse.status === 'active';
-        },
         filteredCourseHeadList() {
             const q = this.courseHeadSearch.toLowerCase();
             return this.courseHeadList.filter(u => !q || (u.formatted_name || u.name).toLowerCase().includes(q));
@@ -781,16 +797,49 @@
         // Activity Types
         showActivityTypeModal: false,
         editActivityTypeMode: false,
-        currentActivityType: { id: '', name: '', color_code: '#3498db', category: 'lecture' },
+        currentActivityType: { id: '', name: '', color_code: '#3498db', category: 'lecture', counts_toward_workload: true },
         openAddActivityType() {
             this.editActivityTypeMode = false;
-            this.currentActivityType = { id: '', name: '', color_code: '#3498db', category: 'lecture' };
+            this.currentActivityType = { id: '', name: '', color_code: '#3498db', category: 'lecture', counts_toward_workload: true };
             this.showActivityTypeModal = true;
         },
         openEditActivityType(at) {
             this.editActivityTypeMode = true;
-            this.currentActivityType = { ...at };
+            this.currentActivityType = { counts_toward_workload: true, ...at, counts_toward_workload: !!at.counts_toward_workload };
             this.showActivityTypeModal = true;
+        },
+        // default ตามหมวด: other = ไม่นับ · อื่น ๆ = นับ (Admin ติ๊กแก้เองได้)
+        applyWorkloadDefaultFromCategory() {
+            this.currentActivityType.counts_toward_workload = this.currentActivityType.category !== 'other';
+        },
+        showCohortModal: false,
+        editCohortMode: false,
+        cohortCurriculumDurations: {{ Js::from($cohortCurriculums->mapWithKeys(fn($c) => [(string) $c->id => (int) $c->duration_years])) }},
+        cohortCurriculumUsesYear: {{ Js::from($cohortCurriculums->mapWithKeys(fn($c) => [(string) $c->id => (bool) $c->uses_year_level])) }},
+        currentCohort: { id: '', curriculum_id: '', year_level: '', code: '', student_count: '', note: '' },
+        cohortUsesYear() {
+            return !!this.cohortCurriculumUsesYear[String(this.currentCohort.curriculum_id)];
+        },
+        cohortYearOptions() {
+            const dur = this.cohortCurriculumDurations[String(this.currentCohort.curriculum_id)] || 0;
+            return Array.from({ length: dur }, (_, i) => i + 1);
+        },
+        openAddCohort(curriculumId = '') {
+            this.editCohortMode = false;
+            this.currentCohort = { id: '', curriculum_id: curriculumId ? String(curriculumId) : '', year_level: '', code: '', student_count: '', note: '' };
+            this.showCohortModal = true;
+        },
+        openEditCohort(co) {
+            this.editCohortMode = true;
+            this.currentCohort = {
+                id: co.id,
+                curriculum_id: String(co.curriculum_id),
+                year_level: co.year_level != null ? String(co.year_level) : '',
+                code: co.code,
+                student_count: String(co.student_count),
+                note: co.note || '',
+            };
+            this.showCohortModal = true;
         },
         activityCategoryHelp(category = null) {
             const value = category || this.currentActivityType.category;
@@ -808,8 +857,11 @@
             window.tpssConfirmDelete(formId, itemLabel, warnText);
         }
     }"
+    class="master-data-page"
+    :class="{ 'is-tab-loading': tabLoading }"
+    :style="tabSwitchMinHeight ? 'min-height: ' + tabSwitchMinHeight + 'px' : ''"
     x-init="
-        if (!['departments', 'curriculums', 'courses', 'instructors', 'location_types', 'activity_types'].includes(activeTab)) {
+        if (!['departments', 'curriculums', 'student_cohorts', 'courses', 'instructors', 'location_types', 'activity_types'].includes(activeTab)) {
             activeTab = 'instructors';
             cleanMasterDataUrl(activeTab);
         }
@@ -856,6 +908,20 @@
             };
             showCurriculumModal = true;
         @endif
+        @if(old('cohort_form') && $errors->hasAny(['curriculum_id','year_level','code','student_count','note']))
+            activeTab = 'student_cohorts';
+            showCourseModal = false;
+            editCohortMode = {{ old('cohort_form_id') ? 'true' : 'false' }};
+            currentCohort = {
+                id: {{ Js::from(old('cohort_form_id', '')) }},
+                curriculum_id: {{ Js::from(old('curriculum_id', '')) }},
+                year_level: {{ Js::from(old('year_level', '')) }},
+                code: {{ Js::from(old('code', '')) }},
+                student_count: {{ Js::from(old('student_count', '')) }},
+                note: {{ Js::from(old('note', '')) }},
+            };
+            showCohortModal = true;
+        @endif
         @if(old('clone_curriculum_form') && $errors->hasAny(['name','effective_year']))
             activeTab = 'curriculums';
             cloneSourceCurriculum = {
@@ -877,7 +943,7 @@
             <div class="tabs"
                 style="display: flex; gap: 8px; background: var(--bg-2); padding: 4px; border-radius: 8px; border: 1px solid var(--border); overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch;">
                 {{-- 1. ภาควิชา (ต้องมีก่อนสร้างหลักสูตร/อาจารย์) --}}
-                <button type="button" @click="activeTab = 'departments'"
+                <button type="button" @click="setActiveTab('departments')"
                     :class="activeTab === 'departments' ? 'btn-primary' : 'btn btn-ghost'"
                     style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
@@ -889,7 +955,7 @@
                     @if(!$isAdmin)@include('shared.master_data._lock_icon')@endif
                 </button>
                 {{-- 2. หลักสูตร (ต้องมีก่อนสร้างรายวิชา/กลุ่ม) --}}
-                <button type="button" data-testid="master-data-tab-curriculums" @click="activeTab = 'curriculums'"
+                <button type="button" data-testid="master-data-tab-curriculums" @click="setActiveTab('curriculums')"
                     :class="activeTab === 'curriculums' ? 'btn-primary' : 'btn btn-ghost'"
                     style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
@@ -899,8 +965,22 @@
                     หลักสูตร
                     @if(!$isAdmin)@include('shared.master_data._lock_icon')@endif
                 </button>
+                {{-- 2b. กลุ่มชั้นปี (cohort — V2, ป.ตรี) --}}
+                <button type="button" data-testid="master-data-tab-student-cohorts" @click="setActiveTab('student_cohorts')"
+                    :class="activeTab === 'student_cohorts' ? 'btn-primary' : 'btn btn-ghost'"
+                    style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+                        style="margin-right: 6px;">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    กลุ่มนักศึกษา
+                    @if(!$isAdmin)@include('shared.master_data._lock_icon')@endif
+                </button>
                 {{-- 3. รายวิชา (ต้องมีหลักสูตรก่อน) --}}
-                <button type="button" data-testid="master-data-tab-courses" @click="activeTab = 'courses'"
+                <button type="button" data-testid="master-data-tab-courses" @click="setActiveTab('courses')"
                     :class="activeTab === 'courses' ? 'btn-primary' : 'btn btn-ghost'"
                     style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
@@ -911,7 +991,7 @@
                     รายวิชา
                 </button>
                 {{-- 4. อาจารย์ผู้สอน (ต้องมีภาควิชาก่อน) --}}
-                <button type="button" @click="activeTab = 'instructors'"
+                <button type="button" @click="setActiveTab('instructors')"
                     :class="activeTab === 'instructors' ? 'btn-primary' : 'btn btn-ghost'"
                     style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
@@ -925,7 +1005,7 @@
                     @if(!$isAdmin)@include('shared.master_data._lock_icon')@endif
                 </button>
                 {{-- 5. ห้องและสถานที่ (รวมประเภท) --}}
-                <button type="button" @click="activeTab = 'location_types'"
+                <button type="button" @click="setActiveTab('location_types')"
                     :class="activeTab === 'location_types' ? 'btn-primary' : 'btn btn-ghost'"
                     style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
@@ -936,7 +1016,7 @@
                     ห้องและสถานที่
                 </button>
                 {{-- 8. ประเภทกิจกรรม (ใช้ตอนสร้างตาราง) --}}
-                <button type="button" @click="activeTab = 'activity_types'"
+                <button type="button" @click="setActiveTab('activity_types')"
                     :class="activeTab === 'activity_types' ? 'btn-primary' : 'btn btn-ghost'"
                     style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
@@ -947,6 +1027,19 @@
                     @if(!$isAdmin)@include('shared.master_data._lock_icon')@endif
                 </button>
 
+            </div>
+        </div>
+
+        <div class="m7-tab-skeleton" x-show="tabLoading" x-transition.opacity>
+            <div class="m7-skel-toolbar">
+                <span></span>
+                <span></span>
+            </div>
+            <div class="m7-skel-table">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
             </div>
         </div>
 
@@ -1527,7 +1620,7 @@
                                         <div style="font-size: 11px; color: var(--fg-3); font-style: italic;">{{ $course->name_en ?? '-' }}</div>
                                         <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px;">
                                             @if($course->default_year_level)
-                                                <span style="font-size: 10px; font-weight: 600; color: var(--fg-1); background: var(--bg-2); border: 1px solid var(--border-strong, #c8cdd6); border-radius: 4px; padding: 2px 7px; white-space: nowrap;">ปี {{ $course->default_year_level }} · ภาค {{ $course->default_semester == 3 ? 'ฤดูร้อน' : $course->default_semester }}</span>
+                                                <span style="font-size: 10px; font-weight: 600; color: var(--fg-1); background: var(--bg-2); border: 1px solid var(--border-strong, #c8cdd6); border-radius: 4px; padding: 2px 7px; white-space: nowrap;">ปี {{ $course->default_year_level }}</span>
                                             @endif
                                             @if($course->capacity)
                                                 <span style="font-size: 10px; font-weight: 600; color: #1a56a0; background: #e8f0fb; border: 1px solid #b3cdf0; border-radius: 4px; padding: 2px 7px; white-space: nowrap;">รับ {{ number_format($course->capacity) }} คน</span>
@@ -1570,9 +1663,9 @@
                                     </td>
                                     <td style="text-align: center;">
                                         <div style="display:inline-flex;gap:6px;align-items:center;">
-                                            @if((($isAdmin ?? false) && ($course->has_locked_offering ?? false)) || (!($isAdmin ?? false) && $course->status === 'active'))
+                                            @if($isAdmin && $course->has_locked_offering)
                                                 <a
-                                                    href="{{ route($routePrefix . '.courses.instructor_deviation', $course) }}"
+                                                    href="{{ route('admin.courses.instructor_deviation', $course) }}"
                                                     class="action-btn"
                                                     data-testid="courses-deviation-button"
                                                     title="{{ ($course->has_deviation ?? false) ? 'มีการเปลี่ยนแปลงนอกเหนือจากแม่แบบ — กดดูรายละเอียด' : 'ดูการใช้งานจริงของแม่แบบผู้สอน' }}"
@@ -2344,8 +2437,8 @@
                         </template>
                         <template x-for="user in selectedCourseInstructors" :key="`course-instructor-${user.id}`">
                             <div>
-                                <input type="hidden" name="instructor_ids[]" :value="user.id" :disabled="courseAssignmentsLocked() || !canManageCourseInstructorPool">
-                                <input type="hidden" :name="`instructor_role_ids[${user.id}]`" :value="user.course_role_id" :disabled="courseAssignmentsLocked() || !canManageCourseInstructorPool">
+                                <input type="hidden" name="instructor_ids[]" :value="user.id" :disabled="courseAssignmentsLocked()">
+                                <input type="hidden" :name="`instructor_role_ids[${user.id}]`" :value="user.course_role_id" :disabled="courseAssignmentsLocked()">
                             </div>
                         </template>
                         <div class="modal-body course-modal-body">
@@ -2411,34 +2504,24 @@
                                 <div class="course-assignment-head">
                                     <div>
                                         <div class="course-assignment-title">ผู้รับผิดชอบรายวิชา</div>
-                                        <div class="course-assignment-copy">
-                                            @if($isAdmin ?? false)
-                                                กำหนดหัวหน้าวิชา เจ้าหน้าที่ดูแล และบทบาทอาจารย์ผู้สอนจาก modal รายวิชานี้
-                                            @else
-                                                Staff แก้หัวหน้าวิชาและเจ้าหน้าที่ดูแลได้ ส่วนอาจารย์ผู้สอนล็อกไว้ให้ Admin/Course Head จัดการ
-                                            @endif
-                                        </div>
+                                        <div class="course-assignment-copy">กำหนดหัวหน้าวิชา เจ้าหน้าที่ดูแล และบทบาทอาจารย์ผู้สอนจาก modal รายวิชานี้</div>
                                     </div>
                                     <span class="course-lock-badge" x-show="courseAssignmentsLocked()">ล็อกแล้ว</span>
-                                    @unless($isAdmin ?? false)
-                                        <span class="course-lock-badge" x-show="!courseAssignmentsLocked()">ล็อกผู้สอน</span>
-                                    @endunless
                                 </div>
 
                                 <div class="course-lock-note" x-show="courseAssignmentsLocked()">
                                     <div>แม่แบบผู้รับผิดชอบถูกล็อกแล้ว เพราะรายวิชานี้มี Course Offering ที่อยู่ในช่วงจัดตารางหรือเผยแพร่แล้ว แก้ชุดผู้สอนในหน้า Course Offering ของรอบนั้น</div>
-                                </div>
-
-                                <div class="course-lock-note" x-show="canViewCourseDeviation()">
-                                    <a x-show="canViewCourseDeviation()"
-                                        :href="'{{ url($routePrefix . '/master-data/courses') }}/' + encodeURIComponent(currentCourse.course_code) + '/instructor-deviation'"
-                                        data-testid="course-deviation-link"
-                                        style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:0.8125rem;font-weight:600;color:var(--brand-navy);text-decoration:underline;">
-                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M14 3h7v7"/><line x1="10" y1="14" x2="21" y2="3"/><path d="M21 14v7H3V3h7"/>
-                                        </svg>
-                                        ดูการใช้งานจริงของแม่แบบในแต่ละรอบเปิดสอน
-                                    </a>
+                                    @if($isAdmin ?? true)
+                                        <a x-show="currentCourse.course_code"
+                                            :href="'{{ url('/admin/master-data/courses') }}/' + encodeURIComponent(currentCourse.course_code) + '/instructor-deviation'"
+                                            data-testid="course-deviation-link"
+                                            style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:0.8125rem;font-weight:600;color:var(--brand-navy);text-decoration:underline;">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M14 3h7v7"/><line x1="10" y1="14" x2="21" y2="3"/><path d="M21 14v7H3V3h7"/>
+                                            </svg>
+                                            ดูการใช้งานจริงของแม่แบบในแต่ละรอบเปิดสอน
+                                        </a>
+                                    @endif
                                 </div>
 
                                 <div class="course-assignment-grid">
@@ -2499,18 +2582,12 @@
                                     <div class="course-instructor-head">
                                         <div>
                                             <label style="display:block;margin-bottom:3px;">อาจารย์ผู้สอน</label>
-                                            <div class="course-assignment-copy">
-                                                @if($isAdmin ?? false)
-                                                    เลือกอาจารย์และกำหนดตำแหน่งในรายวิชา
-                                                @else
-                                                    อ่านได้อย่างเดียวในบทบาท Staff เพื่อรักษา instructor pool เดิมของ Admin/Course Head
-                                                @endif
-                                            </div>
+                                            <div class="course-assignment-copy">เลือกอาจารย์และกำหนดตำแหน่งในรายวิชา</div>
                                         </div>
                                         <span class="course-count-badge" x-text="selectedCourseInstructors.length + ' คน'"></span>
                                     </div>
 
-                                    <div class="course-instructor-search" x-show="canManageCourseInstructorPool && !courseAssignmentsLocked()" @click.outside="showCourseInstructorDropdown = false">
+                                    <div class="course-instructor-search" x-show="!courseAssignmentsLocked()" @click.outside="showCourseInstructorDropdown = false">
                                         <input type="text" x-model="courseInstructorSearch"
                                             @focus="showCourseInstructorDropdown = true"
                                             @input="showCourseInstructorDropdown = true"
@@ -2539,12 +2616,12 @@
                                                     <strong x-text="user.name"></strong>
                                                     <span x-text="user.department"></span>
                                                 </div>
-                                                <select x-model="user.course_role_id" :disabled="courseAssignmentsLocked() || !canManageCourseInstructorPool">
+                                                <select x-model="user.course_role_id" :disabled="courseAssignmentsLocked()">
                                                     <template x-for="role in courseRoleOptions" :key="role.id">
                                                         <option :value="role.id" x-text="role.name"></option>
                                                     </template>
                                                 </select>
-                                                <button type="button" x-show="canManageCourseInstructorPool && !courseAssignmentsLocked()" class="course-remove-btn" @click="removeCourseInstructor(user.id)" aria-label="ลบอาจารย์">
+                                                <button type="button" x-show="!courseAssignmentsLocked()" class="course-remove-btn" @click="removeCourseInstructor(user.id)" aria-label="ลบอาจารย์">
                                                     <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
                                                         <line x1="18" y1="6" x2="6" y2="18"/>
                                                         <line x1="6" y1="6" x2="18" y2="18"/>
@@ -2578,15 +2655,7 @@
                                             ไม่ใช้ระบบชั้นปี — กำหนดผ่าน prerequisite/หน่วยกิตสะสม
                                         </div>
                                     </div>
-                                    <div class="form-group">
-                                        <label>ภาคเรียนตามแผน <span style="color:var(--status-conflict-fg)">*</span></label>
-                                        <select name="default_semester" x-model="currentCourse.default_semester" required>
-                                            <option value="">-- เลือกภาคเรียน --</option>
-                                            <option value="1">ภาคเรียนที่ 1</option>
-                                            <option value="2">ภาคเรียนที่ 2</option>
-                                            <option value="3">ภาคฤดูร้อน</option>
-                                        </select>
-                                    </div>
+                                    {{-- V2: วิชาเปิดทั้งปี — ตัด field ภาคเรียนตามแผนออก (เทอมเป็นป้ายของแต่ละ slot) --}}
                                     <div class="form-group">
                                         <label>ประเภทวิชา</label>
                                         <select name="is_required" x-model="currentCourse.is_required">
@@ -2850,6 +2919,7 @@
                                 <th>สี</th>
                                 <th>ชื่อประเภทกิจกรรม</th>
                                 <th>หมวดหมู่</th>
+                                <th>ภาระงาน</th>
                                 @if($isAdmin)<th style="text-align: center;">จัดการ</th>@endif
                             </tr>
                         </thead>
@@ -2857,6 +2927,13 @@
                             @forelse($activityTypes as $at)
                                 @php
                                     $catLabel = ['lecture' => 'บรรยาย', 'practicum' => 'ปฏิบัติ', 'thesis' => 'วิทยานิพนธ์', 'other' => 'อื่นๆ'];
+                                    $pillShape = 'border-radius:999px;padding:0 11px;height:21px;';
+                                    $catStyle = [
+                                        'lecture'   => 'background:#eef4ff;color:#1e40af;border:1px solid #c7d7fe;',
+                                        'practicum' => 'background:#f3effd;color:#6b21a8;border:1px solid #ddd0f7;',
+                                        'thesis'    => 'background:#eef6f9;color:#155e75;border:1px solid #cce4ed;',
+                                        'other'     => 'background:#f7fafc;color:#475569;border:1px solid #e2e8f0;',
+                                    ];
                                 @endphp
                                 <tr
                                     data-search="{{ Str::lower($at->name . ' ' . $at->category . ' ' . ($catLabel[$at->category] ?? '') . ' ' . ($at->color_code ?? '')) }}"
@@ -2867,12 +2944,19 @@
                                     </td>
                                     <td style="font-weight: 600; color: var(--fg-1);">{{ $at->name }}</td>
                                     <td>
-                                        <span class="pill pill-neutral">{{ $catLabel[$at->category] ?? $at->category }}</span>
+                                        <span class="pill" style="{{ $catStyle[$at->category] ?? $catStyle['other'] }}{{ $pillShape }}">{{ $catLabel[$at->category] ?? $at->category }}</span>
+                                    </td>
+                                    <td>
+                                        @if($at->counts_toward_workload)
+                                            <span class="pill" style="background:#e6fffa;color:#047481;border:1px solid #b2f5ea;{{ $pillShape }}">นับภาระงาน</span>
+                                        @else
+                                            <span class="pill" style="background:#f7fafc;color:#718096;border:1px solid #e2e8f0;{{ $pillShape }}">ไม่นับ</span>
+                                        @endif
                                     </td>
                                     @if($isAdmin)
                                     <td style="text-align: center;">
                                         <button type="button" class="action-btn" title="แก้ไข"
-                                            @click="openEditActivityType({{ Js::from(['id' => $at->id, 'name' => $at->name, 'color_code' => $at->color_code, 'category' => $at->category]) }})">
+                                            @click="openEditActivityType({{ Js::from(['id' => $at->id, 'name' => $at->name, 'color_code' => $at->color_code, 'category' => $at->category, 'counts_toward_workload' => $at->counts_toward_workload]) }})">
                                             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                         </button>
                                     </td>
@@ -2880,7 +2964,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" style="text-align: center; color: var(--fg-3); padding: 40px;">ยังไม่มีประเภทกิจกรรม</td>
+                                    <td colspan="{{ $isAdmin ? 5 : 4 }}" style="text-align: center; color: var(--fg-3); padding: 40px;">ยังไม่มีประเภทกิจกรรม</td>
                                 </tr>
                             @endforelse
                             <tr
@@ -2920,7 +3004,7 @@
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                                 <div class="form-group">
                                     <label>หมวดหมู่ <span style="color: var(--status-conflict-fg)">*</span></label>
-                                    <select name="category" x-model="currentActivityType.category" required>
+                                    <select name="category" x-model="currentActivityType.category" required @change="applyWorkloadDefaultFromCategory()">
                                         <option value="lecture">บรรยาย (Lecture)</option>
                                         <option value="practicum">ปฏิบัติ (Practicum)</option>
                                         <option value="thesis">วิทยานิพนธ์ (Thesis)</option>
@@ -2954,6 +3038,13 @@
                                     </div>
                                 </div>
                             </div>
+                            <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-2);">
+                                <input type="checkbox" name="counts_toward_workload" value="1" x-model="currentActivityType.counts_toward_workload" style="margin-top: 2px; flex-shrink: 0; width: 16px; height: 16px; accent-color: var(--brand-navy);">
+                                <div>
+                                    <div style="font-size: 13px; font-weight: 600; color: var(--fg-1);">นับเป็นภาระงานสอนของอาจารย์</div>
+                                    <div style="font-size: 12px; color: var(--fg-3); margin-top: 2px;">เช่น ปฐมนิเทศ / SDL / สอบ / วันหยุด มักไม่นับ — ระบบตั้งค่าเริ่มต้นให้ตามหมวด (ปรับเองได้)</div>
+                                </div>
+                            </label>
                         </div>
                         <div class="modal-foot" style="display: flex; justify-content: space-between;">
                             <div>
@@ -2977,6 +3068,219 @@
                 </div>
             </div>
         </template>
+
+        <!-- Tab: Student Cohorts (กลุ่มนักศึกษา — V2) -->
+        @php
+            $eduLabel = ['bachelor' => 'ปริญญาตรี', 'master' => 'ปริญญาโท', 'doctorate' => 'ปริญญาเอก'];
+        @endphp
+        <div x-show="activeTab === 'student_cohorts'" x-cloak>
+            <div class="card">
+                <div class="card-hdr">
+                    <div>
+                        <div class="card-ttl">กลุ่มนักศึกษาแต่ละหลักสูตร</div>
+                    </div>
+                    @if($isAdmin)
+                    <div class="card-actions">
+                        <button class="btn btn-primary" @click="openAddCohort()">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            เพิ่มกลุ่มนักศึกษา
+                        </button>
+                    </div>
+                    @endif
+                </div>
+
+                <div class="curriculum-list" x-data="{ expandedCohort: null }" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 8px;">
+                    @forelse($cohortCurriculums as $cur)
+                        <div class="curriculum-list-item" style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+
+                            {{-- Header --}}
+                            <div @click="expandedCohort = expandedCohort === {{ $cur->id }} ? null : {{ $cur->id }}"
+                                style="cursor: pointer; user-select: none; transition: background 0.15s;"
+                                :style="expandedCohort === {{ $cur->id }} ? 'background: #f0f4ff;' : 'background: #fff;'">
+                            <div class="curriculum-card-head" style="display: flex; align-items: center; gap: 16px; padding: 14px 16px;">
+
+                                {{-- Chevron --}}
+                                <div class="curriculum-card-chevron" style="flex-shrink: 0; width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: background 0.15s;"
+                                    :style="expandedCohort === {{ $cur->id }} ? 'background: var(--brand-navy);' : 'background: var(--bg-3);'">
+                                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                                        style="transition: transform 0.2s;"
+                                        :style="expandedCohort === {{ $cur->id }} ? 'transform:rotate(90deg); color:#fff' : 'color: var(--fg-3)'">
+                                        <polyline points="9 18 15 12 9 6"/>
+                                    </svg>
+                                </div>
+
+                                {{-- Name + level --}}
+                                <div class="curriculum-card-title-block" style="flex: 1; min-width: 0;">
+                                    <div class="curriculum-card-title" style="font-weight: 600; font-size: 14px; color: var(--fg-1);">{{ $cur->name }}</div>
+                                    <div class="curriculum-card-year" style="margin-top: 3px; font-size: 12px; color: var(--fg-3);">
+                                        {{ $eduLabel[$cur->education_level] ?? $cur->education_level }}@if($cur->uses_year_level) · แบ่งตามชั้นปี (ปี 1-{{ $cur->duration_years }})@else · ไม่ผูกชั้นปี@endif
+                                    </div>
+                                </div>
+
+                                {{-- Group count --}}
+                                @if($cur->studentCohorts->count() > 0)
+                                <div class="curriculum-card-count" style="flex-shrink: 0; background: var(--bg-3); border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 700; color: var(--fg-2);">
+                                    {{ $cur->studentCohorts->count() }} กลุ่ม
+                                </div>
+                                @else
+                                <div class="curriculum-card-count" style="flex-shrink: 0; font-size: 12px; color: var(--fg-4, #94a3b8);">ยังไม่มีกลุ่ม</div>
+                                @endif
+
+                                {{-- Actions (admin only) — เพิ่มกลุ่มในหลักสูตรนี้ (auto-fill หลักสูตรใน modal) --}}
+                                @if($isAdmin)
+                                <div class="curriculum-card-actions" @click.stop style="flex-shrink: 0; display: flex; gap: 4px;">
+                                    <button type="button" class="action-btn" title="เพิ่มกลุ่มในหลักสูตรนี้" @click.stop="openAddCohort({{ $cur->id }})" style="color: var(--brand-navy);">
+                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                    </button>
+                                </div>
+                                @endif
+
+                            </div>{{-- /flex inner --}}
+                            </div>{{-- /click outer --}}
+
+                            {{-- Expanded cohort list --}}
+                            <div x-show="expandedCohort === {{ $cur->id }}" x-cloak
+                                x-transition:enter="transition ease-out duration-150"
+                                x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                                x-transition:leave="transition ease-in duration-100"
+                                x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                                style="border-top: 1px solid var(--border);">
+
+                                @if($cur->studentCohorts->count() > 0)
+                                    <table style="width: 100%; border-collapse: collapse;">
+                                        <thead>
+                                            <tr style="background: var(--bg-2);">
+                                                @if($cur->uses_year_level)
+                                                <th style="padding: 8px 16px 8px 56px; text-align: left; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">ชั้นปี</th>
+                                                <th style="padding: 8px 16px; text-align: left; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">รหัสกลุ่ม</th>
+                                                @else
+                                                <th style="padding: 8px 16px 8px 56px; text-align: left; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">รหัสกลุ่ม</th>
+                                                @endif
+                                                <th style="padding: 8px 16px; text-align: center; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em; width: 180px;">จำนวนนักศึกษา</th>
+                                                @if($isAdmin)<th style="padding: 8px 16px; text-align: center; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em; width: 80px;">จัดการ</th>@endif
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($cur->studentCohorts as $co)
+                                                <tr style="border-top: 1px solid var(--border); transition: background 0.1s;"
+                                                    onmouseover="this.style.background='var(--bg-2)'" onmouseout="this.style.background=''">
+                                                    @if($cur->uses_year_level)
+                                                    <td style="padding: 11px 16px 11px 56px; font-size: 13px; color: var(--fg-2);">@if($co->year_level)ปี {{ $co->year_level }}@else<span style="color: var(--fg-3);">—</span>@endif</td>
+                                                    <td style="padding: 11px 16px; font-size: 13px; font-weight: 600; color: var(--fg-1);">{{ $co->code }}</td>
+                                                    @else
+                                                    <td style="padding: 11px 16px 11px 56px; font-size: 13px; font-weight: 600; color: var(--fg-1);">{{ $co->code }}</td>
+                                                    @endif
+                                                    <td style="padding: 11px 16px; font-size: 13px; color: var(--fg-2); text-align: center; font-family: var(--font-mono, monospace);">{{ number_format($co->student_count) }} คน</td>
+                                                    @if($isAdmin)
+                                                    <td style="padding: 11px 16px; text-align: center;">
+                                                        <button type="button" class="action-btn" title="แก้ไข"
+                                                            @click="openEditCohort({{ Js::from(['id' => $co->id, 'curriculum_id' => $co->curriculum_id, 'year_level' => $co->year_level, 'code' => $co->code, 'student_count' => $co->student_count, 'note' => $co->note]) }})">
+                                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                                        </button>
+                                                    </td>
+                                                    @endif
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                @else
+                                    <div style="padding: 20px 56px; font-size: 13px; color: var(--fg-3);">ยังไม่มีกลุ่มในหลักสูตรนี้@if($isAdmin) — กดปุ่ม "เพิ่มกลุ่มนักศึกษา" ด้านบน@endif</div>
+                                @endif
+                            </div>
+
+                        </div>
+                    @empty
+                        <div style="text-align: center; padding: 48px 20px; color: var(--fg-3);">ยังไม่มีหลักสูตร — เพิ่มหลักสูตรในแท็บ "หลักสูตร" ก่อน</div>
+                    @endforelse
+                </div>
+            </div>
+        </div>
+
+        @if($isAdmin)
+        <!-- Add/Edit Modal (Student Cohort) -->
+        <template x-if="showCohortModal">
+            <div class="overlay" x-cloak>
+                <div class="modal-center" style="max-width: 520px;"
+                    x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95"
+                    x-transition:enter-end="opacity-100 scale-100">
+                    <div class="modal-hdr" style="background: var(--bg-2);">
+                        <div class="modal-ttl" style="font-family: var(--font-display);"
+                            x-text="editCohortMode ? 'แก้ไขกลุ่มชั้นปี' : 'เพิ่มกลุ่มชั้นปีใหม่'"></div>
+                        <button type="button" class="modal-cls" @click="showCohortModal = false">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <form :action="editCohortMode ? '{{ url('admin/master-data/student-cohorts') }}/' + currentCohort.id : '{{ route('admin.student_cohorts.store') }}'" method="POST">
+                        @csrf
+                        <input type="hidden" name="cohort_form" value="1">
+                        <input type="hidden" name="cohort_form_id" :value="currentCohort.id">
+                        <input type="hidden" name="_method" value="PUT" :disabled="!editCohortMode">
+                        <div class="modal-body">
+                            <div class="form-group" style="margin-bottom: 18px;">
+                                <label>หลักสูตร <span style="color: var(--status-conflict-fg)">*</span></label>
+                                <select name="curriculum_id" x-model="currentCohort.curriculum_id" required
+                                    @change="if (!cohortYearOptions().includes(Number(currentCohort.year_level))) currentCohort.year_level = ''">
+                                    <option value="">— เลือกหลักสูตร —</option>
+                                    @foreach($cohortCurriculums as $cur)
+                                        <option value="{{ $cur->id }}">{{ $cur->name }}@if($cur->uses_year_level) (ปี 1-{{ $cur->duration_years }})@endif</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 18px;" x-show="cohortUsesYear()">
+                                <label>ชั้นปี <span style="color: var(--status-conflict-fg)">*</span></label>
+                                <select name="year_level" x-model="currentCohort.year_level" :required="cohortUsesYear()" :disabled="!currentCohort.curriculum_id">
+                                    <option value="">— เลือกชั้นปี —</option>
+                                    <template x-for="y in cohortYearOptions()" :key="y">
+                                        <option :value="y" x-text="'ปี ' + y"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 18px;" x-show="currentCohort.curriculum_id && !cohortUsesYear()" x-cloak>
+                                <div style="font-size:12px;line-height:1.55;color:var(--fg-3);padding:8px 10px;background:var(--bg-2);border-radius:6px;">
+                                    หลักสูตรนี้ไม่ใช้ระบบชั้นปี (ใช้ prerequisite + หน่วยกิตสะสม) — กลุ่มนี้จะไม่ผูกกับชั้นปี
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 18px;">
+                                <label>จำนวนนักศึกษา <span style="color: var(--status-conflict-fg)">*</span></label>
+                                <input type="number" name="student_count" x-model="currentCohort.student_count" min="0" max="9999" required placeholder="เช่น 80">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 18px;">
+                                <label>รหัสกลุ่ม <span style="color: var(--status-conflict-fg)">*</span></label>
+                                <input type="text" name="code" x-model="currentCohort.code" maxlength="50" required placeholder="เช่น กลุ่ม 1, A">
+                                <div style="margin-top:6px;font-size:12px;color:var(--fg-3);">รหัสกลุ่มต้องไม่ซ้ำในชั้นปีเดียวกันของหลักสูตรนี้</div>
+                            </div>
+                            <div class="form-group">
+                                <label>หมายเหตุ</label>
+                                <input type="text" name="note" x-model="currentCohort.note" maxlength="255" placeholder="(ถ้ามี)">
+                            </div>
+                        </div>
+                        <div class="modal-foot" style="display: flex; justify-content: space-between;">
+                            <div>
+                                <button type="button" class="btn btn-ghost" x-show="editCohortMode"
+                                    @click="confirmDelete('deleteCohortForm', currentCohort.code, 'กลุ่มชั้นปีที่ลบแล้วจะไม่สามารถกู้คืนได้')"
+                                    style="color: var(--status-conflict-fg);">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; display: inline-block; vertical-align: middle;"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                    ลบข้อมูล
+                                </button>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" class="btn btn-ghost" @click="showCohortModal = false">ยกเลิก</button>
+                                <button type="submit" class="btn btn-primary">บันทึกข้อมูล</button>
+                            </div>
+                        </div>
+                    </form>
+                    <form id="deleteCohortForm" :action="'{{ url('admin/master-data/student-cohorts') }}/' + currentCohort.id" method="POST" style="display: none;">
+                        @csrf
+                        @method('DELETE')
+                    </form>
+                </div>
+            </div>
+        </template>
+        @endif
 
         <!-- Clone Curriculum Modal -->
         <template x-if="showCloneCurriculumModal">
@@ -3189,6 +3493,66 @@
             background: var(--bg-3);
         }
 
+        .master-data-page.is-tab-loading > [x-show*="activeTab ==="] {
+            display: none !important;
+        }
+
+        .m7-tab-skeleton {
+            margin-bottom: 22px;
+            padding: 16px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 12%, var(--border));
+            border-radius: var(--r-lg);
+            background: var(--surface);
+            box-shadow:
+                0 1px 2px rgba(0, 36, 84, 0.05),
+                0 16px 34px -28px rgba(0, 36, 84, 0.26);
+        }
+
+        .m7-skel-toolbar {
+            display: flex;
+            justify-content: space-between;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+
+        .m7-skel-toolbar span,
+        .m7-skel-table span {
+            display: block;
+            border-radius: var(--r-md);
+            background:
+                linear-gradient(90deg,
+                    color-mix(in oklch, var(--bg-2) 84%, var(--surface)) 0%,
+                    color-mix(in oklch, var(--brand-navy) 5%, var(--surface)) 44%,
+                    color-mix(in oklch, var(--bg-2) 84%, var(--surface)) 86%);
+            background-size: 220% 100%;
+            animation: m7Skeleton 1150ms ease-in-out infinite;
+        }
+
+        .m7-skel-toolbar span:first-child {
+            width: min(420px, 62%);
+            height: 42px;
+        }
+
+        .m7-skel-toolbar span:last-child {
+            width: 168px;
+            height: 42px;
+        }
+
+        .m7-skel-table {
+            display: grid;
+            gap: 10px;
+        }
+
+        .m7-skel-table span {
+            height: 58px;
+            border-radius: var(--r-sm);
+        }
+
+        @keyframes m7Skeleton {
+            0% { background-position: 120% 0; }
+            100% { background-position: -120% 0; }
+        }
+
         .m7-filter-bar {
             display: flex;
             flex-wrap: wrap;
@@ -3324,6 +3688,23 @@
         }
 
         @media (max-width: 760px) {
+            .m7-tab-skeleton {
+                padding: 12px;
+            }
+
+            .m7-skel-toolbar {
+                flex-direction: column;
+            }
+
+            .m7-skel-toolbar span:first-child,
+            .m7-skel-toolbar span:last-child {
+                width: 100%;
+            }
+
+            .m7-skel-table span {
+                height: 52px;
+            }
+
             .m7-filter-bar {
                 padding: 12px;
             }

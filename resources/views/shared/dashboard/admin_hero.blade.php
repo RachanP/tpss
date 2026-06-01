@@ -86,7 +86,7 @@
         [
             'label' => 'ปีการศึกษา',
             'meta' => $currentAcademicYear
-                ? $currentAcademicYear->name . ' / เทอม ' . $currentAcademicYear->semester
+                ? 'ปีการศึกษา ' . $currentAcademicYear->name
                 : 'ยังไม่ได้ตั้งค่า',
             'status' => $currentAcademicYear ? 'พร้อม' : 'ยังไม่ตั้งค่า',
             'tone' => $currentAcademicYear ? 'success' : 'warning',
@@ -124,6 +124,21 @@
             'action' => 'ไปจัดการหัวหน้าวิชา',
         ],
     ];
+
+    // Visual phase stepper — lifecycle รอบปีการศึกษา (เตรียม → เปิดจัดตาราง → เผยแพร่)
+    $phaseOrder = ['preparation', 'scheduling', 'published'];
+    $currentPhaseIndex = $currentAcademicYear ? array_search($currentPhase, $phaseOrder, true) : -1;
+    $phaseSteps = [
+        ['label' => 'เตรียมข้อมูล', 'sub' => 'ตั้งค่า + ข้อมูลหลัก'],
+        ['label' => 'เปิดจัดตาราง', 'sub' => 'หัวหน้าวิชาจัดตาราง'],
+        ['label' => 'เผยแพร่ตาราง', 'sub' => 'อนุมัติ + เผยแพร่ตาราง'],
+    ];
+    foreach ($phaseSteps as $idx => &$step) {
+        $step['state'] = $currentPhaseIndex < 0
+            ? 'upcoming'
+            : ($idx < $currentPhaseIndex ? 'done' : ($idx === $currentPhaseIndex ? 'current' : 'upcoming'));
+    }
+    unset($step);
 @endphp
 
 <div class="card admin-hero-card" data-testid="admin-hero">
@@ -131,13 +146,12 @@
         <div class="admin-hero-copy">
             <div class="admin-hero-kicker">ภาพรวม / ผู้ดูแลระบบ</div>
             <h1>ภาพรวมระบบ</h1>
-            <p>สรุปสถานะระบบ ความพร้อมข้อมูลพื้นฐาน และภาระงานสอนของคณะ</p>
         </div>
 
         <div class="admin-status-control-row">
             <span class="admin-year-badge {{ $currentAcademicYear ? '' : 'is-warning' }}">
                 @if($currentAcademicYear)
-                    ปีการศึกษา {{ $currentAcademicYear->name }} / เทอม {{ $currentAcademicYear->semester }}
+                    ปีการศึกษา {{ $currentAcademicYear->name }}
                 @else
                     ยังไม่ได้ตั้งค่าปีการศึกษา
                 @endif
@@ -153,13 +167,14 @@
     <div class="admin-status-banner is-{{ $systemStatus['tone'] }}">
         <div class="admin-status-primary">
             <div class="admin-status-state">
-                <span class="admin-status-marker" aria-hidden="true"></span>
                 <div class="admin-status-text">
-                    <div class="admin-status-label">สถานะระบบปัจจุบัน</div>
-                    <div class="admin-status-title">{{ $systemStatus['title'] }}</div>
-                    <div class="admin-status-meta">
-                        <span class="pill {{ $systemStatus['pill'] }}">{{ $phaseMeta['label'] }}</span>
-                        <span>{{ $systemStatus['label'] }}</span>
+                    <div class="admin-status-label">
+                        <span>สถานะระบบปัจจุบัน</span>
+                        <span class="pill {{ $systemStatus['pill'] }} admin-status-phase-pill">{{ $phaseMeta['label'] }}</span>
+                    </div>
+                    <div class="admin-status-headline">
+                        <span class="admin-status-marker" aria-hidden="true"></span>
+                        <div class="admin-status-title">{{ $systemStatus['title'] }}</div>
                     </div>
                 </div>
             </div>
@@ -168,13 +183,46 @@
             <div class="admin-status-next">
                 ขั้นตอนถัดไป: {{ $systemStatus['actionLabel'] }} · {{ $nextPhaseLabel }}
             </div>
+
+            <div class="admin-phase-stepper is-phase-{{ $currentPhaseIndex < 0 ? 'none' : $currentPhaseIndex }}" aria-label="ขั้นตอนรอบปีการศึกษา" data-testid="admin-phase-stepper">
+                @foreach($phaseSteps as $idx => $step)
+                    <div class="phase-step is-{{ $step['state'] }}">
+                        <div class="phase-step-node" aria-hidden="true">
+                            @if($step['state'] === 'done')
+                                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                            @elseif($step['state'] === 'current')
+                                <span class="phase-step-pulse"></span>
+                            @else
+                                <span>{{ $idx + 1 }}</span>
+                            @endif
+                        </div>
+                        <div class="phase-step-text">
+                            <div class="phase-step-label">{{ $step['label'] }}</div>
+                            <div class="phase-step-sub">{{ $step['sub'] }}</div>
+                        </div>
+                    </div>
+                    @if(! $loop->last)
+                        <div class="phase-step-bar {{ $idx < $currentPhaseIndex ? 'is-filled' : '' }}" aria-hidden="true"></div>
+                    @endif
+                @endforeach
+            </div>
         </div>
 
         <div class="admin-status-summary" aria-label="สรุปความพร้อมระบบ">
             @foreach(array_slice($readinessItems, 1) as $item)
+                @php
+                    $toneIcon = [
+                        'success'  => '<path d="M20 6L9 17l-5-5"/>',
+                        'warning'  => '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+                        'conflict' => '<circle cx="12" cy="12" r="9"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
+                    ][$item['tone']] ?? '<path d="M20 6L9 17l-5-5"/>';
+                @endphp
                 <a href="{{ $item['href'] }}"
                    class="admin-status-summary-item is-{{ $item['tone'] }}"
                    aria-label="{{ $item['action'] }}">
+                    <span class="admin-summary-icon is-{{ $item['tone'] }}" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">{!! $toneIcon !!}</svg>
+                    </span>
                     <span class="admin-summary-label">{{ $item['label'] }}</span>
                     <strong>{{ $item['meta'] }}</strong>
                     <span class="admin-summary-status">{{ $item['status'] }}</span>
@@ -223,14 +271,6 @@
         color: var(--fg-1);
     }
 
-    .admin-hero-copy p {
-        margin: 8px 0 0;
-        max-width: 760px;
-        font-size: 13px;
-        line-height: 1.65;
-        color: var(--fg-3);
-    }
-
     .admin-status-banner {
         display: grid;
         position: relative;
@@ -239,55 +279,38 @@
         gap: 28px;
         align-items: center;
         min-height: 126px;
-        padding: 22px 24px 22px 34px;
+        padding: 22px 24px;
         border: 1px solid var(--border);
         border-radius: var(--r-lg);
         background: var(--surface);
     }
 
-    .admin-status-banner::before {
-        content: "";
-        position: absolute;
-        inset: 0 auto 0 0;
-        width: 5px;
-        background: var(--border);
-        pointer-events: none;
-    }
-
     .admin-status-banner.is-conflict {
         border-color: var(--status-conflict-border);
-        background: color-mix(in oklch, var(--status-conflict) 4%, var(--surface));
-    }
-
-    .admin-status-banner.is-conflict::before {
-        background: var(--status-conflict-fg);
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--status-conflict) 7%, transparent), transparent 58%),
+            color-mix(in oklch, var(--status-conflict) 3%, var(--surface));
     }
 
     .admin-status-banner.is-warning {
         border-color: var(--status-warning-border);
-        background: color-mix(in oklch, var(--status-warning) 5%, var(--surface));
-    }
-
-    .admin-status-banner.is-warning::before {
-        background: var(--status-warning-fg);
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--status-warning) 8%, transparent), transparent 58%),
+            color-mix(in oklch, var(--status-warning) 4%, var(--surface));
     }
 
     .admin-status-banner.is-success {
         border-color: var(--status-success-border);
-        background: color-mix(in oklch, var(--status-success) 4%, var(--surface));
-    }
-
-    .admin-status-banner.is-success::before {
-        background: var(--status-success-fg);
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--status-success) 7%, transparent), transparent 58%),
+            color-mix(in oklch, var(--status-success) 3%, var(--surface));
     }
 
     .admin-status-banner.is-info {
         border-color: var(--status-info-border);
-        background: color-mix(in oklch, var(--status-info) 4%, var(--surface));
-    }
-
-    .admin-status-banner.is-info::before {
-        background: var(--status-info-fg);
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--status-info) 7%, transparent), transparent 58%),
+            color-mix(in oklch, var(--status-info) 3%, var(--surface));
     }
 
     .admin-status-primary {
@@ -370,12 +393,27 @@
         min-width: 0;
     }
 
+    /* จุด marker อยู่หน้า title (แถวเดียวกัน) — บรรทัดอื่นชิดซ้ายตามเดิม */
+    .admin-status-headline {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
     .admin-status-label {
-        margin-bottom: 2px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 6px;
         color: var(--fg-3);
         font-size: 12px;
         font-weight: 700;
         line-height: 1.35;
+    }
+
+    .admin-status-phase-pill {
+        font-size: 11px;
     }
 
     .admin-status-title {
@@ -414,24 +452,174 @@
         line-height: 1.45;
     }
 
+    /* ---- Unified phase visual inside the current status banner ---- */
+    .admin-phase-stepper {
+        --phase-track-start: calc(16.666% + 10px);
+        --phase-track-end: calc(83.333% - 10px);
+        --phase-track-top: 38px;
+        display: grid;
+        position: relative;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        column-gap: 10px;
+        margin-top: 18px;
+        padding: 16px 18px 18px;
+        border: 1px solid color-mix(in oklch, var(--brand-navy) 10%, var(--border));
+        border-radius: var(--r-lg);
+        background: color-mix(in oklch, var(--bg-2) 45%, var(--surface));
+        overflow: hidden;
+        box-shadow:
+            0 1px 2px rgba(0, 36, 84, 0.04),
+            inset 0 1px 0 rgba(255, 255, 255, 0.65);
+    }
+
+    .admin-phase-stepper::before,
+    .admin-phase-stepper::after {
+        content: "";
+        position: absolute;
+        top: var(--phase-track-top);
+        left: var(--phase-track-start);
+        height: 2px;
+        border-radius: 999px;
+        pointer-events: none;
+    }
+
+    .admin-phase-stepper::before {
+        right: calc(100% - var(--phase-track-end));
+        background: color-mix(in oklch, var(--brand-navy) 14%, var(--border));
+    }
+
+    .admin-phase-stepper::after {
+        width: 0;
+        background: var(--brand-navy);
+        box-shadow: 0 1px 2px rgba(0, 36, 84, 0.14);
+    }
+
+    .admin-phase-stepper.is-phase-1::after {
+        width: calc((var(--phase-track-end) - var(--phase-track-start)) / 2);
+    }
+
+    .admin-phase-stepper.is-phase-2::after {
+        width: calc(var(--phase-track-end) - var(--phase-track-start));
+    }
+
+    .phase-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        position: relative;
+        z-index: 1;
+        min-width: 0;
+        gap: 8px;
+    }
+    .phase-step-node {
+        width: 42px;
+        height: 42px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        border: 2px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border));
+        background: var(--surface);
+        color: var(--fg-3);
+        font-family: var(--font-display);
+        font-size: 14px;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+        flex-shrink: 0;
+        box-shadow: 0 1px 2px rgba(0, 36, 84, 0.06);
+    }
+    .phase-step.is-done .phase-step-node {
+        background: linear-gradient(180deg,
+            color-mix(in oklch, var(--brand-navy) 82%, var(--surface)),
+            var(--brand-navy));
+        border-color: var(--brand-navy);
+        color: var(--surface);
+        box-shadow:
+            0 0 0 4px color-mix(in oklch, var(--brand-navy) 10%, transparent),
+            0 3px 8px -2px color-mix(in oklch, var(--brand-navy) 45%, transparent);
+    }
+    .phase-step.is-current .phase-step-node {
+        border: 3px solid currentColor;
+        color: var(--status-success-fg);
+        background: color-mix(in oklch, var(--status-success) 9%, var(--surface));
+        box-shadow:
+            inset 0 0 0 5px var(--surface),
+            0 0 0 5px color-mix(in oklch, var(--status-success) 12%, transparent);
+    }
+    .admin-status-banner.is-conflict .phase-step.is-current .phase-step-node {
+        color: var(--status-conflict-fg);
+        background: color-mix(in oklch, var(--status-conflict) 9%, var(--surface));
+        box-shadow:
+            inset 0 0 0 5px var(--surface),
+            0 0 0 5px color-mix(in oklch, var(--status-conflict) 12%, transparent);
+    }
+    .admin-status-banner.is-warning .phase-step.is-current .phase-step-node {
+        color: var(--status-warning-fg);
+        background: color-mix(in oklch, var(--status-warning) 10%, var(--surface));
+        box-shadow:
+            inset 0 0 0 5px var(--surface),
+            0 0 0 5px color-mix(in oklch, var(--status-warning) 14%, transparent);
+    }
+    .admin-status-banner.is-info .phase-step.is-current .phase-step-node {
+        color: var(--status-info-fg);
+        background: color-mix(in oklch, var(--status-info) 9%, var(--surface));
+        box-shadow:
+            inset 0 0 0 5px var(--surface),
+            0 0 0 5px color-mix(in oklch, var(--status-info) 12%, transparent);
+    }
+    .phase-step-pulse {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: currentColor;
+        box-shadow: 0 1px 2px rgba(0, 36, 84, 0.18);
+    }
+    .phase-step-text {
+        min-width: 0;
+        max-width: 150px;
+    }
+    .phase-step-label {
+        font-size: 12.5px;
+        font-weight: 800;
+        line-height: 1.3;
+        color: var(--fg-3);
+    }
+    .phase-step.is-done .phase-step-label,
+    .phase-step.is-current .phase-step-label {
+        color: var(--fg-1);
+    }
+    .phase-step-sub {
+        margin-top: 3px;
+        font-size: 11px;
+        line-height: 1.4;
+        color: var(--fg-3);
+    }
+    .phase-step-bar {
+        display: none;
+    }
+
     .admin-status-summary {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
-        gap: 10px;
+        gap: 8px;
         min-width: 0;
     }
 
     .admin-status-summary-item {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
+        display: grid;
+        grid-template-columns: 28px minmax(0, 1fr);
+        grid-template-rows: auto auto auto;
+        column-gap: 10px;
+        align-content: center;
+        align-items: center;
         min-width: 0;
-        min-height: 82px;
-        padding: 12px 10px;
+        min-height: 66px;
+        padding: 10px 12px;
         border: 1px solid var(--border);
         border-radius: var(--r-sm);
         background: color-mix(in oklch, var(--bg-2) 78%, var(--surface));
-        text-align: center;
+        text-align: left;
         text-decoration: none;
         cursor: pointer;
         transition:
@@ -474,29 +662,56 @@
         background: color-mix(in oklch, var(--status-info) 7%, var(--surface));
     }
 
+    .admin-summary-icon {
+        display: inline-flex;
+        grid-column: 1;
+        grid-row: 1 / span 3;
+        align-items: center;
+        align-self: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+    }
+    .admin-summary-icon.is-success {
+        color: var(--status-success-fg);
+        background: color-mix(in oklch, var(--status-success) 14%, transparent);
+    }
+    .admin-summary-icon.is-warning {
+        color: var(--status-warning-fg);
+        background: color-mix(in oklch, var(--status-warning) 16%, transparent);
+    }
+    .admin-summary-icon.is-conflict {
+        color: var(--status-conflict-fg);
+        background: color-mix(in oklch, var(--status-conflict) 14%, transparent);
+    }
+
     .admin-summary-label {
+        grid-column: 2;
         color: var(--fg-3);
         font-size: 11.5px;
         font-weight: 700;
-        line-height: 1.3;
+        line-height: 1.25;
     }
 
     .admin-status-summary-item strong {
-        margin-top: 6px;
+        grid-column: 2;
+        margin-top: 2px;
         color: var(--fg-1);
         font-family: var(--font-display);
-        font-size: clamp(17px, 1.6vw, 20px);
+        font-size: clamp(16px, 1.35vw, 19px);
         font-weight: 800;
         line-height: 1.15;
         overflow-wrap: anywhere;
     }
 
     .admin-summary-status {
-        margin-top: 5px;
+        grid-column: 2;
+        margin-top: 1px;
         color: var(--fg-3);
         font-size: 11px;
         font-weight: 700;
-        line-height: 1.3;
+        line-height: 1.25;
     }
 
     .admin-status-summary-item.is-conflict strong,
@@ -543,7 +758,7 @@
         }
 
         .admin-status-banner {
-            padding: 16px 16px 16px 26px;
+            padding: 16px;
             min-height: 0;
         }
 
@@ -578,7 +793,7 @@
         }
 
         .admin-status-summary-item {
-            min-height: 74px;
+            min-height: 62px;
             padding: 10px 8px;
         }
     }

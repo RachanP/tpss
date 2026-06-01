@@ -26,6 +26,7 @@ Route::middleware(['auth', 'no-back'])->group(function () {
 
     // Hub: redirect to role-specific dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/coming-soon', [DashboardController::class, 'comingSoon'])->name('dashboard.coming_soon');
     Route::get('/schedule-conflicts/{schedule}/details', [ScheduleController::class, 'conflictDetails'])
         ->name('schedule_conflicts.details')
         ->middleware('throttle:60,1');
@@ -37,30 +38,34 @@ Route::middleware(['auth', 'no-back'])->group(function () {
     Route::get('/approver/dashboard', [DashboardController::class, 'approver'])->name('approver.dashboard')->middleware('\App\Http\Middleware\CheckRole:executive');
     Route::get('/lecturer/dashboard', [DashboardController::class, 'lecturer'])->name('lecturer.dashboard')->middleware('\App\Http\Middleware\CheckRole:instructor');
 
-    Route::middleware(['\App\Http\Middleware\CheckRole:course_head'])->group(function () {
+    // V2 delegation: งานจัดตาราง (workspace/alerts/slot CRUD) เปิดให้หัวหน้าวิชา + อาจารย์ที่ถูกมอบหมาย + เจ้าหน้าที่ที่ดูแลวิชา
+    // access จริงต่อ offering กรองด้วย CourseOffering::scopeSchedulableBy / canBeScheduledBy
+    // (coordinator หรือ instructor schedule_permission='schedule' หรือ staff ใน course_staff)
+    Route::middleware(['\App\Http\Middleware\CheckRole:course_head,instructor,staff'])->group(function () {
         Route::get('/maker/schedules', [ScheduleController::class, 'workspace'])->name('maker.schedules.index');
-        Route::get('/maker/schedule-conflicts', [ScheduleController::class, 'conflicts'])->name('maker.schedule_conflicts.index');
         Route::get('/maker/alerts', [ScheduleController::class, 'alerts'])->name('maker.alerts.index');
-        Route::get('/maker/conflict-badge-status', ConflictBadgeStatusController::class)
-            ->name('maker.conflict_badge_status')
-            ->middleware('throttle:30,1');
         Route::get('/maker/schedules/create', [ScheduleController::class, 'createGlobal'])->name('maker.schedules.create');
         Route::post('/maker/schedules', [ScheduleController::class, 'storeGlobal'])->name('maker.schedules.store');
     });
 
-    Route::middleware(['\App\Http\Middleware\CheckRole:course_head'])
+    // badge การชนบน sidebar = ใช้เฉพาะหัวหน้าวิชา (sidebar อาจารย์/เจ้าหน้าที่ไม่มี badge นี้)
+    Route::middleware(['\App\Http\Middleware\CheckRole:course_head'])->group(function () {
+        Route::get('/maker/conflict-badge-status', ConflictBadgeStatusController::class)
+            ->name('maker.conflict_badge_status')
+            ->middleware('throttle:30,1');
+    });
+
+    // จัดตาราง slot ต่อ offering — หัวหน้าวิชา + อาจารย์ที่ถูกมอบหมาย + เจ้าหน้าที่ที่ดูแลวิชา (delegation)
+    Route::middleware(['\App\Http\Middleware\CheckRole:course_head,instructor,staff'])
         ->prefix('maker/course-offerings')
         ->name('maker.course_offerings.')
         ->group(function () {
-            Route::get('/', [CourseOfferingController::class, 'index'])->name('index');
             Route::get('/{courseOffering}/schedules', [ScheduleController::class, 'index'])->name('schedules.index');
             Route::get('/{courseOffering}/schedules/create', [ScheduleController::class, 'create'])->name('schedules.create');
             Route::post('/{courseOffering}/schedules', [ScheduleController::class, 'store'])->name('schedules.store');
             Route::post('/{courseOffering}/schedules/series', [ScheduleController::class, 'storeSeries'])->name('schedules.series.store');
+            Route::get('/{courseOffering}/schedules/week-fragment', [ScheduleController::class, 'weekFragment'])->name('schedules.week_fragment');
             Route::post('/{courseOffering}/schedules/check-conflicts', [ScheduleController::class, 'checkConflicts'])->name('schedules.check_conflicts');
-            Route::post('/{courseOffering}/schedules/check', [ScheduleController::class, 'checkRealtime'])
-                ->name('schedules.check')
-                ->middleware('throttle:60,1');
             Route::post('/{courseOffering}/schedules/copy-week/preview', [ScheduleController::class, 'previewCopyWeek'])->name('schedules.copy_week.preview');
             Route::post('/{courseOffering}/schedules/copy-week', [ScheduleController::class, 'copyWeek'])->name('schedules.copy_week');
             Route::put('/{courseOffering}/schedules/templates/{scheduleTemplate}', [ScheduleController::class, 'updateSeriesTemplate'])->name('schedules.templates.update');
@@ -68,20 +73,22 @@ Route::middleware(['auth', 'no-back'])->group(function () {
             Route::get('/{courseOffering}/schedules/{schedule}/edit', [ScheduleController::class, 'edit'])->name('schedules.edit');
             Route::put('/{courseOffering}/schedules/{schedule}', [ScheduleController::class, 'update'])->name('schedules.update');
             Route::delete('/{courseOffering}/schedules/{schedule}', [ScheduleController::class, 'destroy'])->name('schedules.destroy');
-            // Real-time conflict check สำหรับ modal แก้ไข (ignore schedule ตัวเอง)
-            Route::post('/{courseOffering}/schedules/{schedule}/check', [ScheduleController::class, 'checkRealtimeEdit'])
-                ->name('schedules.check_edit')
-                ->middleware('throttle:60,1');
+        });
+
+    // จัดการ offering (ดูรายการ/รายละเอียด/แก้ไข/ชุดผู้สอน) — หัวหน้าวิชาเท่านั้น (อาจารย์ที่ช่วยจัดไม่แตะ pool/อนุมัติ)
+    Route::middleware(['\App\Http\Middleware\CheckRole:course_head'])
+        ->prefix('maker/course-offerings')
+        ->name('maker.course_offerings.')
+        ->group(function () {
+            Route::get('/', [CourseOfferingController::class, 'index'])->name('index');
             Route::get('/{courseOffering}', [CourseOfferingController::class, 'show'])->name('show');
             Route::put('/{courseOffering}', [CourseOfferingController::class, 'update'])->name('update');
             Route::post('/{courseOffering}/instructors', [CourseOfferingController::class, 'storeInstructor'])->name('instructors.store');
             Route::patch('/{courseOffering}/instructors/{user}/role', [CourseOfferingController::class, 'updateInstructorRole'])->name('instructors.role');
+            Route::patch('/{courseOffering}/instructors/{user}/permission', [CourseOfferingController::class, 'updateInstructorPermission'])->name('instructors.permission');
             Route::delete('/{courseOffering}/instructors/{user}', [CourseOfferingController::class, 'destroyInstructor'])->name('instructors.destroy');
-            Route::post('/{courseOffering}/student-groups', [CourseOfferingController::class, 'storeStudentGroup'])->name('student_groups.store');
-            Route::post('/{courseOffering}/student-groups/bulk', [CourseOfferingController::class, 'bulkStoreStudentGroups'])->name('student_groups.bulk_store');
-            Route::delete('/{courseOffering}/student-groups/bulk', [CourseOfferingController::class, 'bulkDestroyStudentGroups'])->name('student_groups.bulk_destroy');
-            Route::put('/{courseOffering}/student-groups/{studentGroup}', [CourseOfferingController::class, 'updateStudentGroup'])->name('student_groups.update');
-            Route::delete('/{courseOffering}/student-groups/{studentGroup}', [CourseOfferingController::class, 'destroyStudentGroup'])->name('student_groups.destroy');
+            // หมายเหตุ: กลุ่มย่อยนักศึกษาไม่ใช่งานหัวหน้าวิชา (V2 — กลุ่มเกิดหลังอนุมัติ โดยอาจารย์)
+            // routes student_groups.* ถูกถอดออก · ตาราง/model/pivot ยังอยู่สำหรับเฟส "อาจารย์จัดกลุ่ม" ภายหลัง
         });
 
     // Admin User Management
@@ -99,6 +106,11 @@ Route::middleware(['auth', 'no-back'])->group(function () {
         Route::post('/admin/settings/update-constants', 'App\Http\Controllers\AdminSettingController@updateConstants')->name('admin.settings.constants.update');
         Route::patch('/admin/settings/scheduling/{year}/open', 'App\Http\Controllers\AdminSettingController@openSchedulingWindow')->name('admin.settings.scheduling.open');
         Route::patch('/admin/settings/scheduling/{year}/close', 'App\Http\Controllers\AdminSettingController@closeSchedulingWindow')->name('admin.settings.scheduling.close');
+        // วันหยุดราชการ (V3 ข้อ 2.4)
+        Route::post('/admin/settings/holidays', 'App\Http\Controllers\AdminSettingController@storeHoliday')->name('admin.settings.holidays.store');
+        Route::put('/admin/settings/holidays/{holiday}', 'App\Http\Controllers\AdminSettingController@updateHoliday')->name('admin.settings.holidays.update');
+        Route::delete('/admin/settings/holidays/{holiday}', 'App\Http\Controllers\AdminSettingController@destroyHoliday')->name('admin.settings.holidays.destroy');
+        Route::post('/admin/settings/holidays/sync', 'App\Http\Controllers\AdminSettingController@syncHolidays')->name('admin.settings.holidays.sync');
 
         Route::get('/admin/master-data', 'App\Http\Controllers\Admin\MasterDataController@index')->name('admin.master_data');
         Route::get('/admin/alerts', [AlertController::class, 'index'])->name('admin.alerts');
@@ -128,41 +140,18 @@ Route::middleware(['auth', 'no-back'])->group(function () {
         Route::put('/admin/master-data/activity-types/{activityType}', 'App\Http\Controllers\Admin\MasterDataController@updateActivityType')->name('admin.activity_types.update');
         Route::delete('/admin/master-data/activity-types/{activityType}', 'App\Http\Controllers\Admin\MasterDataController@destroyActivityType')->name('admin.activity_types.destroy');
 
+        // กลุ่มชั้นปี (cohort — V2) — Admin เท่านั้น (staff เห็น read-only ใน tab)
+        Route::post('/admin/master-data/student-cohorts', 'App\Http\Controllers\Admin\MasterDataController@storeStudentCohort')->name('admin.student_cohorts.store');
+        Route::put('/admin/master-data/student-cohorts/{studentCohort}', 'App\Http\Controllers\Admin\MasterDataController@updateStudentCohort')->name('admin.student_cohorts.update');
+        Route::delete('/admin/master-data/student-cohorts/{studentCohort}', 'App\Http\Controllers\Admin\MasterDataController@destroyStudentCohort')->name('admin.student_cohorts.destroy');
+
     });
 
     // ── Staff only ─────────────────────────────────────────────────────
     Route::middleware(['\App\Http\Middleware\CheckRole:staff'])->group(function () {
-        Route::get('/staff/schedules', [ScheduleController::class, 'workspace'])->name('staff.schedules.index');
-        Route::get('/staff/schedules/create', [ScheduleController::class, 'createGlobal'])->name('staff.schedules.create');
-        Route::post('/staff/schedules', [ScheduleController::class, 'storeGlobal'])->name('staff.schedules.store');
-
-        Route::prefix('staff/course-offerings')
-            ->name('staff.course_offerings.')
-            ->group(function () {
-                Route::get('/{courseOffering}/schedules', [ScheduleController::class, 'index'])->name('schedules.index');
-                Route::get('/{courseOffering}/schedules/create', [ScheduleController::class, 'create'])->name('schedules.create');
-                Route::post('/{courseOffering}/schedules', [ScheduleController::class, 'store'])->name('schedules.store');
-                Route::post('/{courseOffering}/schedules/series', [ScheduleController::class, 'storeSeries'])->name('schedules.series.store');
-                Route::post('/{courseOffering}/schedules/check-conflicts', [ScheduleController::class, 'checkConflicts'])->name('schedules.check_conflicts');
-                Route::post('/{courseOffering}/schedules/check', [ScheduleController::class, 'checkRealtime'])
-                    ->name('schedules.check')
-                    ->middleware('throttle:60,1');
-                Route::post('/{courseOffering}/schedules/copy-week/preview', [ScheduleController::class, 'previewCopyWeek'])->name('schedules.copy_week.preview');
-                Route::post('/{courseOffering}/schedules/copy-week', [ScheduleController::class, 'copyWeek'])->name('schedules.copy_week');
-                Route::put('/{courseOffering}/schedules/templates/{scheduleTemplate}', [ScheduleController::class, 'updateSeriesTemplate'])->name('schedules.templates.update');
-                Route::delete('/{courseOffering}/schedules/templates/{scheduleTemplate}', [ScheduleController::class, 'destroySeriesTemplate'])->name('schedules.templates.destroy');
-                Route::get('/{courseOffering}/schedules/{schedule}/edit', [ScheduleController::class, 'edit'])->name('schedules.edit');
-                Route::put('/{courseOffering}/schedules/{schedule}', [ScheduleController::class, 'update'])->name('schedules.update');
-                Route::delete('/{courseOffering}/schedules/{schedule}', [ScheduleController::class, 'destroy'])->name('schedules.destroy');
-                Route::post('/{courseOffering}/schedules/{schedule}/check', [ScheduleController::class, 'checkRealtimeEdit'])
-                    ->name('schedules.check_edit')
-                    ->middleware('throttle:60,1');
-            });
-
         Route::get('/staff/settings', 'App\Http\Controllers\Staff\SettingController@index')->name('staff.settings');
         Route::post('/staff/settings/academic-years', 'App\Http\Controllers\Staff\SettingController@storeYear')->name('staff.settings.years.store');
         Route::put('/staff/settings/academic-years/{year}', 'App\Http\Controllers\Staff\SettingController@updateYear')->name('staff.settings.years.update');
-        Route::view('/staff/reports', 'staff.reports.index')->name('staff.reports.index');
 
         Route::get('/staff/master-data', 'App\Http\Controllers\Staff\MasterDataController@index')->name('staff.master_data');
         Route::post('/staff/master-data/location-types', 'App\Http\Controllers\Staff\MasterDataController@storeLocationType')->name('staff.location_types.store');
@@ -176,7 +165,6 @@ Route::middleware(['auth', 'no-back'])->group(function () {
         Route::post('/staff/master-data/courses/import', 'App\Http\Controllers\Staff\MasterDataController@importCourses')->name('staff.courses.import');
         Route::put('/staff/master-data/courses/{course}', 'App\Http\Controllers\Staff\MasterDataController@updateCourse')->name('staff.courses.update');
         Route::delete('/staff/master-data/courses/{course}', 'App\Http\Controllers\Staff\MasterDataController@destroyCourse')->name('staff.courses.destroy');
-        Route::get('/staff/master-data/courses/{course}/instructor-deviation', 'App\Http\Controllers\Staff\MasterDataController@courseInstructorDeviation')->name('staff.courses.instructor_deviation');
 
     });
 

@@ -13,6 +13,7 @@ use App\Models\InstructorProfile;
 use App\Models\LocationType;
 use App\Models\Room;
 use App\Models\Schedule;
+use App\Models\ScheduleTemplate;
 use App\Models\StudentGroup;
 use App\Models\User;
 use App\Models\UserRole;
@@ -80,35 +81,139 @@ class ScheduleManagementTest extends TestCase
             ->assertSee($room->room_name);
     }
 
-    public function test_schedule_day_summary_shows_conflict_count_when_collapsed(): void
+    public function test_schedule_index_initial_dom_contains_only_first_loaded_week_rows(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
-        $secondInstructor = $this->makeUser('instructor');
-        $offering->instructorPool()->attach($secondInstructor->id, ['role_in_course' => 'instructor']);
-        $secondGroup = StudentGroup::create([
-            'course_offering_id' => $offering->id,
-            'group_code' => 'A2',
-            'student_count' => 15,
+        $weekOne = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-03',
+            'topic' => 'Initial loaded week',
         ]);
-
-        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
-            'topic' => 'First room conflict',
-        ]);
-        $this->makeSchedule($offering, $activityType, $room, [$secondInstructor], [$secondGroup], [
-            'topic' => 'Second room conflict',
+        $weekTwo = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'start_date' => '2026-08-10',
+            'end_date' => '2026-08-10',
+            'topic' => 'Lazy loaded week',
         ]);
 
         $this->actingAsCourseHead($head);
 
-        $this->get(route('maker.course_offerings.schedules.index', [$offering, 'week_start' => '2026-08-03']))
+        $this->get(route('maker.course_offerings.schedules.index', $offering))
             ->assertOk()
-            ->assertSee('co-day-summary-conflict-count', false)
-            ->assertSee('ชน 2 รายการ')
-            ->assertDontSee('ชน 0 รายการ')
-            ->assertSee('First room conflict')
-            ->assertSee('Second room conflict')
-            ->assertSee($room->room_name)
-            ->assertSee('data-conflict-pill', false);
+            ->assertSee('data-schedule-id="' . $weekOne->id . '"', false)
+            ->assertSee('Initial loaded week')
+            ->assertDontSee('data-schedule-id="' . $weekTwo->id . '"', false)
+            ->assertDontSee('schedule-detail-title-' . $weekTwo->id, false)
+            ->assertDontSee('action="' . route('maker.course_offerings.schedules.update', [$offering, $weekTwo]) . '"', false);
+    }
+
+    public function test_schedule_week_fragment_returns_rows_and_modals_for_requested_week(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $weekOne = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-03',
+            'topic' => 'Initial loaded week',
+        ]);
+        $weekTwo = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'start_date' => '2026-08-10',
+            'end_date' => '2026-08-10',
+            'topic' => 'Lazy loaded week',
+        ]);
+
+        $this->actingAsCourseHead($head);
+
+        $response = $this->getJson(route('maker.course_offerings.schedules.week_fragment', [
+            $offering,
+            'week_start' => '2026-08-10',
+        ]));
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('loaded_schedule_ids.0', (string) $weekTwo->id)
+            ->assertJsonFragment(['id' => (string) $weekTwo->id]);
+
+        $this->assertStringContainsString('data-schedule-id="' . $weekTwo->id . '"', $response->json('html'));
+        $this->assertStringContainsString('Lazy loaded week', $response->json('html'));
+        $this->assertStringContainsString('data-lazy-schedule-modal="' . $weekTwo->id . '"', $response->json('modal_html'));
+        $this->assertStringContainsString('schedule-detail-title-' . $weekTwo->id, $response->json('modal_html'));
+        $this->assertStringContainsString('data-testid="schedule-edit-modal"', $response->json('modal_html'));
+        $this->assertStringContainsString('action="' . route('maker.course_offerings.schedules.update', [$offering, $weekTwo]) . '"', $response->json('modal_html'));
+        $this->assertStringNotContainsString('data-schedule-id="' . $weekOne->id . '"', $response->json('html'));
+    }
+
+    public function test_schedule_week_fragment_renders_recurring_schedule_modals(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $template = ScheduleTemplate::create([
+            'course_offering_id' => $offering->id,
+            'activity_type_id' => $activityType->id,
+            'weekday' => 1,
+            'start_time' => '08:00',
+            'end_time' => '10:00',
+            'start_week' => 1,
+            'end_week' => 2,
+            'topic' => 'Recurring lazy schedule',
+        ]);
+        $weekTwo = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'start_date' => '2026-08-10',
+            'end_date' => '2026-08-10',
+            'topic' => 'Recurring lazy schedule',
+            'schedule_template_id' => $template->id,
+            'series_week_number' => 2,
+        ]);
+
+        $this->actingAsCourseHead($head);
+
+        $response = $this->getJson(route('maker.course_offerings.schedules.week_fragment', [
+            $offering,
+            'week_start' => '2026-08-10',
+        ]));
+
+        $response->assertOk();
+        $this->assertStringContainsString('data-lazy-schedule-modal="' . $weekTwo->id . '"', $response->json('modal_html'));
+        $this->assertStringContainsString('data-testid="schedule-series-edit-modal"', $response->json('modal_html'));
+        $this->assertStringContainsString('series_edit_weekday_' . $weekTwo->id, $response->json('modal_html'));
+    }
+
+    public function test_month_view_initial_dom_includes_modals_for_visible_month_schedules(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-03',
+            'topic' => 'First visible week',
+        ]);
+        $weekTwo = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'start_date' => '2026-08-10',
+            'end_date' => '2026-08-10',
+            'topic' => 'Second visible week',
+        ]);
+
+        $this->actingAsCourseHead($head);
+
+        $response = $this->get(route('maker.course_offerings.schedules.index', [
+            $offering,
+            'period' => 'month',
+            'date' => '2026-08-01',
+        ]));
+
+        $response->assertOk();
+        $this->assertStringContainsString('schedule-detail-title-' . $weekTwo->id, $response->getContent());
+        $this->assertStringContainsString('data-schedule-modal-id="' . $weekTwo->id . '"', $response->getContent());
+    }
+
+    public function test_schedule_week_fragment_uses_offering_permissions(): void
+    {
+        [, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group]);
+        $outsider = $this->makeUser('course_head');
+
+        $this->actingAsCourseHead($outsider);
+
+        $this->getJson(route('maker.course_offerings.schedules.week_fragment', [
+            $offering,
+            'week_start' => '2026-08-03',
+        ]))->assertForbidden();
     }
 
     public function test_schedule_grid_includes_dynamic_evening_time_slots(): void
@@ -159,7 +264,7 @@ class ScheduleManagementTest extends TestCase
             'date' => '2026-08-03',
         ]))
             ->assertOk()
-            ->assertSee('สัปดาห์ที่ 2');
+            ->assertSee('สัปดาห์ที่ 1');
 
         $this->get(route('maker.course_offerings.schedules.index', [
             $offering,
@@ -425,9 +530,7 @@ class ScheduleManagementTest extends TestCase
         $this->followingRedirects()
             ->get(route('maker.schedules.index'))
             ->assertOk()
-            // label ถูกเปลี่ยนเป็น "การแจ้งเตือน" (sidebar.blade.php งาน 5)
-            ->assertSee('การแจ้งเตือน')
-            // route ใหม่ maker.alerts.index ถูกเพิ่มเข้า sidebar
+            ->assertSee('แจ้งเตือน')
             ->assertSee('href="' . route('maker.alerts.index') . '"', false);
     }
 
@@ -443,97 +546,112 @@ class ScheduleManagementTest extends TestCase
             ->assertDontSee('href="' . route('maker.course_offerings.index') . '" class="nv on"', false);
     }
 
+    public function test_maker_alerts_page_shows_warnings_and_cross_course_conflict(): void
+    {
+        config(['conflicts.async_reads' => false]);
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        [, $otherOffering, , $otherGroup, $otherActivityType, $otherRoom] = $this->makeReadyOffering();
+        $otherOffering->instructorPool()->attach($instructor->id, ['role_in_course' => 'instructor']);
+        $this->makeSchedule($otherOffering, $otherActivityType, $otherRoom, [$instructor], [$otherGroup]);
+        // slot ของ head: instructor ชนข้ามวิชา + ไม่ระบุห้อง (ข้อมูลไม่ครบ)
+        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], ['room_id' => null]);
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.alerts.index'))
+            ->assertOk()
+            ->assertSee('การแจ้งเตือน')
+            ->assertSee('การชนข้ามวิชา')   // 🔴 conflict card
+            ->assertSee('ข้อมูลไม่ครบ');    // 🟡 warning (ขาดห้อง)
+    }
+
+    public function test_maker_alerts_page_shows_count_card_even_when_no_warnings(): void
+    {
+        config(['conflicts.async_reads' => false]);
+        [$head] = $this->makeReadyOffering(); // มี offering แต่ยังไม่มี slot → 0 แจ้งเตือน
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.alerts.index'))
+            ->assertOk()
+            ->assertSee('รายการแจ้งเตือนทั้งหมด')   // card นับยังแสดง
+            ->assertSee('ไม่พบปัญหาที่ต้องแก้ไข');     // สถานะเขียว (0)
+    }
+
+    public function test_maker_alerts_page_handles_warning_only_schedules_without_conflicts(): void
+    {
+        config(['conflicts.async_reads' => false]);
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], ['room_id' => null]);
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.alerts.index'))
+            ->assertOk()
+            ->assertSee('ข้อมูลไม่ครบ')
+            ->assertDontSee('Call to a member function getKey() on array');
+    }
+
+    public function test_maker_alert_groups_start_collapsed_and_paginate_after_ten_items(): void
+    {
+        config(['conflicts.async_reads' => false]);
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+
+        for ($i = 0; $i < 12; $i++) {
+            $date = '2026-08-' . str_pad((string) (3 + $i), 2, '0', STR_PAD_LEFT);
+            $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+                'room_id' => null,
+                'start_date' => $date,
+                'end_date' => $date,
+                'topic' => "Incomplete {$i}",
+            ]);
+        }
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.alerts.index'))
+            ->assertOk()
+            ->assertSee('data-testid="alert-group-incomplete"', false)
+            ->assertSee('data-alert-initial-collapsed="true"', false)
+            ->assertSee('data-alert-page-size="10"', false)
+            ->assertSee('data-testid="alert-pagination-incomplete"', false)
+            ->assertSee('tpssAlertGroup(12)', false);
+    }
+
     public function test_conflict_alert_page_lists_owned_schedule_conflicts_with_edit_links(): void
     {
         config(['conflicts.async_reads' => false]);
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
-        $secondInstructor = $this->makeUser('instructor');
-        $offering->instructorPool()->attach($secondInstructor->id, ['role_in_course' => 'instructor']);
-        $secondGroup = StudentGroup::create([
-            'course_offering_id' => $offering->id,
-            'group_code' => 'A2',
-            'student_count' => 15,
-        ]);
-        $this->makeSchedule($offering, $activityType, $room, [$secondInstructor], [$secondGroup], [
-            'topic' => 'Blocking room conflict',
-        ]);
+        [, $otherOffering, , $otherGroup, $otherActivityType, $otherRoom] = $this->makeReadyOffering();
+        $otherOffering->instructorPool()->attach($instructor->id, ['role_in_course' => 'instructor']);
+        $this->makeSchedule($otherOffering, $otherActivityType, $otherRoom, [$instructor], [$otherGroup]);
         $schedule = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group]);
 
         $this->actingAsCourseHead($head);
 
-        $assertContains = function (string $html, string $needle, string $label): void {
-            $this->assertTrue(str_contains($html, $needle), "Missing {$label}: {$needle}");
-        };
-        $assertNotContains = function (string $html, string $needle, string $label): void {
-            $this->assertFalse(str_contains($html, $needle), "Unexpected {$label}: {$needle}");
-        };
-
-        $alertResponse = $this->get(route('maker.schedule_conflicts.index', [
-            'academic_year_id' => $offering->academic_year_id,
-        ]));
-        $alertResponse->assertOk();
-        $alertHtml = $alertResponse->getContent();
-
-        $assertContains($alertHtml, 'data-testid="maker-conflict-total"', 'conflict total marker');
-        $assertContains($alertHtml, 'data-testid="maker-conflict-item"', 'conflict item marker');
-        $assertContains($alertHtml, 'data-conflict-edit-link', 'edit link marker');
-        $assertContains($alertHtml, 'tpss-conflict-alert-scroll-y', 'scroll memory key');
-        $assertContains($alertHtml, $offering->course->course_code, 'course code');
-        $assertContains($alertHtml, 'Existing schedule', 'owned schedule topic');
-        $assertContains($alertHtml, 'edit_schedule_id=' . $schedule->id, 'edit schedule query');
-        $assertContains($alertHtml, 'focus_schedule_id=' . $schedule->id, 'focus schedule query');
-        $assertContains($alertHtml, 'from_conflict=1', 'from conflict query');
-        $assertContains($alertHtml, 'period=day', 'day period query');
-        $assertContains($alertHtml, 'date=2026-08-03', 'date query');
-        $assertContains($alertHtml, 'week_start=2026-08-03', 'week start query');
-
-        $editResponse = $this->get(route('maker.course_offerings.schedules.index', [
+        $this->get(route('maker.course_offerings.schedules.index', [
             $offering,
             'edit_schedule_id' => $schedule->id,
             'focus_schedule_id' => $schedule->id,
             'from_conflict' => 1,
             'date' => '2026-08-03',
             'period' => 'day',
-        ]));
-        $editResponse->assertOk();
-        $editHtml = $editResponse->getContent();
+        ]))
+            ->assertOk()
+            ->assertSee('data-testid="schedule-edit-conflict-focus"', false)
+            ->assertSee('วันและเวลามีข้อมูลซ้อนกับรายการอื่น')
+            ->assertSee(route('maker.alerts.index'), false)
+            ->assertDontSee('พบข้อมูลซ้อนกับรายการอื่น แก้ไขช่องที่ไฮไลต์ก่อนส่งอนุมัติ')
+            ->assertSee('data-schedule-id="' . $schedule->id . '"', false);
 
-        $assertContains($editHtml, 'data-testid="schedule-edit-conflict-focus"', 'edit conflict focus marker');
-        $assertContains($editHtml, 'name="return_to_conflicts" value="1"', 'conflict return flag');
-        $assertContains($editHtml, 'data-schedule-id="' . $schedule->id . '"', 'focused schedule row');
-        $assertNotContains($editHtml, 'แก้ไขช่องที่ไฮไลต์ก่อนส่งอนุมัติ', 'old approval blocking copy');
-
-        $dayResponse = $this->get(route('maker.course_offerings.schedules.index', [
+        $this->get(route('maker.course_offerings.schedules.index', [
             $offering,
             'date' => '2026-08-03',
             'period' => 'day',
-        ]));
-        $dayResponse->assertOk();
-        $dayHtml = $dayResponse->getContent();
-
-        $assertContains($dayHtml, 'data-testid="schedule-edit-conflict-focus"', 'day conflict focus marker');
-        $assertContains($dayHtml, 'modal-field-has-conflict', 'conflict field class');
-    }
-
-    public function test_async_conflict_alert_page_starts_recompute_without_sync_index(): void
-    {
-        config(['conflicts.async_reads' => true]);
-        Cache::flush();
-        Queue::fake();
-        [$head] = $this->makeReadyOffering();
-        $index = Mockery::mock(ScheduleConflictIndex::class);
-        $index->shouldNotReceive('conflictsForCoordinator');
-        $this->app->instance(ScheduleConflictIndex::class, $index);
-
-        $this->actingAsCourseHead($head);
-
-        $this->get(route('maker.schedule_conflicts.index'))
+        ]))
             ->assertOk()
-            ->assertSee('data-testid="maker-conflict-pending"', false)
-            ->assertSee('data-testid="maker-conflict-status"', false)
-            ->assertSee('กำลังตรวจสอบรายการชน');
-
-        Queue::assertPushed(ConflictRecomputeJob::class);
+            ->assertSee('data-testid="schedule-edit-conflict-focus"', false)
+            ->assertSee('modal-field-has-conflict', false);
     }
 
     public function test_course_head_sidebar_hides_checking_badge_during_preparation_phase(): void
@@ -559,24 +677,6 @@ class ScheduleManagementTest extends TestCase
             ->assertDontSee('>กำลังตรวจสอบ</span>', false);
     }
 
-    public function test_conflict_alert_page_does_not_enter_checking_state_during_preparation_phase(): void
-    {
-        config(['conflicts.async_reads' => true]);
-        Cache::flush();
-        Queue::fake();
-        [$head] = $this->makeReadyOffering('preparation');
-
-        $this->actingAsCourseHead($head);
-
-        $this->get(route('maker.schedule_conflicts.index'))
-            ->assertOk()
-            ->assertSee('data-testid="maker-conflict-empty"', false)
-            ->assertDontSee('data-testid="maker-conflict-pending"', false)
-            ->assertDontSee('data-testid="maker-conflict-status"', false);
-
-        Queue::assertNothingPushed();
-    }
-
     public function test_conflict_edit_returns_to_conflict_alerts_after_update(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
@@ -590,88 +690,8 @@ class ScheduleManagementTest extends TestCase
         ]);
 
         $this->put(route('maker.course_offerings.schedules.update', [$offering, $schedule]), $payload)
-            ->assertRedirect(route('maker.schedule_conflicts.index'))
+            ->assertRedirect(route('maker.alerts.index'))
             ->assertSessionHasNoErrors();
-    }
-
-    public function test_conflict_alert_page_defaults_to_current_scheduling_academic_year(): void
-    {
-        config(['conflicts.async_reads' => false]);
-        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
-        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
-            'topic' => 'Current term source',
-        ]);
-        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
-            'topic' => 'Current term overlap',
-        ]);
-
-        [, $oldOffering, $oldInstructor, $oldGroup, $oldActivityType, $oldRoom] = $this->makeReadyOffering('published');
-        $oldOffering->forceFill(['coordinator_id' => $head->id])->save();
-        $this->makeSchedule($oldOffering, $oldActivityType, $oldRoom, [$oldInstructor], [$oldGroup], [
-            'topic' => 'Old term source',
-        ]);
-        $this->makeSchedule($oldOffering, $oldActivityType, $oldRoom, [$oldInstructor], [$oldGroup], [
-            'topic' => 'Old term overlap',
-        ]);
-
-        $this->actingAsCourseHead($head);
-
-        $this->get(route('maker.schedule_conflicts.index'))
-            ->assertOk()
-            ->assertSee('Current term source')
-            ->assertSee('Current term overlap')
-            ->assertDontSee('Old term source')
-            ->assertDontSee('Old term overlap');
-    }
-
-    public function test_conflict_alert_page_can_filter_to_selected_academic_year(): void
-    {
-        config(['conflicts.async_reads' => false]);
-        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
-        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
-            'topic' => 'Current term source',
-        ]);
-        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
-            'topic' => 'Current term overlap',
-        ]);
-
-        [, $oldOffering, $oldInstructor, $oldGroup, $oldActivityType, $oldRoom] = $this->makeReadyOffering('published');
-        $oldOffering->forceFill(['coordinator_id' => $head->id])->save();
-        $this->makeSchedule($oldOffering, $oldActivityType, $oldRoom, [$oldInstructor], [$oldGroup], [
-            'topic' => 'Old term source',
-        ]);
-        $this->makeSchedule($oldOffering, $oldActivityType, $oldRoom, [$oldInstructor], [$oldGroup], [
-            'topic' => 'Old term overlap',
-        ]);
-
-        $this->actingAsCourseHead($head);
-
-        $this->get(route('maker.schedule_conflicts.index', [
-            'academic_year_id' => $oldOffering->academic_year_id,
-        ]))
-            ->assertOk()
-            ->assertSee('Old term source')
-            ->assertSee('Old term overlap')
-            ->assertDontSee('Current term source')
-            ->assertDontSee('Current term overlap');
-    }
-
-    public function test_conflict_alert_page_warms_course_head_sidebar_badge_cache(): void
-    {
-        config(['conflicts.async_reads' => false]);
-        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
-        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group]);
-        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
-            'topic' => 'Overlap schedule',
-        ]);
-        Cache::forget("sidebar.badges.course_head.{$head->id}");
-
-        $this->actingAsCourseHead($head);
-
-        $this->get(route('maker.schedule_conflicts.index'))->assertOk();
-
-        $this->assertTrue(Cache::has("sidebar.badges.course_head.{$head->id}"));
-        $this->assertGreaterThan(0, Cache::get("sidebar.badges.course_head.{$head->id}"));
     }
 
     public function test_course_offering_detail_no_longer_shows_prominent_schedule_button(): void
@@ -915,7 +935,41 @@ class ScheduleManagementTest extends TestCase
         ]);
     }
 
-    public function test_schedule_allows_student_groups_over_capacity_with_warning(): void
+    public function test_schedule_creation_blocked_on_exam_week_and_break_period(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        // ตั้งเทอม + สัปดาห์สอบ · เทอมจบ 30 พ.ย. → ธ.ค. (ยังในปี) = ปิดภาคเรียน
+        \App\Models\Term::create([
+            'academic_year_id' => $offering->academic_year_id,
+            'sequence' => 1, 'name' => 'ภาคเรียนที่ 1',
+            'start_date' => '2026-08-01', 'end_date' => '2026-11-30',
+            'midterm_start' => '2026-09-21', 'midterm_end' => '2026-09-25',
+        ]);
+
+        $this->actingAsCourseHead($head);
+
+        // สัปดาห์สอบ → บล็อก
+        $this->post(route('maker.course_offerings.schedules.store', $offering),
+            $this->schedulePayload($instructor, $group, $activityType, $room, ['start_date' => '2026-09-21', 'end_date' => '2026-09-25']))
+            ->assertSessionHasErrors('schedule');
+
+        // ปิดภาคเรียน (ธ.ค. ไม่มีเทอมคลุม) → บล็อก
+        $this->post(route('maker.course_offerings.schedules.store', $offering),
+            $this->schedulePayload($instructor, $group, $activityType, $room, ['start_date' => '2026-12-10', 'end_date' => '2026-12-10']))
+            ->assertSessionHasErrors('schedule');
+
+        $this->assertDatabaseCount('schedules', 0);
+
+        // วันปกติในเทอม → ผ่าน + ติด term_id อัตโนมัติ
+        $this->post(route('maker.course_offerings.schedules.store', $offering),
+            $this->schedulePayload($instructor, $group, $activityType, $room, ['start_date' => '2026-08-03', 'end_date' => '2026-08-07']))
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('schedules', ['course_offering_id' => $offering->id, 'start_date' => '2026-08-03']);
+        $this->assertNotNull(Schedule::where('course_offering_id', $offering->id)->value('term_id'));
+    }
+
+    public function test_schedule_rejects_student_groups_over_capacity(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
         $extraGroup = StudentGroup::create([
@@ -931,10 +985,9 @@ class ScheduleManagementTest extends TestCase
             'student_group_ids' => [$group->id, $extraGroup->id],
         ]))
             ->assertStatus(302)
-            ->assertSessionHasNoErrors()
-            ->assertSessionHas('schedule_conflict_warning');
+            ->assertSessionHasErrors('capacity_required');
 
-        $this->assertDatabaseCount('schedules', 1);
+        $this->assertDatabaseCount('schedules', 0);
     }
 
     public function test_schedule_form_excludes_and_rejects_instructors_from_other_departments(): void
@@ -949,22 +1002,16 @@ class ScheduleManagementTest extends TestCase
 
         $this->actingAsCourseHead($head);
 
-        // Modal create ยังต้อง filter instructor ต่างภาค ออกจาก dropdown
         $this->get(route('maker.course_offerings.schedules.index', [$offering, 'modal' => 'create']))
             ->assertOk()
             ->assertSee($instructor->name)
             ->assertDontSee($outsideInstructor->name);
 
-        // งาน 2 — dept mismatch เปลี่ยนจาก hard block เป็น soft warning:
-        // save สำเร็จ แต่ flash schedule_conflict_warning มีข้อความเตือน
         $this->post(route('maker.course_offerings.schedules.store', $offering), $this->schedulePayload($outsideInstructor, $group, $activityType, $room))
-            ->assertSessionHasNoErrors()
-            ->assertSessionHas('schedule_conflict_warning');
+            ->assertSessionHasErrors('instructor_ids');
 
-        // schedule ถูกสร้างแม้จะมี warning (ไม่ block อีกต่อไป)
-        $this->assertDatabaseCount('schedules', 1);
+        $this->assertDatabaseCount('schedules', 0);
     }
-
 
     public function test_schedule_page_hides_existing_schedule_instructors_from_other_departments(): void
     {
@@ -1235,7 +1282,7 @@ class ScheduleManagementTest extends TestCase
         $this->assertDatabaseMissing('schedule_student_groups', ['schedule_id' => $schedule->id]);
     }
 
-    public function test_instructor_overlap_blocks_save_across_offerings(): void
+    public function test_instructor_overlap_allows_save_and_marks_conflict_across_offerings(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
         [, $otherOffering, , $otherGroup, $otherActivityType, $otherRoom] = $this->makeReadyOffering();
@@ -1245,12 +1292,14 @@ class ScheduleManagementTest extends TestCase
         $this->actingAsCourseHead($head);
 
         $this->post(route('maker.course_offerings.schedules.store', $offering), $this->schedulePayload($instructor, $group, $activityType, $room))
-            ->assertSessionHasErrors('schedule');
+            ->assertRedirect(route('maker.course_offerings.schedules.index', $offering))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('schedule_conflict_warning');
 
-        $this->assertDatabaseCount('schedules', 1);
+        $this->assertDatabaseCount('schedules', 2);
     }
 
-    public function test_room_overlap_blocks_save(): void
+    public function test_room_overlap_allows_save_and_marks_conflict(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
         $otherInstructor = $this->makeUser('instructor');
@@ -1261,12 +1310,46 @@ class ScheduleManagementTest extends TestCase
         $this->actingAsCourseHead($head);
 
         $this->post(route('maker.course_offerings.schedules.store', $offering), $this->schedulePayload($instructor, $group, $activityType, $room))
-            ->assertSessionHasErrors('schedule');
+            ->assertRedirect(route('maker.course_offerings.schedules.index', $offering))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('schedule_conflict_warning');
 
-        $this->assertDatabaseCount('schedules', 1);
+        $this->assertDatabaseCount('schedules', 2);
     }
 
-    public function test_room_overlap_blocks_save_across_offerings(): void
+    public function test_schedule_conflict_warning_detects_week_two_resources_from_weekly_series(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+
+        $this->actingAsCourseHead($head);
+
+        $this->post(route('maker.course_offerings.schedules.series.store', $offering), [
+            'weekday' => 1,
+            'start_week' => 1,
+            'end_week' => 2,
+            'start_time' => '08:00',
+            'end_time' => '10:00',
+            'activity_type_id' => $activityType->id,
+            'room_id' => $room->id,
+            'topic' => 'Weekly conflict source',
+            'instructor_ids' => [$instructor->id],
+            'lead_instructor_id' => $instructor->id,
+            'student_group_ids' => [$group->id],
+        ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->post(route('maker.course_offerings.schedules.store', $offering), $this->schedulePayload($instructor, $group, $activityType, $room, [
+            'start_date' => '2026-08-10',
+            'end_date' => '2026-08-10',
+            'topic' => 'Conflicts with generated week two',
+        ]))
+            ->assertRedirect(route('maker.course_offerings.schedules.index', $offering))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('schedule_conflict_warning');
+    }
+
+    public function test_room_overlap_allows_save_and_marks_conflict_across_offerings(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
         [, $otherOffering, $otherInstructor, $otherGroup, $otherActivityType] = $this->makeReadyOffering();
@@ -1276,12 +1359,14 @@ class ScheduleManagementTest extends TestCase
         $this->actingAsCourseHead($head);
 
         $this->post(route('maker.course_offerings.schedules.store', $offering), $this->schedulePayload($instructor, $group, $activityType, $room))
-            ->assertSessionHasErrors('schedule');
+            ->assertRedirect(route('maker.course_offerings.schedules.index', $offering))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('schedule_conflict_warning');
 
-        $this->assertDatabaseCount('schedules', 1);
+        $this->assertDatabaseCount('schedules', 2);
     }
 
-    public function test_student_group_overlap_blocks_save(): void
+    public function test_student_group_overlap_allows_save_and_marks_conflict(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
         $otherInstructor = $this->makeUser('instructor');
@@ -1292,9 +1377,11 @@ class ScheduleManagementTest extends TestCase
         $this->actingAsCourseHead($head);
 
         $this->post(route('maker.course_offerings.schedules.store', $offering), $this->schedulePayload($instructor, $group, $activityType, $room))
-            ->assertSessionHasErrors('schedule');
+            ->assertRedirect(route('maker.course_offerings.schedules.index', $offering))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('schedule_conflict_warning');
 
-        $this->assertDatabaseCount('schedules', 1);
+        $this->assertDatabaseCount('schedules', 2);
     }
 
     public function test_adjacent_time_does_not_conflict(): void
@@ -1314,7 +1401,7 @@ class ScheduleManagementTest extends TestCase
         $this->assertDatabaseCount('schedules', 2);
     }
 
-    public function test_partial_time_overlap_blocks_save(): void
+    public function test_partial_time_overlap_allows_save_and_marks_conflict(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
         $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group]);
@@ -1325,12 +1412,14 @@ class ScheduleManagementTest extends TestCase
             'start_time' => '09:30',
             'end_time' => '10:30',
         ]))
-            ->assertSessionHasErrors('schedule');
+            ->assertRedirect(route('maker.course_offerings.schedules.index', $offering))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('schedule_conflict_warning');
 
-        $this->assertDatabaseCount('schedules', 1);
+        $this->assertDatabaseCount('schedules', 2);
     }
 
-    public function test_block_date_range_overlap_blocks_save(): void
+    public function test_block_date_range_overlap_allows_save_and_marks_conflict(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
         $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group]);
@@ -1341,9 +1430,11 @@ class ScheduleManagementTest extends TestCase
             'start_date' => '2026-08-07',
             'end_date' => '2026-08-10',
         ]))
-            ->assertSessionHasErrors('schedule');
+            ->assertRedirect(route('maker.course_offerings.schedules.index', $offering))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('schedule_conflict_warning');
 
-        $this->assertDatabaseCount('schedules', 1);
+        $this->assertDatabaseCount('schedules', 2);
     }
 
     public function test_block_date_range_non_overlap_does_not_conflict(): void

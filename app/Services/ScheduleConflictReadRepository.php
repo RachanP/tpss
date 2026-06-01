@@ -285,60 +285,6 @@ class ScheduleConflictReadRepository
     /**
      * @return array{status:string,generation:?int,total:?int,by_type:array<string,int>}
      */
-    public function getStaffSummary(int $userId, ?int $academicYearId): array
-    {
-        if (! $academicYearId || ! $this->userHasStaffAcademicYearScope($userId, (int) $academicYearId)) {
-            return [
-                'status' => 'missing',
-                'generation' => null,
-                'total' => null,
-                'by_type' => [],
-            ];
-        }
-
-        $run = $this->latestReadyRun((int) $academicYearId);
-
-        if (! $run || $run->status !== 'ready') {
-            return [
-                'status' => $run?->status ?? 'missing',
-                'generation' => $run?->generation ? (int) $run->generation : null,
-                'total' => null,
-                'by_type' => [],
-            ];
-        }
-
-        $rows = ScheduleConflictResult::query()
-            ->select('schedule_conflict_results.conflict_type', DB::raw('count(distinct schedule_conflict_results.id) as total'))
-            ->join('schedule_conflict_result_scopes as scopes', 'scopes.result_id', '=', 'schedule_conflict_results.id')
-            ->where('schedule_conflict_results.run_id', $run->id)
-            ->where('schedule_conflict_results.academic_year_id', $academicYearId)
-            ->where('scopes.run_id', $run->id)
-            ->where('scopes.academic_year_id', $academicYearId)
-            ->where('scopes.scope_type', 'admin_global')
-            ->whereExists(function ($query) use ($userId) {
-                $query
-                    ->select(DB::raw(1))
-                    ->from('course_offerings')
-                    ->join('course_staff', 'course_staff.course_id', '=', 'course_offerings.course_id')
-                    ->whereColumn('course_offerings.id', 'scopes.course_offering_id')
-                    ->where('course_staff.user_id', $userId);
-            })
-            ->groupBy('schedule_conflict_results.conflict_type')
-            ->pluck('total', 'conflict_type')
-            ->map(fn ($count) => (int) $count)
-            ->all();
-
-        return [
-            'status' => 'ready',
-            'generation' => (int) $run->generation,
-            'total' => array_sum($rows),
-            'by_type' => $rows,
-        ];
-    }
-
-    /**
-     * @return array{status:string,generation:?int,total:?int,by_type:array<string,int>}
-     */
     public function getExecutiveSummary(?int $academicYearId): array
     {
         abort_unless(auth()->check() && session('active_role') === 'executive', 403);
@@ -413,15 +359,6 @@ class ScheduleConflictReadRepository
             ->withActiveCourse()
             ->where('coordinator_id', $userId)
             ->where('academic_year_id', $academicYearId)
-            ->exists();
-    }
-
-    private function userHasStaffAcademicYearScope(int $userId, int $academicYearId): bool
-    {
-        return CourseOffering::query()
-            ->withActiveCourse()
-            ->where('academic_year_id', $academicYearId)
-            ->whereHas('course.assignedStaff', fn ($query) => $query->where('users.id', $userId))
             ->exists();
     }
 

@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Models\UserRole;
 use App\Services\NavigationBadgeService;
 use App\Services\ScheduleConflictInvalidationService;
+use App\Services\ScheduleConflictIndex;
 use App\Services\ScheduleConflictReadRepository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -87,6 +88,87 @@ class ConflictRecomputeJobTest extends TestCase
         ]);
     }
 
+    public function test_incremental_recompute_rebuilds_only_changed_conflict_cluster(): void
+    {
+        [$year, , $offering, $instructor, $group] = $this->makeReadyOffering();
+        $activityType = $this->makeActivityType('lecture');
+        $room = $this->makeRoom();
+
+        $first = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'topic' => 'Changed conflict source',
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-03',
+        ]);
+        $second = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'topic' => 'Changed conflict neighbor',
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-03',
+        ]);
+
+        $otherInstructor = $this->makeUser('Other Instructor');
+        $otherGroup = StudentGroup::query()->create([
+            'course_offering_id' => $offering->id,
+            'group_code' => 'B1',
+            'student_count' => 15,
+        ]);
+        $otherRoom = $this->makeRoom();
+        $third = $this->makeSchedule($offering, $activityType, $otherRoom, [$otherInstructor], [$otherGroup], [
+            'topic' => 'Unchanged conflict source',
+            'start_date' => '2026-08-10',
+            'end_date' => '2026-08-10',
+        ]);
+        $fourth = $this->makeSchedule($offering, $activityType, $otherRoom, [$otherInstructor], [$otherGroup], [
+            'topic' => 'Unchanged conflict neighbor',
+            'start_date' => '2026-08-10',
+            'end_date' => '2026-08-10',
+        ]);
+
+        $this->artisan('conflicts:recompute', [
+            '--academic-year' => $year->id,
+            '--sync' => true,
+        ])->assertExitCode(0);
+
+        $previousRun = ScheduleConflictRun::query()->firstOrFail();
+        $this->assertSame(12, $previousRun->result_count);
+
+        $first->forceFill([
+            'start_time' => '10:00',
+            'end_time' => '12:00',
+        ])->save();
+
+        config(['conflicts.async_reads' => true]);
+        Cache::flush();
+        Queue::fake();
+
+        app(ScheduleConflictInvalidationService::class)->markScheduleDirty($first, 'pivot');
+
+        $run = ScheduleConflictRun::query()
+            ->where('status', 'pending')
+            ->orderByDesc('generation')
+            ->firstOrFail();
+
+        $this->assertSame([$first->id], $run->metadata['affected_schedule_ids']);
+
+        (new ConflictRecomputeJob($year->id, $run->id, (int) $run->generation, 'pivot'))
+            ->handle(app(ScheduleConflictIndex::class), app(ScheduleConflictInvalidationService::class));
+
+        $run->refresh();
+
+        $this->assertSame('ready', $run->status);
+        $this->assertSame(2, (int) $run->generation);
+        $this->assertSame(6, $run->result_count);
+        $this->assertDatabaseMissing('schedule_conflict_results', [
+            'run_id' => $run->id,
+            'schedule_id' => $first->id,
+            'conflicting_schedule_id' => $second->id,
+        ]);
+        $this->assertDatabaseHas('schedule_conflict_results', [
+            'run_id' => $run->id,
+            'schedule_id' => $third->id,
+            'conflicting_schedule_id' => $fourth->id,
+        ]);
+    }
+
     public function test_sync_recompute_preserves_team_supervision_policy_exception(): void
     {
         [$year] = $this->makeTeamSupervisionDataset();
@@ -141,8 +223,7 @@ class ConflictRecomputeJobTest extends TestCase
         [$year, $firstHead, , $firstSchedule] = $this->makeConflictDataset($year, 'First');
         [$year, $secondHead, , $secondSchedule] = $this->makeConflictDataset($year, 'Second');
         $otherYear = AcademicYear::query()->create([
-            'name' => '2572',
-            'semester' => 2,
+            'name' => '2576',
             'start_date' => '2029-01-01',
             'end_date' => '2029-05-31',
             'is_active' => false,
@@ -416,38 +497,9 @@ class ConflictRecomputeJobTest extends TestCase
             ->assertJsonPath('poll', false);
     }
 
-    public function test_conflict_alert_page_hides_stale_ready_counts_while_recompute_is_pending(): void
-    {
-        Cache::flush();
-        [$year, $head] = $this->makeConflictDataset();
-        $this->attachRole($head, 'course_head');
-
-        $this->artisan('conflicts:recompute', [
-            '--academic-year' => $year->id,
-            '--sync' => true,
-        ])->assertExitCode(0);
-
-        config(['conflicts.async_reads' => true]);
-        $readyCount = app(ScheduleConflictReadRepository::class)->getCountForUser($head->id, $year->id);
-        ScheduleConflictRun::query()->create([
-            'academic_year_id' => $year->id,
-            'status' => 'pending',
-            'generation' => 2,
-            'source' => 'manual',
-            'requested_at' => now(),
-            'result_count' => 0,
-        ]);
-        Cache::flush();
-
-        $this->actingAs($head)
-            ->withSession(['active_role' => 'course_head'])
-            ->get(route('maker.schedule_conflicts.index'))
-            ->assertOk()
-            ->assertSee('data-testid="maker-conflict-pending"', false)
-            ->assertSee('กำลังตรวจสอบรายการชน')
-            ->assertSee('บันทึกข้อมูลแล้ว ระบบกำลังตรวจสอบรายการชนใหม่')
-            ->assertDontSee('<div class="conflict-summary-value">' . $readyCount . '</div>', false);
-    }
+    // หมายเหตุ: เดิมมี test_conflict_alert_page_hides_stale_ready_counts_while_recompute_is_pending
+    // ถูกลบเพราะหน้า /maker/schedule-conflicts ถูกแทนด้วยหน้า /maker/alerts (V2) — async recompute/badge
+    // ยังทดสอบผ่าน test อื่นในไฟล์นี้ + sidebar badge polling
 
     public function test_async_sidebar_badge_starts_recompute_when_results_are_missing(): void
     {
@@ -557,8 +609,7 @@ class ConflictRecomputeJobTest extends TestCase
         config(['conflicts.async_reads' => false]);
         [$firstYear, , $firstOffering, $firstInstructor, $firstGroup] = $this->makeReadyOffering();
         $secondYear = AcademicYear::query()->create([
-            'name' => '2570',
-            'semester' => 2,
+            'name' => '2577',
             'start_date' => '2027-01-01',
             'end_date' => '2027-05-31',
             'is_active' => false,
@@ -620,8 +671,7 @@ class ConflictRecomputeJobTest extends TestCase
             'phase' => 'published',
         ]);
         $schedulingYear = AcademicYear::query()->create([
-            'name' => '2573',
-            'semester' => 2,
+            'name' => '2578',
             'start_date' => '2030-01-01',
             'end_date' => '2030-05-31',
             'is_active' => false,

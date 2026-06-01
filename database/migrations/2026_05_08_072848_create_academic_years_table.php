@@ -15,17 +15,16 @@ return new class extends Migration
 
         Schema::create('academic_years', function (Blueprint $table) {
             $table->id();
-            $table->string('name', 255)->comment('เช่น 2569');
-            $table->integer('semester')->comment('เช่น 1, 2, 3');
-            $table->date('start_date');
-            $table->date('end_date');
+            $table->string('name', 255)->comment('ปีการศึกษา เช่น 2569 (1 แถว = 1 ปี — เทอมอยู่ในตาราง terms)');
+            $table->date('start_date')->comment('วันเริ่มปีการศึกษา');
+            $table->date('end_date')->comment('วันสิ้นสุดปีการศึกษา');
             $table->boolean('is_active');
             $table->enum('phase', ['preparation', 'scheduling', 'published'])
                 ->default('preparation')
-                ->comment('สถานะระดับระบบ — Admin คุม: preparation → scheduling → published');
+                ->comment('สถานะระดับระบบ — Admin คุม: preparation → scheduling → published (ต่อ "ปี")');
             $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->nullable();
-            $table->unique(['name', 'semester']);
+            $table->unique('name');
         });
 
         Schema::enableForeignKeyConstraints();

@@ -5,10 +5,11 @@ namespace App\Http\Controllers\CourseHead;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\CourseOffering;
-use App\Models\Room;
 use App\Models\Schedule;
 use App\Models\ScheduleTemplate;
+use App\Services\AcademicCalendar;
 use App\Services\AuditLogger;
+use App\Services\CoordinatorAlertService;
 use App\Services\NavigationBadgeService;
 use App\Services\ReferenceDataCache;
 use App\Services\ScheduleConflictChecker;
@@ -38,7 +39,7 @@ class ScheduleController extends Controller
     public function workspace(Request $request): View|RedirectResponse
     {
         if ($targetOfferingId = $this->coordinatorScheduleOfferingRedirectTarget($request)) {
-            return redirect()->route($this->scheduleRouteName('offering.index'), array_filter([
+            return redirect()->route('maker.course_offerings.schedules.index', array_filter([
                 'courseOffering' => $targetOfferingId,
                 'week_start' => $request->query('week_start'),
                 'date' => $request->query('date'),
@@ -50,7 +51,7 @@ class ScheduleController extends Controller
 
         $offerings = $this->coordinatorScheduleOfferings(includeSchedulingData: false);
 
-        return view('course_head.schedules.index', $this->schedulePageData(
+        return view('shared.schedules.index', $this->schedulePageData(
             request: $request,
             courseOffering: null,
             isWorkspace: true,
@@ -58,187 +59,9 @@ class ScheduleController extends Controller
         ));
     }
 
-    private function isStaffScheduleContext(): bool
-    {
-        return request()->routeIs('staff.*') || session('active_role') === 'staff';
-    }
-
-    private function scheduleRoutePrefix(): string
-    {
-        return $this->isStaffScheduleContext() ? 'staff' : 'maker';
-    }
-
-    private function scheduleRouteNames(): array
-    {
-        $prefix = $this->scheduleRoutePrefix();
-
-        return [
-            'workspace.index' => "{$prefix}.schedules.index",
-            'workspace.store' => "{$prefix}.schedules.store",
-            'offering.index' => "{$prefix}.course_offerings.schedules.index",
-            'offering.store' => "{$prefix}.course_offerings.schedules.store",
-            'offering.series.store' => "{$prefix}.course_offerings.schedules.series.store",
-            'offering.check_conflicts' => "{$prefix}.course_offerings.schedules.check_conflicts",
-            'offering.copy_week.preview' => "{$prefix}.course_offerings.schedules.copy_week.preview",
-            'offering.copy_week' => "{$prefix}.course_offerings.schedules.copy_week",
-            'offering.templates.update' => "{$prefix}.course_offerings.schedules.templates.update",
-            'offering.destroy' => "{$prefix}.course_offerings.schedules.destroy",
-            'offering.update' => "{$prefix}.course_offerings.schedules.update",
-            'conflicts.index' => $prefix === 'maker' ? 'maker.schedule_conflicts.index' : null,
-            'offering.show' => $prefix === 'maker' ? 'maker.course_offerings.show' : null,
-        ];
-    }
-
-    private function scheduleRouteName(string $key): string
-    {
-        $name = $this->scheduleRouteNames()[$key] ?? null;
-        abort_unless(is_string($name) && $name !== '', 404);
-
-        return $name;
-    }
-
-    private function scheduleConflictIndexUrl(): ?string
-    {
-        $name = $this->scheduleRouteNames()['conflicts.index'] ?? null;
-
-        return $name ? route($name) : null;
-    }
-
     /**
-     * POST /maker/course-offerings/{offering}/schedules/check
-     * Real-time conflict + warning check สำหรับ modal สร้างใหม่
-     * ไม่ ignore schedule ใด — เช็คทุก schedule ที่ชน
-     *
-     * Response:
-     *   conflicts[] → block บันทึก (instructor/room/group overlap)
-     *   warnings[]  → แสดง pill เหลือง ไม่ block (dept mismatch, capacity exceeded)
-     *   missing[]   → ข้อมูลไม่ครบ (ใช้สำหรับ badge)
-     */
-    public function checkRealtime(
-        Request $request,
-        CourseOffering $courseOffering,
-        ScheduleConflictChecker $conflictChecker
-    ): JsonResponse {
-        $this->authorizeCourseHeadOffering($courseOffering);
-
-        return $this->runRealtimeCheck($request, $courseOffering, $conflictChecker, null);
-    }
-
-    /**
-     * POST /maker/course-offerings/{offering}/schedules/{schedule}/check
-     * Real-time conflict check สำหรับ modal แก้ไข
-     * Ignore schedule ตัวเองเพื่อไม่ให้ชนกับตัวเอง
-     */
-    public function checkRealtimeEdit(
-        Request $request,
-        CourseOffering $courseOffering,
-        Schedule $schedule,
-        ScheduleConflictChecker $conflictChecker
-    ): JsonResponse {
-        $this->authorizeCourseHeadOffering($courseOffering);
-        $this->assertScheduleBelongsToOffering($courseOffering, $schedule);
-
-        return $this->runRealtimeCheck($request, $courseOffering, $conflictChecker, $schedule->id);
-    }
-
-    /**
-     * Logic หลักของ real-time check — ใช้ร่วมกันระหว่าง checkRealtime + checkRealtimeEdit
-     */
-    private function runRealtimeCheck(
-        Request $request,
-        CourseOffering $courseOffering,
-        ScheduleConflictChecker $conflictChecker,
-        ?int $ignoreScheduleId
-    ): JsonResponse {
-        // Validate loosely — field อาจยังไม่ครบ (partial form)
-        $data = $request->validate([
-            'start_date'          => ['nullable', 'date'],
-            'end_date'            => ['nullable', 'date'],
-            'start_time'          => ['nullable', 'date_format:H:i'],
-            'end_time'            => ['nullable', 'date_format:H:i'],
-            'activity_type_id'    => ['nullable', 'integer', 'exists:activity_types,id'],
-            'room_id'             => ['nullable', 'integer', 'exists:rooms,id'],
-            'instructor_ids'      => ['nullable', 'array'],
-            'instructor_ids.*'    => ['integer'],
-            'lead_instructor_id'   => ['nullable', 'integer'],
-            'student_group_ids'   => ['nullable', 'array'],
-            'student_group_ids.*' => ['integer'],
-            'capacity_required'   => ['nullable', 'integer', 'min:1'],
-            'sub_group_label'     => ['nullable', 'string', 'max:20'],
-        ]);
-
-        $data['course_offering_id'] = $courseOffering->id;
-        $instructorIds    = array_map('intval', $data['instructor_ids'] ?? []);
-        $studentGroupIds  = array_map('intval', $data['student_group_ids'] ?? []);
-
-        $conflicts = [];
-        $warnings  = [];
-        $missing   = [];
-
-        // ── Conflict check (เฉพาะถ้ามีข้อมูลวันเวลาครบ) ──────────────────
-        if (
-            ! empty($data['start_date']) && ! empty($data['end_date']) &&
-            ! empty($data['start_time']) && ! empty($data['end_time'])
-        ) {
-            $conflicts = $conflictChecker->check(
-                Arr::only($data, [
-                    'course_offering_id', 'activity_type_id',
-                    'start_date', 'end_date', 'start_time', 'end_time',
-                    'room_id', 'sub_group_label',
-                ]),
-                $instructorIds,
-                $studentGroupIds,
-                $ignoreScheduleId
-            );
-        }
-
-        // ── Missing required fields ────────────────────────────────────────
-        $requiredFields = [
-            'activity_type_id' => 'ประเภทกิจกรรม',
-            'start_date'       => 'วันที่',
-            'start_time'       => 'เวลาเริ่ม',
-            'end_time'         => 'เวลาสิ้นสุด',
-        ];
-
-        foreach ($requiredFields as $field => $label) {
-            if (empty($data[$field])) {
-                $missing[] = ['field' => $field, 'label' => $label];
-            }
-        }
-
-        $warnings = collect($warnings)
-            ->merge($this->scheduleWarningItems($courseOffering, $data))
-            ->unique(fn (array $warning) => ($warning['type'] ?? '') . ':' . ($warning['field'] ?? ''))
-            ->values()
-            ->all();
-
-        $fieldByType = [
-            'instructor_overlap' => 'instructor_ids',
-            'room_overlap' => 'room_id',
-            'group_overlap' => 'student_group_ids',
-        ];
-        $fields = [];
-        foreach ($conflicts as $conflict) {
-            $field = $fieldByType[$conflict['type'] ?? ''] ?? 'schedule';
-            $fields[$field][] = $conflict['message'] ?? 'พบการชนตารางสอน';
-        }
-        foreach ($fields as $field => $messages) {
-            $fields[$field] = array_values(array_unique($messages));
-        }
-
-        return response()->json([
-            'blocking' => ! empty($fields),
-            'fields' => (object) $fields,
-            'conflicts' => $conflicts,
-            'warnings'  => $warnings,
-            'missing'   => $missing,
-        ]);
-    }
-
-    /**
-     * GET /maker/alerts
-     * หน้าแจ้งเตือนทั่วไป (warnings only — conflict ถูก block ใน modal แล้ว)
-     * แสดง: ข้อมูลไม่ครบ, ความจุห้องเกิน, ไม่กำหนดบทบาท, ผู้สอนต่างภาค
+     * V2: หน้าแจ้งเตือนรวมของหัวหน้าวิชา (warning — ไม่ใช่การชน)
+     * แทนหน้า conflicts เดิม · การชนข้ามวิชาเป็น card แยก (เพิ่มด่านถัดไป)
      */
     public function alerts(Request $request): View
     {
@@ -248,242 +71,48 @@ class ScheduleController extends Controller
         $selectedAcademicYear = $this->selectedConflictAcademicYear($request, $availableYears, $defaultAcademicYear);
         $selectedAcademicYearId = $selectedAcademicYear?->id ? (int) $selectedAcademicYear->id : null;
 
-        $schedules = collect();
-        $warnings  = collect();
+        $warnings = collect();
 
         if ($selectedAcademicYearId) {
-            $schedules = $this->orderSchedulesByDate(
-                Schedule::query()
-                    ->with([
-                        'courseOffering.course.department',
-                        'courseOffering.academicYear',
-                        'courseOffering.instructorPool.instructorProfile.department',
-                        'activityType',
-                        'room',
-                        'instructors.instructorProfile.department',
-                        'studentGroups',
-                    ])
-                    ->whereHas('courseOffering', function ($q) use ($userId, $selectedAcademicYearId) {
-                        $q->where('coordinator_id', $userId)
-                          ->where('academic_year_id', $selectedAcademicYearId)
-                          ->withActiveCourse();
-                    })
-            )->get();
+            // warning (ไม่ใช่การชน) — ใช้ service เดียวกับ sidebar badge เพื่อให้เลขรวมตรงกัน
+            $warnings = app(CoordinatorAlertService::class)->warningItems($userId, $selectedAcademicYearId);
 
-            $warnings = $schedules->flatMap(function (Schedule $schedule) {
-                $items = [];
-                $label = $this->scheduleAlertLabel($schedule);
+            // 🔴 การชนข้ามวิชา — ดึงจาก conflict index ทำเป็น item type 'conflict' (สีแดง ขึ้นบนสุด)
+            $conflictResult = app(ScheduleConflictIndex::class)->conflictsForCoordinator($userId, $selectedAcademicYearId);
+            $conflictMap = $conflictResult['conflictMap'];
+            $typeWord = ['instructor_overlap' => 'ผู้สอน', 'room_overlap' => 'ห้อง', 'group_overlap' => 'กลุ่ม'];
+            $conflictItems = $conflictResult['schedules']->toBase()->map(function (Schedule $schedule) use ($conflictMap, $typeWord) {
+                $entries = $conflictMap->get($schedule->id, collect());
+                $parts = $entries->groupBy('type')->map(function ($byType, $type) use ($typeWord) {
+                    $res = $byType->pluck('resource_label')->filter()->unique()->implode(', ');
+                    return ($typeWord[$type] ?? 'ชน') . ($res !== '' ? " ({$res})" : '');
+                })->values()->implode(' · ');
 
-                // 1. ข้อมูลไม่ครบ — ขาด topic / room / instructor / group
-                $missingParts = [];
-                if (! $schedule->topic)                           $missingParts[] = 'หัวข้อ';
-                if (! $schedule->room_id)                         $missingParts[] = 'ห้อง/สถานที่';
-                if ($schedule->instructors->isEmpty())            $missingParts[] = 'ผู้สอน';
-                if ($schedule->studentGroups->isEmpty())          $missingParts[] = 'กลุ่มนักศึกษา';
-                if (! empty($missingParts)) {
-                    $items[] = [
-                        'type'        => 'incomplete',
-                        'schedule'    => $schedule,
-                        'label'       => $label,
-                        'message'     => 'ข้อมูลไม่ครบ: ' . implode(', ', $missingParts),
-                        'missing'     => $missingParts,
-                    ];
-                }
-
-                // 2. ความจุห้องเกิน (เทียบจำนวนผู้เรียนทั้งหมดกับความจุจริงของห้อง)
-                if ($schedule->room && $schedule->room->capacity && $schedule->studentGroups->isNotEmpty()) {
-                    $studentCount = (int) $schedule->studentGroups->sum('student_count');
-                    if ($studentCount > (int) $schedule->room->capacity) {
-                        $items[] = [
-                            'type'     => 'capacity_exceeded',
-                            'schedule' => $schedule,
-                            'label'    => $label,
-                            'message'  => "จำนวนผู้เรียน ({$studentCount}) เกินความจุห้อง ({$schedule->room->capacity})",
-                        ];
-                    }
-                }
-
-                // 3. ไม่กำหนดบทบาทผู้สอน (course_role_id IS NULL ใน instructorPool ของ courseOffering)
-                $instructorPoolMap = $schedule->courseOffering?->instructorPool->keyBy('id') ?? collect();
-                $noRoleInstructors = $schedule->instructors->filter(function ($i) use ($instructorPoolMap) {
-                    $poolUser = $instructorPoolMap->get($i->id);
-                    return is_null($poolUser?->pivot?->course_role_id ?? null);
-                });
-                if ($noRoleInstructors->isNotEmpty()) {
-                    $names = $noRoleInstructors->map(fn ($i) => $i->formatted_name ?? $i->name)->implode(', ');
-                    $items[] = [
-                        'type'     => 'no_role',
-                        'schedule' => $schedule,
-                        'label'    => $label,
-                        'message'  => "ไม่กำหนดบทบาทผู้สอน: {$names}",
-                    ];
-                }
-
-                // 4. ผู้สอนจากภาควิชาอื่น
-                $deptId = $schedule->courseOffering?->course?->department_id;
-                if ($deptId) {
-                    $outsideInstructors = $schedule->instructors->filter(
-                        fn ($i) => (int) ($i->instructorProfile?->department_id) !== (int) $deptId
-                    );
-                    if ($outsideInstructors->isNotEmpty()) {
-                        $names = $outsideInstructors->map(fn ($i) => $i->formatted_name ?? $i->name)->implode(', ');
-                        $dept  = $outsideInstructors->first()?->instructorProfile?->department?->name ?? 'ภาควิชาอื่น';
-                        $items[] = [
-                            'type'     => 'dept_mismatch',
-                            'schedule' => $schedule,
-                            'label'    => $label,
-                            'message'  => "ผู้สอนจากภาควิชาอื่น ({$dept}): {$names}",
-                        ];
-                    }
-                }
-
-                return $items;
+                return ['type' => 'conflict', 'schedule' => $schedule, 'label' => $this->scheduleAlertLabel($schedule), 'message' => 'ชนกับรายการอื่น — ' . $parts];
             });
+
+            $warnings = $conflictItems->merge($warnings); // การชนขึ้นก่อน warning
         }
 
-        return view('course_head.alerts.index', [
-            'availableYears'     => $availableYears,
+        return view('shared.alerts.index', [
+            'availableYears' => $availableYears,
             'selectedAcademicYear' => $selectedAcademicYear,
             'selectedAcademicYearId' => $selectedAcademicYearId,
-            'warnings'           => $warnings,
-            'totalWarningCount'  => $warnings->count(),
-            'warningTypeCounts'  => $warnings->groupBy('type')->map->count(),
-            'emptyStateKey'      => $this->conflictEmptyStateKey($availableYears),
+            'warnings' => $warnings,
+            'totalWarningCount' => $warnings->count(),
+            'warningTypeCounts' => $warnings->groupBy('type')->map->count(),
+            'emptyStateKey' => $this->conflictEmptyStateKey($availableYears),
         ]);
     }
 
-    /** Label สั้นสำหรับแสดงใน alerts page */
     private function scheduleAlertLabel(Schedule $schedule): string
     {
-        $course = $schedule->courseOffering?->course;
-        $code   = $course?->course_code ?? 'รายวิชา';
-        $date   = optional($schedule->start_date ?? $schedule->teaching_date)->format('d/m/Y') ?? '-';
-        $time   = substr((string) $schedule->start_time, 0, 5) . '–' . substr((string) $schedule->end_time, 0, 5);
+        $date = $schedule->start_date ? ThaiDate::date($schedule->start_date) : '-';
+        $start = substr((string) $schedule->start_time, 0, 5);
+        $end = substr((string) $schedule->end_time, 0, 5);
+        $activity = $schedule->activityType?->name ?? 'กิจกรรม';
 
-        return "{$code} ({$date} {$time})";
-    }
-
-    public function conflicts(Request $request): View
-    {
-
-        $userId = (int) Auth::id();
-        $availableYears = $this->coordinatorAcademicYears($userId);
-        $defaultAcademicYear = $this->defaultConflictAcademicYear($availableYears);
-        $selectedAcademicYear = $this->selectedConflictAcademicYear($request, $availableYears, $defaultAcademicYear);
-        $selectedAcademicYearId = $selectedAcademicYear?->id ? (int) $selectedAcademicYear->id : null;
-        $emptyStateKey = $this->conflictEmptyStateKey($availableYears);
-
-        if (config('conflicts.async_reads')) {
-            return $this->asyncConflicts($request, $userId, $availableYears, $selectedAcademicYear, $selectedAcademicYearId, $emptyStateKey);
-        }
-
-        $result = app(ScheduleConflictIndex::class)->conflictsForCoordinator($userId, $selectedAcademicYearId);
-
-        if ($defaultAcademicYear && (int) $selectedAcademicYearId === (int) $defaultAcademicYear->id) {
-            app(NavigationBadgeService::class)->putCourseHeadConflictCount($userId, $result['total']);
-        }
-
-        $page = max(1, (int) $request->query('page', 1));
-        $perPage = 50;
-        $conflictSchedules = new LengthAwarePaginator(
-            $result['schedules']->forPage($page, $perPage)->values(),
-            $result['schedules']->count(),
-            $perPage,
-            $page,
-            [
-                'path' => $request->url(),
-                'query' => $request->query(),
-            ]
-        );
-        $schedules = $conflictSchedules->getCollection();
-        $conflictMap = $result['conflictMap'];
-
-        $conflictGroups = $schedules
-            ->groupBy('course_offering_id')
-            ->map(function (Collection $offeringSchedules) use ($conflictMap) {
-                /** @var Schedule $firstSchedule */
-                $firstSchedule = $offeringSchedules->first();
-
-                return [
-                    'offering' => $firstSchedule->courseOffering,
-                    'schedules' => $offeringSchedules->values(),
-                    'conflict_count' => $offeringSchedules->sum(
-                        fn (Schedule $schedule) => $conflictMap->get($schedule->id, collect())->count()
-                    ),
-                ];
-            })
-            ->values();
-
-        $conflictTypeCounts = $conflictMap
-            ->flatten(1)
-            ->groupBy('type')
-            ->map(fn ($items) => $items->count())
-            ->all();
-
-        return view('course_head.schedule_conflicts.index', [
-            'offerings' => collect(),
-            'availableYears' => $availableYears,
-            'selectedAcademicYear' => $selectedAcademicYear,
-            'selectedAcademicYearId' => $selectedAcademicYearId,
-            'conflictSchedules' => $conflictSchedules,
-            'conflictGroups' => $conflictGroups,
-            'conflictMap' => $conflictMap,
-            'totalConflictCount' => $result['total'],
-            'conflictTypeCounts' => $conflictTypeCounts,
-            'conflictStatus' => ['status' => 'ready'],
-            'conflictEmptyStateKey' => $this->conflictEmptyStateKey($availableYears),
-            'asyncConflictReads' => false,
-        ]);
-    }
-
-    private function asyncConflicts(
-        Request $request,
-        int $userId,
-        Collection $availableYears,
-        ?AcademicYear $selectedAcademicYear,
-        ?int $selectedAcademicYearId,
-        ?string $emptyStateKey = null
-    ): View {
-        $repository = app(ScheduleConflictReadRepository::class);
-        $page = max(1, (int) $request->query('page', 1));
-        $conflictStatus = $repository->getStatusForUser($userId, $selectedAcademicYearId);
-        $selectedYearIsScheduling = $selectedAcademicYear?->phase === 'scheduling';
-        $conflictChecking = $selectedYearIsScheduling
-            && in_array($conflictStatus['status'] ?? 'missing', ['missing', 'pending', 'processing'], true);
-
-        if ($selectedYearIsScheduling && ($conflictStatus['status'] ?? 'missing') === 'missing' && $selectedAcademicYearId) {
-            app(ScheduleConflictInvalidationService::class)->markDirty($selectedAcademicYearId, 'manual');
-        }
-
-        $resultPage = $conflictChecking
-            ? new LengthAwarePaginator(
-                collect(),
-                0,
-                25,
-                $page,
-                [
-                    'path' => $request->url(),
-                    'query' => $request->query(),
-                ]
-            )
-            : $repository->getScheduleSummaryPageForUser($userId, $selectedAcademicYearId, $page);
-        $conflictGroups = $this->conflictGroupsFromSummaries($resultPage->getCollection());
-
-        return view('course_head.schedule_conflicts.index', [
-            'offerings' => collect(),
-            'availableYears' => $availableYears,
-            'selectedAcademicYear' => $selectedAcademicYear,
-            'selectedAcademicYearId' => $selectedAcademicYearId,
-            'conflictSchedules' => $resultPage,
-            'conflictGroups' => $conflictGroups,
-            'conflictMap' => collect(),
-            'totalConflictCount' => $conflictChecking ? null : $repository->getCountForUser($userId, $selectedAcademicYearId),
-            'conflictTypeCounts' => $conflictChecking ? [] : $repository->getTypeCountsForUser($userId, $selectedAcademicYearId),
-            'conflictStatus' => $conflictStatus,
-            'conflictChecking' => $conflictChecking,
-            'conflictEmptyStateKey' => $emptyStateKey ?? $this->conflictEmptyStateKey($availableYears),
-            'asyncConflictReads' => true,
-        ]);
+        return trim("{$activity} · {$date} {$start}-{$end}");
     }
 
     public function conflictDetails(Request $request, Schedule $schedule): JsonResponse
@@ -614,13 +243,12 @@ class ScheduleController extends Controller
     private function coordinatorAcademicYears(int $userId): Collection
     {
         return AcademicYear::query()
-            ->select(['id', 'name', 'semester', 'start_date', 'end_date', 'is_active', 'phase'])
+            ->select(['id', 'name', 'start_date', 'end_date', 'is_active', 'phase'])
             ->whereIn('id', CourseOffering::query()
                 ->select('academic_year_id')
                 ->withActiveCourse()
-                ->where('coordinator_id', $userId))
+                ->schedulableBy($userId))
             ->orderByDesc('start_date')
-            ->orderByDesc('semester')
             ->orderByDesc('id')
             ->get();
     }
@@ -665,12 +293,81 @@ class ScheduleController extends Controller
     {
         $this->authorizeCourseHeadOffering($courseOffering);
 
-        return view('course_head.schedules.index', $this->schedulePageData(
+        return view('shared.schedules.index', $this->schedulePageData(
             request: $request,
             courseOffering: $courseOffering,
             isWorkspace: false,
             availableOfferings: $this->coordinatorScheduleOfferings(includeSchedulingData: false),
         ));
+    }
+
+    public function weekFragment(Request $request, CourseOffering $courseOffering): JsonResponse
+    {
+        $this->authorizeCourseHeadOffering($courseOffering);
+
+        $weekStart = $this->validScheduleDate($request, 'week_start')
+            ?->startOfWeek(CarbonInterface::MONDAY);
+
+        abort_unless($weekStart, 422);
+
+        $weekEnd = $weekStart->addDays(6);
+        $selectedInstructorId = $request->integer('instructor_id') ?: null;
+        $selectedTermId = $request->integer('term_id') ?: null;
+        $includeWeekends = $request->boolean('include_weekends');
+
+        $schedules = $this->orderSchedulesByDate(
+            $this->filterSchedulesByDateRange(
+                Schedule::query()
+                    ->with($this->scheduleRelations())
+                    ->where('course_offering_id', $courseOffering->id)
+                    ->when($selectedInstructorId, fn ($q) => $q
+                        ->whereHas('instructors', fn ($iq) => $iq->where('users.id', $selectedInstructorId)))
+                    ->when($selectedTermId, fn ($q) => $q->where('term_id', $selectedTermId)),
+                $weekStart->toDateString(),
+                $weekEnd->toDateString()
+            )
+        )->get();
+
+        $courseOffering->loadMissing([
+            'course.curriculum',
+            'course.department',
+            'academicYear.terms',
+            'instructorPool.instructorProfile.department',
+            'studentGroups' => fn ($query) => $query->orderBy('group_code'),
+        ]);
+
+        $activityTypes = app(ReferenceDataCache::class)->activityTypes();
+        $rooms = app(ReferenceDataCache::class)->activeRooms();
+        $academicCalendar = AcademicCalendar::forYear($courseOffering->academicYear);
+        $scheduleConflicts = $this->scheduleConflictMap($schedules);
+        $groupedSchedules = $schedules
+            ->filter(fn (Schedule $schedule) => $schedule->start_date)
+            ->sortBy(fn (Schedule $schedule) => $schedule->start_date->toDateString() . ' ' . ($schedule->start_time ?? '00:00:00'))
+            ->groupBy(fn (Schedule $schedule) => $schedule->start_date->toDateString());
+
+        $viewData = [
+            'courseOffering' => $courseOffering,
+            ...$this->scheduleDatePickerYearRange(),
+            'allSchedules' => $schedules,
+            'modalSchedules' => $schedules,
+            'groupedSchedules' => $groupedSchedules,
+            'scheduleConflicts' => $scheduleConflicts,
+            'activityTypes' => $activityTypes,
+            'rooms' => $rooms,
+            'academicCalendar' => $academicCalendar,
+            'selectedTermId' => $selectedTermId,
+            'academicYear' => $courseOffering->academicYear,
+            'canEdit' => $courseOffering->academicYear?->phase === 'scheduling',
+            'includeWeekends' => $includeWeekends,
+            'lazyWeekStart' => $weekStart->toDateString(),
+        ];
+
+        return response()->json([
+            'html' => view('shared.schedules._lazy_week_rows', $viewData)->render(),
+            'modal_html' => view('shared.schedules._lazy_detail_modals', $viewData)->render(),
+            'schedule_items' => $this->scheduleFilterItems($schedules, $courseOffering->academicYear),
+            'loaded_schedule_ids' => $schedules->pluck('id')->map(fn ($id) => (string) $id)->values(),
+        ]);
     }
 
     public function createGlobal(Request $request): View|RedirectResponse
@@ -681,7 +378,7 @@ class ScheduleController extends Controller
 
         if ($offerings->isEmpty()) {
             return redirect()
-                ->route($this->scheduleRouteName('workspace.index'))
+                ->route('maker.schedules.index')
                 ->withErrors(['schedule' => 'ยังไม่มีรายวิชาที่ต้องจัดตาราง']);
         }
 
@@ -689,7 +386,7 @@ class ScheduleController extends Controller
         $targetOffering = $selectedOfferingId ? $offerings->firstWhere('id', $selectedOfferingId) : null;
         $targetOffering = $targetOffering ?: $offerings->first();
 
-        return redirect()->route($this->scheduleRouteName('offering.index'), array_filter([
+        return redirect()->route('maker.course_offerings.schedules.index', array_filter([
             'courseOffering' => $targetOffering,
             'modal' => 'create',
             'week_start' => $request->query('week_start'),
@@ -739,6 +436,22 @@ class ScheduleController extends Controller
             fn ($q) => $q->whereHas('instructors', fn ($iq) => $iq->where('users.id', $selectedInstructorId))
         );
 
+        // V2: filter เทอม — วิชาเปิดทั้งปี จึงเลือกเทอมเพื่อโฟกัสช่วงที่จัด
+        $calendarYear = $courseOffering?->academicYear
+            ?? $availableOfferings->first()?->academicYear
+            ?? AcademicYear::where('is_active', true)->first();
+        $terms = $calendarYear ? $calendarYear->terms()->get() : collect();
+        $currentTerm = $terms->first(fn ($t) => $t->start_date && $t->end_date
+            && CarbonImmutable::now()->startOfDay()->betweenIncluded(
+                CarbonImmutable::parse($t->start_date)->startOfDay(),
+                CarbonImmutable::parse($t->end_date)->startOfDay()
+            ));
+        $termIdParam = $request->query('term_id'); // absent = null → default เทอมปัจจุบัน · '' หรือ 0 = ทุกเทอม
+        $termExplicit = $termIdParam !== null;
+        $selectedTermId = $termExplicit ? (((int) $termIdParam) ?: null) : $currentTerm?->id;
+        $selectedTerm = $selectedTermId ? $terms->firstWhere('id', $selectedTermId) : null;
+        $termFilter = fn ($query) => $query->when($selectedTermId, fn ($q) => $q->where('term_id', $selectedTermId));
+
         $firstScheduleDate = empty($offeringIds)
             ? null
             : $this->firstScheduleDate($offeringIds);
@@ -747,6 +460,9 @@ class ScheduleController extends Controller
         $includeWeekends = $request->boolean('include_weekends');
         $baseDate = $this->validScheduleDate($request, 'date')
             ?? $this->validWeekStart($request)
+            // เลือกเทอมชัดเจน → เด้งปฏิทินไปวันเริ่มเทอมนั้น · เทอมปัจจุบัน (default) → อยู่ที่วันนี้
+            ?? ($termExplicit && $selectedTerm?->start_date ? CarbonImmutable::parse($selectedTerm->start_date) : null)
+            ?? ($currentTerm && ! $termExplicit ? CarbonImmutable::now() : null)
             ?? ($firstScheduleDate ? CarbonImmutable::parse($firstScheduleDate) : null)
             ?? ($courseOffering?->academicYear?->start_date ? CarbonImmutable::parse($courseOffering->academicYear->start_date) : null)
             ?? ($availableOfferings->first()?->academicYear?->start_date ? CarbonImmutable::parse($availableOfferings->first()->academicYear->start_date) : null)
@@ -777,7 +493,8 @@ class ScheduleController extends Controller
                     Schedule::query()
                         ->with($scheduleRelations)
                         ->whereIn('course_offering_id', $offeringIds)
-                        ->tap($instructorFilter),
+                        ->tap($instructorFilter)
+                        ->tap($termFilter),
                     $periodStart->toDateString(),
                     $periodEnd->toDateString()
                 )
@@ -792,7 +509,34 @@ class ScheduleController extends Controller
                         ->with($scheduleRelations)
                         ->whereIn('course_offering_id', $offeringIds)
                         ->tap($instructorFilter)
+                        ->tap($termFilter)
                 )->get());
+
+        $lazyScheduleList = ! $isWorkspace && $courseOffering !== null;
+        $focusedScheduleId = (int) $request->query('focus_schedule_id', $request->query('edit_schedule_id', 0));
+        $forcedSchedule = $focusedScheduleId
+            ? $allSchedules->firstWhere('id', $focusedScheduleId)
+            : null;
+        $initialListWeekStart = $forcedSchedule?->start_date
+            ? CarbonImmutable::parse($forcedSchedule->start_date)->startOfWeek(CarbonInterface::MONDAY)
+            : (($request->has('week_start') || $request->has('date'))
+                ? $periodStart->startOfWeek(CarbonInterface::MONDAY)
+                : ($allSchedules->first()?->start_date
+                    ? CarbonImmutable::parse($allSchedules->first()->start_date)->startOfWeek(CarbonInterface::MONDAY)
+                    : $periodStart->startOfWeek(CarbonInterface::MONDAY)));
+        $initialListWeekEnd = $initialListWeekStart->addDays(6);
+        $initialListSchedules = $lazyScheduleList
+            ? $allSchedules
+                ->filter(fn (Schedule $schedule) => $schedule->start_date
+                    && CarbonImmutable::parse($schedule->start_date)->betweenIncluded($initialListWeekStart, $initialListWeekEnd))
+                ->values()
+            : $allSchedules;
+        $initialModalSchedules = $lazyScheduleList
+            ? $initialListSchedules->merge($schedules)->unique('id')->values()
+            : null;
+        $visibleConflictSchedules = $isWorkspace
+            ? $schedules
+            : $schedules->merge($initialListSchedules)->unique('id')->values();
 
         $totalScheduleCount = $isWorkspace
             ? (empty($offeringIds) ? 0 : Schedule::query()->whereIn('course_offering_id', $offeringIds)->count())
@@ -832,6 +576,10 @@ class ScheduleController extends Controller
             'allSchedules' => $allSchedules,
             'totalScheduleCount' => $totalScheduleCount,
             'selectedInstructorId' => $selectedInstructorId,
+            'terms' => $terms,
+            'selectedTermId' => $selectedTermId,
+            'currentTermId' => $currentTerm?->id,
+            'academicCalendar' => AcademicCalendar::forYear($calendarYear),
             'schedulePeriod' => $period,
             'includeWeekends' => $includeWeekends,
             'selectedScheduleDate' => $selectedDate,
@@ -842,21 +590,22 @@ class ScheduleController extends Controller
             'occurrencesByDate' => $occurrencesByDate,
             'gridOccurrencesByDate' => $occurrencesByDate,
             'groupedSchedules' => $groupedSchedules,
-            'scheduleConflicts' => $this->scheduleConflictMap($isWorkspace ? $schedules : $allSchedules),
+            'scheduleConflicts' => $this->scheduleConflictMap($visibleConflictSchedules),
             'timeSlots' => $timeSlots,
             'activityTypes' => app(ReferenceDataCache::class)->activityTypes(),
             'rooms' => app(ReferenceDataCache::class)->activeRooms(),
-            'scheduleRoutePrefix' => $this->scheduleRoutePrefix(),
-            'scheduleRouteNames' => $this->scheduleRouteNames(),
-            'canManageOfferingDetails' => ! $this->isStaffScheduleContext(),
-            'conflictIndexUrl' => $this->scheduleConflictIndexUrl(),
-            'dayViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'day', $includeWeekends, $selectedInstructorId),
-            'weekViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'week', $includeWeekends, $selectedInstructorId),
-            'monthViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'month', $includeWeekends, $selectedInstructorId),
-            'previousWeekUrl' => $this->schedulePeriodUrl($courseOffering, $previousPeriod, $isWorkspace, $period, $includeWeekends, $selectedInstructorId),
-            'nextWeekUrl' => $this->schedulePeriodUrl($courseOffering, $nextPeriod, $isWorkspace, $period, $includeWeekends, $selectedInstructorId),
-            'weekendToggleUrl' => $this->schedulePeriodUrl($courseOffering, $selectedDate, $isWorkspace, $period, $period === 'week' ? ! $includeWeekends : $includeWeekends, $selectedInstructorId),
-            'coordinatorEmptyStateKey' => $this->scheduleEmptyStateKey($availableOfferings),
+            'lazyScheduleList' => $lazyScheduleList,
+            'loadedScheduleIds' => $initialListSchedules->pluck('id')->map(fn ($id) => (string) $id)->values(),
+            'loadedWeekStarts' => $lazyScheduleList ? collect([$initialListWeekStart->toDateString()]) : collect(),
+            'initialModalSchedules' => $initialModalSchedules,
+            'lazyWeekFragmentUrl' => $courseOffering ? route('maker.course_offerings.schedules.week_fragment', $courseOffering) : null,
+            'dayViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'day', $includeWeekends, $selectedInstructorId, $selectedTermId),
+            'weekViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'week', $includeWeekends, $selectedInstructorId, $selectedTermId),
+            'monthViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'month', $includeWeekends, $selectedInstructorId, $selectedTermId),
+            'previousWeekUrl' => $this->schedulePeriodUrl($courseOffering, $previousPeriod, $isWorkspace, $period, $includeWeekends, $selectedInstructorId, $selectedTermId),
+            'nextWeekUrl' => $this->schedulePeriodUrl($courseOffering, $nextPeriod, $isWorkspace, $period, $includeWeekends, $selectedInstructorId, $selectedTermId),
+            'weekendToggleUrl' => $this->schedulePeriodUrl($courseOffering, $selectedDate, $isWorkspace, $period, $period === 'week' ? ! $includeWeekends : $includeWeekends, $selectedInstructorId, $selectedTermId),
+            'coordinatorEmptyStateKey' => \App\Support\CoordinatorEmptyState::forCoordinator((int) Auth::id()),
         ];
     }
 
@@ -893,25 +642,6 @@ class ScheduleController extends Controller
         ];
     }
 
-    private function scheduleEmptyStateKey(Collection $availableOfferings): string
-    {
-        if (! $this->isStaffScheduleContext()) {
-            return \App\Support\CoordinatorEmptyState::forCoordinator((int) Auth::id());
-        }
-
-        $systemHasScheduling = AcademicYear::query()
-            ->where('phase', 'scheduling')
-            ->exists();
-
-        if (! $systemHasScheduling) {
-            return \App\Support\CoordinatorEmptyState::PREPARATION;
-        }
-
-        return $availableOfferings->contains(fn (CourseOffering $offering) => $offering->academicYear?->phase === 'scheduling')
-            ? \App\Support\CoordinatorEmptyState::READY
-            : 'staff_no_offerings';
-    }
-
     private function scheduleRelations(): array
     {
         return [
@@ -922,10 +652,54 @@ class ScheduleController extends Controller
             'courseOffering.studentGroups' => fn ($query) => $query->orderBy('group_code'),
             'activityType',
             'scheduleTemplate',
+            'term',
             'room.locationType',
             'instructors.instructorProfile.department',
             'studentGroups',
         ];
+    }
+
+    private function scheduleFilterItems(Collection $schedules, ?AcademicYear $academicYear): Collection
+    {
+        $academicStartDate = $academicYear?->start_date
+            ? CarbonImmutable::parse($academicYear->start_date)->startOfWeek(CarbonInterface::MONDAY)
+            : null;
+
+        return $schedules->map(function (Schedule $schedule) use ($academicStartDate) {
+            $instructors = $schedule->instructors ?? collect();
+            $week = '';
+
+            if ($academicStartDate && $schedule->start_date) {
+                $week = (string) (max(1, (int) floor(
+                    $academicStartDate->diffInDays(
+                        CarbonImmutable::parse($schedule->start_date)->startOfWeek(CarbonInterface::MONDAY),
+                        false
+                    ) / 7
+                ) + 1));
+            }
+
+            return [
+                'id' => (string) $schedule->id,
+                'activity' => (string) $schedule->activity_type_id,
+                'groups' => $schedule->studentGroups->pluck('id')->map(fn ($id) => (string) $id)->values(),
+                'instructors' => $instructors->pluck('id')->map(fn ($id) => (string) $id)->values(),
+                'week' => $week,
+                'date' => $schedule->start_date?->toDateString(),
+                'search' => mb_strtolower(collect([
+                    $schedule->start_date ? ThaiDate::date($schedule->start_date) : null,
+                    $schedule->end_date ? ThaiDate::date($schedule->end_date) : null,
+                    substr((string) $schedule->start_time, 0, 5),
+                    substr((string) $schedule->end_time, 0, 5),
+                    $schedule->activityType?->name,
+                    $schedule->topic,
+                    $schedule->remark,
+                    $schedule->room?->room_code,
+                    $schedule->room?->room_name,
+                    $schedule->studentGroups->pluck('group_code')->implode(' '),
+                    $instructors->map(fn ($instructor) => $instructor->formatted_name ?? $instructor->name)->implode(' '),
+                ])->filter()->implode(' '), 'UTF-8'),
+            ];
+        })->values();
     }
 
     private function hasScheduleBlockDates(): bool
@@ -1098,13 +872,14 @@ class ScheduleController extends Controller
 
     private function coordinatorScheduleOfferingRedirectTarget(Request $request): ?int
     {
-        if (! $this->isStaffScheduleContext()
-            && \App\Support\CoordinatorEmptyState::forCoordinator((int) Auth::id())
+        if (\App\Support\CoordinatorEmptyState::forCoordinator((int) Auth::id())
             !== \App\Support\CoordinatorEmptyState::READY) {
             return null;
         }
 
-        $query = $this->scheduleOfferingQuery()
+        $query = CourseOffering::query()
+            ->withActiveCourse()
+            ->schedulableBy(Auth::id())
             ->whereHas('academicYear', fn ($query) => $query->where('phase', 'scheduling'));
 
         $selectedId = (int) $request->query('course_offering_id');
@@ -1134,9 +909,11 @@ class ScheduleController extends Controller
             ];
         }
 
-        return $this->scheduleOfferingQuery()
+        return CourseOffering::query()
             ->with($relations)
             ->withCount(['schedules', 'studentGroups', 'instructorPool'])
+            ->withActiveCourse()
+            ->schedulableBy(Auth::id())
             ->get()
             ->sortBy(fn (CourseOffering $offering) => implode('|', [
                 $offering->academicYear?->phase === 'scheduling' ? '0' : '1',
@@ -1144,17 +921,6 @@ class ScheduleController extends Controller
                 str_pad((string) $offering->id, 10, '0', STR_PAD_LEFT),
             ]), SORT_NATURAL)
             ->values();
-    }
-
-    private function scheduleOfferingQuery()
-    {
-        $query = CourseOffering::query()->withActiveCourse();
-
-        if ($this->isStaffScheduleContext()) {
-            return $query->whereHas('course.assignedStaff', fn ($staffQuery) => $staffQuery->where('users.id', Auth::id()));
-        }
-
-        return $query->where('coordinator_id', Auth::id());
     }
 
     private function scheduleWeekUrl(?CourseOffering $courseOffering, CarbonImmutable $weekStart, bool $isWorkspace): string
@@ -1168,29 +934,32 @@ class ScheduleController extends Controller
         bool $isWorkspace,
         string $period,
         bool $includeWeekends = false,
-        ?int $instructorId = null
+        ?int $instructorId = null,
+        ?int $termId = null
     ): string
     {
         $keepWeekendParam = $period === 'week' && $includeWeekends;
 
         if ($isWorkspace || ! $courseOffering) {
-            return route($this->scheduleRouteName('workspace.index'), array_filter([
+            return route('maker.schedules.index', array_filter([
                 'course_offering_id' => $courseOffering?->id,
                 'week_start' => $date->toDateString(),
                 'date' => $date->toDateString(),
                 'period' => $period,
                 'include_weekends' => $keepWeekendParam ? 1 : null,
                 'instructor_id' => $instructorId,
+                'term_id' => $termId,
             ]));
         }
 
-        return route($this->scheduleRouteName('offering.index'), array_filter([
+        return route('maker.course_offerings.schedules.index', array_filter([
             $courseOffering,
             'week_start' => $date->toDateString(),
             'date' => $date->toDateString(),
             'period' => $period,
             'include_weekends' => $keepWeekendParam ? 1 : null,
             'instructor_id' => $instructorId,
+            'term_id' => $termId,
         ]));
     }
 
@@ -1201,11 +970,11 @@ class ScheduleController extends Controller
 
         if ($courseOffering->academicYear?->phase !== 'scheduling') {
             return redirect()
-                ->route($this->scheduleRouteName('offering.index'), $courseOffering)
+                ->route('maker.course_offerings.schedules.index', $courseOffering)
                 ->withErrors(['schedule' => 'ยังไม่เปิดช่วงจัดตาราง — Admin ต้องเปิดช่วงจัดตารางก่อน']);
         }
 
-        return redirect()->route($this->scheduleRouteName('offering.index'), array_filter([
+        return redirect()->route('maker.course_offerings.schedules.index', array_filter([
             $courseOffering,
             'modal' => 'create',
             'week_start' => $request->query('week_start'),
@@ -1236,10 +1005,11 @@ class ScheduleController extends Controller
         $validated = $this->validateSchedule($request, $courseOffering);
         $validated['course_offering_id'] = $courseOffering->id;
         $this->assertScheduleWithinAcademicYear($courseOffering, $validated);
+        $this->assertScheduleNotOnBlockedDay($courseOffering, $validated);
+        $this->assertSelectedGroupsFitCapacity($courseOffering, $validated);
+        $this->assertInstructorsBelongToCourseDepartment($courseOffering, $validated['instructor_ids']);
         $this->assertLeadInstructorSelected($validated);
         $conflicts = $this->detectConflicts($conflictChecker, $validated);
-        $this->assertNoScheduleConflicts($conflicts);
-        $warnings = $this->scheduleWarnings($courseOffering, $validated);
 
         $schedule = null;
 
@@ -1260,7 +1030,7 @@ class ScheduleController extends Controller
             ]);
 
             $this->syncInstructors($schedule, $validated);
-            $schedule->studentGroups()->sync($validated['student_group_ids'] ?? []);
+            $schedule->studentGroups()->sync($validated['student_group_ids']);
         });
 
         \App\Services\NavigationBadgeService::flushCourseHead((int) $courseOffering->coordinator_id);
@@ -1286,7 +1056,7 @@ class ScheduleController extends Controller
         return redirect()
             ->to($this->scheduleReturnUrl($request, $courseOffering, $validated['start_date'], $redirectToWorkspace))
             ->with('success', 'เพิ่มรายการสอนเรียบร้อยแล้ว')
-            ->with('schedule_conflict_warning', $warnings);
+            ->with('schedule_conflict_warning', collect($conflicts)->pluck('message')->unique()->values()->all());
     }
 
     public function storeSeries(
@@ -1299,9 +1069,8 @@ class ScheduleController extends Controller
 
         $validated = $this->validateScheduleSeries($request, $courseOffering);
         $this->assertSelectedGroupsFitCapacity($courseOffering, $validated);
+        $this->assertInstructorsBelongToCourseDepartment($courseOffering, $validated['instructor_ids']);
         $this->assertLeadInstructorSelected($validated);
-        // Department mismatch → warning เท่านั้น ไม่ block save
-        $deptWarnings = $this->checkInstructorDepartmentWarnings($courseOffering, $validated['instructor_ids'] ?? []);
 
         $template = null;
         $instances = collect();
@@ -1332,7 +1101,7 @@ class ScheduleController extends Controller
                 'status' => 'draft',
                 'remark' => $validated['remark'] ?? null,
                 'check_conflicts' => true,
-                'populate_resources' => 'first',
+                'populate_resources' => 'all',
             ]);
         });
 
@@ -1715,7 +1484,6 @@ class ScheduleController extends Controller
             'lead_instructor_id' => $request->input('lead_instructor_id') ?: null,
         ];
         $ignoreScheduleId = $request->integer('schedule_id') ?: null;
-        $conflicts = [];
 
         $fields = [];
         $collect = function (string $field, callable $assert) use (&$fields) {
@@ -1733,7 +1501,13 @@ class ScheduleController extends Controller
         // Gates — reuse logic เดียวกับตอน store (ไม่ throw, แค่เก็บข้อความ)
         if ($data['start_date'] && $data['end_date']) {
             $collect('start_date', fn () => $this->assertScheduleWithinAcademicYear($courseOffering, $data));
+            $collect('schedule', fn () => $this->assertScheduleNotOnBlockedDay($courseOffering, $data));
         }
+        if (! empty($data['instructor_ids'])) {
+            $collect('instructor_ids', fn () => $this->assertInstructorsBelongToCourseDepartment($courseOffering, $data['instructor_ids']));
+            $collect('lead_instructor_id', fn () => $this->assertLeadInstructorSelected($data));
+        }
+        $collect('student_group_ids', fn () => $this->assertSelectedGroupsFitCapacity($courseOffering, $data));
 
         // Overlap (instructor/room/group ข้ามวิชา) — ต้องมีวัน/เวลา/กิจกรรมครบก่อน
         if ($data['start_date'] && $data['end_date'] && $data['start_time'] && $data['end_time'] && $data['activity_type_id']) {
@@ -1760,22 +1534,9 @@ class ScheduleController extends Controller
             $fields[$key] = array_values(array_unique($messages));
         }
 
-        $warnings = $this->scheduleWarningItems($courseOffering, $data);
-        $missing = collect($warnings)
-            ->filter(fn (array $warning) => str_starts_with((string) ($warning['type'] ?? ''), 'missing_'))
-            ->map(fn (array $warning) => [
-                'field' => $warning['field'] ?? 'schedule',
-                'label' => $warning['message'] ?? 'ข้อมูลไม่ครบ',
-            ])
-            ->values()
-            ->all();
-
         return response()->json([
             'blocking' => ! empty($fields),
             'fields' => (object) $fields,
-            'conflicts' => $conflicts,
-            'warnings' => $warnings,
-            'missing' => $missing,
         ]);
     }
 
@@ -1786,7 +1547,7 @@ class ScheduleController extends Controller
 
         if ($redirect = $this->requireSchedulingPhase($courseOffering)) return $redirect;
 
-        return redirect()->route($this->scheduleRouteName('offering.index'), [
+        return redirect()->route('maker.course_offerings.schedules.index', [
             $courseOffering,
             'edit_schedule_id' => $schedule->id,
             'week_start' => $schedule->start_date?->toDateString(),
@@ -1811,10 +1572,12 @@ class ScheduleController extends Controller
         }
 
         $this->assertScheduleWithinAcademicYear($courseOffering, $validated);
+        $this->assertScheduleNotOnBlockedDay($courseOffering, $validated);
+        $this->assertSelectedGroupsFitCapacity($courseOffering, $validated);
+        $this->assertInstructorsBelongToCourseDepartment($courseOffering, $validated['instructor_ids']);
         $this->assertLeadInstructorSelected($validated);
+
         $conflicts = $this->detectConflicts($conflictChecker, $validated, $schedule->id);
-        $this->assertNoScheduleConflicts($conflicts);
-        $warnings = $this->scheduleWarnings($courseOffering, $validated);
 
         // Snapshot before for diffing
         $schedule->loadMissing([
@@ -1841,7 +1604,7 @@ class ScheduleController extends Controller
             ]);
 
             $this->syncInstructors($schedule, $validated);
-            $schedule->studentGroups()->sync($validated['student_group_ids'] ?? []);
+            $schedule->studentGroups()->sync($validated['student_group_ids']);
         });
 
         \App\Services\NavigationBadgeService::flushCourseHead((int) $courseOffering->coordinator_id);
@@ -1873,7 +1636,7 @@ class ScheduleController extends Controller
         return redirect()
             ->to($this->scheduleReturnUrl($request, $courseOffering, $validated['start_date']))
             ->with('success', 'อัปเดตรายการสอนเรียบร้อยแล้ว')
-            ->with('schedule_conflict_warning', $warnings);
+            ->with('schedule_conflict_warning', collect($conflicts)->pluck('message')->unique()->values()->all());
     }
 
     public function destroy(Request $request, CourseOffering $courseOffering, Schedule $schedule): RedirectResponse
@@ -2040,14 +1803,8 @@ class ScheduleController extends Controller
 
     private function authorizeCourseHeadOffering(CourseOffering $courseOffering): void
     {
-        $courseOffering->loadMissing('course.assignedStaff');
-
-        if ($this->isStaffScheduleContext()) {
-            abort_unless($courseOffering->course?->assignedStaff?->contains('id', (int) Auth::id()), 403);
-        } else {
-            abort_unless((int) $courseOffering->coordinator_id === (int) Auth::id(), 403);
-        }
-
+        $courseOffering->loadMissing('course');
+        abort_unless($courseOffering->canBeScheduledBy((int) Auth::id()), 403);
         abort_unless($courseOffering->course?->status === 'active', 403);
     }
 
@@ -2062,7 +1819,7 @@ class ScheduleController extends Controller
 
         if ($courseOffering->academicYear?->phase !== 'scheduling') {
             return redirect()
-                ->route($this->scheduleRouteName('offering.index'), $courseOffering)
+                ->route('maker.course_offerings.schedules.index', $courseOffering)
                 ->withErrors(['schedule' => 'ยังไม่เปิดช่วงจัดตาราง — Admin ต้องเปิดช่วงจัดตารางก่อน']);
         }
 
@@ -2073,7 +1830,7 @@ class ScheduleController extends Controller
     {
         $weekStart = CarbonImmutable::parse($date)->startOfWeek(CarbonInterface::MONDAY);
 
-        return route($this->scheduleRouteName('offering.index'), [
+        return route('maker.course_offerings.schedules.index', [
             $courseOffering,
             'week_start' => $weekStart->toDateString(),
         ]);
@@ -2088,8 +1845,7 @@ class ScheduleController extends Controller
         $returnUrl = (string) $request->input('return_url', '');
 
         if ($request->boolean('return_to_conflicts')) {
-            return $this->scheduleConflictIndexUrl()
-                ?? route($this->scheduleRouteName('offering.index'), $courseOffering);
+            return route('maker.alerts.index');
         }
 
         if ($this->isScheduleReturnUrl($request, $returnUrl)) {
@@ -2100,7 +1856,7 @@ class ScheduleController extends Controller
             return $this->workspaceRedirectUrl($courseOffering, $date);
         }
 
-        return route($this->scheduleRouteName('offering.index'), $courseOffering);
+        return route('maker.course_offerings.schedules.index', $courseOffering);
     }
 
     private function isScheduleReturnUrl(Request $request, string $url): bool
@@ -2114,12 +1870,8 @@ class ScheduleController extends Controller
         $host = $parts['host'] ?? $requestHost;
         $path = $parts['path'] ?? '';
 
-        $allowedPaths = $this->isStaffScheduleContext()
-            ? ['/staff/course-offerings/', '/staff/schedules']
-            : ['/maker/course-offerings/', '/maker/schedules'];
-
         return $host === $requestHost
-            && (str_starts_with($path, $allowedPaths[0]) || $path === $allowedPaths[1]);
+            && (str_starts_with($path, '/maker/course-offerings/') || $path === '/maker/schedules');
     }
 
     private function scheduleOccurrences($schedules, CarbonImmutable $weekStart, CarbonImmutable $weekEnd, bool $includeWeekends = false)
@@ -2177,13 +1929,14 @@ class ScheduleController extends Controller
             'capacity_required' => ['nullable', 'integer', 'min:1'],
             'sub_group_label' => ['nullable', 'string', 'max:20'],
             'lead_instructor_id' => ['nullable', 'integer'],
-            'instructor_ids' => ['nullable', 'array'],
+            'instructor_ids' => $allowEmptyResources ? ['nullable', 'array'] : ['required', 'array', 'min:1'],
             'instructor_ids.*' => [
                 'integer',
                 'distinct',
                 Rule::exists('course_offering_instructors', 'user_id')
                     ->where(fn ($query) => $query->where('course_offering_id', $courseOffering->id)),
             ],
+            // V2: กลุ่มย่อยนักศึกษามาหลังอนุมัติ (โดยอาจารย์) → slot สร้างได้โดยยังไม่มีกลุ่ม
             'student_group_ids' => ['nullable', 'array'],
             'student_group_ids.*' => [
                 'integer',
@@ -2365,6 +2118,21 @@ class ScheduleController extends Controller
         }
     }
 
+    /**
+     * V2: บล็อกการจัดกิจกรรมในช่วงสัปดาห์สอบ / ปิดภาคเรียน (วันที่ไม่มีเทอมคลุม)
+     * — เฉพาะปีที่ตั้งเทอมแล้ว (ปียังไม่ตั้งเทอม → ไม่บล็อก)
+     */
+    private function assertScheduleNotOnBlockedDay(CourseOffering $courseOffering, array $validated): void
+    {
+        $courseOffering->loadMissing('academicYear');
+        $reason = AcademicCalendar::forYear($courseOffering->academicYear)
+            ->blockReasonForRange($validated['start_date'], $validated['end_date'] ?? $validated['start_date']);
+
+        if ($reason) {
+            throw ValidationException::withMessages(['schedule' => [$reason['message']]]);
+        }
+    }
+
     private function assertSelectedGroupsFitCapacity(CourseOffering $courseOffering, array $validated): void
     {
         $capacity = $validated['capacity_required'] ?? null;
@@ -2396,134 +2164,32 @@ class ScheduleController extends Controller
             return;
         }
 
-        if (! in_array((int) $leadId, array_map('intval', $validated['instructor_ids'] ?? []), true)) {
+        if (! in_array((int) $leadId, array_map('intval', $validated['instructor_ids']), true)) {
             throw ValidationException::withMessages([
                 'lead_instructor_id' => 'ผู้สอนหลักต้องอยู่ในรายชื่อผู้สอนที่เลือก',
             ]);
         }
     }
 
-    private function assertNoScheduleConflicts(array $conflicts): void
-    {
-        if (empty($conflicts)) {
-            return;
-        }
-
-        throw ValidationException::withMessages([
-            'schedule' => collect($conflicts)->pluck('message')->unique()->values()->all(),
-        ]);
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    private function scheduleWarnings(CourseOffering $courseOffering, array $validated): array
-    {
-        return collect($this->scheduleWarningItems($courseOffering, $validated))
-            ->pluck('message')
-            ->unique()
-            ->values()
-            ->all();
-    }
-
-    /**
-     * @return array<int, array{type:string,field:string,message:string}>
-     */
-    private function scheduleWarningItems(CourseOffering $courseOffering, array $validated): array
-    {
-        $warnings = [];
-
-        if (empty($validated['room_id'])) {
-            $warnings[] = [
-                'type' => 'missing_room',
-                'field' => 'room_id',
-                'message' => 'ยังไม่ระบุห้อง/สถานที่',
-            ];
-        }
-
-        if (empty($validated['instructor_ids'])) {
-            $warnings[] = [
-                'type' => 'missing_instructors',
-                'field' => 'instructor_ids',
-                'message' => 'ยังไม่ระบุอาจารย์ผู้สอน',
-            ];
-        } elseif (empty($validated['lead_instructor_id'])) {
-            $warnings[] = [
-                'type' => 'missing_lead_instructor',
-                'field' => 'lead_instructor_id',
-                'message' => 'ยังไม่ระบุผู้สอนหลัก',
-            ];
-        }
-
-        if (empty($validated['student_group_ids'])) {
-            $warnings[] = [
-                'type' => 'missing_student_groups',
-                'field' => 'student_group_ids',
-                'message' => 'ยังไม่ระบุกลุ่มนักศึกษา',
-            ];
-        }
-
-        $capacity = $validated['capacity_required'] ?? null;
-        $studentGroupIds = $validated['student_group_ids'] ?? [];
-        $isSharedLocation = false;
-        if (! empty($validated['room_id'])) {
-            $isSharedLocation = (bool) (Room::query()
-                ->with('locationType')
-                ->find($validated['room_id'])
-                ?->locationType
-                ?->is_shared ?? false);
-        }
-
-        if (! $isSharedLocation && $capacity && ! empty($studentGroupIds)) {
-            $selectedStudentCount = (int) $courseOffering->studentGroups()
-                ->whereIn('id', array_map('intval', $studentGroupIds))
-                ->sum('student_count');
-
-            if ($selectedStudentCount > (int) $capacity) {
-                $warnings[] = [
-                    'type' => 'capacity_exceeded',
-                    'field' => 'capacity_required',
-                    'message' => "จำนวนผู้เรียนที่เลือก ({$selectedStudentCount} คน) เกินจำนวนที่รองรับ ({$capacity} คน)",
-                ];
-            }
-        }
-
-        return array_values(array_merge(
-            $warnings,
-            $this->checkInstructorDepartmentWarnings($courseOffering, $validated['instructor_ids'] ?? [])
-        ));
-    }
-
-    /**
-     * ตรวจผู้สอนที่มาจากภาควิชาอื่น → คืน warnings (ไม่ throw)
-     * ใช้แทน assertInstructorsBelongToCourseDepartment ที่เคย block save
-     *
-     * @param  array<int>  $instructorIds
-     * @return array<int, array{type:string,field:string,message:string}>
-     */
-    private function checkInstructorDepartmentWarnings(CourseOffering $courseOffering, array $instructorIds): array
+    private function assertInstructorsBelongToCourseDepartment(CourseOffering $courseOffering, array $instructorIds): void
     {
         $courseOffering->loadMissing('course');
         $departmentId = $courseOffering->course?->department_id;
 
-        if (! $departmentId || empty($instructorIds)) {
-            return [];
+        if (! $departmentId) {
+            return;
         }
 
-        $outsideCount = $courseOffering->instructorPool()
+        $allowedCount = $courseOffering->instructorPool()
             ->whereIn('users.id', array_map('intval', $instructorIds))
-            ->whereHas('instructorProfile', fn ($query) => $query->where('department_id', '!=', $departmentId))
+            ->whereHas('instructorProfile', fn ($query) => $query->where('department_id', $departmentId))
             ->count();
 
-        if ($outsideCount === 0) {
-            return [];
+        if ($allowedCount !== count(array_unique(array_map('intval', $instructorIds)))) {
+            throw ValidationException::withMessages([
+                'instructor_ids' => 'เลือกได้เฉพาะผู้สอนในภาควิชาของรายวิชานี้',
+            ]);
         }
-
-        return [[
-            'type'    => 'department_mismatch',
-            'field'   => 'instructor_ids',
-            'message' => 'มีผู้สอน ' . $outsideCount . ' คน มาจากภาควิชาอื่น (อนุญาตให้บันทึก แต่ควรตรวจสอบ)',
-        ]];
     }
 
     private function detectConflicts(
@@ -2585,7 +2251,6 @@ class ScheduleController extends Controller
             'course_code'        => $co?->course?->course_code,
             'course_name_th'     => $co?->course?->name_th,
             'academic_year'      => $year?->name,
-            'semester'           => $year?->semester,
             'start_date'         => $schedule->start_date?->toDateString(),
             'end_date'           => $schedule->end_date?->toDateString(),
             'start_time'         => (string) $schedule->start_time,

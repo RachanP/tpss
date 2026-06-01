@@ -72,10 +72,10 @@ class CourseOffering extends Model
     {
         $this->loadMissing(['course', 'academicYear']);
 
+        // V2: offering ราย-ปี (1 วิชา 1 offering/ปี) → URL = course-year (เลิกฝังเทอม)
         return implode('-', [
             $this->routeSlug($this->course?->course_code, 'course'),
             $this->routeSlug($this->academicYear?->name, 'year'),
-            $this->academicYear?->semester ?? 'term',
         ]);
     }
 
@@ -107,7 +107,47 @@ class CourseOffering extends Model
     public function instructorPool(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'course_offering_instructors')
-            ->withPivot('role_in_course', 'course_role_id');
+            ->withPivot('role_in_course', 'course_role_id', 'schedule_permission');
+    }
+
+    /**
+     * V2 delegation: ใครจัดตาราง offering นี้ได้
+     *  1. หัวหน้าวิชา (coordinator)
+     *  2. อาจารย์ในชุดผู้สอนที่ได้รับมอบหมาย (schedule_permission = 'schedule')
+     *  3. เจ้าหน้าที่ที่ admin มอบหมายดูแลวิชา (course_staff) — มอบหมายผ่าน modal รายวิชา
+     */
+    public function canBeScheduledBy(?int $userId): bool
+    {
+        if (! $userId) {
+            return false;
+        }
+        if ((int) $this->coordinator_id === (int) $userId) {
+            return true;
+        }
+
+        if ($this->instructorPool()
+            ->where('users.id', $userId)
+            ->wherePivot('schedule_permission', 'schedule')
+            ->exists()) {
+            return true;
+        }
+
+        return $this->course()
+            ->whereHas('assignedStaff', fn ($q) => $q->where('users.id', $userId))
+            ->exists();
+    }
+
+    /** scope: offering ที่ user คนนี้จัดตารางได้ (coordinator, อาจารย์ที่ถูก delegate, หรือเจ้าหน้าที่ที่ดูแลวิชา) */
+    public function scopeSchedulableBy($query, int $userId)
+    {
+        return $query->where(function ($q) use ($userId) {
+            $q->where('coordinator_id', $userId)
+                ->orWhereHas('instructorPool', fn ($iq) => $iq
+                    ->where('users.id', $userId)
+                    ->where('course_offering_instructors.schedule_permission', 'schedule'))
+                ->orWhereHas('course.assignedStaff', fn ($sq) => $sq
+                    ->where('users.id', $userId));
+        });
     }
 
     public function attachCoordinator(?int $coordinatorRoleId = null): void
@@ -211,8 +251,7 @@ class CourseOffering extends Model
         return $this->newQuery()
             ->with(['course', 'academicYear'])
             ->whereHas('academicYear', fn ($query) => $query
-                ->where('name', $this->academicYear->name)
-                ->where('semester', $this->academicYear->semester))
+                ->where('name', $this->academicYear->name))
             ->get()
             ->filter(fn (self $offering) => $offering->readableRouteKeyBase() === $baseKey)
             ->count() > 1;
@@ -234,39 +273,13 @@ class CourseOffering extends Model
 
     private function offeringsMatchingReadableRouteKeyBase(string $value)
     {
-        $parts = explode('-', $value);
-        if (count($parts) < 3) {
-            return collect();
-        }
-
-        $semester = array_pop($parts);
-        if (! ctype_digit($semester)) {
-            return collect();
-        }
-
-        $prefix = implode('-', $parts);
-        $academicYears = AcademicYear::query()
-            ->where('semester', (int) $semester)
-            ->get()
-            ->filter(fn (AcademicYear $year) => $this->academicYearMatchesRoutePrefix($prefix, $year));
-
-        if ($academicYears->isEmpty()) {
-            return collect();
-        }
-
+        // V2: course code/year name อาจมี hyphen → slug มีหลาย segment แยกไม่ได้ด้วย explode
+        // เทียบ base ตรง ๆ แทน (ตาราง offering เล็ก) — กัน 404 จากชื่อปีที่มีขีด เช่น "2569-1"
         return $this->newQuery()
             ->with(['course', 'academicYear'])
-            ->whereIn('academic_year_id', $academicYears->pluck('id'))
             ->get()
             ->filter(fn (self $offering) => $offering->readableRouteKeyBase() === $value)
             ->values();
-    }
-
-    private function academicYearMatchesRoutePrefix(string $prefix, AcademicYear $year): bool
-    {
-        $yearSlug = $this->routeSlug($year->name, 'year');
-
-        return $prefix === $yearSlug || Str::endsWith($prefix, "-{$yearSlug}");
     }
 
     private function routeSlug(?string $value, string $fallback): string

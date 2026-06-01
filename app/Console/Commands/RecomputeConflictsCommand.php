@@ -40,9 +40,9 @@ class RecomputeConflictsCommand extends Command
         }
 
         $academicYears = match (true) {
-            $all => AcademicYear::query()->select(['id', 'name', 'semester'])->orderBy('id')->get(),
+            $all => AcademicYear::query()->select(['id', 'name'])->orderBy('id')->get(),
             $activeOrScheduling => AcademicYear::query()
-                ->select(['id', 'name', 'semester'])
+                ->select(['id', 'name'])
                 ->where(fn ($query) => $query
                     ->where('is_active', true)
                     ->orWhere('phase', 'scheduling'))
@@ -88,7 +88,7 @@ class RecomputeConflictsCommand extends Command
     private function academicYearFromOption(int $academicYearId): Collection
     {
         $academicYear = AcademicYear::query()
-            ->select(['id', 'name', 'semester'])
+            ->select(['id', 'name'])
             ->find($academicYearId);
 
         if (! $academicYear) {

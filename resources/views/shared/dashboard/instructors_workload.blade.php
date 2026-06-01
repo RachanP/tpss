@@ -105,9 +105,17 @@
     </div>
 
     <div class="workload-pagination" x-show="{{ $workloadPagerEnabled ? 'rows.length > 0' : 'false' }}">
-        <span class="workload-pagination-summary">
-            แสดง <span x-text="rangeStart"></span>–<span x-text="rangeEnd"></span> จาก <span x-text="filteredRows.length.toLocaleString()"></span> รายการ
-        </span>
+        <div class="workload-pagination-meta">
+            <span class="workload-pagination-summary" x-show="totalPages > 1">
+                แสดง <span x-text="rangeStart"></span>–<span x-text="rangeEnd"></span> จาก <span x-text="filteredRows.length.toLocaleString()"></span> รายการ
+            </span>
+            <span class="workload-pagination-summary" x-show="totalPages <= 1">
+                ทั้งหมด <span x-text="filteredRows.length.toLocaleString()"></span> รายการ
+            </span>
+            <a href="{{ route('admin.master_data', ['tab' => 'instructors']) }}" class="workload-view-all">
+                ดูข้อมูลอาจารย์ทั้งหมด
+            </a>
+        </div>
 
         <nav class="workload-pagination-nav" aria-label="Pagination" x-show="totalPages > 1">
             <button type="button"
@@ -206,7 +214,6 @@
     .workload-card {
         --workload-head-height: 58px;
         --workload-row-height: 89px;
-        --workload-visible-rows: 5;
         overflow: hidden;
     }
 
@@ -228,7 +235,6 @@
     .workload-card .table-responsive {
         width: 100%;
         max-width: 100%;
-        min-height: calc(var(--workload-head-height) + (var(--workload-row-height) * var(--workload-visible-rows)));
         overflow-x: auto;
     }
 
@@ -286,6 +292,36 @@
         color: var(--fg-3);
         font-size: 12px;
         line-height: 1.45;
+    }
+
+    .workload-pagination-meta {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        min-width: 0;
+    }
+
+    .workload-view-all {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 5px 10px;
+        border: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border));
+        border-radius: var(--r-sm);
+        background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
+        color: var(--brand-navy);
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1.25;
+        text-decoration: none;
+    }
+
+    .workload-view-all:hover,
+    .workload-view-all:focus-visible {
+        border-color: color-mix(in oklch, var(--brand-navy) 34%, var(--border));
+        background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface));
+        outline: none;
     }
 
     .workload-pagination-nav {
@@ -360,6 +396,10 @@
             align-items: flex-start;
             justify-content: flex-start;
             padding: 12px 14px;
+        }
+
+        .workload-pagination-meta {
+            width: 100%;
         }
     }
 

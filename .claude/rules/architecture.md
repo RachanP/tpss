@@ -11,6 +11,27 @@
 - **Conflict (Error)** → บันทึกไม่ได้ / แจ้งเตือนสีแดง
 - **Warning** → บันทึกได้ แต่ต้องแก้ไข
 
+## ⭐ การแยก 2 Phase ของการจัดตาราง (โครงหลักในการวางแผน — เคาะ 1 มิ.ย. 2569)
+
+> งานจัดตารางแบ่งเป็น **2 phase ที่ใช้ข้อมูลต่อจากกัน** — Phase A จบสมบูรณ์ได้โดยไม่ต้องรอ B แล้ว B หยิบ slot จาก A มาต่อ
+> ใช้กรอบนี้ตัดสินว่า "ฟีเจอร์ไหนอยู่ phase ไหน" เวลาวางแผน/แบ่งงาน
+
+### Phase A — จัดตารางกิจกรรม + ภาระงาน (ก่อนอนุมัติ) — ✅ DONE
+- **ใคร:** หัวหน้าวิชา (+ อาจารย์ที่ถูกมอบหมายช่วยจัด = delegation ✅ DONE · `schedule_permission='schedule'` · ดู [[project-delegation-deferred]])
+- **ทำ:** สร้างกิจกรรม (วัน/เวลา/สถานที่/ประเภท/เทอม) + ใส่อาจารย์ → ส่งอนุมัติ
+- **ผลลัพธ์:** โครงตารางที่อนุมัติ — slot ติดป้ายเทอม + มีอาจารย์ **ยังไม่มีกลุ่มนักศึกษา**
+- **อยู่ใน A:** cross-course conflict (instructor/room), ภาระงานอาจารย์ (จากกิจกรรม+อาจารย์ ไม่ต้องรอกลุ่ม), term/holiday/exam shading + block
+
+### Phase B — จัดกลุ่มนักศึกษาลงกิจกรรม (หลังอนุมัติ) — 🔲 NEXT
+- **ใคร:** อาจารย์ในวิชา (คุยกันซอยกลุ่ม)
+- **ทำ:** จับ "กลุ่มย่อย (cohort subgroup) → กิจกรรมไหน" + rotation สลับกลุ่มปี 3-4
+- **ข้อมูลเข้า:** slot ที่อนุมัติจาก A + `student_cohorts` (master data)
+- **ผลลัพธ์:** ตารางเรียนรายกลุ่ม → เผยแพร่
+- **อยู่ใน B:** capacity gate (กลุ่ม ≤ ที่นั่ง), **cross-course GROUP conflict**, rotation_rounds/assignments, `student_groups.cohort_group_id`
+- **เหตุผลที่เลื่อนมา B:** ทั้งหมดนี้ต้องมี "กลุ่ม" ก่อน ซึ่งกลุ่มเพิ่งเกิดใน B → จึงถอด group ออกจาก UI หัวหน้าวิชา (Phase A) แล้ว
+
+> **กฎ:** อย่าผูกฟีเจอร์ที่ต้องใช้ "กลุ่มนักศึกษา" เข้ากับ Phase A — มันเป็นของ Phase B เสมอ
+
 ## Requirement Update — 29 พ.ค. 2569 (comment สีน้ำเงินจากอาจารย์)
 
 > แหล่งอ่านง่าย: `storage/tpss_detail_pages/page-00.jpg` ถึง `page-25.jpg`
@@ -56,6 +77,7 @@
    - `courses.curriculum_id` ผูกวิชาเข้าหลักสูตร และตอนเปลี่ยนปีการศึกษาระบบดู active curriculum เพื่อเปิดรายวิชาอัตโนมัติ
    - ยังไม่ต้องเพิ่ม `academic_year_curriculum` หรือ filter หลักสูตรต่อปี เพราะหลักสูตรที่ใช้งานจริงในปีหนึ่งมีไม่มาก
    - หลักสูตรนานาชาติ/สองภาษาให้กรอกในชื่อหลักสูตรก่อน ยังไม่ต้องมี field แยกจนกว่าจะต้อง filter/report ตาม track
+   - ⚠️ **SUPERSEDED บางส่วน (30 พ.ค. — ดู "Master Data Cleanup Phase (V2)")**: ส่วน "เปิดรายวิชาอัตโนมัติตอนเปลี่ยนปี" ยังถูกต้อง แต่ scope ของ `academic_years` เปลี่ยนจาก "เทอม" → "ปี" และ auto-open ดูแค่ active curriculum (ไม่ผูกเทอม)
 2. **ประเภทกิจกรรมเป็น user-configurable**
    - ผู้ใช้เพิ่ม activity type เองได้ และเลือกหมวด `lecture`, `practicum`, `thesis`, `other` เพื่อจัดกลุ่มชั่วโมงในอนาคต
    - Demo/current phase ทำ helper text อธิบายหมวดให้ชัดพอ ยังไม่ต้องเพิ่ม `counts_toward_workload`
@@ -148,9 +170,10 @@
 ```
 Curriculum (Master Plan) → education_level, duration_years, uses_year_level, total_credits_required
 └── Course → default_year_level (nullable เมื่อ !uses_year_level), default_semester, is_required
+    ⚠️ default_semester จะถูกตัดใน Master Data Cleanup (V2) — วิชาเปิดทั้งปี
 
-Course Offerings (ต่อเทอม — ตัวกลาง Master ↔ Schedule)
-├── สร้างอัตโนมัติเมื่อ Admin เปิด scheduling phase
+Course Offerings (ปัจจุบัน=ต่อเทอม → จะเปลี่ยนเป็น ราย-ปี ใน Cleanup V2 — ตัวกลาง Master ↔ Schedule)
+├── สร้างอัตโนมัติเมื่อ Admin เปิด scheduling phase (Cleanup V2: auto-open ทุกวิชาใน active curriculum)
 └── Sync planning fields + instructor pool จาก course template
 ```
 
@@ -224,15 +247,16 @@ V2 ชี้ว่าตารางคณะพยาบาลเป็น "ต
 - core loop นี้ = ระบบปัจจุบันทำอยู่แล้ว (สร้าง slot + `schedule_instructors` + `course_offerings` ส่งขออนุมัติ) → ฝั่งหัวหน้าวิชาแทบไม่ต้องแก้
 - **ผู้อนุมัติ = ผู้บริหาร (executive)** ผ่าน `course_offerings.approval_status` — ตรงระบบปัจจุบัน (resolves open Q เดิม)
 - doc บรรทัด 98/123: ภาคปฏิบัติ ป.ตรี อาจารย์มักแบ่งกันจัด → **delegate ไปที่ instructor** (ไม่ใช่หัวหน้าวิชา)
-- เสนอ (delegation): `course_offering_instructors.schedule_permission enum('view','schedule','manage_groups')` — เปิดให้อาจารย์ที่ได้รับมอบหมายช่วยจัด (รวมจัดกลุ่มย่อย)
+- ✅ **DONE (delegation — อาจารย์ + เจ้าหน้าที่):** access ต่อ offering กรองด้วย `CourseOffering::scopeSchedulableBy`/`canBeScheduledBy` = **(1)** coordinator · **(2)** อาจารย์ในชุดผู้สอนที่ `schedule_permission='schedule'` (หัวหน้าวิชา toggle "ให้ช่วยจัดตาราง" รายคนในหน้า offering) · **(3)** เจ้าหน้าที่ที่ admin มอบหมายดูแลวิชา (`course_staff` — มอบหมายผ่าน modal รายวิชาใน Master Data) · route จัดตาราง (`maker.schedules.*` + `maker.course_offerings.schedules.*`) = `CheckRole:course_head,instructor,staff` ส่วนจัดการ offering (index/show/update/instructors) + sidebar conflict-badge คง `course_head` · sidebar อาจารย์/เจ้าหน้าที่โชว์เมนู "ช่วยจัดตาราง" เฉพาะคนที่ถูกมอบหมาย (gate `canHelpSchedule`) · ปุ่ม "รายละเอียดรายวิชา" ในหน้าจัดตารางโชว์เฉพาะ course_head ที่เป็น coordinator · ยังไม่มี `manage_groups` (กลุ่มย่อย = เฟสหลังอนุมัติ)
 
-### 2. กลุ่มนักศึกษา = 2 ระดับ + เกิด *หลังอนุมัติ* (ไม่ใช่งานหัวหน้าวิชา)
+### 2. กลุ่มนักศึกษา = 2 ระดับ + เกิด *หลังอนุมัติ* (ไม่ใช่งานหัวหน้าวิชา) ✅ ถอด UI หัวหน้าวิชาแล้ว
 - **ระดับ cohort (Master/Setup โดย Admin)**: กลุ่มชั้นปีต่อหลักสูตร ป.ตรี + จำนวนคน (ปี1=กลุ่มใหญ่, ปี3-4=4 กลุ่ม) — Admin กรอกตั้งแต่ Setup
 - **ระดับ subgroup (หลังอนุมัติ โดยอาจารย์)**: อาจารย์ทุกคนในวิชาคุยกัน + ซอยกลุ่มย่อยเอง (step 4 ของ pipeline) — ไม่ใช่หัวหน้าวิชา ไม่ใช่ Admin
 - doc บรรทัด 11/122-125: ปี 3-4 = 4 กลุ่มใหญ่ (~80 คน) ตั้งแต่ต้น → ซอยเป็น subgroup ต่อวิชา
 - ปัจจุบัน: `student_groups` ผูก `course_offering_id` อย่างเดียว → ไม่มี identity ข้ามวิชา → publish รายกลุ่มข้ามวิชาไม่ได้
 - เสนอ: `student_cohorts` ระดับ Setup Data + `student_groups.cohort_group_id` FK
-- **slot ไม่บังคับมีกลุ่มตอนสร้าง/อนุมัติ** → capacity gate ต้อง deferred (ดู ⚠️ ใน Phase Pipeline)
+- ✅ **DONE (เคาะ + ทำแล้ว):** ถอดหน้าจัดกลุ่มย่อยออกจาก course management ของหัวหน้าวิชาทั้งหมด — ลบ 5 controller methods (`storeStudentGroup`/`bulkStoreStudentGroups`/`updateStudentGroup`/`bulkDestroyStudentGroups`/`destroyStudentGroup`) + 5 routes `maker.course_offerings.student_groups.*` + card "กลุ่มนักศึกษา" ใน show + badge ในหน้า list · **เก็บตาราง `student_groups` + model + pivot `schedule_student_groups` ไว้** สำหรับเฟส "อาจารย์จัดกลุ่มหลังอนุมัติ"
+- ✅ **slot decouple แล้ว:** `ScheduleController::validateSchedule` ทำ `student_group_ids` เป็น `['nullable','array']` เสมอ (คง instructor required) · เอา gate "ต้องสร้างกลุ่มก่อนจึงเพิ่ม slot" ออกจากหน้าจัดตาราง · capacity gate no-op เมื่อไม่มีกลุ่ม (มีอยู่แล้ว) · modal slot โชว์ group selector เป็น optional + note "จัดกลุ่มหลังอนุมัติ"
 
 ### 3. ปีการศึกษา = "ปี" ไม่ใช่ "เทอม" · วิชาเปิดทั้งปี · เทอม/รอบ = dimension ของ slot
 - doc บรรทัด 159: schedule entry ระบุ ปี + ภาค + ปีปรับปรุงหลักสูตร ต่อรายการ (ไม่ผูกที่ตัววิชา)
@@ -258,13 +282,73 @@ V2 ชี้ว่าตารางคณะพยาบาลเป็น "ต
 - **2 วิทยาเขต** (doc บรรทัด 19): ทฤษฎี→ศาลายา LRC, ปฏิบัติ→ศิริราช (บางกอกน้อย) — ขัด master-data decision 30 พ.ค. ที่เลื่อน campus field → reconsider
 - **activity_type 0 ชั่วโมง** (doc บรรทัด 141/144): ปฐมนิเทศ/SDL ไม่นับ workload — ตรงกับ Priority 3 backlog (`counts_toward_workload`)
 
-### Resolved (ยืนยัน 30 พ.ค.)
-- ✅ **ผู้อนุมัติ = ผู้บริหาร (executive)** ตรวจภาระงาน + เวลา/ชน (ไม่ดูกลุ่ม) — ตรงระบบปัจจุบัน ไม่เปลี่ยน
-- ✅ **กลุ่มนักศึกษาเกิดหลังอนุมัติ** โดยอาจารย์ — slot อนุมัติได้โดยไม่ผูกกลุ่ม
-- ✅ **วิชาเปิดทั้งปี · เทอม = dimension ของตารางนักศึกษา/cohort** ไม่ใช่ของวิชา
+### Resolved (ยืนยัน 30–31 พ.ค.)
+- ✅ **ผู้อนุมัติ = ผู้บริหาร (executive)** ตรวจภาระงาน + เวลา/ชน — ตรงระบบปัจจุบัน ไม่เปลี่ยน
+- ✅ **อนุมัติ = ทั้งปี (per-year) ไม่ใช่ราย-เทอม** (เคาะ 31 พ.ค.) — ผู้บริหารอนุมัติวิชานั้นทีเดียวทั้งปี
+  - พิจารณา per-term (ตามเอกสารพิม ข้อ 5.2) แล้ว แต่เลือก **per-year** เพื่อให้ approval ก้อนเดียวจบ/ไม่ต้องอนุมัติซ้ำ 2 รอบ
+- ✅ **course_offering = ราย-ปี** — `academic_years` เป็น "ปี"
+- ✅ **การสลับกลุ่ม A/B (semester swapping) อยู่ใน offering ปีเดียว** — offering ถือทั้งกลุ่ม A และ B + อาจารย์ทั้งปี (superset) · แต่ละ slot ติดป้าย เทอม + กลุ่ม → เทอม 1 กลุ่ม A / เทอม 2 กลุ่ม B อยู่ใน offering เดียวกัน อนุมัติทีเดียว
+- ✅ **วิชาเปิดทั้งปี · เทอม = dimension ของ slot** ไม่ใช่ของวิชา
+- ✅ **กลุ่มชั้นปี (cohort) ใน Master Data** — implement แล้ว (`student_cohorts`)
 
-### Open Questions (ต้องเคาะใน demo 2 มิ.ย. ก่อน implement)
-1. **course_offering ราย-ปี หรือ ราย-เทอม?** — ถ้าวิชาเปิดทั้งปี offering ควรราย-ปี + slot ถือ semester (จุดตัดสินกระทบมากสุด, ข้อ 3)
-2. **capacity gate deferred** — ยอมให้ save/อนุมัติ slot โดยไม่มีกลุ่มได้ (เลื่อน capacity check ไป step 4) ใช่ไหม?
-3. **รอบ rotation = 2 เสมอไหม** หรือ config ต่อเทอม/ต่อวิชา?
-4. **ตารางรายกลุ่มชั้นปี (step 5)** เป็น phase หลัง publish แยกต่างหาก — scope Phase 1 หรือ Phase 2?
+### Open Questions (เหลือไว้เคาะภายหลัง — ไม่บล็อก Master Data cleanup)
+1. ✅ **RESOLVED (31 พ.ค.): กลุ่มนักศึกษา หัวหน้าวิชา *ไม่* จัด** — เคาะแล้วว่ายึดโมเดล 30 พ.ค. (subgroup เกิดหลังอนุมัติ โดยอาจารย์) ไม่ใช่ตามเอกสารพิม ข้อ 7 · ถอด UI/route/controller จัดกลุ่มออกจาก course management ของหัวหน้าวิชาแล้ว (ดูข้อ 2 ด้านบน)
+2. **ปี 3-4 = 2 กลุ่มใหญ่ (A/B) หรือ 4 กลุ่ม?** — เอกสารพิมว่า 2 (A/B สลับเทอม) · ก่อนหน้าว่า 4 — cohort feature รองรับกี่กลุ่มก็ได้ ไม่บล็อก
+3. ✅ **RESOLVED (31 พ.ค.): capacity gate deferred = ใช่** — slot save/อนุมัติได้โดยไม่มีกลุ่ม · `student_group_ids` optional, capacity gate no-op เมื่อไม่มีกลุ่ม (เช็คเฉพาะตอนมีกลุ่มจริง)
+4. **รอบ rotation = 2 เสมอไหม** · **ตารางรายกลุ่มชั้นปี** Phase 1 หรือ 2?
+5. **ใครกรอกกิจกรรมภาคปฏิบัติ** (เอกสารพิม ข้อ 11 — แผน A/B/C) → V1 ใช้แผน C (อาจารย์แจ้ง offline, เจ้าหน้าที่/หัวหน้ากรอก) · ✅ แผน B (instructor จัดเอง = delegation) **DONE** — หัวหน้าวิชามอบหมายผ่าน `schedule_permission='schedule'`
+
+## Master Data Cleanup Phase (V2) — ✅ CORE เสร็จ (31 พ.ค.) · branch `feat/v2-requirement`
+
+> ทิศทาง: เคลียร์ Master Data ให้นิ่ง (วิชาเปิดทั้งปี + ปีการศึกษาเป็นปีจริง) **เป็นฐานก่อน** แล้วค่อยทำ schedule/rotation/publish
+> ทำบน branch `feat/v2-requirement` — `sprint` ยังเป็น demo fallback (term-based เดิม)
+> สถานะ: ข้อ 1-5 ด้านล่าง **DONE + verified** (migrate:fresh เขียว · test 472/474, 2 fail = pre-existing ScheduleFlowSeeder)
+> ⚠️ ยังไม่ merge เข้า sprint จน verify บนแอปจริงครบ
+
+### ✅ สิ่งที่ทำเสร็จแล้ว (Master Data scope — DONE)
+
+1. **ปีการศึกษา = "ปี" ไม่ใช่ "เทอม" + มีเทอมเป็นรายการลูก (พร้อมวันสอบ)**
+   - `academic_years`: ตัด column `semester` ออก → unique(`name`) แทน unique(`name`,`semester`) · `phase`/`is_active` ต่อ "ปี" · 1 ปี = 1 row
+   - เพิ่มตาราง `terms` (ลูกของปี): `academic_year_id`, `sequence`, `name`, `start_date`, `end_date`,
+     `midterm_start`/`midterm_end`, `final_start`/`final_end` (ช่วงสอบกลางภาค/ปลายภาค — nullable, เก็บเป็นช่วง "สัปดาห์สอบ")
+   - **เทอมยืดหยุ่น — เพิ่มได้ตามจริง ไม่ฟิกซ์ 2**: ปีปกติ = เทอม 1 + เทอม 2 · ปีที่มี **ภาคฤดูร้อน** = เพิ่มอีกรายการ (optional, name="ภาคฤดูร้อน")
+   - **ช่วงปิดภาคเรียน = derive จากช่องว่างระหว่างเทอม** (ไม่เก็บ field แยก) → ปฏิทินขึ้นป้าย "ปิดภาคเรียน" อัตโนมัติ
+   - หน้าจัดตารางหัวหน้าวิชาแบ่ง **section ตามเทอม** → ถ้าปีไหนมีภาคฤดูร้อนก็โผล่เป็น section เองอัตโนมัติ
+   - **ทำไม**: หัวหน้าวิชาเห็นโครงปี + สัปดาห์สอบตอนวางกิจกรรม จะได้ไม่วางทับ · วันสอบยังเป็นเส้นแบ่งรอบหมุนเวียนปี 3-4 (V2 ข้อ 4)
+   - **เปลี่ยนปีต้องกรอกใหม่** (วันที่ต่างทุกปี) — แต่ตอนเปิดปีใหม่ให้ **ลอกโครงปีก่อนมาเป็นค่าตั้งต้น** ให้ผู้ใช้แค่ขยับวันที่
+2. **เลิกผูกรายวิชากับเทอม**
+   - `courses`: ตัด `default_semester` (วิชาเปิดทั้งปี ไม่ผูกภาค)
+   - UI Master Data รายวิชา: เอา field/คอลัมน์ "ภาค" ออก
+3. **course_offering = ราย-ปี**
+   - `course_offerings.academic_year_id` → ชี้ "ปี" · 1 วิชา = 1 offering ต่อปี (เลิกซ้ำต่อเทอม)
+   - ปรับ unique/index `(course_id, academic_year_id)`
+4. **Auto-open ดูแค่ active curriculum**
+   - ตอน Admin เปิด scheduling/เปลี่ยนปี → auto-create offering ของ **ทุกวิชาที่ `course.curriculum.is_active = true`** (เลิก logic ผูกเทอม/`default_semester`)
+   - คง critical-gate `active_courses_missing_head` ไว้ ตัดเงื่อนไขที่อิงเทอม
+5. **เทอม = dimension ของ "slot/กิจกรรม" (ตั้งแต่หัวหน้าวิชาจัด) — ไม่ใช่ของวิชา**
+   - หัวหน้าวิชาจัดกิจกรรม**ครอบทั้งปี** แล้วติดป้ายว่าแต่ละ slot อยู่เทอมไหน — เพราะ **เทอม 2 อาจเปลี่ยนคนสอน/เวลา** จากเทอม 1
+   - instructor pool ของ offering = **superset ทั้งปี** · แต่ละ slot เลือกอาจารย์เองผ่าน `schedule_instructors` (มีอยู่แล้ว) → เทอม 2 เปลี่ยนคนได้โดยไม่กระทบเทอม 1
+   - ตอนจัดกลุ่มหลังอนุมัติ: slot ติดป้ายเทอมไว้แล้ว → แมพ "กิจกรรมเทอมนี้ → กลุ่มไหน" ได้ตรง (ฐานของ rotation)
+   - ตาราง `terms` (วัน+ช่วงสอบ) สร้างในรอบ cleanup นี้ (ข้อ 1) · ส่วน `schedules.term_id` (ให้ slot ระบุว่าอยู่เทอมไหน) + rotation = งาน **phase ถัดไป** (schedule)
+
+### ✅ Master/Setup scope V3 — เสร็จครบ (31 พ.ค.)
+> ตรวจ 31 พ.ค.: เทียบ V3 แล้ว REQUIRED ทั้งหมดปิดครบ เหลือแค่ optional ที่ไม่อยู่ใน V3:
+- ✅ **`holidays`** (date, name, remark, **source**) — auto-fetch จาก Google Thai holidays ICS ตอน `storeYear/updateYear` (ตามช่วงปีปฏิทินที่ปีคร่อม via `HolidayService::syncForAcademicYearSpan`) · fail-safe (ดึงไม่ได้ → flash `holiday_warning` ไม่พัง flow) · ปุ่ม "ดึงวันหยุดซ้ำ" ต้องมีปี active ก่อน (ไม่ fallback ปีปฏิทิน) · refresh ลบเฉพาะ `source=google` ในช่วงปี คงของ `source=manual` + ปีอื่น · CRUD + highlight แถว manual ในหน้าตั้งค่า→ปีการศึกษา · SSL ใช้ bundled `resources/certs/cacert.pem` (MAMP Windows ไม่มี curl.cainfo) — DONE
+- ✅ **`activity_types.counts_toward_workload`** (bool) — Admin ตั้งนับ/ไม่นับภาระงาน · default ตามหมวด (Alpine `applyWorkloadDefaultFromCategory`: other=ไม่นับ, อื่นๆ=นับ) ปรับเองได้ · `ReferenceDataCache` include column · ตาราง master data แยกคอลัมน์ "หมวดหมู่" (badge สีตามหมวด) + "ภาระงาน" (pill) — DONE · category `thesis` มีไว้รองรับวิทยานิพนธ์/ดุษฎีนิพนธ์แล้ว
+- 🔲 (optional) `rooms.campus` ศาลายา/บางกอกน้อย — **ไม่อยู่ใน V3** (มาจาก V1/V2) — display ก่อน ยังไม่ผูก conflict · ยังไม่ทำ ไม่บล็อก
+
+### ของใหม่จากเอกสารพิม V3/V4 (`Doc/จากอาจารย์/เอกสาร/tpss_system_summary_v3.md`)
+> เอกสารสรุป requirement ฉบับเพื่อน (พิม) — ยืนยันหลายอย่างที่เราวางไว้ + เพิ่มของใหม่:
+- **ตารางวันหยุดราชการ** `holidays` (date, name, remark) — ตารางขึ้นหมายเหตุ "งดการเรียนการสอน" + ไม่นับภาระงาน (ข้อ 2.4, 12.1) — NEW
+- **กิจกรรมในสัปดาห์สอบ/วันหยุด ไม่นับภาระงานปกติ** — ผูกกับ `terms` (วันสอบ) + `holidays` (ข้อ 2.4) — workload เป็น Phase 2 แต่ data ต้องพร้อม
+- **Dashboard เชิงภาพ** (donut/gauge/Gantt rotation map) แทน text wall — แยกตาม role (ข้อ 8.1) — งาน UI ก้อนใหญ่ Phase ถัดไป
+- ✅ ยืนยัน: `student_cohorts` + semester swapping (ข้อ 12.1) ตรงกับที่ทำ · ตารางสอน=ตารางเรียน คนละมุม (ข้อ 1)
+
+### Impact / ต้องแก้ตาม (forward-only, ทีมใช้ `migrate:fresh --seed`)
+- Migrations: consolidate เข้า create-table baselines ของ `academic_years`/`courses`/`course_offerings` (ไม่ทำ alter แยก — pattern Sprint 3 Hardening)
+- Guard `phase != 'scheduling'` + `AdminSettingController::storeYear/updateYear` activation lock → เปลี่ยนจาก per-term เป็น per-year
+- `openSchedulingWindow` (sync planning + instructor pool) → loop ตาม active curriculum
+- Migration ใหม่: `create_terms_table` (ลูกของ academic_years + ช่วงสอบ)
+- Seeders: `AcademicYearSeeder` (1 row/ปี + เทอม 1/2 พร้อมวันสอบตัวอย่าง), `CourseSeeder` (ตัด default_semester), `CourseOfferingSeeder` (ราย-ปี)
+- Tests: `SchedulingPhaseTest`, `CourseOfferingManagementTest`, `MasterDataRedirectTest`, schedule suite — ปรับ assertion ที่อิงเทอม
+- Views: Master Data รายวิชา (ตัดภาค), Settings ปีการศึกษา (ตัด column semester + เพิ่มฟอร์มเทอม 1/2 + ช่วงสอบ + ปุ่ม "ลอกจากปีก่อน")

@@ -56,7 +56,8 @@
 ชั้น 1 — ระดับระบบ (academic_years.phase):
   preparation → scheduling → published
   Admin เปิด/ปิดผ่าน Settings tab "ปีการศึกษา" (column "ช่วงจัดตาราง")
-  เปิดทั้งภาคเรียนพร้อมกัน — ไม่ใช่ทีละวิชา
+  เปิดทั้งปีพร้อมกัน — ไม่ใช่ทีละวิชา
+  ⚠️ Master Data Cleanup (V2): academic_years เป็น "ปี" (ตัด semester) → phase ต่อปี ไม่ใช่ต่อเทอม
 
 ชั้น 2 — ระดับรายวิชา (course_offerings.approval_status):
   draft → pending → published / rejected
@@ -227,35 +228,55 @@ course_offerings
 **Phase 2 tables (เตรียมไว้แล้ว):** `course_offering_approvals`, `schedule_conflicts`
 ER Diagram: `mock/er_v1.jpg`
 
-## V2 Proposed Schema — 🔲 PROPOSED, ยังไม่ migrate (pending demo 2 มิ.ย. 2569)
+## V2 Schema — แยกเป็น 3 สถานะ (DONE / DECIDED-cleanup / PROPOSED)
 
-> ⚠️ **ยังไม่มีในโค้ดจริง** — อย่าอ้างว่ามี table/column เหล่านี้จนกว่าจะมี migration จริง + ลบ label นี้
-> Rationale + open questions ดู `architecture.md` หัวข้อ "Requirement V2 Direction"
+> ⚠️ ทีมใช้ `migrate:fresh --seed` เสมอ → consolidate เข้า create-table baselines ไม่ทำ alter แยก (pattern Sprint 3 Hardening)
+> Rationale ดู `architecture.md` "Requirement V2 Direction" + "Master Data Cleanup Phase (V2)"
 
+### ✅ DONE (branch `feat/v2-requirement` — Master Data Cleanup เสร็จครบ scope V3)
 ```
--- 1. ปีการศึกษา → ยกระดับเป็น "ปี" จริง + แยก term ออกมา (ข้อ 3)
-academic_years   :  ตัด semester ออก → (name/year, start, end, phase, is_active)
-semesters        :  NEW (academic_year_id FK, sequence 1|2|3, start_date, end_date)
-course_offerings :  academic_year_id → ราย-ปี (วิชาเปิดทั้งปี)   ← เคาะก่อน (open Q2)
-schedules        :  + semester_id FK, + rotation_round_id FK
+student_cohorts  :  (curriculum_id, year_level nullable, code, student_count)
+                    year_level=null สำหรับหลักสูตรที่ uses_year_level=false (ป.โท/ป.เอก)
+                    unique(curriculum_id, year_level, code)
+academic_years   :  ตัด column semester → unique(name) · phase/is_active ต่อ "ปี"
+terms            :  NEW ลูกของปี (academic_year_id, sequence, name, start_date, end_date,
+                    midterm_start, midterm_end, final_start, final_end)  ← ช่วงสอบเก็บเป็น "สัปดาห์สอบ"
+                    เพิ่มได้ตามจริง: ปกติ 2 เทอม · ภาคฤดูร้อน = เพิ่มรายการที่ 3 (optional)
+                    ช่วงปิดภาคเรียน = derive จากช่องว่างระหว่างเทอม (ไม่เก็บแยก)
+                    วันปีการศึกษา (start/end) = derive จาก min/max ของ terms
+courses          :  ตัด default_semester (วิชาเปิดทั้งปี)
+course_offerings :  academic_year_id → ราย-ปี · unique(course_id, academic_year_id)
+                    auto-open: ทุกวิชาที่ course.curriculum.is_active = true (เลิกผูกเทอม)
+holidays         :  NEW (date unique, name, remark, source enum-ish 'google'|'manual')
+                    auto-fetch Google Thai ICS ตอนสร้าง/แก้ปี · refresh ลบเฉพาะ source=google
+                    คงของ manual + ปีอื่น · SSL ใช้ resources/certs/cacert.pem
+activity_types   :  + counts_toward_workload boolean default true (default ตามหมวด: other=false)
+```
 
--- 2. กลุ่มนักศึกษา 2 ระดับ (ข้อ 2)
-student_cohorts  :  NEW (curriculum_id, academic_year_id, year_level, code "กลุ่ม 1..4", student_count)
-student_groups   :  + cohort_group_id FK nullable  ← subgroup อ้างกลุ่มใหญ่
+### ✅ DONE — Schedule phase (term dimension · branch feat/v2-requirement)
+```
+schedules : + term_id FK (nullable, → terms) · derive อัตโนมัติจาก start_date ผ่าน
+            ScheduleTermObserver (ครอบ store/update/series/copyWeek) · null = ปิดภาคเรียน
+```
+- `App\Services\AcademicCalendar` — จำแนกวัน normal/holiday/exam/break/outside + `blockReasonForRange()`
+- หน้าจัดตาราง: filter เทอม (default เทอมปัจจุบัน + เด้งปฏิทิน) · ลงสี grid/list (วันหยุด=อำพัน, สอบ/ปิดเทอม/เทอมอื่น=เทา) + chip/flag/term badge · บล็อกจัดกิจกรรมช่วงสอบ/ปิดเทอม/เทอมอื่น (server `assertScheduleNotOnBlockedDay` + realtime + client cell) · ตัด group selector ออกจาก modal (หัวหน้าวิชาไม่จัดกลุ่ม)
 
--- 3. Rotation หลังสอบ (ข้อ 4)
-rotation_rounds      : NEW (semester_id, sequence 1|2, label, start_date, end_date)
+### 🔲 PROPOSED — phase ถัดไป (rotation · ยังไม่ทำ)
+```
+schedules        :  + rotation_round_id FK
+student_groups   :  + cohort_group_id FK nullable  ← subgroup อ้าง student_cohorts
+rotation_rounds      : NEW (term_id, sequence 1|2, label, start/end) — แบ่งด้วยวันสอบใน terms
 rotation_assignments : NEW (cohort_group_id, course_offering_id, rotation_round_id)
-                       = แผน "กลุ่มไหนเรียนวิชาไหนรอบไหน" → scaffold schedule + workload per-round
-
--- 4. มอบหมายสิทธิ์จัดตาราง (ข้อ 1)
-course_offering_instructors : + schedule_permission enum('view','schedule','manage_groups') default 'view'
-
--- 5. ส่วนเสริม V2
-activity_types : + counts_toward_workload boolean  (Priority 3 backlog — ปฐมนิเทศ/SDL = false)
-rooms/location_types : reconsider campus field (ศาลายา/บางกอกน้อย — doc บรรทัด 19)
+rooms : + campus (ศาลายา/บางกอกน้อย — display ก่อน · optional ไม่อยู่ใน V3)
 ```
 
-**Cross-course GROUP conflict (ข้อ 5):** ไม่ใช่ schema ใหม่ แต่ต้องขยาย logic — `ScheduleConflictChecker::bulkConflictMap()` เพิ่ม pairwise compare `cohort_group` ข้ามวิชา (ปัจจุบันเช็คแค่ instructor/room)
+### ✅ DONE — delegation (branch feat/v2-requirement)
+```
+course_offering_instructors : + schedule_permission string(20) default 'view'  ('view'|'schedule')
+  consolidate เข้า create-table baseline (2026_05_08_072856) — ไม่มี alter แยก
+```
+- `CourseOffering::canBeScheduledBy(?int)` + `scopeSchedulableBy(int)` — coordinator **หรือ** instructor permission='schedule' **หรือ** staff ใน `course_staff` (assignedStaff ของวิชา)
+- หัวหน้าวิชา toggle อาจารย์ผ่าน `maker.course_offerings.instructors.permission` (course_head only) · staff มอบหมายผ่าน modal รายวิชา (`course->assignedStaff()->sync`)
+- route จัดตาราง slot = `CheckRole:course_head,instructor,staff` · จัดการ offering + conflict-badge = `course_head`
 
-**หมายเหตุ flow:** ทีมใช้ `migrate:fresh --seed` เสมอ → ถ้าตัดสินใจทำ ให้ consolidate เข้า create-table baselines ไม่ทำ alter แยก (ตาม pattern Sprint 3 Hardening)
+**Cross-course GROUP conflict:** ไม่ใช่ schema ใหม่ แต่ต้องขยาย logic — `ScheduleConflictChecker::bulkConflictMap()` เพิ่ม pairwise compare `cohort_group` ข้ามวิชา (ปัจจุบันเช็คแค่ instructor/room)

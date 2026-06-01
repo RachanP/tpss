@@ -23,10 +23,9 @@ class CourseSeeder extends Seeder
         $deptFoundation = Department::where('name', 'LIKE', '%รากฐาน%')->first();
         $deptAdult = Department::where('name', 'LIKE', '%ผู้ใหญ่%')->first();
 
-        // หัวหน้าวิชา: ราชันย์ (NSBS 111, NSBS 212), พรภิมล (NSBS 213, NSBS 221)
-        $headRachan   = User::where('username', 'admin_01')->first();
-        $headPronpimon = User::where('username', 'pronpimon')->first();
-        $headSomsak = User::where('username', 'somsak_t')->first();
+        // หัวหน้าวิชา (demo): head_med ดูแลวิชาภาควิชาการพยาบาลรากฐาน, head_psy ดูแลวิชาสุขภาพจิตฯ
+        $headFoundation = User::where('username', 'head_med')->first();   // ภาควิชาการพยาบาลรากฐาน
+        $headMental     = User::where('username', 'head_psy')->first();   // ภาควิชาสุขภาพจิตฯ
 
         $courses = [
             [
@@ -35,7 +34,6 @@ class CourseSeeder extends Seeder
                 'name_en' => 'Nursing Process 1',
                 'course_type' => 'theory',
                 'default_year_level' => 1,
-                'default_semester' => 1,
                 'requires_practicum_rotation' => false,
                 'credits' => 2,
                 'lecture_hours' => 2,
@@ -44,12 +42,11 @@ class CourseSeeder extends Seeder
                 'capacity' => 252,
                 'color_code' => '#3b82f6',
                 'department_id' => $deptFoundation->id ?? 1,
-                'head_instructor_id' => $headRachan?->id,
+                'head_instructor_id' => $headFoundation?->id,
                 'status' => 'inactive',
                 'staff_usernames' => ['staff_01'],
                 'instructors' => [
-                    'somsak_t' => 'อาจารย์ผู้สอน',
-                    'pronpimon' => 'อาจารย์พี่เลี้ยง',
+                    'instructor_01' => 'อาจารย์ผู้สอน',
                 ],
             ],
             [
@@ -58,7 +55,6 @@ class CourseSeeder extends Seeder
                 'name_en' => 'Pediatric Nursing 1',
                 'course_type' => 'theory_practicum',
                 'default_year_level' => 2,
-                'default_semester' => 1,
                 'requires_practicum_rotation' => true,
                 'credits' => 3,
                 'lecture_hours' => 2,
@@ -67,13 +63,12 @@ class CourseSeeder extends Seeder
                 'capacity' => 240,
                 'color_code' => '#10b981',
                 'department_id' => $deptFoundation->id ?? 1,
-                'head_instructor_id' => $headRachan?->id,
+                'head_instructor_id' => $headFoundation?->id,
                 'status' => 'inactive',
                 'prerequisite_codes' => ['NSBS 111'],
                 'staff_usernames' => ['staff_01'],
                 'instructors' => [
-                    'somsak_t' => 'อาจารย์ผู้สอน',
-                    'pronpimon' => 'อาจารย์ประจำกลุ่ม',
+                    'instructor_01' => 'อาจารย์ผู้สอน',
                 ],
             ],
             [
@@ -82,7 +77,6 @@ class CourseSeeder extends Seeder
                 'name_en' => 'Mental Health and Psychiatric Nursing 1',
                 'course_type' => 'theory',
                 'default_year_level' => 2,
-                'default_semester' => 1,
                 'requires_practicum_rotation' => false,
                 'credits' => 2,
                 'lecture_hours' => 2,
@@ -91,14 +85,11 @@ class CourseSeeder extends Seeder
                 'capacity' => 240,
                 'color_code' => '#8b5cf6',
                 'department_id' => $deptMental->id ?? 3,
-                'head_instructor_id' => $headPronpimon?->id,
+                'head_instructor_id' => $headMental?->id,
                 'status' => 'inactive',
                 'prerequisite_codes' => ['NSBS 111'],
                 'staff_usernames' => ['staff_01'],
-                'instructors' => [
-                    'admin_01' => 'อาจารย์ผู้สอน',
-                    'somsak_t' => 'เลขานุการวิชา',
-                ],
+                'instructors' => [],
             ],
             [
                 'course_code' => 'NSBS 221',
@@ -106,7 +97,6 @@ class CourseSeeder extends Seeder
                 'name_en' => 'Pediatric Nursing 2',
                 'course_type' => 'practicum',
                 'default_year_level' => 2,
-                'default_semester' => 2,
                 'requires_practicum_rotation' => true,
                 'credits' => 2,
                 'lecture_hours' => 0,
@@ -115,13 +105,12 @@ class CourseSeeder extends Seeder
                 'capacity' => 240,
                 'color_code' => '#f59e0b',
                 'department_id' => $deptFoundation->id ?? 1,
-                'head_instructor_id' => $headPronpimon?->id,
+                'head_instructor_id' => $headFoundation?->id,
                 'status' => 'inactive',
                 'prerequisite_codes' => ['NSBS 212'],
                 'staff_usernames' => ['staff_01'],
                 'instructors' => [
-                    'admin_01' => 'อาจารย์ผู้สอน',
-                    'somsak_t' => 'อาจารย์ประจำกลุ่ม',
+                    'instructor_01' => 'อาจารย์ผู้สอน',
                 ],
             ],
             [
@@ -130,7 +119,6 @@ class CourseSeeder extends Seeder
                 'name_en' => 'Adult Nursing 1',
                 'course_type' => 'theory_practicum',
                 'default_year_level' => 2,
-                'default_semester' => 2,
                 'requires_practicum_rotation' => true,
                 'credits' => 3,
                 'lecture_hours' => 2,
@@ -139,13 +127,12 @@ class CourseSeeder extends Seeder
                 'capacity' => 240,
                 'color_code' => '#0891b2',
                 'department_id' => $deptAdult->id ?? $deptFoundation->id ?? 1,
-                'head_instructor_id' => $headSomsak?->id ?? $headRachan?->id,
+                'head_instructor_id' => $headFoundation?->id,
                 'status' => 'inactive',
                 'prerequisite_codes' => ['NSBS 111'],
                 'staff_usernames' => ['staff_01'],
                 'instructors' => [
-                    'admin_01' => 'อาจารย์ผู้สอน',
-                    'pronpimon' => 'อาจารย์ประจำกลุ่ม',
+                    'instructor_01' => 'อาจารย์ผู้สอน',
                 ],
             ],
             [
@@ -154,7 +141,6 @@ class CourseSeeder extends Seeder
                 'name_en' => 'Maternal-Newborn Nursing and Midwifery 1',
                 'course_type' => 'theory_practicum',
                 'default_year_level' => 2,
-                'default_semester' => 2,
                 'requires_practicum_rotation' => true,
                 'credits' => 3,
                 'lecture_hours' => 2,
@@ -163,13 +149,12 @@ class CourseSeeder extends Seeder
                 'capacity' => 240,
                 'color_code' => '#db2777',
                 'department_id' => $deptFoundation->id ?? 1,
-                'head_instructor_id' => $headRachan?->id,
+                'head_instructor_id' => $headFoundation?->id,
                 'status' => 'inactive',
                 'prerequisite_codes' => ['NSBS 111'],
                 'staff_usernames' => ['staff_01'],
                 'instructors' => [
-                    'pronpimon' => 'อาจารย์ผู้สอน',
-                    'somsak_t' => 'เลขานุการวิชา',
+                    'instructor_01' => 'อาจารย์ผู้สอน',
                 ],
             ],
             [
@@ -178,7 +163,6 @@ class CourseSeeder extends Seeder
                 'name_en' => 'Mental Health and Psychiatric Nursing 2',
                 'course_type' => 'practicum',
                 'default_year_level' => 3,
-                'default_semester' => 1,
                 'requires_practicum_rotation' => true,
                 'credits' => 2,
                 'lecture_hours' => 0,
@@ -187,14 +171,11 @@ class CourseSeeder extends Seeder
                 'capacity' => 180,
                 'color_code' => '#7c3aed',
                 'department_id' => $deptMental->id ?? 3,
-                'head_instructor_id' => $headPronpimon?->id,
+                'head_instructor_id' => $headMental?->id,
                 'status' => 'inactive',
                 'prerequisite_codes' => ['NSBS 213'],
                 'staff_usernames' => ['staff_01'],
-                'instructors' => [
-                    'admin_01' => 'อาจารย์พี่เลี้ยง',
-                    'somsak_t' => 'อาจารย์ประจำกลุ่ม',
-                ],
+                'instructors' => [],
             ],
         ];
 

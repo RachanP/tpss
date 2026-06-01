@@ -35,6 +35,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->scoped(\App\Observers\ScheduleTermObserver::class);
         $this->app->scoped(ReferenceDataCache::class);
         $this->app->scoped(ScheduleConflictPolicy::class);
         $this->app->scoped(ScheduleConflictIndex::class);
@@ -70,6 +71,7 @@ class AppServiceProvider extends ServiceProvider
         }
 
         Schedule::observe(ScheduleConflictInvalidationObserver::class);
+        Schedule::observe(\App\Observers\ScheduleTermObserver::class);
 
         View::composer('components.sidebar', function ($view): void {
             $user = auth()->user();
@@ -79,6 +81,16 @@ class AppServiceProvider extends ServiceProvider
                 is_string($activeRole) ? $activeRole : null,
                 $user?->id,
             ));
+
+            // V2 delegation: อาจารย์/เจ้าหน้าที่เห็นเมนู "ช่วยจัดตาราง" เฉพาะเมื่อถูกมอบหมายให้ดูแลวิชาที่อยู่ในช่วงจัดตาราง
+            $canHelpSchedule = false;
+            if ($user && in_array($activeRole, ['instructor', 'staff'], true)) {
+                $canHelpSchedule = \App\Models\CourseOffering::query()
+                    ->schedulableBy((int) $user->id)
+                    ->whereHas('academicYear', fn ($q) => $q->where('phase', 'scheduling'))
+                    ->exists();
+            }
+            $view->with('canHelpSchedule', $canHelpSchedule);
         });
     }
 }

@@ -46,8 +46,12 @@ class NavigationBadgeService
     public function courseHeadConflictBadge(int $userId): array
     {
         if (! config('conflicts.async_reads')) {
+            $yearId = $this->schedulingAcademicYearIdForCourseHead($userId);
+            $total = $this->courseHeadConflictCount($userId)
+                + ($yearId ? app(CoordinatorAlertService::class)->warningCount($userId, $yearId) : 0);
+
             return [
-                'maker_conflict_count' => $this->courseHeadConflictCount($userId),
+                'maker_conflict_count' => $total,
                 'maker_conflict_status' => 'ready',
                 'maker_conflict_pending' => false,
                 'maker_conflict_label' => null,
@@ -104,8 +108,10 @@ class NavigationBadgeService
             app(ScheduleConflictInvalidationService::class)->markDirty($academicYearId, 'manual');
         }
 
+        // เลขรวมใน badge = การชน + warning (incomplete/holiday/ฯลฯ) ให้ตรงกับยอดรวมในหน้าแจ้งเตือน
         $count = $status['status'] === 'ready'
-            ? $this->conflictReadRepository->getCountForUser($userId, $academicYearId)
+            ? (int) $this->conflictReadRepository->getCountForUser($userId, $academicYearId)
+                + app(CoordinatorAlertService::class)->warningCount($userId, $academicYearId)
             : null;
 
         return [
@@ -172,7 +178,6 @@ class NavigationBadgeService
             ->whereHas('academicYear', fn ($query) => $query->where('phase', 'scheduling'))
             ->join('academic_years', 'academic_years.id', '=', 'course_offerings.academic_year_id')
             ->orderByDesc('academic_years.start_date')
-            ->orderByDesc('academic_years.semester')
             ->orderByDesc('academic_years.id')
             ->value('academic_years.id');
 

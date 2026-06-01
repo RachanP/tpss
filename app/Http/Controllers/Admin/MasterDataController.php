@@ -11,6 +11,7 @@ use App\Models\Course;
 use App\Models\CourseOffering;
 use App\Models\CourseRole;
 use App\Models\Curriculum;
+use App\Models\StudentCohort;
 use App\Models\ActivityType;
 use App\Services\AuditLogger;
 use App\Services\ReferenceDataCache;
@@ -175,6 +176,15 @@ class MasterDataController extends Controller
         // Curriculums with course count and courses list
         $curriculums = Curriculum::withCount('courses')->with(['courses' => fn($q) => $q->orderBy('course_code')])->get();
 
+        // กลุ่มนักศึกษา (cohort — V2) — ทุกระดับหลักสูตร
+        // หลักสูตรที่ใช้ระบบชั้นปี (ป.ตรี) มี year_level / หลักสูตรที่ไม่ใช้ (ป.โท-เอก) year_level = null
+        $cohortCurriculums = Curriculum::query()
+            ->with(['studentCohorts' => fn ($q) => $q->orderBy('year_level')->orderBy('code')])
+            ->orderBy('education_level')
+            ->orderBy('effective_year', 'desc')
+            ->orderBy('name')
+            ->get();
+
         // Activity Types
         $activityTypes = app(ReferenceDataCache::class)->activityTypes();
 
@@ -200,6 +210,7 @@ class MasterDataController extends Controller
             'rooms',
             'courses',
             'curriculums',
+            'cohortCurriculums',
             'activityTypes',
             'staffUsers',
             'courseRoles',
@@ -214,11 +225,6 @@ class MasterDataController extends Controller
     private function masterDataRouteName(): string
     {
         return session('active_role') === 'staff' ? 'staff.master_data' : 'admin.master_data';
-    }
-
-    private function isStaffMasterDataContext(): bool
-    {
-        return session('active_role') === 'staff' || request()->routeIs('staff.*');
     }
 
     private function redirectToMasterData(string $tab): \Illuminate\Http\RedirectResponse
@@ -689,11 +695,6 @@ class MasterDataController extends Controller
 
     public function storeCourse(Request $request)
     {
-        if ($this->isStaffMasterDataContext()) {
-            $request->request->remove('instructor_ids');
-            $request->request->remove('instructor_role_ids');
-        }
-
         $curriculum = Curriculum::find($request->input('curriculum_id'));
         $rules = $this->courseValidationRules($request, $curriculum);
 
@@ -711,16 +712,14 @@ class MasterDataController extends Controller
             $validated['default_year_level'] = null;
         }
         $staffIds = $validated['staff_ids'] ?? [];
-        $instructorIds = $this->isStaffMasterDataContext() ? [] : ($validated['instructor_ids'] ?? []);
-        $instructorRoleIds = $this->isStaffMasterDataContext() ? [] : ($validated['instructor_role_ids'] ?? []);
+        $instructorIds = $validated['instructor_ids'] ?? [];
+        $instructorRoleIds = $validated['instructor_role_ids'] ?? [];
         $prerequisiteIds = $validated['prerequisite_ids'] ?? [];
         unset($validated['staff_ids'], $validated['instructor_ids'], $validated['instructor_role_ids'], $validated['prerequisite_ids']);
 
         $course = Course::create($validated);
         $course->assignedStaff()->sync($staffIds);
-        if (! $this->isStaffMasterDataContext()) {
-            $this->syncCourseInstructors($course, $instructorIds, $instructorRoleIds);
-        }
+        $this->syncCourseInstructors($course, $instructorIds, $instructorRoleIds);
         $course->prerequisites()->sync($prerequisiteIds);
 
         AuditLogger::log(
@@ -743,11 +742,6 @@ class MasterDataController extends Controller
 
     public function updateCourse(Request $request, Course $course)
     {
-        if ($this->isStaffMasterDataContext()) {
-            $request->request->remove('instructor_ids');
-            $request->request->remove('instructor_role_ids');
-        }
-
         $assignmentsLocked = $this->isCourseAssignmentLocked($course);
         $curriculum = Curriculum::find($request->input('curriculum_id'));
 
@@ -768,9 +762,8 @@ class MasterDataController extends Controller
             $validated['default_year_level'] = null;
         }
         $staffIds = $validated['staff_ids'] ?? [];
-        $isStaffContext = $this->isStaffMasterDataContext();
-        $instructorIds = $isStaffContext ? [] : ($validated['instructor_ids'] ?? []);
-        $instructorRoleIds = $isStaffContext ? [] : ($validated['instructor_role_ids'] ?? []);
+        $instructorIds = $validated['instructor_ids'] ?? [];
+        $instructorRoleIds = $validated['instructor_role_ids'] ?? [];
         $prerequisiteIds = $validated['prerequisite_ids'] ?? [];
         if ($assignmentsLocked) {
             unset($validated['head_instructor_id']);
@@ -778,16 +771,14 @@ class MasterDataController extends Controller
         unset($validated['staff_ids'], $validated['instructor_ids'], $validated['instructor_role_ids'], $validated['prerequisite_ids']);
 
         // Snapshot auditable fields before update
-        $auditFields = ['course_code', 'name_th', 'status', 'credits', 'head_instructor_id', 'default_semester'];
+        $auditFields = ['course_code', 'name_th', 'status', 'credits', 'head_instructor_id'];
         $auditBefore = $course->only($auditFields);
         $responsibilityBefore = $assignmentsLocked ? null : $this->courseResponsibilitySnapshot($course);
 
         $course->update($validated);
         if (! $assignmentsLocked) {
             $course->assignedStaff()->sync($staffIds);
-            if (! $isStaffContext) {
-                $this->syncCourseInstructors($course, $instructorIds, $instructorRoleIds);
-            }
+            $this->syncCourseInstructors($course, $instructorIds, $instructorRoleIds);
         }
         $course->prerequisites()->sync($prerequisiteIds);
 
@@ -866,7 +857,6 @@ class MasterDataController extends Controller
             'instructor_role_ids'         => 'nullable|array',
             'instructor_role_ids.*'       => 'nullable|integer|exists:course_roles,id',
             'default_year_level'          => $yearRules,
-            'default_semester'            => 'required|integer|min:1|max:3',
             'credits'                     => 'required|integer|min:0',
             'lecture_hours'               => 'required|integer|min:0',
             'lab_hours'                   => 'required|integer|min:0',
@@ -1130,17 +1120,11 @@ class MasterDataController extends Controller
 
     public function courseInstructorDeviation(Course $course)
     {
-        $isStaffContext = $this->isStaffMasterDataContext();
-
-        if ($isStaffContext) {
-            abort_unless($course->status === 'active', 403);
-        }
-
         // Include offerings ทุก phase — admin ใช้ดู pattern ข้ามปีเพื่อตัดสินใจ template รอบหน้า
         $offerings = $course->courseOfferings()
             ->with(['academicYear', 'coordinator', 'instructorPool.instructorProfile.department'])
             ->get()
-            ->sortByDesc(fn ($o) => [$o->academicYear?->name, $o->academicYear?->semester]);
+            ->sortByDesc(fn ($o) => $o->academicYear?->name);
 
         $course->load([
             'instructors.instructorProfile.department',
@@ -1183,8 +1167,6 @@ class MasterDataController extends Controller
             'users'              => $users,
             'courseRoles'        => $courseRoles,
             'templateUpdatedAt'  => $templateUpdatedAt,
-            'routePrefix'        => $isStaffContext ? 'staff' : 'admin',
-            'canEditTemplate'     => ! $isStaffContext,
         ]);
     }
 
@@ -1268,6 +1250,132 @@ class MasterDataController extends Controller
         }
     }
 
+    // ── Student Cohorts (กลุ่มชั้นปี — V2) ─────────────────────────────
+
+    /**
+     * Validation rules สำหรับกลุ่มชั้นปี
+     * cohort ใช้เฉพาะหลักสูตร ป.ตรี ที่ใช้ระบบชั้นปี (uses_year_level=true)
+     */
+    private function studentCohortValidationRules(Request $request, ?StudentCohort $cohort = null): array
+    {
+        $curriculum = Curriculum::find($request->input('curriculum_id'));
+        $usesYear = (bool) ($curriculum?->uses_year_level ?? false);
+        $maxYear = $curriculum?->duration_years ?? 8;
+
+        // หลักสูตรที่ไม่ใช้ระบบชั้นปี (ป.โท/ป.เอก) → year_level = null → uniqueness บน (curriculum, code)
+        $yearLevel = $usesYear ? $request->input('year_level') : null;
+        $uniqueRule = Rule::unique('student_cohorts')
+            ->where(fn ($q) => $q
+                ->where('curriculum_id', $request->input('curriculum_id'))
+                ->where('year_level', $yearLevel));
+        if ($cohort) {
+            $uniqueRule->ignore($cohort->id);
+        }
+
+        return [
+            'curriculum_id' => ['required', Rule::exists('curriculums', 'id')],
+            'year_level' => $usesYear
+                ? ['required', 'integer', 'min:1', 'max:' . $maxYear]
+                : ['nullable'],
+            'code' => ['required', 'string', 'max:50', $uniqueRule],
+            'student_count' => ['required', 'integer', 'min:0', 'max:9999'],
+            'note' => ['nullable', 'string', 'max:255'],
+        ];
+    }
+
+    private function studentCohortValidationMessages(): array
+    {
+        return [
+            'curriculum_id.required' => 'กรุณาเลือกหลักสูตร',
+            'curriculum_id.exists' => 'ไม่พบหลักสูตรที่เลือก',
+            'year_level.required' => 'กรุณาเลือกชั้นปี',
+            'year_level.max' => 'ชั้นปีต้องไม่เกินจำนวนปีของหลักสูตร',
+            'code.required' => 'กรุณาระบุรหัสกลุ่ม',
+            'code.unique' => 'มีรหัสกลุ่มนี้ในชั้นปีเดียวกันของหลักสูตรนี้แล้ว',
+            'student_count.required' => 'กรุณาระบุจำนวนนักศึกษา',
+        ];
+    }
+
+    /**
+     * หลักสูตรไม่ใช้ระบบชั้นปี → บังคับ year_level = null (ไม่สน input ที่ส่งมา)
+     */
+    private function normalizeCohortYearLevel(array $validated): array
+    {
+        $curriculum = Curriculum::find($validated['curriculum_id']);
+        if (! ($curriculum?->uses_year_level)) {
+            $validated['year_level'] = null;
+        }
+        return $validated;
+    }
+
+    public function storeStudentCohort(Request $request)
+    {
+        $validated = $this->normalizeCohortYearLevel($request->validate(
+            $this->studentCohortValidationRules($request),
+            $this->studentCohortValidationMessages()
+        ));
+
+        $cohort = StudentCohort::create($validated);
+
+        $this->logMasterDataCreate(
+            'student_cohorts',
+            $cohort->id,
+            $this->auditSnapshot($cohort, ['curriculum_id', 'year_level', 'code', 'student_count']),
+            'สร้างกลุ่ม ' . $this->cohortLabel($cohort),
+        );
+
+        return $this->redirectToMasterData('student_cohorts')->with('success', 'เพิ่มกลุ่มชั้นปีเรียบร้อยแล้ว');
+    }
+
+    private function cohortLabel(StudentCohort $cohort): string
+    {
+        return $cohort->code . ($cohort->year_level ? " (ปี {$cohort->year_level})" : '');
+    }
+
+    public function updateStudentCohort(Request $request, StudentCohort $studentCohort)
+    {
+        $validated = $this->normalizeCohortYearLevel($request->validate(
+            $this->studentCohortValidationRules($request, $studentCohort),
+            $this->studentCohortValidationMessages()
+        ));
+
+        $fields = ['curriculum_id', 'year_level', 'code', 'student_count', 'note'];
+        $before = $this->auditSnapshot($studentCohort, $fields);
+
+        $studentCohort->update($validated);
+
+        $after = $this->auditSnapshot($studentCohort->fresh(), $fields);
+        [$oldValues, $newValues] = $this->auditDiff($before, $after);
+        $this->logMasterDataUpdate(
+            'student_cohorts',
+            $studentCohort->id,
+            $oldValues,
+            $newValues,
+            'แก้ไขกลุ่ม ' . $this->cohortLabel($studentCohort),
+        );
+
+        return $this->redirectToMasterData('student_cohorts')->with('success', 'อัปเดตกลุ่มชั้นปีเรียบร้อยแล้ว');
+    }
+
+    public function destroyStudentCohort(Request $request, StudentCohort $studentCohort)
+    {
+        $snapshot = $this->auditSnapshot($studentCohort, ['curriculum_id', 'year_level', 'code', 'student_count']);
+        $id = $studentCohort->id;
+        $label = $this->cohortLabel($studentCohort);
+
+        $studentCohort->delete();
+
+        $this->logMasterDataDelete(
+            'student_cohorts',
+            $id,
+            $snapshot,
+            null,
+            "ลบกลุ่มชั้นปี {$label}",
+        );
+
+        return $this->redirectToMasterData('student_cohorts')->with('success', 'ลบกลุ่มชั้นปีเรียบร้อยแล้ว');
+    }
+
     // ── Activity Types ────────────────────────────────────────────────
 
     public function storeActivityType(Request $request)
@@ -1277,12 +1385,13 @@ class MasterDataController extends Controller
             'color_code' => 'required|string|max:10',
             'category'   => 'required|in:lecture,practicum,thesis,other',
         ]);
+        $validated['counts_toward_workload'] = $request->boolean('counts_toward_workload');
         $activityType = ActivityType::create($validated);
 
         $this->logMasterDataCreate(
             'activity_types',
             $activityType->id,
-            $this->auditSnapshot($activityType, ['name', 'color_code', 'category']),
+            $this->auditSnapshot($activityType, ['name', 'color_code', 'category', 'counts_toward_workload']),
             "สร้างประเภทกิจกรรม {$activityType->name}",
         );
 
@@ -1296,7 +1405,8 @@ class MasterDataController extends Controller
             'color_code' => 'required|string|max:10',
             'category'   => 'required|in:lecture,practicum,thesis,other',
         ]);
-        $fields = ['name', 'color_code', 'category'];
+        $validated['counts_toward_workload'] = $request->boolean('counts_toward_workload');
+        $fields = ['name', 'color_code', 'category', 'counts_toward_workload'];
         $before = $this->auditSnapshot($activityType, $fields);
 
         $activityType->update($validated);
@@ -1597,15 +1707,11 @@ class MasterDataController extends Controller
             }
 
             $yearLevel = trim($csv['default_year_level'] ?? '');
-            $semester  = trim($csv['default_semester'] ?? '');
             $curriculumModel = $curriculumModels->get($currId);
             $usesYearLevel = $curriculumModel ? (bool) $curriculumModel->uses_year_level : true;
             $maxYearForCurriculum = $curriculumModel ? max(1, (int) $curriculumModel->duration_years) : 4;
 
-            if ($semester === '') {
-                $errors[] = "แถว {$row}: ต้องระบุ default_semester";
-                continue;
-            }
+            // V2: ตัด default_semester — วิชาเปิดทั้งปี
             if ($usesYearLevel && $yearLevel === '') {
                 $errors[] = "แถว {$row}: หลักสูตร '{$currName}' ใช้ระบบชั้นปี ต้องระบุ default_year_level";
                 continue;
@@ -1665,7 +1771,6 @@ class MasterDataController extends Controller
                         'lab_hours'                   => $lab,
                         'self_study_hours'            => $selfStudy,
                         'default_year_level'          => $yearLevelValue,
-                        'default_semester'            => (int)$semester,
                         'capacity'                    => (int)$capacity,
                         'requires_practicum_rotation' => $rotation,
                         'is_required'                 => $isRequired,

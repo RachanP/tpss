@@ -18,7 +18,6 @@ class AdminDashboardTest extends TestCase
         $admin = $this->makeAdmin();
         AcademicYear::create([
             'name' => '2569',
-            'semester' => 1,
             'start_date' => '2026-08-01',
             'end_date' => '2026-12-31',
             'is_active' => true,
@@ -31,7 +30,7 @@ class AdminDashboardTest extends TestCase
 
         $response->assertOk()
             ->assertSee('สถานะระบบปัจจุบัน')
-            ->assertSee('ปีการศึกษา 2569 / เทอม 1')
+            ->assertSee('ปีการศึกษา 2569')
             ->assertSee('เปิดจัดตาราง')
             ->assertSee('พบเงื่อนไขสำคัญ')
             ->assertSee('ยังเปิดจัดตารางไม่ได้')
@@ -66,7 +65,6 @@ class AdminDashboardTest extends TestCase
             AcademicYear::query()->delete();
             AcademicYear::create([
                 'name' => '2569',
-                'semester' => 1,
                 'start_date' => '2026-08-01',
                 'end_date' => '2026-12-31',
                 'is_active' => true,
@@ -77,6 +75,53 @@ class AdminDashboardTest extends TestCase
                 ->assertOk()
                 ->assertSee($label);
         }
+    }
+
+    public function test_admin_dashboard_renders_visual_overview_section(): void
+    {
+        $admin = $this->makeAdmin();
+        AcademicYear::create([
+            'name' => '2569',
+            'start_date' => '2026-08-01',
+            'end_date' => '2026-12-31',
+            'is_active' => true,
+            'phase' => 'scheduling',
+        ]);
+
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        $this->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertSee('data-testid="admin-phase-stepper"', false) // lifecycle visual
+            ->assertSee('data-testid="admin-visual-overview"', false)
+            ->assertDontSee('สถานะรายวิชาเปิดสอน')
+            ->assertDontSee('ภาพรวมทรัพยากร')
+            ->assertSee('หลักสูตรแยกตามระดับ')
+            ->assertSee('ห้องและสถานที่แยกประเภท')
+            ->assertSee('<svg', false); // donut SVG render
+    }
+
+    public function test_admin_sidebar_uses_read_only_schedule_and_report_labels(): void
+    {
+        $admin = $this->makeAdmin();
+
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        $this->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertDontSee('จัดการตารางสอน')
+            ->assertSee('ตารางและรายงาน')
+            ->assertSee('ตารางสอนที่เผยแพร่แล้ว')
+            ->assertSee('รายงานภาระงาน');
+    }
+
+    public function test_admin_role_cannot_access_schedule_management_workspace(): void
+    {
+        $admin = $this->makeAdmin();
+
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        $this->get(route('maker.schedules.index'))->assertForbidden();
     }
 
     private function makeAdmin(): User

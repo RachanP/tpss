@@ -1,0 +1,170 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Holiday;
+use App\Models\User;
+use App\Models\UserRole;
+use App\Services\HolidayService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
+use Tests\TestCase;
+
+class HolidayManagementTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function admin(): User
+    {
+        $u = User::create(['username' => 'admin_hol', 'name' => 'Admin Hol', 'email' => 'ah@example.com', 'password' => Hash::make('p')]);
+        UserRole::create(['user_id' => $u->id, 'role' => 'admin', 'is_primary' => true]);
+        return $u;
+    }
+
+    /** fake ปฏิทินวันหยุดไทยของ Google (ICS) — 2 วันปี 2026 + 1 วันปี 2027 */
+    private function fakeGoogleHolidays(): void
+    {
+        $ics = implode("\n", [
+            'BEGIN:VCALENDAR',
+            'BEGIN:VEVENT', 'DTSTART;VALUE=DATE:20260101', 'SUMMARY:วันขึ้นปีใหม่', 'END:VEVENT',
+            'BEGIN:VEVENT', 'DTSTART;VALUE=DATE:20260413', 'SUMMARY:วันสงกรานต์', 'END:VEVENT',
+            'BEGIN:VEVENT', 'DTSTART;VALUE=DATE:20270101', 'SUMMARY:วันขึ้นปีใหม่', 'END:VEVENT',
+            'END:VCALENDAR',
+        ]);
+
+        Http::fake(['calendar.google.com/*' => Http::response($ics, 200)]);
+    }
+
+    public function test_service_syncs_and_is_idempotent(): void
+    {
+        $this->fakeGoogleHolidays();
+        $svc = app(HolidayService::class);
+
+        $this->assertSame(2, $svc->syncYear(2026));
+        $this->assertSame(2, Holiday::count());
+
+        // รันซ้ำ → ไม่เพิ่มซ้ำ (updateOrCreate by date)
+        $svc->syncYear(2026);
+        $this->assertSame(2, Holiday::count());
+        $this->assertDatabaseHas('holidays', ['date' => '2026-01-01', 'source' => 'google']);
+    }
+
+    public function test_resync_replaces_stale_auto_but_keeps_manual_and_other_years(): void
+    {
+        // ของเดิม: auto ปี 2026 ที่จะหายจาก ICS ใหม่, manual ปี 2026 (ห้ามลบ), auto ปี 2025 (ปีอื่น ห้ามลบ)
+        Holiday::create(['date' => '2026-05-05', 'name' => 'auto เก่าที่ถูกยกเลิก', 'source' => 'google']);
+        Holiday::create(['date' => '2026-04-13', 'name' => 'งดเรียนเฉพาะคณะ', 'source' => 'manual']);
+        Holiday::create(['date' => '2025-12-31', 'name' => 'auto ปีก่อน', 'source' => 'google']);
+
+        $this->fakeGoogleHolidays();
+        app(HolidayService::class)->syncYear(2026);
+
+        // auto เก่าของ 2026 ที่ไม่อยู่ใน ICS ใหม่ → ถูกลบ
+        $this->assertDatabaseMissing('holidays', ['date' => '2026-05-05']);
+        // manual ของ 2026 → คงอยู่ (ไม่ถูกทับ)
+        $this->assertDatabaseHas('holidays', ['date' => '2026-04-13', 'name' => 'งดเรียนเฉพาะคณะ', 'source' => 'manual']);
+        // ปีอื่น (2025) → คงอยู่
+        $this->assertDatabaseHas('holidays', ['date' => '2025-12-31']);
+        // วันใหม่จาก ICS → เพิ่มเข้ามา
+        $this->assertDatabaseHas('holidays', ['date' => '2026-01-01', 'source' => 'google']);
+    }
+
+    public function test_service_fail_safe_returns_null_on_api_error(): void
+    {
+        Http::fake(['*' => Http::response('err', 500)]);
+        $this->assertNull(app(HolidayService::class)->syncYear(2026));
+        $this->assertSame(0, Holiday::count());
+    }
+
+    public function test_creating_year_auto_fetches_holidays_for_spanned_calendar_years(): void
+    {
+        $this->fakeGoogleHolidays();
+        $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
+
+        $this->post(route('admin.settings.years.store'), [
+            'name'  => '2569',
+            'terms' => [
+                ['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '2026-06-01', 'end_date' => '2026-10-15'],
+                ['sequence' => 2, 'name' => 'ภาคเรียนที่ 2', 'start_date' => '2026-11-02', 'end_date' => '2027-03-12'],
+            ],
+        ])->assertRedirect(route('admin.settings', ['tab' => 'academic']));
+
+        // ปีคร่อม 2026+2027 → ดึงทั้งสองปี (2 + 1 = 3 วัน)
+        $this->assertDatabaseHas('holidays', ['date' => '2026-01-01']);
+        $this->assertDatabaseHas('holidays', ['date' => '2027-01-01']);
+        $this->assertSame(3, Holiday::count());
+    }
+
+    public function test_year_create_still_succeeds_when_holiday_api_down(): void
+    {
+        Http::fake(['*' => Http::response('down', 503)]);
+        $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
+
+        $this->post(route('admin.settings.years.store'), [
+            'name'  => '2569',
+            'terms' => [['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '2026-06-01', 'end_date' => '2026-10-15']],
+        ])->assertRedirect(route('admin.settings', ['tab' => 'academic']))
+            ->assertSessionHas('holiday_warning');
+
+        $this->assertDatabaseHas('academic_years', ['name' => '2569']);
+        $this->assertSame(0, Holiday::count());
+    }
+
+    public function test_admin_can_add_holiday_manually(): void
+    {
+        $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
+
+        $this->post(route('admin.settings.holidays.store'), [
+            'date' => '2026-12-10', 'name' => 'วันรัฐธรรมนูญ',
+        ])->assertRedirect(route('admin.settings', ['tab' => 'academic']));
+
+        $this->assertDatabaseHas('holidays', ['date' => '2026-12-10', 'name' => 'วันรัฐธรรมนูญ', 'source' => 'manual']);
+    }
+
+    public function test_duplicate_holiday_date_rejected(): void
+    {
+        Holiday::create(['date' => '2026-12-10', 'name' => 'X', 'source' => 'manual']);
+        $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
+
+        $this->post(route('admin.settings.holidays.store'), ['date' => '2026-12-10', 'name' => 'ซ้ำ'])
+            ->assertSessionHasErrors('date');
+    }
+
+    public function test_sync_button_requires_active_year(): void
+    {
+        $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
+
+        $this->post(route('admin.settings.holidays.sync'))
+            ->assertRedirect(route('admin.settings', ['tab' => 'academic']))
+            ->assertSessionHas('error');
+
+        $this->assertSame(0, Holiday::count());
+    }
+
+    public function test_sync_button_fetches_active_year_span(): void
+    {
+        \App\Models\AcademicYear::create([
+            'name' => '2569', 'start_date' => '2026-06-01', 'end_date' => '2027-03-12', 'is_active' => true,
+        ]);
+        $this->fakeGoogleHolidays();
+        $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
+
+        $this->post(route('admin.settings.holidays.sync'))
+            ->assertRedirect(route('admin.settings', ['tab' => 'academic']))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('holidays', ['date' => '2026-01-01']);
+        $this->assertDatabaseHas('holidays', ['date' => '2027-01-01']);
+    }
+
+    public function test_admin_can_delete_holiday(): void
+    {
+        $h = Holiday::create(['date' => '2026-12-10', 'name' => 'X', 'source' => 'manual']);
+        $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
+
+        $this->delete(route('admin.settings.holidays.destroy', $h))
+            ->assertRedirect(route('admin.settings', ['tab' => 'academic']));
+        $this->assertDatabaseMissing('holidays', ['id' => $h->id]);
+    }
+}

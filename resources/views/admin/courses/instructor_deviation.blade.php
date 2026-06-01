@@ -2,8 +2,6 @@
     $instructorDiffCount = fn ($d) => count($d['added']) + count($d['removed']) + count($d['role_changed']);
     $detailsDiffCount = fn ($d) => count($d);
     $offeringDiffCount = fn ($oid) => $instructorDiffCount($deviations[$oid]) + $detailsDiffCount($detailsDeviations[$oid] ?? []);
-    $routePrefix = $routePrefix ?? (request()->routeIs('staff.*') ? 'staff' : 'admin');
-    $canEditTemplate = $canEditTemplate ?? $routePrefix === 'admin';
 
     $totalDeviations = $offerings->sum(fn ($o) => $offeringDiffCount($o->id));
     $deviatedOfferings = $offerings->filter(fn ($o) => $offeringDiffCount($o->id) > 0)->count();
@@ -51,7 +49,7 @@
 <div class="course-dashboard">
 
     {{-- Back link --}}
-    <a href="{{ route($routePrefix . '.master_data', ['tab' => 'courses']) }}" class="back-link" data-testid="back-to-master-data">
+    <a href="{{ route('admin.master_data', ['tab' => 'courses']) }}" class="back-link" data-testid="back-to-master-data">
         <span class="back-link-icon" aria-hidden="true">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="19" y1="12" x2="5" y2="12"/>
@@ -170,17 +168,15 @@
                         @endif
                     </div>
                 </div>
-                @if($canEditTemplate)
-                    <a href="{{ route($routePrefix . '.master_data', ['tab' => 'courses', 'edit_course' => $course->id]) }}"
-                       class="dash-action-btn"
-                       data-testid="edit-template-link">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                        </svg>
-                        แก้ไขแม่แบบ
-                    </a>
-                @endif
+                <a href="{{ route('admin.master_data', ['tab' => 'courses', 'edit_course' => $course->id]) }}"
+                   class="dash-action-btn"
+                   data-testid="edit-template-link">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                    แก้ไขแม่แบบ
+                </a>
             </header>
             <div class="dash-card-body">
                 {{-- Coordinator highlight --}}
@@ -259,8 +255,7 @@
                                     :disabled="{{ $count === 0 ? 'true' : 'false' }}"
                                     class="history-row-btn">
                                 <div class="history-term">
-                                    <div class="history-term-year">{{ $offering->academicYear?->name ?? '-' }}</div>
-                                    <div class="history-term-semester">เทอม {{ $offering->academicYear?->semester ?? '-' }}</div>
+                                    <div class="history-term-year">ปีการศึกษา {{ $offering->academicYear?->name ?? '-' }}</div>
                                 </div>
                                 <div class="history-info">
                                     <div class="history-coord">หัวหน้าวิชา: {{ $offering->coordinator?->formatted_name ?? $offering->coordinator?->name ?? '-' }}</div>
