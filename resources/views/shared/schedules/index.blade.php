@@ -3721,11 +3721,11 @@
             padding: 18px 20px 20px;
         }
 
-        /* Ensure native selects inside modals render above other content */
+        /* Keep form controls in normal flow so date/time popovers can layer above them. */
         .schedule-modal select.modal-control,
         .schedule-modal select {
             position: relative;
-            z-index: 99999;
+            z-index: 1;
             text-align: left;
             text-align-last: left;
         }
@@ -4219,6 +4219,19 @@
             -webkit-user-select: none;
             transition: border-color 0.15s, box-shadow 0.15s;
             position: relative;
+        }
+        .schedule-modal .time-picker {
+            z-index: 2;
+        }
+        .schedule-modal .tdi-wrap {
+            z-index: 100003;
+        }
+        .schedule-modal .time-picker.tp-active {
+            z-index: 100004;
+        }
+        .schedule-modal .tdi-pop,
+        .schedule-modal .tp-drop {
+            z-index: 100005;
         }
         .time-picker:focus,
         .time-picker.tp-active {
@@ -7633,6 +7646,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function openDrop(drop, picker) {
+        document.dispatchEvent(new CustomEvent('tpss:close-date-popovers'));
         if (_openDrop && _openDrop !== drop) closeDrop(_openDrop);
         _openDrop = drop;
 
