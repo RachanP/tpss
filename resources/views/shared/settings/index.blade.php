@@ -278,8 +278,8 @@
                                             <span class="badge badge-gray">เตรียมข้อมูล</span>
                                         @endif
                                     </td>
-                                    <td>
-                                        <div class="academic-year-actions">
+                                    <td class="settings-action-cell">
+                                        <div class="academic-year-actions {{ $isAdmin ? '' : 'is-icon-only' }}">
                                             <button class="action-btn" title="แก้ไข"
                                                 @click="openEditModal({{ json_encode($year) }})">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -750,6 +750,14 @@
             justify-content: center;
             margin: 0 auto;
             width: fit-content;
+        }
+        .settings-action-cell {
+            text-align: center;
+        }
+        .academic-year-actions.is-icon-only {
+            display: flex;
+            justify-content: center;
+            width: 100%;
         }
         .academic-year-schedule-action {
             display: flex;
