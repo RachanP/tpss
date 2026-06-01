@@ -84,7 +84,9 @@ class ScheduleDelegationTest extends TestCase
 
         $this->actingAsRole($instructor, 'instructor');
 
-        $this->get(route('maker.schedules.index'))
+        // workspace redirect ไปหน้าวิชาแรกที่จัดได้ (เหมือนหัวหน้าวิชา) แล้วเห็นรหัสวิชา
+        $this->followingRedirects()
+            ->get(route('maker.schedules.index'))
             ->assertOk()
             ->assertSee($offering->course->course_code);
     }
@@ -160,7 +162,9 @@ class ScheduleDelegationTest extends TestCase
             ->assertOk()
             ->assertSee($offering->course->course_code);
 
-        $this->get(route('maker.schedules.index'))
+        // workspace ของเจ้าหน้าที่ redirect ไปหน้าวิชาเหมือนหัวหน้าวิชา (ไม่ค้างหน้า overview)
+        $this->followingRedirects()
+            ->get(route('maker.schedules.index'))
             ->assertOk()
             ->assertSee($offering->course->course_code);
     }

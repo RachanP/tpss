@@ -20,7 +20,11 @@ class CoordinatorEmptyState
     public const NO_OFFERINGS = 'no_offerings';
     public const READY = 'ready';
 
-    public static function forCoordinator(int $coordinatorId): string
+    /**
+     * @param  int  $userId  หัวหน้าวิชา หรือผู้ที่ถูกมอบหมายให้ช่วยจัดตาราง (อาจารย์/เจ้าหน้าที่)
+     *   — ใช้ scopeSchedulableBy เพื่อให้ empty-state/redirect ของ delegated user ตรงกับหัวหน้าวิชา
+     */
+    public static function forCoordinator(int $userId): string
     {
         $systemHasScheduling = AcademicYear::query()
             ->where('phase', 'scheduling')
@@ -32,7 +36,7 @@ class CoordinatorEmptyState
 
         $userHasSchedulingOffering = CourseOffering::query()
             ->withActiveCourse()
-            ->where('coordinator_id', $coordinatorId)
+            ->schedulableBy($userId)
             ->whereHas('academicYear', fn ($q) => $q->where('phase', 'scheduling'))
             ->exists();
 
