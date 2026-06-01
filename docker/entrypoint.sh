@@ -23,13 +23,13 @@ wait_for_database() {
 }
 
 ensure_environment() {
-  [ -f .env ] || cp .env.example .env
+  [ -f .env ] || touch .env
 
   if [ -n "${APP_KEY:-}" ]; then
     return
   fi
 
-  if grep -q "^APP_KEY=base64:" .env; then
+  if grep -q "^APP_KEY=base64:" .env 2>/dev/null; then
     return
   fi
 
