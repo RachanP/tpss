@@ -13,6 +13,7 @@ use App\Models\InstructorProfile;
 use App\Models\LocationType;
 use App\Models\Room;
 use App\Models\Schedule;
+use App\Models\ScheduleTemplate;
 use App\Models\StudentGroup;
 use App\Models\User;
 use App\Models\UserRole;
@@ -78,6 +79,141 @@ class ScheduleManagementTest extends TestCase
             ->assertSee('08:00')
             ->assertSee($group->group_code)
             ->assertSee($room->room_name);
+    }
+
+    public function test_schedule_index_initial_dom_contains_only_first_loaded_week_rows(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $weekOne = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-03',
+            'topic' => 'Initial loaded week',
+        ]);
+        $weekTwo = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'start_date' => '2026-08-10',
+            'end_date' => '2026-08-10',
+            'topic' => 'Lazy loaded week',
+        ]);
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.course_offerings.schedules.index', $offering))
+            ->assertOk()
+            ->assertSee('data-schedule-id="' . $weekOne->id . '"', false)
+            ->assertSee('Initial loaded week')
+            ->assertDontSee('data-schedule-id="' . $weekTwo->id . '"', false)
+            ->assertDontSee('schedule-detail-title-' . $weekTwo->id, false)
+            ->assertDontSee('action="' . route('maker.course_offerings.schedules.update', [$offering, $weekTwo]) . '"', false);
+    }
+
+    public function test_schedule_week_fragment_returns_rows_and_modals_for_requested_week(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $weekOne = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-03',
+            'topic' => 'Initial loaded week',
+        ]);
+        $weekTwo = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'start_date' => '2026-08-10',
+            'end_date' => '2026-08-10',
+            'topic' => 'Lazy loaded week',
+        ]);
+
+        $this->actingAsCourseHead($head);
+
+        $response = $this->getJson(route('maker.course_offerings.schedules.week_fragment', [
+            $offering,
+            'week_start' => '2026-08-10',
+        ]));
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('loaded_schedule_ids.0', (string) $weekTwo->id)
+            ->assertJsonFragment(['id' => (string) $weekTwo->id]);
+
+        $this->assertStringContainsString('data-schedule-id="' . $weekTwo->id . '"', $response->json('html'));
+        $this->assertStringContainsString('Lazy loaded week', $response->json('html'));
+        $this->assertStringContainsString('data-lazy-schedule-modal="' . $weekTwo->id . '"', $response->json('modal_html'));
+        $this->assertStringContainsString('schedule-detail-title-' . $weekTwo->id, $response->json('modal_html'));
+        $this->assertStringContainsString('data-testid="schedule-edit-modal"', $response->json('modal_html'));
+        $this->assertStringContainsString('action="' . route('maker.course_offerings.schedules.update', [$offering, $weekTwo]) . '"', $response->json('modal_html'));
+        $this->assertStringNotContainsString('data-schedule-id="' . $weekOne->id . '"', $response->json('html'));
+    }
+
+    public function test_schedule_week_fragment_renders_recurring_schedule_modals(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $template = ScheduleTemplate::create([
+            'course_offering_id' => $offering->id,
+            'activity_type_id' => $activityType->id,
+            'weekday' => 1,
+            'start_time' => '08:00',
+            'end_time' => '10:00',
+            'start_week' => 1,
+            'end_week' => 2,
+            'topic' => 'Recurring lazy schedule',
+        ]);
+        $weekTwo = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'start_date' => '2026-08-10',
+            'end_date' => '2026-08-10',
+            'topic' => 'Recurring lazy schedule',
+            'schedule_template_id' => $template->id,
+            'series_week_number' => 2,
+        ]);
+
+        $this->actingAsCourseHead($head);
+
+        $response = $this->getJson(route('maker.course_offerings.schedules.week_fragment', [
+            $offering,
+            'week_start' => '2026-08-10',
+        ]));
+
+        $response->assertOk();
+        $this->assertStringContainsString('data-lazy-schedule-modal="' . $weekTwo->id . '"', $response->json('modal_html'));
+        $this->assertStringContainsString('data-testid="schedule-series-edit-modal"', $response->json('modal_html'));
+        $this->assertStringContainsString('series_edit_weekday_' . $weekTwo->id, $response->json('modal_html'));
+    }
+
+    public function test_month_view_initial_dom_includes_modals_for_visible_month_schedules(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-03',
+            'topic' => 'First visible week',
+        ]);
+        $weekTwo = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'start_date' => '2026-08-10',
+            'end_date' => '2026-08-10',
+            'topic' => 'Second visible week',
+        ]);
+
+        $this->actingAsCourseHead($head);
+
+        $response = $this->get(route('maker.course_offerings.schedules.index', [
+            $offering,
+            'period' => 'month',
+            'date' => '2026-08-01',
+        ]));
+
+        $response->assertOk();
+        $this->assertStringContainsString('schedule-detail-title-' . $weekTwo->id, $response->getContent());
+        $this->assertStringContainsString('data-schedule-modal-id="' . $weekTwo->id . '"', $response->getContent());
+    }
+
+    public function test_schedule_week_fragment_uses_offering_permissions(): void
+    {
+        [, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group]);
+        $outsider = $this->makeUser('course_head');
+
+        $this->actingAsCourseHead($outsider);
+
+        $this->getJson(route('maker.course_offerings.schedules.week_fragment', [
+            $offering,
+            'week_start' => '2026-08-03',
+        ]))->assertForbidden();
     }
 
     public function test_schedule_grid_includes_dynamic_evening_time_slots(): void
@@ -454,6 +590,32 @@ class ScheduleManagementTest extends TestCase
             ->assertOk()
             ->assertSee('ข้อมูลไม่ครบ')
             ->assertDontSee('Call to a member function getKey() on array');
+    }
+
+    public function test_maker_alert_groups_start_collapsed_and_paginate_after_ten_items(): void
+    {
+        config(['conflicts.async_reads' => false]);
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+
+        for ($i = 0; $i < 12; $i++) {
+            $date = '2026-08-' . str_pad((string) (3 + $i), 2, '0', STR_PAD_LEFT);
+            $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+                'room_id' => null,
+                'start_date' => $date,
+                'end_date' => $date,
+                'topic' => "Incomplete {$i}",
+            ]);
+        }
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.alerts.index'))
+            ->assertOk()
+            ->assertSee('data-testid="alert-group-incomplete"', false)
+            ->assertSee('data-alert-initial-collapsed="true"', false)
+            ->assertSee('data-alert-page-size="10"', false)
+            ->assertSee('data-testid="alert-pagination-incomplete"', false)
+            ->assertSee('tpssAlertGroup(12)', false);
     }
 
     public function test_conflict_alert_page_lists_owned_schedule_conflicts_with_edit_links(): void
@@ -1153,6 +1315,38 @@ class ScheduleManagementTest extends TestCase
             ->assertSessionHas('schedule_conflict_warning');
 
         $this->assertDatabaseCount('schedules', 2);
+    }
+
+    public function test_schedule_conflict_warning_detects_week_two_resources_from_weekly_series(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+
+        $this->actingAsCourseHead($head);
+
+        $this->post(route('maker.course_offerings.schedules.series.store', $offering), [
+            'weekday' => 1,
+            'start_week' => 1,
+            'end_week' => 2,
+            'start_time' => '08:00',
+            'end_time' => '10:00',
+            'activity_type_id' => $activityType->id,
+            'room_id' => $room->id,
+            'topic' => 'Weekly conflict source',
+            'instructor_ids' => [$instructor->id],
+            'lead_instructor_id' => $instructor->id,
+            'student_group_ids' => [$group->id],
+        ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->post(route('maker.course_offerings.schedules.store', $offering), $this->schedulePayload($instructor, $group, $activityType, $room, [
+            'start_date' => '2026-08-10',
+            'end_date' => '2026-08-10',
+            'topic' => 'Conflicts with generated week two',
+        ]))
+            ->assertRedirect(route('maker.course_offerings.schedules.index', $offering))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('schedule_conflict_warning');
     }
 
     public function test_room_overlap_allows_save_and_marks_conflict_across_offerings(): void

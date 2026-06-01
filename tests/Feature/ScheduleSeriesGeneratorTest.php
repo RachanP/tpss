@@ -151,12 +151,9 @@ class ScheduleSeriesGeneratorTest extends TestCase
             ->get();
 
         $this->assertCount(2, $instances);
-        $this->assertSame($room->id, (int) $instances->first()->room_id);
-        $this->assertTrue($instances->first()->instructors()->where('users.id', $instructor->id)->wherePivot('is_lead', true)->exists());
-        $this->assertTrue($instances->first()->studentGroups()->where('student_groups.id', $group->id)->exists());
-        $this->assertNull($instances->last()->room_id);
-        $this->assertSame(0, $instances->last()->instructors()->count());
-        $this->assertSame(0, $instances->last()->studentGroups()->count());
+        $this->assertTrue($instances->every(fn ($schedule) => (int) $schedule->room_id === (int) $room->id));
+        $this->assertTrue($instances->every(fn ($schedule) => $schedule->instructors()->where('users.id', $instructor->id)->wherePivot('is_lead', true)->exists()));
+        $this->assertTrue($instances->every(fn ($schedule) => $schedule->studentGroups()->where('student_groups.id', $group->id)->exists()));
     }
 
     public function test_course_head_can_create_weekly_series_without_room_instructors_or_groups(): void

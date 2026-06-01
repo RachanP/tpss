@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Models\UserRole;
 use App\Services\NavigationBadgeService;
 use App\Services\ScheduleConflictInvalidationService;
+use App\Services\ScheduleConflictIndex;
 use App\Services\ScheduleConflictReadRepository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -84,6 +85,87 @@ class ConflictRecomputeJobTest extends TestCase
             'scope_type' => 'executive_academic_year',
             'role' => 'executive',
             'academic_year_id' => $year->id,
+        ]);
+    }
+
+    public function test_incremental_recompute_rebuilds_only_changed_conflict_cluster(): void
+    {
+        [$year, , $offering, $instructor, $group] = $this->makeReadyOffering();
+        $activityType = $this->makeActivityType('lecture');
+        $room = $this->makeRoom();
+
+        $first = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'topic' => 'Changed conflict source',
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-03',
+        ]);
+        $second = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'topic' => 'Changed conflict neighbor',
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-03',
+        ]);
+
+        $otherInstructor = $this->makeUser('Other Instructor');
+        $otherGroup = StudentGroup::query()->create([
+            'course_offering_id' => $offering->id,
+            'group_code' => 'B1',
+            'student_count' => 15,
+        ]);
+        $otherRoom = $this->makeRoom();
+        $third = $this->makeSchedule($offering, $activityType, $otherRoom, [$otherInstructor], [$otherGroup], [
+            'topic' => 'Unchanged conflict source',
+            'start_date' => '2026-08-10',
+            'end_date' => '2026-08-10',
+        ]);
+        $fourth = $this->makeSchedule($offering, $activityType, $otherRoom, [$otherInstructor], [$otherGroup], [
+            'topic' => 'Unchanged conflict neighbor',
+            'start_date' => '2026-08-10',
+            'end_date' => '2026-08-10',
+        ]);
+
+        $this->artisan('conflicts:recompute', [
+            '--academic-year' => $year->id,
+            '--sync' => true,
+        ])->assertExitCode(0);
+
+        $previousRun = ScheduleConflictRun::query()->firstOrFail();
+        $this->assertSame(12, $previousRun->result_count);
+
+        $first->forceFill([
+            'start_time' => '10:00',
+            'end_time' => '12:00',
+        ])->save();
+
+        config(['conflicts.async_reads' => true]);
+        Cache::flush();
+        Queue::fake();
+
+        app(ScheduleConflictInvalidationService::class)->markScheduleDirty($first, 'pivot');
+
+        $run = ScheduleConflictRun::query()
+            ->where('status', 'pending')
+            ->orderByDesc('generation')
+            ->firstOrFail();
+
+        $this->assertSame([$first->id], $run->metadata['affected_schedule_ids']);
+
+        (new ConflictRecomputeJob($year->id, $run->id, (int) $run->generation, 'pivot'))
+            ->handle(app(ScheduleConflictIndex::class), app(ScheduleConflictInvalidationService::class));
+
+        $run->refresh();
+
+        $this->assertSame('ready', $run->status);
+        $this->assertSame(2, (int) $run->generation);
+        $this->assertSame(6, $run->result_count);
+        $this->assertDatabaseMissing('schedule_conflict_results', [
+            'run_id' => $run->id,
+            'schedule_id' => $first->id,
+            'conflicting_schedule_id' => $second->id,
+        ]);
+        $this->assertDatabaseHas('schedule_conflict_results', [
+            'run_id' => $run->id,
+            'schedule_id' => $third->id,
+            'conflicting_schedule_id' => $fourth->id,
         ]);
     }
 

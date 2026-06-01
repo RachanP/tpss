@@ -64,6 +64,7 @@ Route::middleware(['auth', 'no-back'])->group(function () {
             Route::get('/{courseOffering}/schedules/create', [ScheduleController::class, 'create'])->name('schedules.create');
             Route::post('/{courseOffering}/schedules', [ScheduleController::class, 'store'])->name('schedules.store');
             Route::post('/{courseOffering}/schedules/series', [ScheduleController::class, 'storeSeries'])->name('schedules.series.store');
+            Route::get('/{courseOffering}/schedules/week-fragment', [ScheduleController::class, 'weekFragment'])->name('schedules.week_fragment');
             Route::post('/{courseOffering}/schedules/check-conflicts', [ScheduleController::class, 'checkConflicts'])->name('schedules.check_conflicts');
             Route::post('/{courseOffering}/schedules/copy-week/preview', [ScheduleController::class, 'previewCopyWeek'])->name('schedules.copy_week.preview');
             Route::post('/{courseOffering}/schedules/copy-week', [ScheduleController::class, 'copyWeek'])->name('schedules.copy_week');

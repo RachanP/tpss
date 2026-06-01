@@ -314,7 +314,7 @@
                     <div class="table-responsive" style="margin: 0; max-height: 260px; overflow-y: auto;">
                         @if($sec['key'] === 'departments')
                         <table>
-                            <thead><tr><th>ภาควิชา</th><th style="min-width: 210px;">สิ่งที่ขาด</th><th></th></tr></thead>
+                            <thead><tr><th>ภาควิชา</th><th style="min-width: 210px;">ขาด</th><th></th></tr></thead>
                             <tbody>
                                 @foreach($departmentsWithIssues as $item)
                                 <tr>
@@ -330,7 +330,7 @@
 
                         @elseif($sec['key'] === 'rooms')
                         <table>
-                            <thead><tr><th>ห้อง</th><th>ประเภท</th><th>สิ่งที่ขาด</th><th></th></tr></thead>
+                            <thead><tr><th>ห้อง</th><th>ประเภท</th><th>ขาด</th><th></th></tr></thead>
                             <tbody>
                                 @foreach($roomsWithIssues as $room)
                                 <tr>

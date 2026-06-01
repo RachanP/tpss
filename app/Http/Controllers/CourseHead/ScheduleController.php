@@ -301,6 +301,75 @@ class ScheduleController extends Controller
         ));
     }
 
+    public function weekFragment(Request $request, CourseOffering $courseOffering): JsonResponse
+    {
+        $this->authorizeCourseHeadOffering($courseOffering);
+
+        $weekStart = $this->validScheduleDate($request, 'week_start')
+            ?->startOfWeek(CarbonInterface::MONDAY);
+
+        abort_unless($weekStart, 422);
+
+        $weekEnd = $weekStart->addDays(6);
+        $selectedInstructorId = $request->integer('instructor_id') ?: null;
+        $selectedTermId = $request->integer('term_id') ?: null;
+        $includeWeekends = $request->boolean('include_weekends');
+
+        $schedules = $this->orderSchedulesByDate(
+            $this->filterSchedulesByDateRange(
+                Schedule::query()
+                    ->with($this->scheduleRelations())
+                    ->where('course_offering_id', $courseOffering->id)
+                    ->when($selectedInstructorId, fn ($q) => $q
+                        ->whereHas('instructors', fn ($iq) => $iq->where('users.id', $selectedInstructorId)))
+                    ->when($selectedTermId, fn ($q) => $q->where('term_id', $selectedTermId)),
+                $weekStart->toDateString(),
+                $weekEnd->toDateString()
+            )
+        )->get();
+
+        $courseOffering->loadMissing([
+            'course.curriculum',
+            'course.department',
+            'academicYear.terms',
+            'instructorPool.instructorProfile.department',
+            'studentGroups' => fn ($query) => $query->orderBy('group_code'),
+        ]);
+
+        $activityTypes = app(ReferenceDataCache::class)->activityTypes();
+        $rooms = app(ReferenceDataCache::class)->activeRooms();
+        $academicCalendar = AcademicCalendar::forYear($courseOffering->academicYear);
+        $scheduleConflicts = $this->scheduleConflictMap($schedules);
+        $groupedSchedules = $schedules
+            ->filter(fn (Schedule $schedule) => $schedule->start_date)
+            ->sortBy(fn (Schedule $schedule) => $schedule->start_date->toDateString() . ' ' . ($schedule->start_time ?? '00:00:00'))
+            ->groupBy(fn (Schedule $schedule) => $schedule->start_date->toDateString());
+
+        $viewData = [
+            'courseOffering' => $courseOffering,
+            ...$this->scheduleDatePickerYearRange(),
+            'allSchedules' => $schedules,
+            'modalSchedules' => $schedules,
+            'groupedSchedules' => $groupedSchedules,
+            'scheduleConflicts' => $scheduleConflicts,
+            'activityTypes' => $activityTypes,
+            'rooms' => $rooms,
+            'academicCalendar' => $academicCalendar,
+            'selectedTermId' => $selectedTermId,
+            'academicYear' => $courseOffering->academicYear,
+            'canEdit' => $courseOffering->academicYear?->phase === 'scheduling',
+            'includeWeekends' => $includeWeekends,
+            'lazyWeekStart' => $weekStart->toDateString(),
+        ];
+
+        return response()->json([
+            'html' => view('shared.schedules._lazy_week_rows', $viewData)->render(),
+            'modal_html' => view('shared.schedules._lazy_detail_modals', $viewData)->render(),
+            'schedule_items' => $this->scheduleFilterItems($schedules, $courseOffering->academicYear),
+            'loaded_schedule_ids' => $schedules->pluck('id')->map(fn ($id) => (string) $id)->values(),
+        ]);
+    }
+
     public function createGlobal(Request $request): View|RedirectResponse
     {
         $offerings = $this->coordinatorScheduleOfferings()
@@ -443,6 +512,32 @@ class ScheduleController extends Controller
                         ->tap($termFilter)
                 )->get());
 
+        $lazyScheduleList = ! $isWorkspace && $courseOffering !== null;
+        $focusedScheduleId = (int) $request->query('focus_schedule_id', $request->query('edit_schedule_id', 0));
+        $forcedSchedule = $focusedScheduleId
+            ? $allSchedules->firstWhere('id', $focusedScheduleId)
+            : null;
+        $initialListWeekStart = $forcedSchedule?->start_date
+            ? CarbonImmutable::parse($forcedSchedule->start_date)->startOfWeek(CarbonInterface::MONDAY)
+            : (($request->has('week_start') || $request->has('date'))
+                ? $periodStart->startOfWeek(CarbonInterface::MONDAY)
+                : ($allSchedules->first()?->start_date
+                    ? CarbonImmutable::parse($allSchedules->first()->start_date)->startOfWeek(CarbonInterface::MONDAY)
+                    : $periodStart->startOfWeek(CarbonInterface::MONDAY)));
+        $initialListWeekEnd = $initialListWeekStart->addDays(6);
+        $initialListSchedules = $lazyScheduleList
+            ? $allSchedules
+                ->filter(fn (Schedule $schedule) => $schedule->start_date
+                    && CarbonImmutable::parse($schedule->start_date)->betweenIncluded($initialListWeekStart, $initialListWeekEnd))
+                ->values()
+            : $allSchedules;
+        $initialModalSchedules = $lazyScheduleList
+            ? $initialListSchedules->merge($schedules)->unique('id')->values()
+            : null;
+        $visibleConflictSchedules = $isWorkspace
+            ? $schedules
+            : $schedules->merge($initialListSchedules)->unique('id')->values();
+
         $totalScheduleCount = $isWorkspace
             ? (empty($offeringIds) ? 0 : Schedule::query()->whereIn('course_offering_id', $offeringIds)->count())
             : $allSchedules->count();
@@ -495,10 +590,15 @@ class ScheduleController extends Controller
             'occurrencesByDate' => $occurrencesByDate,
             'gridOccurrencesByDate' => $occurrencesByDate,
             'groupedSchedules' => $groupedSchedules,
-            'scheduleConflicts' => $this->scheduleConflictMap($isWorkspace ? $schedules : $allSchedules),
+            'scheduleConflicts' => $this->scheduleConflictMap($visibleConflictSchedules),
             'timeSlots' => $timeSlots,
             'activityTypes' => app(ReferenceDataCache::class)->activityTypes(),
             'rooms' => app(ReferenceDataCache::class)->activeRooms(),
+            'lazyScheduleList' => $lazyScheduleList,
+            'loadedScheduleIds' => $initialListSchedules->pluck('id')->map(fn ($id) => (string) $id)->values(),
+            'loadedWeekStarts' => $lazyScheduleList ? collect([$initialListWeekStart->toDateString()]) : collect(),
+            'initialModalSchedules' => $initialModalSchedules,
+            'lazyWeekFragmentUrl' => $courseOffering ? route('maker.course_offerings.schedules.week_fragment', $courseOffering) : null,
             'dayViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'day', $includeWeekends, $selectedInstructorId, $selectedTermId),
             'weekViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'week', $includeWeekends, $selectedInstructorId, $selectedTermId),
             'monthViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'month', $includeWeekends, $selectedInstructorId, $selectedTermId),
@@ -557,6 +657,49 @@ class ScheduleController extends Controller
             'instructors.instructorProfile.department',
             'studentGroups',
         ];
+    }
+
+    private function scheduleFilterItems(Collection $schedules, ?AcademicYear $academicYear): Collection
+    {
+        $academicStartDate = $academicYear?->start_date
+            ? CarbonImmutable::parse($academicYear->start_date)->startOfWeek(CarbonInterface::MONDAY)
+            : null;
+
+        return $schedules->map(function (Schedule $schedule) use ($academicStartDate) {
+            $instructors = $schedule->instructors ?? collect();
+            $week = '';
+
+            if ($academicStartDate && $schedule->start_date) {
+                $week = (string) (max(1, (int) floor(
+                    $academicStartDate->diffInDays(
+                        CarbonImmutable::parse($schedule->start_date)->startOfWeek(CarbonInterface::MONDAY),
+                        false
+                    ) / 7
+                ) + 1));
+            }
+
+            return [
+                'id' => (string) $schedule->id,
+                'activity' => (string) $schedule->activity_type_id,
+                'groups' => $schedule->studentGroups->pluck('id')->map(fn ($id) => (string) $id)->values(),
+                'instructors' => $instructors->pluck('id')->map(fn ($id) => (string) $id)->values(),
+                'week' => $week,
+                'date' => $schedule->start_date?->toDateString(),
+                'search' => mb_strtolower(collect([
+                    $schedule->start_date ? ThaiDate::date($schedule->start_date) : null,
+                    $schedule->end_date ? ThaiDate::date($schedule->end_date) : null,
+                    substr((string) $schedule->start_time, 0, 5),
+                    substr((string) $schedule->end_time, 0, 5),
+                    $schedule->activityType?->name,
+                    $schedule->topic,
+                    $schedule->remark,
+                    $schedule->room?->room_code,
+                    $schedule->room?->room_name,
+                    $schedule->studentGroups->pluck('group_code')->implode(' '),
+                    $instructors->map(fn ($instructor) => $instructor->formatted_name ?? $instructor->name)->implode(' '),
+                ])->filter()->implode(' '), 'UTF-8'),
+            ];
+        })->values();
     }
 
     private function hasScheduleBlockDates(): bool
@@ -958,7 +1101,7 @@ class ScheduleController extends Controller
                 'status' => 'draft',
                 'remark' => $validated['remark'] ?? null,
                 'check_conflicts' => true,
-                'populate_resources' => 'first',
+                'populate_resources' => 'all',
             ]);
         });
 
