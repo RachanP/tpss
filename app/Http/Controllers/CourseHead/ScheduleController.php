@@ -84,7 +84,7 @@ class ScheduleController extends Controller
                         'studentGroups',
                     ])
                     ->whereHas('courseOffering', function ($q) use ($userId, $selectedAcademicYearId) {
-                        $q->where('coordinator_id', $userId)
+                        $q->schedulableBy($userId)
                           ->where('academic_year_id', $selectedAcademicYearId)
                           ->withActiveCourse();
                     })
@@ -310,7 +310,7 @@ class ScheduleController extends Controller
             ->whereIn('id', CourseOffering::query()
                 ->select('academic_year_id')
                 ->withActiveCourse()
-                ->where('coordinator_id', $userId))
+                ->schedulableBy($userId))
             ->orderByDesc('start_date')
             ->orderByDesc('id')
             ->get();
@@ -799,7 +799,7 @@ class ScheduleController extends Controller
 
         $query = CourseOffering::query()
             ->withActiveCourse()
-            ->where('coordinator_id', Auth::id())
+            ->schedulableBy(Auth::id())
             ->whereHas('academicYear', fn ($query) => $query->where('phase', 'scheduling'));
 
         $selectedId = (int) $request->query('course_offering_id');
@@ -833,7 +833,7 @@ class ScheduleController extends Controller
             ->with($relations)
             ->withCount(['schedules', 'studentGroups', 'instructorPool'])
             ->withActiveCourse()
-            ->where('coordinator_id', Auth::id())
+            ->schedulableBy(Auth::id())
             ->get()
             ->sortBy(fn (CourseOffering $offering) => implode('|', [
                 $offering->academicYear?->phase === 'scheduling' ? '0' : '1',
@@ -1724,7 +1724,7 @@ class ScheduleController extends Controller
     private function authorizeCourseHeadOffering(CourseOffering $courseOffering): void
     {
         $courseOffering->loadMissing('course');
-        abort_unless((int) $courseOffering->coordinator_id === (int) Auth::id(), 403);
+        abort_unless($courseOffering->canBeScheduledBy((int) Auth::id()), 403);
         abort_unless($courseOffering->course?->status === 'active', 403);
     }
 

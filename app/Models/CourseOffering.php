@@ -110,6 +110,36 @@ class CourseOffering extends Model
             ->withPivot('role_in_course', 'course_role_id', 'schedule_permission');
     }
 
+    /**
+     * V2 delegation: ใครจัดตาราง offering นี้ได้ = หัวหน้าวิชา (coordinator) หรือ
+     * อาจารย์ในชุดผู้สอนที่ได้รับมอบหมาย (schedule_permission = 'schedule')
+     */
+    public function canBeScheduledBy(?int $userId): bool
+    {
+        if (! $userId) {
+            return false;
+        }
+        if ((int) $this->coordinator_id === (int) $userId) {
+            return true;
+        }
+
+        return $this->instructorPool()
+            ->where('users.id', $userId)
+            ->wherePivot('schedule_permission', 'schedule')
+            ->exists();
+    }
+
+    /** scope: offering ที่ user คนนี้จัดตารางได้ (coordinator หรือถูก delegate) */
+    public function scopeSchedulableBy($query, int $userId)
+    {
+        return $query->where(function ($q) use ($userId) {
+            $q->where('coordinator_id', $userId)
+                ->orWhereHas('instructorPool', fn ($iq) => $iq
+                    ->where('users.id', $userId)
+                    ->where('course_offering_instructors.schedule_permission', 'schedule'));
+        });
+    }
+
     public function attachCoordinator(?int $coordinatorRoleId = null): void
     {
         if (!$this->coordinator_id) return;

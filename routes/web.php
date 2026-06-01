@@ -37,7 +37,9 @@ Route::middleware(['auth', 'no-back'])->group(function () {
     Route::get('/approver/dashboard', [DashboardController::class, 'approver'])->name('approver.dashboard')->middleware('\App\Http\Middleware\CheckRole:executive');
     Route::get('/lecturer/dashboard', [DashboardController::class, 'lecturer'])->name('lecturer.dashboard')->middleware('\App\Http\Middleware\CheckRole:instructor');
 
-    Route::middleware(['\App\Http\Middleware\CheckRole:course_head'])->group(function () {
+    // V2 delegation: งานจัดตาราง (workspace/alerts/slot CRUD) เปิดให้ทั้งหัวหน้าวิชา + อาจารย์ที่ถูกมอบหมาย
+    // access จริงต่อ offering กรองด้วย CourseOffering::scopeSchedulableBy / canBeScheduledBy (coordinator หรือ schedule_permission='schedule')
+    Route::middleware(['\App\Http\Middleware\CheckRole:course_head,instructor'])->group(function () {
         Route::get('/maker/schedules', [ScheduleController::class, 'workspace'])->name('maker.schedules.index');
         Route::get('/maker/alerts', [ScheduleController::class, 'alerts'])->name('maker.alerts.index');
         Route::get('/maker/conflict-badge-status', ConflictBadgeStatusController::class)
@@ -47,11 +49,11 @@ Route::middleware(['auth', 'no-back'])->group(function () {
         Route::post('/maker/schedules', [ScheduleController::class, 'storeGlobal'])->name('maker.schedules.store');
     });
 
-    Route::middleware(['\App\Http\Middleware\CheckRole:course_head'])
+    // จัดตาราง slot ต่อ offering — หัวหน้าวิชา + อาจารย์ที่ถูกมอบหมาย (delegation)
+    Route::middleware(['\App\Http\Middleware\CheckRole:course_head,instructor'])
         ->prefix('maker/course-offerings')
         ->name('maker.course_offerings.')
         ->group(function () {
-            Route::get('/', [CourseOfferingController::class, 'index'])->name('index');
             Route::get('/{courseOffering}/schedules', [ScheduleController::class, 'index'])->name('schedules.index');
             Route::get('/{courseOffering}/schedules/create', [ScheduleController::class, 'create'])->name('schedules.create');
             Route::post('/{courseOffering}/schedules', [ScheduleController::class, 'store'])->name('schedules.store');
@@ -64,6 +66,14 @@ Route::middleware(['auth', 'no-back'])->group(function () {
             Route::get('/{courseOffering}/schedules/{schedule}/edit', [ScheduleController::class, 'edit'])->name('schedules.edit');
             Route::put('/{courseOffering}/schedules/{schedule}', [ScheduleController::class, 'update'])->name('schedules.update');
             Route::delete('/{courseOffering}/schedules/{schedule}', [ScheduleController::class, 'destroy'])->name('schedules.destroy');
+        });
+
+    // จัดการ offering (ดูรายการ/รายละเอียด/แก้ไข/ชุดผู้สอน) — หัวหน้าวิชาเท่านั้น (อาจารย์ที่ช่วยจัดไม่แตะ pool/อนุมัติ)
+    Route::middleware(['\App\Http\Middleware\CheckRole:course_head'])
+        ->prefix('maker/course-offerings')
+        ->name('maker.course_offerings.')
+        ->group(function () {
+            Route::get('/', [CourseOfferingController::class, 'index'])->name('index');
             Route::get('/{courseOffering}', [CourseOfferingController::class, 'show'])->name('show');
             Route::put('/{courseOffering}', [CourseOfferingController::class, 'update'])->name('update');
             Route::post('/{courseOffering}/instructors', [CourseOfferingController::class, 'storeInstructor'])->name('instructors.store');

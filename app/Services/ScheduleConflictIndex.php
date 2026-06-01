@@ -97,7 +97,7 @@ class ScheduleConflictIndex
             $this->baseScheduleQuery()
                 ->whereHas('courseOffering', fn (Builder $query) => $query
                     ->withActiveCourse()
-                    ->where('coordinator_id', $userId)
+                    ->schedulableBy($userId)
                     ->when($academicYearId, fn (Builder $query) => $query->where('academic_year_id', $academicYearId)))
         )->get();
 
