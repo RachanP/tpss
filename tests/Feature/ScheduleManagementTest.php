@@ -110,6 +110,11 @@ class ScheduleManagementTest extends TestCase
 
         $content = $response->getContent();
 
+        $this->assertMatchesRegularExpression(
+            "#lazyWeekFragmentUrl:\\s*'\\\\?/maker\\\\?/course-offerings\\\\?/[^']+\\\\?/schedules\\\\?/week-fragment'#",
+            $content
+        );
+        $this->assertDoesNotMatchRegularExpression("~lazyWeekFragmentUrl:\\s*'https?://~", $content);
         $this->assertStringNotContainsString('class="co-sched-row"', $content);
         $this->assertStringNotContainsString('schedule-detail-title-' . $weekOne->id, $content);
         $this->assertStringNotContainsString('schedule-detail-title-' . $weekTwo->id, $content);
@@ -178,6 +183,12 @@ class ScheduleManagementTest extends TestCase
             ->assertOk()
             ->assertJsonPath('loaded_schedule_ids.0', (string) $weekTwo->id)
             ->assertJsonFragment(['id' => (string) $weekTwo->id]);
+
+        $decoded = json_decode($response->getContent(), true, flags: JSON_THROW_ON_ERROR);
+        $this->assertSame([0], array_keys($decoded['schedule_items']));
+        $this->assertSame([0], array_keys($decoded['loaded_schedule_ids']));
+        $this->assertSame([0], array_keys($decoded['schedule_items'][0]['groups']));
+        $this->assertSame([0], array_keys($decoded['schedule_items'][0]['instructors']));
 
         $cacheControl = (string) $response->headers->get('Cache-Control');
         $this->assertStringContainsString('no-store', $cacheControl);

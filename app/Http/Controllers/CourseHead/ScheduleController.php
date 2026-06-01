@@ -588,7 +588,7 @@ class ScheduleController extends Controller
                 ? collect([$initialListWeekStart->toDateString()])
                 : collect(),
             'initialModalSchedules' => $initialModalSchedules,
-            'lazyWeekFragmentUrl' => $courseOffering ? route('maker.course_offerings.schedules.week_fragment', $courseOffering) : null,
+            'lazyWeekFragmentUrl' => $courseOffering ? route('maker.course_offerings.schedules.week_fragment', $courseOffering, false) : null,
             'dayViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'day', $includeWeekends, $selectedInstructorId, $selectedTermId),
             'weekViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'week', $includeWeekends, $selectedInstructorId, $selectedTermId),
             'monthViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'month', $includeWeekends, $selectedInstructorId, $selectedTermId),
@@ -727,7 +727,7 @@ class ScheduleController extends Controller
             'html' => view('shared.schedules._lazy_week_rows', $viewData)->render(),
             'modal_html' => view('shared.schedules._lazy_detail_modals', $viewData)->render(),
             'schedule_items' => $this->scheduleFilterItems($schedules, $courseOffering->academicYear),
-            'loaded_schedule_ids' => $schedules->pluck('id')->map(fn ($id) => (string) $id)->values(),
+            'loaded_schedule_ids' => $schedules->pluck('id')->map(fn ($id) => (string) $id)->values()->all(),
         ];
     }
 
@@ -822,7 +822,7 @@ class ScheduleController extends Controller
         ]));
     }
 
-    private function scheduleFilterItems(Collection $schedules, ?AcademicYear $academicYear): Collection
+    private function scheduleFilterItems(Collection $schedules, ?AcademicYear $academicYear): array
     {
         $academicStartDate = $academicYear?->start_date
             ? CarbonImmutable::parse($academicYear->start_date)->startOfWeek(CarbonInterface::MONDAY)
@@ -844,8 +844,8 @@ class ScheduleController extends Controller
             return [
                 'id' => (string) $schedule->id,
                 'activity' => (string) $schedule->activity_type_id,
-                'groups' => $schedule->studentGroups->pluck('id')->map(fn ($id) => (string) $id)->values(),
-                'instructors' => $instructors->pluck('id')->map(fn ($id) => (string) $id)->values(),
+                'groups' => $schedule->studentGroups->pluck('id')->map(fn ($id) => (string) $id)->values()->all(),
+                'instructors' => $instructors->pluck('id')->map(fn ($id) => (string) $id)->values()->all(),
                 'week' => $week,
                 'date' => $schedule->start_date?->toDateString(),
                 'search' => mb_strtolower(collect([
@@ -862,7 +862,7 @@ class ScheduleController extends Controller
                     $instructors->map(fn ($instructor) => $instructor->formatted_name ?? $instructor->name)->implode(' '),
                 ])->filter()->implode(' '), 'UTF-8'),
             ];
-        })->values();
+        })->values()->all();
     }
 
     private function hasScheduleBlockDates(): bool

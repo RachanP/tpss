@@ -3595,9 +3595,9 @@
             align-items: center;
             justify-content: center;
             padding: 24px 22px;
-            background: rgb(15 23 42 / 0.24);
-            backdrop-filter: blur(1.5px);
-            -webkit-backdrop-filter: blur(1.5px);
+            background: rgb(15 23 42 / 0.18);
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
         }
         .schedule-modal {
             width: min(680px, 100%);
@@ -3611,7 +3611,7 @@
             border-radius: 10px;
             background: var(--surface);
             box-shadow: 0 16px 34px rgb(15 23 42 / 0.18), 0 3px 10px rgb(15 23 42 / 0.08);
-            animation: modal-pop 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+            animation: modal-pop 0.16s cubic-bezier(0.22, 1, 0.36, 1);
             /* note: removed clip-path to avoid clipping native select dropdowns */
         }
         .schedule-modal::-webkit-scrollbar {
@@ -3636,7 +3636,7 @@
             background: transparent;
         }
         @keyframes modal-pop {
-            from { opacity: 0; transform: scale(0.94) translateY(8px); }
+            from { opacity: 0; transform: scale(0.98) translateY(4px); }
             to   { opacity: 1; transform: scale(1) translateY(0); }
         }
         .schedule-modal.is-form {
@@ -4690,14 +4690,25 @@
                 this.copyWeekTarget = next;
                 this.refreshCopyWeekPreview();
             },
+            sameOriginUrl(value) {
+                if (!value) return null;
+
+                const url = new URL(value, window.location.origin);
+                if (url.origin !== window.location.origin) {
+                    return new URL(`${url.pathname}${url.search}${url.hash}`, window.location.origin);
+                }
+
+                return url;
+            },
             async refreshCopyWeekPreview() {
-                const url = @js((! $isWorkspace && $courseOffering) ? route('maker.course_offerings.schedules.copy_week.preview', $courseOffering) : '');
+                const url = this.sameOriginUrl(@js((! $isWorkspace && $courseOffering) ? route('maker.course_offerings.schedules.copy_week.preview', $courseOffering, false) : ''));
                 if (!url || !this.copyWeekSource || !this.copyWeekTarget) return;
                 this.copyWeekLoading = true;
                 this.copyWeekError = '';
                 try {
-                    const res = await fetch(url, {
+                    const res = await fetch(url.toString(), {
                         method: 'POST',
+                        credentials: 'same-origin',
                         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': this.csrf },
                         body: JSON.stringify({ source_week_start: this.copyWeekSource, target_week_start: this.copyWeekTarget }),
                     });
@@ -4718,13 +4729,14 @@
                 this.liveTimer = setTimeout(() => this.runScheduleCheck(form), 400);
             },
             async runScheduleCheck(formEl) {
-                const url = @js((! $isWorkspace && $courseOffering) ? route('maker.course_offerings.schedules.check_conflicts', $courseOffering) : '');
+                const url = this.sameOriginUrl(@js((! $isWorkspace && $courseOffering) ? route('maker.course_offerings.schedules.check_conflicts', $courseOffering, false) : ''));
                 const form = formEl || this.$refs.createForm;
                 if (!url || !form) return;
                 this.liveChecking = true;
                 try {
-                    const res = await fetch(url, {
+                    const res = await fetch(url.toString(), {
                         method: 'POST',
+                        credentials: 'same-origin',
                         headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': this.csrf },
                         body: new FormData(form),
                     });
@@ -5095,7 +5107,8 @@
 
                 const promise = (async () => {
                     try {
-                        const url = new URL(this.lazyWeekFragmentUrl, window.location.origin);
+                        const url = this.sameOriginUrl(this.lazyWeekFragmentUrl);
+                        if (!url) return false;
                         url.searchParams.set('week_start', weekStart);
                         if (this.selectedTermIdForLazy) url.searchParams.set('term_id', this.selectedTermIdForLazy);
                         if (this.selectedInstructorIdForLazy) url.searchParams.set('instructor_id', this.selectedInstructorIdForLazy);
@@ -5133,7 +5146,7 @@
                             console.warn('Unable to initialize lazy schedule modals', error);
                         }
                         this.mergeScheduleItems(payload.schedule_items || []);
-                        (payload.loaded_schedule_ids || []).forEach((id) => { this.loadedScheduleIds[String(id)] = true; });
+                        this.asArray(payload.loaded_schedule_ids || []).forEach((id) => { this.loadedScheduleIds[String(id)] = true; });
                         this.loadedWeeks = { ...this.loadedWeeks, [weekStart]: true };
                         this.weekLoadErrors = { ...this.weekLoadErrors, [weekStart]: false };
 
@@ -5265,13 +5278,20 @@
                 this.loadingDates = nextLoadingDates;
             },
             mergeScheduleItems(items) {
+                const list = this.asArray(items);
                 const known = new Set(this.scheduleItems.map((item) => String(item.id)));
-                items.forEach((item) => {
+                list.forEach((item) => {
+                    if (!item || item.id === undefined || item.id === null) return;
                     if (!known.has(String(item.id))) {
                         this.scheduleItems.push(item);
                         known.add(String(item.id));
                     }
                 });
+            },
+            asArray(value) {
+                if (Array.isArray(value)) return value;
+                if (value && typeof value === 'object') return Object.values(value);
+                return [];
             },
             resetScheduleFilters() {
                 this.scheduleSearch = '';
