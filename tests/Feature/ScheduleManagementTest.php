@@ -179,6 +179,11 @@ class ScheduleManagementTest extends TestCase
             ->assertJsonPath('loaded_schedule_ids.0', (string) $weekTwo->id)
             ->assertJsonFragment(['id' => (string) $weekTwo->id]);
 
+        $cacheControl = (string) $response->headers->get('Cache-Control');
+        $this->assertStringContainsString('no-store', $cacheControl);
+        $this->assertStringContainsString('no-cache', $cacheControl);
+        $this->assertStringContainsString('max-age=0', $cacheControl);
+
         $this->assertStringContainsString('data-schedule-id="' . $weekTwo->id . '"', $response->json('html'));
         $this->assertStringContainsString('Lazy loaded week', $response->json('html'));
         $this->assertStringContainsString('data-lazy-schedule-modal="' . $weekTwo->id . '"', $response->json('modal_html'));

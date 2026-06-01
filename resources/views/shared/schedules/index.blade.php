@@ -5050,7 +5050,10 @@
             },
             async loadScheduleWeek(weekStart, dateKey = null) {
                 if (!weekStart || !this.lazyWeekFragmentUrl) return false;
-                if (this.loadedWeeks[weekStart]) return true;
+                if (this.loadedWeeks[weekStart]) {
+                    this.clearWeekLazyState(weekStart);
+                    return true;
+                }
 
                 this.loadingWeeks = { ...this.loadingWeeks, [weekStart]: true };
                 this.weekLoadErrors = { ...this.weekLoadErrors, [weekStart]: false };
@@ -5059,7 +5062,14 @@
                     this.dayLoadErrors = { ...this.dayLoadErrors, [dateKey]: false };
                 }
 
-                const loaded = await this.fetchScheduleWeek(weekStart);
+                let loaded = await this.fetchScheduleWeek(weekStart);
+
+                if (!loaded && dateKey) {
+                    const nextPrefetchedWeeks = { ...this.prefetchedWeeks };
+                    delete nextPrefetchedWeeks[weekStart];
+                    this.prefetchedWeeks = nextPrefetchedWeeks;
+                    loaded = await this.fetchScheduleWeek(weekStart, true);
+                }
 
                 this.loadingWeeks = { ...this.loadingWeeks, [weekStart]: false };
                 if (dateKey) {
@@ -5071,15 +5081,16 @@
                     if (dateKey) {
                         this.dayLoadErrors = { ...this.dayLoadErrors, [dateKey]: true };
                     }
-                } else if (dateKey) {
-                    this.dayLoadErrors = { ...this.dayLoadErrors, [dateKey]: false };
+                } else {
+                    this.clearWeekLazyState(weekStart);
                 }
 
                 return loaded;
             },
-            fetchScheduleWeek(weekStart) {
+            fetchScheduleWeek(weekStart, force = false) {
                 if (!weekStart || !this.lazyWeekFragmentUrl) return Promise.resolve(false);
                 if (this.loadedWeeks[weekStart]) return Promise.resolve(true);
+                if (force) delete this.weekLoadPromises[weekStart];
                 if (this.weekLoadPromises[weekStart]) return this.weekLoadPromises[weekStart];
 
                 const promise = (async () => {
@@ -5091,10 +5102,24 @@
                         if (this.includeWeekends) url.searchParams.set('include_weekends', '1');
 
                         const res = await fetch(url.toString(), {
+                            cache: 'no-store',
+                            credentials: 'same-origin',
                             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                         });
 
-                        if (!res.ok) throw new Error('week load failed');
+                        const contentType = (res.headers.get('content-type') || '').toLowerCase();
+                        if (!res.ok || !contentType.includes('application/json')) {
+                            const body = await res.text().catch(() => '');
+                            console.warn('Unable to load schedule week fragment', {
+                                weekStart,
+                                status: res.status,
+                                redirected: res.redirected,
+                                url: res.url,
+                                contentType,
+                                body: body.slice(0, 300),
+                            });
+                            return false;
+                        }
 
                         const payload = await res.json();
                         try {
@@ -5114,6 +5139,7 @@
 
                         return true;
                     } catch (error) {
+                        console.warn('Unable to load schedule week fragment', { weekStart, error });
                         return false;
                     } finally {
                         delete this.weekLoadPromises[weekStart];
@@ -5143,7 +5169,13 @@
                 }
 
                 this.activeWeekPrefetches += 1;
-                this.fetchScheduleWeek(weekStart).finally(() => {
+                this.fetchScheduleWeek(weekStart).then((loaded) => {
+                    if (!loaded) {
+                        const nextPrefetchedWeeks = { ...this.prefetchedWeeks };
+                        delete nextPrefetchedWeeks[weekStart];
+                        this.prefetchedWeeks = nextPrefetchedWeeks;
+                    }
+                }).finally(() => {
                     this.activeWeekPrefetches = Math.max(0, this.activeWeekPrefetches - 1);
                     this.processWeekPrefetchQueue();
                 });
@@ -5211,6 +5243,26 @@
                     modal.dataset.lazyModalPending = '1';
                     this.$refs.lazyModalHost.appendChild(modal);
                 });
+            },
+            clearWeekLazyState(weekStart) {
+                if (!weekStart) return;
+
+                const dateKeys = Array.from(this.$el.querySelectorAll('[data-lazy-state-week]'))
+                    .filter((row) => row.getAttribute('data-lazy-state-week') === weekStart)
+                    .map((row) => row.getAttribute('data-lazy-state-date'))
+                    .filter(Boolean);
+
+                if (!dateKeys.length) return;
+
+                const nextDayErrors = { ...this.dayLoadErrors };
+                const nextLoadingDates = { ...this.loadingDates };
+                dateKeys.forEach((dateKey) => {
+                    nextDayErrors[dateKey] = false;
+                    nextLoadingDates[dateKey] = false;
+                });
+
+                this.dayLoadErrors = nextDayErrors;
+                this.loadingDates = nextLoadingDates;
             },
             mergeScheduleItems(items) {
                 const known = new Set(this.scheduleItems.map((item) => String(item.id)));

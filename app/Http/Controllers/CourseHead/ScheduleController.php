@@ -348,7 +348,10 @@ class ScheduleController extends Controller
 
         $payload = $this->rememberWeekFragmentPayload($cacheKey, $buildPayload);
 
-        return response()->json($payload);
+        return response()
+            ->json($payload)
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache');
     }
 
     public function createGlobal(Request $request): View|RedirectResponse
