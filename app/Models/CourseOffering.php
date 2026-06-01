@@ -107,7 +107,7 @@ class CourseOffering extends Model
     public function instructorPool(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'course_offering_instructors')
-            ->withPivot('role_in_course', 'course_role_id');
+            ->withPivot('role_in_course', 'course_role_id', 'schedule_permission');
     }
 
     public function attachCoordinator(?int $coordinatorRoleId = null): void
