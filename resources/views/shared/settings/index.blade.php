@@ -1,4 +1,7 @@
 <x-app-layout title="{{ $isAdmin ? 'ตั้งค่าระบบ' : 'ตั้งค่าปีการศึกษา' }}">
+    @php
+        $canManageHolidays = $canManageHolidays ?? in_array($routePrefix ?? null, ['admin', 'staff'], true);
+    @endphp
     <div x-data="{
         activeTab: new URLSearchParams(window.location.search).get('tab') || 'academic',
         workloadWeeks: {{ $workloadWeeks }},
@@ -333,7 +336,7 @@
                 </div>
             </div>
 
-            @if($isAdmin)
+            @if($canManageHolidays)
             {{-- วันหยุดราชการ (V3 ข้อ 2.4) --}}
             <div class="card" style="margin-top: 16px;">
                 <div class="card-hdr">
@@ -341,7 +344,7 @@
                         <div class="card-ttl">วันหยุดราชการ (ระบบจะสร้างวันหยุดให้อัติโนมัติเมื่อเลือกปีการศึกษาปัจจุบัน)</div>
                     </div>
                     <div class="card-actions" style="display: flex; gap: 8px;">
-                        <form method="POST" action="{{ route('admin.settings.holidays.sync') }}" style="margin: 0;">
+                        <form method="POST" action="{{ route($routePrefix . '.settings.holidays.sync') }}" style="margin: 0;">
                             @csrf
                             <button type="submit" class="btn btn-ghost" style="font-size: 13px;">ดึงวันหยุดซ้ำ</button>
                         </form>
@@ -388,6 +391,8 @@
                 </div>
             </div>
 
+            @endif
+            @if($isAdmin)
                 <div x-show="openScheduleConfirmForm" x-cloak
                     style="position:fixed;inset:0;z-index:80;background:rgba(15,23,42,.36);"
                     @keydown.escape.window="cancelOpenScheduleCountdown()">
@@ -528,7 +533,7 @@
             </div>
         </template>
 
-        @if($isAdmin)
+        @if($canManageHolidays)
         <!-- Add/Edit Holiday Modal -->
         <template x-if="showHolidayModal">
             <div class="overlay" x-cloak>
@@ -540,7 +545,7 @@
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                         </button>
                     </div>
-                    <form :action="editHolidayMode ? '{{ url('admin/settings/holidays') }}/' + currentHoliday.id : '{{ route('admin.settings.holidays.store') }}'" method="POST">
+                    <form :action="editHolidayMode ? '{{ url($routePrefix . '/settings/holidays') }}/' + currentHoliday.id : '{{ route($routePrefix . '.settings.holidays.store') }}'" method="POST">
                         @csrf
                         <input type="hidden" name="_method" value="PUT" :disabled="!editHolidayMode">
                         <div class="modal-body">
@@ -569,7 +574,7 @@
                             </div>
                         </div>
                     </form>
-                    <form x-ref="deleteHolidayForm" :action="'{{ url('admin/settings/holidays') }}/' + currentHoliday.id" method="POST" style="display: none;">
+                    <form x-ref="deleteHolidayForm" :action="'{{ url($routePrefix . '/settings/holidays') }}/' + currentHoliday.id" method="POST" style="display: none;">
                         @csrf
                         @method('DELETE')
                     </form>
@@ -577,6 +582,8 @@
             </div>
         </template>
 
+        @endif
+        @if($isAdmin)
         <!-- Tab: PA Rules -->
         <div x-show="activeTab === 'pa'" x-cloak>
             <form action="{{ route('admin.settings.constants.update') }}" method="POST">

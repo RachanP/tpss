@@ -6,6 +6,7 @@ use App\Models\ActivityType;
 use App\Models\CourseRole;
 use App\Models\Room;
 use Illuminate\Support\Facades\Cache;
+use Throwable;
 
 class ReferenceDataCache
 {
@@ -63,9 +64,13 @@ class ReferenceDataCache
 
     public static function flush(): void
     {
-        Cache::forget(self::ACTIVITY_TYPES_KEY);
-        Cache::forget(self::ACTIVE_ROOMS_KEY);
-        Cache::forget(self::COURSE_ROLES_KEY);
+        try {
+            Cache::forget(self::ACTIVITY_TYPES_KEY);
+            Cache::forget(self::ACTIVE_ROOMS_KEY);
+            Cache::forget(self::COURSE_ROLES_KEY);
+        } catch (Throwable) {
+            // Cache can be unavailable during a fresh local setup.
+        }
     }
 
     public function clearMemo(): void
@@ -79,7 +84,13 @@ class ReferenceDataCache
             return $this->memo[$memoKey];
         }
 
-        return $this->memo[$memoKey] = collect(Cache::remember($cacheKey, self::TTL, $loader))
+        try {
+            $items = Cache::remember($cacheKey, self::TTL, $loader);
+        } catch (Throwable) {
+            $items = $loader();
+        }
+
+        return $this->memo[$memoKey] = collect($items)
             ->map(fn ($item) => $this->toObject($item))
             ->values();
     }

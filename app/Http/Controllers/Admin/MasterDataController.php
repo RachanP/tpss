@@ -200,6 +200,7 @@ class MasterDataController extends Controller
 
         $activeRole = session('active_role');
         $isAdmin    = $activeRole === 'admin';
+        $canManageMasterData = in_array($activeRole, ['admin', 'staff'], true);
         $routePrefix = $isAdmin ? 'admin' : 'staff';
 
         return view('shared.master_data.index', compact(
@@ -216,6 +217,7 @@ class MasterDataController extends Controller
             'courseRoles',
             'courseInstructorUsers',
             'isAdmin',
+            'canManageMasterData',
             'routePrefix',
             'usersWithEmployeeIdCount',
             'paCriteria'

@@ -118,7 +118,7 @@ class RoleSwitchTest extends TestCase
         $this->get('/dashboard')->assertRedirect(route('dashboard.coming_soon'));
     }
 
-    public function test_deep_link_auto_switches_to_allowed_route_role(): void
+    public function test_deep_link_does_not_auto_switch_to_allowed_route_role(): void
     {
         UserRole::create([
             'user_id' => $this->user->id,
@@ -132,7 +132,7 @@ class RoleSwitchTest extends TestCase
 
         $response = $this->get(route('maker.course_offerings.index'));
 
-        $response->assertOk();
-        $this->assertEquals('course_head', session('active_role'));
+        $response->assertRedirect(route('dashboard'));
+        $this->assertEquals('staff', session('active_role'));
     }
 }

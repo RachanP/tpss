@@ -32,9 +32,13 @@ class CheckRole
 
         $allowedRole = collect($roles)->first(fn ($role) => $userRoles->contains($role));
 
-        if ($allowedRole) {
+        if ($allowedRole && (! is_string($activeRole) || $activeRole === '' || ! $userRoles->contains($activeRole))) {
             $request->session()->put('active_role', $allowedRole);
             return $next($request);
+        }
+
+        if ($allowedRole) {
+            return redirect()->route('dashboard');
         }
 
         abort(403, 'ไม่มีสิทธิ์เข้าถึงส่วนนี้');

@@ -152,8 +152,16 @@ Route::middleware(['auth', 'no-back'])->group(function () {
         Route::get('/staff/settings', 'App\Http\Controllers\Staff\SettingController@index')->name('staff.settings');
         Route::post('/staff/settings/academic-years', 'App\Http\Controllers\Staff\SettingController@storeYear')->name('staff.settings.years.store');
         Route::put('/staff/settings/academic-years/{year}', 'App\Http\Controllers\Staff\SettingController@updateYear')->name('staff.settings.years.update');
+        Route::post('/staff/settings/holidays', 'App\Http\Controllers\Staff\SettingController@storeHoliday')->name('staff.settings.holidays.store');
+        Route::put('/staff/settings/holidays/{holiday}', 'App\Http\Controllers\Staff\SettingController@updateHoliday')->name('staff.settings.holidays.update');
+        Route::delete('/staff/settings/holidays/{holiday}', 'App\Http\Controllers\Staff\SettingController@destroyHoliday')->name('staff.settings.holidays.destroy');
+        Route::post('/staff/settings/holidays/sync', 'App\Http\Controllers\Staff\SettingController@syncHolidays')->name('staff.settings.holidays.sync');
 
         Route::get('/staff/master-data', 'App\Http\Controllers\Staff\MasterDataController@index')->name('staff.master_data');
+        Route::post('/staff/master-data/departments', 'App\Http\Controllers\Staff\MasterDataController@storeDepartment')->name('staff.departments.store');
+        Route::put('/staff/master-data/departments/{department}', 'App\Http\Controllers\Staff\MasterDataController@updateDepartment')->name('staff.departments.update');
+        Route::delete('/staff/master-data/departments/{department}', 'App\Http\Controllers\Staff\MasterDataController@destroyDepartment')->name('staff.departments.destroy');
+        Route::put('/staff/master-data/instructors/{id}', 'App\Http\Controllers\Staff\MasterDataController@updateInstructor')->name('staff.instructors.update');
         Route::post('/staff/master-data/location-types', 'App\Http\Controllers\Staff\MasterDataController@storeLocationType')->name('staff.location_types.store');
         Route::put('/staff/master-data/location-types/{locationType}', 'App\Http\Controllers\Staff\MasterDataController@updateLocationType')->name('staff.location_types.update');
         Route::delete('/staff/master-data/location-types/{locationType}', 'App\Http\Controllers\Staff\MasterDataController@destroyLocationType')->name('staff.location_types.destroy');
@@ -165,6 +173,17 @@ Route::middleware(['auth', 'no-back'])->group(function () {
         Route::post('/staff/master-data/courses/import', 'App\Http\Controllers\Staff\MasterDataController@importCourses')->name('staff.courses.import');
         Route::put('/staff/master-data/courses/{course}', 'App\Http\Controllers\Staff\MasterDataController@updateCourse')->name('staff.courses.update');
         Route::delete('/staff/master-data/courses/{course}', 'App\Http\Controllers\Staff\MasterDataController@destroyCourse')->name('staff.courses.destroy');
+        Route::get('/staff/master-data/courses/{course}/instructor-deviation', 'App\Http\Controllers\Staff\MasterDataController@courseInstructorDeviation')->name('staff.courses.instructor_deviation');
+        Route::post('/staff/master-data/curriculums', 'App\Http\Controllers\Staff\MasterDataController@storeCurriculum')->name('staff.curriculums.store');
+        Route::put('/staff/master-data/curriculums/{curriculum}', 'App\Http\Controllers\Staff\MasterDataController@updateCurriculum')->name('staff.curriculums.update');
+        Route::post('/staff/master-data/curriculums/{curriculum}/clone', 'App\Http\Controllers\Staff\MasterDataController@cloneCurriculum')->name('staff.curriculums.clone');
+        Route::delete('/staff/master-data/curriculums/{curriculum}', 'App\Http\Controllers\Staff\MasterDataController@destroyCurriculum')->name('staff.curriculums.destroy');
+        Route::post('/staff/master-data/activity-types', 'App\Http\Controllers\Staff\MasterDataController@storeActivityType')->name('staff.activity_types.store');
+        Route::put('/staff/master-data/activity-types/{activityType}', 'App\Http\Controllers\Staff\MasterDataController@updateActivityType')->name('staff.activity_types.update');
+        Route::delete('/staff/master-data/activity-types/{activityType}', 'App\Http\Controllers\Staff\MasterDataController@destroyActivityType')->name('staff.activity_types.destroy');
+        Route::post('/staff/master-data/student-cohorts', 'App\Http\Controllers\Staff\MasterDataController@storeStudentCohort')->name('staff.student_cohorts.store');
+        Route::put('/staff/master-data/student-cohorts/{studentCohort}', 'App\Http\Controllers\Staff\MasterDataController@updateStudentCohort')->name('staff.student_cohorts.update');
+        Route::delete('/staff/master-data/student-cohorts/{studentCohort}', 'App\Http\Controllers\Staff\MasterDataController@destroyStudentCohort')->name('staff.student_cohorts.destroy');
 
     });
 

@@ -35,6 +35,7 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
+use Throwable;
 
 class ScheduleController extends Controller
 {
@@ -327,7 +328,7 @@ class ScheduleController extends Controller
             $includeWeekends,
         );
 
-        $payload = Cache::remember($cacheKey, now()->addSeconds(120), function () use (
+        $buildPayload = function () use (
             $courseOffering,
             $weekStart,
             $weekEnd,
@@ -335,44 +336,17 @@ class ScheduleController extends Controller
             $selectedTermId,
             $includeWeekends
         ): array {
-            $schedules = $this->loadScheduleWeekSchedules(
+            return $this->renderWeekFragmentPayload(
                 $courseOffering,
                 $weekStart,
                 $weekEnd,
                 $selectedTermId,
                 $selectedInstructorId,
+                $includeWeekends,
             );
+        };
 
-            $activityTypes = app(ReferenceDataCache::class)->activityTypes();
-            $rooms = app(ReferenceDataCache::class)->activeRooms();
-            $academicCalendar = AcademicCalendar::forYear($courseOffering->academicYear);
-            $scheduleConflicts = $this->scheduleConflictMap($schedules);
-            $groupedSchedules = $this->groupSchedulesForList($schedules);
-
-            $viewData = [
-                'courseOffering' => $courseOffering,
-                ...$this->scheduleDatePickerYearRange(),
-                'allSchedules' => $schedules,
-                'modalSchedules' => $schedules,
-                'groupedSchedules' => $groupedSchedules,
-                'scheduleConflicts' => $scheduleConflicts,
-                'activityTypes' => $activityTypes,
-                'rooms' => $rooms,
-                'academicCalendar' => $academicCalendar,
-                'selectedTermId' => $selectedTermId,
-                'academicYear' => $courseOffering->academicYear,
-                'canEdit' => $courseOffering->academicYear?->phase === 'scheduling',
-                'includeWeekends' => $includeWeekends,
-                'lazyWeekStart' => $weekStart->toDateString(),
-            ];
-
-            return [
-                'html' => view('shared.schedules._lazy_week_rows', $viewData)->render(),
-                'modal_html' => view('shared.schedules._lazy_detail_modals', $viewData)->render(),
-                'schedule_items' => $this->scheduleFilterItems($schedules, $courseOffering->academicYear),
-                'loaded_schedule_ids' => $schedules->pluck('id')->map(fn ($id) => (string) $id)->values(),
-            ];
-        });
+        $payload = $this->rememberWeekFragmentPayload($cacheKey, $buildPayload);
 
         return response()->json($payload);
     }
@@ -680,6 +654,77 @@ class ScheduleController extends Controller
             'room',
             'instructors.instructorProfile.department',
             'studentGroups',
+        ];
+    }
+
+    private function rememberWeekFragmentPayload(string $cacheKey, callable $buildPayload): array
+    {
+        if (! $this->canUseWeekFragmentCache()) {
+            return $buildPayload();
+        }
+
+        try {
+            return Cache::remember($cacheKey, now()->addSeconds(120), $buildPayload);
+        } catch (Throwable) {
+            return $buildPayload();
+        }
+    }
+
+    private function canUseWeekFragmentCache(): bool
+    {
+        if (config('cache.default') !== 'database') {
+            return true;
+        }
+
+        $table = (string) config('cache.stores.database.table', 'cache');
+
+        return $table !== '' && Schema::hasTable($table);
+    }
+
+    private function renderWeekFragmentPayload(
+        CourseOffering $courseOffering,
+        CarbonImmutable $weekStart,
+        CarbonImmutable $weekEnd,
+        ?int $selectedTermId,
+        ?int $selectedInstructorId,
+        bool $includeWeekends
+    ): array {
+        $schedules = $this->loadScheduleWeekSchedules(
+            $courseOffering,
+            $weekStart,
+            $weekEnd,
+            $selectedTermId,
+            $selectedInstructorId,
+        );
+
+        $activityTypes = app(ReferenceDataCache::class)->activityTypes();
+        $rooms = app(ReferenceDataCache::class)->activeRooms();
+        $academicCalendar = AcademicCalendar::forYear($courseOffering->academicYear);
+        $scheduleConflicts = $this->scheduleConflictMap($schedules);
+        $groupedSchedules = $this->groupSchedulesForList($schedules);
+
+        $viewData = [
+            'courseOffering' => $courseOffering,
+            ...$this->scheduleDatePickerYearRange(),
+            'allSchedules' => $schedules,
+            'modalSchedules' => $schedules,
+            'groupedSchedules' => $groupedSchedules,
+            'scheduleConflicts' => $scheduleConflicts,
+            'activityTypes' => $activityTypes,
+            'rooms' => $rooms,
+            'academicCalendar' => $academicCalendar,
+            'selectedTermId' => $selectedTermId,
+            'academicYear' => $courseOffering->academicYear,
+            'canEdit' => $courseOffering->academicYear?->phase === 'scheduling',
+            'includeWeekends' => $includeWeekends,
+            'lazyWeekStart' => $weekStart->toDateString(),
+        ];
+
+        return [
+            'html' => view('shared.schedules._lazy_week_rows', $viewData)->render(),
+            'modal_html' => view('shared.schedules._lazy_detail_modals', $viewData)->render(),
+            'schedule_items' => $this->scheduleFilterItems($schedules, $courseOffering->academicYear),
+            'loaded_schedule_ids' => $schedules->pluck('id')->map(fn ($id) => (string) $id)->values(),
         ];
     }
 

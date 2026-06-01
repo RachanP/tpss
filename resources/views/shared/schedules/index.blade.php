@@ -2153,14 +2153,21 @@
             font-style: italic;
         }
         .sched-day-group-badge {
+            flex: 0 0 auto;
+            justify-content: center;
+            min-width: 72px;
+            min-height: 30px;
             margin-bottom: 0;
             font-size: 14px !important;
             font-weight: 900 !important;
             padding: 5px 14px !important;
-            border-radius: 6px;
+            border-radius: 999px;
             letter-spacing: 0.02em;
+            line-height: 1.15;
+            white-space: nowrap;
         }
         .sched-day-group-date {
+            flex: 0 0 auto;
             font-size: 14px;
             font-weight: 800;
             color: var(--fg-1);
@@ -2459,11 +2466,13 @@
         .co-day-badge {
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             padding: 4px 10px;
             border-radius: 999px;
             font-size: 12.5px;
             font-weight: 850;
             line-height: 1;
+            white-space: nowrap;
             margin-bottom: 6px;
             border: 1px solid var(--schedule-border);
             box-shadow: 0 1px 2px oklch(0% 0 0 / 0.04);
@@ -3586,9 +3595,9 @@
             align-items: center;
             justify-content: center;
             padding: 24px 22px;
-            background: oklch(22% 0.018 240 / 0.24);
-            backdrop-filter: blur(3px);
-            -webkit-backdrop-filter: blur(3px);
+            background: rgb(15 23 42 / 0.24);
+            backdrop-filter: blur(1.5px);
+            -webkit-backdrop-filter: blur(1.5px);
         }
         .schedule-modal {
             width: min(680px, 100%);
@@ -3601,7 +3610,7 @@
             border: 1px solid var(--schedule-border);
             border-radius: 10px;
             background: var(--surface);
-            box-shadow: 0 20px 48px oklch(0% 0 0 / 0.2), 0 4px 10px oklch(0% 0 0 / 0.07);
+            box-shadow: 0 16px 34px rgb(15 23 42 / 0.18), 0 3px 10px rgb(15 23 42 / 0.08);
             animation: modal-pop 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
             /* note: removed clip-path to avoid clipping native select dropdowns */
         }
@@ -4625,7 +4634,10 @@
                             this.detailModal = null;
                             return;
                         }
-                        this.$nextTick(() => { window.tpssInitChoices(document.querySelector('.schedule-modal')); });
+                        this.$nextTick(() => {
+                            const formModal = this.scheduleRootElement().querySelector(`[data-schedule-modal-id='${modalId}'] .schedule-modal.is-form`);
+                            if (formModal) window.tpssInitChoices(formModal);
+                        });
                     }
                 });
 
@@ -4995,7 +5007,27 @@
                 }
 
                 if (root.querySelector(`[data-schedule-modal-id='${modalId}']`)) {
+                    this.ensureScheduleModalInitialized(modalId);
                     this.detailModal = `schedule-${modalId}`;
+                }
+            },
+            ensureScheduleModalInitialized(id) {
+                const root = this.scheduleRootElement();
+                const modal = root.querySelector(`[data-lazy-schedule-modal='${id}'][data-lazy-modal-pending='1']`);
+                if (!modal) return;
+
+                let initialized = true;
+                if (window.Alpine) {
+                    try {
+                        window.Alpine.initTree(modal);
+                    } catch (error) {
+                        initialized = false;
+                        console.warn('Unable to initialize schedule modal', error);
+                    }
+                }
+
+                if (initialized) {
+                    modal.dataset.lazyModalPending = '0';
                 }
             },
             async toggleDay(dateKey, weekStart = null) {
@@ -5065,7 +5097,11 @@
                         if (!res.ok) throw new Error('week load failed');
 
                         const payload = await res.json();
-                        this.appendLazyScheduleRows(payload.html || '');
+                        try {
+                            this.appendLazyScheduleRows(payload.html || '');
+                        } catch (error) {
+                            console.warn('Unable to initialize lazy schedule rows', error);
+                        }
                         try {
                             this.appendLazyScheduleModals(payload.modal_html || '');
                         } catch (error) {
@@ -5151,7 +5187,15 @@
                         const row = node.cloneNode(true);
                         insertAfter.insertAdjacentElement('afterend', row);
                         insertAfter = row;
-                        if (window.Alpine) window.Alpine.initTree(row);
+                        if (window.Alpine) {
+                            try {
+                                window.Alpine.initTree(row);
+                            } catch (error) {
+                                row.removeAttribute('x-cloak');
+                                row.style.display = '';
+                                console.warn('Unable to initialize schedule row', error);
+                            }
+                        }
                     });
                     header.dataset.lazyRowsLoaded = '1';
                 });
@@ -5164,14 +5208,8 @@
                 holder.content.querySelectorAll('[data-lazy-schedule-modal]').forEach((modal) => {
                     const id = modal.getAttribute('data-lazy-schedule-modal');
                     if (id && this.$el.querySelector(`[data-schedule-modal-id='${id}']`)) return;
+                    modal.dataset.lazyModalPending = '1';
                     this.$refs.lazyModalHost.appendChild(modal);
-                    if (window.Alpine) {
-                        try {
-                            window.Alpine.initTree(modal);
-                        } catch (error) {
-                            console.warn('Unable to initialize schedule modal', error);
-                        }
-                    }
                 });
             },
             mergeScheduleItems(items) {
@@ -5923,6 +5961,7 @@
                                             $dateObj = $firstSchedule?->start_date;
                                             $dayIso = $dateObj?->dayOfWeekIso ?? 1;
                                             $dayName = $thaiDays[$dayIso] ?? '';
+                                            $dayBadgeName = $shortThaiDays[$dayIso] ?? $dayName;
                                             $dateKey = str_replace('-', '', $dateString);
                                             $dayWeekNumber = $weekNumberForDate($dateObj);
                                             $dayScheduleIds = $daySchedules->pluck('id')->map(fn ($id) => (string) $id)->values();
@@ -5959,7 +5998,7 @@
                                                             <svg class="sched-day-group-chevron" :class="collapsedDays['{{ $dateKey }}'] ? 'is-collapsed' : ''" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                                                 <polyline points="6 9 12 15 18 9"/>
                                                             </svg>
-                                                            <span class="co-day-badge {{ in_array($di['kind'], ['exam', 'offterm', 'break'], true) ? 'is-exam-day' : 'day-' . $dayIso }} sched-day-group-badge">{{ $dayName }}</span>
+                                                            <span class="co-day-badge {{ in_array($di['kind'], ['exam', 'offterm', 'break'], true) ? 'is-exam-day' : 'day-' . $dayIso }} sched-day-group-badge">{{ $dayBadgeName }}</span>
                                                             <span class="sched-day-group-date">{{ $formatDate($dateObj) }}</span>
                                                             @if($dayTermName)
                                                                 <span class="term-badge">{{ $dayTermName }}</span>

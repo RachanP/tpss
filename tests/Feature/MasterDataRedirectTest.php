@@ -71,6 +71,51 @@ class MasterDataRedirectTest extends TestCase
         $response->assertRedirect(route('staff.master_data', ['tab' => 'location_types']));
     }
 
+    public function test_staff_master_data_page_renders_with_write_routes(): void
+    {
+        $staff = $this->makeUser('staff');
+        $this->actingAs($staff)->withSession(['active_role' => 'staff']);
+
+        $this->get(route('staff.master_data'))->assertOk();
+    }
+
+    public function test_staff_can_store_department_activity_curriculum_and_cohort(): void
+    {
+        $staff = $this->makeUser('staff');
+        $this->actingAs($staff)->withSession(['active_role' => 'staff']);
+
+        $this->from(route('staff.master_data', ['tab' => 'departments']))
+            ->post(route('staff.departments.store'), [
+                'name' => 'ภาควิชา Staff',
+            ])
+            ->assertRedirect(route('staff.master_data', ['tab' => 'departments']));
+
+        $this->post(route('staff.activity_types.store'), [
+            'name'       => 'กิจกรรม Staff',
+            'color_code' => '#22c55e',
+            'category'   => 'lecture',
+        ])->assertRedirect(route('staff.master_data', ['tab' => 'activity_types']));
+
+        $this->post(route('staff.curriculums.store'), [
+            'name'                   => 'หลักสูตร Staff 2569',
+            'effective_year'         => 2569,
+            'education_level'        => 'bachelor',
+            'duration_years'         => 4,
+            'uses_year_level'        => 1,
+            'total_credits_required' => null,
+            'is_active'              => 1,
+        ])->assertRedirect(route('staff.master_data', ['tab' => 'curriculums']));
+
+        $curriculum = Curriculum::where('name', 'หลักสูตร Staff 2569')->firstOrFail();
+
+        $this->post(route('staff.student_cohorts.store'), [
+            'curriculum_id' => $curriculum->id,
+            'year_level'    => 1,
+            'code'          => 'A',
+            'student_count' => 80,
+        ])->assertRedirect(route('staff.master_data', ['tab' => 'student_cohorts']));
+    }
+
     // ── Admin redirects still work ────────────────────────────────────
 
     public function test_admin_store_location_type_redirects_to_admin_route(): void

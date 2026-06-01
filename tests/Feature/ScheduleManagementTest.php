@@ -188,6 +188,33 @@ class ScheduleManagementTest extends TestCase
         $this->assertStringNotContainsString('data-schedule-id="' . $weekOne->id . '"', $response->json('html'));
     }
 
+    public function test_schedule_week_fragment_still_renders_when_database_cache_table_is_unavailable(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $schedule = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-03',
+            'topic' => 'Cache fallback schedule',
+        ]);
+
+        config([
+            'cache.default' => 'database',
+            'cache.stores.database.table' => 'missing_cache_table_for_schedule_fragment_test',
+        ]);
+        Cache::forgetDriver('database');
+
+        $this->actingAsCourseHead($head);
+
+        $response = $this->getJson(route('maker.course_offerings.schedules.week_fragment', [
+            $offering,
+            'week_start' => '2026-08-03',
+        ]));
+
+        $response->assertOk();
+        $this->assertStringContainsString('data-schedule-id="' . $schedule->id . '"', $response->json('html'));
+        $this->assertStringContainsString('data-schedule-modal-id="' . $schedule->id . '"', $response->json('modal_html'));
+    }
+
     public function test_schedule_week_fragment_renders_recurring_schedule_modals(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();

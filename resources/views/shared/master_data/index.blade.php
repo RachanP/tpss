@@ -1,5 +1,6 @@
 <x-app-layout title="ข้อมูลหลักระบบ">
     @php
+        $canManageMasterData = $canManageMasterData ?? $isAdmin;
         $courseFormHasErrors = old('_form') === 'course' && $errors->any();
         $courseOldPrerequisiteIds = old('prerequisite_ids', []);
         if (! is_array($courseOldPrerequisiteIds)) {
@@ -952,7 +953,7 @@
                         <polyline points="9 22 9 12 15 12 15 22"></polyline>
                     </svg>
                     ภาควิชา
-                    @if(!$isAdmin)@include('shared.master_data._lock_icon')@endif
+                    @if(!$canManageMasterData)@include('shared.master_data._lock_icon')@endif
                 </button>
                 {{-- 2. หลักสูตร (ต้องมีก่อนสร้างรายวิชา/กลุ่ม) --}}
                 <button type="button" data-testid="master-data-tab-curriculums" @click="setActiveTab('curriculums')"
@@ -963,7 +964,7 @@
                         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                     </svg>
                     หลักสูตร
-                    @if(!$isAdmin)@include('shared.master_data._lock_icon')@endif
+                    @if(!$canManageMasterData)@include('shared.master_data._lock_icon')@endif
                 </button>
                 {{-- 2b. กลุ่มชั้นปี (cohort — V2, ป.ตรี) --}}
                 <button type="button" data-testid="master-data-tab-student-cohorts" @click="setActiveTab('student_cohorts')"
@@ -977,7 +978,7 @@
                         <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                     </svg>
                     กลุ่มนักศึกษา
-                    @if(!$isAdmin)@include('shared.master_data._lock_icon')@endif
+                    @if(!$canManageMasterData)@include('shared.master_data._lock_icon')@endif
                 </button>
                 {{-- 3. รายวิชา (ต้องมีหลักสูตรก่อน) --}}
                 <button type="button" data-testid="master-data-tab-courses" @click="setActiveTab('courses')"
@@ -1002,7 +1003,7 @@
                         <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                     </svg>
                     อาจารย์ผู้สอน
-                    @if(!$isAdmin)@include('shared.master_data._lock_icon')@endif
+                    @if(!$canManageMasterData)@include('shared.master_data._lock_icon')@endif
                 </button>
                 {{-- 5. ห้องและสถานที่ (รวมประเภท) --}}
                 <button type="button" @click="setActiveTab('location_types')"
@@ -1024,7 +1025,7 @@
                         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                     </svg>
                     ประเภทกิจกรรม
-                    @if(!$isAdmin)@include('shared.master_data._lock_icon')@endif
+                    @if(!$canManageMasterData)@include('shared.master_data._lock_icon')@endif
                 </button>
 
             </div>
@@ -1073,7 +1074,7 @@
                                 <th>ชื่อ-นามสกุล</th>
                                 <th>ตำแหน่งทางวิชาการ</th>
                                 <th>ภาควิชา</th>
-                                @if($isAdmin)<th style="text-align: center;">จัดการ</th>@endif
+                                @if($canManageMasterData)<th style="text-align: center;">จัดการ</th>@endif
                             </tr>
                         </thead>
                         <tbody>
@@ -1105,7 +1106,7 @@
                                     <td class="instructor-department-cell" data-label="ภาควิชา" style="color: var(--fg-2); font-size: 13px;">
                                         {{ $instructor->instructorProfile->department->name ?? '-' }}
                                     </td>
-                                    @if($isAdmin)
+                                    @if($canManageMasterData)
                                     <td class="instructor-action-cell" data-label="จัดการ" style="text-align: center;">
                                         <button type="button" class="action-btn" title="แก้ไขข้อมูลอาจารย์"
                                             @click="openEditInstructor({{ Js::from($instructor) }})">
@@ -1141,7 +1142,7 @@
             <div class="card">
                 <div class="card-hdr">
                     <div class="card-ttl">ภาควิชา</div>
-                    @if($isAdmin)
+                    @if($canManageMasterData)
                     <div class="card-actions">
                         <button class="btn btn-primary" @click="openAddDept()">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -1223,7 +1224,7 @@
                                 @endif
 
                                 {{-- Edit (admin only) --}}
-                                @if($isAdmin)
+                                @if($canManageMasterData)
                                 <div @click.stop style="flex-shrink: 0;">
                                     <button class="action-btn" title="แก้ไข" @click.stop="openEditDept({{ Js::from($dept) }})">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1496,7 +1497,7 @@
                                     <div style="padding: 20px 56px; font-size: 13px; color: var(--fg-3);">ยังไม่มีสถานที่ในประเภทนี้</div>
                                 @endif
 
-                                @if($isAdmin)
+                                @if($canManageMasterData)
                                 <div style="padding: 10px 16px; border-top: 1px solid var(--border); background: var(--bg-2);">
                                     <button type="button" class="btn btn-ghost" style="font-size: 12px; padding: 5px 12px; gap: 6px;"
                                         @click="openAddRoom(); $nextTick(() => currentRoom.location_type_id = '{{ $type->id }}')">
@@ -1663,9 +1664,9 @@
                                     </td>
                                     <td style="text-align: center;">
                                         <div style="display:inline-flex;gap:6px;align-items:center;">
-                                            @if($isAdmin && $course->has_locked_offering)
+                                            @if($canManageMasterData && $course->has_locked_offering)
                                                 <a
-                                                    href="{{ route('admin.courses.instructor_deviation', $course) }}"
+                                                    href="{{ route($routePrefix . '.courses.instructor_deviation', $course) }}"
                                                     class="action-btn"
                                                     data-testid="courses-deviation-button"
                                                     title="{{ ($course->has_deviation ?? false) ? 'มีการเปลี่ยนแปลงนอกเหนือจากแม่แบบ — กดดูรายละเอียด' : 'ดูการใช้งานจริงของแม่แบบผู้สอน' }}"
@@ -1717,7 +1718,7 @@
             <div class="card">
                 <div class="card-hdr">
                     <div class="card-ttl">การจัดการหลักสูตร</div>
-                    @if($isAdmin)
+                    @if($canManageMasterData)
                     <div class="card-actions">
                         <button class="btn btn-primary" @click="openAddCurriculum()">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -1794,7 +1795,7 @@
                                 @endif
 
                                 {{-- Actions (admin only) --}}
-                                @if($isAdmin)
+                                @if($canManageMasterData)
                                 <div class="curriculum-card-actions" @click.stop style="flex-shrink: 0; display: flex; gap: 4px;">
                                     <button class="action-btn" title="แก้ไขชื่อ/ปี" data-testid="curriculum-edit-button" data-curriculum-id="{{ $curr->id }}" @click.stop="openEditCurriculum({{ Js::from($curr) }})">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1887,7 +1888,7 @@
                         </button>
                     </div>
                     <form
-                        :action="editDeptMode ? '{{ url('admin/master-data/departments') }}/' + currentDept.id : '{{ route('admin.departments.store') }}'"
+                        :action="editDeptMode ? '{{ url($routePrefix . '/master-data/departments') }}/' + currentDept.id : '{{ route($routePrefix . '.departments.store') }}'"
                         method="POST" @submit="confirmDeptSave($event)" style="overflow: visible;">
                         @csrf
                         <input type="hidden" name="_method" value="PUT" :disabled="!editDeptMode">
@@ -1988,7 +1989,7 @@
                             </div>
                         </div>
                     </form>
-                    <form id="deleteDeptForm" :action="'{{ url('admin/master-data/departments') }}/' + currentDept.id" method="POST" style="display: none;">
+                    <form id="deleteDeptForm" :action="'{{ url($routePrefix . '/master-data/departments') }}/' + currentDept.id" method="POST" style="display: none;">
                         @csrf
                         @method('DELETE')
                     </form>
@@ -2012,7 +2013,7 @@
                             </svg>
                         </button>
                     </div>
-                    <form :action="'{{ url('admin/master-data/instructors') }}/' + currentInstructor.id" method="POST"
+                    <form :action="'{{ url($routePrefix . '/master-data/instructors') }}/' + currentInstructor.id" method="POST"
                         @submit="confirmInstructorSave($event)">
                         @csrf
                         <input type="hidden" name="_method" value="PUT">
@@ -2511,9 +2512,9 @@
 
                                 <div class="course-lock-note" x-show="courseAssignmentsLocked()">
                                     <div>แม่แบบผู้รับผิดชอบถูกล็อกแล้ว เพราะรายวิชานี้มี Course Offering ที่อยู่ในช่วงจัดตารางหรือเผยแพร่แล้ว แก้ชุดผู้สอนในหน้า Course Offering ของรอบนั้น</div>
-                                    @if($isAdmin ?? true)
+                                    @if($canManageMasterData ?? true)
                                         <a x-show="currentCourse.course_code"
-                                            :href="'{{ url('/admin/master-data/courses') }}/' + encodeURIComponent(currentCourse.course_code) + '/instructor-deviation'"
+                                            :href="'{{ url('/' . $routePrefix . '/master-data/courses') }}/' + encodeURIComponent(currentCourse.course_code) + '/instructor-deviation'"
                                             data-testid="course-deviation-link"
                                             style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:0.8125rem;font-weight:600;color:var(--brand-navy);text-decoration:underline;">
                                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -2788,7 +2789,7 @@
                             </svg>
                         </button>
                     </div>
-                    <form :action="editCurriculumMode ? '{{ url('admin/master-data/curriculums') }}/' + currentCurriculum.id : '{{ route('admin.curriculums.store') }}'"
+                    <form :action="editCurriculumMode ? '{{ url($routePrefix . '/master-data/curriculums') }}/' + currentCurriculum.id : '{{ route($routePrefix . '.curriculums.store') }}'"
                         method="POST">
                         @csrf
                         <input type="hidden" name="_method" value="PUT" :disabled="!editCurriculumMode">
@@ -2872,7 +2873,7 @@
                             </div>
                         </div>
                     </form>
-                    <form id="deleteCurriculumForm" :action="'{{ url('admin/master-data/curriculums') }}/' + currentCurriculum.id" method="POST" style="display: none;">
+                    <form id="deleteCurriculumForm" :action="'{{ url($routePrefix . '/master-data/curriculums') }}/' + currentCurriculum.id" method="POST" style="display: none;">
                         @csrf
                         @method('DELETE')
                     </form>
@@ -2887,7 +2888,7 @@
             <div class="card">
                 <div class="card-hdr">
                     <div class="card-ttl">ประเภทกิจกรรมการสอน</div>
-                    @if($isAdmin)
+                    @if($canManageMasterData)
                     <div class="card-actions">
                         <button type="button" class="btn btn-primary" @click="openAddActivityType()">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -2920,7 +2921,7 @@
                                 <th>ชื่อประเภทกิจกรรม</th>
                                 <th>หมวดหมู่</th>
                                 <th>ภาระงาน</th>
-                                @if($isAdmin)<th style="text-align: center;">จัดการ</th>@endif
+                                @if($canManageMasterData)<th style="text-align: center;">จัดการ</th>@endif
                             </tr>
                         </thead>
                         <tbody>
@@ -2953,7 +2954,7 @@
                                             <span class="pill" style="background:#f7fafc;color:#718096;border:1px solid #e2e8f0;{{ $pillShape }}">ไม่นับ</span>
                                         @endif
                                     </td>
-                                    @if($isAdmin)
+                                    @if($canManageMasterData)
                                     <td style="text-align: center;">
                                         <button type="button" class="action-btn" title="แก้ไข"
                                             @click="openEditActivityType({{ Js::from(['id' => $at->id, 'name' => $at->name, 'color_code' => $at->color_code, 'category' => $at->category, 'counts_toward_workload' => $at->counts_toward_workload]) }})">
@@ -2964,7 +2965,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="{{ $isAdmin ? 5 : 4 }}" style="text-align: center; color: var(--fg-3); padding: 40px;">ยังไม่มีประเภทกิจกรรม</td>
+                                    <td colspan="{{ $canManageMasterData ? 5 : 4 }}" style="text-align: center; color: var(--fg-3); padding: 40px;">ยังไม่มีประเภทกิจกรรม</td>
                                 </tr>
                             @endforelse
                             <tr
@@ -2993,7 +2994,7 @@
                             </svg>
                         </button>
                     </div>
-                    <form :action="editActivityTypeMode ? '{{ url('admin/master-data/activity-types') }}/' + currentActivityType.id : '{{ route('admin.activity_types.store') }}'" method="POST">
+                    <form :action="editActivityTypeMode ? '{{ url($routePrefix . '/master-data/activity-types') }}/' + currentActivityType.id : '{{ route($routePrefix . '.activity_types.store') }}'" method="POST">
                         @csrf
                         <input type="hidden" name="_method" value="PUT" :disabled="!editActivityTypeMode">
                         <div class="modal-body" style="overflow: visible;">
@@ -3061,7 +3062,7 @@
                             </div>
                         </div>
                     </form>
-                    <form id="deleteActivityTypeForm" :action="'{{ url('admin/master-data/activity-types') }}/' + currentActivityType.id" method="POST" style="display: none;">
+                    <form id="deleteActivityTypeForm" :action="'{{ url($routePrefix . '/master-data/activity-types') }}/' + currentActivityType.id" method="POST" style="display: none;">
                         @csrf
                         @method('DELETE')
                     </form>
@@ -3079,7 +3080,7 @@
                     <div>
                         <div class="card-ttl">กลุ่มนักศึกษาแต่ละหลักสูตร</div>
                     </div>
-                    @if($isAdmin)
+                    @if($canManageMasterData)
                     <div class="card-actions">
                         <button class="btn btn-primary" @click="openAddCohort()">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -3129,7 +3130,7 @@
                                 @endif
 
                                 {{-- Actions (admin only) — เพิ่มกลุ่มในหลักสูตรนี้ (auto-fill หลักสูตรใน modal) --}}
-                                @if($isAdmin)
+                                @if($canManageMasterData)
                                 <div class="curriculum-card-actions" @click.stop style="flex-shrink: 0; display: flex; gap: 4px;">
                                     <button type="button" class="action-btn" title="เพิ่มกลุ่มในหลักสูตรนี้" @click.stop="openAddCohort({{ $cur->id }})" style="color: var(--brand-navy);">
                                         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -3159,7 +3160,7 @@
                                                 <th style="padding: 8px 16px 8px 56px; text-align: left; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">รหัสกลุ่ม</th>
                                                 @endif
                                                 <th style="padding: 8px 16px; text-align: center; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em; width: 180px;">จำนวนนักศึกษา</th>
-                                                @if($isAdmin)<th style="padding: 8px 16px; text-align: center; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em; width: 80px;">จัดการ</th>@endif
+                                                @if($canManageMasterData)<th style="padding: 8px 16px; text-align: center; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em; width: 80px;">จัดการ</th>@endif
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -3173,7 +3174,7 @@
                                                     <td style="padding: 11px 16px 11px 56px; font-size: 13px; font-weight: 600; color: var(--fg-1);">{{ $co->code }}</td>
                                                     @endif
                                                     <td style="padding: 11px 16px; font-size: 13px; color: var(--fg-2); text-align: center; font-family: var(--font-mono, monospace);">{{ number_format($co->student_count) }} คน</td>
-                                                    @if($isAdmin)
+                                                    @if($canManageMasterData)
                                                     <td style="padding: 11px 16px; text-align: center;">
                                                         <button type="button" class="action-btn" title="แก้ไข"
                                                             @click="openEditCohort({{ Js::from(['id' => $co->id, 'curriculum_id' => $co->curriculum_id, 'year_level' => $co->year_level, 'code' => $co->code, 'student_count' => $co->student_count, 'note' => $co->note]) }})">
@@ -3186,7 +3187,7 @@
                                         </tbody>
                                     </table>
                                 @else
-                                    <div style="padding: 20px 56px; font-size: 13px; color: var(--fg-3);">ยังไม่มีกลุ่มในหลักสูตรนี้@if($isAdmin) — กดปุ่ม "เพิ่มกลุ่มนักศึกษา" ด้านบน@endif</div>
+                                    <div style="padding: 20px 56px; font-size: 13px; color: var(--fg-3);">ยังไม่มีกลุ่มในหลักสูตรนี้@if($canManageMasterData) — กดปุ่ม "เพิ่มกลุ่มนักศึกษา" ด้านบน@endif</div>
                                 @endif
                             </div>
 
@@ -3198,7 +3199,7 @@
             </div>
         </div>
 
-        @if($isAdmin)
+        @if($canManageMasterData)
         <!-- Add/Edit Modal (Student Cohort) -->
         <template x-if="showCohortModal">
             <div class="overlay" x-cloak>
@@ -3214,7 +3215,7 @@
                             </svg>
                         </button>
                     </div>
-                    <form :action="editCohortMode ? '{{ url('admin/master-data/student-cohorts') }}/' + currentCohort.id : '{{ route('admin.student_cohorts.store') }}'" method="POST">
+                    <form :action="editCohortMode ? '{{ url($routePrefix . '/master-data/student-cohorts') }}/' + currentCohort.id : '{{ route($routePrefix . '.student_cohorts.store') }}'" method="POST">
                         @csrf
                         <input type="hidden" name="cohort_form" value="1">
                         <input type="hidden" name="cohort_form_id" :value="currentCohort.id">
@@ -3273,7 +3274,7 @@
                             </div>
                         </div>
                     </form>
-                    <form id="deleteCohortForm" :action="'{{ url('admin/master-data/student-cohorts') }}/' + currentCohort.id" method="POST" style="display: none;">
+                    <form id="deleteCohortForm" :action="'{{ url($routePrefix . '/master-data/student-cohorts') }}/' + currentCohort.id" method="POST" style="display: none;">
                         @csrf
                         @method('DELETE')
                     </form>
@@ -3304,7 +3305,7 @@
                             หลักสูตรและรายวิชาที่คัดลอกจะถูกตั้งเป็น <strong>ปิดใช้งาน</strong> ทั้งหมด — กรุณาเปิดใช้งานด้วยตนเองหลังจากตรวจสอบข้อมูลแล้ว
                         </div>
                     </div>
-                    <form :action="cloneSourceCurriculum ? '{{ url('admin/master-data/curriculums') }}/' + cloneSourceCurriculum.id + '/clone' : '#'" method="POST">
+                    <form :action="cloneSourceCurriculum ? '{{ url($routePrefix . '/master-data/curriculums') }}/' + cloneSourceCurriculum.id + '/clone' : '#'" method="POST">
                         @csrf
                         <input type="hidden" name="clone_curriculum_form" value="1">
                         <input type="hidden" name="clone_curriculum_source_id" :value="cloneSourceCurriculum?.id || ''">

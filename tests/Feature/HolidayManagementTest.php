@@ -22,6 +22,13 @@ class HolidayManagementTest extends TestCase
         return $u;
     }
 
+    private function staff(): User
+    {
+        $u = User::create(['username' => 'staff_hol', 'name' => 'Staff Hol', 'email' => 'sh@example.com', 'password' => Hash::make('p')]);
+        UserRole::create(['user_id' => $u->id, 'role' => 'staff', 'is_primary' => true]);
+        return $u;
+    }
+
     /** fake ปฏิทินวันหยุดไทยของ Google (ICS) — 2 วันปี 2026 + 1 วันปี 2027 */
     private function fakeGoogleHolidays(): void
     {
@@ -120,6 +127,28 @@ class HolidayManagementTest extends TestCase
         ])->assertRedirect(route('admin.settings', ['tab' => 'academic']));
 
         $this->assertDatabaseHas('holidays', ['date' => '2026-12-10', 'name' => 'วันรัฐธรรมนูญ', 'source' => 'manual']);
+    }
+
+    public function test_staff_settings_lists_and_manages_holidays(): void
+    {
+        Holiday::create(['date' => '2026-12-10', 'name' => 'วันหยุด Staff', 'source' => 'manual']);
+
+        $this->actingAs($this->staff())->withSession(['active_role' => 'staff']);
+
+        $this->get(route('staff.settings'))
+            ->assertOk()
+            ->assertSee('วันหยุด Staff');
+
+        $this->post(route('staff.settings.holidays.store'), [
+            'date' => '2026-12-11',
+            'name' => 'วันหยุดเพิ่มโดย Staff',
+        ])->assertRedirect(route('staff.settings', ['tab' => 'academic']));
+
+        $this->assertDatabaseHas('holidays', [
+            'date' => '2026-12-11',
+            'name' => 'วันหยุดเพิ่มโดย Staff',
+            'source' => 'manual',
+        ]);
     }
 
     public function test_duplicate_holiday_date_rejected(): void
