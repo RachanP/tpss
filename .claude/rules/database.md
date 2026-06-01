@@ -267,8 +267,16 @@ schedules        :  + rotation_round_id FK
 student_groups   :  + cohort_group_id FK nullable  ← subgroup อ้าง student_cohorts
 rotation_rounds      : NEW (term_id, sequence 1|2, label, start/end) — แบ่งด้วยวันสอบใน terms
 rotation_assignments : NEW (cohort_group_id, course_offering_id, rotation_round_id)
-course_offering_instructors : + schedule_permission enum('view','schedule')  (delegation — V1.5 · ดู memory project-delegation-deferred)
 rooms : + campus (ศาลายา/บางกอกน้อย — display ก่อน · optional ไม่อยู่ใน V3)
 ```
+
+### ✅ DONE — delegation (branch feat/v2-requirement)
+```
+course_offering_instructors : + schedule_permission string(20) default 'view'  ('view'|'schedule')
+  consolidate เข้า create-table baseline (2026_05_08_072856) — ไม่มี alter แยก
+```
+- `CourseOffering::canBeScheduledBy(?int)` + `scopeSchedulableBy(int)` — coordinator หรือ permission='schedule'
+- หัวหน้าวิชา toggle ผ่าน `maker.course_offerings.instructors.permission` (course_head only)
+- route จัดตาราง slot = `CheckRole:course_head,instructor` · จัดการ offering = `course_head`
 
 **Cross-course GROUP conflict:** ไม่ใช่ schema ใหม่ แต่ต้องขยาย logic — `ScheduleConflictChecker::bulkConflictMap()` เพิ่ม pairwise compare `cohort_group` ข้ามวิชา (ปัจจุบันเช็คแค่ instructor/room)

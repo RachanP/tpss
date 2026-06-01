@@ -17,7 +17,7 @@
 > ใช้กรอบนี้ตัดสินว่า "ฟีเจอร์ไหนอยู่ phase ไหน" เวลาวางแผน/แบ่งงาน
 
 ### Phase A — จัดตารางกิจกรรม + ภาระงาน (ก่อนอนุมัติ) — ✅ DONE
-- **ใคร:** หัวหน้าวิชา (+ บางกรณีอาจารย์ช่วย = delegation/Plan B · V1.5 · ดู [[project-delegation-deferred]])
+- **ใคร:** หัวหน้าวิชา (+ อาจารย์ที่ถูกมอบหมายช่วยจัด = delegation ✅ DONE · `schedule_permission='schedule'` · ดู [[project-delegation-deferred]])
 - **ทำ:** สร้างกิจกรรม (วัน/เวลา/สถานที่/ประเภท/เทอม) + ใส่อาจารย์ → ส่งอนุมัติ
 - **ผลลัพธ์:** โครงตารางที่อนุมัติ — slot ติดป้ายเทอม + มีอาจารย์ **ยังไม่มีกลุ่มนักศึกษา**
 - **อยู่ใน A:** cross-course conflict (instructor/room), ภาระงานอาจารย์ (จากกิจกรรม+อาจารย์ ไม่ต้องรอกลุ่ม), term/holiday/exam shading + block
@@ -247,7 +247,7 @@ V2 ชี้ว่าตารางคณะพยาบาลเป็น "ต
 - core loop นี้ = ระบบปัจจุบันทำอยู่แล้ว (สร้าง slot + `schedule_instructors` + `course_offerings` ส่งขออนุมัติ) → ฝั่งหัวหน้าวิชาแทบไม่ต้องแก้
 - **ผู้อนุมัติ = ผู้บริหาร (executive)** ผ่าน `course_offerings.approval_status` — ตรงระบบปัจจุบัน (resolves open Q เดิม)
 - doc บรรทัด 98/123: ภาคปฏิบัติ ป.ตรี อาจารย์มักแบ่งกันจัด → **delegate ไปที่ instructor** (ไม่ใช่หัวหน้าวิชา)
-- เสนอ (delegation): `course_offering_instructors.schedule_permission enum('view','schedule','manage_groups')` — เปิดให้อาจารย์ที่ได้รับมอบหมายช่วยจัด (รวมจัดกลุ่มย่อย)
+- ✅ **DONE (delegation):** `course_offering_instructors.schedule_permission` (`view`|`schedule`) — หัวหน้าวิชา toggle "ให้ช่วยจัดตาราง" รายอาจารย์ในหน้า offering · access ต่อ offering กรองด้วย `CourseOffering::scopeSchedulableBy`/`canBeScheduledBy` (coordinator หรือ permission=`schedule`) · route จัดตาราง (`maker.schedules.*` + `maker.course_offerings.schedules.*`) = `CheckRole:course_head,instructor` ส่วนจัดการ offering (index/show/update/instructors) คง `course_head` · sidebar อาจารย์โชว์เมนู "ช่วยจัดตาราง" เฉพาะคนที่ถูกมอบหมาย · ยังไม่มี `manage_groups` (กลุ่มย่อย = เฟสหลังอนุมัติ)
 
 ### 2. กลุ่มนักศึกษา = 2 ระดับ + เกิด *หลังอนุมัติ* (ไม่ใช่งานหัวหน้าวิชา) ✅ ถอด UI หัวหน้าวิชาแล้ว
 - **ระดับ cohort (Master/Setup โดย Admin)**: กลุ่มชั้นปีต่อหลักสูตร ป.ตรี + จำนวนคน (ปี1=กลุ่มใหญ่, ปี3-4=4 กลุ่ม) — Admin กรอกตั้งแต่ Setup
@@ -296,7 +296,7 @@ V2 ชี้ว่าตารางคณะพยาบาลเป็น "ต
 2. **ปี 3-4 = 2 กลุ่มใหญ่ (A/B) หรือ 4 กลุ่ม?** — เอกสารพิมว่า 2 (A/B สลับเทอม) · ก่อนหน้าว่า 4 — cohort feature รองรับกี่กลุ่มก็ได้ ไม่บล็อก
 3. ✅ **RESOLVED (31 พ.ค.): capacity gate deferred = ใช่** — slot save/อนุมัติได้โดยไม่มีกลุ่ม · `student_group_ids` optional, capacity gate no-op เมื่อไม่มีกลุ่ม (เช็คเฉพาะตอนมีกลุ่มจริง)
 4. **รอบ rotation = 2 เสมอไหม** · **ตารางรายกลุ่มชั้นปี** Phase 1 หรือ 2?
-5. **ใครกรอกกิจกรรมภาคปฏิบัติ** (เอกสารพิม ข้อ 11 — แผน A/B/C) → V1 ใช้แผน C (อาจารย์แจ้ง offline, เจ้าหน้าที่/หัวหน้ากรอก) · V1.5 ทำแผน B (instructor จัดเอง = Option B/delegation)
+5. **ใครกรอกกิจกรรมภาคปฏิบัติ** (เอกสารพิม ข้อ 11 — แผน A/B/C) → V1 ใช้แผน C (อาจารย์แจ้ง offline, เจ้าหน้าที่/หัวหน้ากรอก) · ✅ แผน B (instructor จัดเอง = delegation) **DONE** — หัวหน้าวิชามอบหมายผ่าน `schedule_permission='schedule'`
 
 ## Master Data Cleanup Phase (V2) — ✅ CORE เสร็จ (31 พ.ค.) · branch `feat/v2-requirement`
 
