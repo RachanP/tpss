@@ -78,6 +78,7 @@ Route::middleware(['auth', 'no-back'])->group(function () {
             Route::put('/{courseOffering}', [CourseOfferingController::class, 'update'])->name('update');
             Route::post('/{courseOffering}/instructors', [CourseOfferingController::class, 'storeInstructor'])->name('instructors.store');
             Route::patch('/{courseOffering}/instructors/{user}/role', [CourseOfferingController::class, 'updateInstructorRole'])->name('instructors.role');
+            Route::patch('/{courseOffering}/instructors/{user}/permission', [CourseOfferingController::class, 'updateInstructorPermission'])->name('instructors.permission');
             Route::delete('/{courseOffering}/instructors/{user}', [CourseOfferingController::class, 'destroyInstructor'])->name('instructors.destroy');
             // หมายเหตุ: กลุ่มย่อยนักศึกษาไม่ใช่งานหัวหน้าวิชา (V2 — กลุ่มเกิดหลังอนุมัติ โดยอาจารย์)
             // routes student_groups.* ถูกถอดออก · ตาราง/model/pivot ยังอยู่สำหรับเฟส "อาจารย์จัดกลุ่ม" ภายหลัง

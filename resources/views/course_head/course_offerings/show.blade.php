@@ -539,6 +539,7 @@
             'course_role_id' => $u->pivot->course_role_id,
             'role_name'      => optional($courseRoles->firstWhere('id', $u->pivot->course_role_id))->name_th
                 ?? ($u->pivot->role_in_course === 'coordinator' ? 'หัวหน้าวิชา' : null),
+            'can_schedule'   => ($u->pivot->schedule_permission ?? 'view') === 'schedule',
         ]);
         $allInstructors = $availableInstructors->map(fn($u) => [
             'id'           => $u->id,
@@ -567,6 +568,7 @@
         storeUrl: '{{ $storeUrl }}',
         roleBase: '{{ $roleBase }}',
         destroyBase: '{{ $destroyBase }}',
+        permissionBase: '{{ route('maker.course_offerings.instructors.permission', [$courseOffering, '__ID__']) }}',
         csrfToken: '{{ csrf_token() }}',
         courseDeptId: {{ $courseDeptId ?? 'null' }},
         async changeRole(userId, roleId) {
@@ -630,6 +632,23 @@
                 if (!r.ok) { this.error = data.message ?? 'เกิดข้อผิดพลาด'; return; }
                 this.pool = this.pool.filter(u => u.id !== userId);
             } catch { this.error = 'ไม่สามารถเชื่อมต่อได้'; }
+        },
+        async togglePermission(userId) {
+            const u = this.pool.find(x => x.id === userId);
+            if (!u) return;
+            const next = u.can_schedule ? 'view' : 'schedule';
+            this.loading = true; this.error = '';
+            try {
+                const r = await fetch(this.permissionBase.replace('__ID__', userId), {
+                    method: 'PATCH', credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': this.csrfToken, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ schedule_permission: next })
+                });
+                const data = await r.json();
+                if (!r.ok) { this.error = data.message ?? 'เกิดข้อผิดพลาด'; return; }
+                u.can_schedule = data.schedule_permission === 'schedule';
+            } catch { this.error = 'ไม่สามารถเชื่อมต่อได้'; }
+            finally { this.loading = false; }
         }
     }">
         <div class="card-hdr">
@@ -843,6 +862,28 @@
                             </div>
                         </template>
 
+                        {{-- V2 delegation: หัวหน้าวิชามอบหมายให้อาจารย์ช่วยจัดตาราง offering นี้ --}}
+                        @if($canEdit)
+                        <button type="button" x-show="!user.is_coordinator" @click="togglePermission(user.id)"
+                            class="delegate-toggle" :class="user.can_schedule ? 'is-on' : 'is-off'"
+                            :title="user.can_schedule ? 'ยกเลิกสิทธิ์ช่วยจัดตาราง' : 'ให้ช่วยจัดตาราง'"
+                            :aria-pressed="user.can_schedule">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M9 16l2 2 4-4"/>
+                            </svg>
+                            <span x-text="user.can_schedule ? 'ช่วยจัดตาราง' : 'ให้ช่วยจัดตาราง'"></span>
+                        </button>
+                        @else
+                        <template x-if="!user.is_coordinator && user.can_schedule">
+                            <span class="delegate-toggle is-on" style="cursor:default;">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M9 16l2 2 4-4"/>
+                                </svg>
+                                <span>ช่วยจัดตาราง</span>
+                            </span>
+                        </template>
+                        @endif
+
                         @if($canEdit)
                         <button type="button" x-show="!user.is_coordinator" @click="remove(user.id)" title="ลบอาจารย์ออกจากชุดผู้สอน"
                             style="background:transparent;border:none;cursor:pointer;width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;color:var(--fg-3);border-radius:50%;flex-shrink:0;transition:all 0.15s;"
@@ -867,6 +908,24 @@
         .card#instructors {
             border: 1px solid var(--brand-navy-500);
         }
+
+        /* V2 delegation toggle — มอบหมายอาจารย์ช่วยจัดตาราง */
+        .delegate-toggle {
+            display:inline-flex; align-items:center; gap:6px; flex-shrink:0;
+            height:28px; padding:0 11px; border-radius:999px;
+            font-family:var(--font-sans); font-size:12px; font-weight:600;
+            cursor:pointer; transition:background .15s,border-color .15s,color .15s; white-space:nowrap;
+        }
+        .delegate-toggle.is-off {
+            background:var(--bg-2); border:1px solid var(--line-2); color:var(--fg-3);
+        }
+        .delegate-toggle.is-off:hover {
+            border-color:var(--brand-navy-500); color:var(--brand-navy);
+        }
+        .delegate-toggle.is-on {
+            background:#dcfce7; border:1px solid #16a34a; color:#15803d;
+        }
+        .delegate-toggle.is-on:hover { background:#bbf7d0; }
         .card#course-info > .card-hdr,
         .card#instructors > .card-hdr {
             border-bottom: 1px solid var(--brand-navy-500);

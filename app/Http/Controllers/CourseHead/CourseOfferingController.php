@@ -293,6 +293,62 @@ class CourseOfferingController extends Controller
         return back()->with('success', 'อัปเดตบทบาทเรียบร้อยแล้ว');
     }
 
+    /**
+     * V2 delegation: หัวหน้าวิชา toggle สิทธิ์ "ให้ช่วยจัดตาราง" ของอาจารย์ในชุดผู้สอน
+     * (schedule_permission: 'view' = ดูอย่างเดียว · 'schedule' = ช่วยจัดตาราง offering นี้ได้)
+     */
+    public function updateInstructorPermission(Request $request, CourseOffering $courseOffering, User $user): JsonResponse|RedirectResponse
+    {
+        $this->authorizeCourseHeadOffering($courseOffering);
+        if ($redirect = $this->requireSchedulingPhase($courseOffering, 'instructors')) return $redirect;
+
+        $validated = $request->validate([
+            'schedule_permission' => ['required', 'in:view,schedule'],
+        ]);
+
+        if ((int) $courseOffering->coordinator_id === (int) $user->id) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'หัวหน้าวิชาจัดตารางได้อยู่แล้ว ไม่ต้องมอบหมาย'], 422);
+            }
+            return $this->redirectToInstructors($courseOffering)
+                ->withErrors(['instructor_pool' => 'หัวหน้าวิชาจัดตารางได้อยู่แล้ว ไม่ต้องมอบหมาย']);
+        }
+
+        $currentInstructor = $courseOffering->instructorPool()->where('users.id', $user->id)->first();
+        if (! $currentInstructor) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'อาจารย์คนนี้ไม่อยู่ในชุดผู้สอน'], 422);
+            }
+            return $this->redirectToInstructors($courseOffering)
+                ->withErrors(['user_id' => 'อาจารย์คนนี้ไม่อยู่ในชุดผู้สอน']);
+        }
+
+        $oldPermission = $currentInstructor->pivot->schedule_permission ?? 'view';
+        $newPermission = $validated['schedule_permission'];
+
+        $courseOffering->instructorPool()->updateExistingPivot($user->id, [
+            'schedule_permission' => $newPermission,
+        ]);
+        NavigationBadgeService::flushCourseHead((int) $courseOffering->coordinator_id);
+
+        if ($oldPermission !== $newPermission) {
+            $label = $newPermission === 'schedule' ? 'มอบหมายให้ช่วยจัดตาราง' : 'ยกเลิกสิทธิ์ช่วยจัดตาราง';
+            $this->logCourseManagementUpdate(
+                table: 'course_offering_instructors',
+                recordId: $courseOffering->id,
+                oldValues: ['schedule_permission' => $oldPermission],
+                newValues: ['schedule_permission' => $newPermission],
+                description: "{$label} ({$user->name}) ในรายวิชา {$this->offeringCourseLabel($courseOffering)}",
+            );
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true, 'schedule_permission' => $newPermission]);
+        }
+
+        return back()->with('success', 'อัปเดตสิทธิ์ช่วยจัดตารางเรียบร้อยแล้ว');
+    }
+
     public function destroyInstructor(Request $request, CourseOffering $courseOffering, User $user): RedirectResponse|JsonResponse
     {
         $this->authorizeCourseHeadOffering($courseOffering);
