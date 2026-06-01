@@ -195,6 +195,34 @@ class ScheduleDelegationTest extends TestCase
         $this->get(route('maker.course_offerings.show', $offering))->assertForbidden();
     }
 
+    public function test_delegated_instructor_cannot_create_slot_when_not_scheduling_phase(): void
+    {
+        [$head, $offering, $instructor] = $this->makeOffering('preparation');
+        $offering->instructorPool()->updateExistingPivot($instructor->id, ['schedule_permission' => 'schedule']);
+
+        $this->actingAsRole($instructor, 'instructor');
+
+        // requireSchedulingPhase บล็อกก่อน validate → redirect พร้อม error 'schedule'
+        $this->post(route('maker.course_offerings.schedules.store', $offering), [])
+            ->assertSessionHasErrors('schedule');
+
+        $this->assertDatabaseCount('schedules', 0);
+    }
+
+    public function test_assigned_staff_cannot_create_slot_when_not_scheduling_phase(): void
+    {
+        [$head, $offering] = $this->makeOffering('preparation');
+        $staff = $this->makeUser('staff');
+        $offering->course->assignedStaff()->attach($staff->id);
+
+        $this->actingAsRole($staff, 'staff');
+
+        $this->post(route('maker.course_offerings.schedules.store', $offering), [])
+            ->assertSessionHasErrors('schedule');
+
+        $this->assertDatabaseCount('schedules', 0);
+    }
+
     // ── helpers ─────────────────────────────────────────────
 
     private function actingAsRole(User $user, string $role): void
