@@ -9,6 +9,7 @@ use App\Models\Schedule;
 use App\Models\ScheduleTemplate;
 use App\Services\AcademicCalendar;
 use App\Services\AuditLogger;
+use App\Services\CoordinatorAlertService;
 use App\Services\NavigationBadgeService;
 use App\Services\ReferenceDataCache;
 use App\Services\ScheduleConflictChecker;
@@ -73,72 +74,8 @@ class ScheduleController extends Controller
         $warnings = collect();
 
         if ($selectedAcademicYearId) {
-            $schedules = $this->orderSchedulesByDate(
-                Schedule::query()
-                    ->with([
-                        'courseOffering.course.department',
-                        'courseOffering.academicYear',
-                        'courseOffering.instructorPool.instructorProfile.department',
-                        'activityType', 'room', 'term',
-                        'instructors.instructorProfile.department',
-                        'studentGroups',
-                    ])
-                    ->whereHas('courseOffering', function ($q) use ($userId, $selectedAcademicYearId) {
-                        $q->where('coordinator_id', $userId)
-                          ->where('academic_year_id', $selectedAcademicYearId)
-                          ->withActiveCourse();
-                    })
-            )->get();
-
-            $calendar = AcademicCalendar::forYear($selectedAcademicYear);
-            $warnings = $schedules->flatMap(function (Schedule $schedule) use ($calendar) {
-                $items = [];
-                $label = $this->scheduleAlertLabel($schedule);
-
-                // 1. ข้อมูลไม่ครบ — V2: ไม่เช็คกลุ่มนักศึกษา (กลุ่มจัดหลังอนุมัติ = Phase B)
-                $missingParts = [];
-                if (! $schedule->topic)                $missingParts[] = 'หัวข้อ';
-                if (! $schedule->room_id)              $missingParts[] = 'ห้อง/สถานที่';
-                if ($schedule->instructors->isEmpty()) $missingParts[] = 'ผู้สอน';
-                if (! empty($missingParts)) {
-                    $items[] = ['type' => 'incomplete', 'schedule' => $schedule, 'label' => $label, 'message' => 'ข้อมูลไม่ครบ: ' . implode(', ', $missingParts)];
-                }
-
-                // 2. ความจุห้องเกิน (trigger เมื่อมีกลุ่ม = Phase B)
-                if ($schedule->room && $schedule->room->capacity && $schedule->studentGroups->isNotEmpty()) {
-                    $studentCount = (int) $schedule->studentGroups->sum('student_count');
-                    if ($studentCount > (int) $schedule->room->capacity) {
-                        $items[] = ['type' => 'capacity_exceeded', 'schedule' => $schedule, 'label' => $label, 'message' => "จำนวนผู้เรียน ({$studentCount}) เกินความจุห้อง ({$schedule->room->capacity})"];
-                    }
-                }
-
-                // 3. ไม่กำหนดบทบาทผู้สอน
-                $poolMap = $schedule->courseOffering?->instructorPool->keyBy('id') ?? collect();
-                $noRole = $schedule->instructors->filter(fn ($i) => is_null($poolMap->get($i->id)?->pivot?->course_role_id ?? null));
-                if ($noRole->isNotEmpty()) {
-                    $names = $noRole->map(fn ($i) => $i->formatted_name ?? $i->name)->implode(', ');
-                    $items[] = ['type' => 'no_role', 'schedule' => $schedule, 'label' => $label, 'message' => "ไม่กำหนดบทบาทผู้สอน: {$names}"];
-                }
-
-                // 4. ผู้สอนต่างภาควิชา
-                $deptId = $schedule->courseOffering?->course?->department_id;
-                if ($deptId) {
-                    $outside = $schedule->instructors->filter(fn ($i) => (int) ($i->instructorProfile?->department_id) !== (int) $deptId);
-                    if ($outside->isNotEmpty()) {
-                        $names = $outside->map(fn ($i) => $i->formatted_name ?? $i->name)->implode(', ');
-                        $dept = $outside->first()?->instructorProfile?->department?->name ?? 'ภาควิชาอื่น';
-                        $items[] = ['type' => 'dept_mismatch', 'schedule' => $schedule, 'label' => $label, 'message' => "ผู้สอนจากภาควิชาอื่น ({$dept}): {$names}"];
-                    }
-                }
-
-                // 5. กิจกรรมตรงวันหยุดราชการ (เตือน ไม่บล็อก)
-                $di = $calendar->classifyDay($schedule->start_date);
-                if (($di['kind'] ?? null) === 'holiday') {
-                    $items[] = ['type' => 'holiday', 'schedule' => $schedule, 'label' => $label, 'message' => 'ตรงวันหยุด: ' . ($di['label'] ?? '') . ' — งดการเรียนการสอน'];
-                }
-
-                return $items;
-            });
+            // warning (ไม่ใช่การชน) — ใช้ service เดียวกับ sidebar badge เพื่อให้เลขรวมตรงกัน
+            $warnings = app(CoordinatorAlertService::class)->warningItems($userId, $selectedAcademicYearId);
 
             // 🔴 การชนข้ามวิชา — ดึงจาก conflict index ทำเป็น item type 'conflict' (สีแดง ขึ้นบนสุด)
             $conflictResult = app(ScheduleConflictIndex::class)->conflictsForCoordinator($userId, $selectedAcademicYearId);
