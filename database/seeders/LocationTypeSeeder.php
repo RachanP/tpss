@@ -9,22 +9,22 @@ class LocationTypeSeeder extends Seeder
 {
     public function run(): void
     {
+        // is_shared = true → สถานที่ขนาดใหญ่/ภายนอกที่หลายวิชาใช้ร่วมกันได้ (ไม่เช็ค room conflict + ไม่เตือน capacity)
         $types = [
-            'ห้องเรียนทั่วไป',
-            'ห้องปฏิบัติการ',
-            'หอผู้ป่วย',
-            'โรงพยาบาล',
-            'ศูนย์พัฒนาเด็กก่อนวัยเรียน',
-            'โรงเรียน',
-            'ชุมชน',
-            'โรงพยาบาลส่งเสริมสุขภาพตำบล',
-            'ห้องคลอด',
-            'ออนไลน์',
-
+            ['name' => 'ห้องเรียนทั่วไป',                   'is_shared' => false],
+            ['name' => 'ห้องปฏิบัติการ',                    'is_shared' => false],
+            ['name' => 'หอผู้ป่วย',                          'is_shared' => true],
+            ['name' => 'โรงพยาบาล',                          'is_shared' => true],
+            ['name' => 'ศูนย์พัฒนาเด็กก่อนวัยเรียน',          'is_shared' => true],
+            ['name' => 'โรงเรียน',                           'is_shared' => true],
+            ['name' => 'ชุมชน',                              'is_shared' => true],
+            ['name' => 'โรงพยาบาลส่งเสริมสุขภาพตำบล',         'is_shared' => true],
+            ['name' => 'ห้องคลอด',                           'is_shared' => false],
+            ['name' => 'ออนไลน์',                            'is_shared' => false],
         ];
 
         foreach ($types as $type) {
-            LocationType::firstOrCreate(['name' => $type]);
+            LocationType::updateOrCreate(['name' => $type['name']], ['is_shared' => $type['is_shared']]);
         }
     }
 }

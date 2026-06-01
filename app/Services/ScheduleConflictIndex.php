@@ -73,7 +73,7 @@ class ScheduleConflictIndex
         $schedules->loadMissing([
             'activityType',
             'courseOffering.course',
-            'room',
+            'room.locationType:id,is_shared',
             'instructors.instructorProfile',
             'studentGroups',
         ]);
@@ -176,7 +176,8 @@ class ScheduleConflictIndex
             ->select($this->scheduleSelectColumns())
             ->with([
                 'activityType:id,name,color_code,category',
-                'room:id,room_code,room_name',
+                'room:id,room_code,room_name,location_type_id',
+                'room.locationType:id,is_shared',
                 'courseOffering:id,course_id,academic_year_id,coordinator_id,requires_practicum_rotation,planned_practicum_hours',
                 'courseOffering.course:id,course_code,name_th,name_en,requires_practicum_rotation',
                 'instructors:id,name,prefix',
@@ -242,7 +243,9 @@ class ScheduleConflictIndex
             return $entries;
         }
 
-        if ($schedule->room_id) {
+        // ข้ามห้อง "ใช้ร่วมกันได้" (is_shared) — หลายวิชาใช้สถานที่เดียวกันพร้อมกันได้ ไม่ถือว่าชน
+        // ต้องตรงกับ ScheduleConflictChecker::bulkConflictMap() + check() ที่ skip is_shared เช่นกัน
+        if ($schedule->room_id && ! ($schedule->room?->locationType?->is_shared ?? false)) {
             foreach ($dateKeys as $dateKey) {
                 $entries[] = [
                     'type' => 'room_overlap',
