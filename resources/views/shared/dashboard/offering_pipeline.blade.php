@@ -110,7 +110,6 @@
     .offering-pipeline-list {
         display: flex;
         flex-direction: column;
-        border-top: 1px solid var(--border);
     }
 
     [data-testid="offering-pipeline"] .card-hdr > div:first-child {

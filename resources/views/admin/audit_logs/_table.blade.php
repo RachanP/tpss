@@ -41,7 +41,7 @@
         <p style="font-size:12px;margin:0;">ลองปรับตัวกรองหรือช่วงเวลา</p>
     </div>
 @else
-    <div style="overflow-x:auto;">
+    <div class="audit-log-table-wrap">
         <table class="data-table audit-log-table" data-testid="audit-logs-table">
             <thead>
                 <tr>
@@ -64,19 +64,19 @@
                         $ipAddress = data_get($log->new_values, 'context.ip_address');
                     @endphp
                     <tr data-testid="audit-logs-row" data-log-id="{{ $log->id }}">
-                        <td class="audit-log-id">
+                        <td class="audit-log-id" data-label="ลำดับ">
                             {{ $log->id }}
                         </td>
-                        <td class="audit-log-time">
+                        <td class="audit-log-time" data-label="เวลา">
                             {{ $dateStr }}
                         </td>
-                        <td>
+                        <td data-label="ผู้ดำเนินการ">
                             <div class="audit-log-actor">{{ $log->user?->name ?? 'ระบบ' }}</div>
                             @if($log->user?->email)
                                 <div class="audit-log-sub">{{ $log->user->email }}</div>
                             @endif
                         </td>
-                        <td>
+                        <td data-label="หมวดหมู่">
                             @if($log->category)
                                 <span class="pill {{ $catClass }} audit-log-pill">
                                     {{ $log->category }}
@@ -85,7 +85,7 @@
                                 <span class="audit-log-sub">—</span>
                             @endif
                         </td>
-                        <td>
+                        <td data-label="การกระทำ">
                             <div class="audit-log-action-line">
                                 <span class="pill {{ $actionTone['class'] }} audit-log-pill">{{ $actionVerb }}</span>
                                 <span class="pill p-neutral audit-log-pill">{{ $actionTone['label'] }}</span>
@@ -95,10 +95,10 @@
                             @endif
                             <div class="audit-log-sub">ตาราง: {{ $log->table_affected }} · รหัส: {{ $log->record_id }}</div>
                         </td>
-                        <td class="audit-log-ip">
+                        <td class="audit-log-ip" data-label="ที่อยู่ IP">
                             {{ $ipAddress ?: '-' }}
                         </td>
-                        <td style="text-align:right;">
+                        <td class="audit-log-detail-cell" data-label="รายละเอียด">
                             <button
                                 type="button"
                                 class="btn btn-sm audit-log-detail-btn"
@@ -119,7 +119,7 @@
         </table>
     </div>
 
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 20px;border-top:1px solid var(--border);">
+    <div class="audit-log-footer">
         <span style="font-size:12px;color:var(--fg-3);">แสดง {{ $logs->firstItem() ?? 0 }}–{{ $logs->lastItem() ?? 0 }} จาก {{ number_format($logs->total()) }} รายการ</span>
 
         @if($logs->hasPages())
@@ -167,6 +167,9 @@
 @endif
 
 <style>
+    .audit-log-table-wrap {
+        overflow-x: auto;
+    }
     .audit-log-table th {
         font-size: 11px;
         font-weight: 800;
@@ -226,10 +229,101 @@
         padding: 5px 10px;
         white-space: nowrap;
     }
+    .audit-log-detail-cell {
+        text-align: right;
+    }
+    .audit-log-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        padding: 12px 20px;
+        border-top: 1px solid var(--border);
+    }
 
     @media (max-width: 860px) {
-        .audit-log-detail-btn span {
+        .audit-log-table-wrap {
+            overflow: visible;
+            padding: 12px;
+            background: color-mix(in oklch, var(--bg-2) 68%, var(--surface));
+        }
+        .audit-log-table,
+        .audit-log-table thead,
+        .audit-log-table tbody,
+        .audit-log-table tr,
+        .audit-log-table td {
+            display: block;
+            width: 100%;
+        }
+        .audit-log-table {
+            border-collapse: separate;
+            border-spacing: 0 10px;
+        }
+        .audit-log-table thead {
             display: none;
+        }
+        .audit-log-table tbody tr {
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            background: var(--surface);
+            box-shadow: 0 10px 24px -22px rgba(0, 36, 84, 0.28);
+            overflow: hidden;
+        }
+        .audit-log-table td {
+            position: relative;
+            box-sizing: border-box;
+            min-height: 42px;
+            padding: 10px 14px 10px 118px;
+            border-bottom: 1px solid color-mix(in oklch, var(--border) 72%, transparent);
+            text-align: left;
+        }
+        .audit-log-table td:last-child {
+            border-bottom: 0;
+        }
+        .audit-log-table td::before {
+            content: attr(data-label);
+            position: absolute;
+            left: 14px;
+            top: 11px;
+            width: 88px;
+            color: var(--fg-3);
+            font-size: 11px;
+            font-weight: 800;
+            line-height: 1.35;
+        }
+        .audit-log-detail-cell {
+            text-align: left;
+        }
+        .audit-log-detail-btn {
+            width: 100%;
+            min-height: 38px;
+        }
+        .audit-log-detail-btn span {
+            display: inline;
+        }
+        .audit-log-footer {
+            padding: 12px;
+            align-items: flex-start;
+            flex-direction: column;
+        }
+        .audit-log-footer nav {
+            width: 100%;
+        }
+    }
+
+    @media (max-width: 520px) {
+        .audit-log-table-wrap {
+            padding: 10px;
+        }
+        .audit-log-table td {
+            padding: 9px 12px;
+        }
+        .audit-log-table td::before {
+            position: static;
+            display: block;
+            width: auto;
+            margin-bottom: 5px;
         }
     }
 </style>
