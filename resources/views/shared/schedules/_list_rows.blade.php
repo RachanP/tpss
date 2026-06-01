@@ -17,9 +17,9 @@
         x-cloak
         data-schedule-id="{{ $as->id }}"
         data-schedule-modal-trigger
-        @click="detailModal = 'schedule-{{ $as->id }}'"
-        @keydown.enter.prevent="detailModal = 'schedule-{{ $as->id }}'"
-        @keydown.space.prevent="detailModal = 'schedule-{{ $as->id }}'"
+        @click="openScheduleDetail('{{ $as->id }}')"
+        @keydown.enter.prevent="openScheduleDetail('{{ $as->id }}')"
+        @keydown.space.prevent="openScheduleDetail('{{ $as->id }}')"
     >
         <td class="co-col-date" style="font-weight: 800; color: var(--fg-1); font-variant-numeric: tabular-nums; vertical-align: middle;">
             @if($asSameDay)

@@ -1,3 +1,91 @@
+        @php
+            $modalSchedules = $modalSchedules ?? collect();
+            $activityTypes = $activityTypes ?? collect();
+            $rooms = $rooms ?? collect();
+            $scheduleConflicts = $scheduleConflicts ?? collect();
+            $thaiDays = $thaiDays ?? [
+                1 => 'วันจันทร์',
+                2 => 'วันอังคาร',
+                3 => 'วันพุธ',
+                4 => 'วันพฤหัสบดี',
+                5 => 'วันศุกร์',
+                6 => 'วันเสาร์',
+                7 => 'วันอาทิตย์',
+            ];
+            $formatDate = $formatDate ?? fn ($date) => $date ? \App\Support\ThaiDate::date($date) : '-';
+            $formatTime = $formatTime ?? fn ($value) => substr((string) $value, 0, 5);
+            $formatDuration = $formatDuration ?? fn (int $minutes) => $minutes >= 60
+                ? (int) floor($minutes / 60) . ' ชม.' . ($minutes % 60 ? ' ' . ($minutes % 60) . ' นาที' : '')
+                : $minutes . ' นาที';
+            $durationForSchedule = $durationForSchedule ?? function ($schedule) {
+                $startTime = (string) $schedule->start_time;
+                $endTime = (string) $schedule->end_time;
+                $start = \Carbon\CarbonImmutable::createFromFormat('H:i:s', strlen($startTime) === 5 ? $startTime . ':00' : $startTime);
+                $end = \Carbon\CarbonImmutable::createFromFormat('H:i:s', strlen($endTime) === 5 ? $endTime . ':00' : $endTime);
+
+                return (int) max(0, $start->diffInMinutes($end));
+            };
+            $activityTone = $activityTone ?? function ($schedule) {
+                $color = $schedule->activityType?->color_code ?: 'var(--brand-navy)';
+
+                return str_starts_with((string) $color, '#') || str_starts_with((string) $color, 'oklch') || str_starts_with((string) $color, 'var(')
+                    ? $color
+                    : 'var(--brand-navy)';
+            };
+            $eligibleScheduleInstructors = $eligibleScheduleInstructors ?? function ($offering) {
+                $departmentId = $offering?->course?->department_id;
+                $pool = $offering?->instructorPool ?? collect();
+
+                if (! $departmentId) {
+                    return $pool;
+                }
+
+                return $pool
+                    ->filter(fn ($instructor) => (int) $instructor->instructorProfile?->department_id === (int) $departmentId)
+                    ->values();
+            };
+            $scheduleDepartmentInstructors = $scheduleDepartmentInstructors ?? function ($schedule) use ($eligibleScheduleInstructors) {
+                $eligibleIds = $eligibleScheduleInstructors($schedule?->courseOffering)
+                    ->pluck('id')
+                    ->map(fn ($id) => (int) $id)
+                    ->all();
+
+                return $schedule?->instructors
+                    ? $schedule->instructors
+                        ->filter(fn ($instructor) => in_array((int) $instructor->id, $eligibleIds, true))
+                        ->values()
+                    : collect();
+            };
+            $scheduleIncompleteReasons = $scheduleIncompleteReasons ?? function ($schedule) use ($scheduleDepartmentInstructors) {
+                return collect([
+                    $scheduleDepartmentInstructors($schedule)->isEmpty() ? 'รอกำหนดผู้สอน' : null,
+                    $schedule?->studentGroups?->isEmpty() ? 'รอกำหนดกลุ่ม' : null,
+                ])->filter()->values();
+            };
+            $scheduleAlertMessages = $scheduleAlertMessages ?? function ($errors, ?string $key = null) {
+                $messages = $key && $errors->has($key)
+                    ? collect($errors->get($key))
+                    : collect($errors->all());
+
+                return $messages
+                    ->flatMap(fn ($message) => preg_split('/\s+\/\s+/u', (string) $message) ?: [])
+                    ->map(fn ($message) => trim((string) $message))
+                    ->filter()
+                    ->unique()
+                    ->values();
+            };
+            $conflictFieldNote = $conflictFieldNote ?? function ($conflicts, array $types, string $fieldLabel) {
+                $items = collect($conflicts)
+                    ->filter(fn ($conflict) => in_array($conflict['type'] ?? '', $types, true))
+                    ->values();
+
+                return $items->isEmpty()
+                    ? null
+                    : $fieldLabel . 'มีข้อมูลซ้ำกับรายการอื่น ' . $items->count() . ' จุด';
+            };
+            $scheduleResourceCopyItems = $scheduleResourceCopyItems ?? collect();
+        @endphp
+
         @foreach($modalSchedules as $schedule)
             @php
                 $activity = $schedule->activityType;

@@ -3586,9 +3586,9 @@
             align-items: center;
             justify-content: center;
             padding: 24px 22px;
-            background: oklch(16% 0.02 240 / 0.55);
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
+            background: oklch(22% 0.018 240 / 0.24);
+            backdrop-filter: blur(3px);
+            -webkit-backdrop-filter: blur(3px);
         }
         .schedule-modal {
             width: min(680px, 100%);
@@ -4464,6 +4464,7 @@
 
     <div
         class="schedule-shell"
+        data-schedule-shell
         x-data="{
             view: @js($focusedScheduleId ? 'grid' : null) || sessionStorage.getItem('tpss-schedule-view') || 'list',
             detailModal: null,
@@ -4492,6 +4493,13 @@
             loadedWeeks: @js($loadedWeekStartSet->keys()->mapWithKeys(fn ($k) => [$k => true])->toArray() ?: (object) []),
             loadingWeeks: {},
             weekLoadErrors: {},
+            loadingDates: {},
+            dayLoadErrors: {},
+            weekLoadPromises: {},
+            prefetchedWeeks: {},
+            prefetchQueue: [],
+            activeWeekPrefetches: 0,
+            maxWeekPrefetches: 2,
             loadedScheduleIds: @js($loadedScheduleIdSet->keys()->mapWithKeys(fn ($k) => [$k => true])->toArray() ?: (object) []),
             schedulePeriod: @js($schedulePeriod ?? 'week'),
             includeWeekends: @js((bool) ($includeWeekends ?? false)),
@@ -4535,6 +4543,7 @@
             get liveBlocking() { return Object.keys(this.liveIssues).length > 0; },
             liveIssue(field) { return this.liveIssues[field] || []; },
             init() {
+                this.$el.__tpssScheduleShell = this;
                 this.$watch('view', val => sessionStorage.setItem('tpss-schedule-view', val));
                 this.$watch('selectedOfferingId', () => {
                     this.createInstructorSearch = '';
@@ -4550,11 +4559,37 @@
                 }
 
                 this.$el.addEventListener('click', (e) => {
-                    const link = e.target.closest('a');
+                    const eventTarget = e.target instanceof Element ? e.target : e.target?.parentElement;
+                    if (!eventTarget) return;
+
+                    const link = eventTarget.closest('a');
                     if (link && link.getAttribute('href') && !link.getAttribute('href').startsWith('#')) {
                         sessionStorage.setItem('tpss-schedule-scroll-y', window.scrollY);
                         sessionStorage.setItem('tpss-schedule-scroll-height', document.documentElement.scrollHeight);
                     }
+
+                    const trigger = eventTarget.closest('[data-schedule-modal-trigger]');
+                    if (trigger && this.scheduleRootElement().contains(trigger)) {
+                        const scheduleId = trigger.getAttribute('data-schedule-id');
+                        if (scheduleId) {
+                            e.preventDefault();
+                            this.openScheduleDetail(scheduleId);
+                        }
+                    }
+                });
+
+                this.$el.addEventListener('keydown', (e) => {
+                    if (e.key !== 'Enter' && e.key !== ' ') return;
+
+                    const eventTarget = e.target instanceof Element ? e.target : e.target?.parentElement;
+                    const trigger = eventTarget?.closest('[data-schedule-modal-trigger]');
+                    if (!trigger || !this.scheduleRootElement().contains(trigger)) return;
+
+                    const scheduleId = trigger.getAttribute('data-schedule-id');
+                    if (!scheduleId) return;
+
+                    e.preventDefault();
+                    this.openScheduleDetail(scheduleId);
                 });
 
                 this.$el.addEventListener('submit', () => {
@@ -4586,7 +4621,7 @@
                 this.$watch('detailModal', (val) => {
                     if (val) {
                         const modalId = String(val).replace(/^schedule-/, '');
-                        if (!this.$el.querySelector(`[data-schedule-modal-id='${modalId}']`)) {
+                        if (!this.scheduleRootElement().querySelector(`[data-schedule-modal-id='${modalId}']`)) {
                             this.detailModal = null;
                             return;
                         }
@@ -4599,6 +4634,8 @@
                         window.requestAnimationFrame(() => this.centerFocusedSchedule());
                     });
                 }
+
+                this.$nextTick(() => this.scheduleIdleWeekPrefetch());
 
                 // Ensure grid rows reflect any dynamic changes (e.g., edits made via modals)
                 this.$nextTick(() => {
@@ -4714,10 +4751,19 @@
             centerFocusedSchedule() {
                 const rawId = String(this.focusedScheduleId);
                 const safeId = window.CSS?.escape ? CSS.escape(rawId) : rawId.replace(/[^a-zA-Z0-9_-]/g, '');
-                const target = this.$el.querySelector(`[data-schedule-id='${safeId}']`);
+                const target = this.scheduleRootElement().querySelector(`[data-schedule-id='${safeId}']`);
                 if (!target) return;
 
                 target.scrollIntoView({ block: 'center', inline: 'center', behavior: this.editModal ? 'auto' : 'smooth' });
+            },
+            scheduleRootElement() {
+                return this.$root?.querySelector?.('[data-schedule-shell]')
+                    || document.querySelector('[data-schedule-shell]')
+                    || this.$el;
+            },
+            scheduleRootComponent() {
+                const root = this.scheduleRootElement();
+                return root?.__tpssScheduleShell || this;
             },
             normalizedScheduleSearch() {
                 return this.scheduleSearch.trim().toLowerCase();
@@ -4916,7 +4962,45 @@
                     };
                 });
             },
+            weekStartForIsoDate(dateIso) {
+                if (!dateIso) return null;
+                const date = new Date(`${dateIso}T00:00:00`);
+                if (Number.isNaN(date.getTime())) return null;
+                const isoDay = date.getDay() === 0 ? 7 : date.getDay();
+                date.setDate(date.getDate() - isoDay + 1);
+
+                return [
+                    date.getFullYear(),
+                    String(date.getMonth() + 1).padStart(2, '0'),
+                    String(date.getDate()).padStart(2, '0'),
+                ].join('-');
+            },
+            async openScheduleDetail(id) {
+                const shell = this.scheduleRootComponent();
+                if (shell !== this && typeof shell.openScheduleDetail === 'function') {
+                    return shell.openScheduleDetail(id);
+                }
+
+                const modalId = String(id);
+                if (!modalId) return;
+                const root = this.scheduleRootElement();
+
+                if (!root.querySelector(`[data-schedule-modal-id='${modalId}']`)) {
+                    const item = this.scheduleItems.find((schedule) => String(schedule.id) === modalId);
+                    const weekStart = this.weekStartForIsoDate(item?.date || null);
+
+                    if (weekStart && this.lazyScheduleList) {
+                        await this.loadScheduleWeek(weekStart);
+                    }
+                }
+
+                if (root.querySelector(`[data-schedule-modal-id='${modalId}']`)) {
+                    this.detailModal = `schedule-${modalId}`;
+                }
+            },
             async toggleDay(dateKey, weekStart = null) {
+                if (this.loadingDates[dateKey]) return;
+
                 const isOpening = !!this.collapsedDays[dateKey];
 
                 if (!isOpening) {
@@ -4924,45 +5008,127 @@
                     return;
                 }
 
-                this.collapsedDays = { ...this.collapsedDays, [dateKey]: false };
-
                 if (weekStart && this.lazyScheduleList && !this.loadedWeeks[weekStart]) {
-                    await this.loadScheduleWeek(weekStart);
-
-                    if (this.weekLoadErrors[weekStart]) {
-                        this.collapsedDays = { ...this.collapsedDays, [dateKey]: true };
-                    }
+                    const loaded = await this.loadScheduleWeek(weekStart, dateKey);
+                    if (!loaded) return;
                 }
+
+                this.dayLoadErrors = { ...this.dayLoadErrors, [dateKey]: false };
+                this.collapsedDays = { ...this.collapsedDays, [dateKey]: false };
             },
-            async loadScheduleWeek(weekStart) {
-                if (!weekStart || !this.lazyWeekFragmentUrl || this.loadedWeeks[weekStart] || this.loadingWeeks[weekStart]) return;
+            async loadScheduleWeek(weekStart, dateKey = null) {
+                if (!weekStart || !this.lazyWeekFragmentUrl) return false;
+                if (this.loadedWeeks[weekStart]) return true;
 
                 this.loadingWeeks = { ...this.loadingWeeks, [weekStart]: true };
                 this.weekLoadErrors = { ...this.weekLoadErrors, [weekStart]: false };
+                if (dateKey) {
+                    this.loadingDates = { ...this.loadingDates, [dateKey]: true };
+                    this.dayLoadErrors = { ...this.dayLoadErrors, [dateKey]: false };
+                }
 
-                try {
-                    const url = new URL(this.lazyWeekFragmentUrl, window.location.origin);
-                    url.searchParams.set('week_start', weekStart);
-                    if (this.selectedTermIdForLazy) url.searchParams.set('term_id', this.selectedTermIdForLazy);
-                    if (this.selectedInstructorIdForLazy) url.searchParams.set('instructor_id', this.selectedInstructorIdForLazy);
-                    if (this.includeWeekends) url.searchParams.set('include_weekends', '1');
+                const loaded = await this.fetchScheduleWeek(weekStart);
 
-                    const res = await fetch(url.toString(), {
-                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                    });
+                this.loadingWeeks = { ...this.loadingWeeks, [weekStart]: false };
+                if (dateKey) {
+                    this.loadingDates = { ...this.loadingDates, [dateKey]: false };
+                }
 
-                    if (!res.ok) throw new Error('week load failed');
-
-                    const payload = await res.json();
-                    this.appendLazyScheduleRows(payload.html || '');
-                    this.appendLazyScheduleModals(payload.modal_html || '');
-                    this.mergeScheduleItems(payload.schedule_items || []);
-                    (payload.loaded_schedule_ids || []).forEach((id) => { this.loadedScheduleIds[String(id)] = true; });
-                    this.loadedWeeks = { ...this.loadedWeeks, [weekStart]: true };
-                } catch (error) {
+                if (!loaded) {
                     this.weekLoadErrors = { ...this.weekLoadErrors, [weekStart]: true };
-                } finally {
-                    this.loadingWeeks = { ...this.loadingWeeks, [weekStart]: false };
+                    if (dateKey) {
+                        this.dayLoadErrors = { ...this.dayLoadErrors, [dateKey]: true };
+                    }
+                } else if (dateKey) {
+                    this.dayLoadErrors = { ...this.dayLoadErrors, [dateKey]: false };
+                }
+
+                return loaded;
+            },
+            fetchScheduleWeek(weekStart) {
+                if (!weekStart || !this.lazyWeekFragmentUrl) return Promise.resolve(false);
+                if (this.loadedWeeks[weekStart]) return Promise.resolve(true);
+                if (this.weekLoadPromises[weekStart]) return this.weekLoadPromises[weekStart];
+
+                const promise = (async () => {
+                    try {
+                        const url = new URL(this.lazyWeekFragmentUrl, window.location.origin);
+                        url.searchParams.set('week_start', weekStart);
+                        if (this.selectedTermIdForLazy) url.searchParams.set('term_id', this.selectedTermIdForLazy);
+                        if (this.selectedInstructorIdForLazy) url.searchParams.set('instructor_id', this.selectedInstructorIdForLazy);
+                        if (this.includeWeekends) url.searchParams.set('include_weekends', '1');
+
+                        const res = await fetch(url.toString(), {
+                            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                        });
+
+                        if (!res.ok) throw new Error('week load failed');
+
+                        const payload = await res.json();
+                        this.appendLazyScheduleRows(payload.html || '');
+                        try {
+                            this.appendLazyScheduleModals(payload.modal_html || '');
+                        } catch (error) {
+                            console.warn('Unable to initialize lazy schedule modals', error);
+                        }
+                        this.mergeScheduleItems(payload.schedule_items || []);
+                        (payload.loaded_schedule_ids || []).forEach((id) => { this.loadedScheduleIds[String(id)] = true; });
+                        this.loadedWeeks = { ...this.loadedWeeks, [weekStart]: true };
+                        this.weekLoadErrors = { ...this.weekLoadErrors, [weekStart]: false };
+
+                        return true;
+                    } catch (error) {
+                        return false;
+                    } finally {
+                        delete this.weekLoadPromises[weekStart];
+                    }
+                })();
+
+                this.weekLoadPromises[weekStart] = promise;
+
+                return promise;
+            },
+            prefetchScheduleWeek(weekStart) {
+                if (!weekStart || !this.lazyScheduleList || !this.lazyWeekFragmentUrl) return;
+                if (this.loadedWeeks[weekStart] || this.loadingWeeks[weekStart] || this.prefetchedWeeks[weekStart]) return;
+
+                this.prefetchedWeeks = { ...this.prefetchedWeeks, [weekStart]: true };
+                this.prefetchQueue.push(weekStart);
+                this.processWeekPrefetchQueue();
+            },
+            processWeekPrefetchQueue() {
+                if (this.activeWeekPrefetches >= this.maxWeekPrefetches) return;
+
+                const weekStart = this.prefetchQueue.shift();
+                if (!weekStart) return;
+                if (this.loadedWeeks[weekStart]) {
+                    this.processWeekPrefetchQueue();
+                    return;
+                }
+
+                this.activeWeekPrefetches += 1;
+                this.fetchScheduleWeek(weekStart).finally(() => {
+                    this.activeWeekPrefetches = Math.max(0, this.activeWeekPrefetches - 1);
+                    this.processWeekPrefetchQueue();
+                });
+            },
+            scheduleIdleWeekPrefetch() {
+                if (!this.lazyScheduleList || !this.lazyWeekFragmentUrl) return;
+
+                const run = () => {
+                    const weekStarts = Array.from(this.$el.querySelectorAll('[data-schedule-week-start]'))
+                        .filter((el) => el.offsetParent !== null)
+                        .map((el) => el.getAttribute('data-schedule-week-start'))
+                        .filter((weekStart, index, list) => weekStart && list.indexOf(weekStart) === index)
+                        .slice(0, 3);
+
+                    weekStarts.forEach((weekStart) => this.prefetchScheduleWeek(weekStart));
+                };
+
+                if ('requestIdleCallback' in window) {
+                    window.requestIdleCallback(run, { timeout: 1200 });
+                } else {
+                    window.setTimeout(run, 450);
                 }
             },
             appendLazyScheduleRows(html) {
@@ -4999,7 +5165,13 @@
                     const id = modal.getAttribute('data-lazy-schedule-modal');
                     if (id && this.$el.querySelector(`[data-schedule-modal-id='${id}']`)) return;
                     this.$refs.lazyModalHost.appendChild(modal);
-                    if (window.Alpine) window.Alpine.initTree(modal);
+                    if (window.Alpine) {
+                        try {
+                            window.Alpine.initTree(modal);
+                        } catch (error) {
+                            console.warn('Unable to initialize schedule modal', error);
+                        }
+                    }
                 });
             },
             mergeScheduleItems(items) {
@@ -5774,8 +5946,12 @@
                                                 @click="toggleDay('{{ $dateKey }}', '{{ $dayWeekStartIso }}')"
                                                 @keydown.enter.prevent="toggleDay('{{ $dateKey }}', '{{ $dayWeekStartIso }}')"
                                                 @keydown.space.prevent="toggleDay('{{ $dateKey }}', '{{ $dayWeekStartIso }}')"
+                                                @mouseenter="prefetchScheduleWeek('{{ $dayWeekStartIso }}')"
+                                                @focus="prefetchScheduleWeek('{{ $dayWeekStartIso }}')"
                                                 :class="collapsedDays['{{ $dateKey }}'] ? 'is-collapsed' : ''"
                                                 data-testid="schedule-day-group-toggle"
+                                                data-schedule-week-start="{{ $dayWeekStartIso }}"
+                                                data-schedule-initial-collapsed="{{ ($collapsedDayState[$dateKey] ?? false) ? 'true' : 'false' }}"
                                             >
                                                 <td colspan="6" class="sched-day-group-cell">
                                                     <div class="sched-day-group-inner">
@@ -5807,10 +5983,10 @@
                                                 </td>
                                             </tr>
                                             @if($lazyScheduleList)
-                                                <tr class="sched-day-lazy-state" data-lazy-state-date="{{ $dateKey }}" x-show="loadingWeeks['{{ $dayWeekStartIso }}'] || weekLoadErrors['{{ $dayWeekStartIso }}']" x-cloak>
+                                                <tr class="sched-day-lazy-state" data-lazy-state-date="{{ $dateKey }}" data-lazy-state-week="{{ $dayWeekStartIso }}" x-show="loadingDates['{{ $dateKey }}'] || dayLoadErrors['{{ $dateKey }}']" x-cloak>
                                                     <td colspan="6" style="padding:12px 18px;color:var(--fg-2);font-size:13px;font-weight:750;background:oklch(98% 0.008 232);border-bottom:1px solid var(--schedule-border);">
-                                                        <span x-show="loadingWeeks['{{ $dayWeekStartIso }}']">กำลังโหลดรายการสอน...</span>
-                                                        <button type="button" class="btn btn-ghost" x-show="weekLoadErrors['{{ $dayWeekStartIso }}']" @click="loadScheduleWeek('{{ $dayWeekStartIso }}')" style="min-height:30px;padding:4px 10px;">ลองโหลดอีกครั้ง</button>
+                                                        <span x-show="loadingDates['{{ $dateKey }}']">กำลังโหลดรายการสอน...</span>
+                                                        <button type="button" class="btn btn-ghost" x-show="dayLoadErrors['{{ $dateKey }}']" @click.stop="toggleDay('{{ $dateKey }}', '{{ $dayWeekStartIso }}')" style="min-height:30px;padding:4px 10px;">ลองโหลดอีกครั้ง</button>
                                                     </td>
                                                 </tr>
                                             @endif
@@ -5833,7 +6009,7 @@
                                                     }
                                                     $isMultiDay = ! $asSameDay;
                                                 @endphp
-                                                <tr role="button" tabindex="0" class="co-sched-row" :class="focusedScheduleClass('{{ $as->id }}')" style="--activity-color: {{ $activityTone($as) }};" x-show="matchesSchedule('{{ $as->id }}') && !collapsedDays['{{ $dateKey }}']" x-cloak data-schedule-id="{{ $as->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $as->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $as->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $as->id }}'">
+                                                <tr role="button" tabindex="0" class="co-sched-row" :class="focusedScheduleClass('{{ $as->id }}')" style="--activity-color: {{ $activityTone($as) }};" x-show="matchesSchedule('{{ $as->id }}') && !collapsedDays['{{ $dateKey }}']" x-cloak data-schedule-id="{{ $as->id }}" data-schedule-modal-trigger @click="openScheduleDetail('{{ $as->id }}')" @keydown.enter.prevent="openScheduleDetail('{{ $as->id }}')" @keydown.space.prevent="openScheduleDetail('{{ $as->id }}')">
                                                     <td class="co-col-date" style="font-weight: 800; color: var(--fg-1); font-variant-numeric: tabular-nums; vertical-align: middle;">
                                                         @if($asSameDay)
                                                             {{ $formatDate($as->start_date) }}
@@ -5981,7 +6157,7 @@
                                                 $itemConflicts = $scheduleConflicts->get($schedule->id, collect());
                                                 $incompleteReasons = $scheduleIncompleteReasons($schedule);
                                             @endphp
-                                            <div role="button" tabindex="0" class="month-activity {{ $schedule->schedule_template_id ? 'has-series' : '' }}" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
+                                            <div role="button" tabindex="0" class="month-activity {{ $schedule->schedule_template_id ? 'has-series' : '' }}" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="openScheduleDetail('{{ $schedule->id }}')" @keydown.enter.prevent="openScheduleDetail('{{ $schedule->id }}')" @keydown.space.prevent="openScheduleDetail('{{ $schedule->id }}')">
                                                 <div class="month-activity-time">{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }}</div>
                                                 <div class="month-activity-title">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
                                                 <div class="month-activity-tags">
@@ -6070,7 +6246,7 @@
                                                 ? 'is-compact'
                                                 : ($activityDuration >= 150 ? 'is-tall' : '');
                                         @endphp
-                                        <div role="button" tabindex="0" class="grid-activity {{ $gridActivitySizeClass }} {{ $schedule->schedule_template_id ? 'has-series' : '' }}" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
+                                        <div role="button" tabindex="0" class="grid-activity {{ $gridActivitySizeClass }} {{ $schedule->schedule_template_id ? 'has-series' : '' }}" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="openScheduleDetail('{{ $schedule->id }}')" @keydown.enter.prevent="openScheduleDetail('{{ $schedule->id }}')" @keydown.space.prevent="openScheduleDetail('{{ $schedule->id }}')">
                                             <div class="grid-activity-top">
                                                 <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }};">{{ $activity?->name ?? 'กิจกรรม' }}</span>
                                                 @if($schedule->schedule_template_id)
@@ -6187,9 +6363,9 @@
                                                     data-stack-card
                                                     data-schedule-id="{{ $schedule->id }}"
                                                     data-schedule-modal-trigger
-                                                    @click="if({{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3) detailModal = 'schedule-{{ $schedule->id }}'"
-                                                    @keydown.enter.prevent="if({{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3) detailModal = 'schedule-{{ $schedule->id }}'"
-                                                    @keydown.space.prevent="if({{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3) detailModal = 'schedule-{{ $schedule->id }}'"
+                                                    @click="if({{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3) openScheduleDetail('{{ $schedule->id }}')"
+                                                    @keydown.enter.prevent="if({{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3) openScheduleDetail('{{ $schedule->id }}')"
+                                                    @keydown.space.prevent="if({{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3) openScheduleDetail('{{ $schedule->id }}')"
                                                 >
                                                     @if($itemConflicts->isNotEmpty())
                                                         <div class="grid-activity-top">
@@ -6323,7 +6499,7 @@
                                         $itemConflicts = $scheduleConflicts->get($schedule->id, collect());
                                         $incompleteReasons = $scheduleIncompleteReasons($schedule);
                                     @endphp
-                                    <tr role="button" tabindex="0" class="sched-row" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-testid="schedule-row" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
+                                    <tr role="button" tabindex="0" class="sched-row" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-testid="schedule-row" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="openScheduleDetail('{{ $schedule->id }}')" @keydown.enter.prevent="openScheduleDetail('{{ $schedule->id }}')" @keydown.space.prevent="openScheduleDetail('{{ $schedule->id }}')">
                                         <td>
                                             <div class="sched-time-block">
                                                 <div class="sched-time">{{ $timeText }}</div>
@@ -6415,7 +6591,7 @@
                                         $itemConflicts = $scheduleConflicts->get($schedule->id, collect());
                                         $incompleteReasons = $scheduleIncompleteReasons($schedule);
                                     @endphp
-                                        <div role="button" tabindex="0" class="month-activity {{ $schedule->schedule_template_id ? 'has-series' : '' }}" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
+                                        <div role="button" tabindex="0" class="month-activity {{ $schedule->schedule_template_id ? 'has-series' : '' }}" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="openScheduleDetail('{{ $schedule->id }}')" @keydown.enter.prevent="openScheduleDetail('{{ $schedule->id }}')" @keydown.space.prevent="openScheduleDetail('{{ $schedule->id }}')">
                                             <div class="month-activity-time">{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }}</div>
                                             <div class="month-activity-title">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
                                             <div class="month-activity-meta">
@@ -6510,7 +6686,7 @@
                                             ? 'is-compact'
                                             : ($activityDuration >= 150 ? 'is-tall' : '');
                                     @endphp
-                                    <div role="button" tabindex="0" class="grid-activity {{ $gridActivitySizeClass }} {{ $schedule->schedule_template_id ? 'has-series' : '' }}" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.enter.prevent="detailModal = 'schedule-{{ $schedule->id }}'" @keydown.space.prevent="detailModal = 'schedule-{{ $schedule->id }}'">
+                                    <div role="button" tabindex="0" class="grid-activity {{ $gridActivitySizeClass }} {{ $schedule->schedule_template_id ? 'has-series' : '' }}" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="openScheduleDetail('{{ $schedule->id }}')" @keydown.enter.prevent="openScheduleDetail('{{ $schedule->id }}')" @keydown.space.prevent="openScheduleDetail('{{ $schedule->id }}')">
                                         <div class="grid-activity-top">
                                             @if($offeringCourse?->course_code)
                                                 <span class="grid-course">{{ $offeringCourse->course_code }}</span>
@@ -6658,9 +6834,9 @@
                                                 data-stack-card
                                                 data-schedule-id="{{ $schedule->id }}"
                                                 data-schedule-modal-trigger
-                                                @click="if({{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3) detailModal = 'schedule-{{ $schedule->id }}'"
-                                                @keydown.enter.prevent="if({{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3) detailModal = 'schedule-{{ $schedule->id }}'"
-                                                @keydown.space.prevent="if({{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3) detailModal = 'schedule-{{ $schedule->id }}'"
+                                                @click="if({{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3) openScheduleDetail('{{ $schedule->id }}')"
+                                                @keydown.enter.prevent="if({{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3) openScheduleDetail('{{ $schedule->id }}')"
+                                                @keydown.space.prevent="if({{ $idx }} >= page * 3 && {{ $idx }} < (page + 1) * 3) openScheduleDetail('{{ $schedule->id }}')"
                                             >
                                                 <div class="grid-activity-top">
                                                     @if($offeringCourse?->course_code)

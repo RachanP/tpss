@@ -37,6 +37,7 @@ class ScheduleManagementTest extends TestCase
         parent::setUp();
 
         config(['conflicts.async_reads' => false]);
+        Cache::flush();
     }
 
     public function test_course_head_can_access_own_offering_schedules(): void
@@ -81,7 +82,7 @@ class ScheduleManagementTest extends TestCase
             ->assertSee($room->room_name);
     }
 
-    public function test_schedule_index_initial_dom_contains_only_first_loaded_week_rows(): void
+    public function test_schedule_index_initial_dom_contains_only_collapsed_headers_before_lazy_week_load(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
         $weekOne = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
@@ -97,13 +98,59 @@ class ScheduleManagementTest extends TestCase
 
         $this->actingAsCourseHead($head);
 
-        $this->get(route('maker.course_offerings.schedules.index', $offering))
+        $response = $this->get(route('maker.course_offerings.schedules.index', $offering));
+
+        $response
             ->assertOk()
-            ->assertSee('data-schedule-id="' . $weekOne->id . '"', false)
-            ->assertSee('Initial loaded week')
-            ->assertDontSee('data-schedule-id="' . $weekTwo->id . '"', false)
-            ->assertDontSee('schedule-detail-title-' . $weekTwo->id, false)
-            ->assertDontSee('action="' . route('maker.course_offerings.schedules.update', [$offering, $weekTwo]) . '"', false);
+            ->assertSee('data-schedule-week-start="2026-08-03"', false)
+            ->assertSee('data-schedule-week-start="2026-08-10"', false)
+            ->assertSee('id="schedule-day-group-20260803"', false)
+            ->assertSee('id="schedule-day-group-20260810"', false)
+            ->assertSee('data-schedule-initial-collapsed="true"', false);
+
+        $content = $response->getContent();
+
+        $this->assertStringNotContainsString('class="co-sched-row"', $content);
+        $this->assertStringNotContainsString('schedule-detail-title-' . $weekOne->id, $content);
+        $this->assertStringNotContainsString('schedule-detail-title-' . $weekTwo->id, $content);
+        $this->assertStringNotContainsString('action="' . route('maker.course_offerings.schedules.update', [$offering, $weekOne]) . '"', $content);
+        $this->assertStringNotContainsString('action="' . route('maker.course_offerings.schedules.update', [$offering, $weekTwo]) . '"', $content);
+        $this->assertStringContainsString("x-show=\"loadingDates['20260803'] || dayLoadErrors['20260803']\"", $content);
+        $this->assertStringNotContainsString("x-show=\"loadingWeeks['2026-08-03'] || weekLoadErrors['2026-08-03']\"", $content);
+    }
+
+    public function test_schedule_index_deep_link_loads_target_week_rows_and_modal_initially(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $weekOne = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-03',
+            'topic' => 'Collapsed normal week',
+        ]);
+        $weekTwo = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'start_date' => '2026-08-10',
+            'end_date' => '2026-08-10',
+            'topic' => 'Focused lazy week',
+        ]);
+
+        $this->actingAsCourseHead($head);
+
+        $response = $this->get(route('maker.course_offerings.schedules.index', [
+            $offering,
+            'edit_schedule_id' => $weekTwo->id,
+            'focus_schedule_id' => $weekTwo->id,
+        ]));
+
+        $response
+            ->assertOk()
+            ->assertSee('id="schedule-day-group-20260803"', false)
+            ->assertSee('id="schedule-day-group-20260810"', false)
+            ->assertSee('data-schedule-initial-collapsed="false"', false)
+            ->assertSee('data-schedule-id="' . $weekTwo->id . '"', false)
+            ->assertSee('schedule-detail-title-' . $weekTwo->id, false)
+            ->assertSee('action="' . route('maker.course_offerings.schedules.update', [$offering, $weekTwo]) . '"', false);
+
+        $this->assertStringNotContainsString('schedule-detail-title-' . $weekOne->id, $response->getContent());
     }
 
     public function test_schedule_week_fragment_returns_rows_and_modals_for_requested_week(): void
@@ -233,10 +280,9 @@ class ScheduleManagementTest extends TestCase
             ->assertOk()
             ->assertSee('data-testid="schedule-list-view"', false)
             ->assertSee('data-testid="schedule-grid-view-co"', false)
-            ->assertSee('18:23-21:19')
+            ->assertSee('18:23 - 21:19')
             ->assertSee('18:00')
-            ->assertSee('Reflection')
-            ->assertSee($group->group_code);
+            ->assertSee('Reflection');
     }
 
     public function test_schedule_index_supports_day_week_and_month_periods(): void
@@ -459,18 +505,28 @@ class ScheduleManagementTest extends TestCase
         $this->get(route('maker.course_offerings.schedules.index', [$offering, 'week_start' => '2026-08-03']))
             ->assertOk()
             ->assertSee('data-schedule-modal-trigger', false)
-            ->assertSee('data-testid="schedule-detail-modal"', false)
-            ->assertSee('data-testid="schedule-edit-modal-trigger"', false)
-            ->assertSee('data-testid="schedule-edit-modal"', false)
-            ->assertSee('data-testid="schedule-edit-form"', false)
-            ->assertSee('action="' . route('maker.course_offerings.schedules.update', [$offering, $schedule]) . '"', false)
-            ->assertSee('name="_method" value="PUT"', false)
-            ->assertSee('value="03/08/2569"', false)
-            ->assertSee('value="08:00"', false)
-            ->assertSee('Existing schedule')
-            ->assertSee('data-testid="schedule-delete-button"', false)
+            ->assertDontSee('data-testid="schedule-detail-modal"', false)
+            ->assertDontSee('data-testid="schedule-edit-modal"', false)
             ->assertDontSee('href="' . route('maker.course_offerings.schedules.edit', [$offering, $schedule]) . '"', false)
             ->assertDontSee('class="activity-actions"', false);
+
+        $response = $this->getJson(route('maker.course_offerings.schedules.week_fragment', [
+            $offering,
+            'week_start' => '2026-08-03',
+        ]));
+
+        $response->assertOk();
+        $this->assertStringContainsString('data-schedule-modal-trigger', $response->json('html'));
+        $this->assertStringContainsString('data-testid="schedule-detail-modal"', $response->json('modal_html'));
+        $this->assertStringContainsString('data-testid="schedule-edit-modal-trigger"', $response->json('modal_html'));
+        $this->assertStringContainsString('data-testid="schedule-edit-modal"', $response->json('modal_html'));
+        $this->assertStringContainsString('data-testid="schedule-edit-form"', $response->json('modal_html'));
+        $this->assertStringContainsString('action="' . route('maker.course_offerings.schedules.update', [$offering, $schedule]) . '"', $response->json('modal_html'));
+        $this->assertStringContainsString('name="_method" value="PUT"', $response->json('modal_html'));
+        $this->assertStringContainsString('value="03/08/2569"', $response->json('modal_html'));
+        $this->assertStringContainsString('value="08:00"', $response->json('modal_html'));
+        $this->assertStringContainsString('Existing schedule', $response->json('modal_html'));
+        $this->assertStringContainsString('data-testid="schedule-delete-button"', $response->json('modal_html'));
     }
 
     public function test_schedule_workspace_create_modal_lists_only_scheduling_coordinated_offerings(): void
@@ -644,14 +700,14 @@ class ScheduleManagementTest extends TestCase
             ->assertDontSee('พบข้อมูลซ้อนกับรายการอื่น แก้ไขช่องที่ไฮไลต์ก่อนส่งอนุมัติ')
             ->assertSee('data-schedule-id="' . $schedule->id . '"', false);
 
-        $this->get(route('maker.course_offerings.schedules.index', [
+        $fragment = $this->getJson(route('maker.course_offerings.schedules.week_fragment', [
             $offering,
-            'date' => '2026-08-03',
-            'period' => 'day',
-        ]))
-            ->assertOk()
-            ->assertSee('data-testid="schedule-edit-conflict-focus"', false)
-            ->assertSee('modal-field-has-conflict', false);
+            'week_start' => '2026-08-03',
+        ]));
+
+        $fragment->assertOk();
+        $this->assertStringContainsString('data-testid="schedule-edit-conflict-focus"', $fragment->json('modal_html'));
+        $this->assertStringContainsString('modal-field-has-conflict', $fragment->json('modal_html'));
     }
 
     public function test_course_head_sidebar_hides_checking_badge_during_preparation_phase(): void

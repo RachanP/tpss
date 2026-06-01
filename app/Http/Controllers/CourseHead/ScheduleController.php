@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\CourseOffering;
 use App\Models\Schedule;
+use App\Models\ScheduleConflictRun;
 use App\Models\ScheduleTemplate;
 use App\Services\AcademicCalendar;
 use App\Services\AuditLogger;
@@ -26,6 +27,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Arr;
@@ -315,59 +317,64 @@ class ScheduleController extends Controller
         $selectedTermId = $request->integer('term_id') ?: null;
         $includeWeekends = $request->boolean('include_weekends');
 
-        $schedules = $this->orderSchedulesByDate(
-            $this->filterSchedulesByDateRange(
-                Schedule::query()
-                    ->with($this->scheduleRelations())
-                    ->where('course_offering_id', $courseOffering->id)
-                    ->when($selectedInstructorId, fn ($q) => $q
-                        ->whereHas('instructors', fn ($iq) => $iq->where('users.id', $selectedInstructorId)))
-                    ->when($selectedTermId, fn ($q) => $q->where('term_id', $selectedTermId)),
-                $weekStart->toDateString(),
-                $weekEnd->toDateString()
-            )
-        )->get();
+        $cacheKey = $this->weekFragmentCacheKey(
+            $request,
+            $courseOffering,
+            $weekStart,
+            $weekEnd,
+            $selectedTermId,
+            $selectedInstructorId,
+            $includeWeekends,
+        );
 
-        $courseOffering->loadMissing([
-            'course.curriculum',
-            'course.department',
-            'academicYear.terms',
-            'instructorPool.instructorProfile.department',
-            'studentGroups' => fn ($query) => $query->orderBy('group_code'),
-        ]);
+        $payload = Cache::remember($cacheKey, now()->addSeconds(120), function () use (
+            $courseOffering,
+            $weekStart,
+            $weekEnd,
+            $selectedInstructorId,
+            $selectedTermId,
+            $includeWeekends
+        ): array {
+            $schedules = $this->loadScheduleWeekSchedules(
+                $courseOffering,
+                $weekStart,
+                $weekEnd,
+                $selectedTermId,
+                $selectedInstructorId,
+            );
 
-        $activityTypes = app(ReferenceDataCache::class)->activityTypes();
-        $rooms = app(ReferenceDataCache::class)->activeRooms();
-        $academicCalendar = AcademicCalendar::forYear($courseOffering->academicYear);
-        $scheduleConflicts = $this->scheduleConflictMap($schedules);
-        $groupedSchedules = $schedules
-            ->filter(fn (Schedule $schedule) => $schedule->start_date)
-            ->sortBy(fn (Schedule $schedule) => $schedule->start_date->toDateString() . ' ' . ($schedule->start_time ?? '00:00:00'))
-            ->groupBy(fn (Schedule $schedule) => $schedule->start_date->toDateString());
+            $activityTypes = app(ReferenceDataCache::class)->activityTypes();
+            $rooms = app(ReferenceDataCache::class)->activeRooms();
+            $academicCalendar = AcademicCalendar::forYear($courseOffering->academicYear);
+            $scheduleConflicts = $this->scheduleConflictMap($schedules);
+            $groupedSchedules = $this->groupSchedulesForList($schedules);
 
-        $viewData = [
-            'courseOffering' => $courseOffering,
-            ...$this->scheduleDatePickerYearRange(),
-            'allSchedules' => $schedules,
-            'modalSchedules' => $schedules,
-            'groupedSchedules' => $groupedSchedules,
-            'scheduleConflicts' => $scheduleConflicts,
-            'activityTypes' => $activityTypes,
-            'rooms' => $rooms,
-            'academicCalendar' => $academicCalendar,
-            'selectedTermId' => $selectedTermId,
-            'academicYear' => $courseOffering->academicYear,
-            'canEdit' => $courseOffering->academicYear?->phase === 'scheduling',
-            'includeWeekends' => $includeWeekends,
-            'lazyWeekStart' => $weekStart->toDateString(),
-        ];
+            $viewData = [
+                'courseOffering' => $courseOffering,
+                ...$this->scheduleDatePickerYearRange(),
+                'allSchedules' => $schedules,
+                'modalSchedules' => $schedules,
+                'groupedSchedules' => $groupedSchedules,
+                'scheduleConflicts' => $scheduleConflicts,
+                'activityTypes' => $activityTypes,
+                'rooms' => $rooms,
+                'academicCalendar' => $academicCalendar,
+                'selectedTermId' => $selectedTermId,
+                'academicYear' => $courseOffering->academicYear,
+                'canEdit' => $courseOffering->academicYear?->phase === 'scheduling',
+                'includeWeekends' => $includeWeekends,
+                'lazyWeekStart' => $weekStart->toDateString(),
+            ];
 
-        return response()->json([
-            'html' => view('shared.schedules._lazy_week_rows', $viewData)->render(),
-            'modal_html' => view('shared.schedules._lazy_detail_modals', $viewData)->render(),
-            'schedule_items' => $this->scheduleFilterItems($schedules, $courseOffering->academicYear),
-            'loaded_schedule_ids' => $schedules->pluck('id')->map(fn ($id) => (string) $id)->values(),
-        ]);
+            return [
+                'html' => view('shared.schedules._lazy_week_rows', $viewData)->render(),
+                'modal_html' => view('shared.schedules._lazy_detail_modals', $viewData)->render(),
+                'schedule_items' => $this->scheduleFilterItems($schedules, $courseOffering->academicYear),
+                'loaded_schedule_ids' => $schedules->pluck('id')->map(fn ($id) => (string) $id)->values(),
+            ];
+        });
+
+        return response()->json($payload);
     }
 
     public function createGlobal(Request $request): View|RedirectResponse
@@ -504,35 +511,42 @@ class ScheduleController extends Controller
             ? collect()
             : ($isWorkspace
                 ? $schedules
-                : $this->orderSchedulesByDate(
-                    Schedule::query()
-                        ->with($scheduleRelations)
-                        ->whereIn('course_offering_id', $offeringIds)
-                        ->tap($instructorFilter)
-                        ->tap($termFilter)
-                )->get());
+                : $this->attachCourseOfferingToSchedules(
+                    $this->orderSchedulesByDate(
+                        Schedule::query()
+                            ->with($this->scheduleSummaryRelations())
+                            ->whereIn('course_offering_id', $offeringIds)
+                            ->tap($instructorFilter)
+                            ->tap($termFilter)
+                    )->get(),
+                    $courseOffering
+                ));
 
         $lazyScheduleList = ! $isWorkspace && $courseOffering !== null;
         $focusedScheduleId = (int) $request->query('focus_schedule_id', $request->query('edit_schedule_id', 0));
         $forcedSchedule = $focusedScheduleId
             ? $allSchedules->firstWhere('id', $focusedScheduleId)
             : null;
-        $initialListWeekStart = $forcedSchedule?->start_date
+        $initialListWeekStart = $lazyScheduleList && $forcedSchedule?->start_date
             ? CarbonImmutable::parse($forcedSchedule->start_date)->startOfWeek(CarbonInterface::MONDAY)
-            : (($request->has('week_start') || $request->has('date'))
-                ? $periodStart->startOfWeek(CarbonInterface::MONDAY)
-                : ($allSchedules->first()?->start_date
-                    ? CarbonImmutable::parse($allSchedules->first()->start_date)->startOfWeek(CarbonInterface::MONDAY)
-                    : $periodStart->startOfWeek(CarbonInterface::MONDAY)));
-        $initialListWeekEnd = $initialListWeekStart->addDays(6);
+            : null;
+        $initialListWeekEnd = $initialListWeekStart?->addDays(6);
         $initialListSchedules = $lazyScheduleList
-            ? $allSchedules
-                ->filter(fn (Schedule $schedule) => $schedule->start_date
-                    && CarbonImmutable::parse($schedule->start_date)->betweenIncluded($initialListWeekStart, $initialListWeekEnd))
-                ->values()
+            ? ($initialListWeekStart && $initialListWeekEnd && $courseOffering
+                ? $this->loadScheduleWeekSchedules(
+                    $courseOffering,
+                    $initialListWeekStart,
+                    $initialListWeekEnd,
+                    $selectedTermId,
+                    $selectedInstructorId
+                )
+                : collect())
             : $allSchedules;
         $initialModalSchedules = $lazyScheduleList
-            ? $initialListSchedules->merge($schedules)->unique('id')->values()
+            ? $initialListSchedules
+                ->merge($period === 'month' ? $schedules : collect())
+                ->unique('id')
+                ->values()
             : null;
         $visibleConflictSchedules = $isWorkspace
             ? $schedules
@@ -551,10 +565,7 @@ class ScheduleController extends Controller
         $occurrencesByDate = $occurrences->groupBy(fn ($item) => $item['date']->toDateString());
         // List view: group by actual calendar date (start_date) เรียงตามวันที่จริง
         // เดิมใช้ dayOfWeekIso → ทุกวันจันทร์ของหลายสัปดาห์ clump รวมกัน
-        $groupedSchedules = $allSchedules
-            ->filter(fn (Schedule $schedule) => $schedule->start_date)
-            ->sortBy(fn (Schedule $schedule) => $schedule->start_date->toDateString() . ' ' . ($schedule->start_time ?? '00:00:00'))
-            ->groupBy(fn (Schedule $schedule) => $schedule->start_date->toDateString());
+        $groupedSchedules = $this->groupSchedulesForList($allSchedules);
         $selectedDate = CarbonImmutable::parse($baseDate)->startOfDay();
         $previousPeriod = match ($period) {
             'day' => $selectedDate->subDay(),
@@ -596,7 +607,9 @@ class ScheduleController extends Controller
             'rooms' => app(ReferenceDataCache::class)->activeRooms(),
             'lazyScheduleList' => $lazyScheduleList,
             'loadedScheduleIds' => $initialListSchedules->pluck('id')->map(fn ($id) => (string) $id)->values(),
-            'loadedWeekStarts' => $lazyScheduleList ? collect([$initialListWeekStart->toDateString()]) : collect(),
+            'loadedWeekStarts' => $lazyScheduleList && $initialListWeekStart
+                ? collect([$initialListWeekStart->toDateString()])
+                : collect(),
             'initialModalSchedules' => $initialModalSchedules,
             'lazyWeekFragmentUrl' => $courseOffering ? route('maker.course_offerings.schedules.week_fragment', $courseOffering) : null,
             'dayViewUrl' => $this->schedulePeriodUrl($courseOffering, $periodStart, $isWorkspace, 'day', $includeWeekends, $selectedInstructorId, $selectedTermId),
@@ -657,6 +670,108 @@ class ScheduleController extends Controller
             'instructors.instructorProfile.department',
             'studentGroups',
         ];
+    }
+
+    private function scheduleSummaryRelations(): array
+    {
+        return [
+            'activityType',
+            'term',
+            'room',
+            'instructors.instructorProfile.department',
+            'studentGroups',
+        ];
+    }
+
+    private function loadScheduleWeekSchedules(
+        CourseOffering $courseOffering,
+        CarbonImmutable $weekStart,
+        CarbonImmutable $weekEnd,
+        ?int $selectedTermId = null,
+        ?int $selectedInstructorId = null
+    ): Collection {
+        $courseOffering->loadMissing([
+            'course.curriculum',
+            'course.department',
+            'academicYear.terms',
+            'instructorPool.instructorProfile.department',
+            'studentGroups' => fn ($query) => $query->orderBy('group_code'),
+        ]);
+
+        $schedules = $this->orderSchedulesByDate(
+            $this->filterSchedulesByDateRange(
+                Schedule::query()
+                    ->with($this->scheduleRelations())
+                    ->where('course_offering_id', $courseOffering->id)
+                    ->when($selectedInstructorId, fn ($q) => $q
+                        ->whereHas('instructors', fn ($iq) => $iq->where('users.id', $selectedInstructorId)))
+                    ->when($selectedTermId, fn ($q) => $q->where('term_id', $selectedTermId)),
+                $weekStart->toDateString(),
+                $weekEnd->toDateString()
+            )
+        )->get();
+
+        return $this->attachCourseOfferingToSchedules($schedules, $courseOffering);
+    }
+
+    private function attachCourseOfferingToSchedules(Collection $schedules, ?CourseOffering $courseOffering): Collection
+    {
+        if (! $courseOffering) {
+            return $schedules;
+        }
+
+        return $schedules
+            ->each(fn (Schedule $schedule) => $schedule->setRelation('courseOffering', $courseOffering))
+            ->values();
+    }
+
+    private function groupSchedulesForList(Collection $schedules): Collection
+    {
+        return $schedules
+            ->filter(fn (Schedule $schedule) => $schedule->start_date)
+            ->sortBy(fn (Schedule $schedule) => $schedule->start_date->toDateString() . ' ' . ($schedule->start_time ?? '00:00:00'))
+            ->groupBy(fn (Schedule $schedule) => $schedule->start_date->toDateString());
+    }
+
+    private function weekFragmentCacheKey(
+        Request $request,
+        CourseOffering $courseOffering,
+        CarbonImmutable $weekStart,
+        CarbonImmutable $weekEnd,
+        ?int $selectedTermId,
+        ?int $selectedInstructorId,
+        bool $includeWeekends
+    ): string {
+        $statsQuery = $this->filterSchedulesByDateRange(
+            Schedule::query()
+                ->where('course_offering_id', $courseOffering->id)
+                ->when($selectedInstructorId, fn ($q) => $q
+                    ->whereHas('instructors', fn ($iq) => $iq->where('users.id', $selectedInstructorId)))
+                ->when($selectedTermId, fn ($q) => $q->where('term_id', $selectedTermId)),
+            $weekStart->toDateString(),
+            $weekEnd->toDateString()
+        );
+
+        $stats = (clone $statsQuery)
+            ->selectRaw('COUNT(*) as schedule_count, MAX(updated_at) as max_updated_at')
+            ->first();
+        $conflictGeneration = (int) ScheduleConflictRun::query()
+            ->where('academic_year_id', $courseOffering->academic_year_id)
+            ->max('generation');
+        $sessionHash = hash('sha256', (string) $request->session()->token());
+
+        return 'schedules:week-fragment:' . hash('sha256', implode('|', [
+            'user:' . (int) Auth::id(),
+            'session:' . $sessionHash,
+            'offering:' . (int) $courseOffering->id,
+            'week:' . $weekStart->toDateString(),
+            'term:' . (string) ($selectedTermId ?? ''),
+            'instructor:' . (string) ($selectedInstructorId ?? ''),
+            'weekends:' . ($includeWeekends ? '1' : '0'),
+            'count:' . (int) ($stats?->schedule_count ?? 0),
+            'updated:' . (string) ($stats?->max_updated_at ?? ''),
+            'conflicts:' . $conflictGeneration,
+        ]));
     }
 
     private function scheduleFilterItems(Collection $schedules, ?AcademicYear $academicYear): Collection

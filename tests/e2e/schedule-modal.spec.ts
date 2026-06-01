@@ -41,3 +41,40 @@ test('schedule modal shows muted "ไม่มีผู้สอน" and datepic
     await expect(pop).toBeVisible({ timeout: 5000 });
   }
 });
+
+test('schedule detail modal opens from lazy list rows and grid cards', async ({ page }) => {
+  await login(page, 'admin_01');
+  await switchRole(page, 'course_head');
+
+  await page.goto('/maker/course-offerings', { waitUntil: 'domcontentloaded' });
+  const links = await page.getByTestId('course-offering-schedule-link').evaluateAll((els) => els.map((a: HTMLAnchorElement) => a.href));
+  test.expect(links.length, 'expected at least one offering with schedules').toBeGreaterThan(0);
+
+  await page.goto(links[0], { waitUntil: 'domcontentloaded' });
+  await page.getByTestId('schedule-list-toggle').first().click();
+
+  const firstHeader = page.getByTestId('schedule-day-group-toggle').first();
+  await expect(firstHeader).toBeVisible({ timeout: 10_000 });
+  const firstWeekStart = await firstHeader.getAttribute('data-schedule-week-start');
+  await firstHeader.click();
+
+  const listTrigger = page.locator('[data-testid="schedule-list-view"] [data-schedule-modal-trigger]:visible').first();
+  await expect(listTrigger).toBeVisible({ timeout: 10_000 });
+  await listTrigger.click();
+  await expect(page.getByTestId('schedule-detail-modal')).toBeVisible({ timeout: 5_000 });
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('schedule-detail-modal')).toBeHidden({ timeout: 5_000 });
+
+  test.expect(firstWeekStart, 'expected a list header with a week start').toBeTruthy();
+  const gridUrl = new URL(links[0]);
+  gridUrl.searchParams.set('week_start', firstWeekStart || '');
+  gridUrl.searchParams.set('date', firstWeekStart || '');
+  gridUrl.searchParams.set('period', 'week');
+  await page.goto(gridUrl.toString(), { waitUntil: 'domcontentloaded' });
+  await page.getByTestId('schedule-grid-toggle').first().click();
+
+  const gridTrigger = page.locator('[data-testid="schedule-grid-view-co"] [data-schedule-modal-trigger]:visible').first();
+  await expect(gridTrigger).toBeVisible({ timeout: 10_000 });
+  await gridTrigger.click();
+  await expect(page.getByTestId('schedule-detail-modal')).toBeVisible({ timeout: 5_000 });
+});
