@@ -27,6 +27,9 @@
             @include('shared.dashboard.admin_stats_strip')
         </section>
 
+        {{-- Visual overview (V3 8.1 — กราฟสรุปสถานะ) --}}
+        @include('shared.dashboard.admin_visual_overview')
+
         <section class="admin-section">
             <div class="admin-section-head admin-section-head-with-action">
                 <div>

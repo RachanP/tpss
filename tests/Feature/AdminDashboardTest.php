@@ -77,6 +77,29 @@ class AdminDashboardTest extends TestCase
         }
     }
 
+    public function test_admin_dashboard_renders_visual_overview_section(): void
+    {
+        $admin = $this->makeAdmin();
+        AcademicYear::create([
+            'name' => '2569',
+            'start_date' => '2026-08-01',
+            'end_date' => '2026-12-31',
+            'is_active' => true,
+            'phase' => 'scheduling',
+        ]);
+
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        $this->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertSee('ภาพรวมเชิงภาพ')
+            ->assertSee('data-testid="admin-visual-overview"', false)
+            ->assertSee('สถานะรายวิชาเปิดสอน')
+            ->assertSee('หลักสูตรแยกตามระดับ')
+            ->assertSee('ห้องและสถานที่แยกประเภท')
+            ->assertSee('<svg', false); // donut SVG render
+    }
+
     private function makeAdmin(): User
     {
         $user = User::create([
