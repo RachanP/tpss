@@ -798,101 +798,107 @@
                             <div style="color:var(--fg-3);font-size:12px;margin-top:2px;" x-text="user.department"></div>
                         </div>
 
-                        {{-- Role selector (coordinator = static badge) --}}
-                        <template x-if="user.is_coordinator">
-                            <div class="course-role-badge course-role-badge-head">
-                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7l7-4z"/>
-                                    <path d="M9 12l2 2 4-5"/>
-                                </svg>
-                                <span>หัวหน้าวิชา</span>
-                            </div>
-                        </template>
-                        <template x-if="!user.is_coordinator">
-                            <div class="course-role-control">
-                                @if($canEdit)
-                                <button type="button"
-                                    class="course-role-trigger"
-                                    :class="user.role_name ? 'is-assigned' : 'is-empty'"
-                                    @click.stop="roleMenuId = roleMenuId === user.id ? null : user.id"
-                                    :aria-expanded="roleMenuId === user.id"
-                                    aria-haspopup="listbox">
-                                    <span class="course-role-trigger-text" x-text="user.role_name || 'ยังไม่กำหนดบทบาท'"></span>
-                                    <svg class="course-role-chevron" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M6 9l6 6 6-6"/>
+                        <div class="instructor-pool-actions">
+                            {{-- Role selector (coordinator = static badge) --}}
+                            <template x-if="user.is_coordinator">
+                                <div class="course-role-badge course-role-badge-head">
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7l7-4z"/>
+                                        <path d="M9 12l2 2 4-5"/>
                                     </svg>
-                                </button>
-                                <div x-show="roleMenuId === user.id"
-                                    x-cloak
-                                    @click.outside="roleMenuId = null"
-                                    x-transition:enter="transition ease-out duration-150"
-                                    x-transition:enter-start="opacity-0 scale-95"
-                                    x-transition:enter-end="opacity-100 scale-100"
-                                    class="course-role-menu"
-                                    role="listbox">
+                                    <span>หัวหน้าวิชา</span>
+                                </div>
+                            </template>
+                            <template x-if="!user.is_coordinator">
+                                <div class="course-role-control">
+                                    @if($canEdit)
                                     <button type="button"
-                                        class="course-role-option"
-                                        :class="{ 'is-selected': !user.course_role_id }"
-                                        @click="changeRole(user.id, null)"
-                                        role="option">
-                                        <span class="course-role-option-label">ยังไม่กำหนดบทบาท</span>
-                                        <svg x-show="!user.course_role_id" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M20 6L9 17l-5-5"/>
+                                        class="course-role-trigger"
+                                        :class="user.role_name ? 'is-assigned' : 'is-empty'"
+                                        @click.stop="roleMenuId = roleMenuId === user.id ? null : user.id"
+                                        :aria-expanded="roleMenuId === user.id"
+                                        aria-haspopup="listbox">
+                                        <span class="course-role-trigger-text" x-text="user.role_name || 'ยังไม่กำหนดบทบาท'"></span>
+                                        <svg class="course-role-chevron" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M6 9l6 6 6-6"/>
                                         </svg>
                                     </button>
-                                    <template x-for="role in roles" :key="role.id">
+                                    <div x-show="roleMenuId === user.id"
+                                        x-cloak
+                                        @click.outside="roleMenuId = null"
+                                        x-transition:enter="transition ease-out duration-150"
+                                        x-transition:enter-start="opacity-0 scale-95"
+                                        x-transition:enter-end="opacity-100 scale-100"
+                                        class="course-role-menu"
+                                        role="listbox">
                                         <button type="button"
                                             class="course-role-option"
-                                            :class="{ 'is-selected': user.course_role_id === role.id }"
-                                            @click="changeRole(user.id, role.id)"
+                                            :class="{ 'is-selected': !user.course_role_id }"
+                                            @click="changeRole(user.id, null)"
                                             role="option">
-                                            <span class="course-role-option-label" x-text="role.name"></span>
-                                            <svg x-show="user.course_role_id === role.id" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                            <span class="course-role-option-label">ยังไม่กำหนดบทบาท</span>
+                                            <svg x-show="!user.course_role_id" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                                 <path d="M20 6L9 17l-5-5"/>
                                             </svg>
                                         </button>
-                                    </template>
+                                        <template x-for="role in roles" :key="role.id">
+                                            <button type="button"
+                                                class="course-role-option"
+                                                :class="{ 'is-selected': user.course_role_id === role.id }"
+                                                @click="changeRole(user.id, role.id)"
+                                                role="option">
+                                                <span class="course-role-option-label" x-text="role.name"></span>
+                                                <svg x-show="user.course_role_id === role.id" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M20 6L9 17l-5-5"/>
+                                                </svg>
+                                            </button>
+                                        </template>
+                                    </div>
+                                    @else
+                                    <div class="course-role-readonly" :class="user.role_name ? 'is-assigned' : 'is-empty'">
+                                        <span class="course-role-dot"></span>
+                                        <span x-text="user.role_name || 'ยังไม่กำหนดบทบาท'"></span>
+                                    </div>
+                                    @endif
                                 </div>
-                                @else
-                                <div class="course-role-readonly" :class="user.role_name ? 'is-assigned' : 'is-empty'">
-                                    <span class="course-role-dot"></span>
-                                    <span x-text="user.role_name || 'ยังไม่กำหนดบทบาท'"></span>
-                                </div>
-                                @endif
-                            </div>
-                        </template>
+                            </template>
 
-                        {{-- V2 delegation: หัวหน้าวิชามอบหมายให้อาจารย์ช่วยจัดตาราง offering นี้ --}}
-                        @if($canEdit)
-                        <button type="button" x-show="!user.is_coordinator" @click="togglePermission(user.id)"
-                            class="delegate-toggle" :class="user.can_schedule ? 'is-on' : 'is-off'"
-                            :title="user.can_schedule ? 'ยกเลิกสิทธิ์ช่วยจัดตาราง' : 'ให้ช่วยจัดตาราง'"
-                            :aria-pressed="user.can_schedule">
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M9 16l2 2 4-4"/>
-                            </svg>
-                            <span x-text="user.can_schedule ? 'ช่วยจัดตาราง' : 'ให้ช่วยจัดตาราง'"></span>
-                        </button>
-                        @else
-                        <template x-if="!user.is_coordinator && user.can_schedule">
-                            <span class="delegate-toggle is-on" style="cursor:default;">
+                            {{-- V2 delegation: หัวหน้าวิชามอบหมายให้อาจารย์ช่วยจัดตาราง offering นี้ --}}
+                            @if($canEdit)
+                            <div x-show="user.is_coordinator" class="delegate-toggle-spacer" aria-hidden="true"></div>
+                            <button type="button" x-show="!user.is_coordinator" @click="togglePermission(user.id)"
+                                class="delegate-toggle" :class="user.can_schedule ? 'is-on' : 'is-off'"
+                                :title="user.can_schedule ? 'ยกเลิกสิทธิ์ช่วยจัดตาราง' : 'ให้ช่วยจัดตาราง'"
+                                :aria-pressed="user.can_schedule">
                                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
                                     <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M9 16l2 2 4-4"/>
                                 </svg>
-                                <span>ช่วยจัดตาราง</span>
-                            </span>
-                        </template>
-                        @endif
+                                <span x-text="user.can_schedule ? 'ช่วยจัดตาราง' : 'ให้ช่วยจัดตาราง'"></span>
+                            </button>
+                            @else
+                            <template x-if="user.is_coordinator || !user.can_schedule">
+                                <span class="delegate-toggle-spacer" aria-hidden="true"></span>
+                            </template>
+                            <template x-if="!user.is_coordinator && user.can_schedule">
+                                <span class="delegate-toggle is-on" style="cursor:default;">
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M9 16l2 2 4-4"/>
+                                    </svg>
+                                    <span>ช่วยจัดตาราง</span>
+                                </span>
+                            </template>
+                            @endif
 
-                        @if($canEdit)
-                        <button type="button" x-show="!user.is_coordinator" @click="remove(user.id)" title="ลบอาจารย์ออกจากชุดผู้สอน"
-                            style="background:transparent;border:none;cursor:pointer;width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;color:var(--fg-3);border-radius:50%;flex-shrink:0;transition:all 0.15s;"
-                            @mouseenter="$el.style.background='#fee2e2';$el.style.color='#dc2626'"
-                            @mouseleave="$el.style.background='transparent';$el.style.color='var(--fg-3)'">
-                            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                        </button>
-                        <div x-show="user.is_coordinator" style="width:32px;flex-shrink:0;"></div>
-                        @endif
+                            @if($canEdit)
+                            <button type="button" x-show="!user.is_coordinator" @click="remove(user.id)" title="ลบอาจารย์ออกจากชุดผู้สอน"
+                                class="instructor-remove-button"
+                                @mouseenter="$el.style.background='#fee2e2';$el.style.color='#dc2626'"
+                                @mouseleave="$el.style.background='transparent';$el.style.color='var(--fg-3)'">
+                                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            </button>
+                            <div x-show="user.is_coordinator" class="instructor-action-spacer" aria-hidden="true"></div>
+                            @endif
+                        </div>
                     </div>
                 </template>
             </div>
@@ -912,9 +918,44 @@
         /* V2 delegation toggle — มอบหมายอาจารย์ช่วยจัดตาราง */
         .delegate-toggle {
             display:inline-flex; align-items:center; gap:6px; flex-shrink:0;
+            justify-content:center; width:142px;
             height:28px; padding:0 11px; border-radius:999px;
             font-family:var(--font-sans); font-size:12px; font-weight:600;
             cursor:pointer; transition:background .15s,border-color .15s,color .15s; white-space:nowrap;
+        }
+        .instructor-pool-actions {
+            display:grid;
+            grid-template-columns:170px 142px 32px;
+            align-items:center;
+            gap:10px;
+            flex:0 0 auto;
+        }
+        .delegate-toggle-spacer,
+        .instructor-action-spacer {
+            display:block;
+            flex-shrink:0;
+        }
+        .delegate-toggle-spacer {
+            width:142px;
+            height:28px;
+        }
+        .instructor-action-spacer {
+            width:32px;
+            height:32px;
+        }
+        .instructor-remove-button {
+            width:32px;
+            height:32px;
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            flex-shrink:0;
+            border:0;
+            border-radius:50%;
+            background:transparent;
+            color:var(--fg-3);
+            cursor:pointer;
+            transition:all 0.15s;
         }
         .delegate-toggle.is-off {
             background:var(--bg-2); border:1px solid var(--line-2); color:var(--fg-3);
@@ -1699,9 +1740,21 @@
         }
 
         @media (max-width: 720px) {
+            .instructor-pool-actions {
+                width:100%;
+                grid-template-columns:1fr;
+                gap:8px;
+            }
             .course-role-control,
             .course-role-badge-head {
                 width: 100%;
+            }
+            .delegate-toggle,
+            .delegate-toggle-spacer {
+                width: 100%;
+            }
+            .instructor-action-spacer {
+                display: none;
             }
 
             .group-builder-main {
