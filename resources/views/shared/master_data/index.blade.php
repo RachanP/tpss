@@ -50,6 +50,9 @@
     <div x-data="{
         courseFormErrorState: {{ Js::from($courseFormErrorState) }},
         activeTab: {{ Js::from($courseFormHasErrors ? 'courses' : null) }} || new URLSearchParams(window.location.search).get('tab') || 'instructors',
+        tabLoading: false,
+        tabSwitchMinHeight: 0,
+        tabSwitchTimer: null,
         filters: {
             instructors: { keyword: '', department_id: '' },
             departments: { keyword: '' },
@@ -73,6 +76,27 @@
         linkedCourseId: new URLSearchParams(window.location.search).get('edit_course'),
         cleanMasterDataUrl(tab = this.activeTab) {
             history.replaceState(null, '', window.location.pathname + '?tab=' + encodeURIComponent(tab));
+        },
+        setActiveTab(tab) {
+            if (this.activeTab === tab) return;
+
+            const scrollY = window.scrollY;
+            this.tabLoading = true;
+            this.tabSwitchMinHeight = Math.ceil(this.$root.getBoundingClientRect().height);
+            this.activeTab = tab;
+
+            window.clearTimeout(this.tabSwitchTimer);
+            this.$nextTick(() => {
+                window.requestAnimationFrame(() => {
+                    const maxScrollY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+                    window.scrollTo({ top: Math.min(scrollY, maxScrollY), behavior: 'auto' });
+
+                    this.tabSwitchTimer = window.setTimeout(() => {
+                        this.tabLoading = false;
+                        this.tabSwitchMinHeight = 0;
+                    }, 220);
+                });
+            });
         },
         openLinkedRecordFromQuery() {
             const link = [
@@ -833,6 +857,9 @@
             window.tpssConfirmDelete(formId, itemLabel, warnText);
         }
     }"
+    class="master-data-page"
+    :class="{ 'is-tab-loading': tabLoading }"
+    :style="tabSwitchMinHeight ? 'min-height: ' + tabSwitchMinHeight + 'px' : ''"
     x-init="
         if (!['departments', 'curriculums', 'student_cohorts', 'courses', 'instructors', 'location_types', 'activity_types'].includes(activeTab)) {
             activeTab = 'instructors';
@@ -916,7 +943,7 @@
             <div class="tabs"
                 style="display: flex; gap: 8px; background: var(--bg-2); padding: 4px; border-radius: 8px; border: 1px solid var(--border); overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch;">
                 {{-- 1. ภาควิชา (ต้องมีก่อนสร้างหลักสูตร/อาจารย์) --}}
-                <button type="button" @click="activeTab = 'departments'"
+                <button type="button" @click="setActiveTab('departments')"
                     :class="activeTab === 'departments' ? 'btn-primary' : 'btn btn-ghost'"
                     style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
@@ -928,7 +955,7 @@
                     @if(!$isAdmin)@include('shared.master_data._lock_icon')@endif
                 </button>
                 {{-- 2. หลักสูตร (ต้องมีก่อนสร้างรายวิชา/กลุ่ม) --}}
-                <button type="button" data-testid="master-data-tab-curriculums" @click="activeTab = 'curriculums'"
+                <button type="button" data-testid="master-data-tab-curriculums" @click="setActiveTab('curriculums')"
                     :class="activeTab === 'curriculums' ? 'btn-primary' : 'btn btn-ghost'"
                     style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
@@ -939,7 +966,7 @@
                     @if(!$isAdmin)@include('shared.master_data._lock_icon')@endif
                 </button>
                 {{-- 2b. กลุ่มชั้นปี (cohort — V2, ป.ตรี) --}}
-                <button type="button" data-testid="master-data-tab-student-cohorts" @click="activeTab = 'student_cohorts'"
+                <button type="button" data-testid="master-data-tab-student-cohorts" @click="setActiveTab('student_cohorts')"
                     :class="activeTab === 'student_cohorts' ? 'btn-primary' : 'btn btn-ghost'"
                     style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
@@ -953,7 +980,7 @@
                     @if(!$isAdmin)@include('shared.master_data._lock_icon')@endif
                 </button>
                 {{-- 3. รายวิชา (ต้องมีหลักสูตรก่อน) --}}
-                <button type="button" data-testid="master-data-tab-courses" @click="activeTab = 'courses'"
+                <button type="button" data-testid="master-data-tab-courses" @click="setActiveTab('courses')"
                     :class="activeTab === 'courses' ? 'btn-primary' : 'btn btn-ghost'"
                     style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
@@ -964,7 +991,7 @@
                     รายวิชา
                 </button>
                 {{-- 4. อาจารย์ผู้สอน (ต้องมีภาควิชาก่อน) --}}
-                <button type="button" @click="activeTab = 'instructors'"
+                <button type="button" @click="setActiveTab('instructors')"
                     :class="activeTab === 'instructors' ? 'btn-primary' : 'btn btn-ghost'"
                     style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
@@ -978,7 +1005,7 @@
                     @if(!$isAdmin)@include('shared.master_data._lock_icon')@endif
                 </button>
                 {{-- 5. ห้องและสถานที่ (รวมประเภท) --}}
-                <button type="button" @click="activeTab = 'location_types'"
+                <button type="button" @click="setActiveTab('location_types')"
                     :class="activeTab === 'location_types' ? 'btn-primary' : 'btn btn-ghost'"
                     style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
@@ -989,7 +1016,7 @@
                     ห้องและสถานที่
                 </button>
                 {{-- 8. ประเภทกิจกรรม (ใช้ตอนสร้างตาราง) --}}
-                <button type="button" @click="activeTab = 'activity_types'"
+                <button type="button" @click="setActiveTab('activity_types')"
                     :class="activeTab === 'activity_types' ? 'btn-primary' : 'btn btn-ghost'"
                     style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
@@ -1000,6 +1027,19 @@
                     @if(!$isAdmin)@include('shared.master_data._lock_icon')@endif
                 </button>
 
+            </div>
+        </div>
+
+        <div class="m7-tab-skeleton" x-show="tabLoading" x-transition.opacity>
+            <div class="m7-skel-toolbar">
+                <span></span>
+                <span></span>
+            </div>
+            <div class="m7-skel-table">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
             </div>
         </div>
 
@@ -3453,6 +3493,66 @@
             background: var(--bg-3);
         }
 
+        .master-data-page.is-tab-loading > [x-show*="activeTab ==="] {
+            display: none !important;
+        }
+
+        .m7-tab-skeleton {
+            margin-bottom: 22px;
+            padding: 16px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 12%, var(--border));
+            border-radius: var(--r-lg);
+            background: var(--surface);
+            box-shadow:
+                0 1px 2px rgba(0, 36, 84, 0.05),
+                0 16px 34px -28px rgba(0, 36, 84, 0.26);
+        }
+
+        .m7-skel-toolbar {
+            display: flex;
+            justify-content: space-between;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+
+        .m7-skel-toolbar span,
+        .m7-skel-table span {
+            display: block;
+            border-radius: var(--r-md);
+            background:
+                linear-gradient(90deg,
+                    color-mix(in oklch, var(--bg-2) 84%, var(--surface)) 0%,
+                    color-mix(in oklch, var(--brand-navy) 5%, var(--surface)) 44%,
+                    color-mix(in oklch, var(--bg-2) 84%, var(--surface)) 86%);
+            background-size: 220% 100%;
+            animation: m7Skeleton 1150ms ease-in-out infinite;
+        }
+
+        .m7-skel-toolbar span:first-child {
+            width: min(420px, 62%);
+            height: 42px;
+        }
+
+        .m7-skel-toolbar span:last-child {
+            width: 168px;
+            height: 42px;
+        }
+
+        .m7-skel-table {
+            display: grid;
+            gap: 10px;
+        }
+
+        .m7-skel-table span {
+            height: 58px;
+            border-radius: var(--r-sm);
+        }
+
+        @keyframes m7Skeleton {
+            0% { background-position: 120% 0; }
+            100% { background-position: -120% 0; }
+        }
+
         .m7-filter-bar {
             display: flex;
             flex-wrap: wrap;
@@ -3588,6 +3688,23 @@
         }
 
         @media (max-width: 760px) {
+            .m7-tab-skeleton {
+                padding: 12px;
+            }
+
+            .m7-skel-toolbar {
+                flex-direction: column;
+            }
+
+            .m7-skel-toolbar span:first-child,
+            .m7-skel-toolbar span:last-child {
+                width: 100%;
+            }
+
+            .m7-skel-table span {
+                height: 52px;
+            }
+
             .m7-filter-bar {
                 padding: 12px;
             }

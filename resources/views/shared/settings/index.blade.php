@@ -338,7 +338,7 @@
             <div class="card" style="margin-top: 16px;">
                 <div class="card-hdr">
                     <div>
-                        <div class="card-ttl">วันหยุดร (ระบบจะสร้างวันหยุดให้อัติโนมัติเมื่อเลือกปีการศึกษาปัจจุบัน)</div>
+                        <div class="card-ttl">วันหยุดราชการ (ระบบจะสร้างวันหยุดให้อัติโนมัติเมื่อเลือกปีการศึกษาปัจจุบัน)</div>
                     </div>
                     <div class="card-actions" style="display: flex; gap: 8px;">
                         <form method="POST" action="{{ route('admin.settings.holidays.sync') }}" style="margin: 0;">
@@ -751,6 +751,158 @@
             min-width: 150px;
         }
 
+        [x-show="openScheduleConfirmForm"],
+        [x-show="closeScheduleConfirmForm"] {
+            position: fixed !important;
+            inset: 0 !important;
+            z-index: 80 !important;
+            display: grid !important;
+            place-items: center !important;
+            padding: clamp(14px, 2vw, 24px) !important;
+            background:
+                color-mix(in oklch, var(--brand-navy) 18%, transparent) !important;
+            backdrop-filter: blur(3px);
+        }
+
+        [x-show="openScheduleConfirmForm"][style*="display: none"],
+        [x-show="closeScheduleConfirmForm"][style*="display: none"] {
+            display: none !important;
+        }
+
+        [x-show="openScheduleConfirmForm"] > div,
+        [x-show="closeScheduleConfirmForm"] > div {
+            min-height: auto !important;
+            width: min(100%, 560px) !important;
+            display: block !important;
+            padding: 0 !important;
+        }
+
+        [x-show="openScheduleConfirmForm"] > div > div,
+        [x-show="closeScheduleConfirmForm"] > div > div {
+            width: 100% !important;
+            max-height: min(720px, calc(100vh - 32px));
+            overflow: hidden !important;
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr) auto;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 12%, var(--border)) !important;
+            border-radius: var(--r-lg) !important;
+            background: var(--surface) !important;
+            box-shadow:
+                0 1px 2px rgba(0, 36, 84, 0.06),
+                0 28px 76px -38px rgba(0, 36, 84, 0.46) !important;
+        }
+
+        [x-show="openScheduleConfirmForm"] > div > div > div:first-child,
+        [x-show="closeScheduleConfirmForm"] > div > div > div:first-child {
+            position: relative;
+            display: grid;
+            grid-template-columns: 44px minmax(0, 1fr);
+            gap: 14px;
+            align-items: center;
+            padding: 20px 24px !important;
+            border-bottom: 1px solid var(--border) !important;
+            background: color-mix(in oklch, var(--brand-navy) 4%, var(--surface)) !important;
+        }
+
+        [x-show="openScheduleConfirmForm"] > div > div > div:first-child::before,
+        [x-show="closeScheduleConfirmForm"] > div > div > div:first-child::before {
+            content: "";
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border));
+            background:
+                linear-gradient(180deg,
+                    color-mix(in oklch, var(--brand-navy) 10%, var(--surface)),
+                    color-mix(in oklch, var(--brand-navy) 4%, var(--surface)));
+            box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--surface) 72%, transparent);
+        }
+
+        [x-show="closeScheduleConfirmForm"] > div > div > div:first-child::before {
+            border-color: color-mix(in oklch, var(--status-warning-fg) 22%, var(--border));
+            background:
+                linear-gradient(180deg,
+                    color-mix(in oklch, var(--status-warning-bg) 72%, var(--surface)),
+                    color-mix(in oklch, var(--status-warning-bg) 38%, var(--surface)));
+        }
+
+        [x-show="openScheduleConfirmForm"] > div > div > div:first-child > div:first-child,
+        [x-show="closeScheduleConfirmForm"] > div > div > div:first-child > div:first-child {
+            font-size: 18px !important;
+            line-height: 1.25 !important;
+            color: var(--fg-1) !important;
+        }
+
+        [x-show="openScheduleConfirmForm"] > div > div > div:first-child > div:last-child,
+        [x-show="closeScheduleConfirmForm"] > div > div > div:first-child > div:last-child {
+            margin-top: 3px !important;
+            color: var(--fg-3) !important;
+            font-size: 13px !important;
+            line-height: 1.45 !important;
+        }
+
+        [x-show="openScheduleConfirmForm"] > div > div > div:nth-child(2),
+        [x-show="closeScheduleConfirmForm"] > div > div > div:nth-child(2) {
+            overflow-y: auto;
+            padding: 22px 24px !important;
+            background: var(--surface) !important;
+        }
+
+        [x-show="openScheduleConfirmForm"] > div > div > div:nth-child(2) > div:first-child,
+        [x-show="closeScheduleConfirmForm"] > div > div > div:nth-child(2) > div:first-child {
+            color: var(--fg-2) !important;
+            font-size: 14px !important;
+            line-height: 1.7 !important;
+        }
+
+        [x-show="openScheduleConfirmForm"] > div > div > div:nth-child(2) > div:nth-child(n+2),
+        [x-show="closeScheduleConfirmForm"] > div > div > div:nth-child(2) > div:nth-child(n+2) {
+            margin-top: 12px !important;
+            padding: 12px 14px !important;
+            border-radius: var(--r-md) !important;
+            font-size: 13px !important;
+            font-weight: 700 !important;
+            line-height: 1.55 !important;
+        }
+
+        [x-show="openScheduleConfirmForm"] > div > div > div:nth-child(2) > div:last-child,
+        [x-show="closeScheduleConfirmForm"] > div > div > div:nth-child(2) > div:last-child {
+            border: 1px solid var(--status-warning-border) !important;
+            background: var(--status-warning-bg) !important;
+            color: var(--status-warning-fg) !important;
+        }
+
+        [x-show="closeScheduleConfirmForm"] > div > div > div:nth-child(2) > div:nth-child(2) {
+            border: 1px solid var(--status-info-border) !important;
+            background: var(--status-info-bg) !important;
+            color: var(--status-info-fg) !important;
+        }
+
+        [x-show="openScheduleConfirmForm"] > div > div > div:last-child,
+        [x-show="closeScheduleConfirmForm"] > div > div > div:last-child {
+            display: flex !important;
+            justify-content: flex-end !important;
+            gap: 10px !important;
+            padding: 16px 24px !important;
+            border-top: 1px solid var(--border) !important;
+            background: color-mix(in oklch, var(--brand-navy) 3%, var(--bg-2)) !important;
+        }
+
+        [x-show="openScheduleConfirmForm"] > div > div > div:last-child .btn,
+        [x-show="closeScheduleConfirmForm"] > div > div > div:last-child .btn {
+            min-height: 42px;
+            border-radius: var(--r-md);
+            padding-inline: 18px;
+            font-weight: 800;
+        }
+
+        [x-show="openScheduleConfirmForm"] > div > div > div:last-child .btn-primary:disabled,
+        [x-show="closeScheduleConfirmForm"] > div > div > div:last-child .btn-primary:disabled {
+            opacity: .58 !important;
+            cursor: not-allowed !important;
+            filter: saturate(.75);
+        }
+
         @media (max-width: 1024px) {
             .settings-grid { grid-template-columns: 1fr; }
             .settings-hdr {
@@ -768,6 +920,54 @@
             .stats-grid { grid-template-columns: 1fr; }
             .tabs-container {
                 justify-content: flex-start !important;
+                width: 100%;
+            }
+
+            [x-show="openScheduleConfirmForm"],
+            [x-show="closeScheduleConfirmForm"] {
+                align-items: end !important;
+                place-items: end center !important;
+                padding: 10px !important;
+            }
+
+            [x-show="openScheduleConfirmForm"] > div,
+            [x-show="closeScheduleConfirmForm"] > div {
+                width: 100% !important;
+            }
+
+            [x-show="openScheduleConfirmForm"] > div > div,
+            [x-show="closeScheduleConfirmForm"] > div > div {
+                max-height: calc(100vh - 20px);
+                border-radius: 14px !important;
+            }
+
+            [x-show="openScheduleConfirmForm"] > div > div > div:first-child,
+            [x-show="closeScheduleConfirmForm"] > div > div > div:first-child {
+                grid-template-columns: 38px minmax(0, 1fr);
+                gap: 12px;
+                padding: 18px !important;
+            }
+
+            [x-show="openScheduleConfirmForm"] > div > div > div:first-child::before,
+            [x-show="closeScheduleConfirmForm"] > div > div > div:first-child::before {
+                width: 38px;
+                height: 38px;
+            }
+
+            [x-show="openScheduleConfirmForm"] > div > div > div:nth-child(2),
+            [x-show="closeScheduleConfirmForm"] > div > div > div:nth-child(2) {
+                padding: 18px !important;
+            }
+
+            [x-show="openScheduleConfirmForm"] > div > div > div:last-child,
+            [x-show="closeScheduleConfirmForm"] > div > div > div:last-child {
+                display: grid !important;
+                grid-template-columns: 1fr;
+                padding: 14px 18px 18px !important;
+            }
+
+            [x-show="openScheduleConfirmForm"] > div > div > div:last-child .btn,
+            [x-show="closeScheduleConfirmForm"] > div > div > div:last-child .btn {
                 width: 100%;
             }
         }

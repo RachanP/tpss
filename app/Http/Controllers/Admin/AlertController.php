@@ -60,7 +60,7 @@ class AlertController extends Controller
 
         $dismissedWarnings = self::getDismissedWarnings();
 
-        return view('admin.alerts.index', compact(
+        $viewData = compact(
             'criticals',
             'paViolations',
             'departmentsWithIssues',
@@ -68,7 +68,13 @@ class AlertController extends Controller
             'coursesWithoutStaff',
             'activeCoursesMissingHead',
             'dismissedWarnings',
-        ));
+        );
+
+        $alertsViewPath = resource_path('views/admin/alerts/index.blade.php');
+
+        return file_exists($alertsViewPath)
+            ? view()->file($alertsViewPath, $viewData)
+            : view('admin.alerts.index', $viewData);
     }
 
     public function updateDismissed(Request $request)

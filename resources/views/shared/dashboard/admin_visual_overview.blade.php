@@ -53,40 +53,49 @@
     .dash-visual-grid {
         display: grid;
         grid-template-columns: minmax(280px, 0.9fr) minmax(320px, 1.1fr);
-        align-items: start;
-        gap: 16px;
+        align-items: stretch;
+        gap: 18px;
     }
     .dash-chart-card {
-        background: var(--surface);
-        border: 1px solid var(--border);
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 3%, var(--surface)), var(--surface) 44%),
+            var(--surface);
+        border: 1px solid color-mix(in oklch, var(--brand-navy) 14%, var(--border));
         border-radius: var(--r-lg);
-        padding: 16px 18px;
+        padding: 20px 22px;
         min-width: 0;
+        min-height: 274px;
+        box-shadow:
+            0 1px 2px rgba(0, 36, 84, 0.05),
+            0 14px 30px -22px rgba(0, 36, 84, 0.32),
+            inset 0 1px 0 rgba(255, 255, 255, 0.7);
     }
     .dash-chart-title {
-        font-size: 12px;
-        font-weight: 700;
+        font-size: 13px;
+        font-weight: 800;
         color: var(--fg-2);
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        margin-bottom: 12px;
+        letter-spacing: 0;
+        margin-bottom: 18px;
     }
 
     /* ---- Donut ---- */
     .dash-donut-body {
         display: flex;
+        flex-direction: column;
         align-items: center;
-        gap: 16px;
-        flex-wrap: wrap;
+        justify-content: center;
+        gap: 20px;
+        min-height: 186px;
     }
     .dash-donut {
-        width: 118px;
-        height: 118px;
+        width: 158px;
+        height: 158px;
         flex-shrink: 0;
+        filter: drop-shadow(0 8px 14px rgba(0, 36, 84, 0.12));
     }
     .dash-donut-total {
         font-family: var(--font-display);
-        font-size: 30px;
+        font-size: 31px;
         font-weight: 800;
         fill: var(--fg-1);
     }
@@ -99,24 +108,27 @@
         list-style: none;
         margin: 0;
         padding: 0;
-        flex: 1 1 130px;
+        width: min(100%, 360px);
         min-width: 0;
         display: flex;
         flex-direction: column;
-        gap: 7px;
+        gap: 9px;
     }
     .dash-legend-row {
-        display: flex;
+        display: grid;
+        grid-template-columns: 14px minmax(0, 1fr) auto;
         align-items: center;
-        gap: 8px;
-        font-size: 12.5px;
+        gap: 10px;
+        font-size: 13px;
         color: var(--fg-2);
     }
     .dash-legend-dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 3px;
-        flex-shrink: 0;
+        width: 12px;
+        height: 12px;
+        border-radius: 4px;
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.18),
+            0 1px 2px rgba(0, 36, 84, 0.1);
     }
     .dash-legend-label {
         flex: 1 1 auto;
@@ -126,7 +138,7 @@
         white-space: nowrap;
     }
     .dash-legend-val {
-        font-weight: 700;
+        font-weight: 800;
         color: var(--fg-1);
         font-variant-numeric: tabular-nums;
         flex-shrink: 0;
@@ -145,39 +157,48 @@
         padding: 0;
         display: flex;
         flex-direction: column;
-        gap: 13px;
+        gap: 15px;
     }
     .dash-bar-head {
         display: flex;
         justify-content: space-between;
         align-items: baseline;
         gap: 8px;
-        margin-bottom: 5px;
+        margin-bottom: 7px;
     }
     .dash-bar-label {
-        font-size: 12.5px;
+        font-size: 13px;
         color: var(--fg-2);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
     }
     .dash-bar-val {
-        font-size: 12.5px;
-        font-weight: 700;
+        font-size: 13px;
+        font-weight: 800;
         color: var(--fg-1);
         font-variant-numeric: tabular-nums;
         flex-shrink: 0;
     }
     .dash-bar-track {
-        height: 8px;
-        background: var(--bg-2);
-        border-radius: 4px;
+        height: 11px;
+        background: color-mix(in oklch, var(--brand-navy) 9%, var(--bg-2));
+        border-radius: 999px;
         overflow: hidden;
+        border: 1px solid color-mix(in oklch, var(--brand-navy) 8%, transparent);
+        box-shadow: inset 0 1px 2px rgba(0, 36, 84, 0.1);
     }
     .dash-bar-fill {
         height: 100%;
-        background: var(--brand-navy);
-        border-radius: 4px;
+        background: linear-gradient(180deg,
+            color-mix(in oklch, var(--brand-navy) 88%, var(--surface)),
+            var(--brand-navy));
+        border-radius: 999px;
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.16),
+            0 1px 2px rgba(0, 36, 84, 0.22);
+        min-width: 10px;
+        transition: width 240ms ease;
     }
     .dash-chart-empty {
         font-size: 12.5px;

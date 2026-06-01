@@ -12,11 +12,11 @@
     $circ = 2 * M_PI * $radius;
     $acc = 0.0;
 @endphp
-<div class="dash-chart-card">
+<div class="dash-chart-card dash-donut-card">
     <div class="dash-chart-title">{{ $title }}</div>
     <div class="dash-donut-body">
         <svg viewBox="0 0 140 140" class="dash-donut" role="img" aria-label="{{ $title }}">
-            <circle cx="70" cy="70" r="{{ $radius }}" fill="none" stroke="var(--bg-2)" stroke-width="17"/>
+            <circle cx="70" cy="70" r="{{ $radius }}" fill="none" stroke="color-mix(in oklch, var(--brand-navy) 8%, var(--bg-2))" stroke-width="18"/>
             @if($segTotal > 0)
                 @foreach($segments as $s)
                     @php $count = (int) $s['count']; @endphp
@@ -28,9 +28,9 @@
                             $acc += $len;
                         @endphp
                         <circle cx="70" cy="70" r="{{ $radius }}" fill="none"
-                            stroke="{{ $s['color'] }}" stroke-width="17"
+                            stroke="{{ $s['color'] }}" stroke-width="18"
                             stroke-dasharray="{{ $dash }}" stroke-dashoffset="{{ $dashOffset }}"
-                            transform="rotate(-90 70 70)"/>
+                            stroke-linecap="round" transform="rotate(-90 70 70)"/>
                     @endif
                 @endforeach
             @endif

@@ -24,18 +24,18 @@
     </div>
 
     @if($allClear)
-    <div style="padding: 16px 20px; display: flex; align-items: center; gap: 10px; color: var(--status-success-fg); background: color-mix(in oklch, var(--status-success) 5%, var(--surface)); border-top: 1px solid var(--border);">
+    <div class="admin-alert-body admin-alert-empty">
         <span class="admin-alert-icon is-success" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>
         </span>
         <span style="font-size: 13px; font-weight: 600;">ข้อมูลทุกหมวดพร้อมสำหรับการจัดตารางสอน</span>
     </div>
     @else
-    <div style="border-top: 1px solid var(--border);">
+    <div class="admin-alert-body">
 
         {{-- Critical rows --}}
         @if($hasCritical)
-        <div style="padding: 8px 0; background: color-mix(in oklch, var(--status-conflict) 4%, var(--surface));">
+        <div class="admin-alert-group is-critical">
             <div class="admin-alert-group-label is-critical">ต้องแก้ก่อนเปิดจัดตาราง</div>
             @foreach($criticals as $c)
                 @php
@@ -82,8 +82,8 @@
                 ],
             ];
         @endphp
-        @if($hasCritical)<div style="border-top: 1px solid var(--border);"></div>@endif
-        <div style="padding: 8px 0;">
+        @if($hasCritical)<div class="admin-alert-divider"></div>@endif
+        <div class="admin-alert-group is-warning">
             <div class="admin-alert-group-label is-warning">ควรตรวจสอบเพื่อให้ข้อมูลครบถ้วน</div>
             @foreach($warningItems as $item)
                 @if($item['count'] > 0)
@@ -107,6 +107,7 @@
 <style>
     .admin-alert-card {
         border: 1px solid var(--border);
+        min-height: 100%;
     }
 
     .admin-alert-card .card-hdr > div:first-child {
@@ -114,8 +115,35 @@
         min-width: 0;
     }
 
+    .admin-alert-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        background: var(--surface);
+    }
+
+    .admin-alert-empty {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 16px 20px;
+        color: var(--status-success-fg);
+        background: color-mix(in oklch, var(--status-success) 5%, var(--surface));
+    }
+
+    .admin-alert-group {
+        padding: 10px 0 12px;
+    }
+
+    .admin-alert-group.is-critical {
+        background: color-mix(in oklch, var(--status-conflict) 4%, var(--surface));
+    }
+
+    .admin-alert-divider {
+        border-top: 1px solid var(--border);
+    }
+
     .admin-alert-group-label {
-        padding: 4px 16px 6px;
+        padding: 0 20px 8px;
         font-size: 11px;
         font-weight: 800;
         line-height: 1.35;
@@ -130,11 +158,13 @@
     }
 
     .admin-alert-row {
-        display: flex;
+        display: grid;
+        grid-template-columns: 28px minmax(0, 1fr) auto auto;
         align-items: center;
         gap: 12px;
-        margin: 0 12px 6px;
-        padding: 9px 10px;
+        margin: 0 16px 8px;
+        min-height: 68px;
+        padding: 12px 14px;
         border: 1px solid var(--border);
         border-radius: var(--r-sm);
         text-decoration: none;
@@ -152,6 +182,10 @@
         box-shadow: 0 2px 10px rgba(0, 36, 84, 0.08);
         outline: none;
         transform: translateY(-1px);
+    }
+
+    .admin-alert-row:last-child {
+        margin-bottom: 0;
     }
 
     .admin-alert-icon {
@@ -177,11 +211,11 @@
     }
 
     .admin-alert-main {
-        flex: 1;
         min-width: 0;
-        font-size: 12.5px;
+        font-size: 13px;
         font-weight: 700;
         color: var(--fg-1);
+        line-height: 1.4;
     }
 
     .admin-alert-action {
@@ -193,6 +227,7 @@
         transition: opacity var(--dur-fast), transform var(--dur-fast);
         text-align: right;
         white-space: normal;
+        line-height: 1.35;
     }
 
     .admin-alert-status {
@@ -256,14 +291,16 @@
     @media (max-width: 720px) {
         .admin-alert-row {
             align-items: flex-start;
-            flex-wrap: wrap;
+            grid-template-columns: 28px minmax(0, 1fr) auto;
         }
 
         .admin-alert-action {
+            grid-column: 2 / -1;
             order: 3;
             width: 100%;
             opacity: 1;
             transform: none;
+            text-align: left;
         }
 
         .admin-alert-status {
@@ -278,7 +315,7 @@
         }
 
         .admin-alert-main {
-            flex-basis: 100%;
+            grid-column: 2 / -1;
         }
     }
 </style>
