@@ -124,6 +124,21 @@
             'action' => 'ไปจัดการหัวหน้าวิชา',
         ],
     ];
+
+    // Visual phase stepper — lifecycle รอบปีการศึกษา (เตรียม → เปิดจัดตาราง → เผยแพร่)
+    $phaseOrder = ['preparation', 'scheduling', 'published'];
+    $currentPhaseIndex = $currentAcademicYear ? array_search($currentPhase, $phaseOrder, true) : -1;
+    $phaseSteps = [
+        ['label' => 'เตรียมข้อมูล', 'sub' => 'ตั้งค่า + ข้อมูลหลัก'],
+        ['label' => 'เปิดจัดตาราง', 'sub' => 'หัวหน้าวิชาจัดตาราง'],
+        ['label' => 'เผยแพร่ตาราง', 'sub' => 'อนุมัติ + แจกตาราง'],
+    ];
+    foreach ($phaseSteps as $idx => &$step) {
+        $step['state'] = $currentPhaseIndex < 0
+            ? 'upcoming'
+            : ($idx < $currentPhaseIndex ? 'done' : ($idx === $currentPhaseIndex ? 'current' : 'upcoming'));
+    }
+    unset($step);
 @endphp
 
 <div class="card admin-hero-card" data-testid="admin-hero">
@@ -148,6 +163,27 @@
                 จัดการสถานะระบบ
             </a>
         </div>
+    </div>
+
+    <div class="admin-phase-stepper" aria-label="ขั้นตอนรอบปีการศึกษา" data-testid="admin-phase-stepper">
+        @foreach($phaseSteps as $idx => $step)
+            <div class="phase-step is-{{ $step['state'] }}">
+                <div class="phase-step-node" aria-hidden="true">
+                    @if($step['state'] === 'done')
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                    @else
+                        <span>{{ $idx + 1 }}</span>
+                    @endif
+                </div>
+                <div class="phase-step-text">
+                    <div class="phase-step-label">{{ $step['label'] }}</div>
+                    <div class="phase-step-sub">{{ $step['sub'] }}</div>
+                </div>
+            </div>
+            @if(! $loop->last)
+                <div class="phase-step-bar {{ $idx < $currentPhaseIndex ? 'is-filled' : '' }}" aria-hidden="true"></div>
+            @endif
+        @endforeach
     </div>
 
     <div class="admin-status-banner is-{{ $systemStatus['tone'] }}">
@@ -199,6 +235,85 @@
         gap: 16px;
         flex-wrap: nowrap;
         margin-bottom: 22px;
+    }
+
+    /* ---- Phase stepper (lifecycle visual) ---- */
+    .admin-phase-stepper {
+        display: flex;
+        align-items: flex-start;
+        gap: 4px;
+        margin-bottom: 18px;
+        padding: 16px 20px;
+        border: 1px solid var(--border);
+        border-radius: var(--r-lg);
+        background: color-mix(in oklch, var(--brand-navy) 2.5%, var(--surface));
+    }
+    .phase-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        flex: 0 0 auto;
+        width: clamp(96px, 22%, 156px);
+        gap: 8px;
+    }
+    .phase-step-node {
+        width: 34px;
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--fg-3);
+        font-family: var(--font-display);
+        font-size: 14px;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+        flex-shrink: 0;
+    }
+    .phase-step.is-done .phase-step-node {
+        background: var(--brand-navy);
+        border-color: var(--brand-navy);
+        color: #fff;
+    }
+    .phase-step.is-current .phase-step-node {
+        border: 2px solid var(--brand-navy);
+        color: var(--brand-navy);
+        box-shadow: 0 0 0 4px color-mix(in oklch, var(--brand-navy) 12%, transparent);
+    }
+    .phase-step-label {
+        font-size: 12.5px;
+        font-weight: 700;
+        line-height: 1.3;
+        color: var(--fg-3);
+    }
+    .phase-step.is-done .phase-step-label,
+    .phase-step.is-current .phase-step-label {
+        color: var(--fg-1);
+    }
+    .phase-step-sub {
+        margin-top: 2px;
+        font-size: 11px;
+        line-height: 1.35;
+        color: var(--fg-3);
+    }
+    .phase-step-bar {
+        flex: 1 1 auto;
+        min-width: 20px;
+        height: 3px;
+        margin-top: 16px;
+        background: var(--border);
+        border-radius: 2px;
+    }
+    .phase-step-bar.is-filled {
+        background: var(--brand-navy);
+    }
+    @media (max-width: 560px) {
+        .admin-phase-stepper { padding: 14px 12px; }
+        .phase-step { width: clamp(70px, 26%, 110px); }
+        .phase-step-sub { display: none; }
     }
 
     .admin-hero-copy {

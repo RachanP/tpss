@@ -92,6 +92,7 @@ class AdminDashboardTest extends TestCase
 
         $this->get(route('admin.dashboard'))
             ->assertOk()
+            ->assertSee('data-testid="admin-phase-stepper"', false) // lifecycle visual
             ->assertSee('ภาพรวมเชิงภาพ')
             ->assertSee('data-testid="admin-visual-overview"', false)
             ->assertSee('สถานะรายวิชาเปิดสอน')
