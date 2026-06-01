@@ -10,30 +10,30 @@
     /* IBM Plex Sans Thai — UI / body text */
     @font-face {
       font-family: 'IBM Plex Sans Thai';
-      src: url('{{ asset("ui/fonts/IBMPlexSansThai-Regular.ttf") }}') format('truetype');
+      src: url('/ui/fonts/IBMPlexSansThai-Regular.ttf') format('truetype');
       font-weight: 400; font-style: normal; font-display: swap;
     }
     @font-face {
       font-family: 'IBM Plex Sans Thai';
-      src: url('{{ asset("ui/fonts/IBMPlexSansThai-Medium.ttf") }}') format('truetype');
+      src: url('/ui/fonts/IBMPlexSansThai-Medium.ttf') format('truetype');
       font-weight: 500; font-style: normal; font-display: swap;
     }
     @font-face {
       font-family: 'IBM Plex Sans Thai';
-      src: url('{{ asset("ui/fonts/IBMPlexSansThai-SemiBold.ttf") }}') format('truetype');
+      src: url('/ui/fonts/IBMPlexSansThai-SemiBold.ttf') format('truetype');
       font-weight: 600; font-style: normal; font-display: swap;
     }
     @font-face {
       font-family: 'IBM Plex Sans Thai';
-      src: url('{{ asset("ui/fonts/IBMPlexSansThai-Bold.ttf") }}') format('truetype');
+      src: url('/ui/fonts/IBMPlexSansThai-Bold.ttf') format('truetype');
       font-weight: 700; font-style: normal; font-display: swap;
     }
 
     /* Kanit — Headings */
-    @font-face { font-family: 'Kanit'; src: url('{{ asset("ui/fonts/Kanit-Regular.ttf") }}') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
-    @font-face { font-family: 'Kanit'; src: url('{{ asset("ui/fonts/Kanit-Medium.ttf") }}') format('truetype'); font-weight: 500; font-style: normal; font-display: swap; }
-    @font-face { font-family: 'Kanit'; src: url('{{ asset("ui/fonts/Kanit-SemiBold.ttf") }}') format('truetype'); font-weight: 600; font-style: normal; font-display: swap; }
-    @font-face { font-family: 'Kanit'; src: url('{{ asset("ui/fonts/Kanit-Bold.ttf") }}') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+    @font-face { font-family: 'Kanit'; src: url('/ui/fonts/Kanit-Regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+    @font-face { font-family: 'Kanit'; src: url('/ui/fonts/Kanit-Medium.ttf') format('truetype'); font-weight: 500; font-style: normal; font-display: swap; }
+    @font-face { font-family: 'Kanit'; src: url('/ui/fonts/Kanit-SemiBold.ttf') format('truetype'); font-weight: 600; font-style: normal; font-display: swap; }
+    @font-face { font-family: 'Kanit'; src: url('/ui/fonts/Kanit-Bold.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
   </style>
 
   <!-- ═══ Design System tokens (inline from colors_and_type.css) ═══ -->
@@ -551,7 +551,7 @@
 
     <!-- Mahidol Seal -->
     <div class="seal-row">
-      <img src="{{ asset('picture/Mahidol_U_logo.png') }}" width="72" height="72" alt="Mahidol University Logo" style="object-fit:contain;flex-shrink:0;">
+      <img src="/picture/Mahidol_U_logo.png" width="72" height="72" alt="Mahidol University Logo" style="object-fit:contain;flex-shrink:0;">
       <div class="seal-text-wrap">
         <span class="seal-th">มหาวิทยาลัยมหิดล</span>
         <span class="seal-en">Mahidol University</span>
@@ -630,7 +630,7 @@
     </div>
     @endif
 
-    <form method="POST" action="{{ route('login') }}" id="login-form" data-testid="login-form" novalidate autocomplete="on">
+    <form method="POST" action="/login" id="login-form" data-testid="login-form" novalidate autocomplete="on">
       @csrf
 
       <!-- Username field -->
