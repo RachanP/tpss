@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Symfony\Component\HttpFoundation\Request as SymfonyRequest;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -19,6 +20,21 @@ return Application::configure(basePath: dirname(__DIR__))
             ->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware): void {
+        $proxyWildcard = chr(42);
+        $trustedProxies = env('TRUSTED_PROXIES', $proxyWildcard);
+        $proxyList = $trustedProxies === $proxyWildcard
+            ? $proxyWildcard
+            : array_map('trim', explode(',', $trustedProxies));
+
+        $middleware->trustProxies(
+            at: $proxyList,
+            headers: SymfonyRequest::HEADER_X_FORWARDED_FOR
+                | SymfonyRequest::HEADER_X_FORWARDED_HOST
+                | SymfonyRequest::HEADER_X_FORWARDED_PORT
+                | SymfonyRequest::HEADER_X_FORWARDED_PROTO
+                | SymfonyRequest::HEADER_X_FORWARDED_PREFIX
+        );
+
         $middleware->web(append: [
             \App\Http\Middleware\CheckActiveUser::class,
         ]);

@@ -16,7 +16,7 @@ FROM php:8.3-apache AS app
 
 # system libs + PHP extensions ที่ Laravel 13 + MySQL ต้องใช้
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        git unzip default-mysql-client \
+        ca-certificates curl git unzip default-mysql-client \
         libzip-dev libpng-dev libonig-dev libicu-dev \
     && docker-php-ext-install -j"$(nproc)" \
         pdo_mysql mbstring bcmath zip gd intl opcache \
