@@ -5,12 +5,6 @@
         @include('shared.dashboard.admin_hero')
 
         <section class="admin-section">
-            <div class="admin-section-head">
-                <div>
-                    <h2>ต้องจัดการก่อนเปิดระบบ</h2>
-                    <p>เริ่มจากรายการสีแดงและสีเหลืองก่อน เพื่อให้เปิดช่วงจัดตารางได้</p>
-                </div>
-            </div>
             <div class="admin-action-grid">
                 @include('shared.dashboard.master_data_alerts')
                 @include('shared.dashboard.offering_pipeline')
@@ -18,12 +12,6 @@
         </section>
 
         <section class="admin-section">
-            <div class="admin-section-head">
-                <div>
-                    <h2>ข้อมูลพื้นฐานสำหรับจัดตาราง</h2>
-                    <p>ดูจำนวนข้อมูลหลักที่จำเป็นต่อการจัดตาราง เช่น ผู้ใช้งาน รายวิชา ห้อง และหลักสูตร</p>
-                </div>
-            </div>
             @include('shared.dashboard.admin_stats_strip')
         </section>
 
@@ -31,22 +19,10 @@
         @include('shared.dashboard.admin_visual_overview')
 
         <section class="admin-section">
-            <div class="admin-section-head admin-section-head-with-action">
-                <div>
-                    <h2>ภาระงานสอนของอาจารย์</h2>
-                    <p>ตรวจรายชื่ออาจารย์ ภาควิชา และเกณฑ์ชั่วโมงสอนก่อนเริ่มจัดตารางจริง</p>
-                </div>
-            </div>
             @include('shared.dashboard.instructors_workload', ['workloadPageSize' => 5])
         </section>
 
         <section class="admin-section">
-            <div class="admin-section-head">
-                <div>
-                    <h2>กิจกรรมล่าสุด</h2>
-                    <p>ติดตามการเปลี่ยนแปลงล่าสุดในระบบ และพื้นที่สำหรับตารางสอนถัดไป</p>
-                </div>
-            </div>
             <div class="admin-secondary-grid">
                 @include('shared.dashboard.recent-activity')
                 @include('shared.dashboard.upcoming-schedules')
@@ -70,36 +46,6 @@
             flex-direction: column;
             gap: 12px;
             min-width: 0;
-        }
-
-        .admin-section-head {
-            display: flex;
-            align-items: flex-end;
-            justify-content: space-between;
-            gap: 16px;
-            padding: 0 2px;
-            min-width: 0;
-        }
-
-        .admin-section-head > div {
-            min-width: 0;
-        }
-
-        .admin-section-head h2 {
-            margin: 0;
-            font-family: var(--font-display);
-            font-size: 17px;
-            font-weight: 700;
-            line-height: 1.35;
-            color: var(--fg-1);
-        }
-
-        .admin-section-head p {
-            margin: 3px 0 0;
-            max-width: 760px;
-            font-size: 12.5px;
-            line-height: 1.55;
-            color: var(--fg-3);
         }
 
         .admin-action-grid,
@@ -254,9 +200,6 @@
                 padding-inline: 18px;
             }
 
-            .admin-section-head {
-                align-items: flex-start;
-            }
         }
 
         @media (max-width: 1100px) {
@@ -280,27 +223,12 @@
                 padding-inline: 16px;
             }
 
-            .admin-section-head {
-                flex-direction: column;
-            }
         }
 
         @media (max-width: 720px) {
             .admin-dashboard {
                 padding: 16px;
                 gap: 22px;
-            }
-
-            .admin-section-head {
-                align-items: flex-start;
-            }
-
-            .admin-section-head h2 {
-                font-size: 16px;
-            }
-
-            .admin-section-head p {
-                font-size: 12px;
             }
 
             .admin-dashboard .card-hdr {

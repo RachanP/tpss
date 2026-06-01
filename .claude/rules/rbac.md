@@ -4,7 +4,7 @@
 
 | Role | สิทธิ์หลัก |
 |------|-----------|
-| `admin` | Read+Write ทุกส่วน, Admin Override แก้ไขตารางแทน course_head ได้ |
+| `admin` | จัดการผู้ใช้/ข้อมูลหลัก/ตั้งค่าระบบ; **ไม่มีสิทธิสร้างหรือแก้ไขตารางสอน**; ดูได้เฉพาะตารางสอนที่เผยแพร่แล้ว และอ่าน/นำออกรายงานภาระงาน |
 | `staff` | CRUD rooms/location_types/courses; Read-only departments/instructors/curriculums/activity_types; จัดการ academic_year; บันทึกตารางร่วมกับ course_head |
 | `course_head` | สร้าง/แก้ไขตาราง, ตรวจ conflict/warning, **ส่งขออนุมัติ** → executive |
 | `executive` | Read-only ทุกรายวิชา + **Approve/Reject เท่านั้น** — ห้าม implement ปุ่ม edit |

@@ -30,6 +30,20 @@ class NavigationBadgePerformanceTest extends TestCase
         $this->assertStringNotContainsString('AlertController::getSummary', $sidebar);
     }
 
+    public function test_sidebar_has_no_placeholder_hash_links(): void
+    {
+        $sidebar = file_get_contents(resource_path('views/components/sidebar.blade.php'));
+
+        $this->assertStringNotContainsString('href="#"', $sidebar);
+        $this->assertStringNotContainsString("route('staff.dashboard')", $sidebar);
+        $this->assertStringNotContainsString("route('maker.dashboard')", $sidebar);
+        $this->assertStringNotContainsString("route('lecturer.dashboard')", $sidebar);
+        $this->assertStringNotContainsString("route('approver.dashboard')", $sidebar);
+        $this->assertStringContainsString('nv-disabled', $sidebar);
+        $this->assertStringContainsString('nv-label', $sidebar);
+        $this->assertStringContainsString('กำลังพัฒนา', $sidebar);
+    }
+
     public function test_alert_flush_also_clears_admin_sidebar_badge_cache(): void
     {
         Cache::put('sidebar.badges.admin', ['critical' => 99, 'warnings' => 0], 300);

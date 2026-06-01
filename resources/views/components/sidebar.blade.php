@@ -22,7 +22,7 @@
         <img src="{{ asset('picture/Mahidol_U_logo.png') }}" alt="Logo"
             style="width: 42px; height: 42px; object-fit: contain; flex-shrink: 0;">
         <div>
-            <div class="sb-name">ระบบจัดตารางสอนฯ</div>
+            <div class="sb-name">ระบบจัดตารางสอน</div>
             <div class="sb-sub">คณะพยาบาลศาสตร์ ม.มหิดล</div>
         </div>
     </div>
@@ -135,12 +135,13 @@
         @if($activeRole === 'staff')
             <div class="sb-sec">เมนูหลัก</div>
             <!-- Staff Menus -->
-            <a href="#" class="nv {{ str_contains($currentPath, 'overview') ? 'on' : '' }}">
+            <span class="nv nv-disabled" role="link" aria-disabled="true" title="ฟีเจอร์ภาพรวมเจ้าหน้าที่กำลังอยู่ในช่วงพัฒนา">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
                 </svg>
-                ภาพรวม
-            </a>
+                <span class="nv-label">ภาพรวม</span>
+                <span class="nv-dev-badge">กำลังพัฒนา</span>
+            </span>
             <a href="{{ route('staff.settings') }}" class="nv {{ Request::routeIs('staff.settings') ? 'on' : '' }}">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -148,7 +149,7 @@
                     <line x1="8" y1="2" x2="8" y2="6"></line>
                     <line x1="3" y1="10" x2="21" y2="10"></line>
                 </svg>
-                ตั้งค่าปีการศึกษา
+                <span class="nv-label">ตั้งค่าปีการศึกษา</span>
             </a>
             <a href="{{ route('staff.master_data') }}" class="nv {{ str_contains($currentPath, 'master-data') ? 'on' : '' }}">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -156,7 +157,7 @@
                     <line x1="3" y1="9" x2="21" y2="9"></line>
                     <line x1="9" y1="21" x2="9" y2="9"></line>
                 </svg>
-                จัดการข้อมูลหลัก
+                <span class="nv-label">จัดการข้อมูลหลัก</span>
             </a>
             @if(!empty($canHelpSchedule))
             {{-- V2 delegation: เจ้าหน้าที่ที่ admin มอบหมายดูแลวิชา → ช่วยจัดตาราง --}}
@@ -168,10 +169,10 @@
                     <line x1="3" y1="10" x2="21" y2="10"></line>
                     <path d="M9 16l2 2 4-4"></path>
                 </svg>
-                ช่วยจัดตาราง
+                <span class="nv-label">ช่วยจัดตาราง</span>
             </a>
             @endif
-            <a href="#" class="nv">
+            <span class="nv nv-disabled" role="link" aria-disabled="true" title="ฟีเจอร์รายงานของเจ้าหน้าที่กำลังอยู่ในช่วงพัฒนา">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                     <polyline points="14 2 14 8 20 8"></polyline>
@@ -179,8 +180,9 @@
                     <line x1="16" y1="17" x2="8" y2="17"></line>
                     <polyline points="10 9 9 9 8 9"></polyline>
                 </svg>
-                รายงาน
-            </a>
+                <span class="nv-label">รายงาน</span>
+                <span class="nv-dev-badge">กำลังพัฒนา</span>
+            </span>
 
         @elseif($activeRole === 'course_head')
             @php
@@ -207,15 +209,16 @@
             @endphp
             <div class="sb-sec">เมนูหลัก</div>
             <!-- Maker Menus -->
-            <a href="#" class="nv {{ str_contains($currentPath, 'dashboard') ? 'on' : '' }}">
+            <span class="nv nv-disabled" role="link" aria-disabled="true" title="ฟีเจอร์ภาพรวมและแจ้งเตือนของหัวหน้าวิชากำลังอยู่ในช่วงพัฒนา">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="3" width="7" height="7"></rect>
                     <rect x="14" y="3" width="7" height="7"></rect>
                     <rect x="14" y="14" width="7" height="7"></rect>
                     <rect x="3" y="14" width="7" height="7"></rect>
                 </svg>
-                ภาพรวมและแจ้งเตือน
-            </a>
+                <span class="nv-label">ภาพรวมและแจ้งเตือน</span>
+                <span class="nv-dev-badge">กำลังพัฒนา</span>
+            </span>
             <a href="{{ route('maker.schedules.index') }}" class="nv {{ Request::routeIs('maker.schedules.*') || Request::routeIs('maker.course_offerings.schedules.*') ? 'on' : '' }}">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -223,7 +226,7 @@
                     <line x1="8" y1="2" x2="8" y2="6"></line>
                     <line x1="3" y1="10" x2="21" y2="10"></line>
                 </svg>
-                ตารางสอน
+                <span class="nv-label">ตารางสอน</span>
             </a>
             <a href="{{ route('maker.alerts.index') }}" class="nv {{ Request::routeIs('maker.alerts.*') ? 'on' : '' }}">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -231,7 +234,7 @@
                     <line x1="12" y1="9" x2="12" y2="13"></line>
                     <line x1="12" y1="17" x2="12.01" y2="17"></line>
                 </svg>
-                <span>แจ้งเตือน</span>
+                <span class="nv-label">แจ้งเตือน</span>
                 <span
                     class="nv-alert-badges"
                     data-conflict-badge
@@ -253,27 +256,29 @@
                     <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
                     <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                 </svg>
-                จัดการรายวิชา
+                <span class="nv-label">จัดการรายวิชา</span>
             </a>
-            <a href="#" class="nv">
+            <span class="nv nv-disabled" role="link" aria-disabled="true" title="ฟีเจอร์ประวัติส่งอนุมัติกำลังอยู่ในช่วงพัฒนา">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="20 6 9 17 4 12"></polyline>
                 </svg>
-                ประวัติส่งอนุมัติ
-            </a>
+                <span class="nv-label">ประวัติส่งอนุมัติ</span>
+                <span class="nv-dev-badge">กำลังพัฒนา</span>
+            </span>
 
         @elseif($activeRole === 'instructor')
             <div class="sb-sec">เมนูหลัก</div>
             <!-- Lecturer Menus -->
-            <a href="#" class="nv {{ str_contains($currentPath, 'dashboard') ? 'on' : '' }}">
+            <span class="nv nv-disabled" role="link" aria-disabled="true" title="ฟีเจอร์ภาพรวมอาจารย์กำลังอยู่ในช่วงพัฒนา">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                     <line x1="16" y1="2" x2="16" y2="6"></line>
                     <line x1="8" y1="2" x2="8" y2="6"></line>
                     <line x1="3" y1="10" x2="21" y2="10"></line>
                 </svg>
-                ตารางสอนของฉัน
-            </a>
+                <span class="nv-label">ตารางสอนของฉัน</span>
+                <span class="nv-dev-badge">กำลังพัฒนา</span>
+            </span>
             @if(!empty($canHelpSchedule))
             {{-- V2 delegation: เข้าหน้าจัดตารางในฐานะอาจารย์ที่หัวหน้าวิชามอบหมาย --}}
             <a href="{{ route('maker.schedules.index') }}" class="nv {{ Request::routeIs('maker.schedules.*') || Request::routeIs('maker.course_offerings.schedules.*') ? 'on' : '' }}">
@@ -284,57 +289,63 @@
                     <line x1="3" y1="10" x2="21" y2="10"></line>
                     <path d="M9 16l2 2 4-4"></path>
                 </svg>
-                ช่วยจัดตาราง
+                <span class="nv-label">ช่วยจัดตาราง</span>
             </a>
             @endif
-            <a href="#" class="nv">
+            <span class="nv nv-disabled" role="link" aria-disabled="true" title="ฟีเจอร์ภาระงานสอนรายบุคคลกำลังอยู่ในช่วงพัฒนา">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="10"></circle>
                     <polyline points="12 6 12 12 16 14"></polyline>
                 </svg>
-                ภาระงานสอน
-            </a>
-            <a href="#" class="nv">
+                <span class="nv-label">ภาระงานสอน</span>
+                <span class="nv-dev-badge">กำลังพัฒนา</span>
+            </span>
+            <span class="nv nv-disabled" role="link" aria-disabled="true" title="ฟีเจอร์วิชาที่รับผิดชอบกำลังอยู่ในช่วงพัฒนา">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
                     <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                 </svg>
-                วิชาที่รับผิดชอบ
-            </a>
+                <span class="nv-label">วิชาที่รับผิดชอบ</span>
+                <span class="nv-dev-badge">กำลังพัฒนา</span>
+            </span>
 
         @elseif($activeRole === 'executive')
             <div class="sb-sec">เมนูหลัก</div>
             <!-- Approver Menus -->
-            <a href="#" class="nv {{ str_contains($currentPath, 'dashboard') ? 'on' : '' }}">
+            <span class="nv nv-disabled" role="link" aria-disabled="true" title="ฟีเจอร์รออนุมัติของผู้บริหารกำลังอยู่ในช่วงพัฒนา">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                     <polyline points="22 4 12 14.01 9 11.01"></polyline>
                 </svg>
-                รออนุมัติ
-            </a>
-            <a href="#" class="nv">
+                <span class="nv-label">รออนุมัติ</span>
+                <span class="nv-dev-badge">กำลังพัฒนา</span>
+            </span>
+            <span class="nv nv-disabled" role="link" aria-disabled="true" title="ฟีเจอร์ตารางทั้งหมดสำหรับผู้บริหารกำลังอยู่ในช่วงพัฒนา">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                     <line x1="16" y1="2" x2="16" y2="6"></line>
                     <line x1="8" y1="2" x2="8" y2="6"></line>
                     <line x1="3" y1="10" x2="21" y2="10"></line>
                 </svg>
-                ตารางทั้งหมด
-            </a>
-            <a href="#" class="nv">
+                <span class="nv-label">ตารางทั้งหมด</span>
+                <span class="nv-dev-badge">กำลังพัฒนา</span>
+            </span>
+            <span class="nv nv-disabled" role="link" aria-disabled="true" title="ฟีเจอร์ตีกลับและรายการแก้ไขกำลังอยู่ในช่วงพัฒนา">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                 </svg>
-                ตีกลับ / แก้ไข
-            </a>
-            <a href="#" class="nv">
+                <span class="nv-label">ตีกลับ / แก้ไข</span>
+                <span class="nv-dev-badge">กำลังพัฒนา</span>
+            </span>
+            <span class="nv nv-disabled" role="link" aria-disabled="true" title="ฟีเจอร์รายงานภาพรวมสำหรับผู้บริหารกำลังอยู่ในช่วงพัฒนา">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="18" y1="20" x2="18" y2="10"></line>
                     <line x1="12" y1="20" x2="12" y2="4"></line>
                     <line x1="6" y1="20" x2="6" y2="14"></line>
                 </svg>
-                รายงานภาพรวม
-            </a>
+                <span class="nv-label">รายงานภาพรวม</span>
+                <span class="nv-dev-badge">กำลังพัฒนา</span>
+            </span>
 
         @elseif($activeRole === 'admin')
             @php
@@ -351,14 +362,14 @@
                     <rect x="14" y="14" width="7" height="7"></rect>
                     <rect x="3" y="14" width="7" height="7"></rect>
                 </svg>
-                ภาพรวมระบบ
+                <span class="nv-label">ภาพรวมระบบ</span>
             </a>
             <a href="{{ route('admin.alerts') }}" class="nv {{ Request::routeIs('admin.alerts') ? 'on' : '' }}">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                     <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
                 </svg>
-                <span>แจ้งเตือน</span>
+                <span class="nv-label">แจ้งเตือน</span>
                 @if($alertCritical > 0 || $alertWarnings > 0)
                     <span class="nv-alert-badges">
                         @if($alertCritical > 0)
@@ -396,7 +407,7 @@
                     <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
                     <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                 </svg>
-                จัดการผู้ใช้งาน
+                <span class="nv-label">จัดการผู้ใช้งาน</span>
             </a>
             <a href="{{ route('admin.master_data') }}" class="nv {{ Request::routeIs('admin.master_data') ? 'on' : '' }}">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -406,28 +417,30 @@
                     <path d="M2 18h10"></path>
                     <path d="M2 12h10"></path>
                 </svg>
-                ข้อมูลหลัก
+                <span class="nv-label">ข้อมูลหลัก</span>
             </a>
 
-            {{-- 3. จัดการตารางสอน --}}
-            <div class="sb-sec" style="margin-top: 15px;">จัดการตารางสอน</div>
-            <a href="#" class="nv">
+            {{-- 3. ตารางและรายงาน (admin = read-only, ไม่มีสิทธิแก้ไขตารางสอน) --}}
+            <div class="sb-sec" style="margin-top: 15px;">ตารางและรายงาน</div>
+            <span class="nv nv-disabled" role="link" aria-disabled="true" title="ฟีเจอร์ตารางสอนที่เผยแพร่แล้วกำลังอยู่ในช่วงพัฒนา">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="4" width="18" height="18" rx="2"></rect>
                     <line x1="16" y1="2" x2="16" y2="6"></line>
                     <line x1="8" y1="2" x2="8" y2="6"></line>
                     <line x1="3" y1="10" x2="21" y2="10"></line>
                 </svg>
-                ตารางสอน
-            </a>
-            <a href="#" class="nv">
+                <span class="nv-label">ตารางสอนที่เผยแพร่</span>
+                <span class="nv-dev-badge">กำลังพัฒนา</span>
+            </span>
+            <span class="nv nv-disabled" role="link" aria-disabled="true" title="ฟีเจอร์อ่านและนำออกรายงานภาระงานสอนกำลังอยู่ในช่วงพัฒนา">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="18" y1="20" x2="18" y2="10"></line>
                     <line x1="12" y1="20" x2="12" y2="4"></line>
                     <line x1="6" y1="20" x2="6" y2="14"></line>
                 </svg>
-                รายงาน
-            </a>
+                <span class="nv-label">รายงานภาระงาน</span>
+                <span class="nv-dev-badge">กำลังพัฒนา</span>
+            </span>
 
             {{-- 5. ระบบ --}}
             <div class="sb-sec" style="margin-top: 15px;">ระบบ</div>
@@ -436,7 +449,7 @@
                     <circle cx="12" cy="12" r="3"></circle>
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                 </svg>
-                ตั้งค่าระบบ
+                <span class="nv-label">ตั้งค่าระบบ</span>
             </a>
             <a href="{{ route('admin.audit_logs.index') }}"
                class="nv {{ Request::routeIs('admin.audit_logs.*') ? 'on' : '' }}"
@@ -448,7 +461,7 @@
                     <line x1="16" y1="17" x2="8" y2="17"></line>
                     <polyline points="10 9 9 9 8 9"></polyline>
                 </svg>
-                บันทึกกิจกรรม
+                <span class="nv-label">บันทึกกิจกรรม</span>
             </a>
         @endif
 
@@ -462,16 +475,17 @@
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                 <circle cx="12" cy="7" r="4"></circle>
             </svg>
-            ตั้งค่าบัญชี
+            <span class="nv-label">ตั้งค่าบัญชี</span>
         </button>
-        <a href="#" class="nv">
+        <span class="nv nv-disabled" role="link" aria-disabled="true" title="คู่มือการใช้งานกำลังอยู่ในช่วงพัฒนา">
             <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                 <polyline points="15 3 21 3 21 9"></polyline>
                 <line x1="10" y1="14" x2="21" y2="3"></line>
             </svg>
-            คู่มือการใช้งาน
-        </a>
+            <span class="nv-label">คู่มือการใช้งาน</span>
+            <span class="nv-dev-badge">กำลังพัฒนา</span>
+        </span>
         <form method="POST" action="{{ route('logout') }}" style="margin:0">
             @csrf
             <button type="submit" class="nv" data-testid="sidebar-logout">
@@ -480,7 +494,7 @@
                     <polyline points="16 17 21 12 16 7" />
                     <line x1="21" y1="12" x2="9" y2="12" />
                 </svg>
-                ออกจากระบบ
+                <span class="nv-label">ออกจากระบบ</span>
             </button>
         </form>
     </div>

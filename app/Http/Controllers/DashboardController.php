@@ -28,12 +28,32 @@ class DashboardController extends Controller
 
         return match($role) {
             'admin'       => redirect()->route('admin.dashboard'),
-            'staff'       => redirect()->route('staff.dashboard'),
-            'course_head' => redirect()->route('maker.dashboard'),
-            'executive'   => redirect()->route('approver.dashboard'),
-            'instructor'  => redirect()->route('lecturer.dashboard'),
-            default       => redirect()->route('staff.dashboard'),
+            'staff'       => redirect()->route('staff.settings'),
+            'course_head' => redirect()->route('maker.schedules.index'),
+            'executive'   => redirect()->route('dashboard.coming_soon'),
+            'instructor'  => $this->instructorLandingRedirect(),
+            default       => redirect()->route('dashboard.coming_soon'),
         };
+    }
+
+    public function comingSoon()
+    {
+        return view('shared.coming-soon');
+    }
+
+    private function instructorLandingRedirect()
+    {
+        $user = Auth::user();
+
+        $canHelpSchedule = $user
+            && CourseOffering::query()
+                ->schedulableBy((int) $user->id)
+                ->whereHas('academicYear', fn ($query) => $query->where('phase', 'scheduling'))
+                ->exists();
+
+        return $canHelpSchedule
+            ? redirect()->route('maker.schedules.index')
+            : redirect()->route('dashboard.coming_soon');
     }
 
     // ── Per-role placeholders ──────────────────────────────────────

@@ -60,6 +60,8 @@ class RoleSwitchTest extends TestCase
 
         $response->assertRedirect('/dashboard');
         $this->assertEquals('instructor', session('active_role'));
+
+        $this->get('/dashboard')->assertRedirect(route('dashboard.coming_soon'));
     }
 
     public function test_user_cannot_switch_to_unauthorized_role(): void
@@ -82,6 +84,38 @@ class RoleSwitchTest extends TestCase
         $response->assertRedirect('/dashboard');
         // Role should still be staff
         $this->assertEquals('staff', session('active_role'));
+
+        $this->get('/dashboard')->assertRedirect(route('staff.settings'));
+    }
+
+    public function test_dashboard_hub_avoids_unreleased_role_dashboards(): void
+    {
+        $this
+            ->withSession(['active_role' => 'staff'])
+            ->actingAs($this->user);
+
+        $this->get('/dashboard')->assertRedirect(route('staff.settings'));
+
+        $this->withSession(['active_role' => 'instructor']);
+        $this->get('/dashboard')->assertRedirect(route('dashboard.coming_soon'));
+
+        UserRole::create([
+            'user_id' => $this->user->id,
+            'role' => 'course_head',
+            'is_primary' => false,
+        ]);
+
+        $this->withSession(['active_role' => 'course_head']);
+        $this->get('/dashboard')->assertRedirect(route('maker.schedules.index'));
+
+        UserRole::create([
+            'user_id' => $this->user->id,
+            'role' => 'executive',
+            'is_primary' => false,
+        ]);
+
+        $this->withSession(['active_role' => 'executive']);
+        $this->get('/dashboard')->assertRedirect(route('dashboard.coming_soon'));
     }
 
     public function test_deep_link_auto_switches_to_allowed_route_role(): void

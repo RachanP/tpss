@@ -26,6 +26,7 @@ Route::middleware(['auth', 'no-back'])->group(function () {
 
     // Hub: redirect to role-specific dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/coming-soon', [DashboardController::class, 'comingSoon'])->name('dashboard.coming_soon');
     Route::get('/schedule-conflicts/{schedule}/details', [ScheduleController::class, 'conflictDetails'])
         ->name('schedule_conflicts.details')
         ->middleware('throttle:60,1');

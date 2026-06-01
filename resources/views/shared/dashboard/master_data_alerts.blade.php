@@ -25,6 +25,9 @@
 
     @if($allClear)
     <div style="padding: 16px 20px; display: flex; align-items: center; gap: 10px; color: var(--status-success-fg); background: color-mix(in oklch, var(--status-success) 5%, var(--surface)); border-top: 1px solid var(--border);">
+        <span class="admin-alert-icon is-success" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>
+        </span>
         <span style="font-size: 13px; font-weight: 600;">ข้อมูลทุกหมวดพร้อมสำหรับการจัดตารางสอน</span>
     </div>
     @else
@@ -41,6 +44,9 @@
                         : ($c['linkTxt'] ?? 'ไปแก้ไขข้อมูล');
                 @endphp
                 <a href="{{ $c['link'] }}" class="admin-alert-row is-critical" aria-label="{{ $criticalAction }}">
+                    <span class="admin-alert-icon is-critical" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    </span>
                     <span class="admin-alert-main">{{ $c['label'] }}</span>
                     <span class="admin-alert-action">{{ $criticalAction }}</span>
                     <span class="admin-alert-status is-critical" aria-hidden="true">แก้ไข</span>
@@ -82,6 +88,9 @@
             @foreach($warningItems as $item)
                 @if($item['count'] > 0)
                 <a href="{{ $item['link'] }}" class="admin-alert-row is-warning" aria-label="{{ $item['action'] }}">
+                    <span class="admin-alert-icon is-warning" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    </span>
                     <span class="admin-alert-main">{{ $item['label'] }}</span>
                     <span class="admin-alert-action">{{ $item['action'] }}</span>
                     <span class="pill p-warning" style="font-size:11px;">{{ $item['count'] }} {{ $item['unit'] }}</span>
@@ -143,6 +152,28 @@
         box-shadow: 0 2px 10px rgba(0, 36, 84, 0.08);
         outline: none;
         transform: translateY(-1px);
+    }
+
+    .admin-alert-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    .admin-alert-icon.is-critical {
+        color: var(--status-conflict-fg);
+        background: color-mix(in oklch, var(--status-conflict) 13%, transparent);
+    }
+    .admin-alert-icon.is-warning {
+        color: var(--status-warning-fg);
+        background: color-mix(in oklch, var(--status-warning) 16%, transparent);
+    }
+    .admin-alert-icon.is-success {
+        color: var(--status-success-fg);
+        background: color-mix(in oklch, var(--status-success) 14%, transparent);
     }
 
     .admin-alert-main {

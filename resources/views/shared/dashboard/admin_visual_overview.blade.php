@@ -1,18 +1,10 @@
 {{--
     Visual overview (V3 8.1 — dashboard เชิงภาพ แทน text wall)
     ใช้ data ที่ DashboardController::admin ส่งมาอยู่แล้ว: $pipeline, $stats
-    Impeccable: pure SVG/CSS · สีจัด = semantic เฉพาะ pipeline (สถานะ) · ที่เหลือ navy/gold tints
+    Impeccable: pure SVG/CSS · หลีกเลี่ยงซ้ำกับ offering_pipeline · ใช้ navy/gold tints สำหรับข้อมูลพื้นฐาน
 --}}
 @php
-    // 1) Donut สถานะรายวิชา (pipeline) — สีตามสถานะ (semantic, justified)
-    $pipelineSegments = [
-        ['label' => 'ฉบับร่าง',  'count' => $pipeline['draft']     ?? 0, 'color' => '#94a3b8'],
-        ['label' => 'รออนุมัติ', 'count' => $pipeline['pending']   ?? 0, 'color' => 'var(--status-warning)'],
-        ['label' => 'อนุมัติแล้ว','count' => $pipeline['published'] ?? 0, 'color' => 'var(--status-success)'],
-        ['label' => 'ตีกลับ',    'count' => $pipeline['rejected']  ?? 0, 'color' => 'var(--status-conflict)'],
-    ];
-
-    // 2) Donut หลักสูตรแยกระดับ — navy/gold tints (ไม่ใช่สถานะ → ไม่ใช้สีจัด)
+    // Donut หลักสูตรแยกระดับ — navy/gold tints (ไม่ใช่สถานะ → ไม่ใช้สีจัด)
     $byLevel = $stats['curriculums']['by_level'] ?? [];
     $levelSegments = [
         ['label' => 'ปริญญาตรี', 'count' => $byLevel['bachelor']  ?? 0, 'color' => 'var(--brand-navy)'],
@@ -20,26 +12,13 @@
         ['label' => 'ปริญญาเอก', 'count' => $byLevel['doctorate'] ?? 0, 'color' => '#c9a449'],
     ];
 
-    // 3) Bar ห้อง/สถานที่แยกประเภท
+    // Bar ห้อง/สถานที่แยกประเภท
     $roomTypes = ($stats['rooms']['by_type'] ?? collect())->take(6);
     $roomMax = $roomTypes->max('count') ?: 1;
 @endphp
 
 <section class="admin-section">
-    <div class="admin-section-head">
-        <div>
-            <h2>ภาพรวมเชิงภาพ</h2>
-            <p>สรุปสถานะรายวิชา หลักสูตร และห้องเรียนแบบกราฟ เพื่อกวาดสายตาได้เร็ว</p>
-        </div>
-    </div>
-
     <div class="dash-visual-grid" data-testid="admin-visual-overview">
-        @include('shared.dashboard._donut', [
-            'title'    => 'สถานะรายวิชาเปิดสอน',
-            'segments' => $pipelineSegments,
-            'unit'     => 'วิชา',
-        ])
-
         @include('shared.dashboard._donut', [
             'title'    => 'หลักสูตรแยกตามระดับ',
             'segments' => $levelSegments,
@@ -73,14 +52,15 @@
 <style>
     .dash-visual-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        grid-template-columns: minmax(280px, 0.9fr) minmax(320px, 1.1fr);
+        align-items: start;
         gap: 16px;
     }
     .dash-chart-card {
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: var(--r-lg);
-        padding: 18px 18px 20px;
+        padding: 16px 18px;
         min-width: 0;
     }
     .dash-chart-title {
@@ -89,19 +69,19 @@
         color: var(--fg-2);
         text-transform: uppercase;
         letter-spacing: 0.04em;
-        margin-bottom: 16px;
+        margin-bottom: 12px;
     }
 
     /* ---- Donut ---- */
     .dash-donut-body {
         display: flex;
         align-items: center;
-        gap: 18px;
+        gap: 16px;
         flex-wrap: wrap;
     }
     .dash-donut {
-        width: 132px;
-        height: 132px;
+        width: 118px;
+        height: 118px;
         flex-shrink: 0;
     }
     .dash-donut-total {
@@ -123,7 +103,7 @@
         min-width: 0;
         display: flex;
         flex-direction: column;
-        gap: 9px;
+        gap: 7px;
     }
     .dash-legend-row {
         display: flex;
@@ -204,5 +184,11 @@
         color: var(--fg-3);
         padding: 18px 0;
         text-align: center;
+    }
+
+    @media (max-width: 900px) {
+        .dash-visual-grid {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
