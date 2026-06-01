@@ -81,6 +81,16 @@ class AppServiceProvider extends ServiceProvider
                 is_string($activeRole) ? $activeRole : null,
                 $user?->id,
             ));
+
+            // V2 delegation: อาจารย์เห็นเมนู "ช่วยจัดตาราง" เฉพาะเมื่อถูกหัวหน้าวิชามอบหมายจริง
+            $instructorCanSchedule = false;
+            if ($activeRole === 'instructor' && $user) {
+                $instructorCanSchedule = \App\Models\CourseOffering::query()
+                    ->schedulableBy((int) $user->id)
+                    ->whereHas('academicYear', fn ($q) => $q->where('phase', 'scheduling'))
+                    ->exists();
+            }
+            $view->with('instructorCanSchedule', $instructorCanSchedule);
         });
     }
 }
