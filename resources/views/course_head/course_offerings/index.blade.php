@@ -9,10 +9,6 @@
 
 <x-app-layout title="จัดการรายวิชา">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap;">
-        <div>
-            <h1 class="h1" style="margin:0 0 6px;">จัดการรายวิชาที่รับผิดชอบ</h1>
-            <p class="body-sm" style="margin:0;">แสดงเฉพาะรายวิชาที่กำหนดให้คุณเป็นหัวหน้าวิชาในภาคการศึกษานั้น</p>
-        </div>
         @if($availableYears->count() > 0)
             <form method="GET" action="{{ route('maker.course_offerings.index') }}" style="
                 display:inline-flex;

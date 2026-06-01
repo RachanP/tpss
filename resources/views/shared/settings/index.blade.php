@@ -213,10 +213,7 @@
             <div class="card">
                 <div class="card-hdr">
                     <div>
-                        <div class="card-ttl">รายการปีการศึกษา</div>
-                        @if($isAdmin)
-                            <div style="font-size: 12px; color: var(--fg-3); margin-top: 4px;">Admin เปิด/ปิดช่วงจัดตาราง — หัวหน้าวิชาทุกท่านจัดตารางได้พร้อมกัน</div>
-                        @endif
+                        <div class="card-ttl">ตั้งค่าปีการศึกษา</div>
                     </div>
                     <div class="card-actions">
                         <button class="btn btn-primary" @click="openAddModal()">
@@ -341,10 +338,7 @@
             <div class="card" style="margin-top: 16px;">
                 <div class="card-hdr">
                     <div>
-                        <div class="card-ttl">วันหยุดราชการ</div>
-                        <div style="font-size: 12px; color: var(--fg-3); margin-top: 4px; line-height: 1.5; max-width: 620px;">
-                            ปฏิทินจัดตารางจะขึ้น "งดการเรียนการสอน" ในวันเหล่านี้ และไม่นับภาระงาน · ระบบดึงให้อัตโนมัติตอนสร้างปีการศึกษา (เพิ่ม/แก้/ลบเองได้)
-                        </div>
+                        <div class="card-ttl">วันหยุดร (ระบบจะสร้างวันหยุดให้อัติโนมัติเมื่อเลือกปีการศึกษาปัจจุบัน)</div>
                     </div>
                     <div class="card-actions" style="display: flex; gap: 8px;">
                         <form method="POST" action="{{ route('admin.settings.holidays.sync') }}" style="margin: 0;">

@@ -2,14 +2,6 @@
 
 <div class="audit-page" x-data="auditLogPage()">
 
-{{-- Page Header --}}
-<div class="page-hdr audit-page-hdr">
-    <div>
-        <h1 class="page-title">บันทึกการใช้งาน</h1>
-        <p class="page-sub">ประวัติการดำเนินการสำคัญในระบบ</p>
-    </div>
-</div>
-
 {{-- Filter Bar --}}
 <div class="card audit-filter-card">
     <div class="card-hdr audit-filter-hdr">
