@@ -125,15 +125,48 @@
 <style>
     [data-testid="recent-activity-widget"] {
         overflow: hidden;
+        border: 1px solid color-mix(in oklch, var(--brand-navy) 24%, var(--border));
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 7%, var(--surface)), var(--surface) 46%),
+            var(--surface);
+        box-shadow:
+            0 1px 2px rgba(0, 36, 84, 0.09),
+            0 18px 38px -30px rgba(0, 36, 84, 0.42);
     }
 
     [data-testid="recent-activity-widget"] .card-hdr {
         flex-wrap: wrap;
         gap: 10px 14px;
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 9%, var(--surface)), transparent 72%),
+            color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
+        border-bottom-color: color-mix(in oklch, var(--brand-navy) 18%, var(--border));
+    }
+
+    [data-testid="recent-activity-widget"] > div:not(.card-hdr) {
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 5%, var(--surface)), transparent 44%),
+            color-mix(in oklch, var(--brand-navy) 3%, var(--surface));
     }
 
     [data-testid="recent-activity-widget"] [data-testid="recent-activity-row"] {
         min-width: 0;
+        border-bottom-color: color-mix(in oklch, var(--brand-navy) 14%, var(--border)) !important;
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 5%, var(--surface)), transparent 72%),
+            var(--surface);
+        transition:
+            background 160ms ease,
+            box-shadow 160ms ease;
+    }
+
+    [data-testid="recent-activity-widget"] [data-testid="recent-activity-row"]:nth-child(even) {
+        background: color-mix(in oklch, var(--brand-navy) 2.5%, var(--surface));
+    }
+
+    [data-testid="recent-activity-widget"] [data-testid="recent-activity-row"]:hover {
+        background: color-mix(in oklch, var(--brand-navy) 6%, var(--surface));
+        box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--brand-navy) 16%, transparent);
     }
 
     @media (max-width: 540px) {

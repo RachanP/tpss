@@ -50,7 +50,7 @@
     $total = array_sum(array_column($columns, 'count'));
 @endphp
 
-<div class="card" data-testid="offering-pipeline">
+<div class="card offering-pipeline-card" data-testid="offering-pipeline">
     <div class="card-hdr">
         <div style="display: flex; align-items: center; gap: 10px;">
             <div class="card-ttl">สถานะรายวิชา</div>
@@ -85,7 +85,7 @@
                         default     => 'muted',
                     };
                 @endphp
-                <div class="offering-pipeline-row" style="background: {{ $col['bg'] }};">
+                <div class="offering-pipeline-row is-{{ $rowTone }}">
                     <span class="offering-pipeline-icon is-{{ $rowTone }}" aria-hidden="true">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">{!! $rowIcon !!}</svg>
                     </span>
@@ -107,9 +107,28 @@
 </div>
 
 <style>
+    .offering-pipeline-card {
+        border: 1px solid color-mix(in oklch, var(--brand-navy) 24%, var(--border));
+        background: var(--surface);
+        box-shadow:
+            0 1px 2px rgba(0, 36, 84, 0.09),
+            0 18px 38px -30px rgba(0, 36, 84, 0.42);
+    }
+
+    .offering-pipeline-card .card-hdr {
+        min-height: 76px;
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 9%, var(--surface)), transparent 72%),
+            color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
+    }
+
     .offering-pipeline-list {
-        display: flex;
-        flex-direction: column;
+        display: grid;
+        gap: 10px;
+        padding: 16px 18px 18px;
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 5%, var(--surface)), transparent 44%),
+            color-mix(in oklch, var(--brand-navy) 3%, var(--surface));
     }
 
     [data-testid="offering-pipeline"] .card-hdr > div:first-child {
@@ -122,11 +141,39 @@
         align-items: center;
         justify-content: space-between;
         gap: 14px;
-        min-height: 74px;
-        padding: 14px 16px;
-        border-bottom: 1px solid var(--border);
+        min-height: 76px;
+        padding: 13px 14px;
+        border: 1px solid color-mix(in oklch, var(--brand-navy) 20%, var(--border));
+        border-radius: var(--r-md);
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 5%, var(--surface)), transparent 72%),
+            var(--surface);
+        box-shadow:
+            0 1px 2px rgba(0, 36, 84, 0.08),
+            0 14px 28px -24px rgba(0, 36, 84, 0.36);
+        transition:
+            transform var(--dur-fast),
+            border-color var(--dur-fast),
+            background var(--dur-fast),
+            box-shadow var(--dur-fast);
     }
-    .offering-pipeline-row:last-child { border-bottom: none; }
+    .offering-pipeline-row:hover {
+        transform: translateY(-1px);
+        border-color: color-mix(in oklch, var(--brand-navy) 34%, var(--border));
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 8%, var(--surface)), transparent 72%),
+            color-mix(in oklch, var(--brand-navy) 7%, var(--surface));
+        box-shadow:
+            0 1px 2px rgba(0, 36, 84, 0.06),
+            0 16px 30px -24px rgba(0, 36, 84, 0.32);
+    }
+    .offering-pipeline-row:hover .offering-pipeline-icon {
+        box-shadow: 0 0 0 4px color-mix(in oklch, var(--brand-navy) 8%, transparent);
+        transform: scale(1.03);
+    }
+    .offering-pipeline-row:hover .offering-pipeline-count span {
+        color: color-mix(in oklch, var(--brand-navy) 88%, var(--fg-1));
+    }
     .offering-pipeline-icon {
         display: inline-flex;
         align-items: center;
@@ -135,22 +182,25 @@
         height: 32px;
         border-radius: 50%;
         flex-shrink: 0;
+        transition:
+            box-shadow var(--dur-fast),
+            transform var(--dur-fast);
     }
     .offering-pipeline-icon.is-success {
-        color: var(--status-success-fg);
-        background: color-mix(in oklch, var(--status-success) 13%, transparent);
+        color: var(--brand-navy);
+        background: color-mix(in oklch, var(--brand-navy) 13%, var(--surface));
     }
     .offering-pipeline-icon.is-warning {
-        color: var(--status-warning-fg);
-        background: color-mix(in oklch, var(--status-warning) 16%, transparent);
+        color: var(--brand-navy);
+        background: color-mix(in oklch, var(--brand-navy) 13%, var(--surface));
     }
     .offering-pipeline-icon.is-conflict {
-        color: var(--status-conflict-fg);
-        background: color-mix(in oklch, var(--status-conflict) 13%, transparent);
+        color: var(--brand-navy);
+        background: color-mix(in oklch, var(--brand-navy) 13%, var(--surface));
     }
     .offering-pipeline-icon.is-muted {
-        color: var(--fg-3);
-        background: var(--bg-2);
+        color: var(--brand-navy);
+        background: color-mix(in oklch, var(--brand-navy) 13%, var(--surface));
     }
     .offering-pipeline-main {
         flex: 1 1 auto;
@@ -164,6 +214,7 @@
         margin-bottom: 5px;
     }
     .offering-pipeline-title {
+        color: var(--brand-navy) !important;
         font-size: 12.5px;
         font-weight: 800;
         line-height: 1.35;
@@ -185,8 +236,9 @@
         font-family: var(--font-display);
         font-size: 25px;
         font-weight: 800;
-        color: var(--fg-1);
+        color: var(--brand-navy);
         line-height: 1;
+        transition: color var(--dur-fast);
     }
     .offering-pipeline-count small {
         font-size: 11px;

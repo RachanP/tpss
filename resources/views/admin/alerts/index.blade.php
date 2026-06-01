@@ -65,19 +65,34 @@
 
         <section class="alerts-summary-grid" aria-label="สรุปสถานะการแจ้งเตือน">
             <div class="alerts-summary-card {{ $criticalCount > 0 ? 'is-conflict' : 'is-success' }}">
-                <div class="alerts-summary-label">เงื่อนไขสำคัญ</div>
-                <div class="alerts-summary-value">{{ number_format($criticalCount) }}</div>
-                <div class="alerts-summary-note">{{ $criticalCount > 0 ? 'ต้องแก้ก่อนเปิดใช้งาน' : 'ผ่านทั้งหมด' }}</div>
+                <div class="alerts-summary-top">
+                    <span class="alerts-summary-index">01</span>
+                    <span class="alerts-summary-label">เงื่อนไขสำคัญ</span>
+                </div>
+                <div class="alerts-summary-body">
+                    <div class="alerts-summary-value">{{ number_format($criticalCount) }}</div>
+                    <div class="alerts-summary-note">{{ $criticalCount > 0 ? 'ต้องแก้ก่อนเปิดใช้งาน' : 'ผ่านทั้งหมด' }}</div>
+                </div>
             </div>
             <div class="alerts-summary-card {{ $visibleWarningCount > 0 ? 'is-warning' : 'is-success' }}">
-                <div class="alerts-summary-label">ข้อมูลควรตรวจ</div>
-                <div class="alerts-summary-value">{{ number_format($visibleWarningCount) }}</div>
-                <div class="alerts-summary-note">{{ $visibleWarningCount > 0 ? 'ยังควรเติมให้ครบ' : 'ไม่มีรายการที่เปิดเตือน' }}</div>
+                <div class="alerts-summary-top">
+                    <span class="alerts-summary-index">02</span>
+                    <span class="alerts-summary-label">รายการควรเติมให้ครบ</span>
+                </div>
+                <div class="alerts-summary-body">
+                    <div class="alerts-summary-value">{{ number_format($visibleWarningCount) }}</div>
+                    <div class="alerts-summary-note">{{ $visibleWarningCount > 0 ? 'ช่วยให้ข้อมูลตั้งต้นสมบูรณ์ขึ้น' : 'ไม่มีรายการที่เปิดเตือน' }}</div>
+                </div>
             </div>
             <div class="alerts-summary-card is-muted">
-                <div class="alerts-summary-label">ปิดแจ้งเตือนอยู่</div>
-                <div class="alerts-summary-value">{{ number_format($dismissedWarningCount) }}</div>
-                <div class="alerts-summary-note">ไม่นับใน badge ด้านซ้าย</div>
+                <div class="alerts-summary-top">
+                    <span class="alerts-summary-index">03</span>
+                    <span class="alerts-summary-label">ปิดแจ้งเตือนอยู่</span>
+                </div>
+                <div class="alerts-summary-body">
+                    <div class="alerts-summary-value">{{ number_format($dismissedWarningCount) }}</div>
+                    <div class="alerts-summary-note">ไม่นับในป้ายแจ้งเตือนด้านซ้าย</div>
+                </div>
             </div>
         </section>
 
@@ -90,17 +105,20 @@
                 @endif
             </span>
             <div>
-                <strong>{{ $totalIssues > 0 ? 'ยังมีข้อมูลที่ต้องตรวจสอบ' : 'ข้อมูลหลักพร้อมใช้งาน' }}</strong>
-                <span>{{ $totalIssues > 0 ? 'จัดการรายการด้านล่างเพื่อให้ข้อมูลตั้งต้นพร้อมก่อนเปิดช่วงจัดตาราง' : 'ไม่พบ Critical และ Warning ที่เปิดใช้งานอยู่' }}</span>
+                <strong>{{ $totalIssues > 0 ? 'สถานะรวม: ยังมีรายการที่ควรจัดการ' : 'สถานะรวม: ข้อมูลหลักพร้อมใช้งาน' }}</strong>
+                <span>{{ $totalIssues > 0 ? 'รายการด้านล่างคือข้อมูลตั้งต้นที่ควรแก้หรือเติมให้ครบ เพื่อให้หัวหน้าวิชาใช้จัดตารางได้แม่นยำขึ้น' : 'ไม่พบรายการ Critical หรือรายการควรเติมที่เปิดแจ้งเตือนอยู่' }}</span>
             </div>
         </section>
 
         @if($criticalCount > 0)
-            <section class="alerts-section">
+            <section class="alerts-section is-critical-section">
                 <div class="alerts-section-head">
-                    <div>
-                        <div class="alerts-section-title is-conflict">Critical</div>
-                        <div class="alerts-section-sub">ต้องแก้ไขก่อนใช้งานระบบจัดตาราง</div>
+                    <div class="alerts-section-title-group">
+                        <span class="alerts-section-kicker">ส่วนที่ 1</span>
+                        <div>
+                            <div class="alerts-section-title is-conflict">Critical</div>
+                            <div class="alerts-section-sub">ต้องแก้ไขก่อนใช้งานระบบจัดตาราง</div>
+                        </div>
                     </div>
                     <span class="alerts-count-pill is-conflict">{{ number_format($criticalCount) }} รายการ</span>
                 </div>
@@ -120,7 +138,8 @@
                 </div>
             </section>
         @else
-            <section class="alerts-section is-compact">
+            <section class="alerts-section is-critical-section is-compact">
+                <div class="alerts-compact-label">ส่วนที่ 1</div>
                 <div class="alerts-clear-row">
                     <span class="alerts-row-icon is-success" aria-hidden="true">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m9 12 2 2 4-4"/></svg>
@@ -134,9 +153,12 @@
         @if($activeCoursesMissingHead->count() > 0)
             <section id="active-courses-missing-head" class="alerts-section">
                 <div class="alerts-section-head">
-                    <div>
-                        <div class="alerts-section-title is-conflict">รายวิชาเปิดสอนที่ยังไม่มีหัวหน้าวิชา</div>
-                        <div class="alerts-section-sub">รายวิชา active ต้องมีหัวหน้าวิชาก่อนเปิดรอบจัดตาราง</div>
+                    <div class="alerts-section-title-group">
+                        <span class="alerts-section-kicker">Critical เพิ่มเติม</span>
+                        <div>
+                            <div class="alerts-section-title is-conflict">รายวิชาเปิดสอนที่ยังไม่มีหัวหน้าวิชา</div>
+                            <div class="alerts-section-sub">รายวิชา active ต้องมีหัวหน้าวิชาก่อนเปิดรอบจัดตาราง</div>
+                        </div>
                     </div>
                     <span class="alerts-count-pill is-conflict">{{ number_format($activeCoursesMissingHead->count()) }} วิชา</span>
                 </div>
@@ -173,9 +195,12 @@
         @if(count($paViolations) > 0)
             <section id="pa-violations" class="alerts-section">
                 <div class="alerts-section-head">
-                    <div>
-                        <div class="alerts-section-title is-conflict">สัดส่วน PA ไม่อยู่ในเกณฑ์</div>
-                        <div class="alerts-section-sub">ตรวจสัดส่วนภาระงานให้รวม 100% และตรงตามเกณฑ์ตำแหน่ง</div>
+                    <div class="alerts-section-title-group">
+                        <span class="alerts-section-kicker">Critical เพิ่มเติม</span>
+                        <div>
+                            <div class="alerts-section-title is-conflict">สัดส่วน PA ไม่อยู่ในเกณฑ์</div>
+                            <div class="alerts-section-sub">ตรวจสัดส่วนภาระงานให้รวม 100% และตรงตามเกณฑ์ตำแหน่ง</div>
+                        </div>
                     </div>
                     <span class="alerts-count-pill is-conflict">{{ number_format(count($paViolations)) }} ท่าน</span>
                 </div>
@@ -215,11 +240,14 @@
             </section>
         @endif
 
-        <section class="alerts-section">
+        <section class="alerts-section is-warning-section">
             <div class="alerts-section-head">
-                <div>
-                    <div class="alerts-section-title is-warning">Warning</div>
-                    <div class="alerts-section-sub">ข้อมูลที่ไม่บล็อกการใช้งาน แต่ควรเติมให้ครบเพื่อลดความผิดพลาด</div>
+                <div class="alerts-section-title-group">
+                    <span class="alerts-section-kicker">ส่วนที่ 2</span>
+                    <div>
+                        <div class="alerts-section-title is-warning">รายการที่ควรเติมให้ครบ</div>
+                        <div class="alerts-section-sub">ไม่บล็อกการใช้งานทันที แต่มีผลต่อความครบถ้วนของข้อมูลที่ใช้จัดตาราง</div>
+                    </div>
                 </div>
                 <div class="alerts-section-pills">
                     @if($visibleWarningCount > 0)
@@ -350,7 +378,7 @@
                     <div class="modal-hdr">
                         <div>
                             <div class="modal-ttl">ตั้งค่าการแจ้งเตือน</div>
-                            <div class="alerts-modal-sub">เปิดหรือปิดการนับ Warning ใน badge เมนูด้านซ้าย, Critical ปิดไม่ได้</div>
+                            <div class="alerts-modal-sub">เปิดหรือปิดการนับรายการควรเติมในป้ายแจ้งเตือนเมนูด้านซ้าย ส่วน Critical ปิดไม่ได้</div>
                         </div>
                         <button type="button" class="modal-cls" @click="showDismissModal = false">
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
@@ -397,6 +425,12 @@
             display: flex;
             flex-direction: column;
             gap: 18px;
+            background:
+                radial-gradient(circle at 8% 0%, color-mix(in oklch, var(--brand-navy) 10%, transparent), transparent 30%),
+                linear-gradient(180deg,
+                    color-mix(in oklch, var(--brand-navy) 7%, var(--bg)) 0%,
+                    color-mix(in oklch, var(--brand-navy) 4%, var(--bg)) 34%,
+                    var(--bg) 100%);
         }
 
         .alerts-hero {
@@ -404,12 +438,20 @@
             align-items: flex-start;
             justify-content: space-between;
             gap: 18px;
-            padding: 4px 0 2px;
+            padding: 24px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 26%, var(--border));
+            border-radius: var(--r-lg);
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 4%, var(--surface)), var(--surface) 30%),
+                var(--surface);
+            box-shadow:
+                0 1px 2px rgba(0, 36, 84, 0.08),
+                0 12px 28px -16px rgba(0, 36, 84, 0.26);
         }
 
         .alerts-kicker {
             margin-bottom: 5px;
-            color: var(--fg-3);
+            color: color-mix(in oklch, var(--brand-navy) 52%, var(--fg-3));
             font-size: 12px;
             font-weight: 800;
         }
@@ -436,20 +478,32 @@
             gap: 9px;
             min-height: 42px;
             padding: 9px 15px;
-            border: 1px solid color-mix(in oklch, var(--brand-navy) 14%, var(--border));
+            border: 1px solid var(--brand-navy);
             border-radius: var(--r-md);
-            background: color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
-            color: var(--fg-1);
+            background: var(--brand-navy);
+            color: var(--fg-on-brand);
             font-family: inherit;
             font-size: 13px;
             font-weight: 800;
             cursor: pointer;
+            box-shadow:
+                0 1px 2px rgba(0, 36, 84, 0.16),
+                0 10px 18px -16px rgba(0, 36, 84, 0.58);
+            transition:
+                background 160ms ease,
+                border-color 160ms ease,
+                box-shadow 160ms ease,
+                transform 160ms ease;
         }
 
         .alerts-settings-btn:hover,
         .alerts-settings-btn:focus-visible {
-            border-color: color-mix(in oklch, var(--brand-navy) 28%, var(--border));
-            background: color-mix(in oklch, var(--brand-navy) 7%, var(--surface));
+            border-color: var(--brand-navy-700);
+            background: var(--brand-navy-700);
+            box-shadow:
+                0 2px 4px rgba(0, 36, 84, 0.16),
+                0 12px 22px -16px rgba(0, 36, 84, 0.58);
+            transform: translateY(-1px);
             outline: none;
         }
 
@@ -460,8 +514,8 @@
             align-items: center;
             justify-content: center;
             border-radius: 999px;
-            background: var(--fg-2);
-            color: var(--surface);
+            background: var(--surface);
+            color: var(--brand-navy);
             font-size: 11px;
         }
 
@@ -473,34 +527,54 @@
 
         .alerts-summary-card {
             padding: 18px 20px;
-            border: 1px solid color-mix(in oklch, var(--brand-navy) 14%, var(--border));
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 24%, var(--border));
             border-radius: var(--r-lg);
             background:
-                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 3%, var(--surface)), var(--surface) 50%),
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 7%, var(--surface)), var(--surface) 50%),
                 var(--surface);
             box-shadow:
-                0 1px 2px rgba(0, 36, 84, 0.05),
-                0 14px 30px -24px rgba(0, 36, 84, 0.28),
+                0 1px 2px rgba(0, 36, 84, 0.09),
+                0 16px 34px -22px rgba(0, 36, 84, 0.42),
                 inset 0 1px 0 rgba(255, 255, 255, 0.65);
+            transition:
+                border-color 180ms ease,
+                box-shadow 180ms ease,
+                transform 180ms ease,
+                background 180ms ease;
+        }
+
+        .alerts-summary-card:hover,
+        .alerts-summary-card:focus-within {
+            border-color: color-mix(in oklch, var(--brand-navy) 34%, var(--border));
+            box-shadow:
+                0 2px 4px rgba(0, 36, 84, 0.1),
+                0 18px 34px -18px rgba(0, 36, 84, 0.34);
+            transform: translateY(-1px);
         }
 
         .alerts-summary-card.is-conflict {
             border-color: var(--status-conflict-border);
-            background: color-mix(in oklch, var(--status-conflict) 5%, var(--surface));
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--status-conflict) 10%, var(--surface)), var(--surface) 54%),
+                color-mix(in oklch, var(--status-conflict) 3%, var(--surface));
         }
 
         .alerts-summary-card.is-warning {
             border-color: var(--status-warning-border);
-            background: color-mix(in oklch, var(--status-warning) 5%, var(--surface));
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--status-warning) 12%, var(--surface)), var(--surface) 54%),
+                color-mix(in oklch, var(--status-warning) 4%, var(--surface));
         }
 
         .alerts-summary-card.is-success {
             border-color: var(--status-success-border);
-            background: color-mix(in oklch, var(--status-success) 5%, var(--surface));
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--status-success) 10%, var(--surface)), var(--surface) 54%),
+                color-mix(in oklch, var(--status-success) 3%, var(--surface));
         }
 
         .alerts-summary-label {
-            color: var(--fg-2);
+            color: color-mix(in oklch, var(--brand-navy) 76%, var(--fg-2));
             font-size: 12px;
             font-weight: 800;
             line-height: 1.35;
@@ -509,11 +583,23 @@
         .alerts-summary-value {
             margin-top: 8px;
             font-family: var(--font-display);
-            color: var(--fg-1);
+            color: var(--brand-navy);
             font-size: 32px;
             font-weight: 800;
             line-height: 1;
             font-variant-numeric: tabular-nums;
+        }
+
+        .alerts-summary-card.is-conflict .alerts-summary-value {
+            color: var(--status-conflict-fg);
+        }
+
+        .alerts-summary-card.is-warning .alerts-summary-value {
+            color: var(--status-warning-fg);
+        }
+
+        .alerts-summary-card.is-success .alerts-summary-value {
+            color: var(--status-success-fg);
         }
 
         .alerts-summary-note {
@@ -529,21 +615,26 @@
             align-items: flex-start;
             gap: 12px;
             padding: 14px 16px;
-            border: 1px solid var(--border);
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 30%, var(--border));
             border-radius: var(--r-lg);
-            background: var(--surface);
+            background:
+                radial-gradient(circle at 8% 0%, color-mix(in oklch, var(--brand-navy) 12%, transparent), transparent 30%),
+                linear-gradient(135deg,
+                    color-mix(in oklch, var(--brand-navy) 12%, var(--surface)),
+                    var(--surface) 70%);
+            box-shadow:
+                0 1px 2px rgba(0, 36, 84, 0.08),
+                0 14px 30px -24px rgba(0, 36, 84, 0.32);
         }
 
         .alerts-status-banner.is-attention {
-            border-color: var(--status-warning-border);
-            background: color-mix(in oklch, var(--status-warning) 5%, var(--surface));
-            color: var(--status-warning-fg);
+            border-color: color-mix(in oklch, var(--brand-navy) 30%, var(--border));
+            color: var(--brand-navy);
         }
 
         .alerts-status-banner.is-ready {
-            border-color: var(--status-success-border);
-            background: color-mix(in oklch, var(--status-success) 5%, var(--surface));
-            color: var(--status-success-fg);
+            border-color: color-mix(in oklch, var(--brand-navy) 30%, var(--border));
+            color: var(--brand-navy);
         }
 
         .alerts-status-icon {
@@ -553,7 +644,7 @@
             width: 30px;
             height: 30px;
             border-radius: 50%;
-            background: color-mix(in oklch, currentColor 12%, transparent);
+            background: color-mix(in oklch, var(--brand-navy) 12%, transparent);
             flex-shrink: 0;
         }
 
@@ -572,13 +663,29 @@
         }
 
         .alerts-section {
-            border: 1px solid color-mix(in oklch, var(--brand-navy) 12%, var(--border));
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 24%, var(--border));
             border-radius: var(--r-lg);
-            background: var(--surface);
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 3%, var(--surface)), var(--surface) 38%),
+                var(--surface);
             overflow: hidden;
             box-shadow:
-                0 1px 2px rgba(0, 36, 84, 0.05),
-                0 14px 30px -24px rgba(0, 36, 84, 0.24);
+                0 1px 2px rgba(0, 36, 84, 0.09),
+                0 16px 34px -22px rgba(0, 36, 84, 0.36);
+            transition:
+                border-color 180ms ease,
+                box-shadow 180ms ease,
+                transform 180ms ease,
+                background 180ms ease;
+        }
+
+        .alerts-section:hover,
+        .alerts-section:focus-within {
+            border-color: color-mix(in oklch, var(--brand-navy) 34%, var(--border));
+            box-shadow:
+                0 2px 4px rgba(0, 36, 84, 0.1),
+                0 18px 34px -18px rgba(0, 36, 84, 0.34);
+            transform: translateY(-1px);
         }
 
         .alerts-section.is-compact {
@@ -591,12 +698,14 @@
             justify-content: space-between;
             gap: 14px;
             padding: 16px 18px;
-            border-bottom: 1px solid var(--border);
-            background: color-mix(in oklch, var(--bg-2) 54%, var(--surface));
+            border-bottom: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border));
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 9%, var(--surface)), transparent 72%),
+                color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
         }
 
         .alerts-section-title {
-            color: var(--fg-1);
+            color: color-mix(in oklch, var(--brand-navy) 86%, var(--fg-1));
             font-family: var(--font-display);
             font-size: 16px;
             font-weight: 800;
@@ -604,11 +713,11 @@
         }
 
         .alerts-section-title.is-conflict {
-            color: var(--status-conflict-fg);
+            color: var(--brand-navy);
         }
 
         .alerts-section-title.is-warning {
-            color: var(--status-warning-fg);
+            color: var(--brand-navy);
         }
 
         .alerts-section-sub {
@@ -656,7 +765,8 @@
         }
 
         .alerts-count-pill.is-muted {
-            background: var(--bg-2);
+            border-color: color-mix(in oklch, var(--brand-navy) 16%, var(--border));
+            background: color-mix(in oklch, var(--brand-navy) 6%, var(--surface));
             color: var(--fg-3);
         }
 
@@ -672,8 +782,11 @@
             gap: 12px;
             padding: 14px 18px;
             text-decoration: none;
-            border-bottom: 1px solid var(--border);
+            border-bottom: 1px solid color-mix(in oklch, var(--brand-navy) 14%, var(--border));
             color: inherit;
+            transition:
+                background 160ms ease,
+                box-shadow 160ms ease;
         }
 
         .alerts-action-row:last-child {
@@ -682,7 +795,8 @@
 
         .alerts-action-row:hover,
         .alerts-action-row:focus-visible {
-            background: color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
+            background: color-mix(in oklch, var(--brand-navy) 6%, var(--surface));
+            box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--brand-navy) 16%, transparent);
             outline: none;
         }
 
@@ -694,18 +808,29 @@
             width: 32px;
             height: 32px;
             border-radius: 50%;
-            color: var(--status-warning-fg);
-            background: color-mix(in oklch, var(--status-warning) 14%, transparent);
+            color: var(--brand-navy);
+            background: color-mix(in oklch, var(--brand-navy) 13%, var(--surface));
+            transition:
+                box-shadow 160ms ease,
+                transform 160ms ease;
         }
 
         .alerts-action-row.is-conflict .alerts-row-icon {
-            color: var(--status-conflict-fg);
-            background: color-mix(in oklch, var(--status-conflict) 12%, transparent);
+            color: var(--brand-navy);
+            background: color-mix(in oklch, var(--brand-navy) 13%, var(--surface));
         }
 
         .alerts-row-icon.is-success {
-            color: var(--status-success-fg);
-            background: color-mix(in oklch, var(--status-success) 14%, transparent);
+            color: var(--brand-navy);
+            background: color-mix(in oklch, var(--brand-navy) 13%, var(--surface));
+        }
+
+        .alerts-action-row:hover .alerts-row-icon,
+        .alerts-action-row:focus-visible .alerts-row-icon,
+        .alerts-warning-top:hover .alerts-warning-icon,
+        .alerts-warning-top:focus-visible .alerts-warning-icon {
+            box-shadow: 0 0 0 4px color-mix(in oklch, var(--brand-navy) 8%, transparent);
+            transform: scale(1.03);
         }
 
         .alerts-row-main {
@@ -735,14 +860,23 @@
             justify-content: center;
             min-height: 32px;
             padding: 6px 11px;
-            border: 1px solid color-mix(in oklch, var(--brand-navy) 20%, var(--border));
+            border: 1px solid var(--brand-navy);
             border-radius: var(--r-sm);
-            background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
-            color: var(--brand-navy);
+            background: var(--brand-navy);
+            color: var(--fg-on-brand);
             font-size: 12px;
             font-weight: 800;
             text-decoration: none;
             white-space: nowrap;
+            box-shadow:
+                0 1px 2px rgba(0, 36, 84, 0.16),
+                0 10px 18px -16px rgba(0, 36, 84, 0.58);
+            transition:
+                background 160ms ease,
+                border-color 160ms ease,
+                color 160ms ease,
+                box-shadow 160ms ease,
+                transform 160ms ease;
         }
 
         .alerts-row-action:hover,
@@ -751,8 +885,13 @@
         .alerts-row-action:focus-visible,
         .alerts-mini-btn:focus-visible,
         .alerts-manage-link:focus-visible {
-            border-color: color-mix(in oklch, var(--brand-navy) 34%, var(--border));
-            background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface));
+            border-color: var(--brand-navy-700);
+            background: var(--brand-navy-700);
+            color: var(--fg-on-brand);
+            box-shadow:
+                0 2px 4px rgba(0, 36, 84, 0.16),
+                0 12px 22px -16px rgba(0, 36, 84, 0.58);
+            transform: translateY(-1px);
             outline: none;
         }
 
@@ -761,12 +900,12 @@
             align-items: center;
             gap: 10px;
             padding: 14px 18px;
-            color: var(--status-success-fg);
-            background: color-mix(in oklch, var(--status-success) 5%, var(--surface));
+            color: var(--brand-navy);
+            background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
         }
 
         .alerts-clear-row strong {
-            color: var(--status-success-fg);
+            color: var(--brand-navy);
             font-size: 13px;
         }
 
@@ -783,7 +922,7 @@
         .alerts-table-wrap.is-embedded {
             max-height: 300px;
             overflow-y: auto;
-            border-top: 1px solid var(--border);
+            border-top: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border));
         }
 
         .alerts-table-wrap table {
@@ -822,9 +961,9 @@
 
         .alerts-table-wrap th {
             padding: 11px 16px;
-            background: color-mix(in oklch, var(--bg-2) 70%, var(--surface));
-            border-bottom: 1px solid var(--border);
-            color: var(--fg-3);
+            background: color-mix(in oklch, var(--brand-navy) 9%, var(--surface));
+            border-bottom: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border));
+            color: color-mix(in oklch, var(--brand-navy) 70%, var(--fg-2));
             font-size: 11px;
             font-weight: 800;
             letter-spacing: 0;
@@ -833,7 +972,7 @@
 
         .alerts-table-wrap td {
             padding: 13px 16px;
-            border-bottom: 1px solid var(--border-subtle);
+            border-bottom: 1px solid color-mix(in oklch, var(--brand-navy) 10%, var(--border-subtle));
             color: var(--fg-2);
             font-size: 12.5px;
             vertical-align: middle;
@@ -843,8 +982,19 @@
             border-bottom: 0;
         }
 
+        .alerts-table-wrap tbody tr {
+            transition:
+                background 160ms ease,
+                box-shadow 160ms ease;
+        }
+
+        .alerts-table-wrap tbody tr:hover {
+            background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
+            box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--brand-navy) 14%, transparent);
+        }
+
         .alerts-code {
-            color: var(--fg-2);
+            color: var(--brand-navy);
             font-weight: 800;
             white-space: nowrap;
         }
@@ -881,15 +1031,32 @@
         }
 
         .alerts-warning-card {
-            border: 1px solid var(--border);
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 20%, var(--border));
             border-radius: var(--r-md);
-            background: var(--surface);
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 4%, var(--surface)), var(--surface) 64%);
             overflow: hidden;
+            box-shadow:
+                0 1px 2px rgba(0, 36, 84, 0.08),
+                0 14px 28px -24px rgba(0, 36, 84, 0.34);
+            transition:
+                border-color 180ms ease,
+                box-shadow 180ms ease,
+                transform 180ms ease;
+        }
+
+        .alerts-warning-card:hover,
+        .alerts-warning-card:focus-within {
+            border-color: color-mix(in oklch, var(--brand-navy) 32%, var(--border));
+            box-shadow:
+                0 2px 4px rgba(0, 36, 84, 0.1),
+                0 16px 30px -24px rgba(0, 36, 84, 0.42);
+            transform: translateY(-1px);
         }
 
         .alerts-warning-card.is-dismissed {
             opacity: .62;
-            background: color-mix(in oklch, var(--bg-2) 72%, var(--surface));
+            background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
         }
 
         .alerts-warning-top {
@@ -914,7 +1081,7 @@
 
         .alerts-warning-top:hover,
         .alerts-warning-top:focus-visible {
-            background: color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
+            background: color-mix(in oklch, var(--brand-navy) 7%, var(--surface));
             outline: none;
         }
 
@@ -938,7 +1105,7 @@
         }
 
         .alerts-warning-count {
-            color: var(--status-warning-fg);
+            color: var(--brand-navy);
             font-size: 12px;
             font-weight: 800;
             white-space: nowrap;
@@ -954,8 +1121,8 @@
         }
 
         .alerts-warning-detail {
-            border-top: 1px solid var(--border);
-            background: color-mix(in oklch, var(--bg-2) 42%, var(--surface));
+            border-top: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border));
+            background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
         }
 
         .alerts-manage-link {
@@ -969,9 +1136,9 @@
             min-height: 24px;
             padding: 4px 9px;
             border-radius: 999px;
-            border: 1px solid var(--border);
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 16%, var(--border));
             color: var(--fg-3);
-            background: var(--bg-2);
+            background: color-mix(in oklch, var(--brand-navy) 6%, var(--surface));
             font-size: 11px;
             font-weight: 800;
             white-space: nowrap;
@@ -1003,7 +1170,7 @@
             width: 100%;
             padding: 14px 20px;
             border: 0;
-            border-bottom: 1px solid var(--border);
+            border-bottom: 1px solid color-mix(in oklch, var(--brand-navy) 14%, var(--border));
             background: var(--surface);
             color: inherit;
             font-family: inherit;
@@ -1013,12 +1180,12 @@
 
         .alerts-toggle-row:hover,
         .alerts-toggle-row:focus-visible {
-            background: color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
+            background: color-mix(in oklch, var(--brand-navy) 6%, var(--surface));
             outline: none;
         }
 
         .alerts-toggle-row.is-off {
-            background: color-mix(in oklch, var(--bg-2) 62%, var(--surface));
+            background: color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
         }
 
         .alerts-toggle-text {
@@ -1062,7 +1229,7 @@
         }
 
         .alerts-toggle-row.is-off .alerts-toggle-switch {
-            background: var(--fg-3);
+            background: color-mix(in oklch, var(--brand-navy) 42%, var(--fg-3));
         }
 
         .alerts-toggle-row.is-off .alerts-toggle-switch span {
@@ -1198,6 +1365,217 @@
             .alerts-mini-btn,
             .alerts-manage-link {
                 width: 100%;
+            }
+        }
+        /* Hierarchy pass: keep the same navy system, but make each alert area easier to scan. */
+        .alerts-summary-grid {
+            gap: 16px;
+        }
+
+        .alerts-summary-card {
+            min-height: 126px;
+            border-color: color-mix(in oklch, var(--brand-navy) 30%, var(--border));
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 9%, var(--surface)), var(--surface) 54%),
+                var(--surface);
+            box-shadow:
+                0 16px 34px color-mix(in oklch, var(--brand-navy) 8%, transparent),
+                0 1px 0 rgba(255, 255, 255, .92) inset,
+                0 -1px 0 color-mix(in oklch, var(--brand-navy) 5%, transparent) inset;
+        }
+
+        .alerts-summary-card.is-muted {
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 6%, var(--surface-muted)), var(--surface) 58%),
+                var(--surface);
+        }
+
+        .alerts-summary-card.is-warning {
+            border-color: color-mix(in oklch, var(--brand-navy) 30%, var(--border));
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 8%, var(--surface)), var(--surface) 58%),
+                var(--surface);
+        }
+
+        .alerts-summary-card.is-warning .alerts-summary-value {
+            color: var(--brand-navy);
+        }
+
+        .alerts-summary-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .alerts-summary-index {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 26px;
+            border-radius: 999px;
+            color: var(--fg-on-brand);
+            background: var(--brand-navy);
+            box-shadow: 0 8px 18px color-mix(in oklch, var(--brand-navy) 18%, transparent);
+            font-size: 11px;
+            font-weight: 900;
+            line-height: 1;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .alerts-summary-card.is-muted .alerts-summary-index {
+            color: var(--brand-navy);
+            background: color-mix(in oklch, var(--brand-navy) 10%, var(--surface));
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 28%, var(--border));
+            box-shadow: none;
+        }
+
+        .alerts-summary-body {
+            display: grid;
+            gap: 7px;
+        }
+
+        .alerts-summary-value,
+        .alerts-summary-note {
+            margin-top: 0;
+        }
+
+        .alerts-status-banner {
+            align-items: center;
+            padding: 14px 18px;
+            border-color: color-mix(in oklch, var(--brand-navy) 26%, var(--border));
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 7%, var(--surface)), var(--surface) 70%),
+                var(--surface);
+            box-shadow:
+                0 1px 2px rgba(0, 36, 84, 0.07),
+                0 12px 24px -22px rgba(0, 36, 84, 0.28);
+        }
+
+        .alerts-status-icon {
+            color: var(--fg-on-brand);
+            background: var(--brand-navy);
+            box-shadow: 0 8px 18px color-mix(in oklch, var(--brand-navy) 14%, transparent);
+        }
+
+        .alerts-status-banner strong {
+            font-size: 14px;
+        }
+
+        .alerts-status-banner span:not(.alerts-status-icon) {
+            max-width: 78ch;
+            line-height: 1.55;
+        }
+
+        .alerts-section {
+            border-color: color-mix(in oklch, var(--brand-navy) 30%, var(--border));
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 7%, var(--surface)), var(--surface) 44%),
+                var(--surface);
+        }
+
+        .alerts-section.is-warning-section {
+            border-color: color-mix(in oklch, var(--brand-navy) 30%, var(--border));
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 6%, var(--surface)), var(--surface) 46%),
+                var(--surface);
+        }
+
+        .alerts-section-head {
+            border-bottom-color: color-mix(in oklch, var(--brand-navy) 22%, var(--border));
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 11%, var(--surface)), color-mix(in oklch, var(--brand-navy) 5%, var(--surface)));
+        }
+
+        .alerts-section.is-warning-section .alerts-section-head {
+            border-bottom-color: color-mix(in oklch, var(--brand-navy) 20%, var(--border));
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 9%, var(--surface)), color-mix(in oklch, var(--brand-navy) 4%, var(--surface)));
+        }
+
+        .alerts-section-title-group {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+            align-items: start;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .alerts-section-kicker,
+        .alerts-compact-label {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: fit-content;
+            min-height: 26px;
+            padding: 5px 10px;
+            border-radius: 999px;
+            color: var(--fg-on-brand);
+            background: var(--brand-navy);
+            box-shadow: 0 10px 22px color-mix(in oklch, var(--brand-navy) 14%, transparent);
+            font-size: 11px;
+            font-weight: 900;
+            line-height: 1;
+            white-space: nowrap;
+        }
+
+        .alerts-section.is-warning-section .alerts-section-kicker {
+            color: var(--fg-on-brand);
+            background: var(--brand-navy);
+            border: 0;
+            box-shadow: 0 10px 22px color-mix(in oklch, var(--brand-navy) 14%, transparent);
+        }
+
+        .alerts-count-pill.is-warning,
+        .alerts-chip.is-warning {
+            border-color: color-mix(in oklch, var(--brand-navy) 28%, var(--border));
+            background: color-mix(in oklch, var(--brand-navy) 7%, var(--surface));
+            color: var(--brand-navy);
+        }
+
+        .alerts-compact-label {
+            margin: 0 0 10px;
+        }
+
+        .alerts-warning-card {
+            border-color: color-mix(in oklch, var(--brand-navy) 28%, var(--border));
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 6%, var(--surface)), var(--surface) 62%),
+                var(--surface);
+        }
+
+        .alerts-warning-top {
+            background: linear-gradient(180deg, rgba(255, 255, 255, .92), color-mix(in oklch, var(--brand-navy) 3%, var(--surface)));
+        }
+
+        .alerts-warning-icon {
+            color: var(--fg-on-brand);
+            background: var(--brand-navy);
+            box-shadow: 0 9px 18px color-mix(in oklch, var(--brand-navy) 14%, transparent);
+        }
+
+        .alerts-warning-count {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            min-height: 28px;
+            padding: 4px 10px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 24%, var(--border));
+            border-radius: 999px;
+            background: var(--surface);
+            color: var(--brand-navy);
+        }
+
+        @media (max-width: 720px) {
+            .alerts-section-title-group {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+
+            .alerts-summary-top {
+                align-items: flex-start;
             }
         }
     </style>

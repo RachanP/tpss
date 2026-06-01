@@ -1681,3 +1681,182 @@ textarea:focus {
     padding: 4px 8px 8px;
   }
 }
+
+/* ── Admin polish layer: shared hover and tag language ─────────────── */
+.main-content :where(.card, .st-card, .dash-card, .dash-section, .admin-card, .overview-card, .metric-card, .alert-card, .users-stat-card) {
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.main-content :where(.card, .st-card, .dash-card, .dash-section, .admin-card, .overview-card, .metric-card, .alert-card, .users-stat-card):hover {
+  border-color: color-mix(in oklch, var(--brand-navy) 34%, var(--border));
+  box-shadow:
+    0 2px 6px rgba(0, 36, 84, 0.08),
+    0 18px 38px -26px rgba(0, 36, 84, 0.48);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .main-content :where(.st-card, .dash-card, .admin-card, .overview-card, .metric-card, .alert-card, .users-stat-card):hover {
+    transform: translateY(-2px);
+  }
+}
+
+.main-content :where(.card-hdr, .dash-card-hdr, .panel-hdr, .md-card-hdr) {
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.main-content :where(.card, .dash-card, .admin-card, .overview-card, .alert-card):hover :where(.card-hdr, .dash-card-hdr, .panel-hdr, .md-card-hdr) {
+  border-bottom-color: color-mix(in oklch, var(--brand-navy) 24%, var(--border));
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--brand-navy) 11%, var(--surface)),
+    color-mix(in oklch, var(--brand-navy) 5%, var(--surface))
+  );
+}
+
+.main-content :where(tbody tr, .history-row-btn, .activity-item, .recent-activity-item, .alert-row, .list-row, .room-type-tile, .visual-type-tile, .instructor-card, .kpi-card) {
+  transition:
+    transform 150ms ease,
+    box-shadow 150ms ease,
+    border-color 150ms ease,
+    background 150ms ease,
+    color 150ms ease;
+}
+
+.main-content :where(tbody tr:hover td) {
+  background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
+}
+
+.main-content :where(.history-row-btn:hover, .activity-item:hover, .recent-activity-item:hover, .alert-row:hover, .list-row:hover, .room-type-tile:hover, .visual-type-tile:hover, .instructor-card:hover, .kpi-card:hover) {
+  border-color: color-mix(in oklch, var(--brand-navy) 30%, var(--border));
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--brand-navy) 7%, var(--surface)),
+    color-mix(in oklch, var(--brand-navy) 2%, var(--surface))
+  );
+  box-shadow:
+    0 1px 3px rgba(0, 36, 84, 0.08),
+    0 14px 30px -24px rgba(0, 36, 84, 0.5);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .main-content :where(.activity-item:hover, .recent-activity-item:hover, .alert-row:hover, .list-row:hover, .room-type-tile:hover, .visual-type-tile:hover, .instructor-card:hover, .kpi-card:hover) {
+    transform: translateY(-1px);
+  }
+}
+
+.main-content :where(.btn, .action-btn, .dash-action-btn, button[type="button"], a.btn) {
+  transition:
+    transform 150ms ease,
+    box-shadow 150ms ease,
+    border-color 150ms ease,
+    background 150ms ease,
+    color 150ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .main-content :where(.btn, .action-btn, .dash-action-btn, a.btn):hover {
+    transform: translateY(-1px);
+  }
+}
+
+.main-content :where(.btn-primary, .dash-action-btn:hover) {
+  box-shadow: 0 10px 22px -16px rgba(0, 36, 84, 0.72);
+}
+
+.main-content :where(.btn-primary:hover) {
+  box-shadow:
+    0 2px 6px rgba(0, 36, 84, 0.18),
+    0 14px 28px -18px rgba(0, 36, 84, 0.74);
+}
+
+.main-content :where(.action-btn:hover) {
+  box-shadow: 0 10px 18px -16px rgba(0, 36, 84, 0.62);
+}
+
+.main-content :where(.badge, .dash-badge, .chip, .tag, .pill, .status-pill, .phase-pill, .audit-chip, .alert-chip, .activity-chip) {
+  --tag-bg: color-mix(in oklch, var(--brand-navy) 6%, var(--surface));
+  --tag-fg: var(--brand-navy);
+  --tag-border: color-mix(in oklch, var(--brand-navy) 24%, var(--border));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 4px 11px;
+  border: 1px solid var(--tag-border);
+  border-radius: 999px;
+  background: var(--tag-bg);
+  color: var(--tag-fg);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--surface) 58%, transparent);
+}
+
+.main-content :where(.badge, .dash-badge, .chip, .tag, .pill, .status-pill, .phase-pill, .audit-chip, .alert-chip, .activity-chip):where(:hover) {
+  filter: saturate(1.04);
+}
+
+.main-content :where(.badge-ok, .badge-success, .dash-badge-success, .status-success, .tag-success) {
+  --tag-bg: var(--status-success-bg);
+  --tag-fg: var(--status-success-fg);
+  --tag-border: var(--status-success-border);
+}
+
+.main-content :where(.badge-err, .badge-danger, .dash-badge-conflict, .status-conflict, .tag-conflict, .p-conflict) {
+  --tag-bg: var(--status-conflict-bg);
+  --tag-fg: var(--status-conflict-fg);
+  --tag-border: var(--status-conflict-border);
+}
+
+.main-content :where(.badge-warn, .badge-warning, .dash-badge-warning, .status-warning, .tag-warning, .p-warning, .p-gold) {
+  --tag-bg: var(--status-warning-bg);
+  --tag-fg: var(--status-warning-fg);
+  --tag-border: var(--status-warning-border);
+}
+
+.main-content :where(.badge-ok, .badge-success, .dash-badge-success, .status-success, .tag-success, .p-success) {
+  --tag-bg: var(--status-success-bg);
+  --tag-fg: var(--status-success-fg);
+  --tag-border: var(--status-success-border);
+}
+
+.main-content :where(.badge-info, .dash-badge-info, .status-info, .tag-info, .p-info, .p-teal) {
+  --tag-bg: var(--status-info-bg);
+  --tag-fg: var(--status-info-fg);
+  --tag-border: var(--status-info-border);
+}
+
+.main-content :where(.badge-gray, .dash-badge-gray, .status-draft, .tag-muted, .tag-gray, .p-neutral) {
+  --tag-bg: var(--status-draft-bg);
+  --tag-fg: var(--status-draft-fg);
+  --tag-border: var(--status-draft-border);
+}
+
+.main-content :where(.badge-primary, .dash-badge-navy, .tag-primary) {
+  --tag-bg: var(--brand-navy);
+  --tag-fg: var(--fg-on-brand);
+  --tag-border: var(--brand-navy);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklch, white 16%, transparent),
+    0 8px 18px -16px rgba(0, 36, 84, 0.7);
+}
+
+.main-content :where(.p-primary, .p-purple) {
+  --tag-bg: color-mix(in oklch, var(--brand-navy) 8%, var(--surface));
+  --tag-fg: var(--brand-navy);
+  --tag-border: color-mix(in oklch, var(--brand-navy) 24%, var(--border));
+}
+
+.main-content :where(.badge, .chip, .tag, .pill, .status-pill, .phase-pill, .audit-chip, .alert-chip, .activity-chip) :where(.dot, .tag-dot, .chip-dot) {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 0 0 0 3px color-mix(in oklch, currentColor 14%, transparent);
+}

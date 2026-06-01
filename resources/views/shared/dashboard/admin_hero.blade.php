@@ -235,9 +235,16 @@
 <style>
     .admin-hero-card {
         padding: 24px;
-        background: var(--surface);
-        border-color: color-mix(in oklch, var(--brand-navy) 10%, var(--border));
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 4%, var(--surface)), var(--surface) 30%),
+            var(--surface);
+        border-color: color-mix(in oklch, var(--brand-navy) 26%, var(--border));
         overflow: hidden;
+    }
+
+    .admin-hero-card:hover,
+    .admin-hero-card:focus-within {
+        transform: none;
     }
 
     .admin-hero-top {
@@ -259,7 +266,7 @@
         font-size: 12px;
         font-weight: 700;
         line-height: 1.35;
-        color: var(--fg-3);
+        color: color-mix(in oklch, var(--brand-navy) 52%, var(--fg-3));
     }
 
     .admin-hero-copy h1 {
@@ -280,37 +287,44 @@
         align-items: center;
         min-height: 126px;
         padding: 22px 24px;
-        border: 1px solid var(--border);
+        border: 1px solid color-mix(in oklch, var(--brand-navy) 30%, var(--border));
         border-radius: var(--r-lg);
-        background: var(--surface);
-    }
-
-    .admin-status-banner.is-conflict {
-        border-color: var(--status-conflict-border);
         background:
-            linear-gradient(180deg, color-mix(in oklch, var(--status-conflict) 7%, transparent), transparent 58%),
-            color-mix(in oklch, var(--status-conflict) 3%, var(--surface));
+            radial-gradient(circle at 9% 4%, color-mix(in oklch, var(--brand-navy) 14%, transparent), transparent 28%),
+            linear-gradient(135deg,
+                color-mix(in oklch, var(--brand-navy) 13%, var(--surface)) 0%,
+                color-mix(in oklch, var(--brand-navy) 5%, var(--surface)) 46%,
+                var(--surface) 100%);
+        box-shadow:
+            0 1px 2px rgba(0, 36, 84, 0.1),
+            0 20px 46px -34px rgba(0, 36, 84, 0.52),
+            inset 0 1px 0 color-mix(in oklch, var(--surface) 84%, transparent);
+        transition:
+            border-color 180ms ease,
+            box-shadow 180ms ease,
+            background 180ms ease;
     }
 
-    .admin-status-banner.is-warning {
-        border-color: var(--status-warning-border);
-        background:
-            linear-gradient(180deg, color-mix(in oklch, var(--status-warning) 8%, transparent), transparent 58%),
-            color-mix(in oklch, var(--status-warning) 4%, var(--surface));
+    .admin-status-banner:hover,
+    .admin-status-banner:focus-within {
+        border-color: color-mix(in oklch, var(--brand-navy) 42%, var(--border));
+        box-shadow:
+            0 2px 4px rgba(0, 36, 84, 0.11),
+            0 24px 52px -32px rgba(0, 36, 84, 0.58),
+            inset 0 1px 0 color-mix(in oklch, var(--surface) 88%, transparent);
     }
 
-    .admin-status-banner.is-success {
-        border-color: var(--status-success-border);
-        background:
-            linear-gradient(180deg, color-mix(in oklch, var(--status-success) 7%, transparent), transparent 58%),
-            color-mix(in oklch, var(--status-success) 3%, var(--surface));
-    }
-
+    .admin-status-banner.is-conflict,
+    .admin-status-banner.is-warning,
+    .admin-status-banner.is-success,
     .admin-status-banner.is-info {
-        border-color: var(--status-info-border);
+        border-color: color-mix(in oklch, var(--brand-navy) 30%, var(--border));
         background:
-            linear-gradient(180deg, color-mix(in oklch, var(--status-info) 7%, transparent), transparent 58%),
-            color-mix(in oklch, var(--status-info) 3%, var(--surface));
+            radial-gradient(circle at 9% 4%, color-mix(in oklch, var(--brand-navy) 14%, transparent), transparent 28%),
+            linear-gradient(135deg,
+                color-mix(in oklch, var(--brand-navy) 13%, var(--surface)) 0%,
+                color-mix(in oklch, var(--brand-navy) 5%, var(--surface)) 46%,
+                var(--surface) 100%);
     }
 
     .admin-status-primary {
@@ -333,9 +347,9 @@
         align-items: center;
         min-height: 36px;
         padding: 7px 16px;
-        border: 1px solid color-mix(in oklch, var(--brand-navy) 10%, var(--border));
+        border: 1px solid color-mix(in oklch, var(--brand-navy) 20%, var(--border));
         border-radius: var(--r-pill);
-        background: color-mix(in oklch, var(--brand-navy) 7%, var(--surface));
+        background: color-mix(in oklch, var(--brand-navy) 10%, var(--surface));
         color: var(--brand-navy);
         font-size: 13px;
         font-weight: 800;
@@ -345,9 +359,9 @@
     }
 
     .admin-year-badge.is-warning {
-        border-color: var(--status-warning-border);
-        background: var(--status-warning-bg);
-        color: var(--status-warning-fg);
+        border-color: color-mix(in oklch, var(--brand-navy) 20%, var(--border));
+        background: color-mix(in oklch, var(--brand-navy) 10%, var(--surface));
+        color: var(--brand-navy);
     }
 
     .admin-hero-action {
@@ -369,24 +383,30 @@
         width: 12px;
         height: 12px;
         border-radius: 50%;
-        background: var(--status-success-fg);
-        box-shadow: 0 0 0 5px color-mix(in oklch, var(--status-success) 13%, transparent);
+        background: var(--brand-navy);
+        box-shadow: 0 0 0 5px color-mix(in oklch, var(--brand-navy) 15%, transparent);
         flex-shrink: 0;
     }
 
     .admin-status-banner.is-conflict .admin-status-marker {
-        background: var(--status-conflict-fg);
-        box-shadow: 0 0 0 5px color-mix(in oklch, var(--status-conflict) 13%, transparent);
+        background: var(--brand-navy);
+        box-shadow: 0 0 0 5px color-mix(in oklch, var(--brand-navy) 15%, transparent);
     }
 
     .admin-status-banner.is-warning .admin-status-marker {
-        background: var(--status-warning-fg);
-        box-shadow: 0 0 0 5px color-mix(in oklch, var(--status-warning) 15%, transparent);
+        background: var(--brand-navy);
+        box-shadow: 0 0 0 5px color-mix(in oklch, var(--brand-navy) 15%, transparent);
+    }
+
+    .admin-status-banner.is-warning .admin-status-phase-pill {
+        border-color: color-mix(in oklch, var(--brand-navy) 24%, var(--border));
+        background: color-mix(in oklch, var(--brand-navy) 9%, var(--surface));
+        color: var(--brand-navy);
     }
 
     .admin-status-banner.is-info .admin-status-marker {
-        background: var(--status-info-fg);
-        box-shadow: 0 0 0 5px color-mix(in oklch, var(--status-info) 13%, transparent);
+        background: var(--brand-navy);
+        box-shadow: 0 0 0 5px color-mix(in oklch, var(--brand-navy) 15%, transparent);
     }
 
     .admin-status-text {
@@ -463,13 +483,28 @@
         column-gap: 10px;
         margin-top: 18px;
         padding: 16px 18px 18px;
-        border: 1px solid color-mix(in oklch, var(--brand-navy) 10%, var(--border));
+        border: 1px solid color-mix(in oklch, var(--brand-navy) 22%, var(--border));
         border-radius: var(--r-lg);
-        background: color-mix(in oklch, var(--bg-2) 45%, var(--surface));
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 8%, var(--surface)), transparent 62%),
+            color-mix(in oklch, var(--brand-navy) 6%, var(--surface));
         overflow: hidden;
         box-shadow:
-            0 1px 2px rgba(0, 36, 84, 0.04),
+            0 1px 2px rgba(0, 36, 84, 0.08),
+            0 16px 34px -28px rgba(0, 36, 84, 0.42),
             inset 0 1px 0 rgba(255, 255, 255, 0.65);
+        transition:
+            border-color 180ms ease,
+            box-shadow 180ms ease,
+            background 180ms ease;
+    }
+
+    .admin-phase-stepper:hover {
+        border-color: color-mix(in oklch, var(--brand-navy) 32%, var(--border));
+        box-shadow:
+            0 1px 2px rgba(0, 36, 84, 0.1),
+            0 18px 36px -28px rgba(0, 36, 84, 0.5),
+            inset 0 1px 0 rgba(255, 255, 255, 0.72);
     }
 
     .admin-phase-stepper::before,
@@ -485,7 +520,7 @@
 
     .admin-phase-stepper::before {
         right: calc(100% - var(--phase-track-end));
-        background: color-mix(in oklch, var(--brand-navy) 14%, var(--border));
+        background: color-mix(in oklch, var(--brand-navy) 24%, var(--border));
     }
 
     .admin-phase-stepper::after {
@@ -541,32 +576,32 @@
     }
     .phase-step.is-current .phase-step-node {
         border: 3px solid currentColor;
-        color: var(--status-success-fg);
-        background: color-mix(in oklch, var(--status-success) 9%, var(--surface));
+        color: var(--brand-navy);
+        background: color-mix(in oklch, var(--brand-navy) 7%, var(--surface));
         box-shadow:
             inset 0 0 0 5px var(--surface),
-            0 0 0 5px color-mix(in oklch, var(--status-success) 12%, transparent);
+            0 0 0 5px color-mix(in oklch, var(--brand-navy) 10%, transparent);
     }
     .admin-status-banner.is-conflict .phase-step.is-current .phase-step-node {
-        color: var(--status-conflict-fg);
-        background: color-mix(in oklch, var(--status-conflict) 9%, var(--surface));
+        color: var(--brand-navy);
+        background: color-mix(in oklch, var(--brand-navy) 7%, var(--surface));
         box-shadow:
             inset 0 0 0 5px var(--surface),
-            0 0 0 5px color-mix(in oklch, var(--status-conflict) 12%, transparent);
+            0 0 0 5px color-mix(in oklch, var(--brand-navy) 10%, transparent);
     }
     .admin-status-banner.is-warning .phase-step.is-current .phase-step-node {
-        color: var(--status-warning-fg);
-        background: color-mix(in oklch, var(--status-warning) 10%, var(--surface));
+        color: var(--brand-navy);
+        background: color-mix(in oklch, var(--brand-navy) 7%, var(--surface));
         box-shadow:
             inset 0 0 0 5px var(--surface),
-            0 0 0 5px color-mix(in oklch, var(--status-warning) 14%, transparent);
+            0 0 0 5px color-mix(in oklch, var(--brand-navy) 10%, transparent);
     }
     .admin-status-banner.is-info .phase-step.is-current .phase-step-node {
-        color: var(--status-info-fg);
-        background: color-mix(in oklch, var(--status-info) 9%, var(--surface));
+        color: var(--brand-navy);
+        background: color-mix(in oklch, var(--brand-navy) 7%, var(--surface));
         box-shadow:
             inset 0 0 0 5px var(--surface),
-            0 0 0 5px color-mix(in oklch, var(--status-info) 12%, transparent);
+            0 0 0 5px color-mix(in oklch, var(--brand-navy) 10%, transparent);
     }
     .phase-step-pulse {
         width: 10px;
@@ -607,6 +642,7 @@
     }
 
     .admin-status-summary-item {
+        --admin-summary-accent: var(--brand-navy);
         display: grid;
         grid-template-columns: 28px minmax(0, 1fr);
         grid-template-rows: auto auto auto;
@@ -616,12 +652,19 @@
         min-width: 0;
         min-height: 66px;
         padding: 10px 12px;
-        border: 1px solid var(--border);
+        border: 1px solid color-mix(in oklch, var(--admin-summary-accent) 30%, var(--border));
         border-radius: var(--r-sm);
-        background: color-mix(in oklch, var(--bg-2) 78%, var(--surface));
+        background:
+            radial-gradient(circle at 9% 0%, color-mix(in oklch, var(--admin-summary-accent) 13%, transparent), transparent 38%),
+            linear-gradient(180deg, color-mix(in oklch, var(--admin-summary-accent) 8%, var(--surface)), transparent 68%),
+            color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
         text-align: left;
         text-decoration: none;
         cursor: pointer;
+        box-shadow:
+            0 1px 2px rgba(0, 36, 84, 0.08),
+            0 14px 28px -24px rgba(0, 36, 84, 0.38),
+            inset 0 1px 0 color-mix(in oklch, var(--surface) 78%, transparent);
         transition:
             transform 160ms ease,
             border-color 160ms ease,
@@ -632,34 +675,60 @@
     .admin-status-summary-item:hover,
     .admin-status-summary-item:focus-visible {
         transform: translateY(-1px);
-        border-color: color-mix(in oklch, var(--brand-navy) 22%, var(--border));
-        background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
-        box-shadow: 0 10px 22px color-mix(in oklch, var(--brand-navy) 10%, transparent);
+        border-color: color-mix(in oklch, var(--admin-summary-accent) 42%, var(--border));
+        background:
+            radial-gradient(circle at 9% 0%, color-mix(in oklch, var(--admin-summary-accent) 17%, transparent), transparent 38%),
+            color-mix(in oklch, var(--admin-summary-accent) 10%, var(--surface));
+        box-shadow: 0 12px 24px color-mix(in oklch, var(--admin-summary-accent) 15%, transparent);
         outline: none;
+    }
+
+    .admin-status-summary-item.is-conflict {
+        --admin-summary-accent: var(--status-conflict-fg);
+    }
+
+    .admin-status-summary-item.is-warning {
+        --admin-summary-accent: var(--status-warning-fg);
+    }
+
+    .admin-status-summary-item.is-success {
+        --admin-summary-accent: var(--status-success-fg);
+    }
+
+    .admin-status-summary-item.is-info {
+        --admin-summary-accent: var(--status-info-fg);
     }
 
     .admin-status-summary-item.is-conflict:hover,
     .admin-status-summary-item.is-conflict:focus-visible {
-        border-color: var(--status-conflict-border);
-        background: color-mix(in oklch, var(--status-conflict) 7%, var(--surface));
+        border-color: color-mix(in oklch, var(--admin-summary-accent) 42%, var(--border));
+        background:
+            radial-gradient(circle at 9% 0%, color-mix(in oklch, var(--admin-summary-accent) 17%, transparent), transparent 38%),
+            color-mix(in oklch, var(--admin-summary-accent) 10%, var(--surface));
     }
 
     .admin-status-summary-item.is-warning:hover,
     .admin-status-summary-item.is-warning:focus-visible {
-        border-color: var(--status-warning-border);
-        background: color-mix(in oklch, var(--status-warning) 8%, var(--surface));
+        border-color: color-mix(in oklch, var(--admin-summary-accent) 42%, var(--border));
+        background:
+            radial-gradient(circle at 9% 0%, color-mix(in oklch, var(--admin-summary-accent) 17%, transparent), transparent 38%),
+            color-mix(in oklch, var(--admin-summary-accent) 10%, var(--surface));
     }
 
     .admin-status-summary-item.is-success:hover,
     .admin-status-summary-item.is-success:focus-visible {
-        border-color: var(--status-success-border);
-        background: color-mix(in oklch, var(--status-success) 7%, var(--surface));
+        border-color: color-mix(in oklch, var(--admin-summary-accent) 42%, var(--border));
+        background:
+            radial-gradient(circle at 9% 0%, color-mix(in oklch, var(--admin-summary-accent) 17%, transparent), transparent 38%),
+            color-mix(in oklch, var(--admin-summary-accent) 10%, var(--surface));
     }
 
     .admin-status-summary-item.is-info:hover,
     .admin-status-summary-item.is-info:focus-visible {
-        border-color: var(--status-info-border);
-        background: color-mix(in oklch, var(--status-info) 7%, var(--surface));
+        border-color: color-mix(in oklch, var(--admin-summary-accent) 42%, var(--border));
+        background:
+            radial-gradient(circle at 9% 0%, color-mix(in oklch, var(--admin-summary-accent) 17%, transparent), transparent 38%),
+            color-mix(in oklch, var(--admin-summary-accent) 10%, var(--surface));
     }
 
     .admin-summary-icon {
@@ -675,15 +744,15 @@
     }
     .admin-summary-icon.is-success {
         color: var(--status-success-fg);
-        background: color-mix(in oklch, var(--status-success) 14%, transparent);
+        background: color-mix(in oklch, var(--status-success-fg) 14%, transparent);
     }
     .admin-summary-icon.is-warning {
         color: var(--status-warning-fg);
-        background: color-mix(in oklch, var(--status-warning) 16%, transparent);
+        background: color-mix(in oklch, var(--status-warning-fg) 14%, transparent);
     }
     .admin-summary-icon.is-conflict {
         color: var(--status-conflict-fg);
-        background: color-mix(in oklch, var(--status-conflict) 14%, transparent);
+        background: color-mix(in oklch, var(--status-conflict-fg) 14%, transparent);
     }
 
     .admin-summary-label {

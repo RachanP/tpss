@@ -390,7 +390,7 @@
         });
     </script>
 
-    <div x-data="userManagement" x-init="
+    <div class="users-page" x-data="userManagement" x-init="
         $watch('instructorProfile.teaching_pct', value => updateQuota());
         $watch('instructorProfile.title', value => watchTitleChange(value));
         @php $oldUserId = old('editing_user_id'); @endphp
@@ -1465,6 +1465,85 @@
                 flex: 1 1 100%;
                 width: 100%;
             }
+        }
+
+        .users-page {
+            padding: clamp(14px, 2vw, 28px);
+            background:
+                radial-gradient(circle at 8% 0%, color-mix(in oklch, var(--brand-navy) 10%, transparent), transparent 30%),
+                linear-gradient(180deg,
+                    color-mix(in oklch, var(--brand-navy) 7%, var(--bg)) 0%,
+                    color-mix(in oklch, var(--brand-navy) 4%, var(--bg)) 34%,
+                    var(--bg) 100%);
+        }
+
+        .users-page .card,
+        .users-page .st-card {
+            border-color: color-mix(in oklch, var(--brand-navy) 24%, var(--border));
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 5%, var(--surface)), var(--surface) 46%),
+                var(--surface);
+            box-shadow:
+                0 1px 2px rgba(0, 36, 84, 0.09),
+                0 16px 34px -22px rgba(0, 36, 84, 0.42);
+        }
+
+        .users-page .card-hdr {
+            border-bottom-color: color-mix(in oklch, var(--brand-navy) 20%, var(--border));
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 10%, var(--surface)), color-mix(in oklch, var(--brand-navy) 4%, var(--surface)));
+        }
+
+        .users-page .st-card:nth-child(1) {
+            background:
+                radial-gradient(circle at 12% 0%, color-mix(in oklch, var(--brand-navy) 12%, transparent), transparent 36%),
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 7%, var(--surface)), var(--surface) 60%);
+        }
+
+        .users-page .st-card:nth-child(2) {
+            border-color: color-mix(in oklch, var(--status-success-fg) 26%, var(--border));
+            background:
+                radial-gradient(circle at 12% 0%, color-mix(in oklch, var(--status-success-fg) 13%, transparent), transparent 36%),
+                linear-gradient(180deg, color-mix(in oklch, var(--status-success-fg) 8%, var(--surface)), var(--surface) 60%);
+        }
+
+        .users-page .st-card:nth-child(3) {
+            border-color: color-mix(in oklch, var(--status-conflict-fg) 24%, var(--border));
+            background:
+                radial-gradient(circle at 12% 0%, color-mix(in oklch, var(--status-conflict-fg) 11%, transparent), transparent 36%),
+                linear-gradient(180deg, color-mix(in oklch, var(--status-conflict-fg) 7%, var(--surface)), var(--surface) 60%);
+        }
+
+        .users-filter-bar {
+            border-color: color-mix(in oklch, var(--brand-navy) 18%, var(--border));
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 7%, var(--surface)), color-mix(in oklch, var(--brand-navy) 4%, var(--surface)));
+        }
+
+        .users-filter-search,
+        .users-filter-select {
+            border-color: color-mix(in oklch, var(--brand-navy) 22%, var(--border));
+            background: color-mix(in oklch, var(--brand-navy) 3%, var(--surface));
+        }
+
+        .users-filter-search:focus-within,
+        .users-filter-select:focus {
+            border-color: var(--brand-navy);
+            box-shadow: 0 0 0 3px color-mix(in oklch, var(--brand-navy) 12%, transparent);
+        }
+
+        .users-page table th {
+            background: color-mix(in oklch, var(--brand-navy) 9%, var(--surface));
+            border-bottom-color: color-mix(in oklch, var(--brand-navy) 18%, var(--border));
+            color: color-mix(in oklch, var(--brand-navy) 72%, var(--fg-2));
+        }
+
+        .users-page table td {
+            border-bottom-color: color-mix(in oklch, var(--brand-navy) 10%, var(--border-subtle));
+        }
+
+        .users-page tbody tr:hover {
+            background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
         }
     </style>
 

@@ -2,7 +2,7 @@
     @php
         $canManageHolidays = $canManageHolidays ?? in_array($routePrefix ?? null, ['admin', 'staff'], true);
     @endphp
-    <div x-data="{
+    <div class="settings-page" x-data="{
         activeTab: new URLSearchParams(window.location.search).get('tab') || 'academic',
         workloadWeeks: {{ $workloadWeeks }},
         teachingWeeks: {{ $teachingWeeks }},
@@ -189,13 +189,19 @@
         @endphp
         <div x-show="activeTab === 'academic'" {{ $isAdmin ? 'x-cloak' : '' }}>
             @if(session('success'))
-                <div style="background: oklch(95% 0.05 145); border: 1px solid oklch(70% 0.15 145); color: oklch(35% 0.12 145); padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; font-size: 14px;">
-                    {{ session('success') }}
+                <div class="settings-flash settings-flash--success">
+                    <span class="settings-flash-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                    </span>
+                    <span>{{ session('success') }}</span>
                 </div>
             @endif
             @if($isAdmin && session('error'))
-                <div style="background: oklch(95% 0.05 25); border: 1px solid oklch(70% 0.15 25); color: oklch(35% 0.12 25); padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; font-size: 14px;">
-                    {{ session('error') }}
+                <div class="settings-flash settings-flash--error">
+                    <span class="settings-flash-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+                    </span>
+                    <span>{{ session('error') }}</span>
                 </div>
             @endif
 
@@ -766,6 +772,54 @@
             min-width: 150px;
         }
 
+        .settings-flash {
+            position: relative;
+            display: grid;
+            grid-template-columns: 34px minmax(0, 1fr);
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 18px;
+            padding: 14px 16px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 22%, var(--border));
+            border-radius: var(--r-lg);
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 6%, var(--surface)), var(--surface));
+            color: var(--fg-2);
+            font-size: 14px;
+            line-height: 1.6;
+            box-shadow:
+                0 1px 2px rgba(0, 36, 84, 0.08),
+                0 16px 34px -28px rgba(0, 36, 84, 0.42);
+            overflow: hidden;
+        }
+
+        .settings-flash::before {
+            content: "";
+            position: absolute;
+            inset: 0 auto 0 0;
+            width: 4px;
+            background: var(--settings-flash-accent, var(--brand-navy));
+        }
+
+        .settings-flash-icon {
+            width: 34px;
+            height: 34px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            background: color-mix(in oklch, var(--settings-flash-accent, var(--brand-navy)) 12%, transparent);
+            color: var(--settings-flash-accent, var(--brand-navy));
+        }
+
+        .settings-flash--success {
+            --settings-flash-accent: var(--status-success-fg);
+        }
+
+        .settings-flash--error {
+            --settings-flash-accent: var(--status-conflict-fg);
+        }
+
         [x-show="openScheduleConfirmForm"],
         [x-show="closeScheduleConfirmForm"] {
             position: fixed !important;
@@ -812,6 +866,7 @@
             position: relative;
             display: grid;
             grid-template-columns: 44px minmax(0, 1fr);
+            grid-template-rows: auto auto;
             gap: 14px;
             align-items: center;
             padding: 20px 24px !important;
@@ -831,6 +886,8 @@
                     color-mix(in oklch, var(--brand-navy) 10%, var(--surface)),
                     color-mix(in oklch, var(--brand-navy) 4%, var(--surface)));
             box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--surface) 72%, transparent);
+            grid-row: 1 / span 2;
+            align-self: start;
         }
 
         [x-show="closeScheduleConfirmForm"] > div > div > div:first-child::before {
@@ -843,6 +900,8 @@
 
         [x-show="openScheduleConfirmForm"] > div > div > div:first-child > div:first-child,
         [x-show="closeScheduleConfirmForm"] > div > div > div:first-child > div:first-child {
+            grid-column: 2;
+            grid-row: 1;
             font-size: 18px !important;
             line-height: 1.25 !important;
             color: var(--fg-1) !important;
@@ -850,10 +909,21 @@
 
         [x-show="openScheduleConfirmForm"] > div > div > div:first-child > div:last-child,
         [x-show="closeScheduleConfirmForm"] > div > div > div:first-child > div:last-child {
-            margin-top: 3px !important;
-            color: var(--fg-3) !important;
-            font-size: 13px !important;
-            line-height: 1.45 !important;
+            grid-column: 2;
+            grid-row: 2;
+            width: fit-content;
+            max-width: 100%;
+            display: inline-flex;
+            align-items: center;
+            margin-top: -6px !important;
+            padding: 4px 10px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border));
+            border-radius: 999px;
+            background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
+            color: var(--fg-2) !important;
+            font-size: 12px !important;
+            font-weight: 700;
+            line-height: 1.35 !important;
         }
 
         [x-show="openScheduleConfirmForm"] > div > div > div:nth-child(2),
@@ -959,6 +1029,7 @@
             [x-show="openScheduleConfirmForm"] > div > div > div:first-child,
             [x-show="closeScheduleConfirmForm"] > div > div > div:first-child {
                 grid-template-columns: 38px minmax(0, 1fr);
+                grid-template-rows: auto auto;
                 gap: 12px;
                 padding: 18px !important;
             }
@@ -967,6 +1038,12 @@
             [x-show="closeScheduleConfirmForm"] > div > div > div:first-child::before {
                 width: 38px;
                 height: 38px;
+            }
+
+            [x-show="openScheduleConfirmForm"] > div > div > div:first-child > div:last-child,
+            [x-show="closeScheduleConfirmForm"] > div > div > div:first-child > div:last-child {
+                margin-top: -4px !important;
+                white-space: normal;
             }
 
             [x-show="openScheduleConfirmForm"] > div > div > div:nth-child(2),
@@ -998,5 +1075,100 @@
             box-shadow: inset 0 0 0 1px var(--brand-navy);
         }
         .btn-ghost:hover { background: var(--bg-3); }
+
+        .settings-page {
+            padding: clamp(14px, 2vw, 28px);
+            background:
+                radial-gradient(circle at 8% 0%, color-mix(in oklch, var(--brand-navy) 10%, transparent), transparent 30%),
+                linear-gradient(180deg,
+                    color-mix(in oklch, var(--brand-navy) 7%, var(--bg)) 0%,
+                    color-mix(in oklch, var(--brand-navy) 4%, var(--bg)) 34%,
+                    var(--bg) 100%);
+        }
+
+        .settings-page .card,
+        .settings-page .settings-panel,
+        .settings-page .settings-card,
+        .settings-page .stats-card,
+        .settings-page .stat-card,
+        .settings-page .panel {
+            border-color: color-mix(in oklch, var(--brand-navy) 24%, var(--border)) !important;
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 5%, var(--surface)), var(--surface) 46%),
+                var(--surface) !important;
+            box-shadow:
+                0 1px 2px rgba(0, 36, 84, 0.09),
+                0 16px 34px -22px rgba(0, 36, 84, 0.42) !important;
+        }
+
+        .settings-page .card-hdr,
+        .settings-page .settings-hdr,
+        .settings-page .panel-hdr,
+        .settings-page thead th {
+            border-bottom-color: color-mix(in oklch, var(--brand-navy) 20%, var(--border)) !important;
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 10%, var(--surface)), color-mix(in oklch, var(--brand-navy) 4%, var(--surface))) !important;
+        }
+
+        .settings-page .tabs,
+        .settings-page [role="tablist"] {
+            border-color: color-mix(in oklch, var(--brand-navy) 24%, var(--border)) !important;
+            background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface)) !important;
+            box-shadow: 0 1px 2px rgba(0, 36, 84, 0.08);
+        }
+
+        .settings-page .btn-primary {
+            border-color: var(--brand-navy) !important;
+            background: var(--brand-navy) !important;
+            color: var(--fg-on-brand) !important;
+            box-shadow:
+                0 1px 2px rgba(0, 36, 84, 0.16),
+                0 10px 20px -16px rgba(0, 36, 84, 0.64);
+        }
+
+        .settings-page .btn-ghost,
+        .settings-page .btn-secondary,
+        .settings-page .btn:not(.btn-primary) {
+            border-color: color-mix(in oklch, var(--brand-navy) 24%, var(--border));
+            background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
+            color: var(--brand-navy);
+        }
+
+        .settings-page .btn-ghost:hover,
+        .settings-page .btn-secondary:hover,
+        .settings-page .btn:not(.btn-primary):hover {
+            border-color: color-mix(in oklch, var(--brand-navy) 36%, var(--border));
+            background: color-mix(in oklch, var(--brand-navy) 9%, var(--surface));
+        }
+
+        .settings-page .form-ctrl,
+        .settings-page input,
+        .settings-page select,
+        .settings-page textarea,
+        .settings-page .pa-input {
+            border-color: color-mix(in oklch, var(--brand-navy) 22%, var(--border)) !important;
+            background: color-mix(in oklch, var(--brand-navy) 3%, var(--surface)) !important;
+        }
+
+        .settings-page .form-ctrl:focus,
+        .settings-page input:focus,
+        .settings-page select:focus,
+        .settings-page textarea:focus,
+        .settings-page .pa-input:focus {
+            border-color: var(--brand-navy) !important;
+            box-shadow: 0 0 0 3px color-mix(in oklch, var(--brand-navy) 12%, transparent) !important;
+        }
+
+        .settings-page table th {
+            color: color-mix(in oklch, var(--brand-navy) 72%, var(--fg-2));
+        }
+
+        .settings-page table td {
+            border-bottom-color: color-mix(in oklch, var(--brand-navy) 10%, var(--border-subtle));
+        }
+
+        .settings-page tbody tr:hover {
+            background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
+        }
     </style>
 </x-app-layout>

@@ -48,7 +48,7 @@
             ],
         ];
     @endphp
-    <div x-data="{
+    <div class="master-data-page" x-data="{
         courseFormErrorState: {{ Js::from($courseFormErrorState) }},
         activeTab: {{ Js::from($courseFormHasErrors ? 'courses' : null) }} || new URLSearchParams(window.location.search).get('tab') || 'instructors',
         tabLoading: false,
@@ -4708,6 +4708,120 @@
             color: var(--fg-3);
             font-size: var(--fs-md);
             font-style: italic;
+        }
+
+        .master-data-page {
+            padding: clamp(14px, 2vw, 28px);
+            background:
+                radial-gradient(circle at 8% 0%, color-mix(in oklch, var(--brand-navy) 10%, transparent), transparent 30%),
+                linear-gradient(180deg,
+                    color-mix(in oklch, var(--brand-navy) 7%, var(--bg)) 0%,
+                    color-mix(in oklch, var(--brand-navy) 4%, var(--bg)) 34%,
+                    var(--bg) 100%);
+        }
+
+        .master-data-page .card,
+        .master-data-page .md-card,
+        .master-data-page .master-card,
+        .master-data-page .panel,
+        .master-data-page .list-card,
+        .master-data-page .modal-card {
+            border-color: color-mix(in oklch, var(--brand-navy) 24%, var(--border)) !important;
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 5%, var(--surface)), var(--surface) 46%),
+                var(--surface) !important;
+            box-shadow:
+                0 1px 2px rgba(0, 36, 84, 0.09),
+                0 16px 34px -22px rgba(0, 36, 84, 0.42) !important;
+        }
+
+        .master-data-page .card-hdr,
+        .master-data-page .md-card-hdr,
+        .master-data-page .panel-hdr,
+        .master-data-page thead th {
+            border-bottom-color: color-mix(in oklch, var(--brand-navy) 20%, var(--border)) !important;
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 10%, var(--surface)), color-mix(in oklch, var(--brand-navy) 4%, var(--surface))) !important;
+        }
+
+        .master-data-page .tabs,
+        .master-data-page [role="tablist"],
+        .master-data-page .tab-nav,
+        .master-data-page .md-tabs {
+            border-color: color-mix(in oklch, var(--brand-navy) 24%, var(--border)) !important;
+            background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface)) !important;
+            box-shadow: 0 1px 2px rgba(0, 36, 84, 0.08);
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            scroll-behavior: smooth;
+            overscroll-behavior-inline: contain;
+        }
+
+        .master-data-page .tabs::-webkit-scrollbar,
+        .master-data-page [role="tablist"]::-webkit-scrollbar,
+        .master-data-page .tab-nav::-webkit-scrollbar,
+        .master-data-page .md-tabs::-webkit-scrollbar {
+            width: 0;
+            height: 0;
+            display: none;
+        }
+
+        .master-data-page .btn-primary {
+            border-color: var(--brand-navy) !important;
+            background: var(--brand-navy) !important;
+            color: var(--fg-on-brand) !important;
+            box-shadow:
+                0 1px 2px rgba(0, 36, 84, 0.16),
+                0 10px 20px -16px rgba(0, 36, 84, 0.64);
+        }
+
+        .master-data-page .btn-secondary,
+        .master-data-page .btn-ghost,
+        .master-data-page .btn:not(.btn-primary) {
+            border-color: color-mix(in oklch, var(--brand-navy) 24%, var(--border));
+            background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
+            color: var(--brand-navy);
+        }
+
+        .master-data-page .btn-secondary:hover,
+        .master-data-page .btn-ghost:hover,
+        .master-data-page .btn:not(.btn-primary):hover {
+            border-color: color-mix(in oklch, var(--brand-navy) 36%, var(--border));
+            background: color-mix(in oklch, var(--brand-navy) 9%, var(--surface));
+        }
+
+        .master-data-page input,
+        .master-data-page select,
+        .master-data-page textarea,
+        .master-data-page .form-ctrl,
+        .master-data-page .tpss-select-trigger {
+            border-color: color-mix(in oklch, var(--brand-navy) 22%, var(--border)) !important;
+            background: color-mix(in oklch, var(--brand-navy) 3%, var(--surface)) !important;
+        }
+
+        .master-data-page input:focus,
+        .master-data-page select:focus,
+        .master-data-page textarea:focus,
+        .master-data-page .form-ctrl:focus,
+        .master-data-page .tpss-select-trigger:focus {
+            border-color: var(--brand-navy) !important;
+            box-shadow: 0 0 0 3px color-mix(in oklch, var(--brand-navy) 12%, transparent) !important;
+        }
+
+        .master-data-page table th {
+            color: color-mix(in oklch, var(--brand-navy) 72%, var(--fg-2));
+        }
+
+        .master-data-page table td {
+            border-bottom-color: color-mix(in oklch, var(--brand-navy) 10%, var(--border-subtle));
+        }
+
+        .master-data-page tbody tr:hover {
+            background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
+        }
+
+        .master-data-page .search-item:hover {
+            background: color-mix(in oklch, var(--brand-navy) 7%, var(--surface));
         }
     </style>
 

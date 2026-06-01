@@ -99,14 +99,14 @@
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
         background:
-            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 3%, var(--surface)), var(--surface) 46%),
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 7%, var(--surface)), var(--surface) 48%),
             var(--surface);
-        border: 1px solid color-mix(in oklch, var(--brand-navy) 14%, var(--border));
+        border: 1px solid color-mix(in oklch, var(--brand-navy) 24%, var(--border));
         border-radius: var(--r-lg);
         overflow: hidden;
         box-shadow:
-            0 1px 2px rgba(0, 36, 84, 0.05),
-            0 14px 30px -22px rgba(0, 36, 84, 0.32),
+            0 1px 2px rgba(0, 36, 84, 0.09),
+            0 16px 34px -22px rgba(0, 36, 84, 0.42),
             inset 0 1px 0 rgba(255, 255, 255, 0.7);
     }
     .admin-stats-cell {
@@ -115,12 +115,14 @@
         flex-direction: column;
         padding: 18px 20px 20px;
         color: inherit;
-        border-right: 1px solid color-mix(in oklch, var(--brand-navy) 12%, var(--border));
-        background: color-mix(in oklch, var(--surface) 88%, transparent);
+        border-right: 1px solid color-mix(in oklch, var(--brand-navy) 20%, var(--border));
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 3%, var(--surface)), var(--surface) 64%);
         transition:
             background var(--dur-fast),
             box-shadow var(--dur-fast),
-            transform var(--dur-fast);
+            transform var(--dur-fast),
+            border-color var(--dur-fast);
         min-height: 164px;
         min-width: 0;
     }
@@ -130,26 +132,39 @@
         position: absolute;
         inset: 0 0 auto;
         height: 3px;
-        background: color-mix(in oklch, var(--brand-navy) 18%, transparent);
+        background: var(--brand-navy);
         opacity: 0;
         transition: opacity var(--dur-fast);
     }
     .admin-stats-cell:hover,
     .admin-stats-cell:focus-visible {
-        background: color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
-        box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--brand-navy) 12%, transparent);
+        background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface));
+        box-shadow:
+            inset 0 0 0 1px color-mix(in oklch, var(--brand-navy) 22%, transparent),
+            0 12px 24px -22px rgba(0, 36, 84, 0.42);
         outline: none;
+        transform: translateY(-1px);
     }
     .admin-stats-cell:hover::before,
     .admin-stats-cell:focus-visible::before {
         opacity: 1;
     }
 
+    .admin-stats-cell:hover .admin-stats-value,
+    .admin-stats-cell:focus-visible .admin-stats-value {
+        color: color-mix(in oklch, var(--brand-navy) 86%, var(--fg-1));
+    }
+
+    .admin-stats-cell:hover .admin-stats-bar-fill,
+    .admin-stats-cell:focus-visible .admin-stats-bar-fill {
+        filter: saturate(1.08);
+    }
+
     .admin-stats-head {
         display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px;
     }
     .admin-stats-label {
-        font-size: 12px; font-weight: 800; color: var(--fg-2);
+        font-size: 12px; font-weight: 800; color: color-mix(in oklch, var(--brand-navy) 76%, var(--fg-2));
         letter-spacing: 0;
         overflow-wrap: anywhere;
     }
@@ -161,7 +176,7 @@
     }
     .admin-stats-value {
         font-family: var(--font-display);
-        font-size: 30px; font-weight: 800; color: var(--fg-1);
+        font-size: 30px; font-weight: 800; color: var(--brand-navy);
         line-height: 1; font-variant-numeric: tabular-nums;
     }
     .admin-stats-unit {
@@ -172,10 +187,10 @@
     }
     .admin-stats-bar {
         height: 8px;
-        background: color-mix(in oklch, var(--brand-navy) 9%, var(--bg-2));
+        background: color-mix(in oklch, var(--brand-navy) 14%, var(--bg-2));
         border-radius: 999px; overflow: hidden;
         margin-bottom: 8px;
-        border: 1px solid color-mix(in oklch, var(--brand-navy) 8%, transparent);
+        border: 1px solid color-mix(in oklch, var(--brand-navy) 12%, transparent);
         box-shadow: inset 0 1px 2px rgba(0, 36, 84, 0.1);
     }
     .admin-stats-bar-fill {
@@ -215,7 +230,7 @@
     }
     .admin-stats-list-row strong {
         font-weight: 800;
-        color: var(--fg-1);
+        color: var(--brand-navy);
         font-variant-numeric: tabular-nums;
         flex-shrink: 0;
     }

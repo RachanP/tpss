@@ -106,8 +106,22 @@
 
 <style>
     .admin-alert-card {
-        border: 1px solid var(--border);
+        border: 1px solid color-mix(in oklch, var(--brand-navy) 24%, var(--border));
         min-height: 100%;
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 7%, var(--surface)), var(--surface) 46%),
+            var(--surface);
+        box-shadow:
+            0 1px 2px rgba(0, 36, 84, 0.09),
+            0 18px 38px -30px rgba(0, 36, 84, 0.42);
+    }
+
+    .admin-alert-card .card-hdr {
+        min-height: 76px;
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 9%, var(--surface)), transparent 72%),
+            color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
+        border-bottom-color: color-mix(in oklch, var(--brand-navy) 18%, var(--border));
     }
 
     .admin-alert-card .card-hdr > div:first-child {
@@ -118,43 +132,50 @@
     .admin-alert-body {
         flex: 1 1 auto;
         min-height: 0;
-        background: var(--surface);
+        padding: 16px 18px 18px;
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 5%, var(--surface)), transparent 44%),
+            color-mix(in oklch, var(--brand-navy) 3%, var(--surface));
     }
 
     .admin-alert-empty {
         display: flex;
         align-items: center;
         gap: 10px;
-        padding: 16px 20px;
+        margin: 0;
+        padding: 14px 16px;
+        border: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border));
+        border-radius: var(--r-md);
         color: var(--status-success-fg);
-        background: color-mix(in oklch, var(--status-success) 5%, var(--surface));
+        background: var(--surface);
     }
 
     .admin-alert-group {
-        padding: 10px 0 12px;
+        padding: 0;
     }
 
     .admin-alert-group.is-critical {
-        background: color-mix(in oklch, var(--status-conflict) 4%, var(--surface));
+        background: transparent;
     }
 
     .admin-alert-divider {
-        border-top: 1px solid var(--border);
+        height: 10px;
+        border-top: 0;
     }
 
     .admin-alert-group-label {
-        padding: 0 20px 8px;
+        padding: 0 2px 9px;
         font-size: 11px;
         font-weight: 800;
         line-height: 1.35;
     }
 
     .admin-alert-group-label.is-critical {
-        color: var(--status-conflict-fg);
+        color: color-mix(in oklch, var(--brand-navy) 72%, var(--fg-2));
     }
 
     .admin-alert-group-label.is-warning {
-        color: var(--status-warning-fg);
+        color: color-mix(in oklch, var(--brand-navy) 72%, var(--fg-2));
     }
 
     .admin-alert-row {
@@ -162,11 +183,17 @@
         grid-template-columns: 28px minmax(0, 1fr) auto auto;
         align-items: center;
         gap: 12px;
-        margin: 0 16px 8px;
-        min-height: 68px;
-        padding: 12px 14px;
-        border: 1px solid var(--border);
-        border-radius: var(--r-sm);
+        margin: 0 0 10px;
+        min-height: 70px;
+        padding: 13px 14px;
+        border: 1px solid color-mix(in oklch, var(--brand-navy) 20%, var(--border));
+        border-radius: var(--r-md);
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 5%, var(--surface)), transparent 72%),
+            var(--surface);
+        box-shadow:
+            0 1px 2px rgba(0, 36, 84, 0.08),
+            0 14px 28px -24px rgba(0, 36, 84, 0.36);
         text-decoration: none;
         transition:
             background var(--dur-fast),
@@ -177,11 +204,21 @@
 
     .admin-alert-row:hover,
     .admin-alert-row:focus-visible {
-        background: var(--surface);
-        border-color: color-mix(in oklch, var(--brand-navy) 26%, var(--border));
-        box-shadow: 0 2px 10px rgba(0, 36, 84, 0.08);
+        border-color: color-mix(in oklch, var(--brand-navy) 34%, var(--border));
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 8%, var(--surface)), transparent 72%),
+            color-mix(in oklch, var(--brand-navy) 7%, var(--surface));
+        box-shadow:
+            0 1px 2px rgba(0, 36, 84, 0.06),
+            0 16px 30px -24px rgba(0, 36, 84, 0.32);
         outline: none;
         transform: translateY(-1px);
+    }
+
+    .admin-alert-row:hover .admin-alert-icon,
+    .admin-alert-row:focus-visible .admin-alert-icon {
+        box-shadow: 0 0 0 4px color-mix(in oklch, var(--brand-navy) 8%, transparent);
+        transform: scale(1.03);
     }
 
     .admin-alert-row:last-child {
@@ -196,18 +233,21 @@
         height: 26px;
         border-radius: 50%;
         flex-shrink: 0;
+        transition:
+            box-shadow var(--dur-fast),
+            transform var(--dur-fast);
     }
     .admin-alert-icon.is-critical {
-        color: var(--status-conflict-fg);
-        background: color-mix(in oklch, var(--status-conflict) 13%, transparent);
+        color: var(--brand-navy);
+        background: color-mix(in oklch, var(--brand-navy) 13%, var(--surface));
     }
     .admin-alert-icon.is-warning {
-        color: var(--status-warning-fg);
-        background: color-mix(in oklch, var(--status-warning) 16%, transparent);
+        color: var(--brand-navy);
+        background: color-mix(in oklch, var(--brand-navy) 13%, var(--surface));
     }
     .admin-alert-icon.is-success {
-        color: var(--status-success-fg);
-        background: color-mix(in oklch, var(--status-success) 14%, transparent);
+        color: var(--brand-navy);
+        background: color-mix(in oklch, var(--brand-navy) 13%, var(--surface));
     }
 
     .admin-alert-main {
@@ -257,23 +297,27 @@
     }
 
     .admin-alert-row.is-critical {
-        border-color: var(--border);
-        background: color-mix(in oklch, var(--status-conflict) 5%, var(--surface));
+        border-color: color-mix(in oklch, var(--brand-navy) 20%, var(--border));
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 5%, var(--surface)), transparent 72%),
+            var(--surface);
     }
 
     .admin-alert-row.is-critical .admin-alert-main,
     .admin-alert-row.is-critical .admin-alert-action {
-        color: var(--status-conflict-fg);
+        color: var(--brand-navy);
     }
 
     .admin-alert-row.is-critical:hover,
     .admin-alert-row.is-critical:focus-visible {
-        border-color: color-mix(in oklch, var(--status-conflict) 34%, var(--border));
+        border-color: color-mix(in oklch, var(--brand-navy) 30%, var(--border));
     }
 
     .admin-alert-row.is-warning {
-        border-color: var(--border);
-        background: color-mix(in oklch, var(--status-warning) 5%, var(--surface));
+        border-color: color-mix(in oklch, var(--brand-navy) 20%, var(--border));
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 5%, var(--surface)), transparent 72%),
+            var(--surface);
     }
 
     .admin-alert-row.is-warning:hover,

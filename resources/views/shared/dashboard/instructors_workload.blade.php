@@ -218,18 +218,77 @@
     }
 
     .workload-card .card-hdr {
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 9%, var(--surface)), transparent 72%),
+            color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
+    }
+
+    .workload-card .card-hdr {
         flex-wrap: wrap;
         gap: 10px 14px;
     }
 
     .workload-card .card-actions {
-        flex: 0 1 320px;
-        min-width: 220px;
+        flex: 0 1 360px;
+        min-width: 260px;
     }
 
     .workload-card .search-box {
         width: 100%;
-        max-width: 320px;
+        max-width: 360px;
+        min-height: 42px;
+        gap: 10px;
+        padding: 0 14px;
+        border: 1px solid color-mix(in oklch, var(--brand-navy) 20%, var(--border));
+        border-radius: var(--r-md);
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 4%, var(--surface)), var(--surface));
+        box-shadow:
+            0 1px 2px rgba(0, 36, 84, 0.06),
+            inset 0 1px 0 rgba(255, 255, 255, 0.76);
+        transition:
+            border-color 160ms ease,
+            background 160ms ease,
+            box-shadow 160ms ease,
+            transform 160ms ease;
+    }
+
+    .workload-card .search-box:hover {
+        border-color: color-mix(in oklch, var(--brand-navy) 30%, var(--border));
+        background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
+        box-shadow:
+            0 2px 5px rgba(0, 36, 84, 0.08),
+            inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    }
+
+    .workload-card .search-box:focus-within {
+        border-color: color-mix(in oklch, var(--brand-navy) 70%, var(--border));
+        background: var(--surface);
+        box-shadow:
+            0 0 0 3px color-mix(in oklch, var(--brand-navy) 13%, transparent),
+            0 8px 18px -16px rgba(0, 36, 84, 0.36);
+        transform: translateY(-1px);
+    }
+
+    .workload-card .search-box svg {
+        width: 16px;
+        height: 16px;
+        color: color-mix(in oklch, var(--brand-navy) 56%, var(--fg-3));
+        flex: 0 0 auto;
+    }
+
+    .workload-card .search-box input {
+        max-width: none;
+        min-width: 0;
+        height: 40px;
+        font-size: 13px;
+        font-weight: 650;
+        line-height: 1.45;
+        color: var(--fg-1);
+    }
+
+    .workload-card .search-box input::placeholder {
+        color: color-mix(in oklch, var(--brand-navy) 34%, var(--fg-3));
     }
 
     .workload-card .table-responsive {
@@ -245,16 +304,34 @@
 
     .workload-card thead tr {
         height: var(--workload-head-height);
+        background: color-mix(in oklch, var(--brand-navy) 9%, var(--surface));
     }
 
     .workload-card tbody tr {
         height: var(--workload-row-height);
+        background: var(--surface);
+        transition:
+            background 160ms ease,
+            box-shadow 160ms ease;
+    }
+
+    .workload-card tbody tr:nth-child(even) {
+        background: color-mix(in oklch, var(--brand-navy) 2.5%, var(--surface));
+    }
+
+    .workload-card tbody tr:hover {
+        background: color-mix(in oklch, var(--brand-navy) 6%, var(--surface));
+        box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--brand-navy) 18%, transparent);
     }
 
     .workload-card th,
     .workload-card td {
         overflow: hidden;
         vertical-align: middle;
+    }
+
+    .workload-card th {
+        color: color-mix(in oklch, var(--brand-navy) 70%, var(--fg-2));
     }
 
     .workload-col-code { width: 10%; }
@@ -285,7 +362,8 @@
         gap: 12px;
         flex-wrap: wrap;
         padding: 12px 20px;
-        border-top: 1px solid var(--border);
+        border-top: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border));
+        background: color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
     }
 
     .workload-pagination-summary {
@@ -305,22 +383,36 @@
     .workload-view-all {
         display: inline-flex;
         align-items: center;
-        min-height: 30px;
-        padding: 5px 10px;
-        border: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border));
+        min-height: 34px;
+        padding: 6px 12px;
+        border: 1px solid var(--brand-navy);
         border-radius: var(--r-sm);
-        background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
-        color: var(--brand-navy);
+        background: var(--brand-navy);
+        color: var(--fg-on-brand);
         font-size: 12px;
         font-weight: 800;
         line-height: 1.25;
         text-decoration: none;
+        box-shadow:
+            0 1px 2px rgba(0, 36, 84, 0.16),
+            0 10px 18px -16px rgba(0, 36, 84, 0.58);
+        transition:
+            background 160ms ease,
+            border-color 160ms ease,
+            color 160ms ease,
+            box-shadow 160ms ease,
+            transform 160ms ease;
     }
 
     .workload-view-all:hover,
     .workload-view-all:focus-visible {
-        border-color: color-mix(in oklch, var(--brand-navy) 34%, var(--border));
-        background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface));
+        border-color: var(--brand-navy-700);
+        background: var(--brand-navy-700);
+        color: var(--fg-on-brand);
+        box-shadow:
+            0 2px 4px rgba(0, 36, 84, 0.16),
+            0 12px 22px -16px rgba(0, 36, 84, 0.58);
+        transform: translateY(-1px);
         outline: none;
     }
 
@@ -342,10 +434,10 @@
         justify-content: center;
         min-width: 32px;
         height: 32px;
-        border: 1px solid var(--border);
+        border: 1px solid color-mix(in oklch, var(--brand-navy) 28%, var(--border));
         border-radius: 6px;
         background: var(--surface);
-        color: var(--fg-2);
+        color: var(--brand-navy);
         font-size: 13px;
         text-decoration: none;
     }
@@ -356,15 +448,15 @@
 
     .workload-page-btn:hover:not(:disabled):not(.is-current),
     .workload-page-btn:focus-visible:not(:disabled):not(.is-current) {
-        border-color: color-mix(in oklch, var(--brand-navy) 24%, var(--border));
-        background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
+        border-color: var(--brand-navy);
+        background: color-mix(in oklch, var(--brand-navy) 10%, var(--surface));
         outline: none;
     }
 
     .workload-page-btn.is-current {
-        border-color: var(--fg-1);
-        background: var(--fg-1);
-        color: var(--surface);
+        border-color: var(--brand-navy);
+        background: var(--brand-navy);
+        color: var(--fg-on-brand);
         cursor: default;
     }
 

@@ -666,6 +666,53 @@
             word-break: break-word;
             line-height: 1.4;
         }
+
+        :where(.modal-center, .profile-modal-shell, .users-modal, .instructor-modal, .room-modal, .course-modal, .tpss-delete-popup) {
+            border-radius: 20px !important;
+            border: 1px solid color-mix(in oklch, var(--brand-navy, #002b5c) 22%, var(--border, #d8dee9)) !important;
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy, #002b5c) 5%, var(--surface, #fff)), var(--surface, #fff) 42%),
+                var(--surface, #fff) !important;
+            box-shadow:
+                0 24px 54px -28px rgba(0, 36, 84, 0.52),
+                0 4px 18px rgba(15, 23, 42, 0.12) !important;
+            overflow: hidden !important;
+        }
+
+        :where(.modal-center, .profile-modal-shell, .users-modal, .instructor-modal, .room-modal, .course-modal) :where(.modal-hdr) {
+            border-bottom: 1px solid color-mix(in oklch, var(--brand-navy, #002b5c) 18%, var(--border, #d8dee9)) !important;
+            background:
+                linear-gradient(180deg,
+                    color-mix(in oklch, var(--brand-navy, #002b5c) 10%, var(--surface, #fff)),
+                    color-mix(in oklch, var(--brand-navy, #002b5c) 4%, var(--surface, #fff))) !important;
+        }
+
+        :where(.modal-center, .profile-modal-shell, .users-modal, .instructor-modal, .room-modal, .course-modal) :where(.modal-foot) {
+            border-top: 1px solid color-mix(in oklch, var(--brand-navy, #002b5c) 16%, var(--border, #d8dee9)) !important;
+            background: color-mix(in oklch, var(--brand-navy, #002b5c) 6%, var(--surface, #fff)) !important;
+        }
+
+        :where(.modal-body, .profile-modal-body, .users-modal-body, .instructor-modal-body, .room-modal-body, .course-modal-body) {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        :where(.modal-body, .profile-modal-body, .users-modal-body, .instructor-modal-body, .room-modal-body, .course-modal-body)::-webkit-scrollbar {
+            width: 0;
+            height: 0;
+            display: none;
+        }
+
+        :where(.tpss-scroll-hidden, .tabs, [role="tablist"]) {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        :where(.tpss-scroll-hidden, .tabs, [role="tablist"])::-webkit-scrollbar {
+            width: 0;
+            height: 0;
+            display: none;
+        }
     </style>
 </head>
 <body x-data="{ sidebarOpen: window.innerWidth > 1024 }">
@@ -850,11 +897,20 @@
 
             var isError = type === 'error';
             var isWarning = type === 'warning';
-            var bg      = isError ? '#fef2f2' : isWarning ? '#fffbeb' : '#f0fdf4';
-            var border  = isError ? '#fca5a5' : isWarning ? '#fcd34d' : '#86efac';
-            var iconClr = isError ? '#dc2626' : isWarning ? '#d97706' : '#16a34a';
-            var textClr = isError ? '#7f1d1d' : isWarning ? '#78350f' : '#14532d';
-            var labelClr= isError ? '#b91c1c' : isWarning ? '#92400e' : '#15803d';
+            var bg      = 'linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 6%, var(--surface)), var(--surface))';
+            var border  = isError
+                ? 'var(--status-conflict-border)'
+                : isWarning
+                    ? 'var(--status-warning-border)'
+                    : 'color-mix(in oklch, var(--brand-navy) 22%, var(--border))';
+            var iconClr = isError ? 'var(--status-conflict-fg)' : isWarning ? 'var(--status-warning-fg)' : 'var(--status-success-fg)';
+            var iconBg  = isError
+                ? 'color-mix(in oklch, var(--status-conflict-fg) 12%, transparent)'
+                : isWarning
+                    ? 'color-mix(in oklch, var(--status-warning-fg) 12%, transparent)'
+                    : 'color-mix(in oklch, var(--status-success-fg) 12%, transparent)';
+            var textClr = 'var(--fg-2)';
+            var labelClr= isError ? 'var(--status-conflict-fg)' : isWarning ? 'var(--status-warning-fg)' : 'var(--fg-1)';
             var label   = isError ? 'เกิดข้อผิดพลาด' : isWarning ? 'ดำเนินการแล้ว' : 'สำเร็จ';
 
             var iconSvg = !isError
@@ -865,16 +921,16 @@
             toast.id = 'tpss-toast';
             toast.innerHTML =
                 '<div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;">'
-                + '<div style="flex-shrink:0;width:36px;height:36px;border-radius:50%;background:' + (isError ? '#fee2e2' : isWarning ? '#fef3c7' : '#dcfce7') + ';display:flex;align-items:center;justify-content:center;">'
+                + '<div style="flex-shrink:0;width:38px;height:38px;border-radius:50%;background:' + iconBg + ';display:flex;align-items:center;justify-content:center;">'
                 + iconSvg + '</div>'
                 + '<div style="min-width:0;">'
-                + '<div style="font-size:13px;font-weight:700;color:' + labelClr + ';line-height:1.2;">' + label + '</div>'
-                + '<div style="font-size:13px;color:' + textClr + ';line-height:1.5;margin-top:1px;word-break:break-word;">' + message + '</div>'
+                + '<div style="font-size:13px;font-weight:800;color:' + labelClr + ';line-height:1.2;">' + label + '</div>'
+                + '<div style="font-size:13px;color:' + textClr + ';line-height:1.55;margin-top:3px;word-break:break-word;">' + message + '</div>'
                 + '</div></div>'
                 + '<button onclick="document.getElementById(\'tpss-toast\').remove()" style="flex-shrink:0;background:transparent;border:none;cursor:pointer;padding:4px;border-radius:6px;color:' + iconClr + ';opacity:0.6;margin-left:8px;" title="ปิด">'
                 + '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
                 + '</button>'
-                + '<div id="tpss-toast-bar" style="position:absolute;bottom:0;left:0;height:3px;border-radius:0 0 12px 12px;background:' + iconClr + ';width:100%;transition:width linear;"></div>';
+                + '<div id="tpss-toast-bar" style="position:absolute;bottom:0;left:0;height:3px;border-radius:0 0 14px 14px;background:' + iconClr + ';width:100%;transition:width linear;"></div>';
 
             Object.assign(toast.style, {
                 position: 'fixed',
@@ -882,15 +938,15 @@
                 right: '20px',
                 zIndex: '99999',
                 background: bg,
-                border: '1.5px solid ' + border,
-                borderRadius: '14px',
+                border: '1px solid ' + border,
+                borderRadius: '16px',
                 padding: '14px 16px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0',
                 maxWidth: '420px',
                 width: 'calc(100vw - 40px)',
-                boxShadow: '0 8px 32px rgba(15,23,42,0.14), 0 2px 8px rgba(15,23,42,0.08)',
+                boxShadow: '0 1px 2px rgba(0,36,84,0.08), 0 24px 54px -28px rgba(0,36,84,0.52), 0 8px 24px rgba(15,23,42,0.10)',
                 fontFamily: 'IBM Plex Sans Thai, sans-serif',
                 transform: 'translateY(-80px)',
                 opacity: '0',

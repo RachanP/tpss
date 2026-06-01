@@ -368,23 +368,41 @@
     .course-dashboard {
         display: flex;
         flex-direction: column;
-        gap: 14px;
+        gap: 18px;
+        padding: clamp(14px, 2vw, 28px);
+        background:
+            radial-gradient(circle at 8% 0%, color-mix(in oklch, var(--brand-navy) 9%, transparent), transparent 30%),
+            linear-gradient(180deg,
+                color-mix(in oklch, var(--brand-navy) 6%, var(--bg)) 0%,
+                color-mix(in oklch, var(--brand-navy) 3%, var(--bg)) 46%,
+                var(--bg) 100%);
     }
 
     /* Section panel — boxed container with subtle bg */
     .dash-section {
-        padding: 22px 24px;
-        background: color-mix(in oklch, var(--brand-navy) 3%, var(--bg-1));
-        border: 1px solid var(--brand-navy-300);
-        border-radius: 14px;
+        padding: clamp(18px, 2vw, 28px);
+        background:
+            linear-gradient(180deg,
+                color-mix(in oklch, var(--brand-navy) 9%, var(--surface)),
+                color-mix(in oklch, var(--brand-navy) 3%, var(--surface)) 45%,
+                var(--surface));
+        border: 1px solid color-mix(in oklch, var(--brand-navy) 26%, var(--border-1));
+        border-radius: 16px;
+        box-shadow:
+            0 1px 2px rgba(0, 36, 84, 0.08),
+            0 18px 42px -28px rgba(0, 36, 84, 0.45);
     }
     .dash-section--history {
-        background: color-mix(in oklch, var(--bg-2) 50%, var(--bg-1));
+        background:
+            linear-gradient(180deg,
+                color-mix(in oklch, var(--brand-navy) 8%, var(--surface)),
+                color-mix(in oklch, var(--brand-navy) 4%, var(--surface)) 38%,
+                var(--surface));
     }
     .dash-section-header {
-        margin-bottom: 16px;
-        padding-bottom: 14px;
-        border-bottom: 1px dashed var(--brand-navy-300);
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border-1));
     }
     .dash-section-tag {
         display: inline-block;
@@ -531,22 +549,58 @@
     .dash-kpis {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-        gap: 12px;
+        gap: 14px;
     }
     @media (max-width: 720px) {
         .dash-kpis { grid-template-columns: repeat(2, 1fr); }
     }
     .kpi-card {
-        padding: 16px 18px;
-        background: var(--bg-1);
-        border: 1px solid var(--border-1);
+        position: relative;
+        min-height: 132px;
+        padding: 18px 20px;
+        background:
+            radial-gradient(circle at 92% 16%, color-mix(in oklch, var(--brand-navy) 10%, transparent), transparent 36%),
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 4%, var(--surface)), var(--surface));
+        border: 1px solid color-mix(in oklch, var(--brand-navy) 22%, var(--border-1));
         border-top: 4px solid var(--brand-navy-300);
-        border-radius: 10px;
+        border-radius: 12px;
+        box-shadow:
+            0 1px 2px rgba(0, 36, 84, 0.08),
+            0 14px 28px -24px rgba(0, 36, 84, 0.5);
+        overflow: hidden;
+        transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
     }
-    .kpi-card--navy    { border-top-color: var(--brand-navy); }
-    .kpi-card--success { border-top-color: var(--status-success); }
-    .kpi-card--warning { border-top-color: var(--status-warning); }
-    .kpi-card--info    { border-top-color: var(--status-info); }
+    .kpi-card:hover {
+        transform: translateY(-2px);
+        border-color: color-mix(in oklch, var(--brand-navy) 34%, var(--border-1));
+        box-shadow:
+            0 2px 5px rgba(0, 36, 84, 0.1),
+            0 20px 36px -24px rgba(0, 36, 84, 0.62);
+    }
+    .kpi-card--navy {
+        border-top-color: var(--brand-navy);
+        background:
+            radial-gradient(circle at 92% 16%, color-mix(in oklch, var(--brand-navy) 16%, transparent), transparent 38%),
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 7%, var(--surface)), var(--surface));
+    }
+    .kpi-card--success {
+        border-top-color: var(--status-success);
+        background:
+            radial-gradient(circle at 92% 16%, color-mix(in oklch, var(--status-success) 13%, transparent), transparent 38%),
+            linear-gradient(180deg, color-mix(in oklch, var(--status-success) 6%, var(--surface)), var(--surface));
+    }
+    .kpi-card--warning {
+        border-top-color: var(--status-warning);
+        background:
+            radial-gradient(circle at 92% 16%, color-mix(in oklch, var(--status-warning) 14%, transparent), transparent 38%),
+            linear-gradient(180deg, color-mix(in oklch, var(--status-warning) 7%, var(--surface)), var(--surface));
+    }
+    .kpi-card--info {
+        border-top-color: var(--status-info);
+        background:
+            radial-gradient(circle at 92% 16%, color-mix(in oklch, var(--status-info) 13%, transparent), transparent 38%),
+            linear-gradient(180deg, color-mix(in oklch, var(--status-info) 6%, var(--surface)), var(--surface));
+    }
     .kpi-card--gray    { border-top-color: var(--border-1); }
     .kpi-label {
         font-size: 0.75rem;
@@ -559,7 +613,7 @@
         font-size: 2rem;
         font-weight: 700;
         line-height: 1;
-        color: var(--fg-1);
+        color: var(--brand-navy);
         margin-top: 10px;
     }
     .kpi-frac {
@@ -572,7 +626,7 @@
         font-size: 1.0625rem;
         font-weight: 700;
         line-height: 1.2;
-        color: var(--fg-1);
+        color: var(--brand-navy);
         margin-top: 10px;
     }
     .kpi-hint {
@@ -585,7 +639,7 @@
     .dash-grid {
         display: grid;
         grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
-        gap: 18px;
+        gap: 22px;
     }
     @media (max-width: 1024px) {
         .dash-grid { grid-template-columns: 1fr; }
@@ -593,19 +647,26 @@
 
     /* Cards */
     .dash-card {
-        background: var(--bg-1);
-        border: 1px solid var(--border-1);
-        border-radius: 12px;
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 4%, var(--surface)), var(--surface) 46%);
+        border: 1px solid color-mix(in oklch, var(--brand-navy) 24%, var(--border-1));
+        border-radius: 14px;
         overflow: hidden;
+        box-shadow:
+            0 1px 2px rgba(0, 36, 84, 0.08),
+            0 18px 38px -26px rgba(0, 36, 84, 0.46);
     }
     .dash-card-hdr {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 12px;
-        padding: 16px 20px;
-        background: var(--bg-2);
-        border-bottom: 1px solid var(--border-1);
+        padding: 18px 22px;
+        background:
+            linear-gradient(180deg,
+                color-mix(in oklch, var(--brand-navy) 10%, var(--surface)),
+                color-mix(in oklch, var(--brand-navy) 4%, var(--surface)));
+        border-bottom: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border-1));
         flex-wrap: wrap;
     }
     .dash-card-title {
@@ -621,10 +682,11 @@
         color: var(--fg-3);
     }
     .dash-card-body {
-        padding: 16px 18px;
+        padding: 18px 20px;
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 12px;
+        background: color-mix(in oklch, var(--brand-navy) 2%, var(--surface));
     }
     .dash-action-btn {
         display: inline-flex;
@@ -650,14 +712,17 @@
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 12px 14px;
-        background: var(--bg-1);
-        border: 1px solid var(--border-1);
-        border-radius: 8px;
+        padding: 14px 16px;
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 3%, var(--surface)), var(--surface));
+        border: 1px solid color-mix(in oklch, var(--brand-navy) 16%, var(--border-1));
+        border-radius: 12px;
+        box-shadow: 0 10px 24px -22px rgba(0, 36, 84, 0.42);
     }
     .instructor-card--head {
-        background: var(--brand-navy-50, var(--bg-2));
-        border-color: var(--brand-navy-300);
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 8%, var(--surface)), var(--surface));
+        border-color: color-mix(in oklch, var(--brand-navy) 30%, var(--border-1));
     }
     .instructor-card--empty {
         border-style: dashed;
@@ -710,7 +775,7 @@
         flex-direction: column;
     }
     .history-row {
-        border-top: 1px solid var(--border-1);
+        border-top: 1px solid color-mix(in oklch, var(--brand-navy) 12%, var(--border-1));
     }
     .history-row:first-child {
         border-top: 0;
@@ -721,14 +786,14 @@
         gap: 16px;
         align-items: center;
         width: 100%;
-        padding: 14px 20px;
+        padding: 16px 22px;
         background: transparent;
         border: 0;
         cursor: pointer;
         text-align: left;
         font-family: inherit;
         color: var(--fg-1);
-        transition: background 0.15s;
+        transition: background 0.15s, box-shadow 0.15s;
     }
     @media (max-width: 560px) {
         .history-row-btn {
@@ -742,7 +807,8 @@
         cursor: default;
     }
     .history-row--deviated .history-row-btn:hover {
-        background: var(--bg-2);
+        background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
+        box-shadow: inset 3px 0 0 var(--brand-navy);
     }
     .history-term {
         border-right: 2px solid var(--brand-navy-300);
@@ -780,12 +846,13 @@
         transition: transform 0.15s;
     }
     .history-detail {
-        padding: 4px 20px 18px;
+        padding: 14px 22px 20px;
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
         gap: 14px;
-        background: var(--bg-2);
-        border-top: 1px dashed var(--border-1);
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 6%, var(--surface)), color-mix(in oklch, var(--brand-navy) 3%, var(--surface)));
+        border-top: 1px solid color-mix(in oklch, var(--brand-navy) 16%, var(--border-1));
     }
 
     .diff-bucket {}
@@ -857,6 +924,60 @@
         font-size: 0.8125rem;
         color: var(--fg-3);
         margin-top: 6px;
+    }
+
+    .course-dashboard {
+        padding: clamp(14px, 2vw, 28px);
+        background:
+            radial-gradient(circle at 8% 0%, color-mix(in oklch, var(--brand-navy) 10%, transparent), transparent 30%),
+            linear-gradient(180deg,
+                color-mix(in oklch, var(--brand-navy) 7%, var(--bg)) 0%,
+                color-mix(in oklch, var(--brand-navy) 4%, var(--bg)) 34%,
+                var(--bg) 100%);
+    }
+
+    .course-dashboard .dash-hero,
+    .course-dashboard .dash-card,
+    .course-dashboard .card,
+    .course-dashboard .metric-card,
+    .course-dashboard .instructor-card,
+    .course-dashboard .diff-list li {
+        border-color: color-mix(in oklch, var(--brand-navy) 24%, var(--border)) !important;
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 5%, var(--surface)), var(--surface) 46%),
+            var(--surface) !important;
+        box-shadow:
+            0 1px 2px rgba(0, 36, 84, 0.09),
+            0 16px 34px -22px rgba(0, 36, 84, 0.42);
+    }
+
+    .course-dashboard .dash-hero {
+        background:
+            radial-gradient(circle at 10% 0%, color-mix(in oklch, var(--brand-navy) 14%, transparent), transparent 32%),
+            linear-gradient(135deg, color-mix(in oklch, var(--brand-navy) 12%, var(--surface)), var(--surface) 64%) !important;
+    }
+
+    .course-dashboard .dash-card-hdr,
+    .course-dashboard .card-hdr,
+    .course-dashboard thead th {
+        border-bottom-color: color-mix(in oklch, var(--brand-navy) 20%, var(--border)) !important;
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 10%, var(--surface)), color-mix(in oklch, var(--brand-navy) 4%, var(--surface))) !important;
+    }
+
+    .course-dashboard .back-link {
+        border-color: color-mix(in oklch, var(--brand-navy) 24%, var(--border));
+        background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
+        color: var(--brand-navy);
+    }
+
+    .course-dashboard .history-detail {
+        border-top-color: color-mix(in oklch, var(--brand-navy) 18%, var(--border));
+        background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
+    }
+
+    .course-dashboard .history-row-btn:hover {
+        background: color-mix(in oklch, var(--brand-navy) 6%, var(--surface));
     }
 </style>
 </x-app-layout>

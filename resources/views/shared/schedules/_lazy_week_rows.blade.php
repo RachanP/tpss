@@ -31,7 +31,7 @@
         $color = (string) ($group->color_code ?? '');
         return str_starts_with($color, '#') || str_starts_with($color, 'oklch') || str_starts_with($color, 'var(')
             ? $color
-            : 'var(--schedule-border-strong)';
+            : 'oklch(58% 0.095 84)';
     };
     $eligibleScheduleInstructors = function ($offering) {
         $departmentId = $offering?->course?->department_id;

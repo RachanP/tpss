@@ -24,6 +24,12 @@
         overflow: hidden;
     }
 
+    [data-testid="dashboard-upcoming-schedules"] .card-hdr {
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 9%, var(--surface)), transparent 72%),
+            color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
+    }
+
     [data-testid="dashboard-upcoming-schedules"] .card-hdr > div {
         min-width: 0;
         flex-wrap: wrap;
@@ -32,7 +38,10 @@
     .upcoming-schedules-empty {
         min-height: 220px;
         padding: 24px;
-        border-top: 1px solid var(--border);
+        border-top: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border));
+        background:
+            radial-gradient(circle at 50% 22%, color-mix(in oklch, var(--brand-navy) 7%, transparent), transparent 35%),
+            color-mix(in oklch, var(--brand-navy) 3%, var(--surface));
         display: flex;
         align-items: center;
         justify-content: center;

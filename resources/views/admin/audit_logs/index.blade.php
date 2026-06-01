@@ -441,5 +441,67 @@ function auditLogPage() {
             grid-template-columns: 1fr;
         }
     }
+
+    .audit-page {
+        background:
+            radial-gradient(circle at 8% 0%, color-mix(in oklch, var(--brand-navy) 10%, transparent), transparent 30%),
+            linear-gradient(180deg,
+                color-mix(in oklch, var(--brand-navy) 7%, var(--bg)) 0%,
+                color-mix(in oklch, var(--brand-navy) 4%, var(--bg)) 34%,
+                var(--bg) 100%);
+    }
+
+    .audit-page .card {
+        border-color: color-mix(in oklch, var(--brand-navy) 24%, var(--border));
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 4.5%, var(--surface)), var(--surface) 44%),
+            var(--surface);
+        box-shadow:
+            0 1px 2px rgba(0, 36, 84, 0.09),
+            0 16px 34px -22px rgba(0, 36, 84, 0.42);
+    }
+
+    .audit-page .card-hdr {
+        border-bottom-color: color-mix(in oklch, var(--brand-navy) 20%, var(--border));
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 10%, var(--surface)), color-mix(in oklch, var(--brand-navy) 4%, var(--surface)));
+    }
+
+    .audit-filter-body,
+    .audit-page .table-responsive,
+    .audit-page table {
+        border-color: color-mix(in oklch, var(--brand-navy) 16%, var(--border));
+    }
+
+    .audit-filter-body {
+        background:
+            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 5%, var(--surface)), transparent 44%),
+            color-mix(in oklch, var(--brand-navy) 3%, var(--surface));
+    }
+
+    .audit-page .form-ctrl,
+    .audit-page .tpss-select-trigger {
+        border-color: color-mix(in oklch, var(--brand-navy) 22%, var(--border));
+        background: color-mix(in oklch, var(--brand-navy) 3%, var(--surface));
+    }
+
+    .audit-page .form-ctrl:focus,
+    .audit-page .tpss-select-trigger:focus {
+        border-color: var(--brand-navy);
+        box-shadow: 0 0 0 3px color-mix(in oklch, var(--brand-navy) 12%, transparent);
+    }
+
+    .audit-filter-reset {
+        border-color: color-mix(in oklch, var(--brand-navy) 24%, var(--border));
+        background: var(--surface);
+        color: var(--brand-navy);
+    }
+
+    .audit-filter-reset:hover,
+    .audit-filter-reset:focus-visible {
+        border-color: color-mix(in oklch, var(--brand-navy) 38%, var(--border));
+        background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface));
+        outline: none;
+    }
 </style>
 </x-app-layout>
