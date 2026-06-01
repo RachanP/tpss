@@ -158,15 +158,19 @@
                 </svg>
                 จัดการข้อมูลหลัก
             </a>
-            <a href="#" class="nv">
+            @if(!empty($canHelpSchedule))
+            {{-- V2 delegation: เจ้าหน้าที่ที่ admin มอบหมายดูแลวิชา → ช่วยจัดตาราง --}}
+            <a href="{{ route('maker.schedules.index') }}" class="nv {{ Request::routeIs('maker.schedules.*') || Request::routeIs('maker.course_offerings.schedules.*') ? 'on' : '' }}">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                     <line x1="16" y1="2" x2="16" y2="6"></line>
                     <line x1="8" y1="2" x2="8" y2="6"></line>
                     <line x1="3" y1="10" x2="21" y2="10"></line>
+                    <path d="M9 16l2 2 4-4"></path>
                 </svg>
-                ตารางสอน
+                ช่วยจัดตาราง
             </a>
+            @endif
             <a href="#" class="nv">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -270,7 +274,7 @@
                 </svg>
                 ตารางสอนของฉัน
             </a>
-            @if(!empty($instructorCanSchedule))
+            @if(!empty($canHelpSchedule))
             {{-- V2 delegation: เข้าหน้าจัดตารางในฐานะอาจารย์ที่หัวหน้าวิชามอบหมาย --}}
             <a href="{{ route('maker.schedules.index') }}" class="nv {{ Request::routeIs('maker.schedules.*') || Request::routeIs('maker.course_offerings.schedules.*') ? 'on' : '' }}">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

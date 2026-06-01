@@ -111,8 +111,10 @@ class CourseOffering extends Model
     }
 
     /**
-     * V2 delegation: ใครจัดตาราง offering นี้ได้ = หัวหน้าวิชา (coordinator) หรือ
-     * อาจารย์ในชุดผู้สอนที่ได้รับมอบหมาย (schedule_permission = 'schedule')
+     * V2 delegation: ใครจัดตาราง offering นี้ได้
+     *  1. หัวหน้าวิชา (coordinator)
+     *  2. อาจารย์ในชุดผู้สอนที่ได้รับมอบหมาย (schedule_permission = 'schedule')
+     *  3. เจ้าหน้าที่ที่ admin มอบหมายดูแลวิชา (course_staff) — มอบหมายผ่าน modal รายวิชา
      */
     public function canBeScheduledBy(?int $userId): bool
     {
@@ -123,20 +125,28 @@ class CourseOffering extends Model
             return true;
         }
 
-        return $this->instructorPool()
+        if ($this->instructorPool()
             ->where('users.id', $userId)
             ->wherePivot('schedule_permission', 'schedule')
+            ->exists()) {
+            return true;
+        }
+
+        return $this->course()
+            ->whereHas('assignedStaff', fn ($q) => $q->where('users.id', $userId))
             ->exists();
     }
 
-    /** scope: offering ที่ user คนนี้จัดตารางได้ (coordinator หรือถูก delegate) */
+    /** scope: offering ที่ user คนนี้จัดตารางได้ (coordinator, อาจารย์ที่ถูก delegate, หรือเจ้าหน้าที่ที่ดูแลวิชา) */
     public function scopeSchedulableBy($query, int $userId)
     {
         return $query->where(function ($q) use ($userId) {
             $q->where('coordinator_id', $userId)
                 ->orWhereHas('instructorPool', fn ($iq) => $iq
                     ->where('users.id', $userId)
-                    ->where('course_offering_instructors.schedule_permission', 'schedule'));
+                    ->where('course_offering_instructors.schedule_permission', 'schedule'))
+                ->orWhereHas('course.assignedStaff', fn ($sq) => $sq
+                    ->where('users.id', $userId));
         });
     }
 

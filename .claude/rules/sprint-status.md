@@ -27,7 +27,7 @@
 
 **🟢 Schedule phase (term dimension) — เสร็จแล้ว (1 มิ.ย.):** `schedules.term_id` (observer derive จาก start_date) + `AcademicCalendar` จำแนกวัน + filter เทอม + ลงสีปฏิทิน (วันหยุด/สอบ/ปิดเทอม/เทอมอื่น) + บล็อกจัดกิจกรรมช่วงสอบ/ปิดเทอม + ตัด group selector ออกจาก modal · validation สอบปลายภาคหลังกลางภาค · seeder สอบปลายภาคจบตรงวันจบเทอม
 
-**🟢 Delegation (อาจารย์ช่วยจัดตาราง) — เสร็จแล้ว (1 มิ.ย.):** `course_offering_instructors.schedule_permission` ('view'|'schedule') + `CourseOffering::canBeScheduledBy`/`scopeSchedulableBy` + toggle รายอาจารย์ในหน้า offering (`instructors.permission`) + route จัดตาราง = `course_head,instructor` (จัดการ offering คง course_head) + sidebar อาจารย์เมนู "ช่วยจัดตาราง" (gate เฉพาะคนที่ถูกมอบหมาย) · 9 tests (`ScheduleDelegationTest`) · ดู memory [[project-delegation-deferred]]
+**🟢 Delegation (อาจารย์ + เจ้าหน้าที่ช่วยจัดตาราง) — เสร็จแล้ว (1 มิ.ย.):** `CourseOffering::canBeScheduledBy`/`scopeSchedulableBy` = coordinator หรือ instructor `schedule_permission='schedule'` หรือ staff ใน `course_staff` + toggle รายอาจารย์ในหน้า offering (`instructors.permission`) + staff มอบหมายผ่าน modal รายวิชา + route จัดตาราง = `course_head,instructor,staff` (จัดการ offering + conflict-badge คง course_head) + sidebar อาจารย์/เจ้าหน้าที่เมนู "ช่วยจัดตาราง" (gate `canHelpSchedule`) · 12 tests (`ScheduleDelegationTest`) · ดู memory [[project-delegation-deferred]]
 
 **🔲 Phase ถัดไป (rotation — ไม่ใช่ Master Data):** rotation_rounds/assignments (หมุนกลุ่มปี 3-4 หลังสอบ), cross-course group conflict, visual dashboard (V3 ข้อ 8.1)
 

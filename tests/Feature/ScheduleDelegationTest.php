@@ -148,6 +148,49 @@ class ScheduleDelegationTest extends TestCase
         ])->assertForbidden();
     }
 
+    public function test_assigned_staff_can_open_offering_and_appears_in_workspace(): void
+    {
+        [$head, $offering] = $this->makeOffering();
+        $staff = $this->makeUser('staff');
+        $offering->course->assignedStaff()->attach($staff->id);
+
+        $this->actingAsRole($staff, 'staff');
+
+        $this->get(route('maker.course_offerings.schedules.index', $offering))
+            ->assertOk()
+            ->assertSee($offering->course->course_code);
+
+        $this->get(route('maker.schedules.index'))
+            ->assertOk()
+            ->assertSee($offering->course->course_code);
+    }
+
+    public function test_unassigned_staff_cannot_open_offering_schedules(): void
+    {
+        [$head, $offering] = $this->makeOffering();
+        $staff = $this->makeUser('staff');
+
+        $this->actingAsRole($staff, 'staff');
+
+        $this->get(route('maker.course_offerings.schedules.index', $offering))
+            ->assertForbidden();
+        $this->get(route('maker.schedules.index'))
+            ->assertOk()
+            ->assertDontSee($offering->course->course_code);
+    }
+
+    public function test_assigned_staff_cannot_access_offering_management(): void
+    {
+        [$head, $offering] = $this->makeOffering();
+        $staff = $this->makeUser('staff');
+        $offering->course->assignedStaff()->attach($staff->id);
+
+        $this->actingAsRole($staff, 'staff');
+
+        // จัดการ offering (ชุดผู้สอน/อนุมัติ) = course_head เท่านั้น
+        $this->get(route('maker.course_offerings.show', $offering))->assertForbidden();
+    }
+
     // ── helpers ─────────────────────────────────────────────
 
     private function actingAsRole(User $user, string $role): void

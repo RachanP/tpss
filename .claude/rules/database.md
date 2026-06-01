@@ -275,8 +275,8 @@ rooms : + campus (ศาลายา/บางกอกน้อย — display 
 course_offering_instructors : + schedule_permission string(20) default 'view'  ('view'|'schedule')
   consolidate เข้า create-table baseline (2026_05_08_072856) — ไม่มี alter แยก
 ```
-- `CourseOffering::canBeScheduledBy(?int)` + `scopeSchedulableBy(int)` — coordinator หรือ permission='schedule'
-- หัวหน้าวิชา toggle ผ่าน `maker.course_offerings.instructors.permission` (course_head only)
-- route จัดตาราง slot = `CheckRole:course_head,instructor` · จัดการ offering = `course_head`
+- `CourseOffering::canBeScheduledBy(?int)` + `scopeSchedulableBy(int)` — coordinator **หรือ** instructor permission='schedule' **หรือ** staff ใน `course_staff` (assignedStaff ของวิชา)
+- หัวหน้าวิชา toggle อาจารย์ผ่าน `maker.course_offerings.instructors.permission` (course_head only) · staff มอบหมายผ่าน modal รายวิชา (`course->assignedStaff()->sync`)
+- route จัดตาราง slot = `CheckRole:course_head,instructor,staff` · จัดการ offering + conflict-badge = `course_head`
 
 **Cross-course GROUP conflict:** ไม่ใช่ schema ใหม่ แต่ต้องขยาย logic — `ScheduleConflictChecker::bulkConflictMap()` เพิ่ม pairwise compare `cohort_group` ข้ามวิชา (ปัจจุบันเช็คแค่ instructor/room)

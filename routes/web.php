@@ -37,20 +37,25 @@ Route::middleware(['auth', 'no-back'])->group(function () {
     Route::get('/approver/dashboard', [DashboardController::class, 'approver'])->name('approver.dashboard')->middleware('\App\Http\Middleware\CheckRole:executive');
     Route::get('/lecturer/dashboard', [DashboardController::class, 'lecturer'])->name('lecturer.dashboard')->middleware('\App\Http\Middleware\CheckRole:instructor');
 
-    // V2 delegation: งานจัดตาราง (workspace/alerts/slot CRUD) เปิดให้ทั้งหัวหน้าวิชา + อาจารย์ที่ถูกมอบหมาย
-    // access จริงต่อ offering กรองด้วย CourseOffering::scopeSchedulableBy / canBeScheduledBy (coordinator หรือ schedule_permission='schedule')
-    Route::middleware(['\App\Http\Middleware\CheckRole:course_head,instructor'])->group(function () {
+    // V2 delegation: งานจัดตาราง (workspace/alerts/slot CRUD) เปิดให้หัวหน้าวิชา + อาจารย์ที่ถูกมอบหมาย + เจ้าหน้าที่ที่ดูแลวิชา
+    // access จริงต่อ offering กรองด้วย CourseOffering::scopeSchedulableBy / canBeScheduledBy
+    // (coordinator หรือ instructor schedule_permission='schedule' หรือ staff ใน course_staff)
+    Route::middleware(['\App\Http\Middleware\CheckRole:course_head,instructor,staff'])->group(function () {
         Route::get('/maker/schedules', [ScheduleController::class, 'workspace'])->name('maker.schedules.index');
         Route::get('/maker/alerts', [ScheduleController::class, 'alerts'])->name('maker.alerts.index');
-        Route::get('/maker/conflict-badge-status', ConflictBadgeStatusController::class)
-            ->name('maker.conflict_badge_status')
-            ->middleware('throttle:30,1');
         Route::get('/maker/schedules/create', [ScheduleController::class, 'createGlobal'])->name('maker.schedules.create');
         Route::post('/maker/schedules', [ScheduleController::class, 'storeGlobal'])->name('maker.schedules.store');
     });
 
-    // จัดตาราง slot ต่อ offering — หัวหน้าวิชา + อาจารย์ที่ถูกมอบหมาย (delegation)
-    Route::middleware(['\App\Http\Middleware\CheckRole:course_head,instructor'])
+    // badge การชนบน sidebar = ใช้เฉพาะหัวหน้าวิชา (sidebar อาจารย์/เจ้าหน้าที่ไม่มี badge นี้)
+    Route::middleware(['\App\Http\Middleware\CheckRole:course_head'])->group(function () {
+        Route::get('/maker/conflict-badge-status', ConflictBadgeStatusController::class)
+            ->name('maker.conflict_badge_status')
+            ->middleware('throttle:30,1');
+    });
+
+    // จัดตาราง slot ต่อ offering — หัวหน้าวิชา + อาจารย์ที่ถูกมอบหมาย + เจ้าหน้าที่ที่ดูแลวิชา (delegation)
+    Route::middleware(['\App\Http\Middleware\CheckRole:course_head,instructor,staff'])
         ->prefix('maker/course-offerings')
         ->name('maker.course_offerings.')
         ->group(function () {

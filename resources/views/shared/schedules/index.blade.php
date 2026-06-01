@@ -7,6 +7,11 @@
     $activeOfferingCount = $availableOfferings->filter(fn ($offering) => $offering->academicYear?->phase === 'scheduling')->count();
     $academicYear = $courseOffering?->academicYear ?? $availableOfferings->first()?->academicYear;
     $canEdit = $isWorkspace ? $activeOfferingCount > 0 : ($courseOffering && $academicYear?->phase === 'scheduling');
+    // V2 delegation: หน้าจัดการรายวิชา (ชุดผู้สอน/อนุมัติ) เป็นของหัวหน้าวิชาที่เป็น coordinator เท่านั้น
+    // อาจารย์/เจ้าหน้าที่ที่ช่วยจัดตารางจะไม่เห็นปุ่มนี้ (กด show แล้วโดน 403)
+    $canManageOffering = ! $isWorkspace && $courseOffering
+        && session('active_role') === 'course_head'
+        && (int) $courseOffering->coordinator_id === (int) auth()->id();
     $schedulingOfferings = ($isWorkspace ? $availableOfferings : collect($courseOffering ? [$courseOffering] : []))
         ->filter(fn ($offering) => $offering?->academicYear?->phase === 'scheduling')
         ->values();
@@ -5366,9 +5371,11 @@
                     </div>
                 </div>
                 <div class="course-overview-actions">
+                    @if($canManageOffering)
                     <a href="{{ route('maker.course_offerings.show', $courseOffering) }}" class="btn btn-secondary" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:6px 12px;font-size:12.5px;">
                         <span>รายละเอียดรายวิชา</span>
                     </a>
+                    @endif
                     @if($canEdit)
                         @php
                             // V2: ไม่บังคับมีกลุ่มก่อนสร้าง slot (กลุ่มย่อยมาหลังอนุมัติ โดยอาจารย์)

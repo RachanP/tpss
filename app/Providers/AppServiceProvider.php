@@ -82,15 +82,15 @@ class AppServiceProvider extends ServiceProvider
                 $user?->id,
             ));
 
-            // V2 delegation: อาจารย์เห็นเมนู "ช่วยจัดตาราง" เฉพาะเมื่อถูกหัวหน้าวิชามอบหมายจริง
-            $instructorCanSchedule = false;
-            if ($activeRole === 'instructor' && $user) {
-                $instructorCanSchedule = \App\Models\CourseOffering::query()
+            // V2 delegation: อาจารย์/เจ้าหน้าที่เห็นเมนู "ช่วยจัดตาราง" เฉพาะเมื่อถูกมอบหมายให้ดูแลวิชาที่อยู่ในช่วงจัดตาราง
+            $canHelpSchedule = false;
+            if ($user && in_array($activeRole, ['instructor', 'staff'], true)) {
+                $canHelpSchedule = \App\Models\CourseOffering::query()
                     ->schedulableBy((int) $user->id)
                     ->whereHas('academicYear', fn ($q) => $q->where('phase', 'scheduling'))
                     ->exists();
             }
-            $view->with('instructorCanSchedule', $instructorCanSchedule);
+            $view->with('canHelpSchedule', $canHelpSchedule);
         });
     }
 }
