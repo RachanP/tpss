@@ -20,8 +20,12 @@
                 includesText(value, keyword) {
                     if (!keyword) return true;
                     const source = String(value || '').toLowerCase();
-                    const query = String(keyword || '').toLowerCase();
-                    return source.includes(query) || this.normalizeSearch(source).includes(this.normalizeSearch(query));
+                    const normSource = this.normalizeSearch(source);
+                    // แยก keyword เป็นคำย่อยตามช่องว่าง — ทุกคำต้องเจอ (AND) ไม่ต้องเรียงติดกัน/ลำดับเดียวกัน
+                    const tokens = String(keyword).toLowerCase().split(/\s+/).filter(Boolean);
+                    return tokens.every(token =>
+                        source.includes(token) || normSource.includes(this.normalizeSearch(token))
+                    );
                 },
                 thaiDateForInput(value) {
                     const raw = String(value || '').trim();
@@ -547,7 +551,7 @@
                             <tr
                                 data-testid="users-row"
                                 data-username="{{ $user->username }}"
-                                data-search="{{ Str::lower($user->name . ' ' . $user->username . ' ' . $user->email . ' ' . ($user->employee_id ?? '') . ' ' . ($user->prefix ?? '') . ' ' . $roleValues->join(' ') . ' ' . $roleLabelsForSearch . ' ' . $departmentNamesForSearch . ' ' . ($user->instructorProfile->title ?? '') . ' ' . ($user->instructorProfile->academic_degree ?? '') . ' ' . ($user->instructorProfile->employment_type ?? '') . ' ' . ($user->is_active ? 'กำลังใช้งาน active' : 'ระงับการใช้งาน inactive')) }}"
+                                data-search="{{ Str::lower($user->formatted_name . ' ' . $user->name . ' ' . $user->username . ' ' . $user->email . ' ' . ($user->employee_id ?? '') . ' ' . ($user->prefix ?? '') . ' ' . $roleValues->join(' ') . ' ' . $roleLabelsForSearch . ' ' . $departmentNamesForSearch . ' ' . ($user->instructorProfile->title ?? '') . ' ' . ($user->instructorProfile->academic_degree ?? '') . ' ' . ($user->instructorProfile->employment_type ?? '') . ' ' . ($user->is_active ? 'กำลังใช้งาน active' : 'ระงับการใช้งาน inactive')) }}"
                                 data-roles="{{ $roleValues->join(' ') }}"
                                 data-status="{{ $statusValue }}"
                                 data-department-ids="{{ $departmentIds }}"

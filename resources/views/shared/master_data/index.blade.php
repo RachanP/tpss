@@ -180,8 +180,12 @@
         includesText(value, keyword) {
             if (!keyword) return true;
             const source = String(value || '').toLowerCase();
-            const query = String(keyword || '').toLowerCase();
-            return source.includes(query) || this.normalizeSearch(source).includes(this.normalizeSearch(query));
+            const normSource = this.normalizeSearch(source);
+            // แยก keyword เป็นคำย่อยตามช่องว่าง — ทุกคำต้องเจอ (AND) ไม่ต้องเรียงติดกัน/ลำดับเดียวกัน
+            const tokens = String(keyword).toLowerCase().split(/\s+/).filter(Boolean);
+            return tokens.every(token =>
+                source.includes(token) || normSource.includes(this.normalizeSearch(token))
+            );
         },
         thaiDateForInput(value) {
             const raw = String(value || '').trim();
@@ -1169,7 +1173,7 @@
                         <div
                             data-search="{{ Str::lower($dept->name . ' ' . ($dept->head->formatted_name ?? '') . ' ' . ($dept->secretary->formatted_name ?? '') . ' ' . $dept->instructors_count . ' คน') }}"
                             x-show="includesText($el.dataset.search, filters.departments.keyword)"
-                            style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+                            style="border: 1px solid color-mix(in oklch, var(--brand-navy) 32%, var(--border-strong)); border-radius: 8px; overflow: hidden;">
 
                             {{-- Header --}}
                             <div @click="expandedDept = expandedDept === {{ $dept->id }} ? null : {{ $dept->id }}"
@@ -1375,7 +1379,7 @@
                             data-statuses="{{ $type->room_statuses }}"
                             data-search="{{ $type->room_search_haystack }}"
                             x-show="(filters.location_types.location_type_id === '' || $el.dataset.locationTypeId == filters.location_types.location_type_id) && (filters.location_types.status === '' || $el.dataset.statuses.includes(filters.location_types.status)) && includesText($el.dataset.search, filters.location_types.keyword)"
-                            style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+                            style="border: 1px solid color-mix(in oklch, var(--brand-navy) 32%, var(--border-strong)); border-radius: 8px; overflow: hidden;">
 
                             {{-- Header row --}}
                             <div @click="expandedType = expandedType === {{ $type->id }} ? null : {{ $type->id }}"
@@ -1752,7 +1756,7 @@
                             data-search="{{ Str::lower($curr->name . ' ' . ($curr->effective_year ?? '') . ' ' . ($curr->is_active ? 'กำลังใช้งาน active' : 'ปิดใช้งาน inactive') . ' ' . $curr->courses_count . ' วิชา ' . $curr->courses->pluck('course_code')->join(' ') . ' ' . $curr->courses->pluck('name_th')->join(' ') . ' ' . $curr->courses->pluck('name_en')->join(' ') . ' ' . $curr->courses->pluck('credits')->join(' ') . ' ' . $curr->courses->pluck('default_year_level')->join(' ') . ' ' . $curr->courses->pluck('default_semester')->join(' ')) }}"
                             data-is-active="{{ $curr->is_active ? '1' : '0' }}"
                             x-show="includesText($el.dataset.search, filters.curriculums.keyword) && (filters.curriculums.is_active === '' || $el.dataset.isActive == filters.curriculums.is_active)"
-                            style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+                            style="border: 1px solid color-mix(in oklch, var(--brand-navy) 32%, var(--border-strong)); border-radius: 8px; overflow: hidden;">
 
                             {{-- Header --}}
                             <div @click="expandedCurriculum = expandedCurriculum === {{ $curr->id }} ? null : {{ $curr->id }}"
@@ -3094,7 +3098,7 @@
 
                 <div class="curriculum-list" x-data="{ expandedCohort: null }" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 8px;">
                     @forelse($cohortCurriculums as $cur)
-                        <div class="curriculum-list-item" style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+                        <div class="curriculum-list-item" style="border: 1px solid color-mix(in oklch, var(--brand-navy) 32%, var(--border-strong)); border-radius: 8px; overflow: hidden;">
 
                             {{-- Header --}}
                             <div @click="expandedCohort = expandedCohort === {{ $cur->id }} ? null : {{ $cur->id }}"
@@ -4865,20 +4869,20 @@
         .master-data-page .panel,
         .master-data-page .list-card,
         .master-data-page .modal-card {
-            border-color: color-mix(in oklch, var(--brand-navy) 24%, var(--border)) !important;
+            border-color: color-mix(in oklch, var(--brand-navy) 44%, var(--border-strong)) !important;
             background:
-                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 5%, var(--surface)), var(--surface) 46%),
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 4%, var(--surface)), var(--surface) 40%),
                 var(--surface) !important;
             box-shadow:
-                0 1px 2px rgba(0, 36, 84, 0.09),
-                0 16px 34px -22px rgba(0, 36, 84, 0.42) !important;
+                0 1px 2px rgba(0, 36, 84, 0.14),
+                0 18px 36px -20px rgba(0, 36, 84, 0.55) !important;
         }
 
         .master-data-page .card-hdr,
         .master-data-page .md-card-hdr,
         .master-data-page .panel-hdr,
         .master-data-page thead th {
-            border-bottom-color: color-mix(in oklch, var(--brand-navy) 20%, var(--border)) !important;
+            border-bottom-color: color-mix(in oklch, var(--brand-navy) 32%, var(--border-strong)) !important;
             background:
                 linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 10%, var(--surface)), color-mix(in oklch, var(--brand-navy) 4%, var(--surface))) !important;
         }
@@ -4887,7 +4891,7 @@
         .master-data-page [role="tablist"],
         .master-data-page .tab-nav,
         .master-data-page .md-tabs {
-            border-color: color-mix(in oklch, var(--brand-navy) 24%, var(--border)) !important;
+            border-color: color-mix(in oklch, var(--brand-navy) 40%, var(--border-strong)) !important;
             background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface)) !important;
             box-shadow: 0 1px 2px rgba(0, 36, 84, 0.08);
             scrollbar-width: none;
