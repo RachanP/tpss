@@ -1746,7 +1746,7 @@
         .copy-week-item-body strong { color: var(--fg-1); font-size: 13.5px; font-weight: 850; }
         .copy-week-item-body small { color: var(--fg-3); font-size: 12px; font-weight: 650; }
         .copy-week-reason { color: var(--status-conflict-fg) !important; font-weight: 750 !important; }
-        /* ── Realtime inline conflict warnings ─────────────────── */
+        /* ── Realtime inline blocking errors ───────────────────── */
         .field-live-error {
             margin-top: 6px;
             padding: 7px 10px;
@@ -1778,6 +1778,37 @@
             font-weight: 800;
         }
         .schedule-live-block-icon { font-size: 14px; }
+        .field-live-warning {
+            margin-top: 6px;
+            padding: 7px 10px;
+            border: 1px solid var(--status-warning-border);
+            border-radius: 6px;
+            background: var(--status-warning-bg);
+            color: var(--status-warning-fg);
+            font-size: 12px;
+            font-weight: 750;
+            line-height: 1.45;
+            display: grid;
+            gap: 2px;
+        }
+        .has-live-warning {
+            border-color: var(--status-warning-border) !important;
+            box-shadow: 0 0 0 2px color-mix(in oklch, var(--status-warning-border) 28%, transparent);
+        }
+        .schedule-live-warning {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0 0 10px;
+            padding: 9px 12px;
+            border: 1px solid var(--status-warning-border);
+            border-radius: 8px;
+            background: var(--status-warning-bg);
+            color: var(--status-warning-fg);
+            font-size: 12.5px;
+            font-weight: 800;
+        }
+        .schedule-live-warning-icon { font-size: 14px; }
         /* ── Date hint + multi-day toggle ──────────────────────── */
         .date-day-hint {
             margin-top: 5px;
@@ -4165,6 +4196,7 @@
             -webkit-overflow-scrolling: touch;
         }
         .schedule-modal > form > .schedule-live-block,
+        .schedule-modal > form > .schedule-live-warning,
         .schedule-modal > form > .modal-actions,
         .schedule-modal > .modal-actions {
             flex: 0 0 auto !important;
@@ -4174,7 +4206,7 @@
                 inset: 0 0 0 var(--sidebar-w) !important;
             }
         }
-        .schedule-modal-backdrop[data-testid="schedule-detail-modal"] {
+        .schedule-modal-backdrop.is-detail-modal {
             align-items: center !important;
             justify-content: center !important;
         }
@@ -5101,10 +5133,13 @@
             copyWeekLoading: false,
             copyWeekError: '',
             liveIssues: {},
+            liveWarnings: {},
             liveChecking: false,
             liveTimer: null,
             get liveBlocking() { return Object.keys(this.liveIssues).length > 0; },
+            get liveWarningActive() { return Object.keys(this.liveWarnings).length > 0; },
             liveIssue(field) { return this.liveIssues[field] || []; },
+            liveWarning(field) { return this.liveWarnings[field] || []; },
             init() {
                 this.$el.__tpssScheduleShell = this;
                 this.$watch('view', val => sessionStorage.setItem('tpss-schedule-view', val));
@@ -5171,6 +5206,7 @@
                 this.$watch('createMultiDay', (v) => { if (!v) this.createEndDate = this.createStartDate; });
                 this.$watch('editModal', (val) => {
                     this.liveIssues = {};
+                    this.liveWarnings = {};
                     if (this.liveTimer) { clearTimeout(this.liveTimer); this.liveTimer = null; }
                     if (val) {
                         this.$nextTick(() => {
@@ -5297,8 +5333,10 @@
                     if (!res.ok) throw new Error('check failed');
                     const data = await res.json();
                     this.liveIssues = data.fields || {};
+                    this.liveWarnings = data.warnings || {};
                 } catch (e) {
                     this.liveIssues = {};
+                    this.liveWarnings = {};
                 } finally {
                     this.liveChecking = false;
                 }
@@ -5860,6 +5898,7 @@
                 this.createGroupSearch = '';
                 this.selectedOfferingId = this.initialSelectedOfferingId;
                 this.liveIssues = {};
+                this.liveWarnings = {};
                 this.createMultiDay = false;
                 if (this.liveTimer) { clearTimeout(this.liveTimer); this.liveTimer = null; }
                 this.setCreateMode(this.defaultCreateMode);
@@ -5981,13 +6020,13 @@
         @endif
 
         @if(session('schedule_conflict_warning'))
-            <div class="schedule-empty" style="border-color:var(--status-conflict-border);background:var(--status-conflict-bg);color:var(--status-conflict-fg);font-weight:800;text-align:left;margin-bottom:14px;" data-testid="schedule-conflict-save-warning">
-                <div style="margin-bottom:6px;">บันทึกแล้ว แต่พบการชน ต้องแก้ไขก่อนส่งอนุมัติ</div>
+            <div class="schedule-empty" style="border-color:var(--status-warning-border);background:var(--status-warning-bg);color:var(--status-warning-fg);font-weight:800;text-align:left;margin-bottom:14px;" data-testid="schedule-conflict-save-warning">
+                <div style="margin-bottom:6px;">บันทึกกิจกรรมแล้ว และพบรายการที่ต้องตรวจสอบก่อนส่งอนุมัติ</div>
                 @foreach(collect(session('schedule_conflict_warning'))->take(4) as $message)
                     <div style="font-weight:700;">{{ $message }}</div>
                 @endforeach
                 <div style="margin-top:10px;">
-                    <a href="{{ route('maker.alerts.index') }}" class="btn btn-secondary" style="text-decoration:none;">ดูการแจ้งเตือน</a>
+                    <a href="{{ route('maker.alerts.index') }}" class="btn btn-secondary" style="text-decoration:none;">ดูรายการแจ้งเตือน</a>
                 </div>
             </div>
         @endif
@@ -7994,7 +8033,7 @@
                                 </div>
                                 <div>
                                     <label class="modal-label" for="room_id">ห้อง/สถานที่</label>
-                                    <select id="room_id" name="room_id" class="modal-control tpss-choices" :class="liveIssue('room_id').length ? 'has-live-error' : ''">
+                                    <select id="room_id" name="room_id" class="modal-control tpss-choices" :class="liveIssue('room_id').length ? 'has-live-error' : (liveWarning('room_id').length ? 'has-live-warning' : '')">
                                         <option value="">ไม่ระบุสถานที่</option>
                                         @foreach($rooms as $room)
                                             <option value="{{ $room->id }}" @selected((string) old('room_id') === (string) $room->id)>
@@ -8005,6 +8044,11 @@
                                     <template x-if="liveIssue('room_id').length">
                                         <div class="field-live-error" data-testid="live-error-room_id">
                                             <template x-for="msg in liveIssue('room_id')" :key="msg"><div x-text="msg"></div></template>
+                                        </div>
+                                    </template>
+                                    <template x-if="liveWarning('room_id').length">
+                                        <div class="field-live-warning" data-testid="live-warning-room_id">
+                                            <template x-for="msg in liveWarning('room_id')" :key="msg"><div x-text="msg"></div></template>
                                         </div>
                                     </template>
                                 </div>
@@ -8025,6 +8069,11 @@
                                         <template x-if="liveIssue('instructor_ids').length || liveIssue('lead_instructor_id').length">
                                             <div class="field-live-error" data-testid="live-error-instructor_ids">
                                                 <template x-for="msg in [...liveIssue('instructor_ids'), ...liveIssue('lead_instructor_id')]" :key="msg"><div x-text="msg"></div></template>
+                                            </div>
+                                        </template>
+                                        <template x-if="liveWarning('instructor_ids').length">
+                                            <div class="field-live-warning" data-testid="live-warning-instructor_ids">
+                                                <template x-for="msg in liveWarning('instructor_ids')" :key="msg"><div x-text="msg"></div></template>
                                             </div>
                                         </template>
                                         <div class="optional-note" x-show="createMode === 'series'" x-cloak style="margin-bottom:8px;">ถ้าเลือกไว้ ระบบจะใส่ให้เฉพาะการ์ดสัปดาห์แรก สัปดาห์ถัดไปเติมหรือคัดลอกภายหลังได้</div>
@@ -8053,13 +8102,17 @@
                                 </div>
                             @endforeach
                         </div>
+                        <div class="schedule-live-warning" x-show="liveWarningActive && !liveBlocking" x-cloak data-testid="schedule-live-warning">
+                            <span class="schedule-live-warning-icon" aria-hidden="true">!</span>
+                            <span>พบข้อเตือนที่ยังบันทึกได้ ระบบจะทำเครื่องหมายไว้ให้ตรวจสอบก่อนส่งอนุมัติ</span>
+                        </div>
                         <div class="schedule-live-block" x-show="liveBlocking" x-cloak data-testid="schedule-live-block">
-                            <span class="schedule-live-block-icon" aria-hidden="true">⛔</span>
-                            <span>พบการชน/ข้อมูลไม่ถูกต้อง — แก้ไขจุดที่ไฮไลต์สีแดงก่อนจึงจะบันทึกได้</span>
+                            <span class="schedule-live-block-icon" aria-hidden="true">!</span>
+                            <span>พบข้อมูลไม่ถูกต้อง แก้ไขจุดที่ไฮไลต์สีแดงก่อนจึงจะบันทึกได้</span>
                         </div>
                         <div class="modal-actions">
                             <button type="button" class="btn btn-secondary" @click="closeCreate()">ยกเลิก</button>
-                            <button type="submit" class="btn btn-primary" data-testid="schedule-submit" x-bind:disabled="liveBlocking" x-bind:title="liveBlocking ? 'แก้ไขการชนก่อนบันทึก' : ''">บันทึกรายการสอน</button>
+                            <button type="submit" class="btn btn-primary" data-testid="schedule-submit" x-bind:disabled="liveBlocking" x-bind:title="liveBlocking ? 'แก้ไขข้อมูลที่บล็อกก่อนบันทึก' : ''">บันทึกรายการสอน</button>
                         </div>
                     </form>
                 </section>

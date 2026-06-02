@@ -103,7 +103,7 @@
             @if($lazyModal ?? false)
                 <div data-lazy-schedule-modal="{{ $schedule->id }}">
             @endif
-            <div class="schedule-modal-backdrop" x-show="detailModal === 'schedule-{{ $schedule->id }}'" x-cloak @click.self="detailModal = null" data-testid="schedule-detail-modal" data-schedule-modal-id="{{ $schedule->id }}">
+            <div class="schedule-modal-backdrop is-detail-modal" x-show="detailModal === 'schedule-{{ $schedule->id }}'" x-cloak @click.self="detailModal = null" data-testid="schedule-detail-modal" data-schedule-modal-id="{{ $schedule->id }}">
                 <template x-if="detailModal === 'schedule-{{ $schedule->id }}'">
                     <section class="schedule-modal" role="dialog" aria-modal="true" aria-labelledby="schedule-detail-title-{{ $schedule->id }}" style="--activity-color: {{ $activityTone($schedule) }};">
                     <div class="modal-handle"></div>
@@ -585,7 +585,7 @@
                                     </div>
                                     <div class="{{ $roomConflictNote ? 'modal-field-has-conflict' : '' }}">
                                         <label class="modal-label" for="edit_room_id_{{ $schedule->id }}">ห้อง/สถานที่</label>
-                                        <select id="edit_room_id_{{ $schedule->id }}" name="room_id" class="modal-control tpss-choices" :class="liveIssue('room_id').length ? 'has-live-error' : ''">
+                                        <select id="edit_room_id_{{ $schedule->id }}" name="room_id" class="modal-control tpss-choices" :class="liveIssue('room_id').length ? 'has-live-error' : (liveWarning('room_id').length ? 'has-live-warning' : '')">
                                             <option value="">ไม่ระบุสถานที่</option>
                                             @foreach($rooms as $roomOption)
                                                 <option value="{{ $roomOption->id }}" @selected((string) $editOld('room_id', $schedule->room_id) === (string) $roomOption->id)>
@@ -596,6 +596,11 @@
                                         <template x-if="liveIssue('room_id').length">
                                             <div class="field-live-error" data-testid="live-error-room_id">
                                                 <template x-for="msg in liveIssue('room_id')" :key="msg"><div x-text="msg"></div></template>
+                                            </div>
+                                        </template>
+                                        <template x-if="liveWarning('room_id').length">
+                                            <div class="field-live-warning" data-testid="live-warning-room_id">
+                                                <template x-for="msg in liveWarning('room_id')" :key="msg"><div x-text="msg"></div></template>
                                             </div>
                                         </template>
                                         @if($roomConflictNote)
@@ -617,6 +622,11 @@
                                     <template x-if="liveIssue('instructor_ids').length || liveIssue('lead_instructor_id').length">
                                         <div class="field-live-error" data-testid="live-error-instructor_ids">
                                             <template x-for="msg in [...liveIssue('instructor_ids'), ...liveIssue('lead_instructor_id')]" :key="msg"><div x-text="msg"></div></template>
+                                        </div>
+                                    </template>
+                                    <template x-if="liveWarning('instructor_ids').length">
+                                        <div class="field-live-warning" data-testid="live-warning-instructor_ids">
+                                            <template x-for="msg in liveWarning('instructor_ids')" :key="msg"><div x-text="msg"></div></template>
                                         </div>
                                     </template>
                                     @php
@@ -648,13 +658,17 @@
                                     <input type="hidden" name="student_group_ids[]" value="{{ $gid }}">
                                 @endforeach
                             </div>
+                            <div class="schedule-live-warning" x-show="liveWarningActive && !liveBlocking" x-cloak data-testid="schedule-live-warning">
+                                <span class="schedule-live-warning-icon" aria-hidden="true">!</span>
+                                <span>พบข้อเตือนที่ยังบันทึกได้ ระบบจะทำเครื่องหมายไว้ให้ตรวจสอบก่อนส่งอนุมัติ</span>
+                            </div>
                             <div class="schedule-live-block" x-show="liveBlocking" x-cloak data-testid="schedule-live-block">
-                                <span class="schedule-live-block-icon" aria-hidden="true">⛔</span>
-                                <span>พบการชน/ข้อมูลไม่ถูกต้อง — แก้ไขจุดที่ไฮไลต์สีแดงก่อนจึงจะบันทึกได้</span>
+                                <span class="schedule-live-block-icon" aria-hidden="true">!</span>
+                                <span>พบข้อมูลไม่ถูกต้อง แก้ไขจุดที่ไฮไลต์สีแดงก่อนจึงจะบันทึกได้</span>
                             </div>
                             <div class="modal-actions">
                                 <button type="button" class="btn btn-secondary" @click="closeEdit()">ยกเลิก</button>
-                                <button type="submit" class="btn btn-primary" data-testid="schedule-submit" x-bind:disabled="liveBlocking" x-bind:title="liveBlocking ? 'แก้ไขการชนก่อนบันทึก' : ''">บันทึกการแก้ไข</button>
+                                <button type="submit" class="btn btn-primary" data-testid="schedule-submit" x-bind:disabled="liveBlocking" x-bind:title="liveBlocking ? 'แก้ไขข้อมูลที่บล็อกก่อนบันทึก' : ''">บันทึกการแก้ไข</button>
                             </div>
                         </form>
                     </section>

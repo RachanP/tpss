@@ -654,6 +654,9 @@
             padding: 0 !important;
             max-width: 400px !important;
             width: 90vw !important;
+            max-height: min(640px, calc(100dvh - 32px)) !important;
+            display: flex !important;
+            flex-direction: column !important;
             box-shadow: 0 32px 64px rgba(15,23,42,0.20), 0 0 0 1px rgba(15,23,42,0.06) !important;
             font-family: 'IBM Plex Sans Thai', sans-serif !important;
             overflow: hidden !important;
@@ -661,12 +664,36 @@
         .tpss-delete-popup .swal2-html-container {
             margin: 0 !important;
             padding: 32px 28px 0 !important;
-            overflow: visible !important;
+            display: block !important;
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+        }
+        .tpss-delete-popup > :where(
+            .swal2-image,
+            .swal2-input,
+            .swal2-file,
+            .swal2-range,
+            .swal2-select,
+            .swal2-radio,
+            .swal2-checkbox,
+            .swal2-textarea,
+            .swal2-validation-message,
+            .swal2-footer,
+            .swal2-timer-progress-bar,
+            .swal2-loader
+        ),
+        .tpss-delete-popup > .swal2-icon:not(.swal2-icon-show),
+        .tpss-delete-popup > .swal2-title:empty {
+            display: none !important;
         }
         .tpss-delete-actions {
             padding: 20px 28px 24px !important;
             margin: 0 !important;
             gap: 8px !important;
+            display: flex !important;
+            flex: 0 0 auto !important;
             justify-content: flex-end !important;
             border-top: 1px solid #f1f5f9 !important;
             margin-top: 20px !important;
@@ -728,6 +755,8 @@
             padding: 10px 14px;
             margin: 14px 0 0;
             text-align: left;
+            max-width: 100%;
+            min-width: 0;
         }
         .tpss-item-badge-icon {
             width: 30px;
@@ -745,7 +774,28 @@
             font-weight: 600;
             color: #1e293b;
             word-break: break-word;
+            overflow-wrap: anywhere;
             line-height: 1.4;
+            min-width: 0;
+            max-height: 10.5rem;
+            overflow-y: auto;
+        }
+        @media (max-width: 480px) {
+            .tpss-delete-popup {
+                width: calc(100vw - 24px) !important;
+                max-height: calc(100dvh - 24px) !important;
+            }
+            .tpss-delete-popup .swal2-html-container {
+                padding: 28px 20px 0 !important;
+            }
+            .tpss-delete-actions {
+                padding: 16px 20px 20px !important;
+                flex-direction: column-reverse !important;
+            }
+            .tpss-delete-actions :where(button) {
+                width: 100% !important;
+                margin: 0 !important;
+            }
         }
 
         :where(.modal-center, .profile-modal-shell, .users-modal, .instructor-modal, .room-modal, .course-modal, .tpss-delete-popup) {
@@ -851,13 +901,27 @@
                 return;
             }
 
+            function escapeHtml(value) {
+                return String(value).replace(/[&<>"']/g, function (char) {
+                    return {
+                        '&': '&amp;',
+                        '<': '&lt;',
+                        '>': '&gt;',
+                        '"': '&quot;',
+                        "'": '&#039;'
+                    }[char];
+                });
+            }
+
+            var safeLabel = escapeHtml(label);
+            var safeWarn = escapeHtml(warn);
             var itemHtml = label
                 ? '<div class="tpss-item-badge">'
                   + '<div class="tpss-item-badge-icon">'
                   + '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#64748b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">'
                   + '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>'
                   + '<polyline points="14 2 14 8 20 8"/></svg></div>'
-                  + '<span class="tpss-item-badge-text">' + label + '</span></div>'
+                  + '<span class="tpss-item-badge-text">' + safeLabel + '</span></div>'
                 : '';
 
             var warnHtml = '<div style="display:flex;align-items:flex-start;gap:7px;margin-top:14px;'
@@ -866,7 +930,7 @@
                 + 'stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px;">'
                 + '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>'
                 + '<line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
-                + '<span style="font-size:12.5px;color:#92400e;line-height:1.65;">' + warn + '</span></div>';
+                + '<span style="font-size:12.5px;color:#92400e;line-height:1.65;">' + safeWarn + '</span></div>';
 
             var innerHtml = '<div style="text-align:center;">'
                 + '<div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#fef2f2,#fee2e2);'

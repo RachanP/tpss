@@ -3232,8 +3232,8 @@ html:not(.tpss-page-ready) :where(
     .modal-content,
     .modal-card,
     .dialog,
-    [role="dialog"] > div,
-    [aria-modal="true"] > div
+    [role="dialog"]:not(.swal2-popup) > div,
+    [aria-modal="true"]:not(.swal2-popup) > div
 ) {
     position: relative;
     max-height: min(860px, calc(100dvh - 32px)) !important;
@@ -3247,8 +3247,8 @@ html:not(.tpss-page-ready) :where(
     .modal-content,
     .modal-card,
     .dialog,
-    [role="dialog"] > div,
-    [aria-modal="true"] > div
+    [role="dialog"]:not(.swal2-popup) > div,
+    [aria-modal="true"]:not(.swal2-popup) > div
 ) > :first-child {
     position: relative;
     flex: 0 0 auto;
@@ -3259,8 +3259,8 @@ html:not(.tpss-page-ready) :where(
     .modal-content,
     .modal-card,
     .dialog,
-    [role="dialog"] > div,
-    [aria-modal="true"] > div
+    [role="dialog"]:not(.swal2-popup) > div,
+    [aria-modal="true"]:not(.swal2-popup) > div
 ) > :first-child > :where(
     button:last-child,
     [role="button"]:last-child,
@@ -3295,8 +3295,8 @@ html:not(.tpss-page-ready) :where(
     .modal-content,
     .modal-card,
     .dialog,
-    [role="dialog"] > div,
-    [aria-modal="true"] > div
+    [role="dialog"]:not(.swal2-popup) > div,
+    [aria-modal="true"]:not(.swal2-popup) > div
 ) > :first-child > :where(
     button:last-child,
     [role="button"]:last-child,
@@ -3317,8 +3317,8 @@ html:not(.tpss-page-ready) :where(
     .modal-content,
     .modal-card,
     .dialog,
-    [role="dialog"] > div,
-    [aria-modal="true"] > div
+    [role="dialog"]:not(.swal2-popup) > div,
+    [aria-modal="true"]:not(.swal2-popup) > div
 ) > :where(
     form,
     .modal-body,
@@ -3337,8 +3337,8 @@ html:not(.tpss-page-ready) :where(
     .modal-content,
     .modal-card,
     .dialog,
-    [role="dialog"] > div,
-    [aria-modal="true"] > div
+    [role="dialog"]:not(.swal2-popup) > div,
+    [aria-modal="true"]:not(.swal2-popup) > div
 ) > :last-child:not(:first-child) {
     flex: 0 0 auto;
 }
@@ -3347,8 +3347,8 @@ html:not(.tpss-page-ready) :where(
     .modal-content,
     .modal-card,
     .dialog,
-    [role="dialog"] > div,
-    [aria-modal="true"] > div
+    [role="dialog"]:not(.swal2-popup) > div,
+    [aria-modal="true"]:not(.swal2-popup) > div
 ) > :not(:first-child):not(:last-child) {
     flex: 1 1 auto;
     min-height: 0;
@@ -3361,8 +3361,8 @@ html:not(.tpss-page-ready) :where(
     .modal-content,
     .modal-card,
     .dialog,
-    [role="dialog"] > div,
-    [aria-modal="true"] > div
+    [role="dialog"]:not(.swal2-popup) > div,
+    [aria-modal="true"]:not(.swal2-popup) > div
 ) > :last-child:is(
     form,
     .modal-body,
@@ -3622,8 +3622,8 @@ html:not(.tpss-page-ready) :where(
         .modal-content,
         .modal-card,
         .dialog,
-        [role="dialog"] > div,
-        [aria-modal="true"] > div
+        [role="dialog"]:not(.swal2-popup) > div,
+        [aria-modal="true"]:not(.swal2-popup) > div
     ) {
         max-height: calc(100dvh - 16px) !important;
         border-radius: 10px !important;
@@ -3656,7 +3656,7 @@ html:not(.tpss-page-ready) :where(
     .modal-backdrop,
     .modal-overlay,
     .dialog-backdrop,
-    [role="dialog"]
+    [role="dialog"]:not(.swal2-popup)
 ) {
     max-height: 100dvh;
 }
@@ -3665,7 +3665,7 @@ html:not(.tpss-page-ready) :where(
     .modal-content,
     .modal-card,
     .dialog,
-    [role="dialog"] > div
+    [role="dialog"]:not(.swal2-popup) > div
 ) {
     max-height: calc(100dvh - 48px);
     display: flex;
@@ -3678,9 +3678,9 @@ html:not(.tpss-page-ready) :where(
     .modal-content-body,
     .dialog-body,
     .modal-card-body,
-    [role="dialog"] form,
-    [role="dialog"] .modal-scroll,
-    [role="dialog"] .overflow-y-auto
+    [role="dialog"]:not(.swal2-popup) form,
+    [role="dialog"]:not(.swal2-popup) .modal-scroll,
+    [role="dialog"]:not(.swal2-popup) .overflow-y-auto
 ) {
     min-height: 0;
     overflow-y: auto;
@@ -3711,7 +3711,7 @@ html:not(.tpss-page-ready) :where(
         .modal-content,
         .modal-card,
         .dialog,
-        [role="dialog"] > div
+        [role="dialog"]:not(.swal2-popup) > div
     ) {
         max-height: calc(100dvh - 24px);
     }

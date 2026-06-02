@@ -20,7 +20,7 @@ class ScheduleConflictChecker
      * @param  array<string, mixed>  $data
      * @param  array<int>  $instructorIds
      * @param  array<int>  $studentGroupIds
-     * @return array<int, array{type:string,message:string,schedule_id:int,schedule_label?:string,resource_label?:string}>
+     * @return array<int, array{type:string,message:string,schedule_id:int,course_offering_id:int,schedule_label?:string,resource_label?:string}>
      */
     public function check(array $data, array $instructorIds, array $studentGroupIds, ?int $ignoreScheduleId = null): array
     {
@@ -38,7 +38,7 @@ class ScheduleConflictChecker
     /**
      * @param  array<string, mixed>  $data
      * @param  array<int>  $instructorIds
-     * @return Collection<int, array{type:string,message:string,schedule_id:int,schedule_label?:string,resource_label?:string}>
+     * @return Collection<int, array{type:string,message:string,schedule_id:int,course_offering_id:int,schedule_label?:string,resource_label?:string}>
      */
     private function instructorConflicts(array $data, array $instructorIds, ?int $ignoreScheduleId, ?Schedule $incoming): Collection
     {
@@ -71,6 +71,7 @@ class ScheduleConflictChecker
                 return collect([[
                     'type' => 'instructor_overlap',
                     'schedule_id' => $schedule->id,
+                    'course_offering_id' => (int) $schedule->course_offering_id,
                     'schedule_label' => $scheduleLabel,
                     'resource_label' => $names,
                     'message' => 'อาจารย์: ' . $names . ' ชนกับ ' . $scheduleLabel,
@@ -80,7 +81,7 @@ class ScheduleConflictChecker
 
     /**
      * @param  array<string, mixed>  $data
-     * @return Collection<int, array{type:string,message:string,schedule_id:int,schedule_label?:string,resource_label?:string}>
+     * @return Collection<int, array{type:string,message:string,schedule_id:int,course_offering_id:int,schedule_label?:string,resource_label?:string}>
      */
     private function roomConflicts(array $data, ?int $ignoreScheduleId): Collection
     {
@@ -104,6 +105,7 @@ class ScheduleConflictChecker
                 return [
                     'type' => 'room_overlap',
                     'schedule_id' => $schedule->id,
+                    'course_offering_id' => (int) $schedule->course_offering_id,
                     'schedule_label' => $scheduleLabel,
                     'resource_label' => $roomLabel,
                     'message' => 'ห้อง/สถานที่: ' . $roomLabel . ' ชนกับ ' . $scheduleLabel,
@@ -114,7 +116,7 @@ class ScheduleConflictChecker
     /**
      * @param  array<string, mixed>  $data
      * @param  array<int>  $studentGroupIds
-     * @return Collection<int, array{type:string,message:string,schedule_id:int,schedule_label?:string,resource_label?:string}>
+     * @return Collection<int, array{type:string,message:string,schedule_id:int,course_offering_id:int,schedule_label?:string,resource_label?:string}>
      */
     private function studentGroupConflicts(array $data, array $studentGroupIds, ?int $ignoreScheduleId, ?Schedule $incoming): Collection
     {
@@ -147,6 +149,7 @@ class ScheduleConflictChecker
                 return collect([[
                     'type' => 'group_overlap',
                     'schedule_id' => $schedule->id,
+                    'course_offering_id' => (int) $schedule->course_offering_id,
                     'schedule_label' => $scheduleLabel,
                     'resource_label' => $groupCodes,
                     'message' => 'กลุ่มนักศึกษา: ' . $groupCodes . ' ชนกับ ' . $scheduleLabel,
@@ -229,7 +232,7 @@ class ScheduleConflictChecker
      * Requires schedules pre-loaded with relations: courseOffering.course, instructors, studentGroups, room.
      *
      * @param Collection<int, Schedule> $schedules
-     * @return Collection<int, Collection<int, array{type:string,message:string,schedule_id:int}>>
+     * @return Collection<int, Collection<int, array{type:string,message:string,schedule_id:int,course_offering_id:int}>>
      */
     public function bulkConflictMap(Collection $schedules): Collection
     {
@@ -237,6 +240,7 @@ class ScheduleConflictChecker
         $rows = $schedules->map(fn (Schedule $s) => [
             'schedule'   => $s,
             'id'         => (int) $s->id,
+            'course_offering_id' => (int) $s->course_offering_id,
             'start_date' => $s->start_date?->toDateString(),
             'end_date'   => $s->end_date?->toDateString(),
             'start_time' => substr((string) $s->start_time, 0, 5),
@@ -286,11 +290,13 @@ class ScheduleConflictChecker
                         $conflictMap[$a['id']][] = [
                             'type'        => 'instructor_overlap',
                             'schedule_id' => $b['id'],
+                            'course_offering_id' => $b['course_offering_id'],
                             'message'     => "อาจารย์ {$name} มีตารางซ้อนกับ {$labelB}",
                         ];
                         $conflictMap[$b['id']][] = [
                             'type'        => 'instructor_overlap',
                             'schedule_id' => $a['id'],
+                            'course_offering_id' => $a['course_offering_id'],
                             'message'     => "อาจารย์ {$name} มีตารางซ้อนกับ {$labelA}",
                         ];
                     }
@@ -303,11 +309,13 @@ class ScheduleConflictChecker
                     $conflictMap[$a['id']][] = [
                         'type'        => 'room_overlap',
                         'schedule_id' => $b['id'],
+                        'course_offering_id' => $b['course_offering_id'],
                         'message'     => "ห้อง/สถานที่ {$roomName} มีตารางซ้อนกับ {$labelB}",
                     ];
                     $conflictMap[$b['id']][] = [
                         'type'        => 'room_overlap',
                         'schedule_id' => $a['id'],
+                        'course_offering_id' => $a['course_offering_id'],
                         'message'     => "ห้อง/สถานที่ {$roomName} มีตารางซ้อนกับ {$labelA}",
                     ];
                 }
@@ -321,11 +329,13 @@ class ScheduleConflictChecker
                         $conflictMap[$a['id']][] = [
                             'type'        => 'group_overlap',
                             'schedule_id' => $b['id'],
+                            'course_offering_id' => $b['course_offering_id'],
                             'message'     => "กลุ่มนักศึกษา {$code} มีตารางซ้อนกับ {$labelB}",
                         ];
                         $conflictMap[$b['id']][] = [
                             'type'        => 'group_overlap',
                             'schedule_id' => $a['id'],
+                            'course_offering_id' => $a['course_offering_id'],
                             'message'     => "กลุ่มนักศึกษา {$code} มีตารางซ้อนกับ {$labelA}",
                         ];
                     }

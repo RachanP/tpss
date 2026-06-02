@@ -1190,6 +1190,7 @@ class ScheduleController extends Controller
         $this->assertInstructorsBelongToCourseDepartment($courseOffering, $validated['instructor_ids']);
         $this->assertLeadInstructorSelected($validated);
         $conflicts = $this->detectConflicts($conflictChecker, $validated);
+        $this->assertNoBlockingScheduleConflicts($conflicts);
 
         $schedule = null;
 
@@ -1235,8 +1236,7 @@ class ScheduleController extends Controller
 
         return redirect()
             ->to($this->scheduleReturnUrl($request, $courseOffering, $validated['start_date'], $redirectToWorkspace))
-            ->with('success', 'เพิ่มรายการสอนเรียบร้อยแล้ว')
-            ->with('schedule_conflict_warning', collect($conflicts)->pluck('message')->unique()->values()->all());
+            ->with('success', 'เพิ่มรายการสอนเรียบร้อยแล้ว');
     }
 
     public function storeSeries(
@@ -1632,8 +1632,8 @@ class ScheduleController extends Controller
     }
 
     /**
-     * Realtime conflict/gate check (ไม่บันทึก) — ใช้โดย modal เพื่อแจ้งเตือน inline + บล็อกปุ่มบันทึก
-     * คืน fields map: { instructor_ids:[...], room_id:[...], student_group_ids:[...], lead_instructor_id:[...], start_date:[...] }
+     * Realtime schedule check (ไม่บันทึก)
+     * คืน fields สำหรับ hard validation ที่บล็อกการบันทึก และ warnings สำหรับข้อเตือนที่ยังบันทึกได้
      */
     public function checkConflicts(
         Request $request,
@@ -1666,6 +1666,7 @@ class ScheduleController extends Controller
         $ignoreScheduleId = $request->integer('schedule_id') ?: null;
 
         $fields = [];
+        $warnings = [];
         $collect = function (string $field, callable $assert) use (&$fields) {
             try {
                 $assert();
@@ -1689,7 +1690,7 @@ class ScheduleController extends Controller
         }
         $collect('student_group_ids', fn () => $this->assertSelectedGroupsFitCapacity($courseOffering, $data));
 
-        // Overlap (instructor/room/group ข้ามวิชา) — ต้องมีวัน/เวลา/กิจกรรมครบก่อน
+        // All resource overlaps are conflicts: in-course and cross-course both block saving.
         if ($data['start_date'] && $data['end_date'] && $data['start_time'] && $data['end_time'] && $data['activity_type_id']) {
             $conflicts = $conflictChecker->check(
                 Arr::only($data, ['course_offering_id', 'activity_type_id', 'start_date', 'end_date', 'start_time', 'end_time', 'room_id', 'sub_group_label']),
@@ -1698,14 +1699,8 @@ class ScheduleController extends Controller
                 $ignoreScheduleId
             );
 
-            $fieldByType = [
-                'instructor_overlap' => 'instructor_ids',
-                'room_overlap' => 'room_id',
-                'group_overlap' => 'student_group_ids',
-            ];
-
             foreach ($conflicts as $conflict) {
-                $field = $fieldByType[$conflict['type']] ?? 'schedule';
+                $field = $this->fieldForScheduleConflict($conflict['type']);
                 $fields[$field][] = $conflict['message'];
             }
         }
@@ -1713,10 +1708,14 @@ class ScheduleController extends Controller
         foreach ($fields as $key => $messages) {
             $fields[$key] = array_values(array_unique($messages));
         }
+        foreach ($warnings as $key => $messages) {
+            $warnings[$key] = array_values(array_unique($messages));
+        }
 
         return response()->json([
             'blocking' => ! empty($fields),
             'fields' => (object) $fields,
+            'warnings' => (object) $warnings,
         ]);
     }
 
@@ -1758,6 +1757,7 @@ class ScheduleController extends Controller
         $this->assertLeadInstructorSelected($validated);
 
         $conflicts = $this->detectConflicts($conflictChecker, $validated, $schedule->id);
+        $this->assertNoBlockingScheduleConflicts($conflicts);
 
         // Snapshot before for diffing
         $schedule->loadMissing([
@@ -1815,8 +1815,7 @@ class ScheduleController extends Controller
 
         return redirect()
             ->to($this->scheduleReturnUrl($request, $courseOffering, $validated['start_date']))
-            ->with('success', 'อัปเดตรายการสอนเรียบร้อยแล้ว')
-            ->with('schedule_conflict_warning', collect($conflicts)->pluck('message')->unique()->values()->all());
+            ->with('success', 'อัปเดตรายการสอนเรียบร้อยแล้ว');
     }
 
     public function destroy(Request $request, CourseOffering $courseOffering, Schedule $schedule): RedirectResponse
@@ -2391,6 +2390,36 @@ class ScheduleController extends Controller
             array_map('intval', $validated['student_group_ids'] ?? []),
             $ignoreScheduleId
         );
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $conflicts
+     */
+    private function assertNoBlockingScheduleConflicts(array $conflicts): void
+    {
+        $messages = collect($conflicts)
+            ->pluck('message')
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($messages === []) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'schedule' => $messages,
+        ]);
+    }
+
+    private function fieldForScheduleConflict(string $type): string
+    {
+        return match ($type) {
+            'instructor_overlap' => 'instructor_ids',
+            'room_overlap' => 'room_id',
+            'group_overlap' => 'student_group_ids',
+            default => 'schedule',
+        };
     }
 
     private function syncInstructors(Schedule $schedule, array $validated): void
