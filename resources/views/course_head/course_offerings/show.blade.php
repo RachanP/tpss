@@ -406,10 +406,10 @@
                 </div>
                 <div class="caption" style="margin-bottom:14px;">ข้อมูลข้างต้นมาจาก Master Data (อ่านอย่างเดียว) — ส่วนนี้คือค่าที่หัวหน้าวิชาปรับได้ตามสถานการณ์ของภาคเรียน</div>
 
-                <fieldset :disabled="!$store.offeringPage.editing.courseInfo" style="border:0;padding:0;margin:0;min-width:0;">
+                <div class="course-info-fields" :class="!$store.offeringPage.editing.courseInfo ? 'is-locked' : ''" style="border:0;padding:0;margin:0;min-width:0;">
                     <div class="form-group" style="margin-bottom:14px;">
                         <label>การจัดรอบฝึกปฏิบัติ</label>
-                        <select x-model="rotation" @change="onRotationChange()">
+                        <select class="tpss-custom-select course-rotation-select" x-model="rotation" :disabled="!$store.offeringPage.editing.courseInfo" @change="onRotationChange()">
                             <option value="0" @selected(! $courseOffering->requires_practicum_rotation)>ไม่มีการหมุนเวียนแหล่งฝึก</option>
                             <option value="1" @selected($courseOffering->requires_practicum_rotation)>มีการหมุนเวียนแหล่งฝึก</option>
                         </select>
@@ -429,12 +429,13 @@
                         </label>
                         <textarea
                             x-model="note"
+                            :disabled="!$store.offeringPage.editing.courseInfo"
                             @input.debounce.700ms="onNoteInput()"
                             rows="3"
                             maxlength="1000"
                             placeholder="เช่น ปีการศึกษานี้ใช้ simulation lab แทนการหมุนเวียนแหล่งฝึก"></textarea>
                     </div>
-                </fieldset>
+                </div>
             </div>
 
             <style>@keyframes rotation-spin { to { transform: rotate(360deg); } }</style>
@@ -1161,16 +1162,47 @@
             position: absolute;
             right: 0;
             top: calc(100% + 6px);
-            width: 280px;
-            max-height: 280px;
+            bottom: auto;
+            width: min(236px, calc(100vw - 48px));
+            max-height: 204px;
             overflow-y: auto;
-            padding: 8px;
-            border: 1px solid oklch(88% 0.018 240);
+            overscroll-behavior: contain;
+            padding: 7px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 26%, var(--border));
             border-radius: 8px;
-            background: rgba(252, 254, 255, 0.98);
-            box-shadow: 0 18px 38px rgba(15, 23, 42, 0.18), 0 2px 8px rgba(15, 23, 42, 0.08);
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 3%, var(--surface)), var(--surface) 34%);
+            box-shadow: 0 18px 34px -26px rgba(0, 36, 84, 0.44), 0 1px 2px rgba(0, 36, 84, 0.08);
             z-index: 40;
             transform-origin: top right;
+            scrollbar-width: thin;
+            scrollbar-color: color-mix(in oklch, var(--brand-navy) 34%, transparent) transparent;
+        }
+
+        .course-role-menu::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .course-role-menu::-webkit-scrollbar-button {
+            display: none;
+            width: 0;
+            height: 0;
+        }
+
+        .course-role-menu::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .course-role-menu::-webkit-scrollbar-thumb {
+            border: 2px solid transparent;
+            border-radius: 999px;
+            background: color-mix(in oklch, var(--brand-navy) 28%, transparent);
+            background-clip: padding-box;
+        }
+
+        .course-role-menu::-webkit-scrollbar-thumb:hover {
+            background: color-mix(in oklch, var(--brand-navy) 42%, transparent);
+            background-clip: padding-box;
         }
 
         .course-role-option {
@@ -1178,24 +1210,31 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 10px;
-            min-height: 36px;
+            gap: 9px;
+            min-height: 34px;
             border: 0;
             border-radius: 6px;
-            background: rgba(252, 254, 255, 0.94);
+            background: transparent;
             color: var(--fg-1);
             cursor: pointer;
             padding: 8px 10px;
             font-family: inherit;
-            font-size: 13px;
-            font-weight: 600;
+            font-size: 12.5px;
+            font-weight: 700;
+            line-height: 1.35;
             text-align: left;
+            transition: background 130ms ease, color 130ms ease;
         }
 
-        .course-role-option:hover,
-        .course-role-option.is-selected {
-            background: oklch(95% 0.025 240);
+        .course-role-option:hover {
+            background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface));
             color: var(--brand-navy);
+        }
+
+        .course-role-option.is-selected {
+            background: var(--brand-navy);
+            color: var(--fg-on-brand);
+            box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--brand-navy) 88%, var(--surface));
         }
 
         .course-role-option-label {
@@ -1203,6 +1242,25 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+        }
+
+        .form-group:has(.course-rotation-select) .tpss-select-trigger {
+            min-height: 44px;
+            border-color: color-mix(in oklch, var(--brand-navy) 34%, var(--border));
+            background:
+                linear-gradient(180deg, var(--surface), color-mix(in oklch, var(--brand-navy) 5%, var(--surface)));
+            color: var(--brand-navy);
+            font-weight: 750;
+        }
+
+        .form-group:has(.course-rotation-select) .tpss-select-menu {
+            min-width: min(100%, 420px);
+        }
+
+        .course-info-fields.is-locked .tpss-select-trigger,
+        .course-info-fields.is-locked textarea {
+            cursor: not-allowed;
+            opacity: 0.72;
         }
 
         @keyframes banner-pulse {

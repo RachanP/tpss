@@ -1221,10 +1221,20 @@
                         return option ? option.text.trim() : '';
                     };
 
+                    var positionAnchor = function() {
+                        if (!el.dataset.menuAnchor) return trigger;
+
+                        try {
+                            return el.closest(el.dataset.menuAnchor) || trigger;
+                        } catch (e) {
+                            return trigger;
+                        }
+                    };
+
                     var positionMenu = function() {
                         if (menu.hidden) return;
 
-                        var rect = trigger.getBoundingClientRect();
+                        var rect = positionAnchor().getBoundingClientRect();
                         menu.style.position = 'fixed';
                         menu.style.left = rect.left + 'px';
                         menu.style.top = (rect.bottom + 6) + 'px';

@@ -16,7 +16,7 @@
 
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap;">
         @if($availableYears->count() > 0)
-            <form method="GET" action="{{ route('maker.course_offerings.index') }}" style="
+            <form method="GET" action="{{ route('maker.course_offerings.index') }}" class="course-offering-year-filter" style="
                 display:inline-flex;
                 align-items:stretch;
                 border:2px solid var(--brand-navy);
@@ -44,32 +44,14 @@
                     </svg>
                     ปีการศึกษา
                 </label>
-                <div style="position:relative;display:inline-flex;align-items:stretch;">
-                    <select id="year-filter" name="year" onchange="this.form.submit()" data-testid="offering-year-filter" style="
-                        appearance:none;
-                        -webkit-appearance:none;
-                        -moz-appearance:none;
-                        padding:8px 38px 8px 14px;
-                        min-width:160px;
-                        max-width:240px;
-                        background:transparent;
-                        color:var(--fg-1);
-                        font-size:0.875rem;
-                        font-weight:500;
-                        border:none;
-                        cursor:pointer;
-                        outline:none;
-                        font-family:inherit;
-                    ">
+                <div class="course-offering-year-select">
+                    <select id="year-filter" name="year" class="tpss-custom-select" data-menu-anchor=".course-offering-year-filter" onchange="this.form.submit()" data-testid="offering-year-filter">
                         @foreach($availableYears as $year)
                             <option value="{{ $year->id }}" @selected($year->id === $selectedYearId)>
                                 ปีการศึกษา {{ $year->name }}@if($year->is_active) · ปัจจุบัน @endif
                             </option>
                         @endforeach
                     </select>
-                    <svg style="position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--brand-navy);" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="6 9 12 15 18 9"/>
-                    </svg>
                 </div>
             </form>
         @endif
@@ -410,6 +392,53 @@
         .course-offering-action-link.is-secondary:focus-visible {
             background: color-mix(in oklch, var(--brand-navy) 7%, var(--surface));
             border-color: color-mix(in oklch, var(--brand-navy) 36%, var(--border));
+        }
+
+        .course-offering-year-select {
+            width: clamp(210px, 24vw, 300px);
+            min-width: 0;
+        }
+
+        .course-offering-year-filter .tpss-select {
+            height: 40px;
+        }
+
+        .course-offering-year-filter .tpss-select-trigger {
+            min-height: 40px;
+            height: 40px;
+            border: 0;
+            border-radius: 0;
+            background: var(--surface);
+            box-shadow: none;
+            padding: 8px 12px 8px 16px;
+            font-size: 0.875rem;
+            font-weight: 700;
+            color: var(--brand-navy);
+        }
+
+        .course-offering-year-filter .tpss-select-trigger:hover,
+        .course-offering-year-filter .tpss-select-trigger:focus {
+            background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
+            box-shadow: none;
+        }
+
+        .course-offering-year-filter .tpss-select-menu {
+            min-width: 260px;
+        }
+
+        @media (max-width: 640px) {
+            .course-offering-year-filter {
+                width: 100%;
+            }
+
+            .course-offering-year-filter label {
+                flex: 0 0 auto;
+            }
+
+            .course-offering-year-select {
+                flex: 1 1 auto;
+                width: auto;
+            }
         }
     </style>
 </x-app-layout>
