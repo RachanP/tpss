@@ -4116,6 +4116,15 @@
         .schedule-modal > .modal-actions {
             flex: 0 0 auto !important;
         }
+        @media (min-width: 1025px) {
+            .schedule-modal-backdrop {
+                inset: 0 0 0 var(--sidebar-w) !important;
+            }
+        }
+        .schedule-modal-backdrop[data-testid="schedule-detail-modal"] {
+            align-items: center !important;
+            justify-content: center !important;
+        }
         .schedule-action-menu {
             position: relative;
             display: inline-flex;
