@@ -6336,7 +6336,7 @@
                             title="{{ $createDisabledHint }}"
                             aria-disabled="{{ ! $canCreateScheduleNow ? 'true' : 'false' }}"
                             style="min-height:34px;padding:6px 12px;font-size:12.5px;"
-                        >+ เพิ่มรายการสอน</button>
+                        >+ เพิ่มกิจกรรม</button>
                     @endif
                 </div>
                 <div class="course-overview-stats">
@@ -7568,7 +7568,7 @@
                 @click="openCreate()"
             >
                 <span class="floating-create-icon" aria-hidden="true">+</span>
-                <span>เพิ่มรายการสอน</span>
+                <span>เพิ่มกิจกรรม</span>
             </button>
         @endif
 

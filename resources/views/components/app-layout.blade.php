@@ -240,11 +240,12 @@
         .tdi-pop {
             position: absolute;
             z-index: 10000;
-            top: calc(100% + 6px);
+            top: calc(100% + 8px);
             left: 0;
-            width: 292px;
-            max-width: calc(100vw - 24px);
+            width: 316px;
+            max-width: calc(100vw - 32px);
             max-height: calc(100vh - 24px);
+            box-sizing: border-box;
             padding: 12px;
             background: #fff;
             border: 1px solid var(--border, #d8dee9);
@@ -255,13 +256,14 @@
         .tdi-pop-head {
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 6px;
+            min-width: 0;
             margin-bottom: 9px;
         }
         .tdi-pop-nav {
             flex-shrink: 0;
-            width: 28px;
-            height: 32px;
+            width: 34px;
+            height: 34px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -278,15 +280,15 @@
             min-width: 0;
         }
         .tdi-pop-select.tdi-pop-month { flex: 1; }
-        .tdi-pop-select.tdi-pop-year { width: 74px; flex-shrink: 0; }
+        .tdi-pop-select.tdi-pop-year { width: 82px; flex-shrink: 0; }
         .tdi-pop-sel {
             min-width: 0;
             width: 100%;
-            height: 32px;
+            height: 34px;
             display: inline-flex;
             align-items: center;
             justify-content: space-between;
-            gap: 6px;
+            gap: 8px;
             border: 1px solid var(--border, #d8dee9);
             border-radius: 6px;
             background: #fff;
@@ -294,7 +296,7 @@
             font-size: 12.5px;
             font-weight: 700;
             color: var(--fg-1, #1e293b);
-            padding: 0 8px;
+            padding: 0 10px;
             cursor: pointer;
         }
         .tdi-pop-sel:hover { background: var(--bg-2, #f1f5f9); }
@@ -485,6 +487,7 @@
                         this.calOpen = true;
                         this.tdiCloseMenus();
                         this.tdiPositionPop();
+                        this.$nextTick(() => this.tdiPositionPop());
                         this.tdiAttachPositionListeners();
                         return;
                     }
@@ -501,8 +504,41 @@
                     this.tdiYearOpen = false;
                 },
                 tdiPositionPop() {
-                    // position: absolute ผูกกับ .tdi-wrap (CSS) — บังคับเปิดข้างล่างเสมอ
-                    this.tdiPopStyle = 'top: calc(100% + 6px); bottom: auto;';
+                    const control = this.$refs.tdiControl;
+                    const pop = this.$refs.tdiPop;
+
+                    if (!control) {
+                        this.tdiPopStyle = 'top: calc(100% + 8px); bottom: auto; left: 0; right: auto;';
+                        return;
+                    }
+
+                    const margin = 14;
+                    const controlRect = control.getBoundingClientRect();
+                    const popWidth = pop && pop.offsetWidth ? pop.offsetWidth : 316;
+                    const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+
+                    let clipLeft = 0;
+                    let clipRight = viewportWidth;
+                    let node = control.parentElement;
+
+                    while (node && node !== document.body && node !== document.documentElement) {
+                        const style = window.getComputedStyle(node);
+                        const overflow = `${style.overflow} ${style.overflowX} ${style.overflowY}`;
+
+                        if (/(auto|scroll|hidden|clip)/.test(overflow)) {
+                            const clip = node.getBoundingClientRect();
+                            clipLeft = Math.max(clipLeft, clip.left);
+                            clipRight = Math.min(clipRight, clip.right);
+                        }
+
+                        node = node.parentElement;
+                    }
+
+                    const minLeft = clipLeft + margin - controlRect.left;
+                    const maxLeft = clipRight - margin - controlRect.left - popWidth;
+                    const left = Math.round(Math.max(minLeft, Math.min(0, maxLeft)));
+
+                    this.tdiPopStyle = `top: calc(100% + 8px); bottom: auto; left: ${left}px; right: auto;`;
                 },
                 tdiIsControlVisible(rect, viewportWidth, viewportHeight) {
                     if (rect.bottom <= 0 || rect.top >= viewportHeight || rect.right <= 0 || rect.left >= viewportWidth) {
