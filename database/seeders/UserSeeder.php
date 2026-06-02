@@ -18,6 +18,7 @@ use Illuminate\Database\Seeder;
  *   exec_01    ผู้บริหาร (อนุมัติ/ตรวจภาระงาน — read-only)
  *   instructor_01 อาจารย์ผู้สอน (เห็นตารางของตัวเอง)
  *   staff_01   เจ้าหน้าที่ (เห็นตารางทั้งคณะ)
+ *   staff_02   เจ้าหน้าที่ (บัญชีที่ 2 — ให้ลูกค้าทดสอบงานเจ้าหน้าที่คู่ขนาน)
  *
  * หมายเหตุ: คง username `admin_01` + `staff_01` ไว้ (Playwright E2E login ด้วยสองตัวนี้)
  */
@@ -148,6 +149,19 @@ class UserSeeder extends Seeder
                 'employee_id' => '70001',
                 'name'        => 'มาลี ประสานงาน',
                 'email'       => 'staff@tpss.demo',
+                'is_active'   => true,
+                'roles' => [
+                    ['role' => 'staff', 'is_primary' => true],
+                ],
+            ],
+
+            // ─── เจ้าหน้าที่ คนที่ 2 (เห็นตารางทั้งคณะ) ──────────────────────────
+            [
+                'prefix'      => 'นาย',
+                'username'    => 'staff_02',
+                'employee_id' => '70002',
+                'name'        => 'ปิยะ บริการเลิศ',
+                'email'       => 'staff2@tpss.demo',
                 'is_active'   => true,
                 'roles' => [
                     ['role' => 'staff', 'is_primary' => true],
