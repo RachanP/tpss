@@ -200,6 +200,19 @@
                 updateQuota() {
                     this.instructorProfile.teaching_quota = Math.round((this.teachingTotalHours * (this.instructorProfile.teaching_pct || 0)) / 100);
                 },
+                // โมดอลอยู่ใน <template x-if> → select ถูกสร้างใหม่ทุกครั้งที่เปิด
+                // ต้องสั่ง enhancer ให้แปลงเป็น custom dropdown (tpss-custom-select) หลัง DOM เรนเดอร์เสร็จ
+                // แล้วค่อย sync ป้ายให้ตรงค่าที่ x-model เพิ่งเขียน (x-model ตั้งค่าแบบ programmatic ไม่ยิง 'change')
+                refreshModalSelects() {
+                    this.$nextTick(() => {
+                        requestAnimationFrame(() => {
+                            if (window.tpssInitChoices) window.tpssInitChoices();
+                            document.querySelectorAll('.users-modal-body select.tpss-custom-select').forEach(function(el) {
+                                if (el._tpssSelect) el._tpssSelect.sync();
+                            });
+                        });
+                    });
+                },
                 openAddModal() {
                     this.editMode = false;
                     this.errorMsg = '';
@@ -207,6 +220,7 @@
                     this.currentUser = { id: '', username: '', prefix: '', name: '', email: '', password: '', employee_id: '', roles: ['staff'], primary_role: 'staff', is_active: 1 };
                     this.instructorProfile = { title: '', department_id: '', employment_type: 'พนักงานมหาวิทยาลัย', hired_at: '', academic_degree: 'ปริญญาโท', is_english_passed: false, teaching_pct: 0, research_pct: 0, service_pct: 0, culture_pct: 0, other_pct: 0, teaching_quota: 0, department_position: '' };
                     this.showModal = true;
+                    this.refreshModalSelects();
                 },
                 openEditModal(user) {
                     this.editMode = true;
@@ -242,8 +256,9 @@
                         is_english_passed: !!profile.is_english_passed,
                         department_position: (user.head_of_departments && user.head_of_departments.length > 0) ? 'head' : ((user.secretary_of_departments && user.secretary_of_departments.length > 0) ? 'secretary' : '')
                     } : { title: '', department_id: '', employment_type: 'พนักงานมหาวิทยาลัย', hired_at: '', academic_degree: '', is_english_passed: false, teaching_pct: 0, research_pct: 0, service_pct: 0, culture_pct: 0, other_pct: 0, teaching_quota: 0, department_position: '' };
-                    
+
                     this.showModal = true;
+                    this.refreshModalSelects();
                 },
                 applyOldInput(oldInput) {
                     if (!oldInput || Object.keys(oldInput).length === 0) return;
@@ -278,6 +293,8 @@
                         is_english_passed: oldInput.instructor_is_english_passed !== undefined ? ['1', 1, true, 'true'].includes(oldInput.instructor_is_english_passed) : this.instructorProfile.is_english_passed,
                         department_position: oldInput.instructor_department_position ?? this.instructorProfile.department_position,
                     };
+
+                    this.refreshModalSelects();
                 },
                 watchTitleChange(title) {
                     // ยกเลิกการบังคับใส่ "ปริญญาเอก" อัตโนมัติ เพื่อให้คงค่าว่างไว้ตาม Template หรือตามที่กรอกจริง
@@ -462,7 +479,7 @@
                     </svg>
                     <input type="text" data-testid="users-search-input" placeholder="ค้นหาชื่อ ชื่อผู้ใช้ อีเมล รหัสพนักงาน หรือภาควิชา" x-model="filters.keyword">
                 </div>
-                <select class="users-filter-select" x-model="filters.role">
+                <select class="users-filter-select tpss-custom-select" x-model="filters.role">
                     <option value="">ทุกบทบาท</option>
                     <option value="admin">ผู้ดูแลระบบ</option>
                     <option value="staff">เจ้าหน้าที่</option>
@@ -470,18 +487,18 @@
                     <option value="executive">ผู้บริหาร</option>
                     <option value="instructor">อาจารย์ผู้สอน</option>
                 </select>
-                <select class="users-filter-select" x-model="filters.status">
+                <select class="users-filter-select tpss-custom-select" x-model="filters.status">
                     <option value="">ทุกสถานะ</option>
                     <option value="active">กำลังใช้งาน</option>
                     <option value="inactive">ระงับการใช้งาน</option>
                 </select>
-                <select class="users-filter-select" x-model="filters.department_id">
+                <select class="users-filter-select tpss-custom-select" x-model="filters.department_id">
                     <option value="">ทุกภาควิชา</option>
                     @foreach($departments as $dept)
                         <option value="{{ $dept->id }}">{{ $dept->name }}</option>
                     @endforeach
                 </select>
-                <select class="users-filter-select" x-model="filters.position">
+                <select class="users-filter-select tpss-custom-select" x-model="filters.position">
                     <option value="">ทุกตำแหน่งภาควิชา</option>
                     <option value="head">หัวหน้าภาควิชา</option>
                     <option value="secretary">เลขานุการภาควิชา</option>
@@ -729,8 +746,8 @@
         </div>
 
         <!-- Add/Edit Modal -->
-        <template x-if="showModal">
-            <div class="overlay" x-cloak>
+        <!-- ใช้ x-show (ไม่ใช่ x-if) เพื่อให้ select อยู่ใน DOM ตั้งแต่โหลด → global tpssInitChoices() แปลงเป็น custom dropdown ได้ (แพทเทิร์นเดียวกับ schedule modal) -->
+        <div class="overlay" x-show="showModal" x-cloak>
                 <div class="modal-center users-modal" x-transition:enter="transition ease-out duration-300"
                     x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
                     <div class="modal-hdr" style="background: var(--bg-2);">
@@ -753,7 +770,8 @@
                             <input type="hidden" name="_method" value="PUT">
                         </template>
 
-                        <div class="modal-body users-modal-body">
+                        <div class="modal-body users-modal-body"
+                            x-init="$nextTick(() => { if (window.tpssInitChoices) window.tpssInitChoices($el); refreshModalSelects(); })">
                             <!-- Server-side validation errors -->
                             @if($errors->any())
                             <template x-if="hasServerError">
@@ -794,7 +812,7 @@
                             <div class="form-row">
                                 <div class="form-group" style="flex: 0 0 120px;">
                                     <label>คำนำหน้าชื่อ</label>
-                                    <select name="prefix" x-model="currentUser.prefix">
+                                    <select name="prefix" class="tpss-custom-select" x-model="currentUser.prefix">
                                         <option value="">-- ระบุ --</option>
                                         <option value="นาย">นาย</option>
                                         <option value="นาง">นาง</option>
@@ -889,15 +907,17 @@
 
                             <div class="form-group">
                                 <label>สถานะการใช้งาน</label>
-                                <select name="is_active" data-testid="user-form-is-active" x-model.number="currentUser.is_active">
+                                <select name="is_active" class="tpss-custom-select" data-testid="user-form-is-active" x-model.number="currentUser.is_active">
                                     <option value="1">ใช้งานปกติ (Active)</option>
                                     <option value="0">ระงับการใช้งาน (Inactive)</option>
                                 </select>
                             </div>
 
                             <!-- Profile Section: instructor / course_head / executive -->
+                            <!-- section นี้อยู่ใน x-if (กัน required select ที่ซ่อนไปบล็อกการ submit) → ต้อง re-init enhancer ตอน mount -->
                             <template x-if="showProfileSection">
-                                <div style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 20px;">
+                                <div style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 20px;"
+                                    x-init="$nextTick(() => { if (window.tpssInitChoices) window.tpssInitChoices($el); refreshModalSelects(); })">
                                     <div style="font-weight: 700; color: var(--fg-1); font-size: 14px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
                                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
                                             stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -911,7 +931,7 @@
                                     <div class="form-row">
                                         <div class="form-group">
                                             <label>ตำแหน่งทางวิชาการ <span style="color: #ef4444;">*</span></label>
-                                            <select name="instructor_title" x-model="instructorProfile.title" required>
+                                            <select name="instructor_title" class="tpss-custom-select" x-model="instructorProfile.title" required>
                                                 <option value="">-- เลือกตำแหน่ง --</option>
                                                 <option value="อาจารย์">อาจารย์ (อ.)</option>
                                                 <option value="ผู้ช่วยศาสตราจารย์">ผู้ช่วยศาสตราจารย์ (ผศ.)</option>
@@ -927,6 +947,7 @@
                                         <div class="form-group" x-show="needsDept">
                                             <label>ภาควิชา / หน่วยงาน <span style="color: #ef4444;" x-show="needsDept">*</span></label>
                                             <select name="instructor_department_id"
+                                                class="tpss-custom-select"
                                                 x-model="instructorProfile.department_id"
                                                 :required="needsDept">
                                                 <option value="">-- เลือกภาควิชา --</option>
@@ -940,7 +961,7 @@
                                     <!-- วุฒิการศึกษา: แสดงสำหรับทุก role ที่มี profile -->
                                     <div class="form-group" style="margin-bottom: 20px;">
                                         <label style="font-weight: 700;">วุฒิการศึกษาสูงสุด <span style="color: #ef4444;">*</span></label>
-                                        <select name="instructor_academic_degree" x-model="instructorProfile.academic_degree" required>
+                                        <select name="instructor_academic_degree" class="tpss-custom-select" x-model="instructorProfile.academic_degree" required>
                                             <option value="" disabled>-- เลือกวุฒิการศึกษา --</option>
                                             <option value="ปริญญาเอก">ปริญญาเอก</option>
                                             <option value="ปริญญาโท">ปริญญาโท</option>
@@ -951,7 +972,7 @@
                                     <!-- ตำแหน่งบริหารในภาควิชา: เฉพาะ instructor/course_head -->
                                     <div class="form-group" style="margin-bottom: 20px;" x-show="needsDept">
                                         <label>ตำแหน่งบริหารในภาควิชา <span style="font-weight: normal; color: var(--fg-3); font-size: 0.9em;">(ไม่บังคับ)</span></label>
-                                        <select name="instructor_department_position" x-model="instructorProfile.department_position">
+                                        <select name="instructor_department_position" class="tpss-custom-select" x-model="instructorProfile.department_position">
                                             <option value="">-- ไม่มีตำแหน่งบริหาร --</option>
                                             <option value="head">หัวหน้าภาควิชา</option>
                                             <option value="secretary">เลขานุการภาควิชา</option>
@@ -984,7 +1005,7 @@
                                         <div class="form-row">
                                             <div class="form-group">
                                                 <label>ประเภทการจ้างงาน <span style="color: #ef4444;">*</span></label>
-                                                <select name="instructor_employment_type" x-model="instructorProfile.employment_type" :required="hasInstructor">
+                                                <select name="instructor_employment_type" class="tpss-custom-select" x-model="instructorProfile.employment_type" :required="hasInstructor">
                                                     <option value="พนักงานมหาวิทยาลัย">พนักงานมหาวิทยาลัย</option>
                                                     <option value="ข้าราชการ">ข้าราชการ</option>
                                                 </select>
@@ -1123,7 +1144,7 @@
                     </form>
                 </div>
             </div>
-        </template>
+        </div>
 
         <!-- Import CSV Modal -->
         <template x-if="showImportModal">
@@ -1172,11 +1193,19 @@
                                     เปิดแท็บ <strong>Users</strong> → อ่านแท็บ <strong>Users หมายเหตุ</strong> → กรอกข้อมูล → บันทึก/Export เป็น <strong>CSV UTF-8</strong> → อัปโหลดไฟล์ CSV ที่ได้
                                 </div>
                             </div>
-                            <div style="margin-bottom: 16px;">
+                            <div style="margin-bottom: 16px;" x-data="{ fileName: '' }">
                                 <label class="frm-lbl">เลือกไฟล์ CSV <span style="color: var(--status-conflict-fg)">*</span></label>
-                                <input type="file" name="csv_file" accept=".csv,.txt" required
-                                    style="display: block; width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: var(--surface);">
-                                <div style="font-size: 12px; color: var(--fg-muted); margin-top: 4px;">รองรับไฟล์ภาษาไทย (UTF-8), ไม่เกิน 5 MB, แนะนำไม่เกิน 500 แถว</div>
+                                <label class="users-import-file-control" :class="{ 'has-file': fileName }">
+                                    <span class="users-import-file-button">เลือกไฟล์ CSV</span>
+                                    <span class="users-import-file-name" x-text="fileName || 'ยังไม่ได้เลือกไฟล์'"></span>
+                                    <input type="file" name="csv_file" accept=".csv,.txt" required
+                                        aria-describedby="users-import-file-help"
+                                        class="users-import-file-input"
+                                        @change="fileName = $event.target.files.length ? $event.target.files[0].name : ''">
+                                </label>
+                                <div id="users-import-file-help" class="users-import-file-help">
+                                    <strong>รายละเอียดไฟล์:</strong> รองรับไฟล์ .csv หรือ .txt ที่บันทึกเป็น CSV UTF-8, ขนาดไม่เกิน 5 MB และแนะนำไม่เกิน 500 แถว
+                                </div>
                             </div>
                             <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-2);">
                                 <input type="checkbox" name="update_on_duplicate" value="1" style="margin-top: 2px; flex-shrink: 0;">
@@ -1357,6 +1386,59 @@
             outline: 0;
             border-color: var(--brand-navy);
             box-shadow: 0 0 0 3px oklch(92% 0.025 250);
+        }
+
+        .users-filter-bar .tpss-select {
+            width: 100%;
+            min-width: 0;
+            height: 40px;
+        }
+
+        .users-filter-bar .tpss-select-trigger {
+            min-height: 40px;
+            height: 40px;
+            border-color: var(--border);
+            border-radius: 8px;
+            background: oklch(100% 0.004 220);
+            box-shadow: none;
+            color: var(--brand-navy);
+            padding: 7px 11px 7px 12px;
+            font-size: 13px;
+            font-weight: 750;
+            line-height: 1.35;
+        }
+
+        .users-filter-bar .tpss-select-trigger:hover,
+        .users-filter-bar .tpss-select-trigger:focus {
+            border-color: var(--brand-navy);
+            background: var(--surface);
+            box-shadow: 0 0 0 3px oklch(92% 0.025 250);
+        }
+
+        .users-filter-bar .tpss-select-label {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: inherit;
+        }
+
+        .users-filter-bar .tpss-select-menu {
+            min-width: 210px;
+            max-height: min(280px, calc(100vh - 24px));
+            padding: 6px;
+            border-color: color-mix(in oklch, var(--brand-navy) 30%, var(--border));
+            border-radius: 8px;
+            box-shadow: 0 18px 34px -26px rgba(0, 36, 84, 0.44), 0 1px 2px rgba(0, 36, 84, 0.08);
+            scrollbar-width: thin;
+            scrollbar-color: color-mix(in oklch, var(--brand-navy) 34%, transparent) transparent;
+        }
+
+        .users-filter-bar .tpss-select-option {
+            min-height: 34px;
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-size: 12.75px;
+            font-weight: 700;
         }
 
         .users-empty-state {
@@ -1558,7 +1640,149 @@
             background-position: right 13px center;
             background-size: 18px 18px;
         }
-    </style>
+a[href*="users_import.xlsx"] {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    margin: 0 0 14px;
+    padding: 16px 18px;
+    border: 1px solid color-mix(in srgb, var(--brand-navy) 35%, var(--border));
+    border-radius: 8px;
+    background: linear-gradient(135deg, rgba(3, 49, 99, 0.1), rgba(225, 241, 248, 0.92));
+    color: var(--brand-navy);
+    font-weight: 800;
+    text-decoration: none;
+    box-shadow: 0 12px 28px rgba(3, 49, 99, 0.12);
+    transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+a[href*="users_import.xlsx"]:hover,
+a[href*="users_import.xlsx"]:focus-visible {
+    border-color: var(--brand-navy);
+    box-shadow: 0 16px 34px rgba(3, 49, 99, 0.18);
+    transform: translateY(-1px);
+}
+
+a[href*="users_import.xlsx"] svg {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 auto;
+}
+
+a[href*="users_import.xlsx"]::after {
+    content: "ดาวน์โหลด";
+    flex: 0 0 auto;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: var(--brand-navy);
+    color: #fff;
+    font-size: 0.86rem;
+    line-height: 1;
+    box-shadow: 0 8px 18px rgba(3, 49, 99, 0.18);
+}
+
+/* Custom CSV file picker — label wraps a visually-hidden native input
+   so the Thai button/filename text renders with the page font (the native
+   control + SVG-background hacks could not render Thai reliably). */
+.users-import-file-control {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    min-height: 48px;
+    padding: 7px 10px;
+    border: 1px solid var(--border, #cfdbe5);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--fg-base, #111827);
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.users-import-file-control:hover,
+.users-import-file-control:focus-within {
+    border-color: var(--brand-navy);
+    box-shadow: 0 0 0 3px rgba(3, 49, 99, 0.08);
+}
+
+.users-import-file-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.users-import-file-button {
+    flex: 0 0 auto;
+    min-width: 116px;
+    padding: 9px 14px;
+    border: 1px solid color-mix(in srgb, var(--brand-navy) 24%, var(--border));
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--brand-navy) 8%, #fff);
+    color: var(--brand-navy, #033163);
+    font-size: 0.9rem;
+    font-weight: 700;
+    line-height: 1;
+    text-align: center;
+}
+
+.users-import-file-control:hover .users-import-file-button,
+.users-import-file-control:focus-within .users-import-file-button {
+    border-color: var(--brand-navy);
+    background: color-mix(in srgb, var(--brand-navy) 12%, #fff);
+}
+
+.users-import-file-name {
+    min-width: 0;
+    color: var(--fg-muted, #64748b);
+    font-size: 0.9rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.users-import-file-control.has-file .users-import-file-name {
+    color: var(--fg-base, #111827);
+}
+
+.users-import-file-help {
+    margin-top: 8px;
+    padding: 9px 11px;
+    border: 1px solid color-mix(in srgb, var(--brand-navy) 14%, var(--border));
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--brand-navy) 4%, #fff);
+    color: var(--fg-muted);
+    font-size: 12px;
+    line-height: 1.55;
+}
+
+.users-import-file-help strong {
+    color: var(--fg-base);
+    font-weight: 800;
+}
+
+@media (max-width: 640px) {
+    a[href*="users_import.xlsx"] {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 14px;
+    }
+
+    a[href*="users_import.xlsx"]::after {
+        width: 100%;
+        text-align: center;
+    }
+}
+</style>
 
     @if(session('import_errors'))
     <div style="position: fixed; bottom: 20px; right: 20px; max-width: 420px; background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12); z-index: 9999; overflow: hidden;"

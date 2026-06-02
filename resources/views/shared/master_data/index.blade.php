@@ -3371,23 +3371,27 @@
                             @endif
 
                             <div style="margin-bottom: 16px;">
-                                <a href="{{ asset('templates/rooms_import.xlsx') }}"
-                                    style="font-size: 13px; color: var(--accent); text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
-                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <a href="{{ asset('templates/rooms_import.xlsx') }}" class="md-template-link">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                                         <polyline points="7 10 12 15 17 10"/>
                                         <line x1="12" y1="15" x2="12" y2="3"/>
                                     </svg>
-                                    ดาวน์โหลดไฟล์ Template Excel (rooms_import.xlsx)
+                                    <span class="md-template-link__label">ดาวน์โหลดไฟล์ Template Excel (rooms_import.xlsx)</span>
                                 </a>
                                 <div style="font-size: 12px; color: var(--fg-muted); margin-top: 6px; line-height: 1.55;">
                                     เปิดแท็บ <strong>Rooms</strong> → อ่านแท็บ <strong>Rooms หมายเหตุ</strong> → กรอกข้อมูล → บันทึก/Export เป็น <strong>CSV UTF-8</strong> → อัปโหลดไฟล์ CSV ที่ได้
                                 </div>
                             </div>
-                            <div style="margin-bottom: 16px;">
+                            <div style="margin-bottom: 16px;" x-data="{ fileName: '' }">
                                 <label class="frm-lbl">เลือกไฟล์ CSV <span style="color: var(--status-conflict-fg)">*</span></label>
-                                <input type="file" name="csv_file" accept=".csv,.txt" required
-                                    style="display: block; width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: var(--surface);">
+                                <label class="md-file-control" :class="{ 'has-file': fileName }">
+                                    <span class="md-file-button">เลือกไฟล์ CSV</span>
+                                    <span class="md-file-name" x-text="fileName || 'ยังไม่ได้เลือกไฟล์'"></span>
+                                    <input type="file" name="csv_file" accept=".csv,.txt" required
+                                        class="md-file-input"
+                                        @change="fileName = $event.target.files.length ? $event.target.files[0].name : ''">
+                                </label>
                                 <div style="font-size: 12px; color: var(--fg-muted); margin-top: 4px;">รองรับไฟล์ภาษาไทย (UTF-8), ไม่เกิน 5 MB</div>
                             </div>
                             <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-2);">
@@ -3448,23 +3452,27 @@
                             @endif
 
                             <div style="margin-bottom: 16px;">
-                                <a href="{{ asset('templates/courses_import.xlsx') }}"
-                                    style="font-size: 13px; color: var(--accent); text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
-                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <a href="{{ asset('templates/courses_import.xlsx') }}" class="md-template-link">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                                         <polyline points="7 10 12 15 17 10"/>
                                         <line x1="12" y1="15" x2="12" y2="3"/>
                                     </svg>
-                                    ดาวน์โหลดไฟล์ Template Excel (courses_import.xlsx)
+                                    <span class="md-template-link__label">ดาวน์โหลดไฟล์ Template Excel (courses_import.xlsx)</span>
                                 </a>
                                 <div style="font-size: 12px; color: var(--fg-muted); margin-top: 6px; line-height: 1.55;">
                                     เปิดแท็บ <strong>Courses</strong> → อ่านแท็บ <strong>Courses หมายเหตุ</strong> → กรอกข้อมูล → บันทึก/Export เป็น <strong>CSV UTF-8</strong> → อัปโหลดไฟล์ CSV ที่ได้
                                 </div>
                             </div>
-                            <div style="margin-bottom: 16px;">
+                            <div style="margin-bottom: 16px;" x-data="{ fileName: '' }">
                                 <label class="frm-lbl">เลือกไฟล์ CSV <span style="color: var(--status-conflict-fg)">*</span></label>
-                                <input type="file" name="csv_file" accept=".csv,.txt" required
-                                    style="display: block; width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: var(--surface);">
+                                <label class="md-file-control" :class="{ 'has-file': fileName }">
+                                    <span class="md-file-button">เลือกไฟล์ CSV</span>
+                                    <span class="md-file-name" x-text="fileName || 'ยังไม่ได้เลือกไฟล์'"></span>
+                                    <input type="file" name="csv_file" accept=".csv,.txt" required
+                                        class="md-file-input"
+                                        @change="fileName = $event.target.files.length ? $event.target.files[0].name : ''">
+                                </label>
                                 <div style="font-size: 12px; color: var(--fg-muted); margin-top: 4px;">รองรับไฟล์ภาษาไทย (UTF-8), ไม่เกิน 5 MB</div>
                             </div>
                             <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-2);">
@@ -3488,6 +3496,137 @@
     <style>
         [x-cloak] {
             display: none !important;
+        }
+
+        /* Template download — flat card with a prominent "ดาวน์โหลด" button
+           (Impeccable Design: sharp, flat, no gradient). */
+        .md-template-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid color-mix(in srgb, var(--brand-navy) 30%, var(--border));
+            border-radius: 8px;
+            background: color-mix(in srgb, var(--brand-navy) 5%, #fff);
+            color: var(--brand-navy);
+            font-size: 13px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: border-color 160ms ease, background 160ms ease;
+        }
+
+        .md-template-link:hover,
+        .md-template-link:focus-visible {
+            border-color: var(--brand-navy);
+            background: color-mix(in srgb, var(--brand-navy) 9%, #fff);
+            outline: none;
+        }
+
+        .md-template-link svg {
+            width: 20px;
+            height: 20px;
+            flex: 0 0 auto;
+        }
+
+        .md-template-link__label {
+            flex: 1 1 auto;
+            min-width: 0;
+            line-height: 1.4;
+        }
+
+        .md-template-link::after {
+            content: "ดาวน์โหลด";
+            flex: 0 0 auto;
+            padding: 8px 14px;
+            border-radius: 8px;
+            background: var(--brand-navy);
+            color: #fff;
+            font-size: 0.86rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        @media (max-width: 640px) {
+            .md-template-link {
+                flex-wrap: wrap;
+            }
+
+            .md-template-link::after {
+                width: 100%;
+                text-align: center;
+            }
+        }
+
+        /* Custom CSV file picker — label wraps a visually-hidden native input
+           so the Thai button/filename text renders with the page font instead
+           of the browser's native "Choose File / No file chosen" control. */
+        .md-file-control {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            width: 100%;
+            min-height: 48px;
+            padding: 7px 10px;
+            border: 1px solid var(--border, #cfdbe5);
+            border-radius: 8px;
+            background: #fff;
+            color: var(--fg-base, #111827);
+            text-align: left;
+            cursor: pointer;
+            transition: border-color 160ms ease, box-shadow 160ms ease;
+        }
+
+        .md-file-control:hover,
+        .md-file-control:focus-within {
+            border-color: var(--brand-navy);
+            box-shadow: 0 0 0 3px rgba(3, 49, 99, 0.08);
+        }
+
+        .md-file-input {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        .md-file-button {
+            flex: 0 0 auto;
+            min-width: 116px;
+            padding: 9px 14px;
+            border: 1px solid color-mix(in srgb, var(--brand-navy) 24%, var(--border));
+            border-radius: 8px;
+            background: color-mix(in srgb, var(--brand-navy) 8%, #fff);
+            color: var(--brand-navy, #033163);
+            font-size: 0.9rem;
+            font-weight: 700;
+            line-height: 1;
+            text-align: center;
+        }
+
+        .md-file-control:hover .md-file-button,
+        .md-file-control:focus-within .md-file-button {
+            border-color: var(--brand-navy);
+            background: color-mix(in srgb, var(--brand-navy) 12%, #fff);
+        }
+
+        .md-file-name {
+            min-width: 0;
+            color: var(--fg-muted, #64748b);
+            font-size: 0.9rem;
+            font-weight: 600;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .md-file-control.has-file .md-file-name {
+            color: var(--fg-base, #111827);
         }
 
         .btn-ghost:hover {
