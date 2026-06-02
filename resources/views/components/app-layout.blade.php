@@ -402,7 +402,6 @@
             opacity: 0.62;
         }
         .tdi-pop-day.is-blocked:hover { background: var(--bg-1, #f8fafc); }
-        .tdi-pop-day.is-today { border-color: var(--brand-navy, #1e3a5f); font-weight: 800; }
         .tdi-pop-day.is-selected {
             background: var(--brand-navy, #1e3a5f);
             color: #fff;
