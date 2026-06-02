@@ -232,7 +232,7 @@ class ScheduleSeriesGeneratorTest extends TestCase
             ->assertSee('ซ้ำรายสัปดาห์');
     }
 
-    public function test_series_instance_update_preserves_template_owned_fields(): void
+    public function test_series_instance_update_preserves_template_owned_fields_but_allows_weekly_time(): void
     {
         [$offering, $instructor, $group, $activityType, $room, $head] = $this->fixture();
         $otherActivity = ActivityType::create([
@@ -282,7 +282,8 @@ class ScheduleSeriesGeneratorTest extends TestCase
 
         $this->assertSame($activityType->id, (int) $instance->activity_type_id);
         $this->assertSame('2026-08-03', $instance->start_date->toDateString());
-        $this->assertSame('09:00:00', (string) $instance->start_time);
+        $this->assertSame('13:00:00', (string) $instance->start_time);
+        $this->assertSame('15:00:00', (string) $instance->end_time);
         $this->assertSame('Template topic', $instance->topic);
         $this->assertNull($instance->room_id);
         $this->assertSame('Weekly room pending', $instance->remark);
@@ -338,7 +339,8 @@ class ScheduleSeriesGeneratorTest extends TestCase
         $this->assertTrue($instance->instructors()->where('users.id', $otherInstructor->id)->wherePivot('is_lead', true)->exists());
         $this->assertSame([$otherGroup->id], $instance->studentGroups()->pluck('student_groups.id')->all());
         $this->assertSame('Template topic', $instance->topic);
-        $this->assertSame('09:00:00', (string) $instance->start_time);
+        $this->assertSame('13:00:00', (string) $instance->start_time);
+        $this->assertSame('15:00:00', (string) $instance->end_time);
     }
 
     public function test_course_head_can_update_weekly_series_template_through_route(): void

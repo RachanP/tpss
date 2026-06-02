@@ -2179,8 +2179,6 @@ class ScheduleController extends Controller
         $validated['activity_type_id'] = $schedule->activity_type_id;
         $validated['start_date'] = $schedule->start_date?->toDateString() ?? $schedule->teaching_date?->toDateString();
         $validated['end_date'] = $schedule->end_date?->toDateString() ?? $schedule->teaching_date?->toDateString();
-        $validated['start_time'] = substr((string) $schedule->start_time, 0, 5);
-        $validated['end_time'] = substr((string) $schedule->end_time, 0, 5);
         $validated['topic'] = $schedule->topic;
         $validated['capacity_required'] = $schedule->capacity_required;
         $validated['sub_group_label'] = $schedule->sub_group_label;
