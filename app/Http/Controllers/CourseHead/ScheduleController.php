@@ -705,6 +705,22 @@ class ScheduleController extends Controller
         $academicCalendar = AcademicCalendar::forYear($courseOffering->academicYear);
         $scheduleConflicts = $this->scheduleConflictMap($schedules);
         $groupedSchedules = $this->groupSchedulesForList($schedules);
+        $scheduleReturnUrlParams = [
+            $courseOffering,
+            'week_start' => $weekStart->toDateString(),
+        ];
+
+        if ($selectedTermId) {
+            $scheduleReturnUrlParams['term_id'] = $selectedTermId;
+        }
+
+        if ($selectedInstructorId) {
+            $scheduleReturnUrlParams['instructor_id'] = $selectedInstructorId;
+        }
+
+        if ($includeWeekends) {
+            $scheduleReturnUrlParams['include_weekends'] = 1;
+        }
 
         $viewData = [
             'courseOffering' => $courseOffering,
@@ -721,6 +737,7 @@ class ScheduleController extends Controller
             'canEdit' => $courseOffering->academicYear?->phase === 'scheduling',
             'includeWeekends' => $includeWeekends,
             'lazyWeekStart' => $weekStart->toDateString(),
+            'scheduleReturnUrl' => route('maker.course_offerings.schedules.index', $scheduleReturnUrlParams),
         ];
 
         return [
@@ -2033,8 +2050,15 @@ class ScheduleController extends Controller
         $host = $parts['host'] ?? $requestHost;
         $path = $parts['path'] ?? '';
 
-        return $host === $requestHost
-            && (str_starts_with($path, '/maker/course-offerings/') || $path === '/maker/schedules');
+        if ($host !== $requestHost) {
+            return false;
+        }
+
+        if ($path === '/maker/schedules') {
+            return true;
+        }
+
+        return preg_match('#^/maker/course-offerings/[^/]+/schedules/?$#', $path) === 1;
     }
 
     private function scheduleOccurrences($schedules, CarbonImmutable $weekStart, CarbonImmutable $weekEnd, bool $includeWeekends = false)

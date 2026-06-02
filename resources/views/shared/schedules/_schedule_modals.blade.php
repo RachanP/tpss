@@ -83,6 +83,7 @@
                     : $fieldLabel . 'มีข้อมูลซ้ำกับรายการอื่น ' . $items->count() . ' จุด';
             };
             $scheduleResourceCopyItems = $scheduleResourceCopyItems ?? collect();
+            $scheduleReturnUrl = $scheduleReturnUrl ?? request()->fullUrl();
         @endphp
 
         @foreach($modalSchedules as $schedule)
@@ -185,20 +186,20 @@
                             <form id="delete-schedule-{{ $schedule->id }}" method="POST" action="{{ route('maker.course_offerings.schedules.destroy', [$offering, $schedule]) }}" style="display:none;">
                                 @csrf
                                 @method('DELETE')
-                                <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
+                                <input type="hidden" name="return_url" value="{{ $scheduleReturnUrl }}">
                             </form>
                             @if($schedule->schedule_template_id && $schedule->scheduleTemplate)
                                 <form id="delete-series-from-{{ $schedule->id }}" method="POST" action="{{ route('maker.course_offerings.schedules.destroy', [$offering, $schedule]) }}" style="display:none;">
                                     @csrf
                                     @method('DELETE')
                                     <input type="hidden" name="series_delete_scope" value="from_current">
-                                    <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
+                                    <input type="hidden" name="return_url" value="{{ $scheduleReturnUrl }}">
                                 </form>
                                 <form id="delete-series-all-{{ $schedule->id }}" method="POST" action="{{ route('maker.course_offerings.schedules.destroy', [$offering, $schedule]) }}" style="display:none;">
                                     @csrf
                                     @method('DELETE')
                                     <input type="hidden" name="series_delete_scope" value="all">
-                                    <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
+                                    <input type="hidden" name="return_url" value="{{ $scheduleReturnUrl }}">
                                 </form>
                             @endif
                             @php
@@ -258,7 +259,7 @@
                                 @method('PUT')
                                 <input type="hidden" name="modal_mode" value="series_edit">
                                 <input type="hidden" name="edit_series_template_id" value="{{ $schedule->id }}">
-                                <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
+                                <input type="hidden" name="return_url" value="{{ $scheduleReturnUrl }}">
                                 <div class="modal-form-body">
                                     @if($seriesUsesOld && $errors->any())
                                         @php
@@ -388,7 +389,7 @@
                             <input type="hidden" name="modal_mode" value="edit">
                             <input type="hidden" name="edit_schedule_id" value="{{ $schedule->id }}">
                             <input type="hidden" name="schedule_id" value="{{ $schedule->id }}">
-                            <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
+                            <input type="hidden" name="return_url" value="{{ $scheduleReturnUrl }}">
                             @if(request()->boolean('from_conflict'))
                                 <input type="hidden" name="return_to_conflicts" value="1">
                             @endif

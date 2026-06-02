@@ -201,6 +201,14 @@ class ScheduleManagementTest extends TestCase
         $this->assertStringContainsString('schedule-detail-title-' . $weekTwo->id, $response->json('modal_html'));
         $this->assertStringContainsString('data-testid="schedule-edit-modal"', $response->json('modal_html'));
         $this->assertStringContainsString('action="' . route('maker.course_offerings.schedules.update', [$offering, $weekTwo]) . '"', $response->json('modal_html'));
+        $this->assertStringContainsString(
+            'name="return_url" value="' . e(route('maker.course_offerings.schedules.index', [$offering, 'week_start' => '2026-08-10'])) . '"',
+            $response->json('modal_html')
+        );
+        $this->assertStringNotContainsString(
+            'name="return_url" value="' . e(route('maker.course_offerings.schedules.week_fragment', [$offering, 'week_start' => '2026-08-10'])) . '"',
+            $response->json('modal_html')
+        );
         $this->assertStringNotContainsString('data-schedule-id="' . $weekOne->id . '"', $response->json('html'));
     }
 
@@ -790,6 +798,26 @@ class ScheduleManagementTest extends TestCase
 
         $this->put(route('maker.course_offerings.schedules.update', [$offering, $schedule]), $payload)
             ->assertRedirect(route('maker.alerts.index'))
+            ->assertSessionHasNoErrors();
+    }
+
+    public function test_schedule_update_ignores_week_fragment_return_url(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $schedule = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group]);
+
+        $this->actingAsCourseHead($head);
+
+        $payload = $this->schedulePayload($instructor, $group, $activityType, $room, [
+            'topic' => 'Updated from lazy modal',
+            'return_url' => route('maker.course_offerings.schedules.week_fragment', [
+                $offering,
+                'week_start' => '2026-08-03',
+            ]),
+        ]);
+
+        $this->put(route('maker.course_offerings.schedules.update', [$offering, $schedule]), $payload)
+            ->assertRedirect(route('maker.course_offerings.schedules.index', $offering))
             ->assertSessionHasNoErrors();
     }
 
