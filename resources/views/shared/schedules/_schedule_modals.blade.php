@@ -59,7 +59,6 @@
             $scheduleIncompleteReasons = $scheduleIncompleteReasons ?? function ($schedule) use ($scheduleDepartmentInstructors) {
                 return collect([
                     $scheduleDepartmentInstructors($schedule)->isEmpty() ? 'รอกำหนดผู้สอน' : null,
-                    $schedule?->studentGroups?->isEmpty() ? 'รอกำหนดกลุ่ม' : null,
                 ])->filter()->values();
             };
             $scheduleAlertMessages = $scheduleAlertMessages ?? function ($errors, ?string $key = null) {

@@ -306,7 +306,6 @@
     $scheduleIncompleteReasons = function ($schedule) use ($scheduleDepartmentInstructors) {
         return collect([
             $scheduleDepartmentInstructors($schedule)->isEmpty() ? 'รอกำหนดผู้สอน' : null,
-            $schedule?->studentGroups?->isEmpty() ? 'รอกำหนดกลุ่ม' : null,
         ])->filter()->values();
     };
     $scheduleResourceCopyItems = ($allSchedules ?? collect())
@@ -1292,6 +1291,62 @@
             padding: 12px 16px;
             border-top: 1px solid var(--schedule-border);
             background: oklch(97% 0.012 232);
+        }
+        /* แถบควบคุมมุมมองตาราง (grid) — ย้าย < เดือน > + วัน/สัปดาห์/เดือน มาไว้ใต้หัวการ์ด เหมือนแถบกรองของมุมมองรายการ */
+        .schedule-grid-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-top: 1px solid var(--schedule-border);
+            background: oklch(97% 0.012 232);
+        }
+        @media (max-width: 640px) {
+            .schedule-grid-bar {
+                flex-direction: column;
+                align-items: center;
+            }
+            .schedule-grid-bar .sched-datenav {
+                display: grid;
+                grid-template-columns: 36px minmax(0, 1fr) 36px;
+                align-items: center;
+                gap: 6px;
+                width: min(100%, 260px);
+            }
+            .schedule-grid-bar .sched-datenav-arrow {
+                width: 36px;
+                height: 36px;
+            }
+            .schedule-grid-bar .sched-datenav-stack,
+            .schedule-grid-bar .sched-datenav-picker,
+            .schedule-grid-bar .sched-datenav .tdi-wrap {
+                width: 100%;
+                min-width: 0;
+                flex: 1 1 auto;
+            }
+            .schedule-grid-bar .sched-datenav-input {
+                height: 36px;
+                font-size: 12.5px;
+                text-align: center;
+                padding-left: 8px;
+                padding-right: 34px;
+            }
+            .schedule-grid-bar .period-toggle {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                width: min(100%, 220px);
+            }
+            .schedule-grid-bar .period-toggle a {
+                min-height: 34px;
+                padding: 6px 8px;
+                font-size: 11.5px;
+            }
+            .schedule-grid-bar .weekend-toggle {
+                width: min(100%, 220px);
+                min-height: 34px;
+            }
         }
         .schedule-filter-control {
             width: 100%;
@@ -3486,6 +3541,30 @@
         .month-calendar-day.is-outside {
             background: oklch(98% 0.006 232);
             color: var(--fg-3);
+        }
+        .month-calendar-day.is-addable {
+            cursor: pointer;
+            transition: background-color 0.16s, box-shadow 0.16s;
+        }
+        .month-calendar-day.is-addable:hover,
+        .month-calendar-day.is-addable:focus-visible {
+            background-color: color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
+            box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--brand-navy) 16%, transparent);
+            outline: none;
+        }
+        .month-day-add-hint {
+            margin-top: auto;
+            padding-top: 6px;
+            font-size: 10.5px;
+            font-weight: 800;
+            color: color-mix(in oklch, var(--brand-navy) 55%, var(--schedule-muted));
+            opacity: 0;
+            transition: opacity 0.14s;
+            pointer-events: none;
+        }
+        .month-calendar-day.is-addable:hover .month-day-add-hint,
+        .month-calendar-day.is-addable:focus-visible .month-day-add-hint {
+            opacity: 1;
         }
         .month-day-top {
             display: flex;
@@ -6270,43 +6349,6 @@
                         </div>
                     </div>
                     <div class="schedule-card-actions">
-                        <div class="sched-datenav" x-show="view === 'grid'" x-cloak>
-                            <a class="sched-datenav-arrow" href="{{ $previousWeekUrl }}" data-testid="schedule-nav-prev" aria-label="ช่วงก่อนหน้า">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                            </a>
-                            <div class="sched-datenav-stack">
-                                <div class="sched-datenav-picker">
-                                    <x-thai-date-input
-                                        name="grid_jump_date"
-                                        :helper="false"
-                                        :value="($selectedScheduleDate ?? $weekStart)->toDateString()"
-                                        :year-start="$scheduleDatePickerYearStart"
-                                        :year-end="$scheduleDatePickerYearEnd"
-                                        class="sched-datenav-input"
-                                        x-model="gridJumpDate"
-                                        @change="jumpToGridDate(gridJumpDate)"
-                                        @keydown.enter.prevent="jumpToGridDate(gridJumpDate)"
-                                        aria-label="พิมพ์วันที่ที่ต้องการดูในตาราง" />
-                                    <span class="sched-datenav-label">{{ $calendarHeadingText }}</span>
-                                </div>
-                            </div>
-                            <a class="sched-datenav-arrow" href="{{ $nextWeekUrl }}" data-testid="schedule-nav-next" aria-label="ช่วงถัดไป">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                            </a>
-                        </div>
-                        <div class="period-toggle" aria-label="ช่วงเวลาที่แสดง" x-show="view === 'grid'" x-cloak>
-                            <a href="{{ $dayViewUrl }}" class="{{ ($schedulePeriod ?? 'week') === 'day' ? 'is-active' : '' }}">วัน</a>
-                            <a href="{{ $weekViewUrl }}" class="{{ ($schedulePeriod ?? 'week') === 'week' ? 'is-active' : '' }}">สัปดาห์</a>
-                            <a href="{{ $monthViewUrl }}" class="{{ ($schedulePeriod ?? 'week') === 'month' ? 'is-active' : '' }}">เดือน</a>
-                        </div>
-                        <button
-                            type="button"
-                            class="weekend-toggle {{ ($includeWeekends ?? false) ? 'is-active' : '' }}"
-                            x-show="view === 'grid' && schedulePeriod === 'week'"
-                            x-cloak
-                            @click="toggleWeekends()"
-                            aria-pressed="{{ ($includeWeekends ?? false) ? 'true' : 'false' }}"
-                        >เสาร์-อาทิตย์</button>
                         @if($canEdit)
                         <button
                             type="button"
@@ -6338,6 +6380,46 @@
                             <button type="button" :class="{ 'is-active': view === 'grid' }" @click="view = 'grid'" data-testid="schedule-grid-toggle">แบบตาราง</button>
                         </div>
                     </div>
+                </div>
+                {{-- แถบควบคุมมุมมองตาราง (grid): < เดือน > + วัน/สัปดาห์/เดือน ย้ายลงมาไว้ใต้หัวการ์ด --}}
+                <div class="schedule-grid-bar" x-show="view === 'grid'" x-cloak>
+                    <div class="sched-datenav">
+                        <a class="sched-datenav-arrow" href="{{ $previousWeekUrl }}" data-testid="schedule-nav-prev" aria-label="ช่วงก่อนหน้า">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                        </a>
+                        <div class="sched-datenav-stack">
+                            <div class="sched-datenav-picker">
+                                <x-thai-date-input
+                                    name="grid_jump_date"
+                                    :helper="false"
+                                    :value="($selectedScheduleDate ?? $weekStart)->toDateString()"
+                                    :year-start="$scheduleDatePickerYearStart"
+                                    :year-end="$scheduleDatePickerYearEnd"
+                                    class="sched-datenav-input"
+                                    x-model="gridJumpDate"
+                                    @change="jumpToGridDate(gridJumpDate)"
+                                    @keydown.enter.prevent="jumpToGridDate(gridJumpDate)"
+                                    aria-label="พิมพ์วันที่ที่ต้องการดูในตาราง" />
+                                <span class="sched-datenav-label">{{ $calendarHeadingText }}</span>
+                            </div>
+                        </div>
+                        <a class="sched-datenav-arrow" href="{{ $nextWeekUrl }}" data-testid="schedule-nav-next" aria-label="ช่วงถัดไป">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        </a>
+                    </div>
+                    <div class="period-toggle" aria-label="ช่วงเวลาที่แสดง">
+                        <a href="{{ $dayViewUrl }}" class="{{ ($schedulePeriod ?? 'week') === 'day' ? 'is-active' : '' }}">วัน</a>
+                        <a href="{{ $weekViewUrl }}" class="{{ ($schedulePeriod ?? 'week') === 'week' ? 'is-active' : '' }}">สัปดาห์</a>
+                        <a href="{{ $monthViewUrl }}" class="{{ ($schedulePeriod ?? 'week') === 'month' ? 'is-active' : '' }}">เดือน</a>
+                    </div>
+                    <button
+                        type="button"
+                        class="weekend-toggle {{ ($includeWeekends ?? false) ? 'is-active' : '' }}"
+                        x-show="schedulePeriod === 'week'"
+                        x-cloak
+                        @click="toggleWeekends()"
+                        aria-pressed="{{ ($includeWeekends ?? false) ? 'true' : 'false' }}"
+                    >เสาร์-อาทิตย์</button>
                 </div>
                 <div class="schedule-filter-bar" x-show="view === 'list'" x-cloak>
                     @php
@@ -6661,9 +6743,22 @@
                                     $isOutsideAcademic = $isDayOutsideAcademic($day);
                                     $di = $dayInfo($day);
                                     $dayKindClass = ! $isOutsideAcademic && $di['kind'] !== 'normal' ? 'day-' . $di['kind'] : '';
+                                    // กดช่องวันในมุมมองเดือนเพื่อเพิ่มกิจกรรม — เลือกเฉพาะวันนั้น (ไม่เติมเวลา) ต่างจาก week/day ที่เติมเวลาให้
+                                    $dayBlocked = $isOutsideAcademic || $di['blocked'];
+                                    $dayAddable = $canCreateInCurrentPeriod && ! $dayBlocked && ! $isOutsideMonth;
                                 @endphp
-                                <div class="month-calendar-day {{ $isOutsideMonth ? 'is-outside' : '' }} {{ $isOutsideAcademic ? 'is-outside-academic' : '' }} {{ $dayKindClass }}"
-                                    @if($isOutsideAcademic) title="นอกช่วงปีการศึกษา" @elseif($di['label']) title="{{ $di['label'] }}" @endif>
+                                <div class="month-calendar-day {{ $isOutsideMonth ? 'is-outside' : '' }} {{ $isOutsideAcademic ? 'is-outside-academic' : '' }} {{ $dayKindClass }} {{ $dayAddable ? 'is-addable' : '' }}"
+                                    @if($dayAddable)
+                                        @click="openCreate('{{ $day->toDateString() }}')"
+                                        @keydown.enter.prevent="openCreate('{{ $day->toDateString() }}')"
+                                        @keydown.space.prevent="openCreate('{{ $day->toDateString() }}')"
+                                        role="button" tabindex="0"
+                                        data-testid="month-empty-cell"
+                                        aria-label="เพิ่มรายการสอนวันที่ {{ $formatDate($day) }}"
+                                        title="คลิกเพื่อเพิ่มกิจกรรมในวันนี้"
+                                    @elseif($isOutsideAcademic) title="นอกช่วงปีการศึกษา"
+                                    @elseif($di['label']) title="{{ $di['label'] }}"
+                                    @endif>
                                     <div class="month-day-top">
                                         <span class="month-day-number">{{ $day->day }}</span>
                                         @if($dayOccurrences->isNotEmpty())
@@ -6681,7 +6776,7 @@
                                                 $itemConflicts = $scheduleConflicts->get($schedule->id, collect());
                                                 $incompleteReasons = $scheduleIncompleteReasons($schedule);
                                             @endphp
-                                            <div role="button" tabindex="0" class="month-activity {{ $schedule->schedule_template_id ? 'has-series' : '' }}" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click="openScheduleDetail('{{ $schedule->id }}')" @keydown.enter.prevent="openScheduleDetail('{{ $schedule->id }}')" @keydown.space.prevent="openScheduleDetail('{{ $schedule->id }}')">
+                                            <div role="button" tabindex="0" class="month-activity {{ $schedule->schedule_template_id ? 'has-series' : '' }}" :class="focusedScheduleClass('{{ $schedule->id }}')" style="--activity-color: {{ $activityTone($schedule) }};" data-schedule-id="{{ $schedule->id }}" data-schedule-modal-trigger @click.stop="openScheduleDetail('{{ $schedule->id }}')" @keydown.enter.stop.prevent="openScheduleDetail('{{ $schedule->id }}')" @keydown.space.stop.prevent="openScheduleDetail('{{ $schedule->id }}')">
                                                 <div class="month-activity-time">{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }}</div>
                                                 <div class="month-activity-title">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
                                                 <div class="month-activity-tags">
@@ -6704,6 +6799,9 @@
                                             @endif
                                         @endforelse
                                     </div>
+                                    @if($dayAddable)
+                                        <div class="month-day-add-hint" aria-hidden="true">+ เพิ่มกิจกรรม</div>
+                                    @endif
                                 </div>
                             @endforeach
                         </div>

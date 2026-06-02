@@ -186,7 +186,7 @@ class ScheduleSeriesGeneratorTest extends TestCase
             ->assertOk()
             ->assertSee('ข้อมูลยังไม่ครบ')
             ->assertSee('รอกำหนดผู้สอน')
-            ->assertSee('รอกำหนดกลุ่ม');
+            ->assertDontSee('รอกำหนดกลุ่ม');
     }
 
     public function test_weekly_series_is_clamped_to_academic_year_dates(): void
