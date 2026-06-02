@@ -25,8 +25,10 @@ class DatabaseSeeder extends Seeder
             ActivityTypeSeeder::class,
             CourseOfferingSeeder::class,
             StudentCohortSeeder::class,
-            // Demo helper: seeds holidays, demo course offerings, demo schedules and approval statuses
-            ClientDemoSeeder::class,
+            // สนามให้ลูกค้าลองจัดตารางเอง: เปิดสอนวิชา demo + วันหยุด แต่ยัง "ไม่เลือกปี + ไม่เปิด scheduling"
+            // (ลูกค้าเดิน flow เอง: เลือกปี → เปิดช่วงจัดตาราง → สร้างกิจกรรม)
+            // ต้องการสถานะ demo แบบ pre-fill ตาราง+การชน ให้รันเพิ่ม: php artisan db:seed --class=ClientDemoSeeder
+            ClientTestSeeder::class,
         ]);
     }
 }
