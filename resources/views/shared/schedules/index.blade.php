@@ -2416,6 +2416,25 @@
         .schedule-list-card .week-filter {
             z-index: 310;
         }
+        .schedule-choice-filter {
+            min-width: 0;
+        }
+        .term-filter-wrap.week-filter::after {
+            display: none !important;
+        }
+        .term-filter-wrap.week-filter .week-filter-trigger,
+        .schedule-choice-filter .week-filter-trigger {
+            min-height: 42px;
+            height: 100%;
+        }
+        .schedule-choice-filter .week-filter-pop {
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+        }
+        .schedule-choice-filter .week-filter-item {
+            min-width: 0;
+        }
         .week-filter-trigger {
             display: flex;
             align-items: center;
@@ -2450,9 +2469,12 @@
             display: inline-flex;
             align-items: center;
             gap: 6px;
+            flex: 1 1 auto;
             min-width: 0;
+            max-width: 100%;
             overflow: hidden;
             text-overflow: ellipsis;
+            white-space: nowrap;
         }
         .week-filter-trigger-chevron {
             flex-shrink: 0;
@@ -2511,6 +2533,13 @@
             text-align: left;
             cursor: pointer;
             transition: background 0.1s;
+        }
+        .week-filter-item > span:first-child {
+            flex: 1 1 auto;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         .week-filter-item:hover {
             background: var(--brand-navy-50);
@@ -5013,7 +5042,7 @@
             scheduleSearch: '',
             scheduleActivity: '',
             scheduleGroup: '',
-            scheduleInstructor: '',
+            scheduleInstructor: @js($selectedInstructorId ? (string) $selectedInstructorId : ''),
             scheduleWeek: '',
             scheduleWeeks: @js($scheduleWeekOptions->mapWithKeys(fn ($option) => [(string) $option['week'] => [
                 'week' => (string) $option['week'],
@@ -6251,18 +6280,36 @@
             >เสาร์-อาทิตย์</button>
             {{-- V2: filter ภาคเรียน — วิชาเปิดทั้งปี เลือกเทอมเพื่อโฟกัส + เด้งปฏิทินไปช่วงนั้น --}}
             @if(($terms ?? collect())->isNotEmpty())
-            <div class="term-filter-wrap">
-                <select
-                    class="schedule-filter-control"
+            <div class="term-filter-wrap week-filter" x-data="{ termOpen: false }" @click.outside="termOpen = false" @keydown.escape.window="termOpen = false">
+                <button
+                    type="button"
+                    class="week-filter-trigger"
+                    :class="@js((bool) ($selectedTermId ?? null)) ? 'is-active' : ''"
+                    @click="termOpen = !termOpen"
+                    :aria-expanded="termOpen ? 'true' : 'false'"
+                    aria-haspopup="listbox"
                     aria-label="เลือกภาคเรียน"
-                    onchange="applyTermFilter(this.value)"
                     data-testid="schedule-term-filter"
                 >
-                    <option value="">ทุกเทอม</option>
+                    <span class="week-filter-trigger-label">
+                        {{ optional($terms->firstWhere('id', $selectedTermId))->name ?? 'ทุกเทอม' }}
+                    </span>
+                    <svg class="week-filter-trigger-chevron" :class="termOpen ? 'is-open' : ''" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                </button>
+                <div class="week-filter-pop" x-show="termOpen" x-transition.opacity.duration.120ms x-cloak role="listbox">
+                    <button type="button" class="week-filter-item is-all" :class="@js(! ($selectedTermId ?? null)) ? 'is-selected' : ''" @click="applyTermFilter('')">
+                        <span>ทุกเทอม</span>
+                        <svg class="week-filter-check" x-show="@js(! ($selectedTermId ?? null))" x-cloak width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                    </button>
                     @foreach($terms as $t)
-                        <option value="{{ $t->id }}" {{ ($selectedTermId ?? null) == $t->id ? 'selected' : '' }}>{{ $t->name }}</option>
+                        <button type="button" class="week-filter-item" :class="@js(($selectedTermId ?? null) == $t->id) ? 'is-selected' : ''" @click="applyTermFilter('{{ $t->id }}')">
+                            <span>{{ $t->name }}</span>
+                            <svg class="week-filter-check" x-show="@js(($selectedTermId ?? null) == $t->id)" x-cloak width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                        </button>
                     @endforeach
-                </select>
+                </div>
             </div>
             @endif
             {{-- Bug #2: instructor server-side filter (ใช้ได้ทุก view) --}}
@@ -6394,18 +6441,36 @@
                         @endif
                         {{-- V2: filter ภาคเรียน (per-offering) — วิชาเปิดทั้งปี เลือกเทอมเพื่อโฟกัส + เด้งปฏิทิน --}}
                         @if(($terms ?? collect())->isNotEmpty())
-                        <div class="term-filter-wrap">
-                            <select
-                                class="schedule-filter-control"
+                        <div class="term-filter-wrap week-filter" x-data="{ termOpen: false }" @click.outside="termOpen = false" @keydown.escape.window="termOpen = false">
+                            <button
+                                type="button"
+                                class="week-filter-trigger"
+                                :class="@js((bool) ($selectedTermId ?? null)) ? 'is-active' : ''"
+                                @click="termOpen = !termOpen"
+                                :aria-expanded="termOpen ? 'true' : 'false'"
+                                aria-haspopup="listbox"
                                 aria-label="เลือกภาคเรียน"
-                                onchange="applyTermFilter(this.value)"
                                 data-testid="schedule-term-filter-offering"
                             >
-                                <option value="">ทุกเทอม</option>
+                                <span class="week-filter-trigger-label">
+                                    {{ optional($terms->firstWhere('id', $selectedTermId))->name ?? 'ทุกเทอม' }}
+                                </span>
+                                <svg class="week-filter-trigger-chevron" :class="termOpen ? 'is-open' : ''" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </button>
+                            <div class="week-filter-pop" x-show="termOpen" x-transition.opacity.duration.120ms x-cloak role="listbox">
+                                <button type="button" class="week-filter-item is-all" :class="@js(! ($selectedTermId ?? null)) ? 'is-selected' : ''" @click="applyTermFilter('')">
+                                    <span>ทุกเทอม</span>
+                                    <svg class="week-filter-check" x-show="@js(! ($selectedTermId ?? null))" x-cloak width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                                </button>
                                 @foreach($terms as $t)
-                                    <option value="{{ $t->id }}" {{ ($selectedTermId ?? null) == $t->id ? 'selected' : '' }}>{{ $t->name }}</option>
+                                    <button type="button" class="week-filter-item" :class="@js(($selectedTermId ?? null) == $t->id) ? 'is-selected' : ''" @click="applyTermFilter('{{ $t->id }}')">
+                                        <span>{{ $t->name }}</span>
+                                        <svg class="week-filter-check" x-show="@js(($selectedTermId ?? null) == $t->id)" x-cloak width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                                    </button>
                                 @endforeach
-                            </select>
+                            </div>
                         </div>
                         @endif
                         <div class="schedule-toggle" role="group" aria-label="รูปแบบการแสดงตาราง">
@@ -6507,28 +6572,91 @@
                         placeholder="ค้นหาวันที่ เวลา กิจกรรม ผู้สอน หรือสถานที่"
                         aria-label="ค้นหารายการตารางสอน"
                     >
-                    <select class="schedule-filter-control" x-model="scheduleActivity" aria-label="กรองตามประเภทกิจกรรม">
-                        <option value="">ทุกกิจกรรม</option>
-                        @foreach($activityFilterOptions as $activity)
-                            <option value="{{ $activity->id }}">{{ $activity->name }}</option>
-                        @endforeach
-                    </select>
-                    <select class="schedule-filter-control" x-model="scheduleGroup" aria-label="กรองตามกลุ่มนักศึกษา">
-                        <option value="">ทุกกลุ่ม</option>
-                        @foreach($groupFilterOptions as $group)
-                            <option value="{{ $group->id }}">{{ $group->group_code }}</option>
-                        @endforeach
-                    </select>
-                    <select class="schedule-filter-control" x-model="scheduleInstructor" aria-label="กรองตามผู้สอน"
-                        @change="applyInstructorFilter($event.target.value)"
-                        id="co-instructor-filter">
-                        <option value="">ทุกผู้สอน</option>
-                        @foreach($instructorFilterOptions as $instructor)
-                            <option value="{{ $instructor->id }}" {{ ($selectedInstructorId ?? null) == $instructor->id ? 'selected' : '' }}>
-                                {{ $instructor->formatted_name ?? $instructor->name }}
-                            </option>
-                        @endforeach
-                    </select>
+                    <div class="week-filter schedule-choice-filter" x-data="{ activityOpen: false }" @click.outside="activityOpen = false" @keydown.escape.window="activityOpen = false">
+                        <button
+                            type="button"
+                            class="week-filter-trigger"
+                            :class="scheduleActivity ? 'is-active' : ''"
+                            @click="activityOpen = !activityOpen"
+                            :aria-expanded="activityOpen ? 'true' : 'false'"
+                            aria-haspopup="listbox"
+                            aria-label="กรองตามประเภทกิจกรรม"
+                        >
+                            <span class="week-filter-trigger-label" x-text="scheduleActivity ? $refs.activityMenu.querySelector('[data-value=&quot;' + scheduleActivity + '&quot;]')?.dataset.label || 'ทุกกิจกรรม' : 'ทุกกิจกรรม'"></span>
+                            <svg class="week-filter-trigger-chevron" :class="activityOpen ? 'is-open' : ''" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <polyline points="6 9 12 15 18 9"/>
+                            </svg>
+                        </button>
+                        <div class="week-filter-pop" x-ref="activityMenu" x-show="activityOpen" x-transition.opacity.duration.120ms x-cloak role="listbox">
+                            <button type="button" class="week-filter-item is-all" data-value="" data-label="ทุกกิจกรรม" :class="!scheduleActivity ? 'is-selected' : ''" @click="scheduleActivity = ''; activityOpen = false">
+                                <span>ทุกกิจกรรม</span>
+                                <svg class="week-filter-check" x-show="!scheduleActivity" x-cloak width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                            </button>
+                            @foreach($activityFilterOptions as $activity)
+                                <button type="button" class="week-filter-item" data-value="{{ $activity->id }}" data-label="{{ $activity->name }}" :class="scheduleActivity === '{{ $activity->id }}' ? 'is-selected' : ''" @click="scheduleActivity = '{{ $activity->id }}'; activityOpen = false">
+                                    <span>{{ $activity->name }}</span>
+                                    <svg class="week-filter-check" x-show="scheduleActivity === '{{ $activity->id }}'" x-cloak width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
+                    <div class="week-filter schedule-choice-filter" x-data="{ groupOpen: false }" @click.outside="groupOpen = false" @keydown.escape.window="groupOpen = false">
+                        <button
+                            type="button"
+                            class="week-filter-trigger"
+                            :class="scheduleGroup ? 'is-active' : ''"
+                            @click="groupOpen = !groupOpen"
+                            :aria-expanded="groupOpen ? 'true' : 'false'"
+                            aria-haspopup="listbox"
+                            aria-label="กรองตามกลุ่มนักศึกษา"
+                        >
+                            <span class="week-filter-trigger-label" x-text="scheduleGroup ? $refs.groupMenu.querySelector('[data-value=&quot;' + scheduleGroup + '&quot;]')?.dataset.label || 'ทุกกลุ่ม' : 'ทุกกลุ่ม'"></span>
+                            <svg class="week-filter-trigger-chevron" :class="groupOpen ? 'is-open' : ''" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <polyline points="6 9 12 15 18 9"/>
+                            </svg>
+                        </button>
+                        <div class="week-filter-pop" x-ref="groupMenu" x-show="groupOpen" x-transition.opacity.duration.120ms x-cloak role="listbox">
+                            <button type="button" class="week-filter-item is-all" data-value="" data-label="ทุกกลุ่ม" :class="!scheduleGroup ? 'is-selected' : ''" @click="scheduleGroup = ''; groupOpen = false">
+                                <span>ทุกกลุ่ม</span>
+                                <svg class="week-filter-check" x-show="!scheduleGroup" x-cloak width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                            </button>
+                            @foreach($groupFilterOptions as $group)
+                                <button type="button" class="week-filter-item" data-value="{{ $group->id }}" data-label="{{ $group->group_code }}" :class="scheduleGroup === '{{ $group->id }}' ? 'is-selected' : ''" @click="scheduleGroup = '{{ $group->id }}'; groupOpen = false">
+                                    <span>{{ $group->group_code }}</span>
+                                    <svg class="week-filter-check" x-show="scheduleGroup === '{{ $group->id }}'" x-cloak width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
+                    <div class="week-filter schedule-choice-filter" x-data="{ instructorOpen: false }" @click.outside="instructorOpen = false" @keydown.escape.window="instructorOpen = false">
+                        <button
+                            type="button"
+                            class="week-filter-trigger"
+                            :class="scheduleInstructor ? 'is-active' : ''"
+                            @click="instructorOpen = !instructorOpen"
+                            :aria-expanded="instructorOpen ? 'true' : 'false'"
+                            aria-haspopup="listbox"
+                            aria-label="กรองตามผู้สอน"
+                            id="co-instructor-filter"
+                        >
+                            <span class="week-filter-trigger-label" x-text="scheduleInstructor ? $refs.instructorMenu.querySelector('[data-value=&quot;' + scheduleInstructor + '&quot;]')?.dataset.label || 'ทุกผู้สอน' : 'ทุกผู้สอน'"></span>
+                            <svg class="week-filter-trigger-chevron" :class="instructorOpen ? 'is-open' : ''" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <polyline points="6 9 12 15 18 9"/>
+                            </svg>
+                        </button>
+                        <div class="week-filter-pop" x-ref="instructorMenu" x-show="instructorOpen" x-transition.opacity.duration.120ms x-cloak role="listbox">
+                            <button type="button" class="week-filter-item is-all" data-value="" data-label="ทุกผู้สอน" :class="!scheduleInstructor ? 'is-selected' : ''" @click="scheduleInstructor = ''; instructorOpen = false; applyInstructorFilter('')">
+                                <span>ทุกผู้สอน</span>
+                                <svg class="week-filter-check" x-show="!scheduleInstructor" x-cloak width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                            </button>
+                            @foreach($instructorFilterOptions as $instructor)
+                                <button type="button" class="week-filter-item" data-value="{{ $instructor->id }}" data-label="{{ $instructor->formatted_name ?? $instructor->name }}" :class="scheduleInstructor === '{{ $instructor->id }}' ? 'is-selected' : ''" @click="scheduleInstructor = '{{ $instructor->id }}'; instructorOpen = false; applyInstructorFilter('{{ $instructor->id }}')">
+                                    <span>{{ $instructor->formatted_name ?? $instructor->name }}</span>
+                                    <svg class="week-filter-check" x-show="scheduleInstructor === '{{ $instructor->id }}'" x-cloak width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
                 </div>
 
                 <div x-show="view === 'list'" x-cloak data-testid="schedule-list-view">
