@@ -12,8 +12,8 @@ use Illuminate\Support\Facades\Schema;
  * หน้าแจ้งเตือน (CourseHead\ScheduleController::alerts) และ sidebar badge
  * (NavigationBadgeService) ใช้ร่วมกัน เพื่อให้เลขรวมตรงกันเสมอ
  *
- * warning ที่นับ: incomplete (ข้อมูลไม่ครบ), capacity_exceeded (ความจุเกิน),
- * no_role (ไม่กำหนดบทบาทผู้สอน), dept_mismatch (ผู้สอนต่างภาควิชา), holiday (ตรงวันหยุด)
+ * warning ที่นับ: incomplete (ข้อมูลไม่ครบ), no_role (ไม่กำหนดบทบาทผู้สอน),
+ * dept_mismatch (ผู้สอนต่างภาควิชา), holiday (ตรงวันหยุด)
  * — การชน (conflict) คำนวณแยกผ่าน ScheduleConflictIndex
  */
 class CoordinatorAlertService
@@ -37,7 +37,6 @@ class CoordinatorAlertService
                     'courseOffering.instructorPool.instructorProfile.department',
                     'activityType', 'room', 'term',
                     'instructors.instructorProfile.department',
-                    'studentGroups',
                 ])
                 ->whereHas('courseOffering', function ($q) use ($userId, $academicYearId) {
                     // คง delegation scope: หัวหน้าวิชา + อาจารย์/เจ้าหน้าที่ที่ถูกมอบหมายช่วยจัดตาราง
@@ -62,15 +61,7 @@ class CoordinatorAlertService
                 $items[] = ['type' => 'incomplete', 'schedule' => $schedule, 'label' => $label, 'message' => 'ข้อมูลไม่ครบ: ' . implode(', ', $missingParts)];
             }
 
-            // 2. ความจุห้องเกิน (trigger เมื่อมีกลุ่ม = Phase B)
-            if ($schedule->room && $schedule->room->capacity && $schedule->studentGroups->isNotEmpty()) {
-                $studentCount = (int) $schedule->studentGroups->sum('student_count');
-                if ($studentCount > (int) $schedule->room->capacity) {
-                    $items[] = ['type' => 'capacity_exceeded', 'schedule' => $schedule, 'label' => $label, 'message' => "จำนวนผู้เรียน ({$studentCount}) เกินความจุห้อง ({$schedule->room->capacity})"];
-                }
-            }
-
-            // 3. ไม่กำหนดบทบาทผู้สอน
+            // 2. ไม่กำหนดบทบาทผู้สอน
             $poolMap = $schedule->courseOffering?->instructorPool->keyBy('id') ?? collect();
             $noRole = $schedule->instructors->filter(fn ($i) => is_null($poolMap->get($i->id)?->pivot?->course_role_id ?? null));
             if ($noRole->isNotEmpty()) {
@@ -78,7 +69,7 @@ class CoordinatorAlertService
                 $items[] = ['type' => 'no_role', 'schedule' => $schedule, 'label' => $label, 'message' => "ไม่กำหนดบทบาทผู้สอน: {$names}"];
             }
 
-            // 4. ผู้สอนต่างภาควิชา
+            // 3. ผู้สอนต่างภาควิชา
             $deptId = $schedule->courseOffering?->course?->department_id;
             if ($deptId) {
                 $outside = $schedule->instructors->filter(fn ($i) => (int) ($i->instructorProfile?->department_id) !== (int) $deptId);
@@ -89,7 +80,7 @@ class CoordinatorAlertService
                 }
             }
 
-            // 5. กิจกรรมตรงวันหยุดราชการ (เตือน ไม่บล็อก)
+            // 4. กิจกรรมตรงวันหยุดราชการ (เตือน ไม่บล็อก)
             $di = $calendar->classifyDay($schedule->start_date);
             if (($di['kind'] ?? null) === 'holiday') {
                 $items[] = ['type' => 'holiday', 'schedule' => $schedule, 'label' => $label, 'message' => 'ตรงวันหยุด: ' . ($di['label'] ?? '') . ' — งดการเรียนการสอน'];

@@ -239,15 +239,18 @@
                 <span
                     class="nv-alert-badges"
                     data-conflict-badge
+                    data-silent="true"
                     data-endpoint="{{ route('maker.conflict_badge_status') }}"
                     data-status="{{ $makerConflictStatus }}"
                     data-pending="{{ $makerConflictPending ? 'true' : 'false' }}"
                     data-poll="{{ $makerConflictPoll ? 'true' : 'false' }}"
-                    @if(! $makerConflictVisible) hidden @endif
+                    hidden
                 >
                     <span
                         class="nv-bd {{ $makerConflictTone }}"
                         data-conflict-badge-pill
+                        hidden
+                        aria-hidden="true"
                         title="{{ $makerConflictTitle }}"
                     >{{ $makerConflictText }}</span>
                 </span>
@@ -520,6 +523,7 @@
                 }
 
                 let polling = root.dataset.poll === 'true';
+                const silent = root.dataset.silent === 'true';
                 let timer = null;
                 let inflight = false;
 
@@ -567,7 +571,7 @@
                     pill.title = title;
                     pill.classList.toggle('nv-bd-red', tone === 'red');
                     pill.classList.toggle('nv-bd-warning', tone !== 'red');
-                    root.hidden = ! visible;
+                    root.hidden = silent || ! visible;
 
                     if (! polling) {
                         stop();

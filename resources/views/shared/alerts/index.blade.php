@@ -7,7 +7,6 @@
         'incomplete'       => 'ข้อมูลไม่ครบ',
         'no_role'          => 'ไม่กำหนดบทบาท',
         'dept_mismatch'    => 'ผู้สอนต่างภาควิชา',
-        'capacity_exceeded'=> 'ความจุเกิน',
         'holiday'          => 'ตรงวันหยุด',
     ];
     $warningTypeColors = [
@@ -23,10 +22,6 @@
             'border' => 'oklch(65% 0.12 50)',  'bg' => 'oklch(97% 0.04 50)',  'fg' => 'oklch(40% 0.14 50)',
             'svg' => '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>'
         ],
-        'capacity_exceeded'=> [
-            'border' => 'oklch(52% 0.16 28)',  'bg' => 'oklch(96% 0.04 28)',  'fg' => 'oklch(40% 0.14 28)',
-            'svg' => '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'
-        ],
         'no_role'          => [
             'border' => 'oklch(48% 0.14 268)', 'bg' => 'oklch(96% 0.03 268)', 'fg' => 'oklch(40% 0.14 268)',
             'svg' => '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'
@@ -34,6 +29,31 @@
         'dept_mismatch'    => [
             'border' => 'oklch(48% 0.14 168)', 'bg' => 'oklch(95% 0.04 168)', 'fg' => 'oklch(38% 0.14 168)',
             'svg' => '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'
+        ],
+    ];
+
+    $warningTypeSeverity = [
+        'conflict'      => 'required',
+        'incomplete'    => 'required',
+        'no_role'       => 'required',
+        'dept_mismatch' => 'notice',
+        'holiday'       => 'notice',
+    ];
+
+    $alertSeverityGroups = [
+        'required' => [
+            'label' => 'ต้องแก้ก่อนส่งอนุมัติ',
+            'types' => ['conflict', 'incomplete', 'no_role'],
+            'fg' => 'oklch(40% 0.15 25)',
+            'bg' => 'oklch(97% 0.025 25)',
+            'border' => 'oklch(82% 0.055 25)',
+        ],
+        'notice' => [
+            'label' => 'แจ้งเตือน',
+            'types' => ['dept_mismatch', 'holiday'],
+            'fg' => 'oklch(38% 0.09 230)',
+            'bg' => 'oklch(97% 0.018 230)',
+            'border' => 'oklch(82% 0.035 230)',
         ],
     ];
 @endphp
@@ -143,23 +163,24 @@
                 inset 0 1px 0 rgba(255, 255, 255, 0.82);
         }
         .alert-summary-grid {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            align-items: stretch;
+            gap: 10px;
+            padding: 0;
+            border: 0;
+            background: transparent;
+        }
+        .alert-summary-card {
             display: flex;
             align-items: center;
             gap: 8px;
-            flex-wrap: wrap;
-            padding: 8px 10px;
-            border: 1px solid color-mix(in oklch, var(--brand-navy) 20%, var(--border));
-            border-radius: var(--r-lg);
-            background: color-mix(in oklch, var(--brand-navy) 3%, var(--surface));
-        }
-        .alert-summary-card {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            min-height: 38px;
-            padding: 6px 10px;
+            min-width: 0;
+            min-height: 60px;
+            padding: 9px 10px;
             border: 1px solid color-mix(in oklch, var(--brand-navy) 22%, var(--border));
-            border-radius: 999px;
+            border-radius: var(--r-lg);
             background: var(--surface);
             box-shadow: 0 1px 2px rgba(0, 36, 84, 0.05);
             transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
@@ -175,14 +196,115 @@
             box-shadow: 0 1px 2px rgba(0, 36, 84, 0.08);
         }
         .alert-summary-card > div:last-child {
-            display: inline-flex;
-            align-items: baseline;
-            gap: 6px;
+            display: grid;
+            grid-template-columns: auto minmax(8ch, 1fr);
+            grid-template-areas: "value label";
+            align-items: center;
+            column-gap: 7px;
             min-width: 0;
+            flex: 1 1 auto;
         }
-        .alert-summary-value { font-size: 18px; font-weight: 950; line-height: 1.05; color: var(--brand-navy); font-variant-numeric: tabular-nums; }
-        .alert-summary-label { color: var(--fg-1); font-size: 12px; font-weight: 900; }
+        .alert-summary-value { grid-area: value; font-size: 18px; font-weight: 950; line-height: 1.05; color: var(--brand-navy); font-variant-numeric: tabular-nums; }
+        .alert-summary-label { grid-area: label; min-width: 0; color: var(--fg-1); font-size: 12px; font-weight: 900; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .alert-summary-sub { color: var(--alert-muted); font-size: 12px; font-weight: 700; margin-top: 2px; line-height: 1.45; }
+        .alert-severity-summary-grid {
+            display: contents;
+        }
+        .alert-severity-summary-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-height: 88px;
+            padding: 13px 16px;
+            border: 1px solid color-mix(in oklch, var(--severity-fg) 28%, var(--border));
+            border-radius: var(--r-lg);
+            background:
+                linear-gradient(135deg, var(--surface), color-mix(in oklch, var(--severity-bg) 72%, var(--surface))),
+                var(--surface);
+            color: var(--severity-fg);
+            min-width: 0;
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.9),
+                0 6px 14px rgba(0, 44, 91, 0.06);
+            transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+        }
+        .alert-severity-summary-card:hover {
+            transform: translateY(-1px);
+            border-color: color-mix(in oklch, var(--severity-fg) 42%, var(--border));
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.9),
+                0 10px 22px rgba(0, 44, 91, 0.10);
+        }
+        .alert-severity-summary-card strong {
+            width: 42px;
+            height: 42px;
+            flex: 0 0 42px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--severity-border);
+            border-radius: 12px;
+            background: var(--severity-bg);
+            font-size: 23px;
+            font-weight: 950;
+            line-height: 1;
+            font-variant-numeric: tabular-nums;
+            box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--surface) 66%, transparent);
+        }
+        .alert-severity-summary-card span {
+            display: block;
+            color: var(--fg-1);
+            font-size: 13.5px;
+            font-weight: 950;
+            line-height: 1.4;
+        }
+        .alert-severity-summary-card p {
+            margin: 3px 0 0;
+            color: var(--alert-muted);
+            font-size: 11.5px;
+            font-weight: 750;
+            line-height: 1.45;
+        }
+        .alert-summary-tier {
+            grid-area: tier;
+            width: fit-content;
+            display: inline-flex;
+            align-items: center;
+            min-height: 20px;
+            padding: 2px 7px;
+            border: 1px solid var(--severity-border);
+            border-radius: 999px;
+            background: var(--severity-bg);
+            color: var(--severity-fg);
+            font-size: 10.5px;
+            font-weight: 900;
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+        .alert-severity-section {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .alert-severity-head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 2px 2px 0;
+        }
+        .alert-severity-title {
+            color: var(--brand-navy);
+            font-size: 14px;
+            font-weight: 950;
+            line-height: 1.35;
+        }
+        .alert-severity-copy {
+            color: var(--alert-muted);
+            font-size: 12px;
+            font-weight: 750;
+            line-height: 1.5;
+        }
         .alert-group {
             border: 1px solid color-mix(in oklch, var(--brand-navy) 34%, var(--border));
             border-radius: var(--r-lg);
@@ -427,8 +549,17 @@
                 font-size: 14px;
             }
             .alert-summary-grid {
-                display: flex;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
                 gap: 8px;
+            }
+            .alert-severity-summary-grid {
+                display: grid;
+                grid-column: 1 / -1;
+                grid-template-columns: 1fr;
+            }
+            .alert-severity-head {
+                flex-direction: column;
+                gap: 3px;
             }
             .alert-summary-card {
                 padding: 6px 9px;
@@ -451,9 +582,10 @@
         @media (max-width: 480px) {
             .alert-summary-grid {
                 align-items: stretch;
+                grid-template-columns: 1fr;
             }
             .alert-summary-card {
-                flex: 1 1 calc(50% - 8px);
+                width: 100%;
             }
             .alert-summary-total-card {
                 text-align: left;
@@ -512,7 +644,7 @@
 
     .alert-summary-container {
         display: grid !important;
-        grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.35fr);
+        grid-template-columns: minmax(320px, 1.15fr) repeat(2, minmax(240px, 1fr));
         align-items: stretch;
         gap: 12px;
     }
@@ -524,11 +656,10 @@
 
     .alert-summary-grid {
         align-content: stretch;
-        height: 100%;
     }
 
     .alert-summary-card {
-        flex-basis: 190px;
+        width: 100%;
     }
 
     @media (max-width: 980px) {
@@ -547,6 +678,11 @@
 
         .alert-summary-container {
             grid-template-columns: 1fr;
+        }
+
+        .alert-summary-grid,
+        .alert-severity-summary-grid {
+            grid-column: 1 / -1;
         }
     }
 
@@ -571,7 +707,6 @@
         }
 
         .alert-summary-card {
-            flex: 1 1 calc(50% - 8px);
             min-width: 150px;
         }
     }
@@ -590,10 +725,6 @@
         background: linear-gradient(135deg, #ffffff, #f7fafc) !important;
         box-shadow: inset 0 1px 0 rgba(255,255,255,0.9) !important;
         transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
-    }
-
-    .alert-summary-grid {
-        padding-left: 2px;
     }
 
     .alert-summary-card {
@@ -615,9 +746,6 @@
             padding: 12px;
         }
 
-        .alert-summary-grid {
-            padding-left: 0;
-        }
     }
 
     @media (max-width: 640px) {
@@ -701,6 +829,7 @@
             $hasWarn = $totalWarningCount > 0;
             $totFg = $hasWarn ? 'oklch(40% 0.14 50)' : 'oklch(38% 0.14 145)';
             $totBg = $hasWarn ? 'oklch(97% 0.04 50)' : 'oklch(96% 0.04 145)';
+            $severityCounts = collect($alertSeverityGroups)->map(fn ($group) => collect($group['types'])->sum(fn ($type) => (int) ($warningTypeCounts[$type] ?? 0)));
         @endphp
             <section class="alert-summary-container">
                 {{-- Total Card --}}
@@ -721,6 +850,23 @@
                     </div>
                 </div>
 
+                <div class="alert-severity-summary-grid" aria-label="แยกประเภทการแจ้งเตือน">
+                    @foreach($alertSeverityGroups as $severityKey => $severity)
+                        @php
+                            $severityCount = (int) ($severityCounts[$severityKey] ?? 0);
+                        @endphp
+                        <div
+                            class="alert-severity-summary-card"
+                            style="--severity-fg: {{ $severity['fg'] }}; --severity-bg: {{ $severity['bg'] }}; --severity-border: {{ $severity['border'] }}; opacity: {{ $severityCount === 0 ? '0.66' : '1' }};"
+                        >
+                            <strong>{{ $severityCount }}</strong>
+                            <div>
+                                <span>{{ $severity['label'] }}</span>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+
                 {{-- Detail Grid --}}
                 <div class="alert-summary-grid">
                     @foreach($warningTypeLabels as $type => $label)
@@ -728,6 +874,8 @@
                             $count = $warningTypeCounts[$type] ?? 0;
                             $colors = $warningTypeColors[$type];
                             $isZero = $count === 0;
+                            $severityKey = $warningTypeSeverity[$type] ?? 'notice';
+                            $severity = $alertSeverityGroups[$severityKey];
                         @endphp
                         <div class="alert-summary-card" style="opacity: {{ $isZero ? '0.62' : '1' }}; transition: opacity 0.15s ease;">
                             <div class="alert-summary-icon" style="background:{{ $isZero ? 'var(--alert-soft)' : $colors['bg'] }}; color:{{ $isZero ? 'var(--alert-muted)' : $colors['fg'] }};">
@@ -753,12 +901,28 @@
             </div>
 
         @else
-            @foreach($warningTypeLabels as $type => $typeLabel)
+            @foreach($alertSeverityGroups as $severityKey => $severity)
                 @php
-                    $groupItems = $warnings->filter(fn ($w) => $w['type'] === $type)->values();
-                    $colors = $warningTypeColors[$type];
+                    $severityGroupCount = collect($severity['types'])->sum(fn ($type) => (int) ($warningTypeCounts[$type] ?? 0));
                 @endphp
-                @if($groupItems->isNotEmpty())
+                @if($severityGroupCount > 0)
+                    <section class="alert-severity-section" data-testid="alert-severity-{{ $severityKey }}">
+                        <div class="alert-severity-head">
+                            <div>
+                                <div class="alert-severity-title">{{ $severity['label'] }}</div>
+                            </div>
+                            <span
+                                class="alert-summary-tier"
+                                style="--severity-fg: {{ $severity['fg'] }}; --severity-bg: {{ $severity['bg'] }}; --severity-border: {{ $severity['border'] }};"
+                            >{{ $severityGroupCount }} รายการ</span>
+                        </div>
+                        @foreach($severity['types'] as $type)
+                            @php
+                                $typeLabel = $warningTypeLabels[$type];
+                                $groupItems = $warnings->filter(fn ($w) => $w['type'] === $type)->values();
+                                $colors = $warningTypeColors[$type];
+                            @endphp
+                            @if($groupItems->isNotEmpty())
                     <div
                         class="alert-group"
                         x-data="tpssAlertGroup({{ $groupItems->count() }})"
@@ -847,6 +1011,9 @@
                             @endif
                         </div>
                     </div>
+                            @endif
+                        @endforeach
+                    </section>
                 @endif
             @endforeach
         @endif
