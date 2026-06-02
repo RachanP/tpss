@@ -386,7 +386,7 @@
                 color-mix(in oklch, var(--brand-navy) 9%, var(--surface)),
                 color-mix(in oklch, var(--brand-navy) 3%, var(--surface)) 45%,
                 var(--surface));
-        border: 1px solid color-mix(in oklch, var(--brand-navy) 26%, var(--border-1));
+        border: 1px solid color-mix(in oklch, var(--brand-navy) 26%, var(--border));
         border-radius: 16px;
         box-shadow:
             0 1px 2px rgba(0, 36, 84, 0.08),
@@ -402,7 +402,7 @@
     .dash-section-header {
         margin-bottom: 20px;
         padding-bottom: 16px;
-        border-bottom: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border-1));
+        border-bottom: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border));
     }
     .dash-section-tag {
         display: inline-block;
@@ -461,8 +461,8 @@
     /* Hero */
     .dash-hero {
         padding: 22px 26px;
-        background: var(--bg-1);
-        border: 1px solid var(--border-1);
+        background: var(--surface);
+        border: 1px solid var(--border);
         border-left: 6px solid var(--brand-navy);
         border-radius: 12px;
     }
@@ -509,7 +509,7 @@
     .dash-hero-meta {
         margin-top: 18px;
         padding-top: 16px;
-        border-top: 1px dashed var(--border-1);
+        border-top: 1px dashed var(--border);
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
         gap: 18px;
@@ -543,7 +543,7 @@
     .dash-badge-warning { background: var(--status-warning-bg); color: var(--status-warning-fg); border-color: var(--status-warning-border); }
     .dash-badge-info    { background: var(--status-info-bg);    color: var(--status-info-fg);    border-color: var(--status-info-border); }
     .dash-badge-navy    { background: var(--brand-navy); color: #fff; border-color: var(--brand-navy); }
-    .dash-badge-gray    { background: var(--bg-2); color: var(--fg-2); border-color: var(--border-1); }
+    .dash-badge-gray    { background: var(--bg-2); color: var(--fg-2); border-color: var(--border); }
 
     /* KPI strip */
     .dash-kpis {
@@ -561,7 +561,7 @@
         background:
             radial-gradient(circle at 92% 16%, color-mix(in oklch, var(--brand-navy) 10%, transparent), transparent 36%),
             linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 4%, var(--surface)), var(--surface));
-        border: 1px solid color-mix(in oklch, var(--brand-navy) 22%, var(--border-1));
+        border: 1px solid color-mix(in oklch, var(--brand-navy) 22%, var(--border));
         border-top: 4px solid var(--brand-navy-300);
         border-radius: 12px;
         box-shadow:
@@ -572,7 +572,7 @@
     }
     .kpi-card:hover {
         transform: translateY(-2px);
-        border-color: color-mix(in oklch, var(--brand-navy) 34%, var(--border-1));
+        border-color: color-mix(in oklch, var(--brand-navy) 34%, var(--border));
         box-shadow:
             0 2px 5px rgba(0, 36, 84, 0.1),
             0 20px 36px -24px rgba(0, 36, 84, 0.62);
@@ -601,7 +601,7 @@
             radial-gradient(circle at 92% 16%, color-mix(in oklch, var(--status-info) 13%, transparent), transparent 38%),
             linear-gradient(180deg, color-mix(in oklch, var(--status-info) 6%, var(--surface)), var(--surface));
     }
-    .kpi-card--gray    { border-top-color: var(--border-1); }
+    .kpi-card--gray    { border-top-color: var(--border); }
     .kpi-label {
         font-size: 0.75rem;
         font-weight: 700;
@@ -649,7 +649,7 @@
     .dash-card {
         background:
             linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 4%, var(--surface)), var(--surface) 46%);
-        border: 1px solid color-mix(in oklch, var(--brand-navy) 24%, var(--border-1));
+        border: 1px solid color-mix(in oklch, var(--brand-navy) 24%, var(--border));
         border-radius: 14px;
         overflow: hidden;
         box-shadow:
@@ -666,7 +666,7 @@
             linear-gradient(180deg,
                 color-mix(in oklch, var(--brand-navy) 10%, var(--surface)),
                 color-mix(in oklch, var(--brand-navy) 4%, var(--surface)));
-        border-bottom: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border-1));
+        border-bottom: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border));
         flex-wrap: wrap;
     }
     .dash-card-title {
@@ -696,7 +696,7 @@
         font-size: 0.8125rem;
         font-weight: 600;
         color: var(--brand-navy);
-        background: var(--bg-1);
+        background: var(--surface);
         border: 1px solid var(--brand-navy-300);
         border-radius: 6px;
         text-decoration: none;
@@ -715,14 +715,14 @@
         padding: 14px 16px;
         background:
             linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 3%, var(--surface)), var(--surface));
-        border: 1px solid color-mix(in oklch, var(--brand-navy) 16%, var(--border-1));
+        border: 1px solid color-mix(in oklch, var(--brand-navy) 16%, var(--border));
         border-radius: 12px;
         box-shadow: 0 10px 24px -22px rgba(0, 36, 84, 0.42);
     }
     .instructor-card--head {
         background:
             linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 8%, var(--surface)), var(--surface));
-        border-color: color-mix(in oklch, var(--brand-navy) 30%, var(--border-1));
+        border-color: color-mix(in oklch, var(--brand-navy) 30%, var(--border));
     }
     .instructor-card--empty {
         border-style: dashed;
@@ -775,7 +775,7 @@
         flex-direction: column;
     }
     .history-row {
-        border-top: 1px solid color-mix(in oklch, var(--brand-navy) 12%, var(--border-1));
+        border-top: 1px solid color-mix(in oklch, var(--brand-navy) 12%, var(--border));
     }
     .history-row:first-child {
         border-top: 0;
@@ -852,7 +852,7 @@
         gap: 14px;
         background:
             linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 6%, var(--surface)), color-mix(in oklch, var(--brand-navy) 3%, var(--surface)));
-        border-top: 1px solid color-mix(in oklch, var(--brand-navy) 16%, var(--border-1));
+        border-top: 1px solid color-mix(in oklch, var(--brand-navy) 16%, var(--border));
     }
 
     .diff-bucket {}
@@ -895,8 +895,8 @@
         flex-direction: column;
         gap: 2px;
         padding: 8px 10px;
-        background: var(--bg-1);
-        border: 1px solid var(--border-1);
+        background: var(--surface);
+        border: 1px solid var(--border);
         border-radius: 6px;
         font-size: 0.8125rem;
     }

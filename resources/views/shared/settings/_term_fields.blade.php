@@ -1,6 +1,6 @@
 {{-- ฟิลด์เทอม 1 บล็อก (ใช้ index ตายตัว — name ต้อง static) · V2 Master Data Cleanup
      เรียกผ่าน @include(['index'=>..,'seq'=>..,'label'=>..]) --}}
-<div style="border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:10px;background:var(--bg-1);">
+<div style="border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:10px;background:var(--surface);">
     <input type="hidden" name="terms[{{ $index }}][sequence]" value="{{ $seq }}">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="var(--brand-navy)" stroke-width="2" style="flex-shrink:0;"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>

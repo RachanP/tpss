@@ -27,7 +27,7 @@
 
             <div class="modal-body profile-modal-body">
                 <!-- User Info (Read-only) -->
-                <div style="background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--r-md); padding: 16px; margin-bottom: 24px;">
+                <div style="background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--r-md); padding: 16px; margin-bottom: 24px;">
                     <div style="font-size: 13px; font-weight: 700; color: var(--fg-3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">ข้อมูลผู้ใช้งาน</div>
                     <div style="display: grid; grid-template-columns: 100px 1fr; gap: 8px 16px; font-size: 14px;">
                         <div style="color: var(--fg-2);">ชื่อผู้ใช้:</div>

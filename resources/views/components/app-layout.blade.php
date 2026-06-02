@@ -27,25 +27,47 @@
             height: 44px !important;
             display: flex !important;
             align-items: center !important;
-            border: 1px solid oklch(84% 0.022 232) !important;
-            border-radius: 8px !important;
-            background: var(--surface) !important;
-            color: var(--fg-1) !important;
-            padding: 0 12px !important;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 34%, var(--border)) !important;
+            border-radius: var(--r-md) !important;
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--surface) 92%, white), color-mix(in oklch, var(--brand-navy) 5%, var(--surface))) !important;
+            color: var(--brand-navy) !important;
+            padding: 0 42px 0 12px !important;
             box-sizing: border-box !important;
             font: inherit !important;
             font-size: 14px !important;
-            box-shadow: none !important;
+            font-weight: 650 !important;
+            box-shadow: 0 1px 2px rgba(0, 36, 84, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
             line-height: 1 !important;
+            transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease !important;
+        }
+        .choices::after {
+            content: "" !important;
+            position: absolute !important;
+            right: 13px !important;
+            top: 50% !important;
+            width: 18px !important;
+            height: 18px !important;
+            margin: 0 !important;
+            border: 0 !important;
+            transform: translateY(-50%) !important;
+            pointer-events: none !important;
+            background: center / 18px 18px no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23002454' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+            transition: transform 160ms ease !important;
+        }
+        .choices.is-open::after {
+            transform: translateY(-50%) rotate(180deg) !important;
         }
         .choices__list--dropdown {
-            border: 1px solid oklch(84% 0.022 232) !important;
-            box-shadow: 0 8px 20px rgba(15,23,42,0.08) !important;
-            border-radius: 8px !important;
-            background: var(--surface) !important;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 38%, var(--border)) !important;
+            box-shadow: 0 18px 42px -24px rgba(0, 36, 84, 0.46), 0 1px 2px rgba(0, 36, 84, 0.08) !important;
+            border-radius: var(--r-md) !important;
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 4%, var(--surface)), var(--surface) 28%) !important;
             margin-top: 6px !important;
             max-height: 44vh !important;
             overflow: auto !important;
+            padding: 5px !important;
         }
         .choices.tpss-choices-bottom .choices__list--dropdown,
         .choices.tpss-choices-bottom.is-flipped .choices__list--dropdown {
@@ -59,17 +81,25 @@
             overflow: visible !important;
         }
         .choices__list--dropdown .choices__item {
-            padding: 12px 14px !important;
+            padding: 11px 12px !important;
+            border-radius: 7px !important;
             font-size: 14px !important;
             color: var(--fg-1) !important;
+            font-weight: 600 !important;
         }
         .choices__list--dropdown .choices__item--highlighted {
-            background: oklch(96.5% 0.014 232) !important;
+            background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface)) !important;
+            color: var(--brand-navy) !important;
+        }
+        .choices__list--dropdown .choices__item.is-selected,
+        .choices__list--dropdown .choices__item[aria-selected="true"] {
+            background: var(--brand-navy) !important;
+            color: var(--fg-on-brand) !important;
         }
         .choices__inner:focus-within {
             outline: none !important;
             border-color: var(--brand-navy) !important;
-            box-shadow: 0 0 0 3px oklch(45% 0.12 250 / 0.12) !important;
+            box-shadow: 0 0 0 3px color-mix(in oklch, var(--brand-navy) 16%, transparent), 0 10px 22px -18px rgba(0, 36, 84, 0.42) !important;
         }
         .choices__placeholder { color: var(--fg-3) !important; }
         .choices__list--single .choices__item { display: block !important; width: 100% !important; font-weight: 400 !important; color: var(--fg-1) !important; line-height: 1.4 !important; padding: 0 !important; text-align: left !important; }
@@ -98,20 +128,28 @@
             align-items: center;
             justify-content: space-between;
             gap: 12px;
-            border: 1px solid oklch(84% 0.022 232);
-            border-radius: 8px;
-            background: var(--surface);
-            color: var(--fg-1);
-            padding: 9px 12px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 34%, var(--border));
+            border-radius: var(--r-md);
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--surface) 92%, white), color-mix(in oklch, var(--brand-navy) 5%, var(--surface)));
+            color: var(--brand-navy);
+            padding: 9px 13px;
             font: inherit;
             font-size: 14px;
+            font-weight: 650;
             text-align: left;
             cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0, 36, 84, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+            transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease, background 160ms ease;
+        }
+        .tpss-select-trigger:hover {
+            border-color: color-mix(in oklch, var(--brand-navy) 50%, var(--border));
+            box-shadow: 0 10px 24px -18px rgba(0, 36, 84, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.78);
         }
         .tpss-select-trigger:focus {
             outline: none;
             border-color: var(--brand-navy);
-            box-shadow: 0 0 0 3px oklch(45% 0.12 250 / 0.12);
+            box-shadow: 0 0 0 3px color-mix(in oklch, var(--brand-navy) 16%, transparent), 0 10px 22px -18px rgba(0, 36, 84, 0.42);
         }
         .tpss-select-trigger[disabled] {
             cursor: not-allowed;
@@ -127,20 +165,21 @@
         }
         .tpss-select-caret {
             flex: 0 0 auto;
-            width: 0;
-            height: 0;
-            border-left: 5px solid transparent;
-            border-right: 5px solid transparent;
-            border-top: 6px solid var(--fg-2);
+            width: 18px;
+            height: 18px;
+            border: 0;
+            background: center / 18px 18px no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23002454' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
         }
         .tpss-select-menu {
             z-index: 100000;
-            border: 1px solid oklch(84% 0.022 232);
-            border-radius: 8px;
-            background: var(--surface);
-            box-shadow: 0 12px 28px rgba(15,23,42,0.16);
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 38%, var(--border));
+            border-radius: var(--r-md);
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 4%, var(--surface)), var(--surface) 28%);
+            box-shadow: 0 18px 42px -24px rgba(0, 36, 84, 0.46), 0 1px 2px rgba(0, 36, 84, 0.08);
             overflow-y: auto;
             overscroll-behavior: contain;
+            padding: 5px;
         }
         .tpss-select-option {
             width: 100%;
@@ -148,16 +187,23 @@
             border: 0;
             background: transparent;
             color: var(--fg-1);
-            padding: 12px 14px;
+            padding: 11px 12px;
+            border-radius: 7px;
             font: inherit;
             font-size: 14px;
+            font-weight: 600;
             line-height: 1.4;
             text-align: left;
             cursor: pointer;
         }
         .tpss-select-option:hover,
         .tpss-select-option.is-selected {
-            background: oklch(96.5% 0.014 232);
+            background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface));
+            color: var(--brand-navy);
+        }
+        .tpss-select-option.is-selected {
+            background: var(--brand-navy);
+            color: var(--fg-on-brand);
         }
         .tpss-select-option.is-placeholder {
             color: var(--fg-3);
@@ -997,8 +1043,23 @@
         // Expose function to initialize TPSS select dropdowns on-demand (used when modals render dynamically)
         window.tpssInitChoices = function(root) {
             try {
-                (root ? root.querySelectorAll('select.tpss-choices') : document.querySelectorAll('select.tpss-choices')).forEach(function(el) {
+                var scope = root || document;
+                var selects = [];
+                var selector = 'select.tpss-choices, select.tpss-custom-select, select.offering-select-control';
+
+                if (scope.matches && scope.matches(selector)) {
+                    selects.push(scope);
+                }
+
+                scope.querySelectorAll(selector).forEach(function(el) {
+                    selects.push(el);
+                });
+
+                selects.forEach(function(el) {
                     if (el._tpssSelect) return;
+                    if (el.multiple || Number(el.getAttribute('size') || 0) > 1) return;
+                    if (el.dataset.nativeSelect === 'true' || el.classList.contains('tpss-no-custom-select')) return;
+                    if (el.closest('.choices')) return;
 
                     var wrapper = document.createElement('div');
                     var trigger = document.createElement('button');
@@ -1019,7 +1080,7 @@
 
                     el.classList.add('tpss-native-select');
                     el.setAttribute('tabindex', '-1');
-                    el.parentNode.insertBefore(wrapper, el.nextSibling);
+                    el.parentNode.insertBefore(wrapper, el);
                     wrapper.appendChild(el);
                     wrapper.appendChild(trigger);
                     trigger.appendChild(label);
@@ -1098,7 +1159,12 @@
                     window.addEventListener('scroll', positionMenu, true);
                     el.addEventListener('change', sync);
 
-                    el._tpssSelect = { rebuild: rebuild, sync: sync, close: close };
+                    var observer = new MutationObserver(function() {
+                        rebuild();
+                    });
+                    observer.observe(el, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled', 'label', 'value', 'selected'] });
+
+                    el._tpssSelect = { rebuild: rebuild, sync: sync, close: close, observer: observer };
                     rebuild();
                 });
             } catch (e) {
@@ -1110,6 +1176,21 @@
         document.addEventListener('DOMContentLoaded', function() {
             window.tpssInitChoices();
         });
+    </script>
+    <script>
+        (function () {
+            var markReady = function () {
+                requestAnimationFrame(function () {
+                    document.documentElement.classList.add('tpss-page-ready');
+                });
+            };
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', markReady, { once: true });
+            } else {
+                markReady();
+            }
+        })();
     </script>
 </body>
 </html>

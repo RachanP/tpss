@@ -1135,7 +1135,58 @@ textarea {
   color: var(--fg-1);
   background: var(--surface);
   outline: none;
-  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast), background var(--dur-fast), transform var(--dur-fast);
+}
+
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 42px;
+  padding-right: 42px;
+  color: var(--brand-navy);
+  font-weight: var(--fw-semibold);
+  background-color: var(--surface);
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23002454' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, color-mix(in oklch, var(--surface) 92%, white), color-mix(in oklch, var(--brand-navy) 5%, var(--surface)));
+  background-repeat: no-repeat, no-repeat;
+  background-position: right 13px center, 0 0;
+  background-size: 18px 18px, 100% 100%;
+  box-shadow:
+    0 1px 2px rgba(0, 36, 84, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+}
+
+select:hover {
+  border-color: color-mix(in oklch, var(--brand-navy) 46%, var(--border));
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23002454' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, var(--surface), color-mix(in oklch, var(--brand-navy) 7%, var(--surface)));
+  box-shadow:
+    0 10px 24px -18px rgba(0, 36, 84, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+select:disabled {
+  cursor: not-allowed;
+  opacity: .64;
+  color: var(--fg-3);
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, var(--surface-sunken), var(--surface-sunken));
+}
+
+select option {
+  color: var(--fg-1);
+  background: var(--surface);
+  font-weight: var(--fw-medium);
+}
+
+select option:checked,
+select option:hover {
+  color: var(--fg-on-brand);
+  background: var(--brand-navy);
 }
 
 input:focus,
@@ -1299,7 +1350,7 @@ textarea:focus {
 }
 
 .btn-secondary {
-  background: var(--bg-1);
+  background: var(--surface);
   color: var(--fg-1);
   border: 1px solid var(--border);
 }
@@ -1859,4 +1910,1950 @@ textarea:focus {
   border-radius: 999px;
   background: currentColor;
   box-shadow: 0 0 0 3px color-mix(in oklch, currentColor 14%, transparent);
+}
+/* Admin-wide interaction polish */
+html:not(.tpss-page-ready) :where(
+    .admin-shell,
+    .admin-page,
+    .dashboard-page,
+    .master-data-page,
+    .alert-page,
+    .schedule-page,
+    .settings-page,
+    .course-head-page,
+    .course-head-schedule-page,
+    .schedule-shell
+) *,
+html:not(.tpss-page-ready) :where(
+    .admin-shell,
+    .admin-page,
+    .dashboard-page,
+    .master-data-page,
+    .alert-page,
+    .schedule-page,
+    .settings-page,
+    .course-head-page,
+    .course-head-schedule-page,
+    .schedule-shell
+) *::before,
+html:not(.tpss-page-ready) :where(
+    .admin-shell,
+    .admin-page,
+    .dashboard-page,
+    .master-data-page,
+    .alert-page,
+    .schedule-page,
+    .settings-page,
+    .course-head-page,
+    .course-head-schedule-page,
+    .schedule-shell
+) *::after {
+    transition: none !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+}
+
+:where(.admin-shell, .admin-page, .dashboard-page, .master-data-page, .alert-page, .schedule-page, .settings-page) :where(
+    .card,
+    .panel,
+    .stat-card,
+    .metric-card,
+    .dashboard-card,
+    .alert-card,
+    .alert-summary-card,
+    .alert-summary-total-card,
+    .master-card,
+    .section-card,
+    .data-card,
+    .ui-card,
+    .table-card,
+    .resource-card,
+    .offering-card,
+    .activity-card
+) {
+    transition:
+        transform 0.16s ease,
+        border-color 0.16s ease,
+        box-shadow 0.16s ease,
+        background-color 0.16s ease,
+        color 0.16s ease;
+}
+
+:where(.admin-shell, .admin-page, .dashboard-page, .master-data-page, .alert-page, .schedule-page, .settings-page) :where(
+    .card,
+    .panel,
+    .stat-card,
+    .metric-card,
+    .dashboard-card,
+    .alert-card,
+    .alert-summary-card,
+    .alert-summary-total-card,
+    .master-card,
+    .section-card,
+    .data-card,
+    .ui-card,
+    .table-card,
+    .resource-card,
+    .offering-card,
+    .activity-card
+):hover {
+    transform: translateY(-1px);
+    border-color: rgba(0, 44, 91, 0.36);
+    box-shadow:
+        0 14px 30px rgba(0, 44, 91, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+:where(.admin-shell, .admin-page, .dashboard-page, .master-data-page, .alert-page, .schedule-page, .settings-page) :where(
+    button,
+    .btn,
+    .button,
+    [role="button"],
+    a.btn,
+    .nav-link,
+    .tab-button,
+    .chip,
+    .badge,
+    .pill
+) {
+    transition:
+        transform 0.15s ease,
+        border-color 0.15s ease,
+        box-shadow 0.15s ease,
+        background-color 0.15s ease,
+        color 0.15s ease,
+        opacity 0.15s ease;
+}
+
+:where(.admin-shell, .admin-page, .dashboard-page, .master-data-page, .alert-page, .schedule-page, .settings-page) :where(
+    button,
+    .btn,
+    .button,
+    [role="button"],
+    a.btn,
+    .tab-button
+):where(:hover, :focus-visible) {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 20px rgba(0, 44, 91, 0.14);
+}
+
+:where(.admin-shell, .admin-page, .dashboard-page, .master-data-page, .alert-page, .schedule-page, .settings-page) :where(
+    .chip,
+    .badge,
+    .pill
+):hover {
+    border-color: rgba(0, 44, 91, 0.34);
+    box-shadow: 0 6px 14px rgba(0, 44, 91, 0.08);
+}
+
+:where(.admin-shell, .admin-page, .dashboard-page, .master-data-page, .alert-page, .schedule-page, .settings-page) :where(
+    table tbody tr,
+    .table-row,
+    .list-row,
+    .activity-row,
+    .alert-row,
+    .data-row
+) {
+    transition:
+        background-color 0.15s ease,
+        box-shadow 0.15s ease,
+        transform 0.15s ease;
+}
+
+:where(.admin-shell, .admin-page, .dashboard-page, .master-data-page, .alert-page, .schedule-page, .settings-page) :where(
+    table tbody tr,
+    .table-row,
+    .list-row,
+    .activity-row,
+    .alert-row,
+    .data-row
+):hover {
+    background-color: rgba(235, 244, 250, 0.72);
+}
+
+:where(.admin-shell, .admin-page, .dashboard-page, .master-data-page, .alert-page, .schedule-page, .settings-page) :where(
+    input,
+    select,
+    textarea,
+    .choices,
+    .choices__inner
+) {
+    transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease,
+        background-color 0.15s ease;
+}
+
+:where(.admin-shell, .admin-page, .dashboard-page, .master-data-page, .alert-page, .schedule-page, .settings-page) :where(
+    input,
+    select,
+    textarea
+):where(:hover, :focus) {
+    border-color: rgba(0, 44, 91, 0.42);
+    box-shadow: 0 0 0 3px rgba(0, 95, 139, 0.10);
+}
+
+:where(.admin-shell, .admin-page, .dashboard-page, .master-data-page, .alert-page, .schedule-page, .settings-page) .choices:hover .choices__inner,
+:where(.admin-shell, .admin-page, .dashboard-page, .master-data-page, .alert-page, .schedule-page, .settings-page) .choices.is-focused .choices__inner {
+    border-color: rgba(0, 44, 91, 0.42);
+    box-shadow: 0 0 0 3px rgba(0, 95, 139, 0.10);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :where(.admin-shell, .admin-page, .dashboard-page, .master-data-page, .alert-page, .schedule-page, .settings-page) *,
+    :where(.admin-shell, .admin-page, .dashboard-page, .master-data-page, .alert-page, .schedule-page, .settings-page) *::before,
+    :where(.admin-shell, .admin-page, .dashboard-page, .master-data-page, .alert-page, .schedule-page, .settings-page) *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* Keep modal corners rounded even when the content area scrolls. */
+:where(
+    .course-head-page,
+    .course-head-schedule-page,
+    .schedule-page,
+    .schedule-shell,
+    main:has(.course-head),
+    main:has(.offering-select-control),
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.weekly-calendar)
+) :where(
+    .modal-content,
+    .modal-card,
+    .dialog,
+    [role="dialog"]
+) > :first-child {
+    border-top-left-radius: inherit;
+    border-top-right-radius: inherit;
+}
+
+:where(
+    .course-head-page,
+    .course-head-schedule-page,
+    .schedule-page,
+    .schedule-shell,
+    main:has(.course-head),
+    main:has(.offering-select-control),
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.weekly-calendar)
+) :where(
+    .modal-content,
+    .modal-card,
+    .dialog,
+    [role="dialog"]
+) > :last-child {
+    border-bottom-left-radius: inherit;
+    border-bottom-right-radius: inherit;
+}
+
+:where(
+    .course-head-page,
+    .course-head-schedule-page,
+    .schedule-page,
+    .schedule-shell,
+    main:has(.course-head),
+    main:has(.offering-select-control),
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.weekly-calendar)
+) :where(
+    .modal-body,
+    .dialog-body
+) {
+    scrollbar-gutter: stable;
+}
+
+/* Course-head modal theme alignment */
+:where(
+    .course-head-page,
+    .course-head-schedule-page,
+    .schedule-page,
+    .schedule-shell,
+    main:has(.course-head),
+    main:has(.offering-select-control),
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.weekly-calendar)
+) :where(
+    .modal,
+    .modal-panel,
+    .modal-content,
+    .modal-card,
+    .dialog,
+    [role="dialog"]
+) {
+    border-radius: 12px !important;
+}
+
+:where(
+    .course-head-page,
+    .course-head-schedule-page,
+    .schedule-page,
+    .schedule-shell,
+    main:has(.course-head),
+    main:has(.offering-select-control),
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.weekly-calendar)
+) :where(
+    .modal-content,
+    .modal-card,
+    .dialog,
+    [role="dialog"]
+) {
+    overflow: hidden !important;
+    border: 1px solid rgba(15, 79, 128, 0.28) !important;
+    background: #ffffff !important;
+    box-shadow:
+        0 26px 70px rgba(0, 32, 70, 0.24),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+}
+
+:where(
+    .course-head-page,
+    .course-head-schedule-page,
+    .schedule-page,
+    .schedule-shell,
+    main:has(.course-head),
+    main:has(.offering-select-control),
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.weekly-calendar)
+) :where(
+    .modal-header,
+    .dialog-header,
+    [role="dialog"] > header
+) {
+    border-bottom: 1px solid rgba(15, 79, 128, 0.18) !important;
+    background:
+        linear-gradient(135deg, rgba(239, 248, 253, 0.96), rgba(250, 253, 255, 0.96)),
+        linear-gradient(180deg, rgba(0, 44, 91, 0.06), rgba(255, 255, 255, 0)) !important;
+}
+
+:where(
+    .course-head-page,
+    .course-head-schedule-page,
+    .schedule-page,
+    .schedule-shell,
+    main:has(.course-head),
+    main:has(.offering-select-control),
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.weekly-calendar)
+) :where(
+    .modal-header h1,
+    .modal-header h2,
+    .modal-header h3,
+    .dialog-header h1,
+    .dialog-header h2,
+    .dialog-header h3,
+    [role="dialog"] > header h1,
+    [role="dialog"] > header h2,
+    [role="dialog"] > header h3
+) {
+    color: #002c5b !important;
+    letter-spacing: 0 !important;
+}
+
+:where(
+    .course-head-page,
+    .course-head-schedule-page,
+    .schedule-page,
+    .schedule-shell,
+    main:has(.course-head),
+    main:has(.offering-select-control),
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.weekly-calendar)
+) :where(
+    .modal-body,
+    .dialog-body
+) {
+    background: linear-gradient(180deg, #ffffff, #fbfdff) !important;
+}
+
+:where(
+    .course-head-page,
+    .course-head-schedule-page,
+    .schedule-page,
+    .schedule-shell,
+    main:has(.course-head),
+    main:has(.offering-select-control),
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.weekly-calendar)
+) :where(
+    .modal-footer,
+    .dialog-footer,
+    [role="dialog"] > footer
+) {
+    border-top: 1px solid rgba(15, 79, 128, 0.16) !important;
+    background: linear-gradient(180deg, rgba(239, 248, 253, 0.72), rgba(229, 241, 248, 0.86)) !important;
+}
+
+:where(
+    .course-head-page,
+    .course-head-schedule-page,
+    .schedule-page,
+    .schedule-shell,
+    main:has(.course-head),
+    main:has(.offering-select-control),
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.weekly-calendar)
+) :where(
+    .modal-body .card,
+    .modal-body .panel,
+    .modal-body fieldset,
+    .modal-body section,
+    .dialog-body .card,
+    .dialog-body .panel,
+    .dialog-body fieldset,
+    .dialog-body section
+) {
+    border-color: rgba(15, 79, 128, 0.20);
+    border-radius: 10px;
+}
+
+:where(
+    .course-head-page,
+    .course-head-schedule-page,
+    .schedule-page,
+    .schedule-shell,
+    main:has(.course-head),
+    main:has(.offering-select-control),
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.weekly-calendar)
+) :where(
+    .modal-close,
+    .dialog-close,
+    [data-modal-close],
+    [aria-label="Close"],
+    [aria-label="ปิด"]
+) {
+    border-radius: 8px;
+    color: #6f7f8c;
+}
+
+:where(
+    .course-head-page,
+    .course-head-schedule-page,
+    .schedule-page,
+    .schedule-shell,
+    main:has(.course-head),
+    main:has(.offering-select-control),
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.weekly-calendar)
+) :where(
+    .modal-close,
+    .dialog-close,
+    [data-modal-close],
+    [aria-label="Close"],
+    [aria-label="ปิด"]
+):hover {
+    background: rgba(0, 44, 91, 0.08);
+    color: #002c5b;
+}
+
+@media (max-width: 640px) {
+    :where(
+        .course-head-page,
+        .course-head-schedule-page,
+        .schedule-page,
+        .schedule-shell,
+        main:has(.course-head),
+        main:has(.offering-select-control),
+        main:has(.schedule-table),
+        main:has(.calendar-grid),
+        main:has(.weekly-calendar)
+    ) :where(
+        .modal-content,
+        .modal-card,
+        .dialog,
+        [role="dialog"]
+    ) {
+        width: calc(100vw - 24px) !important;
+        max-height: calc(100dvh - 24px) !important;
+    }
+}
+
+/* Normalize schedule toolbar controls so mixed buttons/selects feel like one system. */
+:where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) {
+    --schedule-control-height: 52px;
+    --schedule-control-radius: 9px;
+    --schedule-control-border: rgba(15, 79, 128, 0.34);
+    --schedule-control-bg: linear-gradient(180deg, #ffffff, #f6f9fb);
+}
+
+:where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) :where(
+    .schedule-toolbar-actions,
+    .schedule-control-actions,
+    .calendar-toolbar-actions,
+    .schedule-controls-row,
+    .schedule-filter-row,
+    .schedule-view-controls
+) :where(
+    button,
+    .btn,
+    [role="button"],
+    input,
+    select,
+    .choices,
+    .choices__inner
+) {
+    min-height: var(--schedule-control-height);
+    height: var(--schedule-control-height);
+    border-radius: var(--schedule-control-radius);
+}
+
+:where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) :where(
+    .schedule-toolbar-actions,
+    .schedule-control-actions,
+    .calendar-toolbar-actions,
+    .schedule-controls-row,
+    .schedule-filter-row,
+    .schedule-view-controls
+) :where(
+    button,
+    .btn,
+    [role="button"],
+    input,
+    select
+) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-color: var(--schedule-control-border);
+    background: var(--schedule-control-bg);
+    line-height: 1;
+}
+
+:where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) :where(
+    .schedule-toolbar-actions,
+    .schedule-control-actions,
+    .calendar-toolbar-actions,
+    .schedule-controls-row,
+    .schedule-filter-row,
+    .schedule-view-controls
+) :where(
+    input,
+    select
+) {
+    justify-content: flex-start;
+}
+
+:where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) :where(
+    .schedule-view-toggle,
+    .view-toggle,
+    .segmented-control
+) {
+    min-height: var(--schedule-control-height);
+    height: var(--schedule-control-height);
+    border-radius: var(--schedule-control-radius);
+}
+
+:where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) :where(
+    .schedule-view-toggle button,
+    .view-toggle button,
+    .segmented-control button
+) {
+    min-height: 100%;
+    height: 100%;
+    padding-inline: 18px;
+}
+
+:where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) :where(
+    .schedule-toolbar-actions,
+    .schedule-control-actions,
+    .calendar-toolbar-actions,
+    .schedule-controls-row,
+    .schedule-filter-row,
+    .schedule-view-controls
+) :where(
+    button:has(svg):not(:has(span)):not(:has(.label)),
+    .btn-icon,
+    .icon-button
+) {
+    width: var(--schedule-control-height);
+    min-width: var(--schedule-control-height);
+    padding-inline: 0;
+}
+
+@media (max-width: 640px) {
+    :where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) {
+        --schedule-control-height: 48px;
+    }
+}
+
+/* Schedule calendar state: active academic-period cells should read brighter than out-of-period cells. */
+:where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) {
+    --schedule-active-cell: #fbfdff;
+    --schedule-active-cell-soft: #f4faff;
+    --schedule-active-cell-hover: #eef7ff;
+    --schedule-out-cell: #e6ebf0;
+    --schedule-out-cell-soft: #dfe6ec;
+    --schedule-today-cell: #fff3d8;
+    --schedule-grid-line: rgba(15, 79, 128, 0.28);
+}
+
+:where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) {
+    --schedule-active-cell: #ffffff;
+    --schedule-active-cell-soft: #fbfeff;
+    --schedule-active-cell-hover: #f3fbff;
+}
+
+:where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) {
+    --schedule-active-cell: #ffffff;
+    --schedule-active-cell-soft: #ffffff;
+    --schedule-active-cell-hover: #f8fdff;
+}
+
+:where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) :where(
+    .calendar-grid,
+    .schedule-grid,
+    .timetable,
+    .weekly-calendar,
+    .schedule-table
+) {
+    background: var(--schedule-grid-line);
+}
+
+:where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) :where(
+    .calendar-cell,
+    .schedule-cell,
+    .time-cell,
+    .slot-cell,
+    .day-cell,
+    td[data-date],
+    td[data-day],
+    td.schedule-slot
+) {
+    background:
+        linear-gradient(180deg, #ffffff, #ffffff) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+:where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) :where(
+    .calendar-cell,
+    .schedule-cell,
+    .time-cell,
+    .slot-cell,
+    .day-cell,
+    td[data-date],
+    td[data-day],
+    td.schedule-slot
+):hover {
+    background:
+        linear-gradient(180deg, #ffffff, var(--schedule-active-cell-hover)) !important;
+}
+
+:where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) :where(
+    .outside-academic-year,
+    .outside-period,
+    .out-of-range,
+    .is-outside-period,
+    .is-outside-academic-year,
+    .is-disabled-period,
+    .calendar-cell.is-muted,
+    .schedule-cell.is-muted,
+    .time-cell.is-muted,
+    .slot-cell.is-muted,
+    td.is-muted,
+    td.disabled,
+    td[aria-disabled="true"]
+) {
+    background:
+        linear-gradient(180deg, var(--schedule-out-cell), var(--schedule-out-cell-soft)) !important;
+    color: #6f7f8c;
+}
+
+:where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) :where(
+    .is-today,
+    .today,
+    .current-day,
+    td.today,
+    th.today
+) {
+    background:
+        linear-gradient(180deg, #fff8e6, var(--schedule-today-cell)) !important;
+}
+
+:where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) :where(
+    .calendar-cell,
+    .schedule-cell,
+    .time-cell,
+    .slot-cell,
+    .day-cell,
+    td[data-date],
+    td[data-day],
+    td.schedule-slot
+) :where(.add-slot, .add-button, .slot-add, button[aria-label*="เพิ่ม"], button[title*="เพิ่ม"]) {
+    background: rgba(255, 255, 255, 0.82);
+    border-color: rgba(15, 79, 128, 0.20);
+    color: #5f7485;
+    box-shadow: 0 4px 10px rgba(0, 44, 91, 0.06);
+}
+
+:where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) :where(
+    .calendar-cell,
+    .schedule-cell,
+    .time-cell,
+    .slot-cell,
+    .day-cell,
+    td[data-date],
+    td[data-day],
+    td.schedule-slot
+) :where(.add-slot, .add-button, .slot-add, button[aria-label*="เพิ่ม"], button[title*="เพิ่ม"]):hover {
+    background: #ffffff;
+    border-color: rgba(0, 44, 91, 0.34);
+    color: #002c5b;
+}
+
+/* Calendar headers should match active scheduling-period cells. */
+:where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) :where(
+    .calendar-header,
+    .calendar-day-header,
+    .schedule-header,
+    .schedule-day-header,
+    .day-header,
+    th[data-date],
+    th[data-day]
+) {
+    background:
+        linear-gradient(180deg, #ffffff, #ffffff) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+:where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) :where(
+    .calendar-header.outside-academic-year,
+    .calendar-header.outside-period,
+    .calendar-header.out-of-range,
+    .calendar-header.is-muted,
+    .calendar-day-header.outside-academic-year,
+    .calendar-day-header.outside-period,
+    .calendar-day-header.out-of-range,
+    .calendar-day-header.is-muted,
+    .schedule-header.outside-academic-year,
+    .schedule-header.outside-period,
+    .schedule-header.out-of-range,
+    .schedule-header.is-muted,
+    .schedule-day-header.outside-academic-year,
+    .schedule-day-header.outside-period,
+    .schedule-day-header.out-of-range,
+    .schedule-day-header.is-muted,
+    .day-header.outside-academic-year,
+    .day-header.outside-period,
+    .day-header.out-of-range,
+    .day-header.is-muted,
+    th.outside-academic-year,
+    th.outside-period,
+    th.out-of-range,
+    th.is-muted,
+    th.disabled,
+    th[aria-disabled="true"]
+) {
+    background:
+        linear-gradient(180deg, var(--schedule-out-cell), var(--schedule-out-cell-soft)) !important;
+    color: #6f7f8c;
+}
+
+/* Remove stray dropdown carets from schedule action buttons only. Real select controls keep their caret. */
+:where(
+    .schedule-page,
+    .schedule-shell,
+    .course-schedule-page,
+    .course-head-schedule-page,
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.schedule-grid),
+    main:has(.timetable),
+    main:has(.weekly-calendar)
+) :where(
+    .schedule-toolbar-actions,
+    .schedule-control-actions,
+    .calendar-toolbar-actions,
+    .schedule-controls-row,
+    .schedule-filter-row,
+    .schedule-view-controls,
+    .schedule-toolbar,
+    .schedule-controls,
+    .calendar-toolbar
+) :where(
+    button,
+    .btn,
+    [role="button"]
+) {
+    background-image: none !important;
+}
+
+:where(
+    .schedule-page,
+    .schedule-shell,
+    .course-schedule-page,
+    .course-head-schedule-page,
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.schedule-grid),
+    main:has(.timetable),
+    main:has(.weekly-calendar)
+) :where(
+    .schedule-toolbar-actions,
+    .schedule-control-actions,
+    .calendar-toolbar-actions,
+    .schedule-controls-row,
+    .schedule-filter-row,
+    .schedule-view-controls,
+    .schedule-toolbar,
+    .schedule-controls,
+    .calendar-toolbar
+) :where(
+    button,
+    .btn,
+    [role="button"]
+)::after {
+    content: none !important;
+    display: none !important;
+    border: 0 !important;
+}
+
+:where(
+    .schedule-page,
+    .schedule-shell,
+    .course-schedule-page,
+    .course-head-schedule-page,
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.schedule-grid),
+    main:has(.timetable),
+    main:has(.weekly-calendar)
+) :where(select, .choices__inner) {
+    background-image: var(--tpss-select-caret, none);
+}
+
+/* Select caret should appear once, not tile across schedule dropdowns. */
+:where(
+    .schedule-page,
+    .schedule-shell,
+    .course-schedule-page,
+    .course-head-schedule-page,
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.schedule-grid),
+    main:has(.timetable),
+    main:has(.weekly-calendar)
+) select {
+    background-repeat: no-repeat !important;
+    background-position: right 14px center !important;
+    background-size: 16px 16px !important;
+}
+
+:where(
+    .schedule-page,
+    .schedule-shell,
+    .course-schedule-page,
+    .course-head-schedule-page,
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.schedule-grid),
+    main:has(.timetable),
+    main:has(.weekly-calendar)
+) .choices__inner {
+    background-image: none !important;
+}
+
+:where(
+    .schedule-page,
+    .schedule-shell,
+    .course-schedule-page,
+    .course-head-schedule-page,
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.schedule-grid),
+    main:has(.timetable),
+    main:has(.weekly-calendar)
+) :where(
+    .schedule-toolbar-actions,
+    .schedule-control-actions,
+    .calendar-toolbar-actions,
+    .schedule-controls-row,
+    .schedule-filter-row,
+    .schedule-view-controls
+) select {
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+:where(
+    .schedule-page,
+    .schedule-shell,
+    .course-schedule-page,
+    .course-head-schedule-page,
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.schedule-grid),
+    main:has(.timetable),
+    main:has(.weekly-calendar)
+) :where(.choices, .choices__inner) {
+    background-color: transparent !important;
+}
+
+:where(
+    .schedule-page,
+    .schedule-shell,
+    .course-schedule-page,
+    .course-head-schedule-page,
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.schedule-grid),
+    main:has(.timetable),
+    main:has(.weekly-calendar)
+) :where(
+    .schedule-toolbar-actions,
+    .schedule-control-actions,
+    .calendar-toolbar-actions,
+    .schedule-controls-row,
+    .schedule-filter-row,
+    .schedule-view-controls
+) select {
+    min-height: var(--schedule-control-height, 52px) !important;
+    height: var(--schedule-control-height, 52px) !important;
+    line-height: var(--schedule-control-height, 52px) !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    vertical-align: middle;
+}
+
+:where(
+    .schedule-page,
+    .schedule-shell,
+    .course-schedule-page,
+    .course-head-schedule-page,
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.schedule-grid),
+    main:has(.timetable),
+    main:has(.weekly-calendar)
+) .choices__inner {
+    min-height: var(--schedule-control-height, 52px) !important;
+    height: var(--schedule-control-height, 52px) !important;
+    display: flex !important;
+    align-items: center !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+:where(
+    .schedule-page,
+    .schedule-shell,
+    .course-schedule-page,
+    .course-head-schedule-page,
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.schedule-grid),
+    main:has(.timetable),
+    main:has(.weekly-calendar)
+) :where(
+    .schedule-toolbar-actions,
+    .schedule-control-actions,
+    .calendar-toolbar-actions,
+    .schedule-controls-row,
+    .schedule-filter-row,
+    .schedule-view-controls
+) select {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    padding-left: 18px !important;
+    padding-right: 42px !important;
+    background-color: #ffffff !important;
+    background-image:
+        linear-gradient(45deg, transparent 50%, #002c5b 50%),
+        linear-gradient(135deg, #002c5b 50%, transparent 50%),
+        linear-gradient(180deg, #ffffff, #f6f9fb) !important;
+    background-position:
+        calc(100% - 20px) 50%,
+        calc(100% - 14px) 50%,
+        0 0 !important;
+    background-size:
+        6px 6px,
+        6px 6px,
+        100% 100% !important;
+    background-repeat: no-repeat !important;
+}
+
+:where(
+    .schedule-page,
+    .schedule-shell,
+    .course-schedule-page,
+    .course-head-schedule-page,
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.schedule-grid),
+    main:has(.timetable),
+    main:has(.weekly-calendar)
+) :where(
+    .schedule-toolbar-actions,
+    .schedule-control-actions,
+    .calendar-toolbar-actions,
+    .schedule-controls-row,
+    .schedule-filter-row,
+    .schedule-view-controls
+) select::-ms-expand {
+    display: none;
+}
+
+/* Some enhanced/select wrappers add their own caret. Hide only those attached to schedule toolbar selects. */
+:where(
+    .schedule-page,
+    .schedule-shell,
+    .course-schedule-page,
+    .course-head-schedule-page,
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.schedule-grid),
+    main:has(.timetable),
+    main:has(.weekly-calendar)
+) :where(
+    .schedule-toolbar-actions,
+    .schedule-control-actions,
+    .calendar-toolbar-actions,
+    .schedule-controls-row,
+    .schedule-filter-row,
+    .schedule-view-controls
+) .choices[data-type*="select-one"]::after {
+    content: none !important;
+    display: none !important;
+    border: 0 !important;
+}
+
+:where(
+    .schedule-page,
+    .schedule-shell,
+    .course-schedule-page,
+    .course-head-schedule-page,
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.schedule-grid),
+    main:has(.timetable),
+    main:has(.weekly-calendar)
+) :where(
+    .schedule-toolbar-actions,
+    .schedule-control-actions,
+    .calendar-toolbar-actions,
+    .schedule-controls-row,
+    .schedule-filter-row,
+    .schedule-view-controls
+) :where(div, label, span):has(> select)::after {
+    content: none !important;
+    display: none !important;
+    border: 0 !important;
+}
+
+:where(
+    .schedule-page,
+    .schedule-shell,
+    .course-schedule-page,
+    .course-head-schedule-page,
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.schedule-grid),
+    main:has(.timetable),
+    main:has(.weekly-calendar)
+) :where(
+    .schedule-toolbar-actions,
+    .schedule-control-actions,
+    .calendar-toolbar-actions,
+    .schedule-controls-row,
+    .schedule-filter-row,
+    .schedule-view-controls
+) :where(div, label, span):has(> select) > :where(
+    .select-caret,
+    .caret,
+    .dropdown-caret,
+    .chevron,
+    .pointer-events-none
+) {
+    display: none !important;
+}
+
+/* Schedule toolbar final rhythm: make buttons, selects, and tabs share one height. */
+:where(
+    .schedule-page,
+    .schedule-shell,
+    .course-schedule-page,
+    .course-head-schedule-page,
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.schedule-grid),
+    main:has(.timetable),
+    main:has(.weekly-calendar)
+) {
+    --schedule-toolbar-height: 42px;
+    --schedule-toolbar-radius: 8px;
+}
+
+:where(
+    .schedule-page,
+    .schedule-shell,
+    .course-schedule-page,
+    .course-head-schedule-page,
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.schedule-grid),
+    main:has(.timetable),
+    main:has(.weekly-calendar)
+) :where(
+    .schedule-toolbar,
+    .schedule-controls,
+    .schedule-control-bar,
+    .schedule-controls-row,
+    .schedule-filter-row,
+    .schedule-view-controls,
+    .calendar-toolbar,
+    .calendar-controls,
+    .calendar-toolbar-actions
+) {
+    align-items: center !important;
+    gap: 10px !important;
+}
+
+:where(
+    .schedule-page,
+    .schedule-shell,
+    .course-schedule-page,
+    .course-head-schedule-page,
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.schedule-grid),
+    main:has(.timetable),
+    main:has(.weekly-calendar)
+) :where(
+    .schedule-toolbar,
+    .schedule-controls,
+    .schedule-control-bar,
+    .schedule-controls-row,
+    .schedule-filter-row,
+    .schedule-view-controls,
+    .calendar-toolbar,
+    .calendar-controls,
+    .calendar-toolbar-actions
+) :where(
+    button,
+    a.btn,
+    .btn,
+    [role="button"],
+    input,
+    select,
+    .choices,
+    .choices__inner,
+    .segmented-control,
+    .view-toggle,
+    .schedule-view-toggle
+):not(.add-slot):not(.slot-add):not(.add-button) {
+    box-sizing: border-box !important;
+    min-height: var(--schedule-toolbar-height) !important;
+    height: var(--schedule-toolbar-height) !important;
+    border-radius: var(--schedule-toolbar-radius) !important;
+}
+
+:where(
+    .schedule-page,
+    .schedule-shell,
+    .course-schedule-page,
+    .course-head-schedule-page,
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.schedule-grid),
+    main:has(.timetable),
+    main:has(.weekly-calendar)
+) :where(
+    .schedule-toolbar,
+    .schedule-controls,
+    .schedule-control-bar,
+    .schedule-controls-row,
+    .schedule-filter-row,
+    .schedule-view-controls,
+    .calendar-toolbar,
+    .calendar-controls,
+    .calendar-toolbar-actions
+) :where(
+    button,
+    a.btn,
+    .btn,
+    [role="button"],
+    input,
+    select
+):not(.add-slot):not(.slot-add):not(.add-button) {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    line-height: 1 !important;
+}
+
+:where(
+    .schedule-page,
+    .schedule-shell,
+    .course-schedule-page,
+    .course-head-schedule-page,
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.schedule-grid),
+    main:has(.timetable),
+    main:has(.weekly-calendar)
+) :where(
+    .segmented-control,
+    .view-toggle,
+    .schedule-view-toggle
+) {
+    overflow: hidden !important;
+}
+
+:where(
+    .schedule-page,
+    .schedule-shell,
+    .course-schedule-page,
+    .course-head-schedule-page,
+    main:has(.schedule-table),
+    main:has(.calendar-grid),
+    main:has(.schedule-grid),
+    main:has(.timetable),
+    main:has(.weekly-calendar)
+) :where(
+    .segmented-control,
+    .view-toggle,
+    .schedule-view-toggle
+) > :where(button, .btn, [role="button"]) {
+    min-height: 100% !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+}
+
+@media (max-width: 640px) {
+    :where(
+        .schedule-page,
+        .schedule-shell,
+        .course-schedule-page,
+        .course-head-schedule-page,
+        main:has(.schedule-table),
+        main:has(.calendar-grid),
+        main:has(.schedule-grid),
+        main:has(.timetable),
+        main:has(.weekly-calendar)
+    ) {
+        --schedule-toolbar-height: 40px;
+    }
+}
+
+/* Final schedule toolbar alignment pass */
+:where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) :where(
+    .schedule-controls-row,
+    .schedule-filter-row,
+    .schedule-view-controls,
+    .calendar-toolbar-actions,
+    .schedule-toolbar-actions,
+    .schedule-control-actions
+) {
+    align-items: stretch;
+}
+
+:where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) :where(
+    .schedule-controls-row,
+    .schedule-filter-row,
+    .schedule-view-controls,
+    .calendar-toolbar-actions,
+    .schedule-toolbar-actions,
+    .schedule-control-actions
+) > :where(button, .btn, [role="button"], input, select, .choices, .segmented-control, .view-toggle, .schedule-view-toggle) {
+    min-height: var(--schedule-control-height, 52px) !important;
+    height: var(--schedule-control-height, 52px) !important;
+}
+
+:where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) :where(
+    .segmented-control,
+    .view-toggle,
+    .schedule-view-toggle
+) > :where(button, .btn, [role="button"]) {
+    min-height: 100% !important;
+    height: 100% !important;
+}
+
+/* Shared admin/course-head surfaces that may not have a page wrapper */
+:where(
+    .sidebar a,
+    .sidebar button,
+    aside a,
+    aside button,
+    .modal-content,
+    .modal-card,
+    .dialog,
+    .dropdown-menu,
+    .choices__list--dropdown,
+    .pagination a,
+    .pagination button
+) {
+    transition:
+        transform 0.15s ease,
+        border-color 0.15s ease,
+        box-shadow 0.15s ease,
+        background-color 0.15s ease,
+        color 0.15s ease,
+        opacity 0.15s ease;
+}
+
+:where(.sidebar a, .sidebar button, aside a, aside button):where(:hover, :focus-visible) {
+    background-color: rgba(255, 255, 255, 0.06);
+    color: #f8fbff;
+}
+
+:where(.modal-content, .modal-card, .dialog):hover {
+    box-shadow: 0 24px 60px rgba(0, 32, 70, 0.22);
+}
+
+:where(.pagination a, .pagination button):where(:hover, :focus-visible) {
+    transform: translateY(-1px);
+    border-color: rgba(0, 44, 91, 0.38);
+    box-shadow: 0 8px 16px rgba(0, 44, 91, 0.10);
+}
+
+/* Modal layout repair: keep close button in the corner and make the body scrollable. */
+:where(
+    .modal-content,
+    .modal-card,
+    .dialog,
+    [role="dialog"] > div,
+    [aria-modal="true"] > div
+) {
+    position: relative;
+    max-height: min(860px, calc(100dvh - 32px)) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    border-radius: 12px !important;
+}
+
+:where(
+    .modal-content,
+    .modal-card,
+    .dialog,
+    [role="dialog"] > div,
+    [aria-modal="true"] > div
+) > :first-child {
+    position: relative;
+    flex: 0 0 auto;
+    padding-right: 72px;
+}
+
+:where(
+    .modal-content,
+    .modal-card,
+    .dialog,
+    [role="dialog"] > div,
+    [aria-modal="true"] > div
+) > :first-child > :where(
+    button:last-child,
+    [role="button"]:last-child,
+    .modal-close,
+    .close-modal,
+    .dialog-close,
+    [data-modal-close],
+    [aria-label*="ปิด"],
+    [aria-label*="close" i]
+) {
+    position: absolute !important;
+    top: 18px !important;
+    right: 20px !important;
+    left: auto !important;
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 !important;
+    border-radius: 10px !important;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    color: #617283 !important;
+    line-height: 1 !important;
+    z-index: 4;
+}
+
+:where(
+    .modal-content,
+    .modal-card,
+    .dialog,
+    [role="dialog"] > div,
+    [aria-modal="true"] > div
+) > :first-child > :where(
+    button:last-child,
+    [role="button"]:last-child,
+    .modal-close,
+    .close-modal,
+    .dialog-close,
+    [data-modal-close],
+    [aria-label*="ปิด"],
+    [aria-label*="close" i]
+):hover {
+    background: rgba(0, 44, 91, 0.06) !important;
+    border-color: rgba(15, 79, 128, 0.18) !important;
+    color: #002c5b !important;
+    transform: none !important;
+}
+
+:where(
+    .modal-content,
+    .modal-card,
+    .dialog,
+    [role="dialog"] > div,
+    [aria-modal="true"] > div
+) > :where(
+    form,
+    .modal-body,
+    .modal-content-body,
+    .modal-card-body,
+    .dialog-body
+) {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+:where(
+    .modal-content,
+    .modal-card,
+    .dialog,
+    [role="dialog"] > div,
+    [aria-modal="true"] > div
+) > :last-child:not(:first-child) {
+    flex: 0 0 auto;
+}
+
+:where(
+    .modal-content,
+    .modal-card,
+    .dialog,
+    [role="dialog"] > div,
+    [aria-modal="true"] > div
+) > :not(:first-child):not(:last-child) {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+:where(
+    .modal-content,
+    .modal-card,
+    .dialog,
+    [role="dialog"] > div,
+    [aria-modal="true"] > div
+) > :last-child:is(
+    form,
+    .modal-body,
+    .modal-content-body,
+    .modal-card-body,
+    .dialog-body
+) {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+}
+
+/* Alpine/Tailwind modal fallback used by schedule pages. */
+:where(
+    [x-show][class*="fixed"][class*="inset-0"],
+    [x-cloak][class*="fixed"][class*="inset-0"],
+    [role="dialog"][class*="fixed"][class*="inset-0"],
+    [aria-modal="true"][class*="fixed"][class*="inset-0"]
+) {
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    align-items: flex-start !important;
+    padding-top: 16px !important;
+    padding-bottom: 16px !important;
+}
+
+:where(
+    [x-show][class*="fixed"][class*="inset-0"],
+    [x-cloak][class*="fixed"][class*="inset-0"],
+    [role="dialog"][class*="fixed"][class*="inset-0"],
+    [aria-modal="true"][class*="fixed"][class*="inset-0"]
+) > :where(div, section) {
+    min-height: auto !important;
+    align-items: flex-start !important;
+}
+
+:where(
+    [x-show][class*="fixed"][class*="inset-0"],
+    [x-cloak][class*="fixed"][class*="inset-0"],
+    [role="dialog"][class*="fixed"][class*="inset-0"],
+    [aria-modal="true"][class*="fixed"][class*="inset-0"]
+) :where(
+    [class*="rounded"][class*="bg-white"],
+    [class*="rounded"][class*="bg-slate"],
+    [class*="rounded"][class*="bg-gray"],
+    [class*="modal"],
+    [class*="dialog"]
+) {
+    max-height: calc(100dvh - 32px) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    position: relative !important;
+}
+
+:where(
+    [x-show][class*="fixed"][class*="inset-0"],
+    [x-cloak][class*="fixed"][class*="inset-0"],
+    [role="dialog"][class*="fixed"][class*="inset-0"],
+    [aria-modal="true"][class*="fixed"][class*="inset-0"]
+) :where(
+    [class*="rounded"][class*="bg-white"],
+    [class*="rounded"][class*="bg-slate"],
+    [class*="rounded"][class*="bg-gray"],
+    [class*="modal"],
+    [class*="dialog"]
+) > :where(div, form, section):not(:first-child):not(:last-child) {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+:where(
+    [x-show][class*="fixed"][class*="inset-0"],
+    [x-cloak][class*="fixed"][class*="inset-0"],
+    [role="dialog"][class*="fixed"][class*="inset-0"],
+    [aria-modal="true"][class*="fixed"][class*="inset-0"]
+) :where(
+    [class*="rounded"][class*="bg-white"],
+    [class*="rounded"][class*="bg-slate"],
+    [class*="rounded"][class*="bg-gray"],
+    [class*="modal"],
+    [class*="dialog"]
+) > :first-child {
+    position: relative !important;
+    flex: 0 0 auto !important;
+    padding-right: 72px !important;
+}
+
+:where(
+    [x-show][class*="fixed"][class*="inset-0"],
+    [x-cloak][class*="fixed"][class*="inset-0"],
+    [role="dialog"][class*="fixed"][class*="inset-0"],
+    [aria-modal="true"][class*="fixed"][class*="inset-0"]
+) :where(
+    [class*="rounded"][class*="bg-white"],
+    [class*="rounded"][class*="bg-slate"],
+    [class*="rounded"][class*="bg-gray"],
+    [class*="modal"],
+    [class*="dialog"]
+) > :first-child :where(
+    button,
+    [role="button"],
+    [aria-label*="ปิด"],
+    [aria-label*="close" i],
+    [data-modal-close]
+):last-child {
+    position: absolute !important;
+    top: 16px !important;
+    right: 18px !important;
+    left: auto !important;
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 !important;
+    border-radius: 10px !important;
+    z-index: 5 !important;
+}
+
+:where([class~="fixed"][class~="inset-0"]) {
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+:where([class~="fixed"][class~="inset-0"]) > :where(div, section) {
+    min-height: auto !important;
+}
+
+:where([class~="fixed"][class~="inset-0"]) > :where(div, section) > :where(
+    [class*="rounded"][class*="bg-white"],
+    [class*="rounded"][class*="bg-slate"],
+    [class*="rounded"][class*="bg-gray"]
+) {
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    max-height: calc(100dvh - 32px) !important;
+    overflow: hidden !important;
+}
+
+:where([class~="fixed"][class~="inset-0"]) > :where(div, section) > :where(
+    [class*="rounded"][class*="bg-white"],
+    [class*="rounded"][class*="bg-slate"],
+    [class*="rounded"][class*="bg-gray"]
+) > :first-child {
+    position: relative !important;
+    flex: 0 0 auto !important;
+    padding-right: 72px !important;
+}
+
+:where([class~="fixed"][class~="inset-0"]) > :where(div, section) > :where(
+    [class*="rounded"][class*="bg-white"],
+    [class*="rounded"][class*="bg-slate"],
+    [class*="rounded"][class*="bg-gray"]
+) > :not(:first-child):not(:last-child) {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+:where([class~="fixed"][class~="inset-0"]) > :where(div, section) > :where(
+    [class*="rounded"][class*="bg-white"],
+    [class*="rounded"][class*="bg-slate"],
+    [class*="rounded"][class*="bg-gray"]
+) > :last-child:not(:first-child) {
+    flex: 0 0 auto !important;
+}
+
+:where([class~="fixed"][class~="inset-0"]) > :where(div, section) > :where(
+    [class*="rounded"][class*="bg-white"],
+    [class*="rounded"][class*="bg-slate"],
+    [class*="rounded"][class*="bg-gray"]
+) > :first-child > :where(button, [role="button"], [aria-label*="ปิด"], [aria-label*="close" i], [data-modal-close]):last-child {
+    position: absolute !important;
+    top: 16px !important;
+    right: 18px !important;
+    left: auto !important;
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 !important;
+    border-radius: 10px !important;
+    z-index: 5 !important;
+}
+
+:where([class~="fixed"][class~="inset-0"]) > :where(
+    [class*="rounded"][class*="bg-white"],
+    [class*="rounded"][class*="bg-slate"],
+    [class*="rounded"][class*="bg-gray"]
+) {
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    max-height: calc(100dvh - 32px) !important;
+    overflow: hidden !important;
+}
+
+:where([class~="fixed"][class~="inset-0"]) > :where(
+    [class*="rounded"][class*="bg-white"],
+    [class*="rounded"][class*="bg-slate"],
+    [class*="rounded"][class*="bg-gray"]
+) > :first-child {
+    position: relative !important;
+    flex: 0 0 auto !important;
+    padding-right: 72px !important;
+}
+
+:where([class~="fixed"][class~="inset-0"]) > :where(
+    [class*="rounded"][class*="bg-white"],
+    [class*="rounded"][class*="bg-slate"],
+    [class*="rounded"][class*="bg-gray"]
+) > :not(:first-child):not(:last-child) {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+:where([class~="fixed"][class~="inset-0"]) > :where(
+    [class*="rounded"][class*="bg-white"],
+    [class*="rounded"][class*="bg-slate"],
+    [class*="rounded"][class*="bg-gray"]
+) > :first-child > :where(button, [role="button"], [aria-label*="ปิด"], [aria-label*="close" i], [data-modal-close]):last-child {
+    position: absolute !important;
+    top: 16px !important;
+    right: 18px !important;
+    left: auto !important;
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 !important;
+    border-radius: 10px !important;
+    z-index: 5 !important;
+}
+
+@media (max-width: 640px) {
+    :where(
+        .modal-content,
+        .modal-card,
+        .dialog,
+        [role="dialog"] > div,
+        [aria-modal="true"] > div
+    ) {
+        max-height: calc(100dvh - 16px) !important;
+        border-radius: 10px !important;
+    }
+
+    :where(
+        .modal-content,
+        .modal-card,
+        .dialog,
+        [role="dialog"] > div,
+        [aria-modal="true"] > div
+    ) > :first-child > :where(
+        button:last-child,
+        [role="button"]:last-child,
+        .modal-close,
+        .close-modal,
+        .dialog-close,
+        [data-modal-close],
+        [aria-label*="ปิด"],
+        [aria-label*="close" i]
+    ) {
+        top: 12px !important;
+        right: 12px !important;
+    }
+}
+
+/* Modal scrolling guard: content must remain reachable on shorter screens. */
+:where(
+    .modal,
+    .modal-backdrop,
+    .modal-overlay,
+    .dialog-backdrop,
+    [role="dialog"]
+) {
+    max-height: 100dvh;
+}
+
+:where(
+    .modal-content,
+    .modal-card,
+    .dialog,
+    [role="dialog"] > div
+) {
+    max-height: calc(100dvh - 48px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+:where(
+    .modal-body,
+    .modal-content-body,
+    .dialog-body,
+    .modal-card-body,
+    [role="dialog"] form,
+    [role="dialog"] .modal-scroll,
+    [role="dialog"] .overflow-y-auto
+) {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+:where(
+    .modal-header,
+    .dialog-header,
+    .modal-footer,
+    .dialog-footer
+) {
+    flex: 0 0 auto;
+}
+
+:where(
+    .modal-footer,
+    .dialog-footer
+) {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+}
+
+@media (max-width: 640px) {
+    :where(
+        .modal-content,
+        .modal-card,
+        .dialog,
+        [role="dialog"] > div
+    ) {
+        max-height: calc(100dvh - 24px);
+    }
+}
+
+/* Schedule toolbar balance */
+:where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) :where(
+    .schedule-toolbar,
+    .schedule-controls,
+    .schedule-control-bar,
+    .calendar-toolbar,
+    .calendar-controls
+) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 14px;
+}
+
+:where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) :where(
+    .schedule-toolbar-main,
+    .schedule-control-main,
+    .calendar-toolbar-main
+) {
+    min-width: 0;
+}
+
+:where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) :where(
+    .schedule-toolbar-actions,
+    .schedule-control-actions,
+    .calendar-toolbar-actions,
+    .schedule-controls-row,
+    .schedule-filter-row,
+    .schedule-view-controls
+) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+:where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) :where(
+    .schedule-view-toggle,
+    .view-toggle,
+    .segmented-control
+) {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    overflow: hidden;
+    border: 1px solid rgba(15, 79, 128, 0.28);
+    border-radius: 9px;
+    background: #ffffff;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 6px 14px rgba(0, 44, 91, 0.06);
+}
+
+:where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) :where(
+    .schedule-view-toggle button,
+    .view-toggle button,
+    .segmented-control button
+) {
+    border-radius: 0;
+    border: 0;
+    box-shadow: none;
+}
+
+:where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) :where(
+    .schedule-view-toggle button:hover,
+    .view-toggle button:hover,
+    .segmented-control button:hover
+) {
+    transform: none;
+    box-shadow: none;
+}
+
+/* Keep native/select dropdown caret inside real select controls only. */
+:where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) :where(
+    button,
+    .btn,
+    [role="button"],
+    .segmented-control button,
+    .view-toggle button,
+    .schedule-view-toggle button
+) {
+    background-image: none;
+}
+
+:where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) select {
+    padding-right: 44px;
+    background-position: right 14px center;
+}
+
+@media (max-width: 980px) {
+    :where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) :where(
+        .schedule-toolbar,
+        .schedule-controls,
+        .schedule-control-bar,
+        .calendar-toolbar,
+        .calendar-controls
+    ) {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    :where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) :where(
+        .schedule-toolbar-actions,
+        .schedule-control-actions,
+        .calendar-toolbar-actions,
+        .schedule-controls-row,
+        .schedule-filter-row,
+        .schedule-view-controls
+    ) {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 640px) {
+    :where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) :where(
+        .schedule-toolbar-actions,
+        .schedule-control-actions,
+        .calendar-toolbar-actions,
+        .schedule-controls-row,
+        .schedule-filter-row,
+        .schedule-view-controls
+    ) > * {
+        flex: 1 1 160px;
+    }
+
+    :where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) :where(
+        .schedule-view-toggle,
+        .view-toggle,
+        .segmented-control
+    ) {
+        width: 100%;
+    }
+
+    :where(.schedule-page, .schedule-shell, .course-schedule-page, .course-head-schedule-page) :where(
+        .schedule-view-toggle button,
+        .view-toggle button,
+        .segmented-control button
+    ) {
+        flex: 1 1 0;
+        min-width: 0;
+    }
 }

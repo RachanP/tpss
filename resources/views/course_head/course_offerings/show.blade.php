@@ -82,7 +82,7 @@
                 width: 32px;
                 height: 32px;
                 margin-left: 4px;
-                border: 1px solid var(--border-1);
+                border: 1px solid var(--border);
                 background: var(--bg-2);
                 color: var(--fg-2);
                 border-radius: 8px;
@@ -125,7 +125,7 @@
                 height: 32px;
                 padding: 0 14px;
                 margin-left: auto;
-                border: 1px solid var(--border-1);
+                border: 1px solid var(--border);
                 background: var(--bg-2);
                 color: var(--fg-2);
                 border-radius: 8px;
@@ -178,6 +178,7 @@
         </a>
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">
             <div style="flex:1;min-width:220px;">
+                <div style="font-size:12px;font-weight:700;line-height:1.35;color:color-mix(in oklch, var(--brand-navy) 52%, var(--fg-3));margin-bottom:4px;">หัวหน้าวิชา / รายละเอียดรายวิชา</div>
                 <h1 class="h1" style="margin:0 0 6px;">{{ $course?->course_code ?? '-' }} {{ $course?->name_th ?? $course?->name_en ?? '' }}</h1>
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                     <p class="body-sm" style="margin:0;">
@@ -236,17 +237,17 @@
     @endphp
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px;">
         @foreach($summaryStrip as $item)
-            <a href="{{ $item['href'] ?? '#' }}" style="
+            <a href="{{ $item['href'] ?? '#' }}" class="course-summary-tile" style="
                 display:flex;align-items:center;gap:12px;
                 padding:14px 16px;
-                background:var(--bg-1);
+                background:var(--surface);
                 border:2px solid var(--brand-navy-300);
                 border-top:4px solid var(--brand-navy);
                 border-radius:10px;
                 text-decoration:none;
                 color:var(--fg-1);
                 transition:border-color 0.15s, background 0.15s;
-            " onmouseover="this.style.background='var(--brand-navy-50)';this.style.borderColor='var(--brand-navy)'" onmouseout="this.style.background='var(--bg-1)';this.style.borderColor='var(--brand-navy-300)'">
+            " onmouseover="this.style.background='var(--brand-navy-50)';this.style.borderColor='var(--brand-navy)'" onmouseout="this.style.background='var(--surface)';this.style.borderColor='var(--brand-navy-300)'">
                 <div style="
                     display:flex;align-items:center;justify-content:center;
                     width:38px;height:38px;flex-shrink:0;
@@ -355,7 +356,7 @@
             </div>
 
             {{-- Secondary fields --}}
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:20px;padding-top:14px;border-top:1px dashed var(--border-1);">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:20px;padding-top:14px;border-top:1px dashed var(--border);">
                 <div>
                     <div class="caption">ชั่วโมงเรียน (บรรยาย / ปฏิบัติ)</div>
                     <div style="font-weight:600;margin-top:4px;">{{ $lectureHours }} / {{ $labHours }} <span class="caption">ชม.</span></div>
@@ -375,7 +376,7 @@
                     updateUrl: {{ Js::from(route('maker.course_offerings.update', $courseOffering)) }},
                     csrfToken: {{ Js::from(csrf_token()) }},
                 })"
-                style="margin-top:24px;padding:18px 20px;background:var(--bg-2);border:1px solid var(--border-1);border-radius:10px;">
+                style="margin-top:24px;padding:18px 20px;background:var(--bg-2);border:1px solid var(--border);border-radius:10px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:4px;flex-wrap:wrap;">
                     <div style="display:flex;align-items:center;gap:8px;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--brand-navy);">
@@ -510,7 +511,7 @@
                 }
             </script>
             @else
-            <div style="border-top:1px solid var(--border-1);padding-top:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">
+            <div style="border-top:1px solid var(--border);padding-top:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">
                 <div>
                     <div class="caption">การจัดรอบฝึกปฏิบัติ</div>
                     <div style="font-weight:600;margin-top:4px;">{{ $courseOffering->requires_practicum_rotation ? 'มีการหมุนเวียนแหล่งฝึก' : 'ไม่มีการหมุนเวียนแหล่งฝึก' }}</div>
@@ -735,16 +736,16 @@
                     <div
                         x-show="open"
                         x-cloak
-                        :style="`position:absolute;top:${ddTop}px;left:${ddLeft}px;width:${ddWidth}px;background:#fff;border:1px solid var(--border-1);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.12);z-index:99;`"
+                        :style="`position:absolute;top:${ddTop}px;left:${ddLeft}px;width:${ddWidth}px;background:#fff;border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.12);z-index:99;`"
                     >
                         {{-- Filter toggle inside dropdown --}}
-                        <div x-show="courseDeptId" style="padding:10px 12px;border-bottom:1px solid var(--border-1);background:var(--bg-2);">
+                        <div x-show="courseDeptId" style="padding:10px 12px;border-bottom:1px solid var(--border);background:var(--bg-2);">
                             <div style="display:inline-flex;gap:6px;">
                                 <button type="button"
                                     @click.stop="showAll = false"
                                     :style="!showAll
                                         ? 'background:var(--brand-navy);color:#fff;border-color:var(--brand-navy);'
-                                        : 'background:var(--bg-1);color:var(--fg-2);border-color:var(--border-1);'"
+                                        : 'background:var(--surface);color:var(--fg-2);border-color:var(--border);'"
                                     style="cursor:pointer;font-size:12px;font-weight:600;padding:6px 14px;border-radius:999px;font-family:inherit;transition:all 0.15s;border-width:1px;border-style:solid;outline:none;appearance:none;-webkit-appearance:none;">
                                     เฉพาะภาควิชานี้
                                 </button>
@@ -752,7 +753,7 @@
                                     @click.stop="showAll = true"
                                     :style="showAll
                                         ? 'background:var(--brand-navy);color:#fff;border-color:var(--brand-navy);'
-                                        : 'background:var(--bg-1);color:var(--fg-2);border-color:var(--border-1);'"
+                                        : 'background:var(--surface);color:var(--fg-2);border-color:var(--border);'"
                                     style="cursor:pointer;font-size:12px;font-weight:600;padding:6px 14px;border-radius:999px;font-family:inherit;transition:all 0.15s;border-width:1px;border-style:solid;outline:none;appearance:none;-webkit-appearance:none;">
                                     อาจารย์ทั้งหมด
                                 </button>
@@ -763,7 +764,7 @@
                             <template x-for="user in available" :key="user.id">
                                 <div
                                     @click="add(user)"
-                                    style="padding:10px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border-1);"
+                                    style="padding:10px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);"
                                     @mouseenter="$el.style.background='var(--surface-2)'"
                                     @mouseleave="$el.style.background=''"
                                 >
@@ -787,9 +788,9 @@
             {{-- Pills --}}
             <div style="display:flex;flex-direction:column;gap:8px;" x-show="pool.length > 0">
                 <template x-for="user in pool" :key="user.id">
-                    <div style="display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--border-1);border-radius:8px;padding:12px 16px;transition:border-color 0.15s;"
+                    <div style="display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px 16px;transition:border-color 0.15s;"
                          @mouseover="$el.style.borderColor='var(--brand-navy-300)'"
-                         @mouseout="$el.style.borderColor='var(--border-1)'">
+                         @mouseout="$el.style.borderColor='var(--border)'">
                         <div style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;flex-shrink:0;background:var(--brand-navy-50);color:var(--brand-navy);border-radius:50%;font-weight:700;font-size:0.875rem;font-family:var(--font-display);"
                              x-text="user.name.replace(/^(อ\.|ดร\.|ผศ\.|รศ\.|ศ\.|นาย|นาง|นางสาว|น\.ส\.)+\s*/g, '').charAt(0)">
                         </div>
@@ -892,7 +893,7 @@
                             @if($canEdit)
                             <button type="button" x-show="!user.is_coordinator" @click="remove(user.id)" title="ลบอาจารย์ออกจากชุดผู้สอน"
                                 class="instructor-remove-button"
-                                @mouseenter="$el.style.background='#fee2e2';$el.style.color='#dc2626'"
+                                @mouseenter="$el.style.background='var(--status-conflict-bg)';$el.style.color='var(--status-conflict-fg)'"
                                 @mouseleave="$el.style.background='transparent';$el.style.color='var(--fg-3)'">
                                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                             </button>
@@ -912,7 +913,24 @@
         /* Major section separation — medium navy outline on the primary cards */
         .card#course-info,
         .card#instructors {
-            border: 1px solid var(--brand-navy-500);
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 28%, var(--border));
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 4%, var(--surface)), var(--surface) 44%),
+                var(--surface);
+            box-shadow:
+                0 1px 2px rgba(0, 36, 84, 0.08),
+                0 18px 42px -30px rgba(0, 36, 84, 0.42);
+            transition: border-color 160ms ease, box-shadow 160ms ease;
+        }
+
+        .card#course-info:hover,
+        .card#instructors:hover,
+        .card#course-info:focus-within,
+        .card#instructors:focus-within {
+            border-color: color-mix(in oklch, var(--brand-navy) 38%, var(--border));
+            box-shadow:
+                0 2px 6px rgba(0, 36, 84, 0.08),
+                0 24px 50px -32px rgba(0, 36, 84, 0.52);
         }
 
         /* V2 delegation toggle — มอบหมายอาจารย์ช่วยจัดตาราง */
@@ -964,14 +982,40 @@
             border-color:var(--brand-navy-500); color:var(--brand-navy);
         }
         .delegate-toggle.is-on {
-            background:#dcfce7; border:1px solid #16a34a; color:#15803d;
+            background:var(--status-success-bg); border:1px solid var(--status-success-border); color:var(--status-success-fg);
         }
-        .delegate-toggle.is-on:hover { background:#bbf7d0; }
+        .delegate-toggle.is-on:hover { background:color-mix(in oklch, var(--status-success-fg) 16%, var(--surface)); }
         .card#course-info > .card-hdr,
         .card#instructors > .card-hdr {
-            border-bottom: 1px solid var(--brand-navy-500);
+            border-bottom: 1px solid color-mix(in oklch, var(--brand-navy) 22%, var(--border));
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 10%, var(--surface)), color-mix(in oklch, var(--brand-navy) 4%, var(--surface)));
             border-top-left-radius: var(--r-lg);
             border-top-right-radius: var(--r-lg);
+        }
+
+        .course-summary-tile {
+            background:
+                radial-gradient(circle at 92% 14%, color-mix(in oklch, var(--brand-navy) 12%, transparent), transparent 34%),
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 5%, var(--surface)), var(--surface)) !important;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 28%, var(--border)) !important;
+            box-shadow:
+                0 1px 2px rgba(0, 36, 84, 0.08),
+                0 14px 30px -24px rgba(0, 36, 84, 0.46);
+            transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+        }
+
+        .course-summary-tile:hover,
+        .course-summary-tile:focus-visible {
+            transform: translateY(-2px);
+            border-color: color-mix(in oklch, var(--brand-navy) 38%, var(--border)) !important;
+            background:
+                radial-gradient(circle at 92% 14%, color-mix(in oklch, var(--brand-navy) 16%, transparent), transparent 34%),
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 8%, var(--surface)), var(--surface)) !important;
+            box-shadow:
+                0 2px 5px rgba(0, 36, 84, 0.1),
+                0 20px 36px -24px rgba(0, 36, 84, 0.62);
+            outline: none;
         }
 
         .back-link {
@@ -1189,7 +1233,7 @@
             padding: 0;
             border: 2px solid var(--brand-navy-300);
             border-radius: 12px;
-            background: var(--bg-1);
+            background: var(--surface);
             overflow: hidden;
         }
 
@@ -1270,8 +1314,8 @@
             padding: 6px 12px;
             border-radius: 999px;
             font-family: inherit;
-            border: 1px solid var(--border-1);
-            background: var(--bg-1);
+            border: 1px solid var(--border);
+            background: var(--surface);
             color: var(--fg-2);
             outline: none;
             transition: all 0.15s;
@@ -1307,8 +1351,8 @@
 
         .group-builder-fields input {
             padding: 10px 14px;
-            background: var(--bg-1);
-            border: 2px solid var(--border-1);
+            background: var(--surface);
+            border: 2px solid var(--border);
             border-radius: 8px;
             font-size: 15px;
             font-weight: 700;
@@ -1331,10 +1375,10 @@
         .group-stepper {
             display: inline-flex;
             align-items: stretch;
-            border: 2px solid var(--border-1);
+            border: 2px solid var(--border);
             border-radius: 8px;
             overflow: hidden;
-            background: var(--bg-1);
+            background: var(--surface);
             transition: all 0.15s;
             box-shadow: 0 1px 0 rgba(0,0,0,0.02);
         }
@@ -1390,9 +1434,9 @@
 
         .group-mode-row {
             display: inline-flex;
-            border: 1px solid var(--border-1);
+            border: 1px solid var(--border);
             border-radius: 8px;
-            background: var(--bg-1);
+            background: var(--surface);
             padding: 3px;
             gap: 2px;
         }
@@ -1428,9 +1472,9 @@
             align-items: center;
             gap: 8px;
             padding: 6px 12px;
-            border: 1px solid var(--border-1);
+            border: 1px solid var(--border);
             border-radius: 8px;
-            background: var(--bg-1);
+            background: var(--surface);
             color: var(--fg-1);
             font-size: 13px;
             transition: border-color 0.15s;
@@ -1460,7 +1504,7 @@
 
         .group-count-mini {
             width: 56px;
-            border: 1px solid var(--border-1) !important;
+            border: 1px solid var(--border) !important;
             border-radius: 6px;
             padding: 4px 8px;
             text-align: center;
@@ -1476,7 +1520,7 @@
             gap: 12px;
             margin-top: 18px;
             padding-top: 16px;
-            border-top: 1px solid var(--border-1);
+            border-top: 1px solid var(--border);
             flex-wrap: wrap;
         }
 
@@ -1814,7 +1858,7 @@
         .sg-section-divider {
             margin: 22px 0 18px;
             border: 0;
-            border-top: 1px dashed var(--border-1);
+            border-top: 1px dashed var(--border);
         }
         .sg-section-header {
             display: flex;
@@ -1873,7 +1917,7 @@
             height: 28px;
             border-radius: 6px;
             border: 2px solid #fff;
-            box-shadow: 0 0 0 1px var(--border-1);
+            box-shadow: 0 0 0 1px var(--border);
             cursor: pointer;
             outline: none;
             transition: box-shadow 0.15s ease, transform 0.1s ease;
@@ -1892,7 +1936,7 @@
             z-index: 30;
             min-width: 232px;
             background: #fff;
-            border: 1px solid var(--border-1);
+            border: 1px solid var(--border);
             border-top: 3px solid var(--brand-navy);
             border-radius: 8px;
             box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16);
@@ -1901,7 +1945,7 @@
         .sg-color-popover-hdr {
             padding: 12px 14px 10px;
             background: var(--brand-navy-50);
-            border-bottom: 1px solid var(--border-1);
+            border-bottom: 1px solid var(--border);
         }
         .sg-color-popover-ttl {
             font-family: var(--font-display);
@@ -1967,7 +2011,7 @@
 
         /* Custom color picker section */
         .sg-color-popover-custom {
-            border-top: 1px dashed var(--border-1);
+            border-top: 1px dashed var(--border);
             padding-top: 12px;
         }
         .sg-color-custom-row {
@@ -1975,7 +2019,7 @@
             align-items: center;
             gap: 10px;
             padding: 6px;
-            border: 1px solid var(--border-1);
+            border: 1px solid var(--border);
             border-radius: 6px;
             cursor: pointer;
             transition: border-color 0.15s ease, background 0.15s ease;

@@ -3,11 +3,17 @@
         'draft'     => ['label' => 'แบบร่าง',    'badge' => 'badge-gray'],
         'pending'   => ['label' => 'รออนุมัติ',  'badge' => 'badge-warn'],
         'published' => ['label' => 'อนุมัติแล้ว','badge' => 'badge-ok'],
-        'rejected'  => ['label' => 'ตีกลับ',     'badge' => 'badge-error'],
+        'rejected'  => ['label' => 'ตีกลับ',     'badge' => 'badge-err'],
     ];
 @endphp
 
 <x-app-layout title="จัดการรายวิชา">
+    <div class="co-hero">
+        <div class="co-hero-kicker">หัวหน้าวิชา / จัดการรายวิชา</div>
+        <h1 class="co-hero-title">รายวิชาที่รับผิดชอบ</h1>
+        <p class="co-hero-desc">ดูรายวิชาที่คุณดูแล จัดตารางสอน และติดตามสถานะการอนุมัติของแต่ละรายวิชา</p>
+    </div>
+
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap;">
         @if($availableYears->count() > 0)
             <form method="GET" action="{{ route('maker.course_offerings.index') }}" style="
@@ -16,7 +22,7 @@
                 border:2px solid var(--brand-navy);
                 border-radius:10px;
                 overflow:hidden;
-                background:var(--bg-1);
+                background:var(--surface);
             ">
                 <label for="year-filter" style="
                     display:inline-flex;
@@ -85,9 +91,9 @@
                     $tone = $c['tone'];
                     if ($tone === 'neutral') {
                         // Default/idle state — gray tone (เช่น แบบร่าง)
-                        $accent = '#64748b';
-                        $borderColor = '#cbd5e1';
-                        $labelColor = '#475569';
+                        $accent = 'var(--fg-3)';
+                        $borderColor = 'var(--border)';
+                        $labelColor = 'var(--fg-2)';
                     } elseif ($tone) {
                         $accent = "var(--status-{$tone})";
                         $borderColor = "var(--status-{$tone}-border)";
@@ -102,7 +108,7 @@
                 <div style="
                     position:relative;
                     padding:12px 14px;
-                    background:var(--bg-1);
+                    background:var(--surface);
                     border:2px solid {{ $borderColor }};
                     border-top:4px solid {{ $accent }};
                     border-radius:10px;
@@ -192,7 +198,7 @@
                             </td>
                             <td style="white-space:nowrap;">
                                 @if($phase === 'scheduling')
-                                    <span class="badge" style="background:oklch(90% 0.1 145);color:oklch(30% 0.15 145);border:1px solid oklch(70% 0.15 145);white-space:nowrap;">เปิดจัดตาราง</span>
+                                    <span class="badge badge-ok" style="white-space:nowrap;">เปิดจัดตาราง</span>
                                 @elseif($phase === 'published')
                                     <span class="badge badge-primary" style="white-space:nowrap;">เผยแพร่แล้ว</span>
                                 @else
@@ -251,16 +257,97 @@
     </div>
 
     <style>
+        .co-hero {
+            padding: 22px 24px;
+            margin-bottom: 16px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 26%, var(--border));
+            border-radius: var(--r-lg, 10px);
+            background:
+                radial-gradient(circle at 8% 0%, color-mix(in oklch, var(--brand-navy) 12%, transparent), transparent 32%),
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 6%, var(--surface)), var(--surface) 40%),
+                var(--surface);
+            box-shadow:
+                0 1px 2px rgba(0, 36, 84, 0.08),
+                0 18px 42px -30px rgba(0, 36, 84, 0.42),
+                inset 0 1px 0 color-mix(in oklch, var(--surface) 84%, transparent);
+            transition: border-color 160ms ease, box-shadow 160ms ease;
+        }
+        .co-hero:hover {
+            border-color: color-mix(in oklch, var(--brand-navy) 36%, var(--border));
+            box-shadow:
+                0 2px 6px rgba(0, 36, 84, 0.08),
+                0 22px 48px -30px rgba(0, 36, 84, 0.5),
+                inset 0 1px 0 color-mix(in oklch, var(--surface) 84%, transparent);
+        }
+        .co-hero-kicker {
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1.35;
+            color: color-mix(in oklch, var(--brand-navy) 52%, var(--fg-3));
+            margin-bottom: 4px;
+        }
+        .co-hero-title {
+            margin: 0;
+            font-family: var(--font-display);
+            font-size: 24px;
+            font-weight: 800;
+            line-height: 1.25;
+            color: var(--fg-1);
+        }
+        .co-hero-desc {
+            margin: 8px 0 0;
+            max-width: 72ch;
+            color: var(--fg-2);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
         .course-offerings-table {
             table-layout: auto;
         }
 
+        [data-testid="offering-summary"] > div {
+            background:
+                radial-gradient(circle at 92% 14%, color-mix(in oklch, var(--brand-navy) 10%, transparent), transparent 34%),
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 4%, var(--surface)), var(--surface)) !important;
+            border-width: 1px !important;
+            box-shadow:
+                0 1px 2px rgba(0, 36, 84, 0.08),
+                0 14px 30px -24px rgba(0, 36, 84, 0.46);
+            transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+        }
+
+        [data-testid="offering-summary"] > div:hover {
+            transform: translateY(-2px);
+            border-color: color-mix(in oklch, var(--brand-navy) 34%, var(--border)) !important;
+            box-shadow:
+                0 2px 5px rgba(0, 36, 84, 0.1),
+                0 20px 36px -24px rgba(0, 36, 84, 0.62);
+        }
+
+        .course-offerings-table th {
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 10%, var(--surface)), color-mix(in oklch, var(--brand-navy) 5%, var(--surface))) !important;
+            border-bottom-color: color-mix(in oklch, var(--brand-navy) 20%, var(--border)) !important;
+            color: color-mix(in oklch, var(--brand-navy) 76%, var(--fg-2));
+        }
+
         .course-offering-row {
             height: 104px;
+            transition: background 150ms ease, box-shadow 150ms ease;
         }
 
         .course-offering-row > td {
             vertical-align: middle;
+            border-bottom-color: color-mix(in oklch, var(--brand-navy) 10%, var(--border-subtle));
+        }
+
+        .course-offering-row:hover > td {
+            background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
+        }
+
+        .course-offering-row:hover > td:first-child {
+            box-shadow: inset 3px 0 0 var(--brand-navy);
         }
 
         .course-offering-action-cell {
@@ -293,6 +380,14 @@
             text-decoration: none;
             white-space: nowrap;
             box-sizing: border-box;
+            transition: transform 150ms ease, box-shadow 150ms ease, background 150ms ease, border-color 150ms ease, color 150ms ease;
+        }
+
+        .course-offering-action-link:hover,
+        .course-offering-action-link:focus-visible {
+            transform: translateY(-1px);
+            box-shadow: 0 12px 22px -18px rgba(0, 36, 84, 0.62);
+            outline: none;
         }
 
         .course-offering-action-link svg {
@@ -306,9 +401,15 @@
         }
 
         .course-offering-action-link.is-secondary {
-            background: var(--bg-1);
-            color: var(--fg-1);
-            border-color: var(--border);
+            background: var(--surface);
+            color: var(--brand-navy);
+            border-color: color-mix(in oklch, var(--brand-navy) 24%, var(--border));
+        }
+
+        .course-offering-action-link.is-secondary:hover,
+        .course-offering-action-link.is-secondary:focus-visible {
+            background: color-mix(in oklch, var(--brand-navy) 7%, var(--surface));
+            border-color: color-mix(in oklch, var(--brand-navy) 36%, var(--border));
         }
     </style>
 </x-app-layout>

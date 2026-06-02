@@ -2675,7 +2675,7 @@
                                         <label>สีประจำวิชา</label>
                                         <div x-data="{ open: false }" style="position: relative;">
                                             <button type="button" @click="open = !open"
-                                                style="width:100%;height:38px;border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;gap:10px;padding:0 10px;background:var(--bg-1);cursor:pointer;">
+                                                style="width:100%;height:38px;border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;gap:10px;padding:0 10px;background:var(--surface);cursor:pointer;">
                                                 <span :style="'width:18px;height:18px;border-radius:3px;background:'+currentCourse.color_code+';border:1px solid rgba(0,0,0,.15);flex-shrink:0'"></span>
                                                 <span style="font-size:12px;color:var(--fg-2);font-family:var(--font-mono);" x-text="currentCourse.color_code"></span>
                                             </button>
@@ -2740,7 +2740,7 @@
                                             x-text="(currentCourse.prerequisite_ids || []).length + ' วิชา'"></span>
                                     </div>
                                     <select name="prerequisite_ids[]" x-model="currentCourse.prerequisite_ids" multiple size="5"
-                                        style="min-height:132px;background:var(--bg-1);">
+                                        style="min-height:132px;background:var(--surface);">
                                         @foreach($courses as $candidateCourse)
                                             <option value="{{ $candidateCourse->id }}" :disabled="editCourseMode && String(currentCourse.id) === '{{ $candidateCourse->id }}'">
                                                 {{ $candidateCourse->course_code }} - {{ $candidateCourse->name_th ?? $candidateCourse->name_en }}
@@ -3017,7 +3017,7 @@
                                     <label>สีแสดงผล <span style="color: var(--status-conflict-fg)">*</span></label>
                                     <div x-data="{ open: false }" style="position: relative;">
                                         <button type="button" @click="open = !open"
-                                            style="width: 100%; height: 38px; border: 1px solid var(--border); border-radius: 4px; display: flex; align-items: center; gap: 10px; padding: 0 10px; background: var(--bg-1); cursor: pointer;">
+                                            style="width: 100%; height: 38px; border: 1px solid var(--border); border-radius: 4px; display: flex; align-items: center; gap: 10px; padding: 0 10px; background: var(--surface); cursor: pointer;">
                                             <span :style="'width:20px;height:20px;border-radius:3px;background:' + currentActivityType.color_code + ';border:1px solid rgba(0,0,0,.15);flex-shrink:0'"></span>
                                             <span style="font-size: 13px; color: var(--fg-2); font-family: var(--font-mono);" x-text="currentActivityType.color_code"></span>
                                         </button>
@@ -3387,7 +3387,7 @@
                             <div style="margin-bottom: 16px;">
                                 <label class="frm-lbl">เลือกไฟล์ CSV <span style="color: var(--status-conflict-fg)">*</span></label>
                                 <input type="file" name="csv_file" accept=".csv,.txt" required
-                                    style="display: block; width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: var(--bg-1);">
+                                    style="display: block; width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: var(--surface);">
                                 <div style="font-size: 12px; color: var(--fg-muted); margin-top: 4px;">รองรับไฟล์ภาษาไทย (UTF-8), ไม่เกิน 5 MB</div>
                             </div>
                             <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-2);">
@@ -3464,7 +3464,7 @@
                             <div style="margin-bottom: 16px;">
                                 <label class="frm-lbl">เลือกไฟล์ CSV <span style="color: var(--status-conflict-fg)">*</span></label>
                                 <input type="file" name="csv_file" accept=".csv,.txt" required
-                                    style="display: block; width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: var(--bg-1);">
+                                    style="display: block; width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: var(--surface);">
                                 <div style="font-size: 12px; color: var(--fg-muted); margin-top: 4px;">รองรับไฟล์ภาษาไทย (UTF-8), ไม่เกิน 5 MB</div>
                             </div>
                             <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-2);">
@@ -3785,7 +3785,7 @@
 
             .instructor-table tbody {
                 padding: 12px;
-                background: var(--bg-1);
+                background: var(--surface);
             }
 
             .instructor-table tbody tr {

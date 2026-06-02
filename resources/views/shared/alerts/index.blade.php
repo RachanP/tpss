@@ -45,13 +45,59 @@
             --alert-border-strong: oklch(76% 0.03 232);
             --alert-muted: oklch(42% 0.032 238);
             --alert-soft: oklch(97% 0.014 228);
+            width: 100%;
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 28px;
             display: flex;
             flex-direction: column;
             gap: 14px;
+            background:
+                radial-gradient(circle at 8% 0%, color-mix(in oklch, var(--brand-navy) 10%, transparent), transparent 30%),
+                linear-gradient(180deg,
+                    color-mix(in oklch, var(--brand-navy) 7%, var(--bg)) 0%,
+                    color-mix(in oklch, var(--brand-navy) 4%, var(--bg)) 34%,
+                    var(--bg) 100%);
+        }
+        .alert-hero {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            padding: 18px 20px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 36%, var(--border));
+            border-radius: var(--r-lg);
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 6%, var(--surface)), var(--surface) 64%),
+                var(--surface);
+            box-shadow:
+                0 1px 2px rgba(0, 36, 84, 0.08),
+                0 16px 34px -28px rgba(0, 36, 84, 0.34),
+                inset 0 1px 0 rgba(255, 255, 255, 0.74);
+        }
+        .alert-kicker {
+            width: fit-content;
+            margin-bottom: 6px;
+            padding: 3px 8px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 24%, var(--border));
+            border-radius: 999px;
+            background: color-mix(in oklch, var(--brand-navy) 6%, var(--surface));
+            color: color-mix(in oklch, var(--brand-navy) 84%, var(--fg-2));
+            font-size: 11.5px;
+            font-weight: 900;
+        }
+        .alert-hero-sub {
+            margin: 6px 0 0;
+            max-width: 78ch;
+            color: var(--fg-3);
+            font-size: 12.5px;
+            font-weight: 700;
+            line-height: 1.6;
         }
         .alert-title {
             margin: 0;
-            font-size: 22px;
+            font-family: var(--font-display);
+            font-size: 24px;
             font-weight: 950;
             color: var(--brand-navy);
             line-height: 1.2;
@@ -71,60 +117,102 @@
         .alert-summary-container {
             display: flex;
             flex-direction: column;
-            gap: 12px;
-        }
-        .alert-summary-total-card {
-            display: grid;
-            grid-template-columns: 44px 1fr;
-            align-items: center;
-            gap: 16px;
-            padding: 16px 20px;
-            border: 1px solid var(--alert-border);
-            border-left: 4px solid oklch(65% 0.12 50);
-            border-radius: 10px;
-            background: var(--surface);
-            box-shadow: 0 1px 3px oklch(0% 0 0 / 0.04);
-        }
-        .alert-summary-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
             gap: 10px;
         }
-        .alert-summary-card {
-            display: grid;
-            grid-template-columns: 40px 1fr;
+        .alert-summary-total-card {
+            display: flex;
             align-items: center;
             gap: 12px;
-            padding: 14px 16px;
-            border: 1px solid var(--alert-border);
-            border-top: 3px solid var(--alert-border-strong);
-            border-radius: 10px;
-            background: var(--surface);
-            box-shadow: 0 1px 3px oklch(0% 0 0 / 0.04);
-            transition: transform 0.15s ease;
+            padding: 12px 16px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 30%, var(--border));
+            border-radius: var(--r-lg);
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 5%, var(--surface)), var(--surface) 80%),
+                var(--surface);
+            box-shadow:
+                0 1px 2px rgba(0, 36, 84, 0.07),
+                0 14px 30px -26px rgba(0, 36, 84, 0.32),
+                inset 0 1px 0 rgba(255, 255, 255, 0.74);
+            transition: border-color 160ms ease, box-shadow 160ms ease;
         }
-        .alert-summary-card:hover { transform: translateY(-1px); }
+        .alert-summary-total-card:hover {
+            border-color: color-mix(in oklch, var(--brand-navy) 42%, var(--border));
+            box-shadow:
+                0 1px 3px rgba(0, 36, 84, 0.09),
+                0 18px 36px -28px rgba(0, 36, 84, 0.38),
+                inset 0 1px 0 rgba(255, 255, 255, 0.82);
+        }
+        .alert-summary-grid {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            padding: 8px 10px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 20%, var(--border));
+            border-radius: var(--r-lg);
+            background: color-mix(in oklch, var(--brand-navy) 3%, var(--surface));
+        }
+        .alert-summary-card {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 38px;
+            padding: 6px 10px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 22%, var(--border));
+            border-radius: 999px;
+            background: var(--surface);
+            box-shadow: 0 1px 2px rgba(0, 36, 84, 0.05);
+            transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+        }
+        .alert-summary-card:hover {
+            border-color: color-mix(in oklch, var(--brand-navy) 40%, var(--border));
+            background: color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
+            box-shadow: 0 8px 18px -16px rgba(0, 36, 84, 0.32);
+        }
         .alert-summary-icon {
             display: inline-flex; align-items: center; justify-content: center;
-            width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
+            width: 28px; height: 28px; border-radius: 9px; flex-shrink: 0;
+            box-shadow: 0 1px 2px rgba(0, 36, 84, 0.08);
         }
-        .alert-summary-value { font-size: 26px; font-weight: 950; line-height: 1.05; color: var(--brand-navy); font-variant-numeric: tabular-nums; }
-        .alert-summary-label { color: var(--fg-1); font-size: 12.5px; font-weight: 900; }
-        .alert-summary-sub { color: var(--alert-muted); font-size: 11.5px; font-weight: 700; margin-top: 3px; line-height: 1.4; }
+        .alert-summary-card > div:last-child {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 6px;
+            min-width: 0;
+        }
+        .alert-summary-value { font-size: 18px; font-weight: 950; line-height: 1.05; color: var(--brand-navy); font-variant-numeric: tabular-nums; }
+        .alert-summary-label { color: var(--fg-1); font-size: 12px; font-weight: 900; }
+        .alert-summary-sub { color: var(--alert-muted); font-size: 12px; font-weight: 700; margin-top: 2px; line-height: 1.45; }
         .alert-group {
-            border: 1px solid var(--alert-border);
-            border-radius: 10px;
-            background: var(--surface);
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 34%, var(--border));
+            border-radius: var(--r-lg);
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 7%, var(--surface)), var(--surface) 44%),
+                var(--surface);
             overflow: hidden;
-            box-shadow: 0 1px 3px oklch(0% 0 0 / 0.05);
+            box-shadow:
+                0 1px 2px rgba(0, 36, 84, 0.08),
+                0 24px 52px -38px rgba(0, 36, 84, 0.42),
+                inset 0 1px 0 rgba(255, 255, 255, 0.74);
+            transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+        }
+        .alert-group:hover {
+            transform: translateY(-1px);
+            border-color: color-mix(in oklch, var(--brand-navy) 50%, var(--border));
+            box-shadow:
+                0 2px 5px rgba(0, 36, 84, 0.1),
+                0 28px 58px -40px rgba(0, 36, 84, 0.5),
+                inset 0 1px 0 rgba(255, 255, 255, 0.78);
         }
         .alert-group-head {
             display: flex;
             align-items: center;
             gap: 10px;
-            padding: 12px 16px;
-            border-bottom: 1px solid var(--alert-border);
-            background: var(--alert-soft);
+            min-height: 76px;
+            padding: 14px 18px;
+            border-bottom: 1px solid color-mix(in oklch, var(--brand-navy) 24%, var(--border));
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 10%, var(--surface)), color-mix(in oklch, var(--brand-navy) 4%, var(--surface)));
         }
         .alert-group-head.is-collapsed {
             border-bottom-color: transparent;
@@ -152,13 +240,13 @@
             display: grid;
             grid-template-columns: 1fr auto;
             gap: 12px;
-            padding: 13px 16px;
-            border-bottom: 1px solid var(--alert-border);
+            padding: 15px 18px;
+            border-bottom: 1px solid color-mix(in oklch, var(--brand-navy) 16%, var(--alert-border));
             align-items: start;
             transition: background 0.12s;
         }
         .alert-item:last-child { border-bottom: none; }
-        .alert-item:hover { background: oklch(98.5% 0.006 232); }
+        .alert-item:hover { background: color-mix(in oklch, var(--brand-navy) 4%, var(--surface)); }
         .alert-item-label {
             font-size: 13px;
             font-weight: 900;
@@ -182,17 +270,21 @@
             align-items: center;
             gap: 8px;
             border-radius: 8px;
-            border: 1px solid var(--alert-border-strong);
-            background-color: var(--surface);
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 34%, var(--alert-border));
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--surface) 92%, white), color-mix(in oklch, var(--brand-navy) 5%, var(--surface)));
             color: var(--brand-navy);
+            box-shadow: 0 1px 2px rgba(0, 36, 84, 0.06);
             transition: all 0.15s ease;
             text-decoration: none;
             cursor: pointer;
         }
         .alert-item-action .btn:hover {
-            background-color: var(--alert-soft);
-            border-color: var(--brand-navy);
+            background-color: color-mix(in oklch, var(--brand-navy) 6%, var(--surface));
+            border-color: color-mix(in oklch, var(--brand-navy) 58%, var(--alert-border));
             color: var(--brand-navy);
+            transform: translateY(-1px);
+            box-shadow: 0 9px 20px -16px rgba(0, 36, 84, 0.42);
         }
         .alert-item-action .btn:active,
         .alert-item-action .btn:focus,
@@ -213,7 +305,7 @@
             gap: 6px;
             padding: 12px 16px;
             border-top: 1px solid var(--alert-border);
-            background: oklch(98.5% 0.006 232);
+            background: color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
         }
         .alert-page-btn {
             min-width: 34px;
@@ -287,13 +379,38 @@
             padding: 4px 10px;
             border: 1px solid var(--alert-border-strong);
             border-radius: 8px;
-            background: var(--surface);
-            color: var(--fg-1);
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--surface) 92%, white), color-mix(in oklch, var(--brand-navy) 5%, var(--surface)));
+            color: var(--brand-navy);
             font-size: 13px;
             font-weight: 800;
             cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0, 36, 84, 0.06);
+            transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+        }
+        .alert-year-select select:hover,
+        .alert-year-select select:focus-visible {
+            border-color: color-mix(in oklch, var(--brand-navy) 56%, var(--alert-border));
+            outline: none;
+            transform: translateY(-1px);
+            box-shadow: 0 10px 22px -18px rgba(0, 36, 84, 0.42);
         }
         @media (max-width: 640px) {
+            .alert-page {
+                padding: 14px;
+            }
+            .alert-hero {
+                flex-direction: column;
+                padding: 18px;
+            }
+            .alert-year-select {
+                width: 100%;
+                justify-content: space-between;
+            }
+            .alert-year-select select {
+                flex: 1;
+                min-width: 0;
+            }
             .alert-item {
                 grid-template-columns: 1fr;
                 gap: 12px;
@@ -310,21 +427,21 @@
                 font-size: 14px;
             }
             .alert-summary-grid {
-                grid-template-columns: 1fr 1fr;
+                display: flex;
                 gap: 8px;
             }
             .alert-summary-card {
-                padding: 12px;
+                padding: 6px 9px;
                 gap: 8px;
             }
             .alert-summary-value {
-                font-size: 22px;
+                font-size: 17px;
             }
             .alert-summary-label {
                 font-size: 11.5px;
             }
             .alert-summary-sub {
-                font-size: 10px;
+                font-size: 11.5px;
             }
             .alert-summary-total-card {
                 padding: 14px 16px;
@@ -333,12 +450,13 @@
         }
         @media (max-width: 480px) {
             .alert-summary-grid {
-                grid-template-columns: 1fr;
+                align-items: stretch;
+            }
+            .alert-summary-card {
+                flex: 1 1 calc(50% - 8px);
             }
             .alert-summary-total-card {
-                grid-template-columns: 1fr;
-                text-align: center;
-                justify-items: center;
+                text-align: left;
                 gap: 8px;
             }
             .alert-group-head {
@@ -357,7 +475,157 @@
                 padding: 10px 12px;
             }
         }
-    </style>
+    .alert-hero {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) minmax(240px, auto) !important;
+        align-items: center !important;
+        gap: 22px !important;
+        padding: 18px 22px !important;
+    }
+
+    .alert-hero > div:first-child {
+        min-width: 0;
+    }
+
+    .alert-hero > form.alert-year-select {
+        justify-self: end;
+    }
+
+    .alert-year-select {
+        width: 100%;
+        max-width: 360px;
+        padding: 10px !important;
+        border: 1px solid rgba(15, 79, 128, 0.22) !important;
+        border-radius: 10px !important;
+        background: linear-gradient(180deg, #ffffff, #f4f8fb) !important;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.85), 0 8px 18px rgba(0, 44, 91, 0.08);
+    }
+
+    .alert-year-select label {
+        white-space: nowrap;
+    }
+
+    .alert-year-select select {
+        min-width: 0 !important;
+        flex: 1 1 auto;
+    }
+
+    .alert-summary-container {
+        display: grid !important;
+        grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.35fr);
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .alert-summary-total-card {
+        min-height: 88px;
+        height: 100%;
+    }
+
+    .alert-summary-grid {
+        align-content: stretch;
+        height: 100%;
+    }
+
+    .alert-summary-card {
+        flex-basis: 190px;
+    }
+
+    @media (max-width: 980px) {
+        .alert-hero {
+            grid-template-columns: 1fr !important;
+            align-items: start !important;
+        }
+
+        .alert-hero > form.alert-year-select {
+            justify-self: stretch;
+        }
+
+        .alert-year-select {
+            max-width: none;
+        }
+
+        .alert-summary-container {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .alert-hero {
+            padding: 16px !important;
+            gap: 14px !important;
+        }
+
+        .alert-year-select {
+            flex-wrap: wrap;
+        }
+
+        .alert-year-select label,
+        .alert-year-select select {
+            width: 100%;
+        }
+
+        .alert-summary-total-card {
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .alert-summary-card {
+            flex: 1 1 calc(50% - 8px);
+            min-width: 150px;
+        }
+    }
+    .alert-summary-container {
+        padding: 14px;
+        border: 1px solid rgba(15, 79, 128, 0.34);
+        border-radius: 10px;
+        background:
+            linear-gradient(135deg, rgba(255,255,255,0.98), rgba(244,248,251,0.94)),
+            linear-gradient(180deg, rgba(0,44,91,0.05), rgba(255,255,255,0));
+        box-shadow: 0 12px 28px rgba(0, 44, 91, 0.10);
+    }
+
+    .alert-summary-total-card {
+        border-color: rgba(15, 79, 128, 0.18) !important;
+        background: linear-gradient(135deg, #ffffff, #f7fafc) !important;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.9) !important;
+        transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+    }
+
+    .alert-summary-grid {
+        padding-left: 2px;
+    }
+
+    .alert-summary-card {
+        border-color: rgba(15, 79, 128, 0.24) !important;
+        background: linear-gradient(180deg, #ffffff, #f6f9fb) !important;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 6px 14px rgba(0, 44, 91, 0.06) !important;
+        transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+    }
+
+    .alert-summary-card:hover,
+    .alert-summary-total-card:hover {
+        transform: translateY(-1px);
+        border-color: rgba(0, 44, 91, 0.42) !important;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 10px 22px rgba(0, 44, 91, 0.10) !important;
+    }
+
+    @media (max-width: 980px) {
+        .alert-summary-container {
+            padding: 12px;
+        }
+
+        .alert-summary-grid {
+            padding-left: 0;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .alert-summary-container {
+            gap: 10px;
+        }
+    }
+</style>
     <script>
         window.tpssAlertGroup = function(total) {
             return {
@@ -400,15 +668,19 @@
 
     <div class="alert-page">
         {{-- Header --}}
-        <section style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; padding:0 4px;">
-            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-                <h1 class="alert-title">การแจ้งเตือน</h1>
-                @if($selectedAcademicYear)
-                    <span class="alert-year-inline">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                        ปีการศึกษา {{ $selectedAcademicYear->name }}
-                    </span>
-                @endif
+        <section class="alert-hero">
+            <div>
+                <div class="alert-kicker">ตรวจรายการตารางสอน</div>
+                <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                    <h1 class="alert-title">การแจ้งเตือน</h1>
+                    @if($selectedAcademicYear && $availableYears->count() <= 1)
+                        <span class="alert-year-inline">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                            ปีการศึกษา {{ $selectedAcademicYear->name }}
+                        </span>
+                    @endif
+                </div>
+                <p class="alert-hero-sub">ตรวจรายการชนกัน ข้อมูลไม่ครบ และเงื่อนไขที่ควรแก้ก่อนส่งตารางสอนเพื่ออนุมัติ</p>
             </div>
             @if($availableYears->count() > 1)
                 <form method="GET" class="alert-year-select">
@@ -432,8 +704,8 @@
         @endphp
             <section class="alert-summary-container">
                 {{-- Total Card --}}
-                <div class="alert-summary-total-card" style="border-left-color: {{ $totFg }};">
-                    <div class="alert-summary-icon" style="background:{{ $totBg }}; color:{{ $totFg }}; width: 44px; height: 44px;">
+                <div class="alert-summary-total-card">
+                    <div class="alert-summary-icon" style="background:{{ $totBg }}; color:{{ $totFg }}; width: 36px; height: 36px;">
                         @if($hasWarn)
                             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                         @else
@@ -442,8 +714,8 @@
                     </div>
                     <div>
                         <div style="display: flex; align-items: baseline; gap: 8px;">
-                            <span class="alert-summary-value" style="color:{{ $totFg }}; font-size: 28px;">{{ $totalWarningCount }}</span>
-                            <span class="alert-summary-label" style="font-size: 14px; font-weight: 900;">รายการแจ้งเตือนทั้งหมด</span>
+                            <span class="alert-summary-value" style="color:{{ $totFg }}; font-size: 24px;">{{ $totalWarningCount }}</span>
+                            <span class="alert-summary-label" style="font-size: 13.5px; font-weight: 900;">รายการแจ้งเตือนทั้งหมด</span>
                         </div>
                         <div class="alert-summary-sub">{{ $hasWarn ? 'กรุณาตรวจสอบรายละเอียดและแก้ไขข้อมูลตารางสอนให้ครบถ้วนก่อนส่งอนุมัติ' : 'ตารางสอนทุกรายการมีข้อมูลครบถ้วน — ไม่พบปัญหาที่ต้องแก้ไข' }}</div>
                     </div>
@@ -457,7 +729,7 @@
                             $colors = $warningTypeColors[$type];
                             $isZero = $count === 0;
                         @endphp
-                        <div class="alert-summary-card" style="border-top: 3px solid {{ $isZero ? 'var(--alert-border)' : $colors['border'] }}; opacity: {{ $isZero ? '0.55' : '1' }}; transition: opacity 0.15s ease;">
+                        <div class="alert-summary-card" style="opacity: {{ $isZero ? '0.62' : '1' }}; transition: opacity 0.15s ease;">
                             <div class="alert-summary-icon" style="background:{{ $isZero ? 'var(--alert-soft)' : $colors['bg'] }}; color:{{ $isZero ? 'var(--alert-muted)' : $colors['fg'] }};">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">{!! $colors['svg'] !!}</svg>
                             </div>

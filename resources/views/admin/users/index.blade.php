@@ -1036,7 +1036,7 @@
                                         </div>
 
                                     <div x-show="hasInstructor"
-                                        style="background: var(--bg-1); border-radius: 12px; padding: 20px; border: 1px solid var(--border); margin-top: 8px;">
+                                        style="background: var(--surface); border-radius: 12px; padding: 20px; border: 1px solid var(--border); margin-top: 8px;">
                                         <div
                                             style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
                                             <div>
@@ -1175,7 +1175,7 @@
                             <div style="margin-bottom: 16px;">
                                 <label class="frm-lbl">เลือกไฟล์ CSV <span style="color: var(--status-conflict-fg)">*</span></label>
                                 <input type="file" name="csv_file" accept=".csv,.txt" required
-                                    style="display: block; width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: var(--bg-1);">
+                                    style="display: block; width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: var(--surface);">
                                 <div style="font-size: 12px; color: var(--fg-muted); margin-top: 4px;">รองรับไฟล์ภาษาไทย (UTF-8), ไม่เกิน 5 MB, แนะนำไม่เกิน 500 แถว</div>
                             </div>
                             <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-2);">

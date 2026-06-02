@@ -689,7 +689,7 @@
                                 </tbody>
                             </table>
                         </div>
-                        <div style="padding: 16px 20px; border-top: 1px solid var(--border); background: var(--bg-1); text-align: right;">
+                        <div style="padding: 16px 20px; border-top: 1px solid var(--border); background: var(--surface); text-align: right;">
                             <button type="submit" class="btn btn-primary">
                                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
                                     <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
@@ -743,7 +743,7 @@
             display: flex;
             align-items: center;
             gap: 4px;
-            background: var(--bg-1);
+            background: var(--surface);
             padding: 4px 8px;
             border-radius: 6px;
             border: 1px solid var(--border);

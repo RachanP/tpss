@@ -487,18 +487,41 @@
             align-items: center;
             gap: 10px;
             padding: 16px 18px;
-            border: 1px solid var(--schedule-border);
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 26%, var(--border));
             border-radius: 10px;
-            background: var(--surface);
-            box-shadow: 0 1px 3px oklch(0% 0 0 / 0.05);
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 5%, var(--surface)), var(--surface) 34%),
+                var(--surface);
+            box-shadow:
+                0 1px 3px rgba(0, 36, 84, 0.06),
+                inset 0 1px 0 color-mix(in oklch, var(--surface) 80%, transparent);
+            transition: border-color 160ms ease, box-shadow 160ms ease;
             flex-wrap: wrap;
         }
+        .schedule-toolbar:hover {
+            border-color: color-mix(in oklch, var(--brand-navy) 36%, var(--border));
+            box-shadow:
+                0 2px 6px rgba(0, 36, 84, 0.08),
+                0 18px 38px -28px rgba(0, 36, 84, 0.46);
+        }
         .schedule-title {
-            font-size: 16px;
-            font-weight: 900;
-            color: var(--fg-1);
+            font-family: var(--font-display);
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--brand-navy);
             margin-right: auto;
             padding-right: 18px;
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+        }
+        .schedule-title::before {
+            content: "";
+            width: 4px;
+            height: 18px;
+            border-radius: 999px;
+            background: var(--brand-navy);
+            box-shadow: 0 0 0 3px color-mix(in oklch, var(--brand-navy) 14%, transparent);
         }
         .schedule-toolbar .week-nav {
             display: none !important;
@@ -1391,6 +1414,56 @@
             border-color: oklch(72% 0.05 245);
             color: var(--brand-navy);
         }
+        .schedule-shell :where(.grid-activity-top, .month-activity-tags) {
+            align-items: center;
+            gap: 5px;
+            line-height: 1;
+        }
+        .schedule-shell :where(
+            .grid-activity-top,
+            .month-activity-tags,
+            .co-groups-list,
+            .co-col-activity
+        ) :where(
+            .activity-tag,
+            .co-activity-type-badge,
+            .co-group-badge,
+            .month-group-summary,
+            .series-badge,
+            .schedule-incomplete-badge,
+            .schedule-conflict-pill,
+            .badge
+        ) {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            min-height: 24px;
+            padding-block: 3px;
+            line-height: 1;
+            vertical-align: middle;
+            margin-top: 0;
+            margin-bottom: 0;
+        }
+        .schedule-shell :where(.grid-activity-top, .month-activity-tags) :where(
+            .activity-tag,
+            .month-group-summary,
+            .series-badge,
+            .schedule-incomplete-badge,
+            .schedule-conflict-pill
+        ) {
+            min-height: 22px;
+            font-size: 10.5px;
+        }
+        .schedule-shell :where(.schedule-incomplete-badge, .schedule-conflict-pill, .series-badge) > svg {
+            width: 13px;
+            height: 13px;
+            flex: 0 0 auto;
+            align-self: center;
+        }
+        .schedule-shell .co-activity-topic-main + .co-activity-type-badge {
+            margin-top: 6px;
+        }
         /* Series tooltip variant — same structure as conflict-tt but blue-tinted */
         .series-tt {
             border-color: oklch(79% 0.055 245);
@@ -1572,9 +1645,9 @@
             border: 1px solid transparent;
         }
         .copy-week-badge.is-ready {
-            border-color: color-mix(in oklch, var(--status-ok-border, #16a34a) 60%, transparent);
-            background: var(--status-ok-bg, #ecfdf5);
-            color: var(--status-ok-fg, #166534);
+            border-color: color-mix(in oklch, var(--status-success-border) 60%, transparent);
+            background: var(--status-success-bg);
+            color: var(--status-success-fg);
         }
         .copy-week-badge.is-blocked {
             border-color: var(--status-conflict-border);
@@ -2051,7 +2124,7 @@
             pointer-events: none;
         }
         /* ── V2: วันพิเศษในปฏิทิน (วันหยุด / สัปดาห์สอบ / ปิดภาคเรียน) ── */
-        .grid-cell.day-holiday { background: oklch(97% 0.035 85); }
+        .grid-cell.day-holiday { background: linear-gradient(180deg, oklch(99% 0.018 82), oklch(97.5% 0.026 82)); }
         .grid-cell.day-exam    { background: oklch(93.5% 0.004 232); cursor: not-allowed; }
         .grid-cell.day-break   { background: oklch(95.5% 0.008 250); cursor: not-allowed; }
         .grid-cell.day-offterm { background: oklch(95% 0.003 250); cursor: not-allowed; opacity: 0.85; }
@@ -2060,22 +2133,42 @@
         .grid-cell.grid-head.day-break,
         .grid-cell.grid-head.day-offterm { color: oklch(50% 0.012 232) !important; }
         .grid-day-chip {
-            display: block; max-width: 100%; margin: 3px auto 0; padding: 0 6px; border-radius: 2px;
-            font-size: 9.5px; font-weight: 700; line-height: 15px; letter-spacing: 0.02em;
+            display: block; max-width: 100%; margin: 3px auto 0; padding: 2px 7px; border-radius: 6px;
+            font-size: 9.5px; font-weight: 800; line-height: 1.35; letter-spacing: 0;
             overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
-        .grid-day-chip.is-holiday { background: oklch(90% 0.07 80); color: oklch(42% 0.1 65); }
+        .grid-day-chip.is-holiday { background: oklch(95% 0.04 82); color: oklch(43% 0.09 62); border: 1px solid oklch(86% 0.06 76); }
         .grid-day-chip.is-exam    { background: oklch(88% 0.006 232); color: oklch(40% 0.014 232); }
         .grid-day-chip.is-break   { background: oklch(90% 0.01 250); color: oklch(42% 0.014 250); }
         .grid-day-chip.is-offterm { background: oklch(89% 0.006 255); color: oklch(42% 0.03 262); }
-        .month-calendar-day.day-holiday { background: oklch(97.5% 0.03 85); }
+        .month-calendar-day.day-holiday {
+            background:
+                linear-gradient(180deg, oklch(99% 0.016 82), oklch(97.5% 0.024 82));
+            box-shadow: inset 3px 0 0 oklch(78% 0.08 72);
+        }
         .month-calendar-day.day-exam    { background: oklch(94.5% 0.004 232); }
         .month-calendar-day.day-break   { background: oklch(96% 0.008 250); }
         .month-day-flag {
-            font-size: 9.5px; font-weight: 700; padding: 0 5px; border-radius: 2px; line-height: 14px;
-            display: inline-block; margin-top: 2px;
+            font-size: 10px; font-weight: 850; padding: 5px 8px; border-radius: 7px; line-height: 1.35;
+            display: flex; align-items: flex-start; gap: 6px; width: 100%; margin: 2px 0 7px;
+            white-space: normal; overflow-wrap: anywhere;
         }
-        .month-day-flag.is-holiday { background: oklch(90% 0.07 80); color: oklch(42% 0.1 65); }
+        .month-day-flag::before {
+            content: "";
+            width: 6px;
+            height: 6px;
+            flex: 0 0 auto;
+            margin-top: 5px;
+            border-radius: 999px;
+            background: currentColor;
+            opacity: 0.75;
+        }
+        .month-day-flag.is-holiday {
+            background: linear-gradient(180deg, oklch(96% 0.038 82), oklch(93.5% 0.048 82));
+            color: oklch(42% 0.1 62);
+            border: 1px solid oklch(84% 0.065 76);
+            box-shadow: 0 4px 10px oklch(55% 0.08 70 / 0.08);
+        }
         .month-day-flag.is-exam    { background: oklch(88% 0.006 232); color: oklch(40% 0.014 232); }
         .month-day-flag.is-break   { background: oklch(90% 0.01 250); color: oklch(42% 0.014 250); }
         .month-day-flag.is-offterm { background: oklch(89% 0.006 255); color: oklch(42% 0.03 262); }
@@ -3420,6 +3513,11 @@
             color: var(--fg-3);
             border: 1px solid var(--schedule-border);
         }
+        .month-calendar-day.day-holiday .month-day-number {
+            background: oklch(96% 0.03 82);
+            color: oklch(38% 0.1 62);
+            border: 1px solid oklch(86% 0.055 76);
+        }
         .month-day-count {
             color: var(--schedule-muted);
             font-size: 10.5px;
@@ -3432,6 +3530,10 @@
             min-height: 0;
             overflow: visible;
             padding-right: 2px;
+        }
+        .month-calendar-day.day-holiday .month-empty {
+            color: oklch(58% 0.055 70);
+            font-weight: 850;
         }
         .month-activity {
             width: 100%;
@@ -3856,6 +3958,85 @@
             border-radius: 7px;
             padding: 4px 14px;
         }
+        /* Schedule modals use a custom structure; keep the shell fixed and scroll only the body. */
+        .schedule-modal-backdrop {
+            align-items: flex-start !important;
+            overflow-y: auto !important;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+            padding-top: 18px !important;
+            padding-bottom: 18px !important;
+        }
+        .schedule-modal {
+            display: flex !important;
+            flex-direction: column !important;
+            max-height: calc(100dvh - 36px) !important;
+            overflow: hidden !important;
+            border-radius: 12px !important;
+        }
+        .schedule-modal > .modal-handle {
+            flex: 0 0 auto !important;
+            position: static !important;
+            display: block !important;
+            padding: 0 !important;
+            overflow: visible !important;
+            border-radius: 999px !important;
+            min-height: 3px !important;
+            max-height: 3px !important;
+        }
+        .schedule-modal > .modal-head,
+        .schedule-modal > .modal-head-detail {
+            position: relative !important;
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: flex-start !important;
+            justify-content: space-between !important;
+            flex: 0 0 auto !important;
+            min-height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;
+            padding-right: 72px !important;
+        }
+        .schedule-modal > .modal-head .modal-close,
+        .schedule-modal > .modal-head-detail .modal-close {
+            position: absolute !important;
+            top: 12px !important;
+            right: 16px !important;
+            left: auto !important;
+            width: 40px !important;
+            height: 40px !important;
+            min-width: 40px !important;
+            min-height: 40px !important;
+            margin: 0 !important;
+            border-radius: 10px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            line-height: 1 !important;
+            z-index: 5 !important;
+        }
+        .schedule-modal > form {
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            overflow: hidden !important;
+        }
+        .schedule-modal > form > .modal-form-body,
+        .schedule-modal > .modal-form-body {
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+            max-height: none !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+        }
+        .schedule-modal > form > .schedule-live-block,
+        .schedule-modal > form > .modal-actions,
+        .schedule-modal > .modal-actions {
+            flex: 0 0 auto !important;
+        }
         .schedule-action-menu {
             position: relative;
             display: inline-flex;
@@ -4252,7 +4433,7 @@
         .tp-drop {
             position: fixed;
             background: var(--surface, #fff);
-            border: 1px solid var(--schedule-border, #e2e8f0);
+            border: 1px solid var(--border);
             border-radius: 8px;
             box-shadow: 0 6px 24px rgba(0,0,0,0.13);
             z-index: 10000;
@@ -4481,6 +4662,225 @@
         @keyframes spin-slow {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
+        }
+
+        /* Dashboard-aligned polish for schedule pages */
+        .schedule-shell {
+            --schedule-navy-shadow: rgba(0, 42, 92, 0.16);
+            --schedule-navy-shadow-strong: rgba(0, 42, 92, 0.26);
+            --schedule-surface-tint: color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
+            --schedule-surface-tint-strong: color-mix(in oklch, var(--brand-navy) 7%, var(--surface));
+            padding: clamp(12px, 1.8vw, 22px);
+            border-radius: 16px;
+            background:
+                radial-gradient(circle at 8% 0%, color-mix(in oklch, var(--brand-navy) 10%, transparent), transparent 30%),
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 7%, var(--bg)) 0%, color-mix(in oklch, var(--brand-navy) 3%, var(--bg)) 52%, var(--bg) 100%);
+        }
+
+        .schedule-shell :where(.schedule-toolbar, .card) {
+            border-color: color-mix(in oklch, var(--brand-navy) 32%, var(--schedule-border));
+            background:
+                linear-gradient(180deg, var(--schedule-surface-tint-strong) 0%, var(--surface) 44%),
+                var(--surface);
+            box-shadow:
+                0 1px 2px rgba(0, 42, 92, 0.08),
+                0 18px 42px -30px var(--schedule-navy-shadow-strong),
+                inset 0 1px 0 rgba(255, 255, 255, 0.72);
+            transition: border-color 170ms ease, box-shadow 170ms ease, transform 170ms ease;
+        }
+
+        .schedule-shell :where(.schedule-toolbar, .card):hover {
+            border-color: color-mix(in oklch, var(--brand-navy) 48%, var(--schedule-border));
+            box-shadow:
+                0 2px 5px rgba(0, 42, 92, 0.1),
+                0 24px 54px -34px var(--schedule-navy-shadow-strong),
+                inset 0 1px 0 rgba(255, 255, 255, 0.78);
+        }
+
+        .schedule-shell :where(.card-hdr, .schedule-card-hdr) {
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 9%, var(--surface)) 0%, color-mix(in oklch, var(--brand-navy) 4%, var(--surface)) 100%);
+            border-bottom-color: color-mix(in oklch, var(--brand-navy) 28%, var(--schedule-border));
+        }
+
+        .schedule-shell .schedule-title,
+        .schedule-shell .card-ttl {
+            color: var(--brand-navy);
+            text-shadow: 0 1px 0 rgba(255, 255, 255, 0.72);
+        }
+
+        .schedule-shell :where(.schedule-filter-bar, .co-sched-table-wrap) {
+            background: linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 3%, var(--surface)), var(--surface));
+            border-color: color-mix(in oklch, var(--brand-navy) 22%, var(--schedule-border));
+        }
+
+        .schedule-shell :where(.schedule-filter-control, .week-filter-trigger, .sched-datenav-input, .sched-datenav-arrow, .week-btn, .period-toggle a, .period-toggle button, .schedule-toggle button, .weekend-toggle) {
+            border-color: color-mix(in oklch, var(--brand-navy) 34%, var(--schedule-border));
+            background: linear-gradient(180deg, color-mix(in oklch, var(--surface) 88%, white), var(--schedule-surface-tint));
+            color: var(--brand-navy);
+            box-shadow: 0 1px 2px rgba(0, 42, 92, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+            transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease, background 160ms ease, color 160ms ease;
+        }
+
+        .schedule-shell :where(.schedule-filter-control:hover, .week-filter-trigger:hover, .sched-datenav-arrow:hover, .week-btn:hover, .period-toggle a:hover, .period-toggle button:hover, .schedule-toggle button:hover, .weekend-toggle:hover) {
+            border-color: color-mix(in oklch, var(--brand-navy) 58%, var(--schedule-border));
+            background: linear-gradient(180deg, var(--surface), color-mix(in oklch, var(--brand-navy) 6%, var(--surface)));
+            box-shadow: 0 9px 20px -16px var(--schedule-navy-shadow-strong), inset 0 1px 0 rgba(255, 255, 255, 0.78);
+            transform: translateY(-1px);
+        }
+
+        .schedule-shell :where(.schedule-filter-control:focus, .schedule-filter-control:focus-visible, .week-filter-trigger:focus-visible, .sched-datenav-arrow:focus-visible, .week-btn:focus-visible, .period-toggle a:focus-visible, .period-toggle button:focus-visible, .schedule-toggle button:focus-visible, .weekend-toggle:focus-visible) {
+            outline: none;
+            border-color: var(--brand-navy);
+            box-shadow:
+                0 0 0 3px color-mix(in oklch, var(--brand-navy) 16%, transparent),
+                0 12px 26px -18px var(--schedule-navy-shadow-strong);
+        }
+
+        .schedule-shell :where(.period-toggle a.is-active, .period-toggle button.is-active, .schedule-toggle button.is-active, .weekend-toggle.is-active) {
+            border-color: var(--brand-navy);
+            background: linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 88%, #0b2545), var(--brand-navy));
+            color: var(--surface);
+            box-shadow: 0 10px 24px -16px rgba(0, 42, 92, 0.52);
+        }
+
+        /* Toolbar selects: align text, height, and caret with adjacent buttons. */
+        .schedule-toolbar .term-filter-wrap,
+        .schedule-card-actions .term-filter-wrap,
+        .schedule-card-actions .instructor-filter-wrap,
+        .schedule-toolbar .instructor-filter-wrap {
+            position: relative;
+            display: inline-flex;
+            align-items: stretch;
+            flex: 0 0 auto;
+            height: 42px;
+        }
+        .schedule-toolbar .term-filter-wrap,
+        .schedule-card-actions .term-filter-wrap {
+            min-width: 138px;
+        }
+        .schedule-toolbar .instructor-filter-wrap,
+        .schedule-card-actions .instructor-filter-wrap {
+            min-width: 168px;
+        }
+        .schedule-toolbar .term-filter-wrap::after,
+        .schedule-toolbar .instructor-filter-wrap::after,
+        .schedule-card-actions .term-filter-wrap::after,
+        .schedule-card-actions .instructor-filter-wrap::after {
+            content: "";
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            width: 8px;
+            height: 8px;
+            border-right: 2px solid var(--brand-navy);
+            border-bottom: 2px solid var(--brand-navy);
+            transform: translateY(-62%) rotate(45deg);
+            pointer-events: none;
+            opacity: 0.82;
+            z-index: 2;
+        }
+        .schedule-toolbar .term-filter-wrap > .schedule-filter-control,
+        .schedule-toolbar .instructor-filter-wrap > .schedule-filter-control,
+        .schedule-card-actions .term-filter-wrap > .schedule-filter-control,
+        .schedule-card-actions .instructor-filter-wrap > .schedule-filter-control {
+            box-sizing: border-box !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            min-height: 42px !important;
+            height: 42px !important;
+            padding: 0 38px 0 16px !important;
+            border-radius: 8px !important;
+            font-size: 12.5px !important;
+            font-weight: 850 !important;
+            line-height: 1 !important;
+            text-align: left !important;
+            text-align-last: left !important;
+            white-space: nowrap;
+            appearance: none !important;
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
+            background-image: linear-gradient(180deg, color-mix(in oklch, var(--surface) 92%, white), var(--schedule-surface-tint)) !important;
+            background-repeat: no-repeat !important;
+            background-position: 0 0 !important;
+            background-size: 100% 100% !important;
+        }
+        .schedule-toolbar .term-filter-wrap > .schedule-filter-control::-ms-expand,
+        .schedule-toolbar .instructor-filter-wrap > .schedule-filter-control::-ms-expand,
+        .schedule-card-actions .term-filter-wrap > .schedule-filter-control::-ms-expand,
+        .schedule-card-actions .instructor-filter-wrap > .schedule-filter-control::-ms-expand {
+            display: none;
+        }
+
+        .schedule-shell .co-sched-table thead th {
+            background: linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 10%, var(--surface)) 0%, color-mix(in oklch, var(--brand-navy) 6%, var(--surface)) 100%);
+            border-bottom-color: color-mix(in oklch, var(--brand-navy) 28%, var(--schedule-border));
+            color: var(--brand-navy);
+        }
+
+        .schedule-shell .co-sched-table tbody tr {
+            transition: background 150ms ease, box-shadow 150ms ease;
+        }
+
+        .schedule-shell .co-sched-table tbody tr:hover {
+            background: color-mix(in oklch, var(--brand-navy) 3%, var(--surface));
+            box-shadow: inset 4px 0 0 color-mix(in oklch, var(--brand-navy) 68%, var(--schedule-border));
+        }
+
+        .schedule-shell .schedule-grid {
+            border-color: color-mix(in oklch, var(--brand-navy) 34%, var(--schedule-border));
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 3%, var(--surface)), var(--surface));
+            box-shadow:
+                0 1px 3px rgba(0, 42, 92, 0.08),
+                0 18px 44px -34px var(--schedule-navy-shadow-strong);
+        }
+
+        .schedule-shell :where(.grid-head, .grid-time) {
+            background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface));
+            color: color-mix(in oklch, var(--brand-navy) 82%, var(--fg-1));
+        }
+
+        .schedule-shell .grid-cell {
+            border-color: color-mix(in oklch, var(--brand-navy) 14%, var(--schedule-border));
+        }
+
+        .schedule-shell :where(.grid-activity, .month-activity) {
+            box-shadow:
+                0 1px 2px rgba(0, 42, 92, 0.1),
+                0 10px 24px -20px color-mix(in srgb, var(--activity-color) 46%, rgba(0, 42, 92, 0.32));
+            transition: border-color 160ms ease, box-shadow 160ms ease, filter 160ms ease, transform 160ms ease;
+        }
+
+        .schedule-shell :where(.grid-activity:hover, .grid-activity:focus-visible, .month-activity:hover, .month-activity:focus-visible) {
+            box-shadow:
+                0 2px 5px rgba(0, 42, 92, 0.16),
+                0 16px 34px -22px color-mix(in srgb, var(--activity-color) 56%, rgba(0, 42, 92, 0.4));
+            filter: saturate(1.06) brightness(1.02);
+        }
+
+        .schedule-shell .month-activity:hover,
+        .schedule-shell .month-activity:focus-visible {
+            transform: translateY(-1px);
+        }
+
+        .schedule-shell :where(.activity-tag, .co-group-badge, .group-chip, .badge, .schedule-caption-warning, .series-badge) {
+            box-shadow: 0 1px 2px rgba(0, 42, 92, 0.06);
+        }
+
+        @media (max-width: 720px) {
+            .schedule-shell {
+                padding: 10px;
+                border-radius: 12px;
+            }
+
+            .schedule-shell :where(.schedule-toolbar, .card) {
+                border-radius: 12px;
+            }
+
+            .schedule-shell .schedule-filter-bar {
+                gap: 8px;
+            }
         }
     </style>
 

@@ -49,7 +49,7 @@
     <div class="alerts-page" x-data="{ showDismissModal: false, dismissed: {{ Js::from($dismissedWarnings) }} }">
         <section class="alerts-hero">
             <div class="alerts-hero-copy">
-                <div class="alerts-kicker">Master Data Readiness</div>
+                <div class="alerts-kicker">ตรวจความพร้อมข้อมูลหลัก</div>
                 <h1>ความพร้อม Master Data</h1>
                 <p>ตรวจสอบเงื่อนไขสำคัญและข้อมูลที่ควรเติมให้ครบก่อนเริ่มจัดตารางสอน</p>
             </div>
@@ -91,7 +91,7 @@
                 </div>
                 <div class="alerts-summary-body">
                     <div class="alerts-summary-value">{{ number_format($dismissedWarningCount) }}</div>
-                    <div class="alerts-summary-note">ไม่นับในป้ายแจ้งเตือนด้านซ้าย</div>
+                    <div class="alerts-summary-note">ซ่อนจากตัวเลขแจ้งเตือนในเมนูด้านซ้าย</div>
                 </div>
             </div>
         </section>
@@ -105,8 +105,8 @@
                 @endif
             </span>
             <div>
-                <strong>{{ $totalIssues > 0 ? 'สถานะรวม: ยังมีรายการที่ควรจัดการ' : 'สถานะรวม: ข้อมูลหลักพร้อมใช้งาน' }}</strong>
-                <span>{{ $totalIssues > 0 ? 'รายการด้านล่างคือข้อมูลตั้งต้นที่ควรแก้หรือเติมให้ครบ เพื่อให้หัวหน้าวิชาใช้จัดตารางได้แม่นยำขึ้น' : 'ไม่พบรายการ Critical หรือรายการควรเติมที่เปิดแจ้งเตือนอยู่' }}</span>
+                <strong>{{ $totalIssues > 0 ? 'สรุปสิ่งที่ต้องจัดการ' : 'ข้อมูลหลักพร้อมใช้งาน' }}</strong>
+                <span>{{ $totalIssues > 0 ? 'ตรวจรายการด้านล่างตามลำดับความสำคัญ ส่วน Critical ควรแก้ก่อน ส่วนรายการที่ควรเติมช่วยให้ข้อมูลตั้งต้นครบและลดความผิดพลาดตอนจัดตาราง' : 'ไม่พบรายการ Critical หรือรายการที่เปิดแจ้งเตือนอยู่ในขณะนี้' }}</span>
             </div>
         </section>
 
@@ -245,8 +245,8 @@
                 <div class="alerts-section-title-group">
                     <span class="alerts-section-kicker">ส่วนที่ 2</span>
                     <div>
-                        <div class="alerts-section-title is-warning">รายการที่ควรเติมให้ครบ</div>
-                        <div class="alerts-section-sub">ไม่บล็อกการใช้งานทันที แต่มีผลต่อความครบถ้วนของข้อมูลที่ใช้จัดตาราง</div>
+                        <div class="alerts-section-title is-warning">ข้อมูลที่ควรตรวจสอบเพิ่มเติม</div>
+                        <div class="alerts-section-sub">ยังไม่บล็อกการใช้งาน แต่ควรเติมให้ครบก่อนเปิดช่วงจัดตาราง เพื่อลดข้อมูลตกหล่นระหว่างทำงาน</div>
                     </div>
                 </div>
                 <div class="alerts-section-pills">
@@ -1577,6 +1577,252 @@
             .alerts-summary-top {
                 align-items: flex-start;
             }
+        }
+
+        /* Alerts refinement: clearer sections, same navy system as dashboard. */
+        .alerts-page {
+            gap: 20px;
+        }
+
+        .alerts-hero {
+            border-color: color-mix(in oklch, var(--brand-navy) 36%, var(--border));
+            background:
+                radial-gradient(circle at 88% 12%, color-mix(in oklch, var(--brand-navy) 10%, transparent), transparent 28%),
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 8%, var(--surface)), var(--surface) 48%),
+                var(--surface);
+            box-shadow:
+                0 1px 2px rgba(0, 36, 84, 0.1),
+                0 22px 48px -34px rgba(0, 36, 84, 0.42),
+                inset 0 1px 0 rgba(255, 255, 255, 0.74);
+        }
+
+        .alerts-kicker {
+            width: fit-content;
+            padding: 4px 9px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 24%, var(--border));
+            border-radius: 999px;
+            background: color-mix(in oklch, var(--brand-navy) 6%, var(--surface));
+            color: color-mix(in oklch, var(--brand-navy) 84%, var(--fg-2));
+        }
+
+        .alerts-hero h1,
+        .alerts-section-title,
+        .alerts-warning-main strong {
+            color: var(--brand-navy);
+        }
+
+        .alerts-summary-grid {
+            align-items: stretch;
+        }
+
+        .alerts-summary-card {
+            position: relative;
+            overflow: hidden;
+            min-height: 132px;
+            border-color: color-mix(in oklch, var(--brand-navy) 34%, var(--border));
+            background:
+                linear-gradient(135deg, color-mix(in oklch, var(--brand-navy) 9%, var(--surface)) 0%, var(--surface) 48%),
+                var(--surface);
+        }
+
+        .alerts-summary-card::after {
+            content: "";
+            position: absolute;
+            inset: auto 18px 14px auto;
+            width: 72px;
+            height: 72px;
+            border-radius: 999px;
+            background: color-mix(in oklch, var(--brand-navy) 7%, transparent);
+            pointer-events: none;
+        }
+
+        .alerts-summary-card.is-warning {
+            border-color: color-mix(in oklch, var(--status-warning) 34%, var(--border));
+            background:
+                linear-gradient(135deg, color-mix(in oklch, var(--status-warning) 10%, var(--surface)) 0%, var(--surface) 52%),
+                var(--surface);
+        }
+
+        .alerts-summary-card.is-success {
+            border-color: color-mix(in oklch, var(--status-success) 28%, var(--border));
+            background:
+                linear-gradient(135deg, color-mix(in oklch, var(--status-success) 8%, var(--surface)) 0%, var(--surface) 52%),
+                var(--surface);
+        }
+
+        .alerts-summary-card.is-muted {
+            border-color: color-mix(in oklch, var(--brand-navy) 24%, var(--border));
+            background:
+                linear-gradient(135deg, color-mix(in oklch, var(--brand-navy) 5%, var(--surface-muted)), var(--surface) 58%),
+                var(--surface);
+        }
+
+        .alerts-summary-card:hover,
+        .alerts-summary-card:focus-within {
+            border-color: color-mix(in oklch, var(--brand-navy) 50%, var(--border));
+            box-shadow:
+                0 2px 5px rgba(0, 36, 84, 0.11),
+                0 26px 54px -36px rgba(0, 36, 84, 0.5),
+                inset 0 1px 0 rgba(255, 255, 255, 0.82);
+        }
+
+        .alerts-summary-index {
+            width: 38px;
+            height: 30px;
+            letter-spacing: 0;
+        }
+
+        .alerts-summary-card.is-warning .alerts-summary-index {
+            color: color-mix(in oklch, var(--status-warning-fg) 88%, var(--brand-navy));
+            border: 1px solid color-mix(in oklch, var(--status-warning) 32%, var(--border));
+            background: color-mix(in oklch, var(--status-warning) 12%, var(--surface));
+            box-shadow: none;
+        }
+
+        .alerts-summary-card.is-success .alerts-summary-index {
+            color: color-mix(in oklch, var(--status-success-fg) 82%, var(--brand-navy));
+            border: 1px solid color-mix(in oklch, var(--status-success) 30%, var(--border));
+            background: color-mix(in oklch, var(--status-success) 10%, var(--surface));
+            box-shadow: none;
+        }
+
+        .alerts-summary-card.is-warning .alerts-summary-value,
+        .alerts-summary-card.is-success .alerts-summary-value {
+            color: var(--brand-navy);
+        }
+
+        .alerts-status-banner {
+            border-color: color-mix(in oklch, var(--brand-navy) 38%, var(--border));
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 9%, var(--surface)), color-mix(in oklch, var(--brand-navy) 3%, var(--surface)) 78%),
+                var(--surface);
+            box-shadow:
+                0 1px 2px rgba(0, 36, 84, 0.08),
+                0 18px 38px -30px rgba(0, 36, 84, 0.38);
+        }
+
+        .alerts-status-banner.is-ready,
+        .alerts-status-banner.is-attention {
+            border-color: color-mix(in oklch, var(--brand-navy) 38%, var(--border));
+        }
+
+        .alerts-status-banner.is-ready .alerts-status-icon {
+            color: var(--status-success-fg);
+            background: color-mix(in oklch, var(--status-success) 12%, var(--surface));
+            border: 1px solid color-mix(in oklch, var(--status-success) 30%, var(--border));
+            box-shadow: none;
+        }
+
+        .alerts-status-banner.is-attention .alerts-status-icon {
+            color: var(--fg-on-brand);
+            background: var(--brand-navy);
+        }
+
+        .alerts-section {
+            border-color: color-mix(in oklch, var(--brand-navy) 38%, var(--border));
+            box-shadow:
+                0 1px 2px rgba(0, 36, 84, 0.08),
+                0 24px 52px -38px rgba(0, 36, 84, 0.42),
+                inset 0 1px 0 rgba(255, 255, 255, 0.74);
+        }
+
+        .alerts-section.is-warning-section {
+            border-color: color-mix(in oklch, var(--brand-navy) 42%, var(--border));
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 8%, var(--surface)) 0%, var(--surface) 42%),
+                var(--surface);
+        }
+
+        .alerts-section-head {
+            min-height: 88px;
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 12%, var(--surface)), color-mix(in oklch, var(--brand-navy) 5%, var(--surface)));
+        }
+
+        .alerts-section.is-warning-section .alerts-section-head {
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 10%, var(--surface)), color-mix(in oklch, var(--brand-navy) 4%, var(--surface)));
+        }
+
+        .alerts-section-sub {
+            max-width: 76ch;
+            color: color-mix(in oklch, var(--brand-navy) 50%, var(--fg-3));
+        }
+
+        .alerts-section-kicker,
+        .alerts-compact-label {
+            min-width: 74px;
+            min-height: 30px;
+            background: color-mix(in oklch, var(--brand-navy) 92%, #0b2545);
+        }
+
+        .alerts-count-pill,
+        .alerts-chip,
+        .alerts-dismissed-label {
+            box-shadow: 0 1px 2px rgba(0, 36, 84, 0.06);
+        }
+
+        .alerts-count-pill.is-warning,
+        .alerts-chip.is-warning {
+            border-color: color-mix(in oklch, var(--status-warning) 30%, var(--border));
+            background: color-mix(in oklch, var(--status-warning) 10%, var(--surface));
+            color: color-mix(in oklch, var(--status-warning-fg) 86%, var(--brand-navy));
+        }
+
+        .alerts-warning-grid {
+            padding: 18px;
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 3%, var(--surface)), var(--surface));
+        }
+
+        .alerts-warning-card {
+            border-color: color-mix(in oklch, var(--brand-navy) 34%, var(--border));
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 4%, var(--surface)), var(--surface) 68%),
+                var(--surface);
+            box-shadow:
+                0 1px 2px rgba(0, 36, 84, 0.08),
+                0 16px 36px -28px rgba(0, 36, 84, 0.38);
+        }
+
+        .alerts-warning-card:hover,
+        .alerts-warning-card:focus-within {
+            border-color: color-mix(in oklch, var(--brand-navy) 52%, var(--border));
+            box-shadow:
+                0 2px 5px rgba(0, 36, 84, 0.1),
+                0 24px 46px -32px rgba(0, 36, 84, 0.46);
+        }
+
+        .alerts-warning-top {
+            min-height: 76px;
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--surface) 92%, white), color-mix(in oklch, var(--brand-navy) 4%, var(--surface)));
+        }
+
+        .alerts-warning-count {
+            border-color: color-mix(in oklch, var(--brand-navy) 34%, var(--border));
+            background: color-mix(in oklch, var(--brand-navy) 6%, var(--surface));
+            font-weight: 900;
+        }
+
+        .alerts-warning-detail {
+            border-top-color: color-mix(in oklch, var(--brand-navy) 22%, var(--border));
+            background: color-mix(in oklch, var(--brand-navy) 2.5%, var(--surface));
+        }
+
+        .alerts-table-wrap.is-embedded {
+            border-color: color-mix(in oklch, var(--brand-navy) 24%, var(--border));
+            background: var(--surface);
+        }
+
+        .alerts-table-wrap th {
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 10%, var(--surface)), color-mix(in oklch, var(--brand-navy) 5%, var(--surface)));
+            color: var(--brand-navy);
+        }
+
+        .alerts-table-wrap tbody tr:hover {
+            background: color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
         }
     </style>
 </x-app-layout>
