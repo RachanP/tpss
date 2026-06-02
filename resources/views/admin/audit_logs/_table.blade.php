@@ -169,6 +169,11 @@
 <style>
     .audit-log-table-wrap {
         overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    /* คุมความกว้างคอลัมน์ขั้นต่ำ — จอแคบให้เลื่อนแนวนอน (เหมือนหน้า master data) แทนการบีบ */
+    .audit-log-table {
+        min-width: 1080px;
     }
     .audit-log-table th {
         font-size: 11px;
@@ -257,6 +262,7 @@
             width: 100%;
         }
         .audit-log-table {
+            min-width: 0;
             border-collapse: separate;
             border-spacing: 0 10px;
         }

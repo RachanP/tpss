@@ -240,6 +240,8 @@ function auditLogPage() {
     }
     .audit-filter-card {
         margin-bottom: 20px;
+        /* ปฏิทิน พ.ศ. (.tdi-pop) เปิดทะลุขอบการ์ดได้ — กัน .card overflow:hidden ตัดกริดวันทิ้ง */
+        overflow: visible;
     }
     .audit-filter-hdr {
         min-height: 48px;
@@ -256,14 +258,9 @@ function auditLogPage() {
     }
     .audit-filter-grid {
         display: grid;
-        grid-template-columns:
-            minmax(220px, 1.35fr)
-            minmax(170px, 1fr)
-            minmax(170px, 1fr)
-            minmax(155px, .9fr)
-            minmax(155px, .9fr)
-            minmax(168px, auto);
-        gap: 12px;
+        /* container-responsive — ฟิลด์ wrap ตามความกว้างจริง (เลี่ยง overflow จาก sidebar) */
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 12px 14px;
         align-items: start;
         min-width: 0;
     }
@@ -302,13 +299,13 @@ function auditLogPage() {
         margin-bottom: 0;
     }
     .audit-filter-actions {
-        display: grid;
-        grid-template-columns: minmax(96px, 1fr) minmax(82px, .82fr);
+        grid-column: 1 / -1;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
         gap: 8px;
-        align-items: start;
-        min-height: 94px;
-        padding-top: 21px;
         min-width: 0;
+        padding-top: 4px;
     }
     .audit-filter-submit,
     .audit-filter-reset {
@@ -381,29 +378,9 @@ function auditLogPage() {
         color: var(--brand-navy-700);
     }
 
-    @media (max-width: 1180px) {
-        .audit-filter-grid {
-            grid-template-columns: repeat(3, minmax(170px, 1fr));
-        }
-        .audit-filter-actions {
-            grid-column: 1 / -1;
-            grid-template-columns: minmax(104px, 1fr) minmax(86px, .85fr);
-            justify-self: end;
-            width: min(320px, 100%);
-            min-height: 0;
-            padding-top: 0;
-        }
-    }
     @media (max-width: 980px) {
         .audit-page {
             padding: 24px 20px;
-        }
-        .audit-filter-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-        .audit-filter-actions {
-            justify-self: stretch;
-            width: 100%;
         }
     }
     @media (max-width: 720px) {
@@ -414,7 +391,6 @@ function auditLogPage() {
             padding: 12px;
         }
         .audit-filter-grid {
-            grid-template-columns: 1fr;
             gap: 10px;
         }
         .audit-filter-field {
@@ -423,22 +399,15 @@ function auditLogPage() {
         .audit-filter-field .audit-date-input + p {
             min-height: 0;
         }
-        .audit-filter-actions {
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            padding-top: 2px;
-        }
+        /* จอเล็ก: ปุ่มค้นหา/รีเซ็ตยืดเต็มแถว */
         .audit-filter-submit,
         .audit-filter-reset {
-            width: 100%;
+            flex: 1 1 auto;
         }
     }
     @media (max-width: 440px) {
         .audit-page {
             padding: 12px 10px;
-        }
-        .audit-filter-actions {
-            grid-template-columns: 1fr;
         }
     }
 
