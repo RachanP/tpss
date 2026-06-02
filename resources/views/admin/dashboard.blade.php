@@ -1,6 +1,6 @@
 <x-app-layout title="ภาพรวม — ผู้ดูแลระบบ">
     <div class="admin-dashboard"
-         x-data="{ dashboardReady: (window.performance?.getEntriesByType?.('navigation')?.[0]?.type === 'back_forward') || sessionStorage.getItem('adminDashboardRestorePending') === '1' }"
+         x-data="{ dashboardReady: (window.performance?.getEntriesByType?.('navigation')?.[0]?.type === 'back_forward') }"
          x-init="if (!dashboardReady) setTimeout(() => dashboardReady = true, 220)">
         <div class="admin-dashboard-skeleton" x-show="!dashboardReady">
             <div class="dash-skel-card dash-skel-hero">
@@ -57,31 +57,19 @@
             const pendingKey = 'adminDashboardRestorePending';
             const dashboard = () => document.querySelector('.admin-dashboard');
 
-            window.addEventListener('pagehide', () => {
+            const resetDashboardScroll = () => {
                 if (!dashboard()) return;
-
-                sessionStorage.setItem(scrollKey, String(window.scrollY));
-                sessionStorage.setItem(pendingKey, '1');
-            });
-
-            const restoreDashboardScroll = () => {
-                if (!dashboard() || sessionStorage.getItem(pendingKey) !== '1') return;
-
-                const scrollY = Number(sessionStorage.getItem(scrollKey) || 0);
                 sessionStorage.removeItem(pendingKey);
-
-                if (scrollY <= 0) return;
+                sessionStorage.removeItem(scrollKey);
 
                 requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        window.scrollTo({ top: scrollY, behavior: 'auto' });
-                    });
+                    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
                 });
             };
 
-            window.addEventListener('pageshow', restoreDashboardScroll);
-            window.addEventListener('load', () => setTimeout(restoreDashboardScroll, 260));
-            document.addEventListener('alpine:initialized', () => setTimeout(restoreDashboardScroll, 0));
+            window.addEventListener('pageshow', resetDashboardScroll);
+            window.addEventListener('load', () => setTimeout(resetDashboardScroll, 0));
+            document.addEventListener('alpine:initialized', () => setTimeout(resetDashboardScroll, 0));
         })();
     </script>
 

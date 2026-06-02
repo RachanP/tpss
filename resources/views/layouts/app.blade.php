@@ -19,6 +19,79 @@
         /* Fallback if Vite is not ready */
         [x-cloak] { display: none !important; }
     </style>
+<style>
+    input[type="file"].tpss-file-input-native {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        border: 0;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .tpss-file-control {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        width: 100%;
+        min-height: 48px;
+        padding: 7px;
+        border: 1px solid var(--border, #cfdbe5);
+        border-radius: 8px;
+        background: #fff;
+        color: var(--text, #111827);
+        text-align: left;
+        cursor: pointer;
+        transition: border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .tpss-file-control:hover,
+    .tpss-file-control:focus-visible {
+        border-color: var(--brand-navy, #033163);
+        box-shadow: 0 0 0 3px rgba(3, 49, 99, 0.08);
+        outline: none;
+    }
+
+    .tpss-file-button {
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 34px;
+        padding: 8px 14px;
+        border: 1px solid color-mix(in srgb, var(--brand-navy, #033163) 24%, var(--border, #cfdbe5));
+        border-radius: 8px;
+        background: color-mix(in srgb, var(--brand-navy, #033163) 8%, #fff);
+        color: var(--brand-navy, #033163);
+        font-weight: 800;
+    }
+
+    .tpss-file-name {
+        min-width: 0;
+        color: var(--muted, #64748b);
+        font-weight: 700;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .tpss-file-control.has-file .tpss-file-name {
+        color: var(--text, #111827);
+    }
+
+    @media (max-width: 640px) {
+        .tpss-file-control {
+            align-items: stretch;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .tpss-file-button {
+            width: 100%;
+        }
+    }
+</style>
 </head>
 <body class="bg-(--bg) text-(--fg-1) antialiased" x-data="{
     sidebarOpen: window.innerWidth > 1024,
@@ -597,5 +670,53 @@
         };
     })();
     </script>
+<script>
+    (() => {
+        const enhanceFileInput = (input) => {
+            if (input.dataset.tpssFileEnhanced === 'true' || input.dataset.usersImportEnhanced === 'true') {
+                return;
+            }
+
+            input.dataset.tpssFileEnhanced = 'true';
+            input.classList.add('tpss-file-input-native');
+
+            const accept = (input.getAttribute('accept') || '').toLowerCase();
+            const buttonText = accept.includes('csv') ? 'เลือกไฟล์ CSV' : 'เลือกไฟล์';
+            const control = document.createElement('button');
+            control.type = 'button';
+            control.className = 'tpss-file-control';
+            control.innerHTML = `<span class="tpss-file-button">${buttonText}</span><span class="tpss-file-name">ยังไม่ได้เลือกไฟล์</span>`;
+
+            const fileName = control.querySelector('.tpss-file-name');
+            const syncFileName = () => {
+                const selectedName = input.files && input.files.length ? input.files[0].name : '';
+                fileName.textContent = selectedName || 'ยังไม่ได้เลือกไฟล์';
+                control.classList.toggle('has-file', Boolean(selectedName));
+            };
+
+            control.addEventListener('click', () => input.click());
+            input.addEventListener('change', syncFileName);
+            input.insertAdjacentElement('afterend', control);
+            syncFileName();
+        };
+
+        const enhanceAllFileInputs = (root = document) => {
+            root.querySelectorAll('input[type="file"]').forEach(enhanceFileInput);
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            enhanceAllFileInputs();
+            new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    mutation.addedNodes.forEach((node) => {
+                        if (node.nodeType === Node.ELEMENT_NODE) {
+                            enhanceAllFileInputs(node);
+                        }
+                    });
+                });
+            }).observe(document.body, { childList: true, subtree: true });
+        });
+    })();
+</script>
 </body>
 </html>

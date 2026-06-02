@@ -877,8 +877,8 @@
         [x-show="openScheduleConfirmForm"] > div > div > div:first-child::before,
         [x-show="closeScheduleConfirmForm"] > div > div > div:first-child::before {
             content: "";
-            width: 42px;
-            height: 42px;
+            width: 44px;
+            height: 44px;
             border-radius: 12px;
             border: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border));
             background:
@@ -886,8 +886,25 @@
                     color-mix(in oklch, var(--brand-navy) 10%, var(--surface)),
                     color-mix(in oklch, var(--brand-navy) 4%, var(--surface)));
             box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--surface) 72%, transparent);
+            grid-column: 1;
             grid-row: 1 / span 2;
-            align-self: start;
+            align-self: center;
+            justify-self: start;
+        }
+
+        [x-show="openScheduleConfirmForm"] > div > div > div:first-child::after,
+        [x-show="closeScheduleConfirmForm"] > div > div > div:first-child::after {
+            content: "";
+            width: 29px;
+            height: 29px;
+            grid-column: 1;
+            grid-row: 1 / span 2;
+            align-self: center;
+            justify-self: center;
+            pointer-events: none;
+            background: var(--brand-navy);
+            mask: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2v4M16 2v4M3.5 9.5h17M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z'/%3E%3Cpath d='m8.8 14 2.2 2.2 4.5-5.1'/%3E%3C/svg%3E");
+            -webkit-mask: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2v4M16 2v4M3.5 9.5h17M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z'/%3E%3Cpath d='m8.8 14 2.2 2.2 4.5-5.1'/%3E%3C/svg%3E");
         }
 
         [x-show="closeScheduleConfirmForm"] > div > div > div:first-child::before {
@@ -896,6 +913,12 @@
                 linear-gradient(180deg,
                     color-mix(in oklch, var(--status-warning-bg) 72%, var(--surface)),
                     color-mix(in oklch, var(--status-warning-bg) 38%, var(--surface)));
+        }
+
+        [x-show="closeScheduleConfirmForm"] > div > div > div:first-child::after {
+            background: var(--status-warning-fg);
+            mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.3 4.3 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0z'/%3E%3Cpath d='M12 9v4M12 17h.01'/%3E%3C/svg%3E");
+            -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.3 4.3 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0z'/%3E%3Cpath d='M12 9v4M12 17h.01'/%3E%3C/svg%3E");
         }
 
         [x-show="openScheduleConfirmForm"] > div > div > div:first-child > div:first-child,
