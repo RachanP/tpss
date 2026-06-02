@@ -142,7 +142,7 @@ class NavigationBadgeService
             'maker_conflict_count' => null,
             'maker_conflict_status' => 'missing',
             'maker_conflict_pending' => true,
-            'maker_conflict_label' => 'กำลังตรวจสอบ',
+            'maker_conflict_label' => null,
         ];
     }
 
@@ -156,7 +156,7 @@ class NavigationBadgeService
             return 'ตรวจสอบไม่สำเร็จ';
         }
 
-        return 'กำลังตรวจสอบ';
+        return null;
     }
 
     private function idleCourseHeadBadge(?int $academicYearId): array

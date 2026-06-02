@@ -327,7 +327,7 @@ class ConflictRecomputeJobTest extends TestCase
         $this->assertGreaterThan(0, $repository->getScheduleSummaryPageForUser($head->id, $year->id, 1)->count());
     }
 
-    public function test_async_sidebar_badge_shows_pending_indicator_instead_of_zero(): void
+    public function test_async_sidebar_badge_keeps_pending_state_without_visible_label(): void
     {
         config(['conflicts.async_reads' => true]);
         [$year, $head] = $this->makeReadyOffering();
@@ -345,7 +345,7 @@ class ConflictRecomputeJobTest extends TestCase
         $this->assertNull($badge['maker_conflict_count']);
         $this->assertSame('pending', $badge['maker_conflict_status']);
         $this->assertTrue($badge['maker_conflict_pending']);
-        $this->assertSame('กำลังตรวจสอบ', $badge['maker_conflict_label']);
+        $this->assertNull($badge['maker_conflict_label']);
     }
 
     public function test_conflict_badge_status_endpoint_returns_ready_json_for_course_head(): void
@@ -389,6 +389,7 @@ class ConflictRecomputeJobTest extends TestCase
             ->assertJsonPath('status', 'missing')
             ->assertJsonPath('count', null)
             ->assertJsonPath('pending', true)
+            ->assertJsonPath('label', null)
             ->assertJsonPath('poll', true);
 
         Queue::assertPushed(ConflictRecomputeJob::class);
@@ -513,7 +514,7 @@ class ConflictRecomputeJobTest extends TestCase
         $this->assertNull($badge['maker_conflict_count']);
         $this->assertSame('missing', $badge['maker_conflict_status']);
         $this->assertTrue($badge['maker_conflict_pending']);
-        $this->assertSame('กำลังตรวจสอบ', $badge['maker_conflict_label']);
+        $this->assertNull($badge['maker_conflict_label']);
         $this->assertDatabaseHas('schedule_conflict_runs', [
             'academic_year_id' => $year->id,
             'status' => 'pending',

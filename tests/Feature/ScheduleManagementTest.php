@@ -784,6 +784,31 @@ class ScheduleManagementTest extends TestCase
             ->assertDontSee('>กำลังตรวจสอบ</span>', false);
     }
 
+    public function test_course_head_sidebar_polls_pending_conflicts_without_showing_checking_text(): void
+    {
+        config(['conflicts.async_reads' => true]);
+        Cache::flush();
+        [$head, $offering] = $this->makeReadyOffering();
+
+        Cache::put("sidebar.badges.course_head.async.{$head->id}", [
+            'maker_conflict_count' => null,
+            'maker_conflict_status' => 'pending',
+            'maker_conflict_pending' => true,
+            'maker_conflict_label' => 'กำลังตรวจสอบ',
+        ], 300);
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.course_offerings.schedules.index', $offering))
+            ->assertOk()
+            ->assertSee('data-status="pending"', false)
+            ->assertSee('data-pending="true"', false)
+            ->assertSee('data-poll="true"', false)
+            ->assertSee('data-conflict-badge', false)
+            ->assertDontSee('>กำลังตรวจสอบ</span>', false)
+            ->assertDontSee('กำลังตรวจสอบรายการชน');
+    }
+
     public function test_conflict_edit_returns_to_conflict_alerts_after_update(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();

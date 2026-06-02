@@ -397,6 +397,104 @@ class ScheduleSeriesGeneratorTest extends TestCase
         $this->assertSame('13:00:00', (string) $edited->start_time);
     }
 
+    public function test_course_head_can_reduce_weekly_series_range_through_route(): void
+    {
+        [$offering, $instructor, $group, $activityType, $room, $head] = $this->fixture();
+        AcademicYear::query()->whereKey($offering->academic_year_id)->update(['end_date' => '2027-07-31']);
+        $offering->update(['teaching_weeks' => 39]);
+
+        $template = ScheduleTemplate::create([
+            'course_offering_id' => $offering->id,
+            'activity_type_id' => $activityType->id,
+            'weekday' => 1,
+            'start_time' => '09:00',
+            'end_time' => '12:00',
+            'start_week' => 1,
+            'end_week' => 39,
+            'topic' => 'Long weekly series',
+        ]);
+        app(ScheduleSeriesGenerator::class)->generateFromTemplate($template, [
+            'room_id' => $room->id,
+            'instructor_ids' => [$instructor->id],
+            'student_group_ids' => [$group->id],
+        ]);
+
+        $this->assertSame(39, $template->schedules()->count());
+
+        $this->actingAs($head);
+        $this->withSession(['active_role' => 'course_head']);
+
+        $this->put(route('maker.course_offerings.schedules.templates.update', [$offering, $template]), [
+            'weekday' => 1,
+            'start_week' => 1,
+            'end_week' => 3,
+            'start_time' => '08:00',
+            'end_time' => '09:00',
+            'activity_type_id' => $activityType->id,
+            'topic' => 'Reduced weekly series',
+        ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('success', 'Updated 3 weekly schedule items.');
+
+        $this->assertSame([1, 2, 3], $template->schedules()->orderBy('series_week_number')->pluck('series_week_number')->all());
+        $this->assertDatabaseMissing('schedules', [
+            'schedule_template_id' => $template->id,
+            'series_week_number' => 4,
+        ]);
+    }
+
+    public function test_syncing_template_adds_missing_weeks_without_overwriting_weekly_resources(): void
+    {
+        [$offering, $instructor, $group, $activityType, $room] = $this->fixture();
+        $otherRoom = Room::create([
+            'room_code' => 'R4',
+            'room_name' => 'Room 4',
+            'location_type_id' => LocationType::first()->id,
+            'status' => 'active',
+        ]);
+        $otherGroup = StudentGroup::create([
+            'course_offering_id' => $offering->id,
+            'group_code' => 'B1',
+            'student_count' => 12,
+        ]);
+        $template = ScheduleTemplate::create([
+            'course_offering_id' => $offering->id,
+            'activity_type_id' => $activityType->id,
+            'weekday' => 1,
+            'start_time' => '09:00',
+            'end_time' => '12:00',
+            'start_week' => 2,
+            'end_week' => 3,
+            'topic' => 'Expandable weekly series',
+        ]);
+
+        $instances = app(ScheduleSeriesGenerator::class)->generateFromTemplate($template, [
+            'room_id' => $room->id,
+            'instructor_ids' => [$instructor->id],
+            'student_group_ids' => [$group->id],
+        ]);
+        $edited = $instances->last();
+        $edited->update(['room_id' => $otherRoom->id]);
+        $edited->studentGroups()->sync([$otherGroup->id]);
+
+        $template->update([
+            'start_week' => 1,
+            'end_week' => 4,
+            'topic' => 'Expanded weekly series',
+        ]);
+
+        $synced = app(ScheduleSeriesGenerator::class)->syncInstancesFromTemplate($template);
+
+        $this->assertSame([1, 2, 3, 4], $synced->pluck('series_week_number')->all());
+        $this->assertSame('2026-08-03', $synced->firstWhere('series_week_number', 1)->start_date->toDateString());
+        $this->assertSame('2026-08-24', $synced->firstWhere('series_week_number', 4)->start_date->toDateString());
+
+        $edited->refresh();
+        $this->assertSame($otherRoom->id, (int) $edited->room_id);
+        $this->assertSame([$otherGroup->id], $edited->studentGroups()->pluck('student_groups.id')->all());
+    }
+
     public function test_course_head_can_delete_weekly_series_from_current_week(): void
     {
         [$offering, $instructor, $group, $activityType, $room, $head] = $this->fixture();

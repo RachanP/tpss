@@ -106,14 +106,44 @@ class ScheduleSeriesGenerator
     {
         $template->loadMissing('courseOffering.academicYear');
         $datesByWeek = $this->instanceDates($template);
+        $targetWeeks = $datesByWeek->keys()->map(fn ($week) => (int) $week)->values();
         $instances = $template->schedules()
             ->with(['instructors', 'studentGroups'])
             ->orderBy('series_week_number')
             ->get();
+        $instancesInRange = $instances
+            ->filter(fn (Schedule $schedule) => $datesByWeek->has((int) $schedule->series_week_number))
+            ->values();
+        $existingWeeksInRange = $instancesInRange
+            ->pluck('series_week_number')
+            ->map(fn ($week) => (int) $week)
+            ->all();
+        $missingPayloads = $datesByWeek
+            ->reject(fn (CarbonImmutable $date, int $week) => in_array((int) $week, $existingWeeksInRange, true))
+            ->map(function (CarbonImmutable $date, int $week) use ($template): array {
+                return [
+                    'course_offering_id' => $template->course_offering_id,
+                    'activity_type_id' => $template->activity_type_id,
+                    'room_id' => null,
+                    'practicum_series_id' => null,
+                    'schedule_template_id' => $template->id,
+                    'series_week_number' => $week,
+                    ...$this->scheduleDatePayload($date),
+                    'start_time' => $template->start_time,
+                    'end_time' => $template->end_time,
+                    'topic' => $template->topic,
+                    'capacity_required' => $template->capacity_required,
+                    'sub_group_label' => $template->sub_group_label,
+                    'status' => 'draft',
+                    'remark' => null,
+                    '_resource_instructor_ids' => [],
+                    '_resource_student_group_ids' => [],
+                    '_resource_lead_instructor_id' => null,
+                ];
+            });
 
         if ($checkConflicts) {
-            $payloads = $instances
-                ->filter(fn (Schedule $schedule) => $datesByWeek->has((int) $schedule->series_week_number))
+            $payloads = $instancesInRange
                 ->mapWithKeys(function (Schedule $schedule) use ($template, $datesByWeek) {
                     $date = $datesByWeek->get((int) $schedule->series_week_number);
 
@@ -130,14 +160,16 @@ class ScheduleSeriesGenerator
                     ];
                 });
 
-            $this->assertNoConflictsForExisting($payloads, $instances);
+            $this->assertNoConflictsForExisting($payloads, $instancesInRange);
+            $this->assertNoConflicts($missingPayloads);
         }
 
-        return DB::transaction(function () use ($template, $datesByWeek, $instances): Collection {
+        return DB::transaction(function () use ($template, $datesByWeek, $instances, $missingPayloads, $targetWeeks): Collection {
             $instances->each(function (Schedule $schedule) use ($template, $datesByWeek): void {
                 $date = $datesByWeek->get((int) $schedule->series_week_number);
 
                 if (! $date) {
+                    $schedule->delete();
                     return;
                 }
 
@@ -152,7 +184,21 @@ class ScheduleSeriesGenerator
                 ]);
             });
 
-            return $instances->fresh(['instructors', 'studentGroups'])->values();
+            $missingPayloads->each(function (array $payload): void {
+                unset($payload['_resource_instructor_ids'], $payload['_resource_student_group_ids'], $payload['_resource_lead_instructor_id']);
+                Schedule::create($payload);
+            });
+
+            if ($targetWeeks->isEmpty()) {
+                return collect();
+            }
+
+            return $template->schedules()
+                ->with(['instructors', 'studentGroups'])
+                ->whereIn('series_week_number', $targetWeeks->all())
+                ->orderBy('series_week_number')
+                ->get()
+                ->values();
         });
     }
 

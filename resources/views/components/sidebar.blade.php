@@ -192,19 +192,20 @@
                 $makerConflictLabel = $sidebarBadges['maker_conflict_label'] ?? null;
                 $makerConflictNumericCount = is_numeric($makerConflictCount) ? (int) $makerConflictCount : null;
                 $makerConflictPoll = in_array($makerConflictStatus, ['missing', 'pending', 'processing'], true);
-                $makerConflictVisible = ($makerConflictNumericCount !== null && $makerConflictNumericCount > 0) || $makerConflictPending;
+                $makerConflictFailed = $makerConflictStatus === 'failed';
+                $makerConflictVisible = ($makerConflictNumericCount !== null && $makerConflictNumericCount > 0) || $makerConflictFailed;
                 $makerConflictTone = ($makerConflictNumericCount !== null && $makerConflictNumericCount > 0) || $makerConflictStatus === 'failed'
                     ? 'nv-bd-red'
                     : 'nv-bd-warning';
                 $makerConflictText = $makerConflictVisible
                     ? (($makerConflictNumericCount !== null && $makerConflictNumericCount > 0)
                         ? (string) $makerConflictNumericCount
-                        : ($makerConflictLabel ?: 'กำลังตรวจสอบ'))
+                        : ($makerConflictLabel ?: 'ตรวจสอบไม่สำเร็จ'))
                     : '';
                 $makerConflictTitle = $makerConflictVisible
                     ? (($makerConflictNumericCount !== null && $makerConflictNumericCount > 0)
                         ? "{$makerConflictNumericCount} รายการชน"
-                        : ($makerConflictStatus === 'failed' ? 'ตรวจสอบรายการชนไม่สำเร็จ' : 'กำลังตรวจสอบรายการชน'))
+                        : 'ตรวจสอบรายการชนไม่สำเร็จ')
                     : '';
             @endphp
             <div class="sb-sec">เมนูหลัก</div>
@@ -505,9 +506,7 @@
         (() => {
             const POLL_INTERVAL_MS = 8000;
             const text = {
-                checking: @json('กำลังตรวจสอบ'),
                 failed: @json('ตรวจสอบไม่สำเร็จ'),
-                checkingTitle: @json('กำลังตรวจสอบรายการชน'),
                 failedTitle: @json('ตรวจสอบรายการชนไม่สำเร็จ'),
                 conflictSuffix: @json(' รายการชน'),
             };
@@ -561,9 +560,7 @@
                         badgeText = label || text.failed;
                         title = text.failedTitle;
                     } else if (pending || polling) {
-                        visible = true;
-                        badgeText = label || text.checking;
-                        title = text.checkingTitle;
+                        visible = false;
                     }
 
                     pill.textContent = badgeText;
