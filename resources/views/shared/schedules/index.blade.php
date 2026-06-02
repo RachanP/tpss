@@ -1388,7 +1388,8 @@
             color: var(--fg-1);
             font-size: 10.5px;
             font-weight: 900;
-            text-transform: uppercase;
+            letter-spacing: 0;
+            text-transform: none;
         }
         .series-badge {
             display: inline-flex;
@@ -2957,13 +2958,10 @@
             min-width: 0;
         }
         .grid-activity .activity-tag {
-            display: inline-grid;
-            place-items: center;
-            justify-content: center;
+            display: inline-block;
             box-sizing: border-box;
-            flex: 0 0 96px;
-            width: 96px;
-            max-width: 96px;
+            flex: 0 1 auto;
+            max-width: 100%;
             min-height: 18px;
             padding: 1px 6px;
             font-size: 9.5px;
@@ -2971,12 +2969,11 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            text-align: center;
+            text-align: left;
+            vertical-align: middle;
         }
         .grid-activity.is-compact .activity-tag {
-            flex-basis: 96px;
-            width: 96px;
-            max-width: 96px;
+            max-width: 100%;
             min-height: 17px;
             padding: 1px 5px;
             font-size: 9px;
