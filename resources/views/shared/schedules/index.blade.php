@@ -671,6 +671,11 @@
         .schedule-card-hdr {
             align-items: center;
         }
+        .schedule-list-card {
+            position: relative;
+            z-index: 20;
+            overflow: visible;
+        }
         .schedule-card-hdr > div:first-child {
             flex: 1 1 0;
             min-width: 0;
@@ -1291,6 +1296,12 @@
             padding: 12px 16px;
             border-top: 1px solid var(--schedule-border);
             background: oklch(97% 0.012 232);
+            position: relative;
+            z-index: 40;
+            overflow: visible;
+        }
+        .schedule-list-card .schedule-filter-bar {
+            z-index: 300;
         }
         /* แถบควบคุมมุมมองตาราง (grid) — ย้าย < เดือน > + วัน/สัปดาห์/เดือน มาไว้ใต้หัวการ์ด เหมือนแถบกรองของมุมมองรายการ */
         .schedule-grid-bar {
@@ -2148,6 +2159,8 @@
 
         /* ── โหมดรายการตารางสอนของรายวิชาเดี่ยว (co-sched-table) ── */
         .co-sched-table-wrap {
+            position: relative;
+            z-index: 1;
             overflow-x: hidden;
             overflow-y: visible;
             border: 1px solid var(--schedule-border);
@@ -2398,6 +2411,10 @@
         /* ── Week filter — custom dropdown ── */
         .week-filter {
             position: relative;
+            z-index: 50;
+        }
+        .schedule-list-card .week-filter {
+            z-index: 310;
         }
         .week-filter-trigger {
             display: flex;
@@ -2449,8 +2466,8 @@
             top: calc(100% + 6px);
             left: 0;
             right: 0;
-            z-index: 30;
-            max-height: 320px;
+            z-index: 320;
+            max-height: min(356px, calc(100vh - 180px));
             overflow-y: auto;
             padding: 4px;
             border: 1px solid var(--schedule-border-strong);
@@ -3850,6 +3867,11 @@
             border-top-left-radius: 10px;
             border-top-right-radius: 10px;
         }
+        .modal-head-detail > div:first-child {
+            flex: 1 1 auto;
+            min-width: 0;
+            max-width: 100%;
+        }
         .modal-head-detail .activity-tag {
             font-size: 9.5px;
             padding: 1.5px 7px;
@@ -3864,12 +3886,17 @@
             line-height: 1.3;
         }
         .modal-title-detail {
+            display: block;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
             margin-top: 4px;
             color: var(--fg-1);
             font-size: 19px;
             font-weight: 900;
             line-height: 1.3;
-            letter-spacing: -0.01em;
+            letter-spacing: 0;
         }
         .modal-close {
             width: 28px;
@@ -6343,7 +6370,7 @@
             </section>
 
             {{-- ── รายการตารางสอน (Card Layout) ── --}}
-            <div class="card">
+            <div class="card schedule-list-card">
                 <div class="card-hdr schedule-card-hdr" style="flex-wrap:wrap;gap:12px;">
                     <div>
                         <div class="card-ttl">รายการตารางสอน</div>

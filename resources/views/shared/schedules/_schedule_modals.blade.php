@@ -109,7 +109,7 @@
                     <div class="modal-handle"></div>
                     <div class="modal-head-detail">
                         <div style="min-width:0;">
-                            <div class="modal-title-detail" id="schedule-detail-title-{{ $schedule->id }}">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
+                            <div class="modal-title-detail" id="schedule-detail-title-{{ $schedule->id }}" title="{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
                             <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }}; margin-top:5px;">{{ $activity?->name ?? 'กิจกรรม' }}</span>
                             @if($schedule->schedule_template_id)
                                 <span class="series-badge" style="margin-top:5px;" title="กิจกรรมทำซ้ำรายสัปดาห์">
