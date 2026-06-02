@@ -596,7 +596,7 @@ class ScheduleSeriesGeneratorTest extends TestCase
         $this->assertSame(['2026-08-17', '2026-08-24', '2026-08-31', '2026-09-07'], $instances->pluck('start_date')->map->toDateString()->all());
     }
 
-    public function test_weekly_series_detects_instructor_conflict_across_offerings(): void
+    public function test_weekly_series_blocks_instructor_conflict_across_offerings(): void
     {
         [$offering, $instructor, $group, $activityType, $room, $head] = $this->fixture();
         [$otherOffering, $otherInstructor, $otherGroup] = $this->secondOffering($head, $offering, $instructor);
@@ -619,7 +619,7 @@ class ScheduleSeriesGeneratorTest extends TestCase
         ])->assertSessionHasNoErrors();
 
         // slot ใน offering อื่น Monday เดียวกัน 10:00-12:00 ทับเวลา — อาจารย์คนเดียวกัน
-        $response = $this->post(route('maker.course_offerings.schedules.store', $otherOffering), [
+        $payload = [
             'activity_type_id' => $activityType->id,
             'room_id' => $room->id,
             'start_date' => '03/08/2569',
@@ -630,11 +630,7 @@ class ScheduleSeriesGeneratorTest extends TestCase
             'instructor_ids' => [$instructor->id],
             'lead_instructor_id' => $instructor->id,
             'student_group_ids' => [$otherGroup->id],
-        ]);
-        $response->assertRedirect();
-
-        $crossSlot = $otherOffering->schedules()->where('topic', 'Cross-course instructor slot')->firstOrFail();
-        $this->assertDatabaseHas('schedules', ['id' => $crossSlot->id]);
+        ];
 
         // เช็คผ่าน ScheduleConflictChecker ตรงๆ
         $checker = app(\App\Services\ScheduleConflictChecker::class);
@@ -646,13 +642,22 @@ class ScheduleSeriesGeneratorTest extends TestCase
             'end_date' => '2026-08-03',
             'start_time' => '10:00',
             'end_time' => '12:00',
-        ], [$instructor->id], [$otherGroup->id], $crossSlot->id);
+        ], [$instructor->id], [$otherGroup->id]);
 
         $instructorConflicts = collect($conflicts)->where('type', 'instructor_overlap');
-        $this->assertNotEmpty($instructorConflicts, 'ต้องตรวจพบ instructor overlap ข้าม offering');
+        $this->assertNotEmpty($instructorConflicts, 'Expected instructor overlap across offerings.');
+
+        $this->post(route('maker.course_offerings.schedules.store', $otherOffering), $payload)
+            ->assertRedirect()
+            ->assertSessionHasErrors('schedule');
+
+        $this->assertDatabaseMissing('schedules', [
+            'course_offering_id' => $otherOffering->id,
+            'topic' => 'Cross-course instructor slot',
+        ]);
     }
 
-    public function test_weekly_series_detects_room_conflict_across_offerings(): void
+    public function test_weekly_series_blocks_room_conflict_across_offerings(): void
     {
         [$offering, $instructor, $group, $activityType, $room, $head] = $this->fixture();
         [$otherOffering, $otherInstructor, $otherGroup] = $this->secondOffering($head, $offering, $instructor);
@@ -675,7 +680,7 @@ class ScheduleSeriesGeneratorTest extends TestCase
         ])->assertSessionHasNoErrors();
 
         // slot ใน offering อื่น ห้องเดียวกัน 14:00-16:00 — อาจารย์คนละคน
-        $this->post(route('maker.course_offerings.schedules.store', $otherOffering), [
+        $payload = [
             'activity_type_id' => $activityType->id,
             'room_id' => $room->id,
             'start_date' => '03/08/2569',
@@ -686,9 +691,8 @@ class ScheduleSeriesGeneratorTest extends TestCase
             'instructor_ids' => [$otherInstructor->id],
             'lead_instructor_id' => $otherInstructor->id,
             'student_group_ids' => [$otherGroup->id],
-        ])->assertRedirect();
+        ];
 
-        $crossSlot = $otherOffering->schedules()->where('topic', 'Cross-course room slot')->firstOrFail();
         $checker = app(\App\Services\ScheduleConflictChecker::class);
         $conflicts = $checker->check([
             'course_offering_id' => $otherOffering->id,
@@ -698,10 +702,19 @@ class ScheduleSeriesGeneratorTest extends TestCase
             'end_date' => '2026-08-03',
             'start_time' => '14:00',
             'end_time' => '16:00',
-        ], [$otherInstructor->id], [$otherGroup->id], $crossSlot->id);
+        ], [$otherInstructor->id], [$otherGroup->id]);
 
         $roomConflicts = collect($conflicts)->where('type', 'room_overlap');
-        $this->assertNotEmpty($roomConflicts, 'ต้องตรวจพบ room overlap ข้าม offering');
+        $this->assertNotEmpty($roomConflicts, 'Expected room overlap across offerings.');
+
+        $this->post(route('maker.course_offerings.schedules.store', $otherOffering), $payload)
+            ->assertRedirect()
+            ->assertSessionHasErrors('schedule');
+
+        $this->assertDatabaseMissing('schedules', [
+            'course_offering_id' => $otherOffering->id,
+            'topic' => 'Cross-course room slot',
+        ]);
     }
 
     public function test_course_head_cannot_update_series_template_of_other_coordinator(): void
