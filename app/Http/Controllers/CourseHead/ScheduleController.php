@@ -434,7 +434,20 @@ class ScheduleController extends Controller
         $termExplicit = $termIdParam !== null;
         $selectedTermId = $termExplicit ? (((int) $termIdParam) ?: null) : $currentTerm?->id;
         $selectedTerm = $selectedTermId ? $terms->firstWhere('id', $selectedTermId) : null;
-        $termFilter = fn ($query) => $query->when($selectedTermId, fn ($q) => $q->where('term_id', $selectedTermId));
+        $termFilter = fn ($query) => $query->when($selectedTermId, function ($q) use ($selectedTermId, $selectedTerm) {
+            $q->where(function ($termQuery) use ($selectedTermId, $selectedTerm) {
+                $termQuery->where('term_id', $selectedTermId);
+
+                if ($selectedTerm?->start_date && $selectedTerm?->end_date) {
+                    $termQuery->orWhere(function ($fallback) use ($selectedTerm) {
+                        $fallback
+                            ->whereNull('term_id')
+                            ->whereDate('start_date', '<=', CarbonImmutable::parse($selectedTerm->end_date)->toDateString())
+                            ->whereDate('end_date', '>=', CarbonImmutable::parse($selectedTerm->start_date)->toDateString());
+                    });
+                }
+            });
+        });
 
         $firstScheduleDate = empty($offeringIds)
             ? null
@@ -762,6 +775,9 @@ class ScheduleController extends Controller
             'instructorPool.instructorProfile.department',
             'studentGroups' => fn ($query) => $query->orderBy('group_code'),
         ]);
+        $selectedTerm = $selectedTermId
+            ? $courseOffering->academicYear?->terms?->firstWhere('id', $selectedTermId)
+            : null;
 
         $schedules = $this->orderSchedulesByDate(
             $this->filterSchedulesByDateRange(
@@ -770,7 +786,20 @@ class ScheduleController extends Controller
                     ->where('course_offering_id', $courseOffering->id)
                     ->when($selectedInstructorId, fn ($q) => $q
                         ->whereHas('instructors', fn ($iq) => $iq->where('users.id', $selectedInstructorId)))
-                    ->when($selectedTermId, fn ($q) => $q->where('term_id', $selectedTermId)),
+                    ->when($selectedTermId, function ($q) use ($selectedTermId, $selectedTerm) {
+                        $q->where(function ($termQuery) use ($selectedTermId, $selectedTerm) {
+                            $termQuery->where('term_id', $selectedTermId);
+
+                            if ($selectedTerm?->start_date && $selectedTerm?->end_date) {
+                                $termQuery->orWhere(function ($fallback) use ($selectedTerm) {
+                                    $fallback
+                                        ->whereNull('term_id')
+                                        ->whereDate('start_date', '<=', CarbonImmutable::parse($selectedTerm->end_date)->toDateString())
+                                        ->whereDate('end_date', '>=', CarbonImmutable::parse($selectedTerm->start_date)->toDateString());
+                                });
+                            }
+                        });
+                    }),
                 $weekStart->toDateString(),
                 $weekEnd->toDateString()
             )
@@ -794,8 +823,26 @@ class ScheduleController extends Controller
     {
         return $schedules
             ->filter(fn (Schedule $schedule) => $schedule->start_date)
-            ->sortBy(fn (Schedule $schedule) => $schedule->start_date->toDateString() . ' ' . ($schedule->start_time ?? '00:00:00'))
-            ->groupBy(fn (Schedule $schedule) => $schedule->start_date->toDateString());
+            ->flatMap(function (Schedule $schedule) {
+                $start = CarbonImmutable::parse($schedule->start_date)->startOfDay();
+                $end = $schedule->end_date
+                    ? CarbonImmutable::parse($schedule->end_date)->startOfDay()
+                    : $start;
+
+                if ($end->lt($start)) {
+                    $end = $start;
+                }
+
+                return collect(CarbonPeriod::create($start, $end))
+                    ->map(function ($date) use ($schedule) {
+                        $occurrence = clone $schedule;
+                        $occurrence->setAttribute('list_date', CarbonImmutable::parse($date)->toDateString());
+
+                        return $occurrence;
+                    });
+            })
+            ->sortBy(fn (Schedule $schedule) => ($schedule->list_date ?? $schedule->start_date?->toDateString()) . ' ' . ($schedule->start_time ?? '00:00:00'))
+            ->groupBy(fn (Schedule $schedule) => $schedule->list_date ?? $schedule->start_date->toDateString());
     }
 
     private function weekFragmentCacheKey(
@@ -1439,25 +1486,34 @@ class ScheduleController extends Controller
 
         if (empty($candidates)) {
             return redirect()
-                ->to($this->scheduleReturnUrl($request, $courseOffering, $targetWeekStart))
+                ->to($this->copyWeekReturnUrl($request, $courseOffering, $targetWeekStart))
                 ->withErrors(['schedule' => 'ไม่พบรายการในสัปดาห์ต้นทางให้คัดลอก']);
         }
 
+        $blocked = [];
+        foreach ($candidates as $candidate) {
+            $reasons = $this->weekCopyBlockReasons($courseOffering, $candidate, $conflictChecker);
+
+            if (! empty($reasons)) {
+                $blocked[] = $candidate['preview'] + ['reason' => implode(' / ', $reasons)];
+            }
+        }
+
+        if (! empty($blocked)) {
+            return redirect()
+                ->to($this->copyWeekReturnUrl($request, $courseOffering, $targetWeekStart))
+                ->withErrors(['schedule' => 'ไม่สามารถคัดลอกได้ เนื่องจากมีรายการชน กรุณาแก้ไขรายการที่ชนก่อน'])
+                ->with('schedule_copy_blocked', $blocked);
+        }
+
         $createdCount = 0;
-        $skipped = [];
 
-        DB::transaction(function () use ($candidates, $courseOffering, $conflictChecker, &$createdCount, &$skipped): void {
+        DB::transaction(function () use ($candidates, $courseOffering, &$createdCount): void {
             foreach ($candidates as $candidate) {
-                $reasons = $this->weekCopyBlockReasons($courseOffering, $candidate, $conflictChecker);
-
-                if (! empty($reasons)) {
-                    $skipped[] = $candidate['preview'] + ['reason' => implode(' / ', $reasons)];
-                    continue;
-                }
-
                 $payload = $candidate['payload'];
                 $schedule = Schedule::create([
                     'course_offering_id' => $courseOffering->id,
+                    'term_id' => $payload['term_id'],
                     'activity_type_id' => $payload['activity_type_id'],
                     'room_id' => $payload['room_id'],
                     'practicum_series_id' => null,
@@ -1494,24 +1550,54 @@ class ScheduleController extends Controller
                 'source_week_start' => $sourceWeekStart,
                 'target_week_start' => $targetWeekStart,
                 'created' => $createdCount,
-                'skipped' => count($skipped),
+                'blocked' => 0,
             ],
             category: 'schedule',
             description: "คัดลอกสัปดาห์ {$sourceWeekStart} → {$targetWeekStart}",
         );
 
-        $message = "คัดลอกสำเร็จ {$createdCount} รายการ"
-            . (count($skipped) ? ' · ข้าม ' . count($skipped) . ' รายการที่ชน (ต้องแก้เอง)' : '');
+        $message = "คัดลอกสำเร็จ {$createdCount} รายการ";
 
         return redirect()
-            ->to($this->scheduleReturnUrl($request, $courseOffering, $targetWeekStart))
-            ->with('success', $message)
-            ->with('schedule_copy_skipped', $skipped);
+            ->to($this->copyWeekReturnUrl($request, $courseOffering, $targetWeekStart))
+            ->with('success', $message);
     }
 
     /**
      * @return array{0:string,1:string}  [sourceWeekStart, targetWeekStart] เป็น Y-m-d
      */
+    private function copyWeekReturnUrl(Request $request, CourseOffering $courseOffering, string $targetWeekStart): string
+    {
+        $targetWeek = CarbonImmutable::parse($targetWeekStart)->startOfDay();
+        $query = [];
+        $returnUrl = (string) $request->input('return_url', '');
+
+        if ($this->isScheduleReturnUrl($request, $returnUrl)) {
+            parse_str((string) (parse_url($returnUrl, PHP_URL_QUERY) ?? ''), $query);
+        }
+
+        $period = in_array(($query['period'] ?? 'week'), ['day', 'week', 'month'], true)
+            ? (string) ($query['period'] ?? 'week')
+            : 'week';
+        $includeWeekends = $period === 'week' && (bool) ($query['include_weekends'] ?? false);
+        $instructorId = isset($query['instructor_id']) && (int) $query['instructor_id'] > 0
+            ? (int) $query['instructor_id']
+            : null;
+        $termId = AcademicCalendar::forYear($courseOffering->academicYear)->termIdForDate($targetWeek);
+
+        $params = [
+            $courseOffering,
+            'week_start' => $targetWeek->toDateString(),
+            'date' => $targetWeek->toDateString(),
+            'period' => $period,
+            'include_weekends' => $includeWeekends ? 1 : null,
+            'instructor_id' => $instructorId,
+            'term_id' => $termId ?: 0,
+        ];
+
+        return route('maker.course_offerings.schedules.index', array_filter($params, fn ($value) => $value !== null && $value !== false && $value !== ''));
+    }
+
     private function validateCopyWeekDates(Request $request): array
     {
         $data = $request->validate([
@@ -1540,6 +1626,7 @@ class ScheduleController extends Controller
         $srcStart = CarbonImmutable::parse($sourceWeekStart)->startOfDay();
         $srcEnd = $srcStart->addDays(6);
         $deltaDays = $srcStart->diffInDays(CarbonImmutable::parse($targetWeekStart)->startOfDay(), false);
+        $academicCalendar = AcademicCalendar::forYear($courseOffering->academicYear);
 
         return Schedule::query()
             ->where('course_offering_id', $courseOffering->id)
@@ -1548,7 +1635,7 @@ class ScheduleController extends Controller
             ->orderBy('start_date')
             ->orderBy('start_time')
             ->get()
-            ->map(function (Schedule $source) use ($courseOffering, $deltaDays) {
+            ->map(function (Schedule $source) use ($courseOffering, $deltaDays, $academicCalendar) {
                 $newStart = CarbonImmutable::parse($source->start_date)->addDays($deltaDays);
                 $newEnd = $source->end_date
                     ? CarbonImmutable::parse($source->end_date)->addDays($deltaDays)
@@ -1559,6 +1646,7 @@ class ScheduleController extends Controller
 
                 $payload = [
                     'course_offering_id' => $courseOffering->id,
+                    'term_id' => $academicCalendar->termIdForDate($newStart),
                     'activity_type_id' => $source->activity_type_id,
                     'room_id' => $source->room_id,
                     'start_date' => $newStart->toDateString(),

@@ -236,24 +236,6 @@
                     <line x1="12" y1="17" x2="12.01" y2="17"></line>
                 </svg>
                 <span class="nv-label">แจ้งเตือน</span>
-                <span
-                    class="nv-alert-badges"
-                    data-conflict-badge
-                    data-silent="true"
-                    data-endpoint="{{ route('maker.conflict_badge_status') }}"
-                    data-status="{{ $makerConflictStatus }}"
-                    data-pending="{{ $makerConflictPending ? 'true' : 'false' }}"
-                    data-poll="{{ $makerConflictPoll ? 'true' : 'false' }}"
-                    hidden
-                >
-                    <span
-                        class="nv-bd {{ $makerConflictTone }}"
-                        data-conflict-badge-pill
-                        hidden
-                        aria-hidden="true"
-                        title="{{ $makerConflictTitle }}"
-                    >{{ $makerConflictText }}</span>
-                </span>
             </a>
             <a href="{{ route('maker.course_offerings.index') }}" class="nv {{ Request::routeIs('maker.course_offerings.*') && ! Request::routeIs('maker.course_offerings.schedules.*') ? 'on' : '' }}">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

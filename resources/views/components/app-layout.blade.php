@@ -649,6 +649,17 @@
         [x-cloak] { display: none !important; }
 
         /* ─── TPSS Delete Confirm Dialog ─────────────────────────────── */
+        .swal2-container.tpss-delete-container {
+            inset: 0 0 0 var(--sidebar-w, 0px) !important;
+            width: auto !important;
+            padding: 24px !important;
+        }
+        @media (max-width: 1024px) {
+            .swal2-container.tpss-delete-container {
+                inset: 0 !important;
+                padding: 16px !important;
+            }
+        }
         .tpss-delete-popup {
             border-radius: 20px !important;
             padding: 0 !important;
@@ -669,6 +680,12 @@
             min-height: 0 !important;
             overflow-y: auto !important;
             overflow-x: hidden !important;
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+        }
+        .tpss-delete-popup .swal2-html-container::-webkit-scrollbar {
+            width: 0 !important;
+            height: 0 !important;
         }
         .tpss-delete-popup > :where(
             .swal2-image,
@@ -779,6 +796,12 @@
             min-width: 0;
             max-height: 10.5rem;
             overflow-y: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .tpss-item-badge-text::-webkit-scrollbar {
+            width: 0;
+            height: 0;
         }
         @media (max-width: 480px) {
             .tpss-delete-popup {
@@ -958,6 +981,7 @@
                 heightAuto: false,
                 scrollbarPadding: false,
                 customClass: {
+                    container:     'tpss-delete-container',
                     popup:         'tpss-delete-popup',
                     confirmButton: 'tpss-delete-confirm',
                     cancelButton:  'tpss-delete-cancel',
@@ -1015,6 +1039,7 @@
                 focusCancel: true,
                 buttonsStyling: false,
                 customClass: {
+                    container:     'tpss-delete-container',
                     popup:         'tpss-delete-popup',
                     confirmButton: 'tpss-delete-confirm',
                     cancelButton:  'tpss-delete-cancel',
