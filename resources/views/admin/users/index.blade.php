@@ -1545,6 +1545,19 @@
         .users-page tbody tr:hover {
             background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
         }
+
+        /* fix: ลูกศร dropdown ของตัวกรองปูซ้ำเต็มช่องตอน hover
+           สาเหตุ: .users-filter-select ใช้ background (shorthand) ซึ่งรีเซ็ต background-repeat
+           เป็น repeat ทำให้ตอน select:hover ใส่รูปลูกศรกลับมาแล้วปูซ้ำ
+           แก้: pin ลูกศรเดี่ยวด้วย longhand คุมทั้ง normal + hover (ไม่แตะ background-color เดิม) */
+        .users-filter-select,
+        .users-filter-select:hover {
+            background-image:
+                url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23002454' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 13px center;
+            background-size: 18px 18px;
+        }
     </style>
 
     @if(session('import_errors'))
