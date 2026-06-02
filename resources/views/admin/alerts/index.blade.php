@@ -73,6 +73,9 @@
                     <div class="alerts-summary-value">{{ number_format($criticalCount) }}</div>
                     <div class="alerts-summary-note">{{ $criticalCount > 0 ? 'ต้องแก้ก่อนเปิดใช้งาน' : 'ผ่านทั้งหมด' }}</div>
                 </div>
+                <span class="alerts-summary-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+                </span>
             </div>
             <div class="alerts-summary-card {{ $visibleWarningCount > 0 ? 'is-warning' : 'is-success' }}">
                 <div class="alerts-summary-top">
@@ -83,6 +86,9 @@
                     <div class="alerts-summary-value">{{ number_format($visibleWarningCount) }}</div>
                     <div class="alerts-summary-note">{{ $visibleWarningCount > 0 ? 'ช่วยให้ข้อมูลตั้งต้นสมบูรณ์ขึ้น' : 'ไม่มีรายการที่เปิดเตือน' }}</div>
                 </div>
+                <span class="alerts-summary-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M9 12h6"/><path d="M9 16h4"/></svg>
+                </span>
             </div>
             <div class="alerts-summary-card is-muted">
                 <div class="alerts-summary-top">
@@ -93,6 +99,9 @@
                     <div class="alerts-summary-value">{{ number_format($dismissedWarningCount) }}</div>
                     <div class="alerts-summary-note">ซ่อนจากตัวเลขแจ้งเตือนในเมนูด้านซ้าย</div>
                 </div>
+                <span class="alerts-summary-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                </span>
             </div>
         </section>
 
@@ -1823,6 +1832,34 @@
 
         .alerts-table-wrap tbody tr:hover {
             background: color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
+        }
+
+        /* ไอคอนประจำการ์ดสรุป — แทนวงกลมตกแต่งเปล่า (::after) ที่ดูเหมือนไอคอนหาย */
+        .alerts-summary-card::after { display: none; }
+        .alerts-summary-icon {
+            position: absolute;
+            inset: auto 18px 16px auto;
+            width: 54px;
+            height: 54px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            background: color-mix(in oklch, var(--brand-navy) 9%, var(--surface));
+            color: color-mix(in oklch, var(--brand-navy) 60%, var(--fg-3));
+            pointer-events: none;
+        }
+        .alerts-summary-card.is-conflict .alerts-summary-icon {
+            background: color-mix(in oklch, var(--status-conflict) 14%, var(--surface));
+            color: var(--status-conflict-fg);
+        }
+        .alerts-summary-card.is-warning .alerts-summary-icon {
+            background: color-mix(in oklch, var(--status-warning) 16%, var(--surface));
+            color: var(--status-warning-fg);
+        }
+        .alerts-summary-card.is-success .alerts-summary-icon {
+            background: color-mix(in oklch, var(--status-success) 14%, var(--surface));
+            color: var(--status-success-fg);
         }
     </style>
 </x-app-layout>
