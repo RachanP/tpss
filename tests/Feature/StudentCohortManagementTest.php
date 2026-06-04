@@ -60,14 +60,14 @@ class StudentCohortManagementTest extends TestCase
         $this->post(route('admin.student_cohorts.store'), [
             'curriculum_id' => $curr->id,
             'year_level'    => 3,
-            'code'          => 'กลุ่ม 1',
+            'code'          => 'A',
             'student_count' => 80,
         ])->assertRedirect(route('admin.master_data', ['tab' => 'student_cohorts']));
 
         $this->assertDatabaseHas('student_cohorts', [
             'curriculum_id' => $curr->id,
             'year_level'    => 3,
-            'code'          => 'กลุ่ม 1',
+            'code'          => 'A',
             'student_count' => 80,
         ]);
     }
@@ -77,7 +77,7 @@ class StudentCohortManagementTest extends TestCase
         $admin = $this->makeUser('admin');
         $curr  = $this->bachelorCurriculum();
         $cohort = StudentCohort::create([
-            'curriculum_id' => $curr->id, 'year_level' => 3, 'code' => 'กลุ่ม 1', 'student_count' => 80,
+            'curriculum_id' => $curr->id, 'year_level' => 3, 'code' => 'A', 'student_count' => 80,
         ]);
 
         $this->actingAs($admin)->withSession(['active_role' => 'admin']);
@@ -85,7 +85,7 @@ class StudentCohortManagementTest extends TestCase
         $this->put(route('admin.student_cohorts.update', $cohort), [
             'curriculum_id' => $curr->id,
             'year_level'    => 3,
-            'code'          => 'กลุ่ม 1',
+            'code'          => 'A',
             'student_count' => 78,
         ])->assertRedirect(route('admin.master_data', ['tab' => 'student_cohorts']));
 
@@ -113,7 +113,7 @@ class StudentCohortManagementTest extends TestCase
         $admin = $this->makeUser('admin');
         $curr  = $this->bachelorCurriculum();
         StudentCohort::create([
-            'curriculum_id' => $curr->id, 'year_level' => 3, 'code' => 'กลุ่ม 1', 'student_count' => 80,
+            'curriculum_id' => $curr->id, 'year_level' => 3, 'code' => 'A', 'student_count' => 80,
         ]);
 
         $this->actingAs($admin)->withSession(['active_role' => 'admin']);
@@ -121,7 +121,7 @@ class StudentCohortManagementTest extends TestCase
         $this->post(route('admin.student_cohorts.store'), [
             'curriculum_id' => $curr->id,
             'year_level'    => 3,
-            'code'          => 'กลุ่ม 1',
+            'code'          => 'A',
             'student_count' => 80,
         ])->assertSessionHasErrors('code');
     }
@@ -131,20 +131,20 @@ class StudentCohortManagementTest extends TestCase
         $admin = $this->makeUser('admin');
         $curr  = $this->bachelorCurriculum();
         StudentCohort::create([
-            'curriculum_id' => $curr->id, 'year_level' => 3, 'code' => 'กลุ่ม 1', 'student_count' => 80,
+            'curriculum_id' => $curr->id, 'year_level' => 3, 'code' => 'A', 'student_count' => 80,
         ]);
 
         $this->actingAs($admin)->withSession(['active_role' => 'admin']);
 
-        // กลุ่ม 1 ในปี 4 ต่างปีกัน → อนุญาต
+        // A ในปี 4 ต่างปีกัน → อนุญาต
         $this->post(route('admin.student_cohorts.store'), [
             'curriculum_id' => $curr->id,
             'year_level'    => 4,
-            'code'          => 'กลุ่ม 1',
+            'code'          => 'A',
             'student_count' => 80,
         ])->assertRedirect(route('admin.master_data', ['tab' => 'student_cohorts']));
 
-        $this->assertDatabaseHas('student_cohorts', ['curriculum_id' => $curr->id, 'year_level' => 4, 'code' => 'กลุ่ม 1']);
+        $this->assertDatabaseHas('student_cohorts', ['curriculum_id' => $curr->id, 'year_level' => 4, 'code' => 'A']);
     }
 
     public function test_master_curriculum_creates_cohort_without_year_level(): void
@@ -202,7 +202,7 @@ class StudentCohortManagementTest extends TestCase
         $this->post(route('admin.student_cohorts.store'), [
             'curriculum_id' => $curr->id,
             'year_level'    => 5,
-            'code'          => 'กลุ่ม 1',
+            'code'          => 'A',
             'student_count' => 80,
         ])->assertSessionHasErrors('year_level');
     }

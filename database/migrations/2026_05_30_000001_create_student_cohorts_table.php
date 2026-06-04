@@ -16,9 +16,11 @@ return new class extends Migration
         Schema::create('student_cohorts', function (Blueprint $table) {
             $table->id();
             $table->foreignId('curriculum_id')->constrained('curriculums')->cascadeOnDelete();
+            $table->foreignId('parent_id')->nullable()->constrained('student_cohorts')->nullOnDelete()
+                ->comment('กลุ่มใหญ่ที่กลุ่มย่อยนี้สังกัด — null = เป็นกลุ่มใหญ่เอง (V4 กลุ่มย่อย A→A1)');
             $table->unsignedTinyInteger('year_level')->nullable()
                 ->comment('ชั้นปี เช่น 1, 3, 4 — null สำหรับหลักสูตรที่ไม่ใช้ระบบชั้นปี (ป.โท/ป.เอก)');
-            $table->string('code', 50)->comment('รหัสกลุ่ม เช่น "กลุ่ม 1", "A"');
+            $table->string('code', 50)->comment('รหัสกลุ่ม — กลุ่มใหญ่=ตัวอักษรล้วน (A,B) · กลุ่มย่อย=ตัวอักษร+เลข (A1)');
             $table->unsignedInteger('student_count')->default(0)->comment('จำนวนนักศึกษาในกลุ่ม');
             $table->string('note', 255)->nullable();
             $table->timestamps();

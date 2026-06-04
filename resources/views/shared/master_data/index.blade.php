@@ -603,26 +603,30 @@
         // Curriculums
         showCurriculumModal: false,
         editCurriculumMode: false,
+        showYearModeOverride: false,
         currentCurriculum: {
             id: '', name: '', effective_year: '',
             education_level: 'bachelor', duration_years: 4, uses_year_level: '1',
-            total_credits_required: '', is_active: '1',
+            total_credits_required: '', counts_service_only: '0', is_active: '1',
         },
         openAddCurriculum() {
             this.editCurriculumMode = false;
+            this.showYearModeOverride = false;
             this.currentCurriculum = {
                 id: '', name: '', effective_year: '',
                 education_level: 'bachelor', duration_years: 4, uses_year_level: '1',
-                total_credits_required: '', is_active: '1',
+                total_credits_required: '', counts_service_only: '0', is_active: '1',
             };
             this.showCurriculumModal = true;
         },
         openEditCurriculum(curr) {
             this.editCurriculumMode = true;
+            this.showYearModeOverride = false;
             this.currentCurriculum = {
                 ...curr,
                 is_active: curr.is_active ? '1' : '0',
                 uses_year_level: curr.uses_year_level ? '1' : '0',
+                counts_service_only: curr.counts_service_only ? '1' : '0',
                 education_level: curr.education_level || 'bachelor',
                 duration_years: curr.duration_years || 4,
                 total_credits_required: curr.total_credits_required ?? '',
@@ -822,6 +826,7 @@
         cohortCurriculumDurations: {{ Js::from($cohortCurriculums->mapWithKeys(fn($c) => [(string) $c->id => (int) $c->duration_years])) }},
         cohortCurriculumUsesYear: {{ Js::from($cohortCurriculums->mapWithKeys(fn($c) => [(string) $c->id => (bool) $c->uses_year_level])) }},
         currentCohort: { id: '', curriculum_id: '', year_level: '', code: '', student_count: '', note: '' },
+        cohortSubgroups: [],
         cohortUsesYear() {
             return !!this.cohortCurriculumUsesYear[String(this.currentCohort.curriculum_id)];
         },
@@ -829,13 +834,25 @@
             const dur = this.cohortCurriculumDurations[String(this.currentCohort.curriculum_id)] || 0;
             return Array.from({ length: dur }, (_, i) => i + 1);
         },
+        addCohortSubgroup() {
+            this.cohortSubgroups.push({ student_count: '' });
+        },
+        removeCohortSubgroup(i) {
+            this.cohortSubgroups.splice(i, 1);
+        },
+        subgroupCode(i) {
+            // รหัสกลุ่มย่อย = ตัวอักษรกลุ่มใหญ่ + ลำดับ เช่น A1, A2
+            return (this.currentCohort.code || '?') + (i + 1);
+        },
         openAddCohort(curriculumId = '') {
             this.editCohortMode = false;
             this.currentCohort = { id: '', curriculum_id: curriculumId ? String(curriculumId) : '', year_level: '', code: '', student_count: '', note: '' };
+            this.cohortSubgroups = [];
             this.showCohortModal = true;
         },
         openEditCohort(co) {
             this.editCohortMode = true;
+            this.cohortSubgroups = [];
             this.currentCohort = {
                 id: co.id,
                 curriculum_id: String(co.curriculum_id),
@@ -898,7 +915,7 @@
             };
             showCourseModal = true;
         @endif
-        @if(old('curriculum_form') && $errors->hasAny(['name','effective_year','is_active','education_level','duration_years','uses_year_level','total_credits_required']))
+        @if(old('curriculum_form') && $errors->hasAny(['name','effective_year','is_active','education_level','duration_years','uses_year_level','total_credits_required','counts_service_only']))
             activeTab = 'curriculums';
             editCurriculumMode = {{ old('curriculum_form_id') ? 'true' : 'false' }};
             currentCurriculum = {
@@ -909,6 +926,7 @@
                 duration_years: {{ Js::from(old('duration_years', 4)) }},
                 uses_year_level: {{ Js::from(old('uses_year_level', '1')) }},
                 total_credits_required: {{ Js::from(old('total_credits_required', '')) }},
+                counts_service_only: {{ Js::from(old('counts_service_only', '0')) }},
                 is_active: {{ Js::from(old('is_active', '1')) }},
             };
             showCurriculumModal = true;
@@ -2800,17 +2818,18 @@
                         <input type="hidden" name="curriculum_form" value="1">
                         <input type="hidden" name="curriculum_form_id" :value="currentCurriculum.id" :disabled="!editCurriculumMode">
                         <div class="modal-body">
-                            @if(old('curriculum_form') && $errors->hasAny(['name','effective_year','is_active','education_level','duration_years','uses_year_level','total_credits_required']))
+                            @if(old('curriculum_form') && $errors->hasAny(['name','effective_year','is_active','education_level','duration_years','uses_year_level','total_credits_required','counts_service_only']))
                                 <div style="margin-bottom:16px;padding:12px 14px;background:oklch(97% 0.02 20);border:1px solid oklch(82% 0.08 25);border-radius:8px;color:var(--status-conflict-fg);font-size:13px;line-height:1.6;">
                                     <div style="font-weight:700;margin-bottom:4px;">ไม่สามารถบันทึกหลักสูตรได้</div>
-                                    @foreach(['name','effective_year','is_active','education_level','duration_years','uses_year_level','total_credits_required'] as $field)
+                                    @foreach(['name','effective_year','is_active','education_level','duration_years','uses_year_level','total_credits_required','counts_service_only'] as $field)
                                         @foreach($errors->get($field) as $error)
                                             <div>{{ $error }}</div>
                                         @endforeach
                                     @endforeach
                                 </div>
                             @endif
-                            <div class="form-group" style="margin-bottom: 20px;">
+                            <div style="font-weight:700;font-size:12px;color:var(--brand-navy);border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:14px;">ข้อมูลทั่วไป</div>
+                            <div class="form-group" style="margin-bottom: 16px;">
                                 <label>ชื่อหลักสูตร <span style="color: var(--status-conflict-fg)">*</span></label>
                                 <input type="text" name="name" x-model="currentCurriculum.name" required placeholder="เช่น พยาบาลศาสตรบัณฑิต (2565)">
                             </div>
@@ -2828,41 +2847,58 @@
                                     <input type="number" name="effective_year" x-model="currentCurriculum.effective_year" required placeholder="2565">
                                 </div>
                             </div>
+                            <div style="font-weight:700;font-size:12px;color:var(--brand-navy);border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:14px;">โครงสร้างหลักสูตร</div>
+                            {{-- รูปแบบการจัดชั้นปี: ตั้งอัตโนมัติตามระดับการศึกษา + กด "ปรับเอง" ได้ --}}
+                            <input type="hidden" name="uses_year_level" :value="currentCurriculum.uses_year_level">
                             <div class="form-group" style="margin-bottom: 16px;">
-                                <label>รูปแบบการจัดชั้นปี <span style="color: var(--status-conflict-fg)">*</span></label>
-                                <select name="uses_year_level" x-model="currentCurriculum.uses_year_level" required>
-                                    <option value="1">ใช้ระบบชั้นปี (cohort) — เหมาะกับ ป.ตรี</option>
-                                    <option value="0">ใช้ prerequisite + หน่วยกิตสะสม — เหมาะกับ ป.โท / ป.เอก</option>
-                                </select>
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 16px;">
-                                <div class="form-group" style="margin-bottom:0;" x-show="String(currentCurriculum.uses_year_level) === '1'">
-                                    <label>จำนวนปีของหลักสูตร <span style="color: var(--status-conflict-fg)">*</span></label>
-                                    <input type="number" name="duration_years" x-model="currentCurriculum.duration_years" min="1" max="10" :required="String(currentCurriculum.uses_year_level) === '1'" placeholder="4">
-                                    <div style="margin-top:4px;font-size:11px;color:var(--fg-4);">ป.ตรี=4, ป.โท=2, ป.เอก=3</div>
+                                <label>การจัดชั้นปี</label>
+                                <input type="hidden" name="uses_year_level" :value="currentCurriculum.uses_year_level">
+                                {{-- โหมดอ่านค่า (auto) — กด "ปรับเอง" เพื่อปลดล็อก --}}
+                                <div x-show="!showYearModeOverride" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface-sunken);">
+                                    <span style="font-size:13px;color:var(--fg-1);" x-text="String(currentCurriculum.uses_year_level) === '1' ? ('แบ่งเป็นชั้นปี (ปี 1–' + (currentCurriculum.duration_years || 4) + ')') : 'ไม่แบ่งชั้นปี ใช้หน่วยกิตสะสม'"></span>
+                                    <button type="button" @click="showYearModeOverride = true" data-testid="curriculum-year-mode-toggle" style="flex-shrink:0;background:none;border:0;padding:0;cursor:pointer;color:var(--brand-navy-500);font:inherit;font-size:12px;text-decoration:underline;">ปรับเอง</button>
                                 </div>
-                                <div class="form-group" style="margin-bottom:0;">
-                                    <label>
-                                        หน่วยกิตขั้นต่ำ
-                                        <template x-if="String(currentCurriculum.uses_year_level) === '0'">
-                                            <span style="color: var(--status-conflict-fg)">*</span>
-                                        </template>
-                                        <template x-if="String(currentCurriculum.uses_year_level) === '1'">
-                                            <span style="font-weight:400;color:var(--fg-4);font-size:11px;">(ไม่บังคับ)</span>
-                                        </template>
-                                    </label>
-                                    <input type="number" name="total_credits_required" x-model="currentCurriculum.total_credits_required" min="0" :required="String(currentCurriculum.uses_year_level) === '0'" placeholder="เช่น 140">
-                                    <template x-if="String(currentCurriculum.uses_year_level) === '0'">
-                                        <div style="margin-top:4px;font-size:11px;color:var(--fg-4);">ใช้เป็นเงื่อนไขจบการศึกษา (แทนระบบชั้นปี)</div>
-                                    </template>
+                                {{-- โหมดเลือกเอง (ปลดล็อกแล้ว) — dropdown ในที่เดียวกัน --}}
+                                <div x-show="showYearModeOverride">
+                                    <select x-model="currentCurriculum.uses_year_level" data-testid="curriculum-year-mode-override">
+                                        <option value="1">แบ่งเป็นชั้นปี (ปี 1–4)</option>
+                                        <option value="0">ไม่แบ่งชั้นปี ใช้หน่วยกิตสะสม</option>
+                                    </select>
+                                    <button type="button" @click="showYearModeOverride = false" style="margin-top:6px;background:none;border:0;padding:0;cursor:pointer;color:var(--brand-navy-500);font:inherit;font-size:12px;text-decoration:underline;">↩ กลับไปใช้ค่าอัตโนมัติ</button>
+                                </div>
+                                <div style="margin-top:4px;font-size:11px;color:var(--fg-4);">ตั้งให้อัตโนมัติตามระดับการศึกษา — ป.ตรีแบ่งชั้นปี · ป.โท/เอกใช้หน่วยกิตสะสม</div>
+                            </div>
+                            {{-- แบ่งชั้นปี → จำนวนปี --}}
+                            <div class="form-group" style="margin-bottom: 16px;" x-show="String(currentCurriculum.uses_year_level) === '1'">
+                                <label>จำนวนปีของหลักสูตร <span style="color: var(--status-conflict-fg)">*</span></label>
+                                <input type="number" name="duration_years" x-model="currentCurriculum.duration_years" min="1" max="10" :required="String(currentCurriculum.uses_year_level) === '1'" placeholder="4">
+                            </div>
+                            {{-- ใช้หน่วยกิตสะสม → หน่วยกิตขั้นต่ำ --}}
+                            <div class="form-group" style="margin-bottom: 16px;" x-show="String(currentCurriculum.uses_year_level) === '0'">
+                                <label>หน่วยกิตขั้นต่ำ <span style="color: var(--status-conflict-fg)">*</span></label>
+                                <input type="number" name="total_credits_required" x-model="currentCurriculum.total_credits_required" min="0" :required="String(currentCurriculum.uses_year_level) === '0'" placeholder="เช่น 36">
+                                <div style="margin-top:4px;font-size:11px;color:var(--fg-4);">ใช้เป็นเงื่อนไขจบการศึกษา (แทนระบบชั้นปี)</div>
+                            </div>
+                            <div style="font-weight:700;font-size:12px;color:var(--brand-navy);border-bottom:1px solid var(--border);padding-bottom:6px;margin:4px 0 14px;">การตั้งค่า</div>
+                            <div class="form-group" style="margin-bottom:16px;">
+                                <label>การนับภาระงาน <span style="font-weight:400;color:var(--fg-4);font-size:11px;">(หลักสูตรเฉพาะทาง)</span></label>
+                                <input type="hidden" name="counts_service_only" :value="currentCurriculum.counts_service_only">
+                                <div style="display:flex;gap:4px;padding:4px;border-radius:10px;background:var(--brand-navy-50);" data-testid="curriculum-counts-service-only">
+                                    <button type="button" @click="currentCurriculum.counts_service_only = '0'"
+                                        :style="'flex:1;padding:10px 12px;border:0;border-radius:7px;cursor:pointer;font-family:inherit;font-size:13px;text-align:center;transition:all .15s ease;' + (String(currentCurriculum.counts_service_only) === '0' ? 'background:var(--brand-navy);color:#fff;font-weight:600;' : 'background:transparent;color:var(--brand-navy-500);font-weight:500;')">นับชั่วโมงปกติ</button>
+                                    <button type="button" @click="currentCurriculum.counts_service_only = '1'"
+                                        :style="'flex:1;padding:10px 12px;border:0;border-radius:7px;cursor:pointer;font-family:inherit;font-size:13px;text-align:center;transition:all .15s ease;' + (String(currentCurriculum.counts_service_only) === '1' ? 'background:var(--brand-navy);color:#fff;font-weight:600;' : 'background:transparent;color:var(--brand-navy-500);font-weight:500;')">บริการวิชาการอย่างเดียว</button>
                                 </div>
                             </div>
                             <div class="form-group" style="margin-bottom:0;">
                                 <label>สถานะ</label>
-                                <select name="is_active" x-model="currentCurriculum.is_active">
-                                    <option value="1">กำลังใช้งาน</option>
-                                    <option value="0">ปิดใช้งาน</option>
-                                </select>
+                                <input type="hidden" name="is_active" :value="currentCurriculum.is_active">
+                                <div style="display:flex;gap:4px;padding:4px;border-radius:10px;background:var(--brand-navy-50);">
+                                    <button type="button" @click="currentCurriculum.is_active = '1'"
+                                        :style="'flex:1;padding:10px 12px;border:0;border-radius:7px;cursor:pointer;font-family:inherit;font-size:13px;text-align:center;transition:all .15s ease;' + (String(currentCurriculum.is_active) === '1' ? 'background:var(--brand-navy);color:#fff;font-weight:600;' : 'background:transparent;color:var(--brand-navy-500);font-weight:500;')">กำลังใช้งาน</button>
+                                    <button type="button" @click="currentCurriculum.is_active = '0'"
+                                        :style="'flex:1;padding:10px 12px;border:0;border-radius:7px;cursor:pointer;font-family:inherit;font-size:13px;text-align:center;transition:all .15s ease;' + (String(currentCurriculum.is_active) === '0' ? 'background:var(--brand-navy);color:#fff;font-weight:600;' : 'background:transparent;color:var(--brand-navy-500);font-weight:500;')">ปิดใช้งาน</button>
+                                </div>
                             </div>
                         </div>
                         <div class="modal-foot" style="display: flex; justify-content: space-between;">
@@ -3173,9 +3209,9 @@
                                                     onmouseover="this.style.background='var(--bg-2)'" onmouseout="this.style.background=''">
                                                     @if($cur->uses_year_level)
                                                     <td style="padding: 11px 16px 11px 56px; font-size: 13px; color: var(--fg-2);">@if($co->year_level)ปี {{ $co->year_level }}@else<span style="color: var(--fg-3);">—</span>@endif</td>
-                                                    <td style="padding: 11px 16px; font-size: 13px; font-weight: 600; color: var(--fg-1);">{{ $co->code }}</td>
+                                                    <td style="padding: 11px 16px; font-size: 13px; font-weight: 600; color: var(--fg-1);">@if($co->parent_id)<span style="color:var(--fg-3);font-weight:400;">↳ </span><span style="font-weight:500;color:var(--fg-2);">{{ $co->code }}</span>@else{{ $co->code }}@endif</td>
                                                     @else
-                                                    <td style="padding: 11px 16px 11px 56px; font-size: 13px; font-weight: 600; color: var(--fg-1);">{{ $co->code }}</td>
+                                                    <td style="padding: 11px 16px 11px 56px; font-size: 13px; font-weight: 600; color: var(--fg-1);">@if($co->parent_id)<span style="color:var(--fg-3);font-weight:400;">↳ </span><span style="font-weight:500;color:var(--fg-2);">{{ $co->code }}</span>@else{{ $co->code }}@endif</td>
                                                     @endif
                                                     <td style="padding: 11px 16px; font-size: 13px; color: var(--fg-2); text-align: center; font-family: var(--font-mono, monospace);">{{ number_format($co->student_count) }} คน</td>
                                                     @if($canManageMasterData)
@@ -3254,9 +3290,29 @@
                                 <input type="number" name="student_count" x-model="currentCohort.student_count" min="0" max="9999" required placeholder="เช่น 80">
                             </div>
                             <div class="form-group" style="margin-bottom: 18px;">
-                                <label>รหัสกลุ่ม <span style="color: var(--status-conflict-fg)">*</span></label>
-                                <input type="text" name="code" x-model="currentCohort.code" maxlength="50" required placeholder="เช่น กลุ่ม 1, A">
-                                <div style="margin-top:6px;font-size:12px;color:var(--fg-3);">รหัสกลุ่มต้องไม่ซ้ำในชั้นปีเดียวกันของหลักสูตรนี้</div>
+                                <label>รหัสกลุ่มใหญ่ <span style="color: var(--status-conflict-fg)">*</span></label>
+                                <input type="text" name="code" x-model="currentCohort.code" maxlength="50" required placeholder="เช่น A, B">
+                                <div style="margin-top:6px;font-size:12px;color:var(--fg-3);">กลุ่มใหญ่ใช้ตัวอักษรเท่านั้น (A, B) — กลุ่มย่อยจะเป็น A1, A2</div>
+                            </div>
+                            {{-- กลุ่มย่อย (optional) — เฉพาะตอนสร้างใหม่ --}}
+                            <div class="form-group" style="margin-bottom: 18px;" x-show="!editCohortMode" x-cloak>
+                                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                                    <label style="margin:0;">กลุ่มย่อย <span style="font-weight:400;color:var(--fg-3);font-size:12px;">(ไม่บังคับ)</span></label>
+                                    <button type="button" @click="addCohortSubgroup()" :disabled="!currentCohort.code"
+                                        :style="'display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border:1px solid var(--brand-navy-300);border-radius:7px;background:var(--surface);color:var(--brand-navy);font-family:inherit;font-size:12px;font-weight:600;transition:all .12s ease;' + (!currentCohort.code ? 'opacity:.45;cursor:not-allowed;' : 'cursor:pointer;')">+ เพิ่มกลุ่มย่อย</button>
+                                </div>
+                                <template x-if="cohortSubgroups.length === 0">
+                                    <div style="font-size:12px;color:var(--fg-3);padding:9px 11px;background:var(--surface-sunken);border-radius:6px;">ยังไม่มีกลุ่มย่อย — กดเพิ่มเพื่อซอยกลุ่มใหญ่เป็น A1, A2 (ไม่ต้องการก็เว้นว่างได้)</div>
+                                </template>
+                                <template x-for="(sg, i) in cohortSubgroups" :key="i">
+                                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                                        <span style="min-width:46px;font-weight:600;color:var(--brand-navy);font-size:13px;" x-text="subgroupCode(i)"></span>
+                                        <input type="hidden" :name="'subgroups['+i+'][code]'" :value="subgroupCode(i)">
+                                        <input type="number" :name="'subgroups['+i+'][student_count]'" x-model="sg.student_count" min="0" max="9999" required placeholder="จำนวนนักศึกษา" style="flex:1;">
+                                        <button type="button" @click="removeCohortSubgroup(i)" title="ลบกลุ่มย่อย"
+                                            style="flex-shrink:0;background:none;border:0;cursor:pointer;color:var(--status-conflict-fg);font-size:16px;line-height:1;padding:4px 8px;">✕</button>
+                                    </div>
+                                </template>
                             </div>
                             <div class="form-group">
                                 <label>หมายเหตุ</label>

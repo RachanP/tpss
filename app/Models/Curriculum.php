@@ -16,6 +16,7 @@ class Curriculum extends Model
         'duration_years',
         'uses_year_level',
         'total_credits_required',
+        'counts_service_only',
         'is_active'
     ];
 
@@ -24,6 +25,7 @@ class Curriculum extends Model
         'duration_years' => 'integer',
         'uses_year_level' => 'boolean',
         'total_credits_required' => 'integer',
+        'counts_service_only' => 'boolean',
         'is_active' => 'boolean'
     ];
 
@@ -31,6 +33,7 @@ class Curriculum extends Model
         'education_level' => 'bachelor',
         'duration_years' => 4,
         'uses_year_level' => true,
+        'counts_service_only' => false,
     ];
 
     public function courses(): HasMany

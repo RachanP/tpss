@@ -179,7 +179,11 @@ class MasterDataController extends Controller
         // กลุ่มนักศึกษา (cohort — V2) — ทุกระดับหลักสูตร
         // หลักสูตรที่ใช้ระบบชั้นปี (ป.ตรี) มี year_level / หลักสูตรที่ไม่ใช้ (ป.โท-เอก) year_level = null
         $cohortCurriculums = Curriculum::query()
-            ->with(['studentCohorts' => fn ($q) => $q->orderBy('year_level')->orderBy('code')])
+            ->with(['studentCohorts' => fn ($q) => $q
+                ->orderBy('year_level')
+                ->orderByRaw('COALESCE(parent_id, id)') // จัดกลุ่มย่อยให้อยู่ใต้กลุ่มใหญ่เดียวกัน
+                ->orderByRaw('parent_id IS NOT NULL')   // กลุ่มใหญ่ (null) มาก่อนกลุ่มย่อย
+                ->orderBy('code')])
             ->orderBy('education_level')
             ->orderBy('effective_year', 'desc')
             ->orderBy('name')
@@ -692,6 +696,8 @@ class MasterDataController extends Controller
 
         $request->merge([
             'name' => trim((string) $request->input('name')),
+            // checkbox/select boolean — กัน field หายตอนไม่ติ๊ก ให้เป็น false เสมอ
+            'counts_service_only' => $request->boolean('counts_service_only'),
         ]);
     }
 
@@ -947,7 +953,7 @@ class MasterDataController extends Controller
         $this->logMasterDataCreate(
             'curriculums',
             $curriculum->id,
-            $this->auditSnapshot($curriculum, ['name', 'effective_year', 'education_level', 'duration_years', 'uses_year_level', 'total_credits_required', 'is_active']),
+            $this->auditSnapshot($curriculum, ['name', 'effective_year', 'education_level', 'duration_years', 'uses_year_level', 'total_credits_required', 'counts_service_only', 'is_active']),
             "สร้างหลักสูตร {$curriculum->name}",
         );
 
@@ -965,7 +971,7 @@ class MasterDataController extends Controller
 
         $validated['duration_years'] = $validated['duration_years'] ?? $curriculum->duration_years ?? 1;
 
-        $fields = ['name', 'effective_year', 'education_level', 'duration_years', 'uses_year_level', 'total_credits_required', 'is_active'];
+        $fields = ['name', 'effective_year', 'education_level', 'duration_years', 'uses_year_level', 'total_credits_required', 'counts_service_only', 'is_active'];
         $before = $this->auditSnapshot($curriculum, $fields);
 
         DB::transaction(function () use ($curriculum, $validated) {
@@ -1016,6 +1022,7 @@ class MasterDataController extends Controller
             'duration_years'         => $curriculum->duration_years,
             'uses_year_level'        => $curriculum->uses_year_level,
             'total_credits_required' => $curriculum->total_credits_required,
+            'counts_service_only'    => $curriculum->counts_service_only,
             'is_active'              => false,
         ]);
 
@@ -1274,12 +1281,21 @@ class MasterDataController extends Controller
             $uniqueRule->ignore($cohort->id);
         }
 
+        // กลุ่มใหญ่ของหลักสูตรชั้นปี (ป.ตรี) = ตัวอักษรล้วน (A, B) · กลุ่มย่อย (มี parent) = อนุญาตตัวเลข (A1)
+        // หลักสูตรไม่ใช้ชั้นปี (ป.โท/เอก) = ยืดหยุ่น (เช่น "รุ่น 1")
+        $isSubgroup = $cohort && $cohort->parent_id !== null;
+        $codeRule = ['required', 'string', 'max:50'];
+        if ($usesYear && ! $isSubgroup) {
+            $codeRule[] = 'regex:/^[\p{L}]+$/u'; // ตัวอักษรล้วน (ไทย/อังกฤษ) ไม่มีตัวเลข
+        }
+        $codeRule[] = $uniqueRule;
+
         return [
             'curriculum_id' => ['required', Rule::exists('curriculums', 'id')],
             'year_level' => $usesYear
                 ? ['required', 'integer', 'min:1', 'max:' . $maxYear]
                 : ['nullable'],
-            'code' => ['required', 'string', 'max:50', $uniqueRule],
+            'code' => $codeRule,
             'student_count' => ['required', 'integer', 'min:0', 'max:9999'],
             'note' => ['nullable', 'string', 'max:255'],
         ];
@@ -1293,8 +1309,11 @@ class MasterDataController extends Controller
             'year_level.required' => 'กรุณาเลือกชั้นปี',
             'year_level.max' => 'ชั้นปีต้องไม่เกินจำนวนปีของหลักสูตร',
             'code.required' => 'กรุณาระบุรหัสกลุ่ม',
+            'code.regex' => 'รหัสกลุ่มใหญ่ต้องเป็นตัวอักษรเท่านั้น (ไม่มีตัวเลข) เช่น A, B',
             'code.unique' => 'มีรหัสกลุ่มนี้ในชั้นปีเดียวกันของหลักสูตรนี้แล้ว',
             'student_count.required' => 'กรุณาระบุจำนวนนักศึกษา',
+            'subgroups.*.student_count.required' => 'กรุณาระบุจำนวนนักศึกษาของกลุ่มย่อย',
+            'subgroups.*.code.required' => 'กลุ่มย่อยต้องมีรหัส',
         ];
     }
 
@@ -1312,18 +1331,54 @@ class MasterDataController extends Controller
 
     public function storeStudentCohort(Request $request)
     {
-        $validated = $this->normalizeCohortYearLevel($request->validate(
-            $this->studentCohortValidationRules($request),
-            $this->studentCohortValidationMessages()
-        ));
+        // กลุ่มใหญ่ + กลุ่มย่อย (optional) ในฟอร์มเดียว
+        $rules = $this->studentCohortValidationRules($request);
+        $rules['subgroups'] = ['nullable', 'array'];
+        $rules['subgroups.*.code'] = ['required', 'string', 'max:50', 'distinct'];
+        $rules['subgroups.*.student_count'] = ['required', 'integer', 'min:0', 'max:9999'];
 
-        $cohort = StudentCohort::create($validated);
+        $validated = $this->normalizeCohortYearLevel(
+            $request->validate($rules, $this->studentCohortValidationMessages())
+        );
+
+        $subgroups = $validated['subgroups'] ?? [];
+        unset($validated['subgroups']);
+        $validated['parent_id'] = null;
+
+        // กันรหัสกลุ่มย่อยซ้ำกับกลุ่มใหญ่ หรือซ้ำกับที่มีอยู่ในชั้นปีเดียวกัน
+        $subCodes = array_map(static fn ($s) => $s['code'], $subgroups);
+        if (in_array($validated['code'], $subCodes, true)) {
+            return back()->withInput()->withErrors(['code' => 'รหัสกลุ่มย่อยซ้ำกับกลุ่มใหญ่']);
+        }
+        if (! empty($subCodes)) {
+            $existing = StudentCohort::where('curriculum_id', $validated['curriculum_id'])
+                ->where('year_level', $validated['year_level'])
+                ->whereIn('code', $subCodes)
+                ->pluck('code')->all();
+            if (! empty($existing)) {
+                return back()->withInput()->withErrors(['code' => 'รหัสกลุ่มย่อยซ้ำกับที่มีอยู่แล้ว: ' . implode(', ', $existing)]);
+            }
+        }
+
+        $cohort = DB::transaction(function () use ($validated, $subgroups) {
+            $major = StudentCohort::create($validated);
+            foreach ($subgroups as $sg) {
+                StudentCohort::create([
+                    'curriculum_id' => $major->curriculum_id,
+                    'parent_id'     => $major->id,
+                    'year_level'    => $major->year_level,
+                    'code'          => $sg['code'],
+                    'student_count' => $sg['student_count'],
+                ]);
+            }
+            return $major;
+        });
 
         $this->logMasterDataCreate(
             'student_cohorts',
             $cohort->id,
             $this->auditSnapshot($cohort, ['curriculum_id', 'year_level', 'code', 'student_count']),
-            'สร้างกลุ่ม ' . $this->cohortLabel($cohort),
+            'สร้างกลุ่ม ' . $this->cohortLabel($cohort) . (count($subgroups) ? ' (+' . count($subgroups) . ' กลุ่มย่อย)' : ''),
         );
 
         return $this->redirectToMasterData('student_cohorts')->with('success', 'เพิ่มกลุ่มชั้นปีเรียบร้อยแล้ว');
@@ -1364,15 +1419,20 @@ class MasterDataController extends Controller
         $snapshot = $this->auditSnapshot($studentCohort, ['curriculum_id', 'year_level', 'code', 'student_count']);
         $id = $studentCohort->id;
         $label = $this->cohortLabel($studentCohort);
+        $subCount = $studentCohort->subgroups()->count();
 
-        $studentCohort->delete();
+        // ลบกลุ่มใหญ่ → ลบกลุ่มย่อยที่สังกัดด้วย
+        DB::transaction(function () use ($studentCohort) {
+            $studentCohort->subgroups()->delete();
+            $studentCohort->delete();
+        });
 
         $this->logMasterDataDelete(
             'student_cohorts',
             $id,
             $snapshot,
             null,
-            "ลบกลุ่มชั้นปี {$label}",
+            "ลบกลุ่มชั้นปี {$label}" . ($subCount ? " (+{$subCount} กลุ่มย่อย)" : ''),
         );
 
         return $this->redirectToMasterData('student_cohorts')->with('success', 'ลบกลุ่มชั้นปีเรียบร้อยแล้ว');
@@ -1489,6 +1549,7 @@ class MasterDataController extends Controller
             'total_credits_required' => $usesYearLevel
                 ? ['nullable', 'integer', 'min:0', 'max:9999']
                 : ['required', 'integer', 'min:1', 'max:9999'],
+            'counts_service_only'    => 'required|boolean',
             'is_active'              => 'required|boolean',
         ];
     }
