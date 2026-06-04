@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\AcademicYear;
+use App\Models\AcademicCalendar;
 use App\Models\Course;
+use App\Models\Curriculum;
 use App\Models\CourseOffering;
 use App\Models\CourseRole;
 use App\Models\Holiday;
@@ -239,6 +241,110 @@ class AdminSettingController extends Controller
         $calendar->terms()->whereNotIn('sequence', $keptSeqs)->delete();
     }
 
+    // ── ปฏิทินการศึกษาตามกลุ่ม (V4 ข้อ 8) ────────────────────────────────
+
+    /**
+     * เขียนเทอมของ "ปฏิทินที่ระบุ" (reuse โดย default calendar + ปฏิทินตามกลุ่ม)
+     */
+    private function syncCalendarTerms(AcademicCalendar $calendar, Request $request): void
+    {
+        $terms = collect($request->input('terms', []))
+            ->filter(fn ($t) => ! empty($t['name']) && ! empty($t['start_date']) && ! empty($t['end_date']))
+            ->values();
+
+        $keptSeqs = [];
+        foreach ($terms as $i => $t) {
+            $seq = (int) ($t['sequence'] ?? ($i + 1));
+            $keptSeqs[] = $seq;
+            $calendar->terms()->updateOrCreate(['sequence' => $seq], [
+                'name'          => $t['name'],
+                'start_date'    => $t['start_date'],
+                'end_date'      => $t['end_date'],
+                'midterm_start' => $t['midterm_start'] ?? null,
+                'midterm_end'   => $t['midterm_end'] ?? null,
+                'final_start'   => $t['final_start'] ?? null,
+                'final_end'     => $t['final_end'] ?? null,
+            ]);
+        }
+
+        $calendar->terms()->whereNotIn('sequence', $keptSeqs)->delete();
+    }
+
+    private function validateCalendar(Request $request): array
+    {
+        return $request->validate([
+            'name'           => ['required', 'string', 'max:100'],
+            'curriculum_id'  => ['nullable', \Illuminate\Validation\Rule::exists('curriculums', 'id')],
+            'year_level_min' => ['nullable', 'integer', 'min:1', 'max:12'],
+            'year_level_max' => ['nullable', 'integer', 'min:1', 'max:12', 'gte:year_level_min'],
+            'terms'          => ['required', 'array', 'min:1'],
+        ], [
+            'name.required'        => 'กรุณาตั้งชื่อปฏิทิน',
+            'curriculum_id.exists' => 'ไม่พบหลักสูตรที่เลือก',
+            'year_level_max.gte'   => 'ชั้นปีสูงสุดต้องไม่น้อยกว่าชั้นปีต่ำสุด',
+            'terms.required'       => 'ต้องระบุอย่างน้อย 1 ภาคการศึกษา',
+        ]);
+    }
+
+    public function storeCalendar(Request $request, AcademicYear $year)
+    {
+        $this->normalizeTermDates($request);
+        $validated = $this->validateCalendar($request);
+
+        if ($termErrors = $this->termValidationErrors($request)) {
+            return back()->withInput()->withErrors(['calendar_terms' => $termErrors]);
+        }
+
+        DB::transaction(function () use ($year, $validated, $request) {
+            $calendar = $year->calendars()->create([
+                'name'           => $validated['name'],
+                'curriculum_id'  => $validated['curriculum_id'] ?? null,
+                'year_level_min' => $validated['year_level_min'] ?? null,
+                'year_level_max' => $validated['year_level_max'] ?? null,
+                'is_default'     => false,
+            ]);
+            $this->syncCalendarTerms($calendar, $request);
+        });
+
+        return back()->with('success', 'เพิ่มปฏิทินการศึกษาเรียบร้อยแล้ว');
+    }
+
+    public function updateCalendar(Request $request, AcademicCalendar $calendar)
+    {
+        $this->normalizeTermDates($request);
+        $validated = $this->validateCalendar($request);
+
+        if ($termErrors = $this->termValidationErrors($request)) {
+            return back()->withInput()->withErrors(['calendar_terms' => $termErrors]);
+        }
+
+        DB::transaction(function () use ($calendar, $validated, $request) {
+            // ปฏิทินหลัก (is_default) แก้ได้เฉพาะเทอม — ไม่ผูกขอบเขตหลักสูตร/ชั้นปี
+            if (! $calendar->is_default) {
+                $calendar->update([
+                    'name'           => $validated['name'],
+                    'curriculum_id'  => $validated['curriculum_id'] ?? null,
+                    'year_level_min' => $validated['year_level_min'] ?? null,
+                    'year_level_max' => $validated['year_level_max'] ?? null,
+                ]);
+            }
+            $this->syncCalendarTerms($calendar, $request);
+        });
+
+        return back()->with('success', 'อัปเดตปฏิทินการศึกษาเรียบร้อยแล้ว');
+    }
+
+    public function destroyCalendar(AcademicCalendar $calendar)
+    {
+        if ($calendar->is_default) {
+            return back()->with('error', 'ไม่สามารถลบปฏิทินหลักของปีการศึกษาได้');
+        }
+
+        $calendar->delete(); // terms cascade
+
+        return back()->with('success', 'ลบปฏิทินการศึกษาเรียบร้อยแล้ว');
+    }
+
     private function hasOtherOpenSchedulingWindow(AcademicYear $year): bool
     {
         return AcademicYear::where('phase', 'scheduling')
@@ -248,7 +354,10 @@ class AdminSettingController extends Controller
 
     public function index()
     {
-        $academicYears = AcademicYear::with('terms')->orderBy('name', 'desc')->get();
+        $academicYears = AcademicYear::with(['terms', 'calendars' => fn ($q) => $q->orderByDesc('is_default')->orderBy('name'), 'calendars.terms', 'calendars.curriculum'])
+            ->orderBy('name', 'desc')->get();
+        $calendarCurriculums = Curriculum::orderBy('education_level')->orderBy('name')
+            ->get(['id', 'name', 'uses_year_level', 'duration_years']);
         $holidays = Holiday::orderBy('date')->get();
         $paCriteria = json_decode(SystemSetting::get('pa_criteria_config', '{}'), true);
 
@@ -269,7 +378,7 @@ class AdminSettingController extends Controller
 
         $isAdmin     = true;
         $routePrefix = 'admin';
-        return view('admin.settings', compact('academicYears', 'holidays', 'paCriteria', 'workloadQuota', 'teachingQuota', 'workloadWeeks', 'teachingWeeks', 'workloadHoursPerWeek', 'isAdmin', 'routePrefix', 'schedulingSummary', 'schedulingCriticals'));
+        return view('admin.settings', compact('academicYears', 'calendarCurriculums', 'holidays', 'paCriteria', 'workloadQuota', 'teachingQuota', 'workloadWeeks', 'teachingWeeks', 'workloadHoursPerWeek', 'isAdmin', 'routePrefix', 'schedulingSummary', 'schedulingCriticals'));
     }
 
     public function storeYear(Request $request)

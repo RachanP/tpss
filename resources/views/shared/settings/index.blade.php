@@ -51,6 +51,53 @@
         resetSummerTerm() {
             this.currentYear.terms[2] = this.emptyTerm('ภาคฤดูร้อน');
         },
+        /* ── ปฏิทินการศึกษาตามกลุ่ม (V4 ข้อ 8) ── */
+        calCurriculums: {{ Js::from($calendarCurriculums ?? []) }},
+        showCalendarsModal: false,
+        calYearId: '', calYearName: '', calList: [],
+        showCalEditor: false,
+        editCalMode: false,
+        currentCal: { id: '', name: '', curriculum_id: '', year_level_min: '', year_level_max: '', is_default: false, hasSummer: false, terms: [] },
+        openCalendars(year) {
+            this.calYearId = year.id;
+            this.calYearName = year.name;
+            this.calList = Array.isArray(year.calendars) ? year.calendars : [];
+            this.showCalendarsModal = true;
+        },
+        calBuildTerms(list) {
+            const a = Array.isArray(list) ? list : [];
+            const s = (i, fn) => {
+                const t = a[i];
+                if (!t) return this.emptyTerm(fn);
+                return { name: t.name || fn, start_date: this.thaiDateForInput(t.start_date), end_date: this.thaiDateForInput(t.end_date), midterm_start: this.thaiDateForInput(t.midterm_start), midterm_end: this.thaiDateForInput(t.midterm_end), final_start: this.thaiDateForInput(t.final_start), final_end: this.thaiDateForInput(t.final_end) };
+            };
+            return [s(0, 'ภาคเรียนที่ 1'), s(1, 'ภาคเรียนที่ 2'), s(2, 'ภาคฤดูร้อน')];
+        },
+        openAddCalendar() {
+            this.editCalMode = false;
+            this.currentCal = { id: '', name: '', curriculum_id: '', year_level_min: '', year_level_max: '', is_default: false, hasSummer: false, terms: this.calBuildTerms([]) };
+            this.showCalEditor = true;
+        },
+        openEditCalendar(cal) {
+            this.editCalMode = true;
+            const terms = cal.terms || [];
+            this.currentCal = { id: cal.id, name: cal.name || '', curriculum_id: cal.curriculum_id ? String(cal.curriculum_id) : '', year_level_min: cal.year_level_min ?? '', year_level_max: cal.year_level_max ?? '', is_default: !!cal.is_default, hasSummer: terms.length >= 3, terms: this.calBuildTerms(terms) };
+            this.showCalEditor = true;
+        },
+        calCurriculumUsesYear() {
+            const c = this.calCurriculums.find(x => String(x.id) === String(this.currentCal.curriculum_id));
+            return c ? !!c.uses_year_level : false;
+        },
+        calScopeLabel(cal) {
+            const parts = [];
+            parts.push(cal.curriculum && cal.curriculum.name ? cal.curriculum.name : 'ทุกหลักสูตร');
+            if (cal.year_level_min || cal.year_level_max) {
+                const lo = cal.year_level_min || '?';
+                const hi = (cal.year_level_max && cal.year_level_max != cal.year_level_min) ? ('-' + cal.year_level_max) : '';
+                parts.push('ปี ' + lo + hi);
+            }
+            return parts.join(' · ');
+        },
         showHolidayModal: false,
         editHolidayMode: false,
         currentHoliday: { id: '', date: '', name: '', remark: '' },
@@ -294,6 +341,17 @@
                                                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                                                 </svg>
                                             </button>
+                                            <button class="action-btn" title="ปฏิทินการศึกษาตามกลุ่ม (หลักสูตร/ชั้นปี)"
+                                                @click="openCalendars({{ json_encode($year) }})">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                    stroke-linecap="round" stroke-linejoin="round">
+                                                    <rect x="3" y="4" width="18" height="18" rx="2" />
+                                                    <line x1="16" y1="2" x2="16" y2="6" />
+                                                    <line x1="8" y1="2" x2="8" y2="6" />
+                                                    <line x1="3" y1="10" x2="21" y2="10" />
+                                                </svg>
+                                                <span x-text="'{{ $year->calendars->count() }}'" style="font-size:11px;font-weight:700;margin-left:3px;"></span>
+                                            </button>
                                             @if($isAdmin)
                                                 <div class="academic-year-schedule-action">
                                                     @if(!$year->is_active)
@@ -533,6 +591,134 @@
                         <div class="modal-foot">
                             <button type="button" class="btn btn-ghost" @click="showModal = false">ยกเลิก</button>
                             <button type="submit" class="btn btn-primary">บันทึกข้อมูล</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </template>
+
+        {{-- ── ปฏิทินการศึกษาตามกลุ่ม (V4 ข้อ 8) — รายการปฏิทินต่อปี ── --}}
+        <template x-if="showCalendarsModal">
+            <div class="overlay" x-cloak @keydown.escape.window="showCalendarsModal = false">
+                <div class="modal-center" style="max-width: 640px;">
+                    <div class="modal-hdr" style="background: var(--bg-2);">
+                        <div class="modal-ttl" style="font-family: var(--font-display);"
+                            x-text="'ปฏิทินการศึกษา — ปี ' + calYearName"></div>
+                        <button type="button" class="modal-cls" @click="showCalendarsModal = false">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div style="font-size:12px;color:var(--fg-3);line-height:1.6;margin-bottom:14px;">
+                            1 ปีมีได้หลายปฏิทิน — เปิด/ปิดเทอม + ช่วงสอบต่างกันตามหลักสูตร/ชั้นปี ·
+                            <strong>ปฏิทินหลัก</strong> ใช้กับกลุ่มที่ไม่มีปฏิทินเฉพาะ · เพิ่ม<strong>ปฏิทินตามกลุ่ม</strong>เพื่อกำหนดช่วงต่างออกไป
+                        </div>
+                        <template x-if="calList.length === 0">
+                            <div style="font-size:12px;color:var(--fg-3);padding:14px;text-align:center;background:var(--surface-sunken);border-radius:8px;">
+                                ยังไม่มีปฏิทิน — ปฏิทินหลักจะถูกสร้างเมื่อกรอกเทอมในหน้า "แก้ไขปีการศึกษา"
+                            </div>
+                        </template>
+                        <template x-for="cal in calList" :key="cal.id">
+                            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--surface);">
+                                <div style="min-width:0;">
+                                    <div style="display:flex;align-items:center;gap:8px;">
+                                        <span style="font-weight:600;font-size:13px;color:var(--fg-1);" x-text="cal.name"></span>
+                                        <span x-show="cal.is_default" style="font-size:10px;font-weight:700;color:var(--brand-navy);background:var(--brand-navy-50);padding:2px 8px;border-radius:999px;">หลัก</span>
+                                    </div>
+                                    <div style="font-size:11px;color:var(--fg-3);margin-top:3px;">
+                                        <span x-text="calScopeLabel(cal)"></span> ·
+                                        <span x-text="(cal.terms ? cal.terms.length : 0) + ' เทอม'"></span>
+                                    </div>
+                                </div>
+                                <div style="display:flex;gap:4px;flex-shrink:0;">
+                                    <button type="button" class="action-btn" title="แก้ไข" @click="openEditCalendar(cal)">
+                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                    </button>
+                                    <form x-show="!cal.is_default" method="POST" :action="'{{ url($routePrefix . '/settings/calendars') }}/' + cal.id" style="margin:0;"
+                                        @submit="return confirm('ลบปฏิทิน ' + cal.name + ' และเทอมทั้งหมดในปฏิทินนี้?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="action-btn" title="ลบ" style="color:var(--status-conflict-fg);">
+                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                    <div class="modal-foot" style="display:flex;justify-content:space-between;">
+                        <button type="button" class="btn btn-primary" @click="openAddCalendar()" style="font-size:13px;">+ เพิ่มปฏิทินตามกลุ่ม</button>
+                        <button type="button" class="btn btn-ghost" @click="showCalendarsModal = false">ปิด</button>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        {{-- ── ตัวแก้/เพิ่มปฏิทิน (styled แบบ modal หลักสูตร) ── --}}
+        <template x-if="showCalEditor">
+            <div class="overlay" x-cloak @keydown.escape.window="showCalEditor = false" style="z-index: 60;">
+                <div class="modal-center" x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+                    <div class="modal-hdr" style="background: var(--bg-2);">
+                        <div class="modal-ttl" style="font-family: var(--font-display);"
+                            x-text="editCalMode ? 'แก้ไขปฏิทิน' : 'เพิ่มปฏิทินตามกลุ่ม'"></div>
+                        <button type="button" class="modal-cls" @click="showCalEditor = false">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                        </button>
+                    </div>
+                    <form method="POST"
+                        :action="editCalMode ? '{{ url($routePrefix . '/settings/calendars') }}/' + currentCal.id : ('{{ url($routePrefix . '/settings/academic-years') }}/' + calYearId + '/calendars')">
+                        @csrf
+                        <template x-if="editCalMode"><input type="hidden" name="_method" value="PUT"></template>
+                        <div class="modal-body">
+                            <div style="font-weight:700;font-size:12px;color:var(--brand-navy);border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:14px;">ข้อมูลปฏิทิน</div>
+                            <div class="form-group" style="margin-bottom:16px;">
+                                <label>ชื่อปฏิทิน <span style="color: var(--status-conflict-fg)">*</span></label>
+                                <input type="text" name="name" x-model="currentCal.name" required placeholder="เช่น ป.ตรี ปี 3-4, ป.โท">
+                            </div>
+                            {{-- ขอบเขต: เฉพาะปฏิทินตามกลุ่ม (ปฏิทินหลักไม่ผูกขอบเขต) --}}
+                            <template x-if="!currentCal.is_default">
+                                <div>
+                                    <div class="form-group" style="margin-bottom:16px;">
+                                        <label>ใช้กับหลักสูตร</label>
+                                        <select name="curriculum_id" x-model="currentCal.curriculum_id">
+                                            <option value="">ทุกหลักสูตร</option>
+                                            <template x-for="c in calCurriculums" :key="c.id">
+                                                <option :value="c.id" x-text="c.name"></option>
+                                            </template>
+                                        </select>
+                                    </div>
+                                    <div class="form-row" x-show="calCurriculumUsesYear()" x-cloak>
+                                        <div class="form-group">
+                                            <label>ชั้นปีต่ำสุด</label>
+                                            <input type="number" name="year_level_min" x-model="currentCal.year_level_min" min="1" max="12" placeholder="เช่น 3">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>ชั้นปีสูงสุด</label>
+                                            <input type="number" name="year_level_max" x-model="currentCal.year_level_max" min="1" max="12" placeholder="เช่น 4">
+                                        </div>
+                                    </div>
+                                    <div style="font-size:11px;color:var(--fg-4);margin-bottom:14px;">เว้นว่าง = ใช้กับทุกหลักสูตร/ทุกชั้นปี · ระบุเพื่อให้กลุ่มนั้นใช้ปฏิทินนี้แทนปฏิทินหลัก</div>
+                                </div>
+                            </template>
+                            @if($errors->has('calendar_terms'))
+                                <div style="margin-bottom:10px;padding:8px 10px;background:oklch(97% 0.02 20);border:1px solid oklch(82% 0.08 25);border-radius:6px;color:var(--status-conflict-fg);font-size:12px;line-height:1.6;">
+                                    @foreach($errors->get('calendar_terms') as $msg)<div>• {{ $msg }}</div>@endforeach
+                                </div>
+                            @endif
+                            <div style="font-weight:700;font-size:12px;color:var(--brand-navy);border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:12px;">ภาคการศึกษา (เทอม)</div>
+                            @include('shared.settings._term_fields', ['index' => 0, 'seq' => 1, 'label' => 'ภาคเรียนที่ 1', 'model' => 'currentCal.terms'])
+                            @include('shared.settings._term_fields', ['index' => 1, 'seq' => 2, 'label' => 'ภาคเรียนที่ 2', 'model' => 'currentCal.terms'])
+                            <div x-show="currentCal.hasSummer" x-cloak>
+                                @include('shared.settings._term_fields', ['index' => 2, 'seq' => 3, 'label' => 'ภาคฤดูร้อน', 'model' => 'currentCal.terms'])
+                                <button type="button" @click="currentCal.hasSummer = false; currentCal.terms[2] = { name:'ภาคฤดูร้อน', start_date:'', end_date:'', midterm_start:'', midterm_end:'', final_start:'', final_end:'' }"
+                                    style="font-size:12px;color:var(--status-conflict-fg);background:none;border:none;cursor:pointer;padding:2px 0;margin-bottom:6px;">ลบภาคฤดูร้อน</button>
+                            </div>
+                            <button type="button" x-show="!currentCal.hasSummer" @click="currentCal.hasSummer = true" class="btn btn-ghost" style="font-size:12px;padding:5px 12px;">+ เพิ่มภาคฤดูร้อน</button>
+                        </div>
+                        <div class="modal-foot">
+                            <button type="button" class="btn btn-ghost" @click="showCalEditor = false">ยกเลิก</button>
+                            <button type="submit" class="btn btn-primary">บันทึกปฏิทิน</button>
                         </div>
                     </form>
                 </div>

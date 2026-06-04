@@ -10,7 +10,10 @@ class SettingController extends AdminSettingController
 {
     public function index()
     {
-        $academicYears = AcademicYear::with('terms')->orderBy('name', 'desc')->get();
+        $academicYears = AcademicYear::with(['terms', 'calendars' => fn ($q) => $q->orderByDesc('is_default')->orderBy('name'), 'calendars.terms', 'calendars.curriculum'])
+            ->orderBy('name', 'desc')->get();
+        $calendarCurriculums = \App\Models\Curriculum::orderBy('education_level')->orderBy('name')
+            ->get(['id', 'name', 'uses_year_level', 'duration_years']);
         $holidays = \App\Models\Holiday::orderBy('date')->get();
 
         $paCriteria           = [];
@@ -24,7 +27,7 @@ class SettingController extends AdminSettingController
         $routePrefix = 'staff';
 
         return view('staff.settings', compact(
-            'academicYears', 'holidays', 'paCriteria', 'workloadQuota', 'teachingQuota',
+            'academicYears', 'calendarCurriculums', 'holidays', 'paCriteria', 'workloadQuota', 'teachingQuota',
             'workloadWeeks', 'teachingWeeks', 'workloadHoursPerWeek', 'isAdmin', 'routePrefix'
         ));
     }
