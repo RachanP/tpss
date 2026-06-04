@@ -2833,8 +2833,8 @@
                             <div class="form-group" style="margin-bottom: 16px;">
                                 <label>รูปแบบการจัดชั้นปี <span style="color: var(--status-conflict-fg)">*</span></label>
                                 <select name="uses_year_level" x-model="currentCurriculum.uses_year_level" required>
-                                    <option value="1">ใช้ระบบชั้นปี (cohort) — เหมาะกับ ป.ตรี</option>
-                                    <option value="0">ใช้ prerequisite + หน่วยกิตสะสม — เหมาะกับ ป.โท / ป.เอก</option>
+                                    <option value="1">แบ่งเป็นชั้นปี (ปี 1–4) — เหมาะกับ ป.ตรี</option>
+                                    <option value="0">ไม่แบ่งชั้นปี ใช้หน่วยกิตสะสม — เหมาะกับ ป.โท / ป.เอก</option>
                                 </select>
                             </div>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 16px;">
