@@ -2860,12 +2860,11 @@
                                 </div>
                             </div>
                             <div class="form-group" style="margin-bottom:16px;">
-                                <label>การนับภาระงาน</label>
+                                <label>การนับภาระงาน <span style="font-weight:400;color:var(--fg-4);font-size:11px;">(หลักสูตรเฉพาะทาง)</span></label>
                                 <select name="counts_service_only" x-model="currentCurriculum.counts_service_only" data-testid="curriculum-counts-service-only">
                                     <option value="0">นับชั่วโมงทำการสอนปกติ</option>
                                     <option value="1">นับเป็นงานบริการวิชาการอย่างเดียว</option>
                                 </select>
-                                <div style="margin-top:4px;font-size:11px;color:var(--fg-4);">หลักสูตรเฉพาะทางบางหลักสูตรนับเป็นงานบริการวิชาการ ไม่นับชั่วโมงทำการสอนปกติ</div>
                             </div>
                             <div class="form-group" style="margin-bottom:0;">
                                 <label>สถานะ</label>
