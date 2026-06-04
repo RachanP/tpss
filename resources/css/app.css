@@ -837,6 +837,11 @@ body {
   flex-shrink: 0;
 }
 
+.nv-alert-badges[hidden],
+[data-conflict-badge][hidden] {
+  display: none !important;
+}
+
 .nv-bd-red {
   background: var(--status-conflict);
   color: oklch(99% 0.004 25);

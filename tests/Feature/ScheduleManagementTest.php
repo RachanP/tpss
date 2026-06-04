@@ -935,6 +935,31 @@ class ScheduleManagementTest extends TestCase
         $this->assertDatabaseCount('schedules', 0);
     }
 
+    public function test_schedule_store_rejects_invalid_thai_date_without_render_exception(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+
+        $this->actingAsCourseHead($head);
+
+        $page = route('maker.course_offerings.schedules.index', $offering);
+
+        $this->from($page)
+            ->post(route('maker.course_offerings.schedules.store', $offering), $this->schedulePayload($instructor, $group, $activityType, $room, [
+                'start_date' => '32/13/2569',
+                'end_date' => '32/13/2569',
+            ]))
+            ->assertRedirect($page)
+            ->assertSessionHasErrors(['start_date', 'end_date']);
+
+        $rendered = $this->get($page);
+
+        $rendered
+            ->assertOk()
+            ->assertSee('32/13/2569', false);
+
+        $this->assertDatabaseCount('schedules', 0);
+    }
+
     public function test_global_store_with_unowned_course_offering_is_rejected(): void
     {
         [$head, , $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
@@ -1263,6 +1288,29 @@ class ScheduleManagementTest extends TestCase
             ->assertJsonPath('blocking', true)
             ->assertJsonStructure(['blocking', 'fields' => ['start_date'], 'warnings']);
         $this->assertSame([], $response->json('warnings'));
+    }
+
+    public function test_check_conflicts_endpoint_reports_invalid_thai_date_without_carbon_exception(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+
+        $this->actingAsCourseHead($head);
+
+        $response = $this->postJson(route('maker.course_offerings.schedules.check_conflicts', $offering), [
+            'start_date' => '32/13/2569',
+            'end_date' => '32/13/2569',
+            'start_time' => '08:00',
+            'end_time' => '10:00',
+            'activity_type_id' => $activityType->id,
+            'room_id' => $room->id,
+            'instructor_ids' => [$instructor->id],
+            'lead_instructor_id' => $instructor->id,
+            'student_group_ids' => [$group->id],
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('blocking', true)
+            ->assertJsonPath('fields.start_date.0', 'วันที่เริ่มไม่ถูกต้อง กรุณากรอกวันที่ในรูปแบบ วว/ดด/พ.ศ. เช่น 21/05/2569');
     }
 
     public function test_check_conflicts_endpoint_returns_clear_when_no_conflict(): void
@@ -1617,6 +1665,35 @@ class ScheduleManagementTest extends TestCase
             'course_offering_id' => $offering->id,
             'topic' => 'Conflicts with generated week two',
         ]);
+    }
+
+    public function test_schedule_series_custom_range_rejects_invalid_thai_date(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+
+        $this->actingAsCourseHead($head);
+
+        $this->post(route('maker.course_offerings.schedules.series.store', $offering), [
+            'weekday' => 1,
+            'start_week' => 1,
+            'end_week' => 2,
+            'use_custom_series_range' => '1',
+            'starts_on' => '32/13/2569',
+            'ends_on' => '32/13/2569',
+            'start_time' => '08:00',
+            'end_time' => '10:00',
+            'activity_type_id' => $activityType->id,
+            'room_id' => $room->id,
+            'topic' => 'Invalid custom range',
+            'instructor_ids' => [$instructor->id],
+            'lead_instructor_id' => $instructor->id,
+            'student_group_ids' => [$group->id],
+        ])
+            ->assertRedirect()
+            ->assertSessionHasErrors(['starts_on', 'ends_on']);
+
+        $this->assertDatabaseCount('schedule_templates', 0);
+        $this->assertDatabaseCount('schedules', 0);
     }
 
     public function test_room_overlap_blocks_save_across_offerings(): void

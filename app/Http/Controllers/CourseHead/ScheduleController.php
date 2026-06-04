@@ -1490,26 +1490,31 @@ class ScheduleController extends Controller
                 ->withErrors(['schedule' => 'ไม่พบรายการในสัปดาห์ต้นทางให้คัดลอก']);
         }
 
+        $readyCandidates = [];
         $blocked = [];
         foreach ($candidates as $candidate) {
             $reasons = $this->weekCopyBlockReasons($courseOffering, $candidate, $conflictChecker);
 
             if (! empty($reasons)) {
                 $blocked[] = $candidate['preview'] + ['reason' => implode(' / ', $reasons)];
+                continue;
             }
+
+            $readyCandidates[] = $candidate;
         }
 
-        if (! empty($blocked)) {
+        if (empty($readyCandidates)) {
             return redirect()
                 ->to($this->copyWeekReturnUrl($request, $courseOffering, $targetWeekStart))
-                ->withErrors(['schedule' => 'ไม่สามารถคัดลอกได้ เนื่องจากมีรายการชน กรุณาแก้ไขรายการที่ชนก่อน'])
+                ->with('warning', 'ไม่พบรายการที่คัดลอกได้ เนื่องจากรายการทั้งหมดชนกับตารางเดิม')
+                ->with('schedule_copy_skipped', $blocked)
                 ->with('schedule_copy_blocked', $blocked);
         }
 
         $createdCount = 0;
 
-        DB::transaction(function () use ($candidates, $courseOffering, &$createdCount): void {
-            foreach ($candidates as $candidate) {
+        DB::transaction(function () use ($readyCandidates, $courseOffering, &$createdCount): void {
+            foreach ($readyCandidates as $candidate) {
                 $payload = $candidate['payload'];
                 $schedule = Schedule::create([
                     'course_offering_id' => $courseOffering->id,
@@ -1550,17 +1555,28 @@ class ScheduleController extends Controller
                 'source_week_start' => $sourceWeekStart,
                 'target_week_start' => $targetWeekStart,
                 'created' => $createdCount,
-                'blocked' => 0,
+                'blocked' => count($blocked),
             ],
             category: 'schedule',
             description: "คัดลอกสัปดาห์ {$sourceWeekStart} → {$targetWeekStart}",
         );
 
         $message = "คัดลอกสำเร็จ {$createdCount} รายการ";
+        if (! empty($blocked)) {
+            $message .= " (ข้าม " . count($blocked) . " รายการที่ชน)";
+        }
 
-        return redirect()
+        $redirect = redirect()
             ->to($this->copyWeekReturnUrl($request, $courseOffering, $targetWeekStart))
             ->with('success', $message);
+
+        if (! empty($blocked)) {
+            $redirect
+                ->with('schedule_copy_skipped', $blocked)
+                ->with('schedule_copy_blocked', $blocked);
+        }
+
+        return $redirect;
     }
 
     /**
@@ -1730,12 +1746,10 @@ class ScheduleController extends Controller
     ): JsonResponse {
         $this->authorizeCourseHeadOffering($courseOffering);
 
-        foreach (['start_date', 'end_date'] as $dateField) {
-            $iso = ThaiDate::parseToIso($request->input($dateField));
-            if ($iso !== null) {
-                $request->merge([$dateField => $iso]);
-            }
-        }
+        $dateErrors = $this->normalizeScheduleThaiDateFields($request, [
+            'start_date' => 'วันที่เริ่ม',
+            'end_date' => 'วันที่สิ้นสุด',
+        ]);
 
         $data = [
             'course_offering_id' => $courseOffering->id,
@@ -1753,7 +1767,7 @@ class ScheduleController extends Controller
         ];
         $ignoreScheduleId = $request->integer('schedule_id') ?: null;
 
-        $fields = [];
+        $fields = $dateErrors;
         $warnings = [];
         $collect = function (string $field, callable $assert) use (&$fields) {
             try {
@@ -1768,7 +1782,7 @@ class ScheduleController extends Controller
         };
 
         // Gates — reuse logic เดียวกับตอน store (ไม่ throw, แค่เก็บข้อความ)
-        if ($data['start_date'] && $data['end_date']) {
+        if (empty($dateErrors) && $data['start_date'] && $data['end_date']) {
             $collect('start_date', fn () => $this->assertScheduleWithinAcademicYear($courseOffering, $data));
             $collect('schedule', fn () => $this->assertScheduleNotOnBlockedDay($courseOffering, $data));
         }
@@ -1779,7 +1793,7 @@ class ScheduleController extends Controller
         $collect('student_group_ids', fn () => $this->assertSelectedGroupsFitCapacity($courseOffering, $data));
 
         // All resource overlaps are conflicts: in-course and cross-course both block saving.
-        if ($data['start_date'] && $data['end_date'] && $data['start_time'] && $data['end_time'] && $data['activity_type_id']) {
+        if (empty($dateErrors) && $data['start_date'] && $data['end_date'] && $data['start_time'] && $data['end_time'] && $data['activity_type_id']) {
             $conflicts = $conflictChecker->check(
                 Arr::only($data, ['course_offering_id', 'activity_type_id', 'start_date', 'end_date', 'start_time', 'end_time', 'room_id', 'sub_group_label']),
                 $data['instructor_ids'],
@@ -2181,15 +2195,60 @@ class ScheduleController extends Controller
         return (int) max(0, $start->diffInMinutes($end));
     }
 
+    /**
+     * Normalize Thai Buddhist date inputs before Laravel date validation.
+     *
+     * Invalid non-empty values must stay as validation errors, not fall through to
+     * Carbon parsing during redirect-back rendering.
+     *
+     * @param  array<string, string>  $fieldLabels
+     * @return array<string, array<int, string>>
+     */
+    private function normalizeScheduleThaiDateFields(Request $request, array $fieldLabels): array
+    {
+        $errors = [];
+
+        foreach ($fieldLabels as $field => $label) {
+            if (! $request->has($field)) {
+                continue;
+            }
+
+            $value = trim((string) $request->input($field));
+            if ($value === '') {
+                continue;
+            }
+
+            $iso = ThaiDate::parseToIso($value);
+            if ($iso === null) {
+                $errors[$field][] = "{$label}ไม่ถูกต้อง กรุณากรอกวันที่ในรูปแบบ วว/ดด/พ.ศ. เช่น 21/05/2569";
+                continue;
+            }
+
+            $request->merge([$field => $iso]);
+        }
+
+        return $errors;
+    }
+
+    /**
+     * @param  array<string, string>  $fieldLabels
+     */
+    private function assertScheduleThaiDateFields(Request $request, array $fieldLabels): void
+    {
+        $errors = $this->normalizeScheduleThaiDateFields($request, $fieldLabels);
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
     private function validateSchedule(Request $request, CourseOffering $courseOffering, bool $allowEmptyResources = false): array
     {
         // ฟอร์มส่งวันที่เป็น วว/ดด/พ.ศ. (x-thai-date-input) — normalize เป็น ISO ก่อน validate
-        foreach (['start_date', 'end_date'] as $dateField) {
-            $iso = ThaiDate::parseToIso($request->input($dateField));
-            if ($iso !== null) {
-                $request->merge([$dateField => $iso]);
-            }
-        }
+        $this->assertScheduleThaiDateFields($request, [
+            'start_date' => 'วันที่เริ่ม',
+            'end_date' => 'วันที่สิ้นสุด',
+        ]);
 
         $validated = $request->validate([
             'start_date' => ['required', 'date'],
@@ -2281,12 +2340,10 @@ class ScheduleController extends Controller
             ]);
         }
 
-        foreach (['starts_on', 'ends_on'] as $dateField) {
-            $iso = ThaiDate::parseToIso($request->input($dateField));
-            if ($iso !== null) {
-                $request->merge([$dateField => $iso]);
-            }
-        }
+        $this->assertScheduleThaiDateFields($request, [
+            'starts_on' => 'วันที่เริ่มช่วงที่เลือกเอง',
+            'ends_on' => 'วันที่สิ้นสุดช่วงที่เลือกเอง',
+        ]);
 
         $defaultWeeks = max(1, (int) ($courseOffering->teaching_weeks ?? 1));
         $request->merge([
@@ -2324,12 +2381,10 @@ class ScheduleController extends Controller
 
     private function validateScheduleSeriesTemplate(Request $request, CourseOffering $courseOffering): array
     {
-        foreach (['starts_on', 'ends_on'] as $dateField) {
-            $iso = ThaiDate::parseToIso($request->input($dateField));
-            if ($iso !== null) {
-                $request->merge([$dateField => $iso]);
-            }
-        }
+        $this->assertScheduleThaiDateFields($request, [
+            'starts_on' => 'วันที่เริ่มช่วงที่เลือกเอง',
+            'ends_on' => 'วันที่สิ้นสุดช่วงที่เลือกเอง',
+        ]);
 
         $validated = $request->validate($this->scheduleSeriesValidationRules($courseOffering));
         $this->assertScheduleSeriesTimeOrder($validated);

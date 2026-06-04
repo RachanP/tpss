@@ -236,6 +236,21 @@
                     <line x1="12" y1="17" x2="12.01" y2="17"></line>
                 </svg>
                 <span class="nv-label">แจ้งเตือน</span>
+                <span
+                    class="nv-alert-badges"
+                    data-conflict-badge
+                    data-endpoint="{{ route('maker.conflict_badge_status') }}"
+                    data-status="{{ $makerConflictStatus }}"
+                    data-pending="{{ $makerConflictPending ? 'true' : 'false' }}"
+                    data-poll="{{ $makerConflictPoll ? 'true' : 'false' }}"
+                    @if(! $makerConflictVisible) hidden @endif
+                >
+                    <span
+                        class="nv-bd {{ $makerConflictTone }}"
+                        data-conflict-badge-pill
+                        title="{{ $makerConflictTitle }}"
+                    >{{ $makerConflictText }}</span>
+                </span>
             </a>
             <a href="{{ route('maker.course_offerings.index') }}" class="nv {{ Request::routeIs('maker.course_offerings.*') && ! Request::routeIs('maker.course_offerings.schedules.*') ? 'on' : '' }}">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -549,11 +564,14 @@
                         visible = false;
                     }
 
-                    pill.textContent = badgeText;
-                    pill.title = title;
-                    pill.classList.toggle('nv-bd-red', tone === 'red');
-                    pill.classList.toggle('nv-bd-warning', tone !== 'red');
-                    root.hidden = silent || ! visible;
+                    const shouldShow = ! silent && visible;
+
+                    pill.hidden = ! shouldShow;
+                    pill.textContent = shouldShow ? badgeText : '';
+                    pill.title = shouldShow ? title : '';
+                    pill.classList.toggle('nv-bd-red', shouldShow && tone === 'red');
+                    pill.classList.toggle('nv-bd-warning', shouldShow && tone !== 'red');
+                    root.hidden = ! shouldShow;
 
                     if (! polling) {
                         stop();

@@ -6,12 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Services\AuditLogger;
 use App\Support\ThaiDate;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
+use Illuminate\Support\MessageBag;
 
 class AuditLogController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request)
     {
         $query = AuditLog::with('user')->orderedForAudit();
 
@@ -37,16 +38,13 @@ class AuditLogController extends Controller
             });
         }
 
-        foreach (['date_from', 'date_to'] as $param) {
-            if (! $request->filled($param)) {
-                continue;
-            }
+        [$dateFilters, $filterErrors] = $this->validateDateFilters($request);
 
-            $date = ThaiDate::parseToIso($request->input($param));
-            if (! $date) {
-                continue;
-            }
+        if ($filterErrors->isNotEmpty()) {
+            return $this->invalidDateFilterResponse($request, $filterErrors);
+        }
 
+        foreach ($dateFilters as $param => $date) {
             $query->where(
                 'created_at',
                 $param === 'date_from' ? '>=' : '<=',
@@ -71,8 +69,69 @@ class AuditLogController extends Controller
             'date_from' => $this->formatDateFilterInput($request->input('date_from')),
             'date_to' => $this->formatDateFilterInput($request->input('date_to')),
         ];
+        $filterErrors = new MessageBag();
 
-        return view('admin.audit_logs.index', compact('logs', 'categoryLabels', 'actionOptions', 'dateFilterValues'));
+        return view('admin.audit_logs.index', compact('logs', 'categoryLabels', 'actionOptions', 'dateFilterValues', 'filterErrors'));
+    }
+
+    private function validateDateFilters(Request $request): array
+    {
+        $dates = [];
+        $errors = new MessageBag();
+
+        foreach (['date_from', 'date_to'] as $param) {
+            if (! $request->filled($param)) {
+                continue;
+            }
+
+            $date = ThaiDate::parseToIso($request->input($param));
+
+            if (! $date) {
+                $errors->add($param, 'กรุณากรอกวันที่ให้ถูกต้องในรูปแบบ วว/ดด/พ.ศ. เช่น 21/05/2569');
+                continue;
+            }
+
+            $dates[$param] = $date;
+        }
+
+        return [$dates, $errors];
+    }
+
+    private function invalidDateFilterResponse(Request $request, MessageBag $filterErrors)
+    {
+        if ($request->query('partial') === 'table' || $request->ajax()) {
+            return response()->json([
+                'message' => 'รูปแบบวันที่ไม่ถูกต้อง',
+                'errors' => $filterErrors->toArray(),
+            ], 422);
+        }
+
+        $logs = $this->emptyLogsPaginator($request);
+        $categoryLabels = AuditLogger::CATEGORY_LABELS;
+        $actionOptions = collect(AuditLogger::actionFilterLabels())
+            ->map(fn (string $actionLabel) => [
+                'value' => $actionLabel,
+                'label' => $actionLabel,
+            ])
+            ->all();
+        $dateFilterValues = [
+            'date_from' => $this->formatDateFilterInput($request->input('date_from')),
+            'date_to' => $this->formatDateFilterInput($request->input('date_to')),
+        ];
+
+        return response()->view(
+            'admin.audit_logs.index',
+            compact('logs', 'categoryLabels', 'actionOptions', 'dateFilterValues', 'filterErrors'),
+            422
+        );
+    }
+
+    private function emptyLogsPaginator(Request $request): LengthAwarePaginator
+    {
+        return new LengthAwarePaginator([], 0, 25, 1, [
+            'path' => $request->url(),
+            'query' => $request->query(),
+        ]);
     }
 
     private function formatDateFilterInput(?string $value): string

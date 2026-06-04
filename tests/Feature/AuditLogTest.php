@@ -524,7 +524,7 @@ class AuditLogTest extends TestCase
         $response->assertDontSee('หลังวัน');
     }
 
-    public function test_invalid_date_filter_preserves_input_and_does_not_fail(): void
+    public function test_invalid_date_filter_is_rejected_and_preserves_input(): void
     {
         $this->actingAs($this->admin);
 
@@ -536,17 +536,34 @@ class AuditLogTest extends TestCase
             'old_values' => null,
             'new_values' => [],
             'category' => 'ข้อมูลหลัก',
-            'description' => 'ยังแสดงเมื่อวันที่ไม่ถูกต้อง',
+            'description' => 'Should not show when date filter is invalid',
             'created_at' => '2026-05-21 12:00:00',
         ]);
 
         $response = $this->get(route('admin.audit_logs.index', [
-            'date_from' => 'not-a-date',
+            'date_from' => '32/13/2568',
         ]));
 
-        $response->assertOk();
-        $response->assertSee('value="not-a-date"', false);
-        $response->assertSee('ยังแสดงเมื่อวันที่ไม่ถูกต้อง');
+        $response->assertStatus(422);
+        $response->assertSee('value="32/13/2568"', false);
+        $response->assertSee('กรุณากรอกวันที่ให้ถูกต้อง');
+        $response->assertDontSee('Should not show when date filter is invalid');
+    }
+
+    public function test_invalid_date_filter_partial_request_returns_validation_error(): void
+    {
+        $this->actingAs($this->admin);
+
+        $response = $this
+            ->withHeader('X-Requested-With', 'XMLHttpRequest')
+            ->get(route('admin.audit_logs.index', [
+                'date_to' => '32/13/2568',
+                'partial' => 'table',
+            ]));
+
+        $response->assertStatus(422);
+        $response->assertJsonPath('message', 'รูปแบบวันที่ไม่ถูกต้อง');
+        $response->assertJsonValidationErrors('date_to');
     }
 
     public function test_audit_log_table_shows_ip_from_context(): void

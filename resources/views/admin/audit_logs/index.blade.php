@@ -62,7 +62,11 @@
                     class="form-ctrl audit-date-input"
                     :value="$dateFilterValues['date_from'] ?? request('date_from')"
                     data-testid="audit-logs-filter-date-from"
+                    @input="clearFilterError('date_from')"
                     @change="fetchResults()" />
+                <p x-show="filterError('date_from')" x-cloak class="audit-filter-error">
+                    <span x-text="filterError('date_from')">{{ ($filterErrors ?? new \Illuminate\Support\MessageBag())->first('date_from') }}</span>
+                </p>
             </div>
 
             <div class="audit-filter-field">
@@ -72,7 +76,11 @@
                     class="form-ctrl audit-date-input"
                     :value="$dateFilterValues['date_to'] ?? request('date_to')"
                     data-testid="audit-logs-filter-date-to"
+                    @input="clearFilterError('date_to')"
                     @change="fetchResults()" />
+                <p x-show="filterError('date_to')" x-cloak class="audit-filter-error">
+                    <span x-text="filterError('date_to')">{{ ($filterErrors ?? new \Illuminate\Support\MessageBag())->first('date_to') }}</span>
+                </p>
             </div>
 
             <div class="audit-filter-actions">
@@ -108,6 +116,7 @@
 function auditLogPage() {
     return {
         loading: false,
+        filterErrors: @json(($filterErrors ?? new \Illuminate\Support\MessageBag())->toArray()),
         open: false,
         activeLog: null,
         jsonError: false,
@@ -152,10 +161,20 @@ function auditLogPage() {
                     },
                 });
 
+                if (response.status === 422) {
+                    const payload = await response.json().catch(() => ({}));
+                    this.filterErrors = payload.errors || {};
+                    if (payload.message && window.tpssToast) {
+                        window.tpssToast(payload.message, 'error');
+                    }
+                    return;
+                }
+
                 if (!response.ok) {
                     throw new Error('Unable to load audit logs');
                 }
 
+                this.filterErrors = {};
                 this.$refs.results.innerHTML = await response.text();
                 if (window.Alpine && typeof window.Alpine.initTree === 'function') {
                     window.Alpine.initTree(this.$refs.results);
@@ -169,6 +188,7 @@ function auditLogPage() {
         },
 
         resetFilters() {
+            this.filterErrors = {};
             this.$refs.filterForm.querySelectorAll('input, select').forEach((field) => {
                 field.value = '';
                 if (field._tpssSelect) {
@@ -176,6 +196,17 @@ function auditLogPage() {
                 }
             });
             this.fetchUrl(this.baseUrl);
+        },
+
+        filterError(field) {
+            const messages = this.filterErrors[field] || [];
+            return messages[0] || '';
+        },
+
+        clearFilterError(field) {
+            if (!this.filterErrors[field]) return;
+            delete this.filterErrors[field];
+            this.filterErrors = { ...this.filterErrors };
         },
 
         handleResultsClick(event) {
@@ -297,6 +328,13 @@ function auditLogPage() {
     .audit-filter-field .audit-date-input + p {
         min-height: 34px;
         margin-bottom: 0;
+    }
+    .audit-filter-error {
+        color: var(--status-conflict-fg);
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 1.45;
+        margin: 3px 0 0;
     }
     .audit-filter-actions {
         grid-column: 1 / -1;

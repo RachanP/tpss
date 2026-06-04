@@ -5339,8 +5339,8 @@
             normalCreateAction: @js($createAction),
             seriesCreateAction: @js($seriesCreateAction),
             defaultSeriesEndWeek: @js(max(1, (int) ($courseOffering->teaching_weeks ?? 1))),
-            createStartDate: @js(old('start_date') ? $formatDate(\Carbon\CarbonImmutable::parse(old('start_date'))) : ''),
-            createEndDate: @js(old('end_date') ? $formatDate(\Carbon\CarbonImmutable::parse(old('end_date'))) : ''),
+            createStartDate: @js(old('start_date') ? \App\Support\ThaiDate::formatForInput(old('start_date')) : ''),
+            createEndDate: @js(old('end_date') ? \App\Support\ThaiDate::formatForInput(old('end_date')) : ''),
             createMultiDay: @js((bool) (old('start_date') && old('end_date') && old('start_date') !== old('end_date'))),
             academicStartMonday: @js($academicStartDate ? $academicStartDate->startOfWeek(\Carbon\CarbonInterface::MONDAY)->toDateString() : null),
             academicStartIso: @js($academicStartDate ? $academicStartDate->toDateString() : null),
@@ -5570,8 +5570,11 @@
                 }
             },
             submitCopyWeek() {
-                if (this.copyWeekPreview?.blocked?.length) {
-                    this.copyWeekError = 'ไม่สามารถคัดลอกได้ เนื่องจากมีรายการชน กรุณาแก้ไขช่วงเวลาหรือปลายทางก่อน';
+                const readyCount = Number(this.copyWeekPreview?.ready?.length || 0);
+                const blockedCount = Number(this.copyWeekPreview?.blocked?.length || 0);
+
+                if (blockedCount && readyCount === 0) {
+                    this.copyWeekError = 'ไม่มีรายการที่พร้อมคัดลอก รายการทั้งหมดชนกับตารางเดิม';
                     return;
                 }
 
@@ -5714,15 +5717,38 @@
             thaiDateToIso(value) {
                 const raw = String(value || '').trim();
                 if (!raw) return null;
-                if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+                if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+                    const [year, month, day] = raw.split('-').map(Number);
+                    const date = new Date(year, month - 1, day);
+                    if (
+                        date.getFullYear() !== year
+                        || date.getMonth() !== month - 1
+                        || date.getDate() !== day
+                    ) {
+                        return null;
+                    }
+
+                    return raw;
+                }
 
                 const parts = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
                 if (!parts) return null;
 
                 let year = parseInt(parts[3], 10);
                 if (year >= 2400) year -= 543;
-                const month = parts[2].padStart(2, '0');
-                const day = parts[1].padStart(2, '0');
+                const monthNumber = parseInt(parts[2], 10);
+                const dayNumber = parseInt(parts[1], 10);
+                const date = new Date(year, monthNumber - 1, dayNumber);
+                if (
+                    date.getFullYear() !== year
+                    || date.getMonth() !== monthNumber - 1
+                    || date.getDate() !== dayNumber
+                ) {
+                    return null;
+                }
+
+                const month = String(monthNumber).padStart(2, '0');
+                const day = String(dayNumber).padStart(2, '0');
 
                 return `${year}-${month}-${day}`;
             },
@@ -6423,12 +6449,20 @@
             window.tpssDateInfo = function (thaiStr, academicMondayIso) {
                 const m = (thaiStr || '').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
                 if (!m) return null;
-                const date = new Date(+m[3] - 543, +m[2] - 1, +m[1]);
-                if (isNaN(date.getTime())) return null;
+                const year = +m[3] - 543;
+                const month = +m[2];
+                const day = +m[1];
+                const date = new Date(year, month - 1, day);
+                if (
+                    isNaN(date.getTime())
+                    || date.getFullYear() !== year
+                    || date.getMonth() !== month - 1
+                    || date.getDate() !== day
+                ) return null;
                 const days = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
                 const dayName = 'วัน' + days[date.getDay()];
                 const pad = (n) => String(n).padStart(2, '0');
-                const iso = `${+m[3] - 543}-${pad(+m[2])}-${pad(+m[1])}`;
+                const iso = `${year}-${pad(month)}-${pad(day)}`;
                 let week = null;
                 if (academicMondayIso) {
                     const toMonday = (dt) => { const x = new Date(dt); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
@@ -8399,7 +8433,7 @@
                     <div class="modal-head">
                         <div>
                             <div class="modal-title" id="copy-week-title">คัดลอกกิจกรรมจากสัปดาห์อื่น</div>
-                            <div class="copy-week-subtitle">ดึงทุกกิจกรรมจากสัปดาห์ที่จัดไว้แล้วมาลงสัปดาห์นี้ หากมีรายการชน ระบบจะไม่บันทึกการคัดลอก</div>
+                            <div class="copy-week-subtitle">ดึงกิจกรรมจากสัปดาห์ที่จัดไว้แล้วมาลงสัปดาห์นี้ หากมีรายการชน ระบบจะข้ามเฉพาะรายการนั้น</div>
                         </div>
                         <button type="button" class="modal-close" @click="copyWeekOpen = false" aria-label="ปิด">×</button>
                     </div>
@@ -8436,7 +8470,7 @@
                                     <span class="copy-week-badge is-blocked" x-show="copyWeekPreview.blocked.length" x-text="'ชน ' + copyWeekPreview.blocked.length + ' รายการ'"></span>
                                 </div>
                                 <div class="copy-week-status is-error" x-show="copyWeekPreview.blocked.length">
-                                    มีรายการชนอยู่ ระบบจะไม่บันทึกการคัดลอกจนกว่าจะแก้รายการที่ชนก่อน
+                                    มีรายการชนอยู่ ระบบจะคัดลอกเฉพาะรายการที่พร้อม และข้ามรายการที่ชน
                                 </div>
 
                                 <ul class="copy-week-list" x-show="copyWeekPreview.ready.length">
@@ -8474,9 +8508,9 @@
                             type="button"
                             class="btn btn-primary"
                             @click="submitCopyWeek()"
-                            x-bind:disabled="copyWeekLoading || !copyWeekPreview || copyWeekPreview.ready.length === 0 || copyWeekPreview.blocked.length > 0"
+                            x-bind:disabled="copyWeekLoading || !copyWeekPreview || copyWeekPreview.ready.length === 0"
                             data-testid="schedule-copy-week-confirm"
-                            x-text="(copyWeekPreview && copyWeekPreview.blocked.length) ? 'มีรายการชน' : ((copyWeekPreview && copyWeekPreview.ready.length) ? ('คัดลอก ' + copyWeekPreview.ready.length + ' รายการ') : 'คัดลอก')"
+                            x-text="(copyWeekPreview && copyWeekPreview.ready.length) ? ('คัดลอก ' + copyWeekPreview.ready.length + ' รายการ') : 'คัดลอก'"
                         >คัดลอก</button>
                     </div>
                 </section>

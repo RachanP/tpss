@@ -428,6 +428,7 @@
                 init() {
                     this.tdiGlobalCloseHandler = () => this.tdiClose();
                     document.addEventListener('tpss:close-date-popovers', this.tdiGlobalCloseHandler);
+                    this.$nextTick(() => this.tdiValidateInput());
                 },
                 destroy() {
                     if (this.tdiGlobalCloseHandler) {
@@ -444,6 +445,64 @@
                     if (digits.length <= 2) return digits.length === 2 ? digits + '/' : digits;
                     if (digits.length <= 4) return digits.slice(0, 2) + '/' + digits.slice(2) + (digits.length === 4 ? '/' : '');
                     return digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4);
+                },
+                tdiParseIso(value) {
+                    const raw = String(value || '').trim();
+                    if (!raw) return null;
+
+                    const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                    if (iso) {
+                        const year = parseInt(iso[1], 10);
+                        const month = parseInt(iso[2], 10);
+                        const day = parseInt(iso[3], 10);
+                        const date = new Date(year, month - 1, day);
+                        if (
+                            date.getFullYear() === year
+                            && date.getMonth() === month - 1
+                            && date.getDate() === day
+                        ) {
+                            return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                        }
+                        return null;
+                    }
+
+                    const parts = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+                    if (!parts) return null;
+
+                    const day = parseInt(parts[1], 10);
+                    const month = parseInt(parts[2], 10);
+                    let year = parseInt(parts[3], 10);
+                    if (year >= 2400) year -= 543;
+                    if (year < 1900 || year > 2100) return null;
+
+                    const date = new Date(year, month - 1, day);
+                    if (
+                        date.getFullYear() !== year
+                        || date.getMonth() !== month - 1
+                        || date.getDate() !== day
+                    ) {
+                        return null;
+                    }
+
+                    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                },
+                tdiValidateInput() {
+                    const el = this.$refs.thaiInput;
+                    if (!el) return true;
+
+                    const value = String(el.value || '').trim();
+                    let message = '';
+
+                    if (value === '') {
+                        message = el.required ? 'กรุณากรอกวันที่' : '';
+                    } else if (!this.tdiParseIso(value)) {
+                        message = 'วันที่ไม่ถูกต้อง กรุณากรอกในรูปแบบ วว/ดด/พ.ศ. เช่น 21/05/2569';
+                    }
+
+                    el.setCustomValidity(message);
+                    el.setAttribute('aria-invalid', message ? 'true' : 'false');
+
+                    return message === '';
                 },
                 get tdiTodayIso() {
                     const t = new Date();
@@ -468,12 +527,12 @@
                 // sync เดือน/ปีในปฏิทินจากค่าที่พิมพ์ไว้ในช่อง (วว/ดด/พ.ศ.)
                 tdiSync() {
                     const parts = String(this.$refs.thaiInput.value || '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-                    if (parts) {
-                        let year = parseInt(parts[3], 10);
-                        if (year >= 2400) year -= 543;
+                    const iso = this.tdiParseIso(this.$refs.thaiInput.value);
+                    if (parts && iso) {
+                        const [year, month, day] = iso.split('-').map(Number);
                         this.calYear = year;
-                        this.calMonth = Math.min(11, Math.max(0, parseInt(parts[2], 10) - 1));
-                        this.tdiSelectedIso = this.tdiDayIso(parseInt(parts[1], 10));
+                        this.calMonth = month - 1;
+                        this.tdiSelectedIso = this.tdiDayIso(day);
                     } else {
                         const t = new Date();
                         this.calYear = t.getFullYear();
