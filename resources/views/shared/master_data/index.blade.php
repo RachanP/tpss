@@ -2845,15 +2845,11 @@
                                     <span style="font-size:13px;color:var(--fg-1);" x-text="String(currentCurriculum.uses_year_level) === '1' ? ('แบ่งเป็นชั้นปี (ปี 1–' + (currentCurriculum.duration_years || 4) + ')') : 'ไม่แบ่งชั้นปี ใช้หน่วยกิตสะสม'"></span>
                                     <button type="button" @click="showYearModeOverride = true" data-testid="curriculum-year-mode-toggle" style="flex-shrink:0;background:none;border:0;padding:0;cursor:pointer;color:var(--brand-navy-500);font:inherit;font-size:12px;text-decoration:underline;">ปรับเอง</button>
                                 </div>
-                                {{-- โหมดเลือกเอง (ปลดล็อกแล้ว) — segmented control ในที่เดียวกัน --}}
-                                <div x-show="showYearModeOverride" style="display:flex;gap:3px;padding:3px;border:1px solid var(--border);border-radius:8px;background:var(--surface-sunken);" data-testid="curriculum-year-mode-override">
-                                    <button type="button" @click="currentCurriculum.uses_year_level = '1'"
-                                        style="flex:1;padding:9px 12px;border:0;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;text-align:center;transition:background .12s ease,color .12s ease;"
-                                        :style="String(currentCurriculum.uses_year_level) === '1' ? 'background:var(--surface);color:var(--brand-navy);font-weight:600;' : 'background:transparent;color:var(--fg-2);font-weight:500;'">แบ่งเป็นชั้นปี</button>
-                                    <button type="button" @click="currentCurriculum.uses_year_level = '0'"
-                                        style="flex:1;padding:9px 12px;border:0;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;text-align:center;transition:background .12s ease,color .12s ease;"
-                                        :style="String(currentCurriculum.uses_year_level) === '0' ? 'background:var(--surface);color:var(--brand-navy);font-weight:600;' : 'background:transparent;color:var(--fg-2);font-weight:500;'">ใช้หน่วยกิตสะสม</button>
-                                </div>
+                                {{-- โหมดเลือกเอง (ปลดล็อกแล้ว) — dropdown ในที่เดียวกัน --}}
+                                <select x-show="showYearModeOverride" x-model="currentCurriculum.uses_year_level" data-testid="curriculum-year-mode-override">
+                                    <option value="1">แบ่งเป็นชั้นปี (ปี 1–4)</option>
+                                    <option value="0">ไม่แบ่งชั้นปี ใช้หน่วยกิตสะสม</option>
+                                </select>
                                 <div style="margin-top:4px;font-size:11px;color:var(--fg-4);">ตั้งให้อัตโนมัติตามระดับการศึกษา — ป.ตรีแบ่งชั้นปี · ป.โท/เอกใช้หน่วยกิตสะสม</div>
                             </div>
                             {{-- แบ่งชั้นปี → จำนวนปี --}}
@@ -2871,25 +2867,25 @@
                             <div class="form-group" style="margin-bottom:16px;">
                                 <label>การนับภาระงาน <span style="font-weight:400;color:var(--fg-4);font-size:11px;">(หลักสูตรเฉพาะทาง)</span></label>
                                 <input type="hidden" name="counts_service_only" :value="currentCurriculum.counts_service_only">
-                                <div style="display:flex;gap:3px;padding:3px;border:1px solid var(--border);border-radius:8px;background:var(--surface-sunken);" data-testid="curriculum-counts-service-only">
+                                <div style="display:flex;gap:4px;padding:4px;border-radius:10px;background:var(--brand-navy-50);" data-testid="curriculum-counts-service-only">
                                     <button type="button" @click="currentCurriculum.counts_service_only = '0'"
-                                        style="flex:1;padding:9px 12px;border:0;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;text-align:center;transition:background .12s ease,color .12s ease;"
-                                        :style="String(currentCurriculum.counts_service_only) === '0' ? 'background:var(--surface);color:var(--brand-navy);font-weight:600;' : 'background:transparent;color:var(--fg-2);font-weight:500;'">นับชั่วโมงปกติ</button>
+                                        style="flex:1;padding:10px 12px;border:0;border-radius:7px;cursor:pointer;font-family:inherit;font-size:13px;text-align:center;transition:all .15s ease;"
+                                        :style="String(currentCurriculum.counts_service_only) === '0' ? 'background:var(--brand-navy);color:#fff;font-weight:600;' : 'background:transparent;color:var(--brand-navy-500);font-weight:500;'">นับชั่วโมงปกติ</button>
                                     <button type="button" @click="currentCurriculum.counts_service_only = '1'"
-                                        style="flex:1;padding:9px 12px;border:0;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;text-align:center;transition:background .12s ease,color .12s ease;"
-                                        :style="String(currentCurriculum.counts_service_only) === '1' ? 'background:var(--surface);color:var(--brand-navy);font-weight:600;' : 'background:transparent;color:var(--fg-2);font-weight:500;'">บริการวิชาการอย่างเดียว</button>
+                                        style="flex:1;padding:10px 12px;border:0;border-radius:7px;cursor:pointer;font-family:inherit;font-size:13px;text-align:center;transition:all .15s ease;"
+                                        :style="String(currentCurriculum.counts_service_only) === '1' ? 'background:var(--brand-navy);color:#fff;font-weight:600;' : 'background:transparent;color:var(--brand-navy-500);font-weight:500;'">บริการวิชาการอย่างเดียว</button>
                                 </div>
                             </div>
                             <div class="form-group" style="margin-bottom:0;">
                                 <label>สถานะ</label>
                                 <input type="hidden" name="is_active" :value="currentCurriculum.is_active">
-                                <div style="display:flex;gap:3px;padding:3px;border:1px solid var(--border);border-radius:8px;background:var(--surface-sunken);">
+                                <div style="display:flex;gap:4px;padding:4px;border-radius:10px;background:var(--brand-navy-50);">
                                     <button type="button" @click="currentCurriculum.is_active = '1'"
-                                        style="flex:1;padding:9px 12px;border:0;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;text-align:center;transition:background .12s ease,color .12s ease;"
-                                        :style="String(currentCurriculum.is_active) === '1' ? 'background:var(--surface);color:var(--brand-navy);font-weight:600;' : 'background:transparent;color:var(--fg-2);font-weight:500;'">กำลังใช้งาน</button>
+                                        style="flex:1;padding:10px 12px;border:0;border-radius:7px;cursor:pointer;font-family:inherit;font-size:13px;text-align:center;transition:all .15s ease;"
+                                        :style="String(currentCurriculum.is_active) === '1' ? 'background:var(--brand-navy);color:#fff;font-weight:600;' : 'background:transparent;color:var(--brand-navy-500);font-weight:500;'">กำลังใช้งาน</button>
                                     <button type="button" @click="currentCurriculum.is_active = '0'"
-                                        style="flex:1;padding:9px 12px;border:0;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;text-align:center;transition:background .12s ease,color .12s ease;"
-                                        :style="String(currentCurriculum.is_active) === '0' ? 'background:var(--surface);color:var(--brand-navy);font-weight:600;' : 'background:transparent;color:var(--fg-2);font-weight:500;'">ปิดใช้งาน</button>
+                                        style="flex:1;padding:10px 12px;border:0;border-radius:7px;cursor:pointer;font-family:inherit;font-size:13px;text-align:center;transition:all .15s ease;"
+                                        :style="String(currentCurriculum.is_active) === '0' ? 'background:var(--brand-navy);color:#fff;font-weight:600;' : 'background:transparent;color:var(--brand-navy-500);font-weight:500;'">ปิดใช้งาน</button>
                                 </div>
                             </div>
                         </div>
