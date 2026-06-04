@@ -68,7 +68,8 @@ class AdminSettingController extends Controller
      */
     private function createDefaultTerms(AcademicYear $year): void
     {
-        if ($year->terms()->exists()) {
+        $calendar = $year->defaultCalendar();
+        if ($calendar->terms()->exists()) {
             return;
         }
 
@@ -76,7 +77,7 @@ class AdminSettingController extends Controller
         $end = Carbon::parse($year->end_date);
         $mid = $start->copy()->addDays((int) floor($start->diffInDays($end) / 2));
 
-        $year->terms()->createMany([
+        $calendar->terms()->createMany([
             ['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => $start->toDateString(), 'end_date' => $mid->toDateString()],
             ['sequence' => 2, 'name' => 'ภาคเรียนที่ 2', 'start_date' => $mid->copy()->addDay()->toDateString(), 'end_date' => $end->toDateString()],
         ]);
@@ -219,11 +220,12 @@ class AdminSettingController extends Controller
             return;
         }
 
+        $calendar = $year->defaultCalendar();
         $keptSeqs = [];
         foreach ($terms as $i => $t) {
             $seq = (int) ($t['sequence'] ?? ($i + 1));
             $keptSeqs[] = $seq;
-            $year->terms()->updateOrCreate(['sequence' => $seq], [
+            $calendar->terms()->updateOrCreate(['sequence' => $seq], [
                 'name'          => $t['name'],
                 'start_date'    => $t['start_date'],
                 'end_date'      => $t['end_date'],
@@ -234,7 +236,7 @@ class AdminSettingController extends Controller
             ]);
         }
 
-        $year->terms()->whereNotIn('sequence', $keptSeqs)->delete();
+        $calendar->terms()->whereNotIn('sequence', $keptSeqs)->delete();
     }
 
     private function hasOtherOpenSchedulingWindow(AcademicYear $year): bool
