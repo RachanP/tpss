@@ -646,7 +646,7 @@
 
         {{-- ── ตัวแก้/เพิ่มปฏิทิน (styled แบบ modal หลักสูตร) ── --}}
         <template x-if="showCalEditor">
-            <div class="overlay" x-cloak @keydown.escape.window="showCalEditor = false" style="z-index: 60;">
+            <div class="overlay" x-cloak @keydown.escape.window="showCalEditor = false" style="z-index: calc(var(--z-modal) + 10);">
                 <div class="modal-center" x-transition:enter="transition ease-out duration-200"
                     x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
                     <div class="modal-hdr" style="background: var(--bg-2);">
