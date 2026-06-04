@@ -826,6 +826,7 @@
         cohortCurriculumDurations: {{ Js::from($cohortCurriculums->mapWithKeys(fn($c) => [(string) $c->id => (int) $c->duration_years])) }},
         cohortCurriculumUsesYear: {{ Js::from($cohortCurriculums->mapWithKeys(fn($c) => [(string) $c->id => (bool) $c->uses_year_level])) }},
         currentCohort: { id: '', curriculum_id: '', year_level: '', code: '', student_count: '', note: '' },
+        cohortSubgroups: [],
         cohortUsesYear() {
             return !!this.cohortCurriculumUsesYear[String(this.currentCohort.curriculum_id)];
         },
@@ -833,13 +834,25 @@
             const dur = this.cohortCurriculumDurations[String(this.currentCohort.curriculum_id)] || 0;
             return Array.from({ length: dur }, (_, i) => i + 1);
         },
+        addCohortSubgroup() {
+            this.cohortSubgroups.push({ student_count: '' });
+        },
+        removeCohortSubgroup(i) {
+            this.cohortSubgroups.splice(i, 1);
+        },
+        subgroupCode(i) {
+            // รหัสกลุ่มย่อย = ตัวอักษรกลุ่มใหญ่ + ลำดับ เช่น A1, A2
+            return (this.currentCohort.code || '?') + (i + 1);
+        },
         openAddCohort(curriculumId = '') {
             this.editCohortMode = false;
             this.currentCohort = { id: '', curriculum_id: curriculumId ? String(curriculumId) : '', year_level: '', code: '', student_count: '', note: '' };
+            this.cohortSubgroups = [];
             this.showCohortModal = true;
         },
         openEditCohort(co) {
             this.editCohortMode = true;
+            this.cohortSubgroups = [];
             this.currentCohort = {
                 id: co.id,
                 curriculum_id: String(co.curriculum_id),
@@ -3196,9 +3209,9 @@
                                                     onmouseover="this.style.background='var(--bg-2)'" onmouseout="this.style.background=''">
                                                     @if($cur->uses_year_level)
                                                     <td style="padding: 11px 16px 11px 56px; font-size: 13px; color: var(--fg-2);">@if($co->year_level)ปี {{ $co->year_level }}@else<span style="color: var(--fg-3);">—</span>@endif</td>
-                                                    <td style="padding: 11px 16px; font-size: 13px; font-weight: 600; color: var(--fg-1);">{{ $co->code }}</td>
+                                                    <td style="padding: 11px 16px; font-size: 13px; font-weight: 600; color: var(--fg-1);">@if($co->parent_id)<span style="color:var(--fg-3);font-weight:400;">↳ </span><span style="font-weight:500;color:var(--fg-2);">{{ $co->code }}</span>@else{{ $co->code }}@endif</td>
                                                     @else
-                                                    <td style="padding: 11px 16px 11px 56px; font-size: 13px; font-weight: 600; color: var(--fg-1);">{{ $co->code }}</td>
+                                                    <td style="padding: 11px 16px 11px 56px; font-size: 13px; font-weight: 600; color: var(--fg-1);">@if($co->parent_id)<span style="color:var(--fg-3);font-weight:400;">↳ </span><span style="font-weight:500;color:var(--fg-2);">{{ $co->code }}</span>@else{{ $co->code }}@endif</td>
                                                     @endif
                                                     <td style="padding: 11px 16px; font-size: 13px; color: var(--fg-2); text-align: center; font-family: var(--font-mono, monospace);">{{ number_format($co->student_count) }} คน</td>
                                                     @if($canManageMasterData)
@@ -3277,9 +3290,30 @@
                                 <input type="number" name="student_count" x-model="currentCohort.student_count" min="0" max="9999" required placeholder="เช่น 80">
                             </div>
                             <div class="form-group" style="margin-bottom: 18px;">
-                                <label>รหัสกลุ่ม <span style="color: var(--status-conflict-fg)">*</span></label>
-                                <input type="text" name="code" x-model="currentCohort.code" maxlength="50" required placeholder="เช่น กลุ่ม 1, A">
-                                <div style="margin-top:6px;font-size:12px;color:var(--fg-3);">รหัสกลุ่มต้องไม่ซ้ำในชั้นปีเดียวกันของหลักสูตรนี้</div>
+                                <label>รหัสกลุ่มใหญ่ <span style="color: var(--status-conflict-fg)">*</span></label>
+                                <input type="text" name="code" x-model="currentCohort.code" maxlength="50" required placeholder="เช่น A, B">
+                                <div style="margin-top:6px;font-size:12px;color:var(--fg-3);">กลุ่มใหญ่ใช้ตัวอักษรเท่านั้น (A, B) — กลุ่มย่อยจะเป็น A1, A2</div>
+                            </div>
+                            {{-- กลุ่มย่อย (optional) — เฉพาะตอนสร้างใหม่ --}}
+                            <div class="form-group" style="margin-bottom: 18px;" x-show="!editCohortMode" x-cloak>
+                                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                                    <label style="margin:0;">กลุ่มย่อย <span style="font-weight:400;color:var(--fg-3);font-size:12px;">(ไม่บังคับ)</span></label>
+                                    <button type="button" @click="addCohortSubgroup()" :disabled="!currentCohort.code"
+                                        :style="!currentCohort.code ? 'opacity:.4;cursor:not-allowed;' : 'cursor:pointer;'"
+                                        style="background:none;border:0;padding:0;color:var(--brand-navy-500);font:inherit;font-size:12px;text-decoration:underline;">+ เพิ่มกลุ่มย่อย</button>
+                                </div>
+                                <template x-if="cohortSubgroups.length === 0">
+                                    <div style="font-size:12px;color:var(--fg-3);padding:9px 11px;background:var(--surface-sunken);border-radius:6px;">ยังไม่มีกลุ่มย่อย — กดเพิ่มเพื่อซอยกลุ่มใหญ่เป็น A1, A2 (ไม่ต้องการก็เว้นว่างได้)</div>
+                                </template>
+                                <template x-for="(sg, i) in cohortSubgroups" :key="i">
+                                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                                        <span style="min-width:46px;font-weight:600;color:var(--brand-navy);font-size:13px;" x-text="subgroupCode(i)"></span>
+                                        <input type="hidden" :name="'subgroups['+i+'][code]'" :value="subgroupCode(i)">
+                                        <input type="number" :name="'subgroups['+i+'][student_count]'" x-model="sg.student_count" min="0" max="9999" required placeholder="จำนวนนักศึกษา" style="flex:1;">
+                                        <button type="button" @click="removeCohortSubgroup(i)" title="ลบกลุ่มย่อย"
+                                            style="flex-shrink:0;background:none;border:0;cursor:pointer;color:var(--status-conflict-fg);font-size:16px;line-height:1;padding:4px 8px;">✕</button>
+                                    </div>
+                                </template>
                             </div>
                             <div class="form-group">
                                 <label>หมายเหตุ</label>
