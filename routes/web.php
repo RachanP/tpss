@@ -38,14 +38,7 @@ Route::middleware(['auth', 'no-back'])->group(function () {
     Route::get('/maker/dashboard',    [DashboardController::class, 'maker'])   ->name('maker.dashboard')   ->middleware('\App\Http\Middleware\CheckRole:course_head');
     Route::get('/approver/dashboard', [DashboardController::class, 'approver'])->name('approver.dashboard')->middleware('\App\Http\Middleware\CheckRole:executive');
     Route::get('/lecturer/dashboard', [DashboardController::class, 'lecturer'])->name('lecturer.dashboard')->middleware('\App\Http\Middleware\CheckRole:instructor');
-
-    Route::middleware(['\App\Http\Middleware\CheckRole:instructor'])
-        ->prefix('instructor')
-        ->name('instructor.')
-        ->group(function () {
-            Route::get('/pa', [PaController::class, 'edit'])->name('pa.edit');
-            Route::put('/pa', [PaController::class, 'update'])->name('pa.update');
-        });
+    Route::put('/lecturer/dashboard/pa', [PaController::class, 'update'])->name('lecturer.pa.update')->middleware('\App\Http\Middleware\CheckRole:instructor');
 
     // V2 delegation: งานจัดตาราง (workspace/alerts/slot CRUD) เปิดให้หัวหน้าวิชา + อาจารย์ที่ถูกมอบหมาย + เจ้าหน้าที่ที่ดูแลวิชา
     // access จริงต่อ offering กรองด้วย CourseOffering::scopeSchedulableBy / canBeScheduledBy

@@ -35,7 +35,12 @@ class PaController extends Controller
 
     public function edit()
     {
-        $user = Auth::user()->load(['instructorProfile', 'paAllocations.paRound']);
+        return redirect()->route('lecturer.dashboard');
+    }
+
+    public function workloadDataFor($user): array
+    {
+        $user->load(['instructorProfile', 'paAllocations.paRound']);
         $profile = $user->instructorProfile;
         $academicYear = $this->currentAcademicYear();
         $round = ($academicYear && $profile) ? $this->currentRound($academicYear, $profile) : null;
@@ -52,7 +57,7 @@ class PaController extends Controller
         $teachingQuota = $allocation?->teaching_quota
             ?? ($profile ? $this->calculateTeachingQuota((int) ($allocation?->teaching_pct ?? $profile->teaching_pct), $profile) : null);
 
-        return view('instructor.pa.edit', compact(
+        return compact(
             'user',
             'profile',
             'academicYear',
@@ -63,7 +68,7 @@ class PaController extends Controller
             'periodLabel',
             'quotaBase',
             'teachingQuota'
-        ));
+        );
     }
 
     public function update(Request $request)
@@ -141,7 +146,7 @@ class PaController extends Controller
 
         AlertController::flushCache();
 
-        return redirect()->route('instructor.pa.edit')->with('success', 'บันทึกสัดส่วน PA เรียบร้อยแล้ว');
+        return redirect()->route('lecturer.dashboard')->with('success', 'บันทึกสัดส่วน PA เรียบร้อยแล้ว');
     }
 
     private function currentAcademicYear(): ?AcademicYear

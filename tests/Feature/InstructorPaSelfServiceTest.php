@@ -22,12 +22,12 @@ class InstructorPaSelfServiceTest extends TestCase
         $this->makeAcademicYear();
         session(['active_role' => 'instructor']);
 
-        $response = $this->actingAs($instructor)->get(route('instructor.pa.edit'));
+        $response = $this->actingAs($instructor)->get(route('lecturer.dashboard'));
 
         $response
             ->assertOk()
-            ->assertViewIs('instructor.pa.edit')
-            ->assertSee('กรอกสัดส่วนภาระงาน PA');
+            ->assertViewIs('instructor.dashboard')
+            ->assertSee('ภาระงานสอน');
     }
 
     public function test_instructor_can_submit_pa_allocation_for_current_round(): void
@@ -36,7 +36,7 @@ class InstructorPaSelfServiceTest extends TestCase
         $year = $this->makeAcademicYear();
         session(['active_role' => 'instructor']);
 
-        $response = $this->actingAs($instructor)->put(route('instructor.pa.update'), [
+        $response = $this->actingAs($instructor)->put(route('lecturer.pa.update'), [
             'teaching_pct' => 50,
             'research_pct' => 25,
             'service_pct' => 10,
@@ -44,7 +44,7 @@ class InstructorPaSelfServiceTest extends TestCase
             'other_pct' => 5,
         ]);
 
-        $response->assertRedirect(route('instructor.pa.edit'));
+        $response->assertRedirect(route('lecturer.dashboard'));
 
         $round = PaRound::where('academic_year_id', $year->id)->firstOrFail();
         $this->assertSame(PaRound::CODE_ANNUAL, $round->code);
@@ -76,7 +76,7 @@ class InstructorPaSelfServiceTest extends TestCase
         $this->makeAcademicYear();
         session(['active_role' => 'instructor']);
 
-        $response = $this->actingAs($instructor)->from(route('instructor.pa.edit'))->put(route('instructor.pa.update'), [
+        $response = $this->actingAs($instructor)->from(route('lecturer.dashboard'))->put(route('lecturer.pa.update'), [
             'teaching_pct' => 50,
             'research_pct' => 20,
             'service_pct' => 10,
@@ -85,7 +85,7 @@ class InstructorPaSelfServiceTest extends TestCase
         ]);
 
         $response
-            ->assertRedirect(route('instructor.pa.edit'))
+            ->assertRedirect(route('lecturer.dashboard'))
             ->assertSessionHasErrors('teaching_pct');
         $this->assertDatabaseCount('instructor_pa_allocations', 0);
     }
@@ -101,7 +101,7 @@ class InstructorPaSelfServiceTest extends TestCase
         UserRole::create(['user_id' => $staff->id, 'role' => 'staff', 'is_primary' => true]);
         session(['active_role' => 'staff']);
 
-        $this->actingAs($staff)->get(route('instructor.pa.edit'))->assertForbidden();
+        $this->actingAs($staff)->get(route('lecturer.dashboard'))->assertForbidden();
     }
 
     private function makeInstructor(): User

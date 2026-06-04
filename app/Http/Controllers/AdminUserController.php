@@ -51,7 +51,8 @@ class AdminUserController extends Controller
     {
         $this->normalizeThaiDateInput($request, 'instructor_hired_at');
 
-        $roles        = $request->input('roles', []);
+        $roles        = $this->normalizeRoles($request->input('roles', []));
+        $request->merge(['roles' => $roles]);
         $isInstructor = in_array('instructor', $roles, true);
         $isCourseHead = in_array('course_head', $roles, true);
         $isExecutive  = in_array('executive', $roles, true);
@@ -174,7 +175,8 @@ class AdminUserController extends Controller
     {
         $this->normalizeThaiDateInput($request, 'instructor_hired_at');
 
-        $roles        = $request->input('roles', []);
+        $roles        = $this->normalizeRoles($request->input('roles', []));
+        $request->merge(['roles' => $roles]);
         $isInstructor = in_array('instructor', $roles, true);
         $isCourseHead = in_array('course_head', $roles, true);
         $isExecutive  = in_array('executive', $roles, true);
@@ -435,7 +437,7 @@ class AdminUserController extends Controller
                 continue;
             }
 
-            $roles = array_values(array_filter(array_map('trim', explode('|', $rolesStr))));
+            $roles = $this->normalizeRoles(array_values(array_filter(array_map('trim', explode('|', $rolesStr)))));
             $invalid = array_diff($roles, $validRoles);
             if ($invalid) {
                 $errors[] = "แถว {$row}: role ไม่ถูกต้อง: " . implode(', ', $invalid);
@@ -658,6 +660,18 @@ class AdminUserController extends Controller
     public function settings()
     {
         return view('admin.settings');
+    }
+
+    private function normalizeRoles(array $roles): array
+    {
+        $roles = array_values(array_unique(array_filter(array_map('strval', $roles))));
+
+        if ((in_array('executive', $roles, true) || in_array('course_head', $roles, true))
+            && ! in_array('instructor', $roles, true)) {
+            $roles[] = 'instructor';
+        }
+
+        return $roles;
     }
 
     private function validateDepartmentRoleSync(array $validated, array $roles, ?User $user = null): void

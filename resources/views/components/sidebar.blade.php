@@ -270,15 +270,6 @@
         @elseif($activeRole === 'instructor')
             <div class="sb-sec">เมนูหลัก</div>
             <!-- Lecturer Menus -->
-            <a href="{{ route('instructor.pa.edit') }}" class="nv {{ Request::routeIs('instructor.pa.*') ? 'on' : '' }}" data-testid="sidebar-instructor-pa">
-                <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M4 19h16"></path>
-                    <path d="M7 16V8"></path>
-                    <path d="M12 16V5"></path>
-                    <path d="M17 16v-3"></path>
-                </svg>
-                <span class="nv-label">กรอกสัดส่วน PA</span>
-            </a>
             <span class="nv nv-disabled" role="link" aria-disabled="true" title="ฟีเจอร์ภาพรวมอาจารย์กำลังอยู่ในช่วงพัฒนา">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -302,14 +293,13 @@
                 <span class="nv-label">ช่วยจัดตาราง</span>
             </a>
             @endif
-            <span class="nv nv-disabled" role="link" aria-disabled="true" title="ฟีเจอร์ภาระงานสอนรายบุคคลกำลังอยู่ในช่วงพัฒนา">
+            <a href="{{ route('lecturer.dashboard') }}" class="nv {{ Request::routeIs('lecturer.dashboard') || Request::routeIs('lecturer.pa.*') ? 'on' : '' }}" data-testid="sidebar-instructor-workload">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="10"></circle>
                     <polyline points="12 6 12 12 16 14"></polyline>
                 </svg>
                 <span class="nv-label">ภาระงานสอน</span>
-                <span class="nv-dev-badge">กำลังพัฒนา</span>
-            </span>
+            </a>
             <span class="nv nv-disabled" role="link" aria-disabled="true" title="ฟีเจอร์วิชาที่รับผิดชอบกำลังอยู่ในช่วงพัฒนา">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>

@@ -196,6 +196,10 @@
                     return false;
                 },
                 toggleRole(role) {
+                    if (role === 'instructor' && this.currentUser.roles.includes('instructor') && (this.hasExecutive || this.hasCourseHead)) {
+                        return;
+                    }
+
                     if (this.currentUser.roles.includes(role)) {
                         if (this.currentUser.roles.length > 1 || this.currentUser.primary_role !== role) {
                             this.currentUser.roles = this.currentUser.roles.filter(r => r !== role);
@@ -207,6 +211,14 @@
                         this.currentUser.roles.push(role);
                         if (!this.currentUser.primary_role) this.currentUser.primary_role = role;
                     }
+
+                    if ((role === 'executive' || role === 'course_head')
+                        && this.currentUser.roles.includes(role)
+                        && !this.currentUser.roles.includes('instructor')) {
+                        this.currentUser.roles.push('instructor');
+                    }
+
+                    this.currentUser.roles = [...new Set(this.currentUser.roles)];
 
                     if (!this.needsDept) {
                         this.instructorProfile.department_id = '';
@@ -1036,7 +1048,7 @@
 
                                     <div x-show="hasInstructor"
                                         style="background: var(--bg-2); border-radius: 8px; padding: 14px 16px; border: 1px solid var(--border); margin-top: 8px; color: var(--fg-2); font-size: 13px; line-height: 1.7;">
-                                        สัดส่วน PA ให้อาจารย์กรอกเองภายหลังผ่านเมนู <strong>กรอกสัดส่วน PA</strong> ในบทบาทอาจารย์ ผู้ดูแลระบบบันทึกเฉพาะข้อมูลพื้นฐานของอาจารย์ในหน้านี้
+                                        สัดส่วน PA ให้อาจารย์กรอกเองภายหลังผ่านเมนู <strong>ภาระงานสอน</strong> ในบทบาทอาจารย์ ผู้ดูแลระบบบันทึกเฉพาะข้อมูลพื้นฐานของอาจารย์ในหน้านี้
                                     </div>
 
                                     <template x-if="false">

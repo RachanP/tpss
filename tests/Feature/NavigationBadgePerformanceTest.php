@@ -37,7 +37,6 @@ class NavigationBadgePerformanceTest extends TestCase
         $this->assertStringNotContainsString('href="#"', $sidebar);
         $this->assertStringNotContainsString("route('staff.dashboard')", $sidebar);
         $this->assertStringNotContainsString("route('maker.dashboard')", $sidebar);
-        $this->assertStringNotContainsString("route('lecturer.dashboard')", $sidebar);
         $this->assertStringNotContainsString("route('approver.dashboard')", $sidebar);
         $this->assertStringContainsString('nv-disabled', $sidebar);
         $this->assertStringContainsString('nv-label', $sidebar);

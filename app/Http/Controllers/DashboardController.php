@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Admin\AlertController;
+use App\Http\Controllers\Instructor\PaController;
 use App\Models\AcademicYear;
 use App\Models\AuditLog;
 use App\Models\Course;
@@ -53,7 +54,7 @@ class DashboardController extends Controller
 
         return $canHelpSchedule
             ? redirect()->route('maker.schedules.index')
-            : redirect()->route('instructor.pa.edit');
+            : redirect()->route('lecturer.dashboard');
     }
 
     // ── Per-role placeholders ──────────────────────────────────────
@@ -168,20 +169,9 @@ class DashboardController extends Controller
 
     public function lecturer()
     {
-        $user = Auth::user()->load('instructorProfile');
-        $quota = null;
-        $period = null;
+        $paData = app(PaController::class)->workloadDataFor(Auth::user());
 
-        if ($user->instructorProfile && $user->instructorProfile->teaching_pct) {
-            $isGov = ($user->instructorProfile->employment_type === 'ข้าราชการ');
-            $teachingWeeks = \App\Models\SystemSetting::get('teaching_load_weeks', 39);
-            $hoursPerWeek = \App\Models\SystemSetting::get('teaching_quota_hours_per_week', 35);
-            $base = $isGov ? ($teachingWeeks * $hoursPerWeek / 2) : ($teachingWeeks * $hoursPerWeek);
-            $period = $isGov ? '6 เดือน' : 'ปี';
-            $quota = ($base * $user->instructorProfile->teaching_pct) / 100;
-        }
-
-        return view('instructor.dashboard', compact('user', 'quota', 'period'));
+        return view('instructor.dashboard', $paData);
     }
 
     /**

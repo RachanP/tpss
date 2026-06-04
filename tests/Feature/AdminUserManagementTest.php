@@ -510,9 +510,6 @@ class AdminUserManagementTest extends TestCase
             'email' => 'course-head-user@example.com',
             'roles' => ['course_head'],
             'primary_role' => 'course_head',
-            'employee_id' => null,
-            'instructor_employment_type' => null,
-            'instructor_hired_at' => null,
         ]));
 
         $response->assertRedirect('/admin/users');
@@ -521,6 +518,7 @@ class AdminUserManagementTest extends TestCase
             'user_id' => $user->id,
             'department_id' => $dept->id,
         ]);
+        $this->assertDatabaseHas('user_roles', ['user_id' => $user->id, 'role' => 'instructor']);
         $this->assertNull($dept->fresh()->head_user_id);
     }
 
@@ -532,13 +530,14 @@ class AdminUserManagementTest extends TestCase
         $response = $this->post('/admin/users', $this->validInstructorPayload($dept, [
             'username' => 'executive-head',
             'email' => 'executive-head@example.com',
-            'roles' => ['instructor', 'executive'],
+            'roles' => ['executive'],
             'primary_role' => 'executive',
         ]));
 
         $response->assertRedirect('/admin/users');
         $newHead = User::where('username', 'executive-head')->firstOrFail();
         $this->assertSame($newHead->id, $dept->fresh()->head_user_id);
+        $this->assertDatabaseHas('user_roles', ['user_id' => $newHead->id, 'role' => 'instructor']);
     }
 
     // ===== Toggle status =====
