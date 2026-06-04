@@ -44,7 +44,7 @@
 | Phase 1–3 | Initiation → Design | ✅ เสร็จ |
 | Phase 4–5 | Development | 🟢 Sprint 1+2+3+M7 merge แล้ว, Schedule Suite (M3+M4+M8) Phase A/B/C ส่งบน branch `4-m3-schedule-suite-testPat` |
 | Phase 5 | Testing | 🟡 Internal Testing กำลังดำเนินการ |
-| Phase 6–7 | Deployment → Closure | 🟢 Staging deploy (Docker) เริ่ม 30 พ.ค. สำหรับ client demo 2 มิ.ย. — production closure 4–7 มิ.ย. 2569 |
+| Phase 6–7 | Deployment → Closure | 🟢 Staging deploy (Docker) เริ่ม 30 พ.ค. สำหรับ client demo 2 มิ.ย. — production closure **ขยายถึง 18 มิ.ย. 2569** (เดิม 4–7 มิ.ย.) |
 
 ## Sprint Plan — Phase 1 (193 SP)
 
