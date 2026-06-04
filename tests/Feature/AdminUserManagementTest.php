@@ -493,26 +493,34 @@ class AdminUserManagementTest extends TestCase
             'username' => 'newhead',
             'email' => 'newhead@example.com',
             'roles' => ['instructor', 'executive'],
-            'instructor_department_position' => 'head',
         ]));
 
-        $response->assertSessionHasErrors('instructor_department_position');
+        $response->assertSessionHasErrors('instructor_department_id');
         $this->assertSame($oldHead->id, $dept->fresh()->head_user_id);
         $this->assertDatabaseMissing('users', ['username' => 'newhead']);
     }
 
-    public function test_department_head_requires_executive_role(): void
+    public function test_course_head_department_syncs_profile_without_setting_department_head(): void
     {
-        $dept = Department::create(['name' => 'Executive Gate Dept']);
+        $dept = Department::create(['name' => 'Course Head Dept']);
         $this->actingAs($this->admin);
 
         $response = $this->post('/admin/users', $this->validInstructorPayload($dept, [
-            'username' => 'not-executive-head',
-            'email' => 'not-executive-head@example.com',
-            'instructor_department_position' => 'head',
+            'username' => 'course-head-user',
+            'email' => 'course-head-user@example.com',
+            'roles' => ['course_head'],
+            'primary_role' => 'course_head',
+            'employee_id' => null,
+            'instructor_employment_type' => null,
+            'instructor_hired_at' => null,
         ]));
 
-        $response->assertSessionHasErrors('instructor_department_position');
+        $response->assertRedirect('/admin/users');
+        $user = User::where('username', 'course-head-user')->firstOrFail();
+        $this->assertDatabaseHas('instructor_profiles', [
+            'user_id' => $user->id,
+            'department_id' => $dept->id,
+        ]);
         $this->assertNull($dept->fresh()->head_user_id);
     }
 
@@ -526,7 +534,6 @@ class AdminUserManagementTest extends TestCase
             'email' => 'executive-head@example.com',
             'roles' => ['instructor', 'executive'],
             'primary_role' => 'executive',
-            'instructor_department_position' => 'head',
         ]));
 
         $response->assertRedirect('/admin/users');

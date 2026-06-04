@@ -53,10 +53,11 @@ class AdminUserController extends Controller
 
         $roles        = $request->input('roles', []);
         $isInstructor = in_array('instructor', $roles, true);
+        $isCourseHead = in_array('course_head', $roles, true);
         $isExecutive  = in_array('executive', $roles, true);
-        $selectedPosition = $request->input('instructor_department_position');
-        $needsDept    = $isInstructor || in_array('course_head', $roles, true) || filled($selectedPosition);
-        $needsProfile = $needsDept || $isExecutive;
+        $canUseDepartment = $isCourseHead || $isExecutive;
+        $needsDept    = $canUseDepartment;
+        $needsProfile = $isInstructor || $canUseDepartment;
 
         $reqTitle  = $needsProfile ? 'required' : 'nullable';
         $reqDept   = $needsDept    ? 'required' : 'nullable';
@@ -94,10 +95,10 @@ class AdminUserController extends Controller
             'roles.required'      => 'กรุณาเลือกสิทธิ์อย่างน้อย 1 บทบาท',
         ]);
 
-        $this->validateDepartmentPositionGate($validated, $roles);
+        $this->validateDepartmentRoleSync($validated, $roles);
 
         $createdUser = null;
-        DB::transaction(function () use ($validated, $request, $needsProfile, $isInstructor, &$createdUser) {
+        DB::transaction(function () use ($validated, $request, $needsProfile, $isInstructor, $canUseDepartment, &$createdUser) {
             $user = User::create([
                 'username'    => $validated['username'],
                 'prefix'      => $validated['prefix'] ?? null,
@@ -122,7 +123,6 @@ class AdminUserController extends Controller
                 $profileData = [
                     'user_id'         => $user->id,
                     'title'           => $validated['instructor_title'] ?? null,
-                    'department_id'   => $validated['instructor_department_id'] ?? null,
                     'academic_degree' => $validated['instructor_academic_degree'] ?? null,
                     'teaching_pct'    => 0,
                     'research_pct'    => 0,
@@ -138,19 +138,12 @@ class AdminUserController extends Controller
                         'is_english_passed' => $request->boolean('instructor_is_english_passed'),
                     ];
                 }
+                if ($canUseDepartment) {
+                    $profileData['department_id'] = $validated['instructor_department_id'] ?? null;
+                }
                 InstructorProfile::create($profileData);
 
-                // Handle department positions
-                if ($request->filled('instructor_department_position') && $request->filled('instructor_department_id')) {
-                    $deptId = $validated['instructor_department_id'];
-                    $this->assertDepartmentPositionAvailable((int) $deptId, $validated['instructor_department_position'], $user);
-                    if ($validated['instructor_department_position'] === 'head') {
-                        Department::where('id', $deptId)->update(['head_user_id' => $user->id]);
-                    } else if ($validated['instructor_department_position'] === 'secretary') {
-                        Department::where('secretary_user_id', $user->id)->update(['secretary_user_id' => null]);
-                        Department::where('id', $deptId)->update(['secretary_user_id' => $user->id]);
-                    }
-                }
+                $this->syncDepartmentHeadFromRoles($user, $validated['roles'], $validated['instructor_department_id'] ?? null);
             }
         });
 
@@ -183,10 +176,11 @@ class AdminUserController extends Controller
 
         $roles        = $request->input('roles', []);
         $isInstructor = in_array('instructor', $roles, true);
+        $isCourseHead = in_array('course_head', $roles, true);
         $isExecutive  = in_array('executive', $roles, true);
-        $selectedPosition = $request->input('instructor_department_position');
-        $needsDept    = $isInstructor || in_array('course_head', $roles, true) || filled($selectedPosition);
-        $needsProfile = $needsDept || $isExecutive;
+        $canUseDepartment = $isCourseHead || $isExecutive;
+        $needsDept    = $canUseDepartment;
+        $needsProfile = $isInstructor || $canUseDepartment;
 
         $reqTitle  = $needsProfile ? 'required' : 'nullable';
         $reqDept   = $needsDept    ? 'required' : 'nullable';
@@ -223,7 +217,7 @@ class AdminUserController extends Controller
             'roles.required'      => 'กรุณาเลือกสิทธิ์อย่างน้อย 1 บทบาท',
         ]);
 
-        $this->validateDepartmentPositionGate($validated, $roles, $user);
+        $this->validateDepartmentRoleSync($validated, $roles, $user);
 
         $passwordChanged = $request->filled('password')
             && !Hash::check($request->input('password'), $user->password);
@@ -235,7 +229,7 @@ class AdminUserController extends Controller
             $this->buildInstructorProfileAuditSnapshot($user->instructorProfile, $user),
         );
 
-        DB::transaction(function () use ($validated, $user, $request, $needsProfile, $isInstructor, $passwordChanged) {
+        DB::transaction(function () use ($validated, $user, $request, $needsProfile, $isInstructor, $canUseDepartment, $passwordChanged) {
             $user->update([
                 'username'    => $validated['username'],
                 'prefix'      => $validated['prefix'] ?? null,
@@ -263,7 +257,6 @@ class AdminUserController extends Controller
             if ($needsProfile) {
                 $profileData = [
                     'title'           => $validated['instructor_title'] ?? null,
-                    'department_id'   => $validated['instructor_department_id'] ?? null,
                     'academic_degree' => $validated['instructor_academic_degree'] ?? null,
                 ];
                 if ($isInstructor) {
@@ -272,6 +265,9 @@ class AdminUserController extends Controller
                         'hired_at'          => $validated['instructor_hired_at'] ?? null,
                         'is_english_passed' => $request->boolean('instructor_is_english_passed'),
                     ];
+                }
+                if ($canUseDepartment) {
+                    $profileData['department_id'] = $validated['instructor_department_id'] ?? null;
                 }
                 $profile = InstructorProfile::firstOrNew(['user_id' => $user->id]);
                 $isNewProfile = ! $profile->exists;
@@ -288,25 +284,9 @@ class AdminUserController extends Controller
                 }
                 $profile->save();
 
-                // Handle department positions (clear old positions first)
-                if ($request->filled('instructor_department_position') && $request->filled('instructor_department_id')) {
-                    $this->assertDepartmentPositionAvailable(
-                        (int) $validated['instructor_department_id'],
-                        $validated['instructor_department_position'],
-                        $user
-                    );
-                }
-                Department::where('head_user_id', $user->id)->update(['head_user_id' => null]);
-                Department::where('secretary_user_id', $user->id)->update(['secretary_user_id' => null]);
-
-                if ($request->filled('instructor_department_position') && $request->filled('instructor_department_id')) {
-                    if ($validated['instructor_department_position'] === 'head') {
-                        Department::where('id', $validated['instructor_department_id'])->update(['head_user_id' => $user->id]);
-                    } else if ($validated['instructor_department_position'] === 'secretary') {
-                        Department::where('id', $validated['instructor_department_id'])->update(['secretary_user_id' => $user->id]);
-                    }
-                }
+                $this->syncDepartmentHeadFromRoles($user, $validated['roles'], $validated['instructor_department_id'] ?? null);
             } else {
+                Department::where('head_user_id', $user->id)->update(['head_user_id' => null]);
                 // Remove profile when neither instructor nor course_head
                 InstructorProfile::where('user_id', $user->id)->delete();
             }
@@ -466,9 +446,12 @@ class AdminUserController extends Controller
                 continue;
             }
 
-            $isInstructor = in_array('instructor', $roles);
-            $needsDept    = $isInstructor || in_array('course_head', $roles);
-            $needsProfile = $needsDept || in_array('executive', $roles);
+            $isInstructor = in_array('instructor', $roles, true);
+            $isCourseHead = in_array('course_head', $roles, true);
+            $isExecutive  = in_array('executive', $roles, true);
+            $canUseDepartment = $isCourseHead || $isExecutive;
+            $needsDept    = $canUseDepartment;
+            $needsProfile = $isInstructor || $canUseDepartment;
 
             if ($needsProfile) {
                 $missingFields = [];
@@ -507,8 +490,8 @@ class AdminUserController extends Controller
 
             try {
                 $isUpdate = (bool) $existing;
-                DB::transaction(function () use ($csv, $username, $email, $name, $roles, $primaryRole, $departments, $existing, $password, $isInstructor, $needsProfile) {
-                    $profileData = $this->buildProfileData($csv, $departments, $isInstructor);
+                DB::transaction(function () use ($csv, $username, $email, $name, $roles, $primaryRole, $departments, $existing, $password, $isInstructor, $canUseDepartment, $needsProfile) {
+                    $profileData = $this->buildProfileData($csv, $departments, $isInstructor, $canUseDepartment);
 
                     if ($existing) {
                         // Update: name, prefix, employee_id, roles, profile — no password change
@@ -542,7 +525,9 @@ class AdminUserController extends Controller
                                 ]);
                             }
                             $profile->save();
+                            $this->syncDepartmentHeadFromRoles($existing, $roles, $profileData['department_id'] ?? null);
                         } else {
+                            Department::where('head_user_id', $existing->id)->update(['head_user_id' => null]);
                             InstructorProfile::where('user_id', $existing->id)->delete();
                         }
                     } else {
@@ -577,6 +562,7 @@ class AdminUserController extends Controller
                                     'teaching_quota' => 0,
                                 ]
                             ));
+                            $this->syncDepartmentHeadFromRoles($user, $roles, $profileData['department_id'] ?? null);
                         }
                     }
                 });
@@ -627,7 +613,7 @@ class AdminUserController extends Controller
         return $redirect;
     }
 
-    private function buildProfileData(array $csv, array $departments, bool $isInstructor = false): ?array
+    private function buildProfileData(array $csv, array $departments, bool $isInstructor = false, bool $canUseDepartment = false): ?array
     {
         $title    = trim($csv['title'] ?? '');
         $deptName = trim($csv['department_name'] ?? '');
@@ -638,7 +624,7 @@ class AdminUserController extends Controller
         }
 
         $deptId = null;
-        if ($deptName) {
+        if ($canUseDepartment && $deptName) {
             $deptId = $departments[$deptName] ?? null;
             if (!$deptId) {
                 foreach ($departments as $dbName => $id) {
@@ -652,9 +638,11 @@ class AdminUserController extends Controller
 
         $profile = [
             'title'           => $title ?: null,
-            'department_id'   => $deptId,
             'academic_degree' => trim($csv['academic_degree'] ?? '') ?: null,
         ];
+        if ($canUseDepartment) {
+            $profile['department_id'] = $deptId;
+        }
 
         if ($isInstructor) {
             $parsedHiredAt = $hiredAt ? ThaiDate::parseToIso($hiredAt) : null;
@@ -672,53 +660,52 @@ class AdminUserController extends Controller
         return view('admin.settings');
     }
 
-    private function validateDepartmentPositionGate(array $validated, array $roles, ?User $user = null): void
+    private function validateDepartmentRoleSync(array $validated, array $roles, ?User $user = null): void
     {
-        $position = $validated['instructor_department_position'] ?? null;
-        if (! $position) {
+        if (! in_array('executive', $roles, true)) {
             return;
         }
 
-        if (empty($validated['instructor_department_id'])) {
-            throw ValidationException::withMessages([
-                'instructor_department_id' => 'กรุณาเลือกภาควิชาก่อนกำหนดตำแหน่งบริหาร',
-            ]);
-        }
-
-        if ($position === 'head' && ! in_array('executive', $roles, true)) {
-            throw ValidationException::withMessages([
-                'instructor_department_position' => 'ตำแหน่งหัวหน้าภาควิชาต้องกำหนดให้ผู้ใช้ที่มี role ผู้บริหารเท่านั้น',
-            ]);
-        }
-
-        if ($position !== 'head') {
+        $departmentId = $validated['instructor_department_id'] ?? null;
+        if (! $departmentId) {
             return;
         }
 
-        $headUserId = Department::whereKey($validated['instructor_department_id'])->value('head_user_id');
+        $headUserId = Department::whereKey($departmentId)->value('head_user_id');
         if ($headUserId && (! $user || (int) $headUserId !== (int) $user->id)) {
             throw ValidationException::withMessages([
-                'instructor_department_position' => 'ภาควิชานี้มีหัวหน้าภาควิชาอยู่แล้ว กรุณาถอดตำแหน่งเดิมก่อนบันทึกคนใหม่',
+                'instructor_department_id' => 'ภาควิชานี้มีหัวหน้าภาควิชาอยู่แล้ว กรุณาถอดตำแหน่งเดิมก่อนบันทึกคนใหม่',
             ]);
         }
     }
 
-    private function assertDepartmentPositionAvailable(int $departmentId, string $position, User $user): void
+    private function syncDepartmentHeadFromRoles(User $user, array $roles, mixed $departmentId): void
     {
-        if ($position !== 'head') {
+        if (! in_array('executive', $roles, true)) {
+            Department::where('head_user_id', $user->id)->update(['head_user_id' => null]);
             return;
         }
 
-        $department = Department::whereKey($departmentId)->lockForUpdate()->first();
+        if (! $departmentId) {
+            return;
+        }
+
+        $department = Department::whereKey((int) $departmentId)->lockForUpdate()->first();
         if (! $department) {
             return;
         }
 
         if ($department->head_user_id && (int) $department->head_user_id !== (int) $user->id) {
             throw ValidationException::withMessages([
-                'instructor_department_position' => 'ภาควิชานี้มีหัวหน้าภาควิชาอยู่แล้ว กรุณาถอดตำแหน่งเดิมก่อนบันทึกคนใหม่',
+                'instructor_department_id' => 'ภาควิชานี้มีหัวหน้าภาควิชาอยู่แล้ว กรุณาถอดตำแหน่งเดิมก่อนบันทึกคนใหม่',
             ]);
         }
+
+        Department::where('head_user_id', $user->id)
+            ->where('id', '!=', $department->id)
+            ->update(['head_user_id' => null]);
+
+        $department->update(['head_user_id' => $user->id]);
     }
 
     private function buildUserAuditSnapshot(User $user): array

@@ -180,18 +180,20 @@
                 get hasExecutive() {
                     return this.currentUser.roles.includes('executive');
                 },
+                get hasCourseHead() {
+                    return this.currentUser.roles.includes('course_head');
+                },
                 get needsDept() {
-                    return this.currentUser.roles.includes('instructor')
-                        || this.currentUser.roles.includes('course_head');
+                    return this.hasExecutive || this.hasCourseHead;
                 },
                 get showDepartmentPicker() {
-                    return this.needsDept || this.hasExecutive || !!this.instructorProfile.department_position;
+                    return this.needsDept;
                 },
                 get needsDepartmentSelection() {
-                    return this.needsDept || !!this.instructorProfile.department_position;
+                    return this.needsDept;
                 },
                 get showDepartmentPosition() {
-                    return this.needsDept || this.hasExecutive;
+                    return false;
                 },
                 toggleRole(role) {
                     if (this.currentUser.roles.includes(role)) {
@@ -206,10 +208,8 @@
                         if (!this.currentUser.primary_role) this.currentUser.primary_role = role;
                     }
 
-                    if (!this.hasExecutive && this.instructorProfile.department_position === 'head') {
-                        this.instructorProfile.department_position = '';
-                    }
-                    if (!this.showDepartmentPosition) {
+                    if (!this.needsDept) {
+                        this.instructorProfile.department_id = '';
                         this.instructorProfile.department_position = '';
                     }
                     this.refreshModalSelects();
@@ -930,6 +930,9 @@
                                                     <option value="{{ $dept->id }}">{{ $dept->name }}</option>
                                                 @endforeach
                                             </select>
+                                            <p style="font-size: 11px; color: var(--fg-3); margin-top: 4px;">
+                                                ผู้บริหารจะถูกซิงค์เป็นหัวหน้าภาควิชานี้อัตโนมัติ ส่วนหัวหน้าวิชาจะถูกผูกกับภาควิชานี้
+                                            </p>
                                         </div>
                                     </div>
 

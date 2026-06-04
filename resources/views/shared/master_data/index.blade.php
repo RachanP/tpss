@@ -338,7 +338,12 @@
             if (!this.currentDept.id) return [];
             var dept = this.departmentsData.find(d => String(d.id) === String(this.currentDept.id));
             if (!dept || !dept.instructor_ids || dept.instructor_ids.length === 0) return [];
-            return this.usersList.filter(u => dept.instructor_ids.includes(u.id));
+            var instructorIds = dept.instructor_ids.map(id => String(id));
+            return this.usersList.filter(u =>
+                instructorIds.includes(String(u.id))
+                && u.roles
+                && (u.roles.includes('instructor') || u.roles.includes('course_head'))
+            );
         },
         selectHead(user) {
             this.currentDept.head_user_id = user.id;
@@ -357,6 +362,15 @@
         clearSecretary() {
             this.currentDept.secretary_user_id = '';
             this.secretarySearch = '';
+        },
+        selectedSecretaryUser() {
+            var secId = String(this.currentDept.secretary_user_id || '');
+            if (!secId) return null;
+            return this.usersList.find(function(u) { return String(u.id) === secId; }) || null;
+        },
+        selectedSecretaryIsCourseHead() {
+            var secretary = this.selectedSecretaryUser();
+            return !!(secretary && secretary.roles && secretary.roles.includes('course_head'));
         },
 
         // Location Types
@@ -696,8 +710,10 @@
             ) : null;
 
             var samePersonWarn = headId && secId && headId === secId;
+            var secretary = secId ? (this.usersList.find(function(u) { return String(u.id) === secId; }) || null) : null;
+            var courseHeadSecretaryWarn = !!(secretary && secretary.roles && secretary.roles.includes('course_head'));
 
-            if (!headConflict && !secConflict && !samePersonWarn) return;
+            if (!headConflict && !secConflict && !samePersonWarn && !courseHeadSecretaryWarn) return;
             e.preventDefault();
 
             var lines = [];
@@ -713,8 +729,11 @@
                 var sName = (this.usersList.find(function(u) { return String(u.id) === secId; }) || {}).name || 'บุคคลนี้';
                 lines.push(sName + ' เป็นเลขานุการภาควิชา ' + secConflict.name + ' อยู่แล้ว');
             }
-            var warnOpts = (!headConflict && !secConflict && samePersonWarn)
-                ? { title: 'บุคคลเดียวกันในทั้งสองตำแหน่ง', note: 'ยืนยันเพื่อบันทึกต่อ หรือกลับไปเลือกใหม่' }
+            if (courseHeadSecretaryWarn) {
+                lines.push((secretary.name || 'บุคคลนี้') + ' เป็นหัวหน้าวิชาอยู่แล้ว แต่สามารถบันทึกเป็นเลขานุการภาควิชาได้');
+            }
+            var warnOpts = (!headConflict && !secConflict && (samePersonWarn || courseHeadSecretaryWarn))
+                ? { title: 'ตรวจสอบตำแหน่งก่อนบันทึก', note: 'ยืนยันเพื่อบันทึกต่อ หรือกลับไปเลือกใหม่' }
                 : {};
             tpssDeptConflictWarn(form, lines, warnOpts);
         },
@@ -1903,35 +1922,17 @@
                                     placeholder="เช่น ภาควิชาการพยาบาลกุมารเวชศาสตร์">
                             </div>
                             <div class="dept-empty-assignment" x-show="deptInstructorUsers.length === 0" x-cloak>
-                                ยังไม่มีอาจารย์ในภาควิชานี้ จึงยังเลือกหัวหน้าภาควิชาและเลขานุการภาควิชาไม่ได้
+                                ยังไม่มีอาจารย์ในภาควิชานี้ จึงยังเลือกเลขานุการภาควิชาไม่ได้
                             </div>
                             <div class="form-row">
                                 <div class="form-group" style="position: relative;">
                                     <label>หัวหน้าภาควิชา</label>
-                                    <div style="position: relative; display: flex; gap: 6px; align-items: flex-start;">
-                                        <div style="flex: 1; position: relative;">
-                                            <input type="text" x-model="headSearch" @input="showHeadDropdown = true"
-                                                @focus="showHeadDropdown = true" @click.away="showHeadDropdown = false"
-                                                :disabled="deptInstructorUsers.length === 0"
-                                                :placeholder="deptInstructorUsers.length === 0 ? 'ไม่มีอาจารย์ในภาควิชานี้' : 'พิมพ์ชื่อเพื่อค้นหา...'"
-                                                autocomplete="off">
-                                            <div class="search-results" x-show="showHeadDropdown && deptInstructorUsers.length > 0" x-cloak>
-                                                <template
-                                                    x-for="user in deptInstructorUsers.filter(u => u.name.toLowerCase().includes(headSearch.toLowerCase()))"
-                                                    :key="user.id">
-                                                    <div class="search-item" @click="selectHead(user)" x-text="user.name"></div>
-                                                </template>
-                                                <div x-show="deptInstructorUsers.filter(u => u.name.toLowerCase().includes(headSearch.toLowerCase())).length === 0"
-                                                    class="search-item-empty">ไม่พบข้อมูล</div>
-                                            </div>
-                                        </div>
-                                        <button type="button" x-show="currentDept.head_user_id" @click="clearHead()"
-                                            title="ล้างข้อมูล"
-                                            style="flex-shrink:0;margin-top:6px;width:32px;height:32px;border-radius:6px;border:1px solid var(--border);background:var(--bg-2);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--fg-3);">
-                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                                        </button>
+                                    <div class="dept-readonly-assignment">
+                                        <span x-text="headSearch || 'ยังไม่ได้กำหนดจากหน้า users'"></span>
                                     </div>
-                                    <input type="hidden" name="head_user_id" x-model="currentDept.head_user_id">
+                                    <p style="font-size: 11px; color: var(--fg-3); margin-top: 4px;">
+                                        ข้อมูลนี้ซิงค์จากหน้า users เมื่อผู้ใช้ role ผู้บริหารเลือกภาควิชานี้
+                                    </p>
                                     <div x-show="currentDept.head_user_id && !currentDept.head_active"
                                         x-cloak
                                         style="margin-top:6px;display:flex;align-items:center;gap:6px;font-size:12px;color:oklch(45% 0.15 25);">
@@ -1977,6 +1978,12 @@
                                         style="margin-top: 6px; display: flex; align-items: center; gap: 6px; font-size: 12px; color: oklch(55% 0.15 60);">
                                         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                                         บุคคลนี้ถูกเลือกเป็นหัวหน้าภาควิชาด้วย
+                                    </div>
+                                    <div x-show="selectedSecretaryIsCourseHead()"
+                                        x-cloak
+                                        style="margin-top: 6px; display: flex; align-items: center; gap: 6px; font-size: 12px; color: oklch(55% 0.15 60);">
+                                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                        บุคคลนี้เป็นหัวหน้าวิชาอยู่แล้ว แต่ยังสามารถบันทึกเป็นเลขานุการภาควิชาได้
                                     </div>
                                 </div>
                             </div>
@@ -4003,6 +4010,19 @@
             max-height: 200px;
             overflow-y: auto;
             margin-top: 4px;
+        }
+
+        .dept-readonly-assignment {
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            padding: 9px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-2);
+            color: var(--fg-2);
+            font-size: 13px;
+            font-weight: 700;
         }
 
         .dept-empty-assignment {
