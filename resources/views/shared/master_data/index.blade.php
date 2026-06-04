@@ -3299,8 +3299,7 @@
                                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
                                     <label style="margin:0;">กลุ่มย่อย <span style="font-weight:400;color:var(--fg-3);font-size:12px;">(ไม่บังคับ)</span></label>
                                     <button type="button" @click="addCohortSubgroup()" :disabled="!currentCohort.code"
-                                        :style="!currentCohort.code ? 'opacity:.4;cursor:not-allowed;' : 'cursor:pointer;'"
-                                        style="background:none;border:0;padding:0;color:var(--brand-navy-500);font:inherit;font-size:12px;text-decoration:underline;">+ เพิ่มกลุ่มย่อย</button>
+                                        :style="'display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border:1px solid var(--brand-navy-300);border-radius:7px;background:var(--surface);color:var(--brand-navy);font-family:inherit;font-size:12px;font-weight:600;transition:all .12s ease;' + (!currentCohort.code ? 'opacity:.45;cursor:not-allowed;' : 'cursor:pointer;')">+ เพิ่มกลุ่มย่อย</button>
                                 </div>
                                 <template x-if="cohortSubgroups.length === 0">
                                     <div style="font-size:12px;color:var(--fg-3);padding:9px 11px;background:var(--surface-sunken);border-radius:6px;">ยังไม่มีกลุ่มย่อย — กดเพิ่มเพื่อซอยกลุ่มใหญ่เป็น A1, A2 (ไม่ต้องการก็เว้นว่างได้)</div>
