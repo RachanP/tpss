@@ -742,10 +742,10 @@
 
         <!-- Add/Edit Modal -->
         <!-- ใช้ x-show (ไม่ใช่ x-if) เพื่อให้ select อยู่ใน DOM ตั้งแต่โหลด → global tpssInitChoices() แปลงเป็น custom dropdown ได้ (แพทเทิร์นเดียวกับ schedule modal) -->
-        <div class="overlay" x-show="showModal" x-cloak>
+        <div class="overlay users-modal-overlay" x-show="showModal" x-cloak>
                 <div class="modal-center users-modal" x-transition:enter="transition ease-out duration-300"
                     x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
-                    <div class="modal-hdr" style="background: var(--bg-2);">
+                    <div class="modal-hdr users-modal-hdr" style="background: var(--bg-2);">
                         <div class="modal-ttl" style="font-family: var(--font-display); letter-spacing: -0.01em;"
                             x-text="editMode ? 'แก้ไขข้อมูลผู้ใช้งาน' : 'เพิ่มผู้ใช้งานใหม่'"></div>
                         <button type="button" class="modal-cls" @click="showModal = false">
@@ -915,7 +915,8 @@
                                         ข้อมูลโปรไฟล์คณาจารย์
                                     </div>
 
-                                    <div class="form-row">
+                                    <div class="form-row users-profile-main-row"
+                                        :class="{ 'is-instructor-only': hasInstructor && !needsDept }">
                                         <div class="form-group">
                                             <label>ตำแหน่งทางวิชาการ <span style="color: #ef4444;">*</span></label>
                                             <select name="instructor_title" class="tpss-custom-select" x-model="instructorProfile.title" required>
@@ -928,6 +929,15 @@
                                                 <option value="ผู้ช่วยอาจารย์">ผู้ช่วยอาจารย์</option>
                                                 <option value="ผู้ช่วยอาจารย์ (คลินิก)">ผู้ช่วยอาจารย์ (คลินิก)</option>
                                                 <option value="ผู้ช่วยอาจารย์ (สอนภาคปฏิบัติ)">ผู้ช่วยอาจารย์ (สอนภาคปฏิบัติ)</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group users-degree-field">
+                                            <label style="font-weight: 700;">วุฒิการศึกษาสูงสุด <span style="color: #ef4444;">*</span></label>
+                                            <select name="instructor_academic_degree" class="tpss-custom-select" x-model="instructorProfile.academic_degree" required>
+                                                <option value="" disabled>-- เลือกวุฒิการศึกษา --</option>
+                                                <option value="ปริญญาเอก">ปริญญาเอก</option>
+                                                <option value="ปริญญาโท">ปริญญาโท</option>
+                                                <option value="ปริญญาตรี">ปริญญาตรี</option>
                                             </select>
                                         </div>
                                         <!-- ภาควิชา: ใช้กับ instructor/course_head และเมื่อกำหนดตำแหน่งบริหาร -->
@@ -946,17 +956,6 @@
                                                 ผู้บริหารจะถูกซิงค์เป็นหัวหน้าภาควิชานี้อัตโนมัติ ส่วนหัวหน้าวิชาจะถูกผูกกับภาควิชานี้
                                             </p>
                                         </div>
-                                    </div>
-
-                                    <!-- วุฒิการศึกษา: แสดงสำหรับทุก role ที่มี profile -->
-                                    <div class="form-group" style="margin-bottom: 20px;">
-                                        <label style="font-weight: 700;">วุฒิการศึกษาสูงสุด <span style="color: #ef4444;">*</span></label>
-                                        <select name="instructor_academic_degree" class="tpss-custom-select" x-model="instructorProfile.academic_degree" required>
-                                            <option value="" disabled>-- เลือกวุฒิการศึกษา --</option>
-                                            <option value="ปริญญาเอก">ปริญญาเอก</option>
-                                            <option value="ปริญญาโท">ปริญญาโท</option>
-                                            <option value="ปริญญาตรี">ปริญญาตรี</option>
-                                        </select>
                                     </div>
 
                                     <!-- ตำแหน่งบริหารในภาควิชา -->
@@ -992,7 +991,7 @@
                                             </svg>
                                             การจ้างงาน (Employment)
                                         </div>
-                                        <div class="form-row">
+                                        <div class="form-row users-employment-row">
                                             <div class="form-group">
                                                 <label>ประเภทการจ้างงาน <span style="color: #ef4444;">*</span></label>
                                                 <select name="instructor_employment_type" class="tpss-custom-select" x-model="instructorProfile.employment_type" :required="hasInstructor">
@@ -1224,24 +1223,102 @@
 
     <style>
         .users-modal {
-            width: min(1080px, calc(100vw - 48px));
+            width: min(1320px, calc(100vw - 32px));
             max-width: none;
-            max-height: 90vh;
+            max-height: 92vh;
+            overflow: hidden;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 22%, var(--border));
+            border-radius: 12px;
+            background: var(--surface);
+            box-shadow:
+                0 28px 70px -36px rgba(0, 36, 84, 0.62),
+                0 2px 10px rgba(0, 36, 84, 0.10);
+        }
+
+        .users-modal-hdr {
+            position: relative;
+            min-height: 68px;
+            padding: 18px 22px;
+            border-bottom: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border));
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 9%, var(--surface)), color-mix(in oklch, var(--brand-navy) 4%, var(--surface))) !important;
+        }
+
+        .users-modal-hdr::after {
+            content: "กำหนดข้อมูลบัญชี บทบาท และโปรไฟล์อาจารย์";
+            position: absolute;
+            left: 22px;
+            bottom: 13px;
+            max-width: calc(100% - 92px);
+            overflow: hidden;
+            color: var(--fg-3);
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1.35;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .users-modal-hdr .modal-ttl {
+            margin-bottom: 17px;
+            color: var(--brand-navy);
+            font-size: 22px;
+            font-weight: 850;
+            line-height: 1.2;
+        }
+
+        .users-modal-hdr .modal-cls {
+            width: 38px;
+            height: 38px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 14%, var(--border));
+            border-radius: 9px;
+            background: var(--surface);
+            color: var(--fg-2);
+            transition: border-color 150ms ease, color 150ms ease, background 150ms ease, box-shadow 150ms ease;
+        }
+
+        .users-modal-hdr .modal-cls:hover,
+        .users-modal-hdr .modal-cls:focus-visible {
+            border-color: var(--brand-navy);
+            background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
+            color: var(--brand-navy);
+            box-shadow: 0 0 0 3px color-mix(in oklch, var(--brand-navy) 12%, transparent);
+            outline: 0;
         }
 
         .users-modal > form {
             display: flex;
             flex-direction: column;
             min-height: 0;
+            max-height: calc(92vh - 68px);
         }
 
         .users-modal-body {
             min-height: 0;
-            max-height: calc(90vh - 132px);
-            padding: 24px;
+            max-height: calc(92vh - 148px);
+            padding: 22px;
             overflow-y: auto;
             overscroll-behavior: contain;
-            background: oklch(99% 0.004 220);
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 4%, var(--bg)) 0%, var(--bg) 100%);
+            scrollbar-width: thin;
+            scrollbar-color: color-mix(in oklch, var(--brand-navy) 34%, transparent) transparent;
+        }
+
+        .users-modal-body > .form-row,
+        .users-modal-body > .form-group,
+        .users-modal-body > template + div,
+        .users-modal-body > div[x-show="errorMsg"] {
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 13%, var(--border));
+            border-radius: 10px;
+            background: var(--surface);
+            box-shadow: 0 1px 2px rgba(0, 36, 84, 0.05);
+        }
+
+        .users-modal-body > .form-row,
+        .users-modal-body > .form-group {
+            padding: 16px;
+            margin-bottom: 12px;
         }
 
         .users-modal-body .form-row {
@@ -1251,22 +1328,114 @@
 
         .users-modal-body .form-row > .form-group {
             min-width: 0;
+            margin-bottom: 0;
+        }
+
+        .users-modal-body label,
+        .users-modal-body .frm-lbl {
+            color: var(--fg-2);
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: .01em;
+        }
+
+        .users-modal-body input[type="text"],
+        .users-modal-body input[type="email"],
+        .users-modal-body input[type="password"],
+        .users-modal-body input[type="number"],
+        .users-modal-body select,
+        .users-modal-body .tpss-select-trigger {
+            min-height: 42px;
+            border-color: color-mix(in oklch, var(--brand-navy) 16%, var(--border));
+            border-radius: 8px;
+            background: color-mix(in oklch, var(--brand-navy) 2%, var(--surface));
+            color: var(--fg-1);
+            transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
+        }
+
+        .users-modal-body input:focus,
+        .users-modal-body select:focus,
+        .users-modal-body .tpss-select-trigger:focus {
+            border-color: var(--brand-navy);
+            background: var(--surface);
+            box-shadow: 0 0 0 3px color-mix(in oklch, var(--brand-navy) 12%, transparent);
+            outline: 0;
+        }
+
+        .users-modal-body .role-grid {
+            margin-top: 0;
+        }
+
+        .users-profile-main-row.is-instructor-only > .form-group {
+            flex: 1 1 0;
+        }
+
+        .users-profile-main-row.is-instructor-only .users-degree-field {
+            flex: 1 1 0;
+        }
+
+        .users-employment-row > .form-group {
+            flex: 1 1 0;
+            min-width: 0;
+        }
+
+        .users-employment-row .tpss-select,
+        .users-employment-row .tpss-select-trigger,
+        .users-employment-row input {
+            width: 100%;
+        }
+
+        .users-modal-body [style*="border-top: 1px solid var(--border)"] {
+            margin-top: 14px !important;
+            padding: 16px !important;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 13%, var(--border)) !important;
+            border-radius: 10px !important;
+            background: var(--surface);
+            box-shadow: 0 1px 2px rgba(0, 36, 84, 0.05);
         }
 
         .users-modal-foot {
             justify-content: flex-end;
             flex-shrink: 0;
+            gap: 10px;
+            padding: 14px 22px;
+            border-top: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border));
+            background: color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
+        }
+
+        .users-modal-foot .btn {
+            min-height: 42px;
+            border-radius: 8px;
+            font-weight: 800;
+        }
+
+        .users-modal-foot .btn-primary {
+            box-shadow: 0 10px 20px -15px rgba(0, 36, 84, 0.75);
         }
 
         .users-role-grid-compact {
-            gap: 5px;
+            display: grid;
+            grid-template-columns: repeat(5, minmax(220px, 1fr));
+            gap: 8px;
         }
 
         .users-role-grid-compact .role-card {
-            min-height: 46px;
+            display: grid;
+            grid-template-columns: 20px minmax(84px, 1fr) auto;
+            align-items: center;
+            min-height: 58px;
             gap: 10px;
-            padding: 10px 12px;
-            border-radius: 8px;
+            padding: 11px 12px;
+            border-color: color-mix(in oklch, var(--brand-navy) 14%, var(--border));
+            border-radius: 9px;
+            background: color-mix(in oklch, var(--brand-navy) 2%, var(--surface));
+            transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+        }
+
+        .users-role-grid-compact .role-card:hover {
+            border-color: color-mix(in oklch, var(--brand-navy) 38%, var(--border));
+            background: var(--surface);
+            transform: translateY(-1px);
         }
 
         .users-role-grid-compact .role-check {
@@ -1282,7 +1451,20 @@
 
         .users-role-grid-compact .role-name {
             font-size: 13px;
+            font-weight: 800;
             line-height: 1.35;
+            white-space: nowrap;
+        }
+
+        .users-role-grid-compact .role-info {
+            min-width: 0;
+            padding-top: 1px;
+        }
+
+        .users-role-grid-compact .role-actions {
+            justify-self: end;
+            max-width: 100%;
+            min-width: 0;
         }
 
         .users-pa-grid {
@@ -1306,11 +1488,24 @@
         }
 
         .users-role-grid-compact .btn-primary-role {
-            padding: 3px 8px;
-            border-radius: 7px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            max-width: 100%;
+            height: 24px;
+            box-sizing: border-box;
+            padding: 0 10px;
+            border-radius: 999px;
             font-size: 10px;
+            line-height: 1;
             letter-spacing: 0;
             text-transform: none;
+            white-space: nowrap;
+        }
+
+        .users-role-grid-compact .btn-primary-role span {
+            display: block;
+            line-height: 1;
         }
 
         .users-filter-bar {
@@ -1531,6 +1726,25 @@
 
             .users-pa-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .users-role-grid-compact {
+                grid-template-columns: 1fr;
+            }
+
+            .users-modal-hdr {
+                padding: 16px 18px;
+            }
+
+            .users-modal-hdr::after {
+                left: 18px;
+                max-width: calc(100% - 78px);
+            }
+
+            .users-modal-foot {
+                align-items: stretch;
+                flex-direction: column-reverse;
+                padding: 12px 18px;
             }
 
             .users-filter-bar {
