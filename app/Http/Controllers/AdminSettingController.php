@@ -156,6 +156,25 @@ class AdminSettingController extends Controller
     }
 
     /**
+     * V4: วันเริ่ม-สิ้นสุดของปี = min/max ของวันเทอมในทุกปฏิทินของปีนั้น
+     * คืน true ถ้าช่วงเปลี่ยน + มีช่วงครบ (ใช้ตัดสินใจดึงวันหยุดใหม่)
+     */
+    private function recomputeYearSpan(AcademicYear $year): bool
+    {
+        $calendarIds = $year->calendars()->pluck('id');
+        $row = $calendarIds->isEmpty() ? null : \App\Models\Term::whereIn('academic_calendar_id', $calendarIds)
+            ->selectRaw('MIN(start_date) as s, MAX(end_date) as e')->first();
+
+        $start = $row?->s ?: null;
+        $end = $row?->e ?: null;
+
+        $changed = ((string) $year->start_date !== (string) $start) || ((string) $year->end_date !== (string) $end);
+        $year->update(['start_date' => $start, 'end_date' => $end]);
+
+        return $changed && $start && $end;
+    }
+
+    /**
      * ตรวจความถูกต้องของวันเทอม/วันสอบ (วันเป็น ISO แล้ว — เทียบ string ได้)
      * คืน array ข้อความ error (ว่าง = ผ่าน)
      */
@@ -306,7 +325,21 @@ class AdminSettingController extends Controller
             $this->syncCalendarTerms($calendar, $request);
         });
 
-        return back()->with('success', 'เพิ่มปฏิทินการศึกษาเรียบร้อยแล้ว');
+        return $this->calendarSavedRedirect($year, 'เพิ่มปฏิทินการศึกษาเรียบร้อยแล้ว');
+    }
+
+    /**
+     * หลังบันทึกปฏิทิน → คำนวณช่วงวันของปีใหม่ + ดึงวันหยุดถ้าช่วงเพิ่งครบ/เปลี่ยน
+     */
+    private function calendarSavedRedirect(AcademicYear $year, string $msg)
+    {
+        AlertController::flushCache();
+        if ($this->recomputeYearSpan($year)) {
+            $note = $this->autoFetchHolidays($year->fresh());
+            $r = back()->with('success', $msg . ' — ' . $note['message']);
+            return $note['ok'] ? $r : $r->with('holiday_warning', $note['message']);
+        }
+        return back()->with('success', $msg);
     }
 
     public function updateCalendar(Request $request, AcademicCalendar $calendar)
@@ -331,7 +364,7 @@ class AdminSettingController extends Controller
             $this->syncCalendarTerms($calendar, $request);
         });
 
-        return back()->with('success', 'อัปเดตปฏิทินการศึกษาเรียบร้อยแล้ว');
+        return $this->calendarSavedRedirect($calendar->academicYear, 'อัปเดตปฏิทินการศึกษาเรียบร้อยแล้ว');
     }
 
     public function destroyCalendar(AcademicCalendar $calendar)
@@ -340,7 +373,11 @@ class AdminSettingController extends Controller
             return back()->with('error', 'ไม่สามารถลบปฏิทินหลักของปีการศึกษาได้');
         }
 
+        $year = $calendar->academicYear;
         $calendar->delete(); // terms cascade
+        if ($year) {
+            $this->recomputeYearSpan($year);
+        }
 
         return back()->with('success', 'ลบปฏิทินการศึกษาเรียบร้อยแล้ว');
     }
@@ -383,27 +420,14 @@ class AdminSettingController extends Controller
 
     public function storeYear(Request $request)
     {
-        $this->normalizeTermDates($request);
-
+        // V4: ปีการศึกษา = ชื่อ + active เท่านั้น · เทอม+สอบไปอยู่ใน "ปฏิทิน" (วันเริ่ม-สิ้นสุดปี derive ภายหลัง)
         $validated = $request->validate([
-            'name'  => ['required', 'string', \Illuminate\Validation\Rule::unique('academic_years')],
-            'terms' => ['required', 'array', 'min:1'],
+            'name' => ['required', 'string', \Illuminate\Validation\Rule::unique('academic_years')],
         ], [
-            'name.unique'    => 'ปีการศึกษา ' . $request->input('name') . ' มีอยู่แล้วในระบบ',
-            'terms.required' => 'ต้องระบุอย่างน้อย 1 ภาคการศึกษา',
+            'name.required' => 'กรุณากรอกปีการศึกษา',
+            'name.unique'   => 'ปีการศึกษา ' . $request->input('name') . ' มีอยู่แล้วในระบบ',
         ]);
 
-        if ($termErrors = $this->termValidationErrors($request)) {
-            return back()->withInput()->withErrors(['terms' => $termErrors]);
-        }
-
-        // V2: วันเริ่ม-สิ้นสุดของปี = คำนวณจากช่วงเทอม (min ของวันเริ่ม / max ของวันสิ้นสุด)
-        [$start, $end] = $this->yearSpanFromTerms($request);
-        if (! $start || ! $end) {
-            return back()->withInput()->withErrors(['terms' => 'ต้องระบุวันเริ่ม-สิ้นสุดของอย่างน้อย 1 เทอม']);
-        }
-        $validated['start_date'] = $start;
-        $validated['end_date'] = $end;
         $validated['is_active'] = $request->has('is_active');
 
         if ($validated['is_active']) {
@@ -421,9 +445,8 @@ class AdminSettingController extends Controller
             $this->syncCourseStatusByCurriculum();
         }
 
-        $year = AcademicYear::create($validated);
-        $this->syncTerms($year, $request);
-        $holidayNote = $this->autoFetchHolidays($year);
+        $year = AcademicYear::create($validated); // start/end = null จนกว่าจะตั้งเทอมในปฏิทิน
+        $year->defaultCalendar(); // สร้างปฏิทินหลักว่างไว้ให้กรอกเทอม
 
         AuditLogger::log(
             action: 'ข้อมูลหลัก.สร้าง',
@@ -435,32 +458,20 @@ class AdminSettingController extends Controller
         );
 
         AlertController::flushCache();
-        $redirect = redirect()->route($this->settingsRoute(), ['tab' => 'academic'])->with('success', 'เพิ่มปีการศึกษาเรียบร้อยแล้ว — ' . $holidayNote['message']);
-        return $holidayNote['ok'] ? $redirect : $redirect->with('holiday_warning', $holidayNote['message']);
+        return redirect()->route($this->settingsRoute(), ['tab' => 'academic'])
+            ->with('success', 'เพิ่มปีการศึกษาเรียบร้อยแล้ว — กดไอคอนปฏิทินที่แถวปีเพื่อกำหนดเทอมและช่วงสอบ');
     }
 
     public function updateYear(Request $request, AcademicYear $year)
     {
-        $this->normalizeTermDates($request);
-
+        // V4: แก้แค่ชื่อ + active · เทอม+สอบจัดการในปฏิทิน (วันปี derive จากเทอม)
         $validated = $request->validate([
-            'name'  => ['required', 'string', \Illuminate\Validation\Rule::unique('academic_years')->ignore($year->id)],
-            'terms' => ['required', 'array', 'min:1'],
+            'name' => ['required', 'string', \Illuminate\Validation\Rule::unique('academic_years')->ignore($year->id)],
         ], [
-            'name.unique'    => 'ปีการศึกษา ' . $request->input('name') . ' มีอยู่แล้วในระบบ',
-            'terms.required' => 'ต้องระบุอย่างน้อย 1 ภาคการศึกษา',
+            'name.required' => 'กรุณากรอกปีการศึกษา',
+            'name.unique'   => 'ปีการศึกษา ' . $request->input('name') . ' มีอยู่แล้วในระบบ',
         ]);
 
-        if ($termErrors = $this->termValidationErrors($request)) {
-            return back()->withInput()->withErrors(['terms' => $termErrors]);
-        }
-
-        [$start, $end] = $this->yearSpanFromTerms($request);
-        if (! $start || ! $end) {
-            return back()->withInput()->withErrors(['terms' => 'ต้องระบุวันเริ่ม-สิ้นสุดของอย่างน้อย 1 เทอม']);
-        }
-        $validated['start_date'] = $start;
-        $validated['end_date'] = $end;
         $validated['is_active'] = $request->has('is_active');
 
         if (!$validated['is_active'] && $year->is_active) {
@@ -486,16 +497,14 @@ class AdminSettingController extends Controller
         }
 
         $year->update($validated);
-        $this->syncTerms($year, $request);
-        $holidayNote = $this->autoFetchHolidays($year->fresh());
 
         $after = $this->auditSnapshot($year->fresh());
         [$oldValues, $newValues] = $this->auditDiff($before, $after);
         $this->logAcademicYearUpdate($year->fresh(), $oldValues, $newValues);
 
         AlertController::flushCache();
-        $redirect = redirect()->route($this->settingsRoute(), ['tab' => 'academic'])->with('success', 'อัปเดตปีการศึกษาเรียบร้อยแล้ว — ' . $holidayNote['message']);
-        return $holidayNote['ok'] ? $redirect : $redirect->with('holiday_warning', $holidayNote['message']);
+        return redirect()->route($this->settingsRoute(), ['tab' => 'academic'])
+            ->with('success', 'อัปเดตปีการศึกษาเรียบร้อยแล้ว');
     }
 
     public function openSchedulingWindow(AcademicYear $year)

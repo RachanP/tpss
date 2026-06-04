@@ -16,8 +16,8 @@ return new class extends Migration
         Schema::create('academic_years', function (Blueprint $table) {
             $table->id();
             $table->string('name', 255)->comment('ปีการศึกษา เช่น 2569 (1 แถว = 1 ปี — เทอมอยู่ในตาราง terms)');
-            $table->date('start_date')->comment('วันเริ่มปีการศึกษา');
-            $table->date('end_date')->comment('วันสิ้นสุดปีการศึกษา');
+            $table->date('start_date')->nullable()->comment('วันเริ่มปีการศึกษา — V4: derive จากเทอมในปฏิทิน (null ถ้ายังไม่ตั้งเทอม)');
+            $table->date('end_date')->nullable()->comment('วันสิ้นสุดปีการศึกษา — V4: derive จากเทอมในปฏิทิน');
             $table->boolean('is_active');
             $table->enum('phase', ['preparation', 'scheduling', 'published'])
                 ->default('preparation')
