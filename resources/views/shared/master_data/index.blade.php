@@ -2839,9 +2839,9 @@
                             <input type="hidden" name="uses_year_level" :value="currentCurriculum.uses_year_level">
                             <div class="form-group" style="margin-bottom: 16px;">
                                 <label>การจัดชั้นปี</label>
-                                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface-sunken);">
                                     <span style="font-size:13px;color:var(--fg-1);" x-text="String(currentCurriculum.uses_year_level) === '1' ? ('แบ่งเป็นชั้นปี (ปี 1–' + (currentCurriculum.duration_years || 4) + ')') : 'ไม่แบ่งชั้นปี ใช้หน่วยกิตสะสม'"></span>
-                                    <button type="button" @click="showYearModeOverride = !showYearModeOverride" data-testid="curriculum-year-mode-toggle" style="background:none;border:0;padding:0;cursor:pointer;color:var(--brand-navy-500);font:inherit;font-size:12px;text-decoration:underline;">ปรับเอง</button>
+                                    <button type="button" @click="showYearModeOverride = !showYearModeOverride" data-testid="curriculum-year-mode-toggle" style="flex-shrink:0;background:none;border:0;padding:0;cursor:pointer;color:var(--brand-navy-500);font:inherit;font-size:12px;text-decoration:underline;">ปรับเอง</button>
                                 </div>
                                 <select x-model="currentCurriculum.uses_year_level" x-show="showYearModeOverride" style="margin-top:8px;" data-testid="curriculum-year-mode-override">
                                     <option value="1">แบ่งเป็นชั้นปี (ปี 1–4)</option>
@@ -2864,25 +2864,25 @@
                             <div class="form-group" style="margin-bottom:16px;">
                                 <label>การนับภาระงาน <span style="font-weight:400;color:var(--fg-4);font-size:11px;">(หลักสูตรเฉพาะทาง)</span></label>
                                 <input type="hidden" name="counts_service_only" :value="currentCurriculum.counts_service_only">
-                                <div style="display:inline-flex;border:1px solid var(--border-strong);border-radius:6px;overflow:hidden;" data-testid="curriculum-counts-service-only">
+                                <div style="display:inline-flex;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;background:var(--surface);" data-testid="curriculum-counts-service-only">
                                     <button type="button" @click="currentCurriculum.counts_service_only = '0'"
-                                        style="padding:9px 16px;border:0;border-right:1px solid var(--border-strong);cursor:pointer;font:inherit;font-size:13px;"
-                                        :style="String(currentCurriculum.counts_service_only) === '0' ? 'background:var(--brand-navy);color:#fff;' : 'background:var(--surface);color:var(--fg-2);'">นับชั่วโมงปกติ</button>
+                                        style="padding:11px 20px;border:0;border-right:1px solid var(--border-strong);cursor:pointer;font-family:inherit;font-size:13px;line-height:1.4;white-space:nowrap;transition:background .12s ease,color .12s ease;"
+                                        :style="String(currentCurriculum.counts_service_only) === '0' ? 'background:var(--brand-navy);color:#fff;font-weight:600;' : 'background:transparent;color:var(--fg-2);font-weight:500;'">นับชั่วโมงปกติ</button>
                                     <button type="button" @click="currentCurriculum.counts_service_only = '1'"
-                                        style="padding:9px 16px;border:0;cursor:pointer;font:inherit;font-size:13px;"
-                                        :style="String(currentCurriculum.counts_service_only) === '1' ? 'background:var(--brand-navy);color:#fff;' : 'background:var(--surface);color:var(--fg-2);'">บริการวิชาการอย่างเดียว</button>
+                                        style="padding:11px 20px;border:0;cursor:pointer;font-family:inherit;font-size:13px;line-height:1.4;white-space:nowrap;transition:background .12s ease,color .12s ease;"
+                                        :style="String(currentCurriculum.counts_service_only) === '1' ? 'background:var(--brand-navy);color:#fff;font-weight:600;' : 'background:transparent;color:var(--fg-2);font-weight:500;'">บริการวิชาการอย่างเดียว</button>
                                 </div>
                             </div>
                             <div class="form-group" style="margin-bottom:0;">
                                 <label>สถานะ</label>
                                 <input type="hidden" name="is_active" :value="currentCurriculum.is_active">
-                                <div style="display:inline-flex;border:1px solid var(--border-strong);border-radius:6px;overflow:hidden;">
+                                <div style="display:inline-flex;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;background:var(--surface);">
                                     <button type="button" @click="currentCurriculum.is_active = '1'"
-                                        style="padding:9px 16px;border:0;border-right:1px solid var(--border-strong);cursor:pointer;font:inherit;font-size:13px;"
-                                        :style="String(currentCurriculum.is_active) === '1' ? 'background:var(--brand-navy);color:#fff;' : 'background:var(--surface);color:var(--fg-2);'">กำลังใช้งาน</button>
+                                        style="padding:11px 20px;border:0;border-right:1px solid var(--border-strong);cursor:pointer;font-family:inherit;font-size:13px;line-height:1.4;white-space:nowrap;transition:background .12s ease,color .12s ease;"
+                                        :style="String(currentCurriculum.is_active) === '1' ? 'background:var(--brand-navy);color:#fff;font-weight:600;' : 'background:transparent;color:var(--fg-2);font-weight:500;'">กำลังใช้งาน</button>
                                     <button type="button" @click="currentCurriculum.is_active = '0'"
-                                        style="padding:9px 16px;border:0;cursor:pointer;font:inherit;font-size:13px;"
-                                        :style="String(currentCurriculum.is_active) === '0' ? 'background:var(--brand-navy);color:#fff;' : 'background:var(--surface);color:var(--fg-2);'">ปิดใช้งาน</button>
+                                        style="padding:11px 20px;border:0;cursor:pointer;font-family:inherit;font-size:13px;line-height:1.4;white-space:nowrap;transition:background .12s ease,color .12s ease;"
+                                        :style="String(currentCurriculum.is_active) === '0' ? 'background:var(--brand-navy);color:#fff;font-weight:600;' : 'background:transparent;color:var(--fg-2);font-weight:500;'">ปิดใช้งาน</button>
                                 </div>
                             </div>
                         </div>
