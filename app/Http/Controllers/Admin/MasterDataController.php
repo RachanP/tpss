@@ -692,6 +692,8 @@ class MasterDataController extends Controller
 
         $request->merge([
             'name' => trim((string) $request->input('name')),
+            // checkbox/select boolean — กัน field หายตอนไม่ติ๊ก ให้เป็น false เสมอ
+            'counts_service_only' => $request->boolean('counts_service_only'),
         ]);
     }
 
@@ -947,7 +949,7 @@ class MasterDataController extends Controller
         $this->logMasterDataCreate(
             'curriculums',
             $curriculum->id,
-            $this->auditSnapshot($curriculum, ['name', 'effective_year', 'education_level', 'duration_years', 'uses_year_level', 'total_credits_required', 'is_active']),
+            $this->auditSnapshot($curriculum, ['name', 'effective_year', 'education_level', 'duration_years', 'uses_year_level', 'total_credits_required', 'counts_service_only', 'is_active']),
             "สร้างหลักสูตร {$curriculum->name}",
         );
 
@@ -965,7 +967,7 @@ class MasterDataController extends Controller
 
         $validated['duration_years'] = $validated['duration_years'] ?? $curriculum->duration_years ?? 1;
 
-        $fields = ['name', 'effective_year', 'education_level', 'duration_years', 'uses_year_level', 'total_credits_required', 'is_active'];
+        $fields = ['name', 'effective_year', 'education_level', 'duration_years', 'uses_year_level', 'total_credits_required', 'counts_service_only', 'is_active'];
         $before = $this->auditSnapshot($curriculum, $fields);
 
         DB::transaction(function () use ($curriculum, $validated) {
@@ -1016,6 +1018,7 @@ class MasterDataController extends Controller
             'duration_years'         => $curriculum->duration_years,
             'uses_year_level'        => $curriculum->uses_year_level,
             'total_credits_required' => $curriculum->total_credits_required,
+            'counts_service_only'    => $curriculum->counts_service_only,
             'is_active'              => false,
         ]);
 
@@ -1489,6 +1492,7 @@ class MasterDataController extends Controller
             'total_credits_required' => $usesYearLevel
                 ? ['nullable', 'integer', 'min:0', 'max:9999']
                 : ['required', 'integer', 'min:1', 'max:9999'],
+            'counts_service_only'    => 'required|boolean',
             'is_active'              => 'required|boolean',
         ];
     }

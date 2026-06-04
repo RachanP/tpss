@@ -27,6 +27,9 @@ return new class extends Migration
             $table->unsignedSmallInteger('total_credits_required')
                 ->nullable()
                 ->comment('หน่วยกิตขั้นต่ำของหลักสูตร');
+            $table->boolean('counts_service_only')
+                ->default(false)
+                ->comment('หลักสูตรนับงานบริการวิชาการอย่างเดียว (ไม่นับชั่วโมงทำการสอนปกติ) — V4 ข้อ 4');
             $table->boolean('is_active')->nullable()->default(true);
             $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->nullable();

@@ -606,14 +606,14 @@
         currentCurriculum: {
             id: '', name: '', effective_year: '',
             education_level: 'bachelor', duration_years: 4, uses_year_level: '1',
-            total_credits_required: '', is_active: '1',
+            total_credits_required: '', counts_service_only: '0', is_active: '1',
         },
         openAddCurriculum() {
             this.editCurriculumMode = false;
             this.currentCurriculum = {
                 id: '', name: '', effective_year: '',
                 education_level: 'bachelor', duration_years: 4, uses_year_level: '1',
-                total_credits_required: '', is_active: '1',
+                total_credits_required: '', counts_service_only: '0', is_active: '1',
             };
             this.showCurriculumModal = true;
         },
@@ -623,6 +623,7 @@
                 ...curr,
                 is_active: curr.is_active ? '1' : '0',
                 uses_year_level: curr.uses_year_level ? '1' : '0',
+                counts_service_only: curr.counts_service_only ? '1' : '0',
                 education_level: curr.education_level || 'bachelor',
                 duration_years: curr.duration_years || 4,
                 total_credits_required: curr.total_credits_required ?? '',
@@ -898,7 +899,7 @@
             };
             showCourseModal = true;
         @endif
-        @if(old('curriculum_form') && $errors->hasAny(['name','effective_year','is_active','education_level','duration_years','uses_year_level','total_credits_required']))
+        @if(old('curriculum_form') && $errors->hasAny(['name','effective_year','is_active','education_level','duration_years','uses_year_level','total_credits_required','counts_service_only']))
             activeTab = 'curriculums';
             editCurriculumMode = {{ old('curriculum_form_id') ? 'true' : 'false' }};
             currentCurriculum = {
@@ -909,6 +910,7 @@
                 duration_years: {{ Js::from(old('duration_years', 4)) }},
                 uses_year_level: {{ Js::from(old('uses_year_level', '1')) }},
                 total_credits_required: {{ Js::from(old('total_credits_required', '')) }},
+                counts_service_only: {{ Js::from(old('counts_service_only', '0')) }},
                 is_active: {{ Js::from(old('is_active', '1')) }},
             };
             showCurriculumModal = true;
@@ -2800,10 +2802,10 @@
                         <input type="hidden" name="curriculum_form" value="1">
                         <input type="hidden" name="curriculum_form_id" :value="currentCurriculum.id" :disabled="!editCurriculumMode">
                         <div class="modal-body">
-                            @if(old('curriculum_form') && $errors->hasAny(['name','effective_year','is_active','education_level','duration_years','uses_year_level','total_credits_required']))
+                            @if(old('curriculum_form') && $errors->hasAny(['name','effective_year','is_active','education_level','duration_years','uses_year_level','total_credits_required','counts_service_only']))
                                 <div style="margin-bottom:16px;padding:12px 14px;background:oklch(97% 0.02 20);border:1px solid oklch(82% 0.08 25);border-radius:8px;color:var(--status-conflict-fg);font-size:13px;line-height:1.6;">
                                     <div style="font-weight:700;margin-bottom:4px;">ไม่สามารถบันทึกหลักสูตรได้</div>
-                                    @foreach(['name','effective_year','is_active','education_level','duration_years','uses_year_level','total_credits_required'] as $field)
+                                    @foreach(['name','effective_year','is_active','education_level','duration_years','uses_year_level','total_credits_required','counts_service_only'] as $field)
                                         @foreach($errors->get($field) as $error)
                                             <div>{{ $error }}</div>
                                         @endforeach
@@ -2856,6 +2858,14 @@
                                         <div style="margin-top:4px;font-size:11px;color:var(--fg-4);">ใช้เป็นเงื่อนไขจบการศึกษา (แทนระบบชั้นปี)</div>
                                     </template>
                                 </div>
+                            </div>
+                            <div class="form-group" style="margin-bottom:16px;">
+                                <label>การนับภาระงาน <span style="font-weight:400;color:var(--fg-4);font-size:11px;">(V4)</span></label>
+                                <select name="counts_service_only" x-model="currentCurriculum.counts_service_only" data-testid="curriculum-counts-service-only">
+                                    <option value="0">นับชั่วโมงทำการสอนปกติ</option>
+                                    <option value="1">นับเป็นงานบริการวิชาการอย่างเดียว</option>
+                                </select>
+                                <div style="margin-top:4px;font-size:11px;color:var(--fg-4);">หลักสูตรเฉพาะทางบางหลักสูตรนับเป็นงานบริการวิชาการ ไม่นับชั่วโมงทำการสอนปกติ</div>
                             </div>
                             <div class="form-group" style="margin-bottom:0;">
                                 <label>สถานะ</label>

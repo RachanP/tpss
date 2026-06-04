@@ -12,10 +12,13 @@
 - [ ] partial dropdown `<select>` หัวข้อกิจกรรม (ยังพิมพ์เองได้ = free text)
 - [ ] **ประสานกับ Branch A**: เสียบ dropdown ใน slot modal **หลัง A merge เข้า to-serve แล้ว rebase** (A เป็นเจ้าของ modal)
 
-### ข้อ 4 — หลักสูตรนับบริการวิชาการอย่างเดียว (S)
-- [ ] migration: flag ใน `curriculums` ระบุประเภท "นับงานบริการวิชาการอย่างเดียว" (ไม่นับชั่วโมงทำการปกติ)
-- [ ] UI Master Data หลักสูตร: เพิ่ม field/ตัวเลือกประเภทนี้
-- [ ] เตรียมข้อมูลให้ Module Workload (เฟสถัดไป) แยกหมวด "บริการวิชาการ"
+### ข้อ 4 — หลักสูตรนับบริการวิชาการอย่างเดียว (S) ✅ DONE
+- [x] migration: flag `curriculums.counts_service_only` (boolean default false) ใน baseline
+- [x] Model `Curriculum`: fillable + cast boolean + default attribute
+- [x] validation + fill: `curriculumValidationRules` (`required|boolean`) + `normalizeCurriculumInput` coerce boolean (กัน checkbox ไม่ติ๊ก) + audit fields + clone carry-over
+- [x] UI Master Data หลักสูตร: select "นับชั่วโมงปกติ / บริการวิชาการอย่างเดียว" + Alpine state + old() restore
+- [x] test: `CurriculumServiceOnlyFlagTest` (5 tests — on/absent/checkbox-coerce/toggle/page)
+- [ ] (เฟสถัดไป) Module Workload ใช้ flag นี้แยกหมวด "บริการวิชาการ"
 
 ## ไฟล์ที่เป็นเจ้าของ
 - `app/Http/Controllers/Admin/MasterDataController.php` (+ Staff inherit)
