@@ -49,13 +49,23 @@
 | B | `<select>` หัวข้อกิจกรรม ใน modal | หลัง A merge แล้ว rebase |
 | C | ปุ่มเปลี่ยนผู้สอน + แถบ timestamp (header) | หลัง A merge แล้ว rebase |
 
-## Merge Order
+## 🆕 Dependency: Branch A ใช้กลุ่มย่อยของ Branch B (อัปเดต)
+
+> **B merge เข้า to-serve แล้ว (commit `ce3ab2d`)** — ลำดับเปลี่ยนจากแผนเดิม
+
+Branch B เพิ่มโครง **กลุ่มย่อย** ใน master data: `student_cohorts.parent_id` (กลุ่มใหญ่ A → กลุ่มย่อย A1, A2 · Admin ตั้งใน Master Data). ดังนั้น:
+
+- **Branch A ต้อง rebase บน to-serve ก่อน** เพื่อได้โครง `student_cohorts.parent_id`
+- A **ไม่ต้องสร้างโครงกลุ่มย่อยเอง** — ใช้ของ B · `student_groups.cohort_group_id` ให้ FK ชี้ไปที่ **student_cohort ระดับกลุ่มย่อย** (`parent_id` != null) ที่ Admin ตั้งไว้
+- capacity gate / cross-course group conflict ของ A อ้างอิงกลุ่มย่อยชุดเดียวกันนี้
+
+## Merge Order (ปรับแล้ว)
 
 ```
-A schedule-groups  ──merge──▶ to-serve   (เจ้าของ modal ลงก่อน)
+B master-data      ──merge──▶ to-serve   ✅ DONE (ce3ab2d) — มีโครงกลุ่มย่อย student_cohorts.parent_id
         │
-B master-data       ──rebase บน to-serve──▶ เสียบ dropdown ──merge──▶
-C rbac-pa-ops       ──rebase บน to-serve──▶ เสียบ swap+timestamp ──merge──▶
+A schedule-groups  ──rebase บน to-serve──▶ ใช้กลุ่มย่อยของ B + ทำ modal/group/date-range ──merge──▶
+C rbac-pa-ops      ──rebase บน to-serve──▶ เสียบ swap+timestamp (หลัง A) ──merge──▶
 ```
 
 - migration ไม่ชนกัน (คนละตาราง · forward-only · `migrate:fresh --seed`)
