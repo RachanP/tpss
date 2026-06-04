@@ -15,9 +15,13 @@
 // course_offerings.approval_status  (ระดับรายวิชาต่อปี — Course Head + Executive)
 ['draft', 'pending', 'published', 'rejected']
 
-// course_offerings.course_type  (Sprint 3 — column ทำเป็น nullable, UI ลบทิ้งแล้ว)
+// course_offerings.course_type  ❌ DROPPED ทั้ง column (V2 baseline consolidation)
+// เดิม Sprint 3 ทำเป็น nullable + UI ลบทิ้ง → V2 consolidate ตัด column ออกจาก
+// create_course_offerings_table baseline เลย (ตรวจ db-check 4 มิ.ย.: column ไม่มีอยู่จริง)
 // UI infer จาก lecture_hours + lab_hours + requires_practicum_rotation
-['theory', 'practicum', 'theory_practicum']
+//
+// ⚠️ คนละตัวกับ courses.course_type ที่ "ยังอยู่" = enum('theory','practicum','theory_practicum')
+//    nullable, default null (UI ไม่ใช้ — infer แทน) — drop เฉพาะฝั่ง offering เท่านั้น
 
 // course_offering_instructors.role_in_course  (Sprint 3 — varchar(100))
 // เก็บเฉพาะ 'coordinator' marker — role จริงดูที่ course_role_id FK
@@ -185,7 +189,7 @@ course_offerings
 
 ## Migrations Sprint 3 (Course Pool + Course Role)
 
-- `make_course_type_nullable_on_courses_table` — `course_type` nullable (UI ลบทิ้งแล้ว, infer แทน)
+- `make_course_type_nullable_on_courses_table` — `courses.course_type` nullable (UI ลบทิ้งแล้ว, infer แทน) — ✅ ยังจริง (courses ยังมี column nullable) · ⚠️ alter migration นี้ถูก consolidate เข้า create-table baseline แล้ว (ไม่มีไฟล์แยก) เช่นเดียวกับ alter อื่น ๆ ในลิสต์นี้ — ตรวจสอบจาก `migrate:status` จะเห็นแค่ `create_*` baselines
 - `create_course_roles_table` — master list ของบทบาทในวิชา
 - `change_role_in_course_to_varchar_on_course_offering_instructors` — enum → varchar(100)
 - `refactor_course_roles_remove_code_add_fk` — ลบ `code`, เพิ่ม FK `course_role_id` ใน offering pivot
