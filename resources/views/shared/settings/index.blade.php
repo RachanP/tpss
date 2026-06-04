@@ -118,7 +118,7 @@
         },
         openAddModal() {
             this.editMode = false;
-            this.currentYear = { id: '', name: '', start_date: '', end_date: '', is_active: false, hasSummer: false, terms: this.buildTerms([]) };
+            this.currentYear = { id: '', name: '', start_date: '', end_date: '', is_active: false, hasSummer: false, terms: this.buildTerms([]), calendars: [] };
             this.showModal = true;
         },
         openEditModal(year) {
@@ -132,6 +132,7 @@
                 is_active: !!year.is_active,
                 hasSummer: terms.length >= 3,
                 terms: this.buildTerms(terms),
+                calendars: year.calendars || [],
             };
             this.showModal = true;
         },
@@ -551,31 +552,20 @@
                                     @enderror
                                 </div>
                             </div>
-                            @if($errors->has('terms'))
-                                <div style="margin-bottom: 10px; padding: 8px 10px; background: oklch(97% 0.02 20); border: 1px solid oklch(82% 0.08 25); border-radius: 6px; color: var(--status-conflict-fg); font-size: 12px; line-height: 1.6;">
-                                    @foreach($errors->get('terms') as $msg)
-                                        <div>• {{ $msg }}</div>
-                                    @endforeach
-                                </div>
-                            @endif
                             <div style="margin-top: 4px; border-top: 1px solid var(--border); padding-top: 14px;">
-                                <div style="font-weight: 600; font-size: 13px; color: var(--fg-1); margin-bottom: 4px;">ภาคการศึกษา (เทอม)</div>
-                                <div style="font-size: 11px; color: var(--fg-3); margin-bottom: 10px; line-height: 1.5;">
-                                    กำหนดช่วงวันของแต่ละเทอม + ช่วงสัปดาห์สอบ (ไม่บังคับ) · <strong>วันเริ่ม-สิ้นสุดของปีการศึกษาคำนวณจากเทอมให้อัตโนมัติ</strong> · ช่วงปิดภาคเรียน = ช่องว่างระหว่างเทอม
+                                <div style="font-weight: 600; font-size: 13px; color: var(--fg-1); margin-bottom: 6px;">เทอม + ช่วงสอบ</div>
+                                <div style="font-size:12px;color:var(--fg-3);line-height:1.6;padding:11px 13px;background:var(--surface-sunken);border-radius:8px;">
+                                    กำหนดเทอม + ช่วงสอบใน <strong>ปฏิทินการศึกษา</strong> — 1 ปีมีได้หลายปฏิทินตามหลักสูตร/ชั้นปี · วันเริ่ม-สิ้นสุดปีคำนวณจากเทอมให้อัตโนมัติ
+                                    <template x-if="editMode">
+                                        <div style="margin-top:10px;">
+                                            <button type="button" class="btn btn-primary" style="font-size:12px;padding:6px 14px;"
+                                                @click="showModal = false; $nextTick(() => openCalendars(currentYear))">จัดการปฏิทินและเทอม →</button>
+                                        </div>
+                                    </template>
+                                    <template x-if="!editMode">
+                                        <div style="margin-top:8px;color:var(--fg-4);">บันทึกปีการศึกษาก่อน แล้วกดไอคอนปฏิทินที่แถวปีเพื่อกำหนดเทอม</div>
+                                    </template>
                                 </div>
-                                @include('shared.settings._term_fields', ['index' => 0, 'seq' => 1, 'label' => 'ภาคเรียนที่ 1'])
-                                @include('shared.settings._term_fields', ['index' => 1, 'seq' => 2, 'label' => 'ภาคเรียนที่ 2'])
-                                <div x-show="currentYear.hasSummer" x-cloak>
-                                    @include('shared.settings._term_fields', ['index' => 2, 'seq' => 3, 'label' => 'ภาคฤดูร้อน'])
-                                    <button type="button" @click="currentYear.hasSummer = false; resetSummerTerm()"
-                                        style="font-size: 12px; color: var(--status-conflict-fg); background: none; border: none; cursor: pointer; padding: 2px 0; margin-bottom: 6px;">
-                                        ลบภาคฤดูร้อน
-                                    </button>
-                                </div>
-                                <button type="button" x-show="!currentYear.hasSummer" @click="currentYear.hasSummer = true"
-                                    class="btn btn-ghost" style="font-size: 12px; padding: 5px 12px;">
-                                    + เพิ่มภาคฤดูร้อน
-                                </button>
                             </div>
                             <div class="form-group" style="margin-top: 16px;">
                                 <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; color: var(--fg-1);">
