@@ -270,6 +270,15 @@
         @elseif($activeRole === 'instructor')
             <div class="sb-sec">เมนูหลัก</div>
             <!-- Lecturer Menus -->
+            <a href="{{ route('instructor.pa.edit') }}" class="nv {{ Request::routeIs('instructor.pa.*') ? 'on' : '' }}" data-testid="sidebar-instructor-pa">
+                <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 19h16"></path>
+                    <path d="M7 16V8"></path>
+                    <path d="M12 16V5"></path>
+                    <path d="M17 16v-3"></path>
+                </svg>
+                <span class="nv-label">กรอกสัดส่วน PA</span>
+            </a>
             <span class="nv nv-disabled" role="link" aria-disabled="true" title="ฟีเจอร์ภาพรวมอาจารย์กำลังอยู่ในช่วงพัฒนา">
                 <svg class="nv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>

@@ -2,7 +2,7 @@
     <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('userManagement', () => ({
-                showModal: {{ $errors->hasAny(['username','email','employee_id','password','name','roles','primary_role','instructor_title','instructor_department_id','instructor_employment_type','instructor_hired_at','instructor_academic_degree','instructor_teaching_pct']) ? 'true' : 'false' }},
+                showModal: {{ $errors->hasAny(['username','email','employee_id','password','name','roles','primary_role','instructor_title','instructor_department_id','instructor_employment_type','instructor_hired_at','instructor_academic_degree','instructor_department_position']) ? 'true' : 'false' }},
                 hasServerError: {{ $errors->any() ? 'true' : 'false' }},
                 showImportModal: false,
                 editMode: {{ old('editing_user_id') ? 'true' : 'false' }},
@@ -177,9 +177,42 @@
                 get hasInstructor() {
                     return this.currentUser.roles.includes('instructor');
                 },
+                get hasExecutive() {
+                    return this.currentUser.roles.includes('executive');
+                },
                 get needsDept() {
                     return this.currentUser.roles.includes('instructor')
                         || this.currentUser.roles.includes('course_head');
+                },
+                get showDepartmentPicker() {
+                    return this.needsDept || this.hasExecutive || !!this.instructorProfile.department_position;
+                },
+                get needsDepartmentSelection() {
+                    return this.needsDept || !!this.instructorProfile.department_position;
+                },
+                get showDepartmentPosition() {
+                    return this.needsDept || this.hasExecutive;
+                },
+                toggleRole(role) {
+                    if (this.currentUser.roles.includes(role)) {
+                        if (this.currentUser.roles.length > 1 || this.currentUser.primary_role !== role) {
+                            this.currentUser.roles = this.currentUser.roles.filter(r => r !== role);
+                            if (this.currentUser.primary_role === role) {
+                                this.currentUser.primary_role = this.currentUser.roles[0] || '';
+                            }
+                        }
+                    } else {
+                        this.currentUser.roles.push(role);
+                        if (!this.currentUser.primary_role) this.currentUser.primary_role = role;
+                    }
+
+                    if (!this.hasExecutive && this.instructorProfile.department_position === 'head') {
+                        this.instructorProfile.department_position = '';
+                    }
+                    if (!this.showDepartmentPosition) {
+                        this.instructorProfile.department_position = '';
+                    }
+                    this.refreshModalSelects();
                 },
                 isOutOfRange(value, rule) {
                     if (!rule || rule === '-') return false;
@@ -314,6 +347,7 @@
                     
                     const deptId = String(this.instructorProfile.department_id);
                     const pos = this.instructorProfile.department_position;
+                    if (pos !== 'head') return null;
                     
                     const dept = this.departmentsData.find(d => String(d.id) === deptId);
                     if (!dept) return null;
@@ -331,75 +365,20 @@
                 },
                 confirmSave(e) {
                     this.errorMsg = '';
-                    if (this.hasInstructor) { // PA validation only applies to instructor role
-                        const outOfRange =
-                            this.isOutOfRange(this.instructorProfile.teaching_pct, this.paRules.t) ||
-                            this.isOutOfRange(this.instructorProfile.research_pct, this.paRules.r) ||
-                            this.isOutOfRange(this.instructorProfile.service_pct, this.paRules.s) ||
-                            this.isOutOfRange(this.instructorProfile.culture_pct, this.paRules.c) ||
-                            this.isOutOfRange(this.instructorProfile.other_pct, this.paRules.o);
-
-                        if (outOfRange) {
-                            this.errorMsg = `กรุณาระบุสัดส่วนภาระงานแต่ละด้านให้อยู่ในช่วงที่กำหนดตามเกณฑ์ตำแหน่ง`;
-                            const modalBody = document.querySelector('.modal-body');
-                            if(modalBody) modalBody.scrollTo({ top: 0, behavior: 'smooth' });
-                            e.preventDefault();
-                            return false;
-                        }
-
-                        if (this.paTotal !== 100) {
-                            this.errorMsg = `สัดส่วนภาระงานรวมต้องเท่ากับ 100% (ปัจจุบันรวมได้ ${this.paTotal}%)`;
-                            const modalBody = document.querySelector('.modal-body');
-                            if(modalBody) modalBody.scrollTo({ top: 0, behavior: 'smooth' });
-                            e.preventDefault();
-                            return false;
-                        }
+                    if (this.instructorProfile.department_position === 'head' && !this.hasExecutive) {
+                        this.errorMsg = 'ตำแหน่งหัวหน้าภาควิชาต้องกำหนดให้ผู้ใช้ที่มี role ผู้บริหารเท่านั้น';
+                        const modalBody = document.querySelector('.modal-body');
+                        if (modalBody) modalBody.scrollTo({ top: 0, behavior: 'smooth' });
+                        e.preventDefault();
+                        return false;
                     }
                     
                     const conflict = this.getConflictInfo();
                     if (conflict) {
                         e.preventDefault();
-                        var form = e.target;
-                        var posLabel = conflict.posLabel;
-                        var name = conflict.name;
-
-                        var innerHtml = '<div style="text-align:center;">'
-                            + '<div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#fffbeb,#fef3c7);'
-                            + 'border:2px solid #fcd34d;display:flex;align-items:center;justify-content:center;'
-                            + 'margin:0 auto 16px;box-shadow:0 4px 16px rgba(217,119,6,0.15);">'
-                            + '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#d97706" stroke-width="2" '
-                            + 'stroke-linecap="round" stroke-linejoin="round">'
-                            + '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>'
-                            + '<line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>'
-                            + '<div style="font-family:Kanit,sans-serif;font-size:19px;font-weight:700;color:#0f172a;line-height:1.2;">'
-                            + 'ตำแหน่งนี้มีผู้ดำรงอยู่แล้ว</div>'
-                            + '<div style="font-size:13px;color:#94a3b8;margin-top:4px;">กรุณาตรวจสอบก่อนดำเนินการ</div>'
-                            + '<div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:10px;padding:14px 16px;margin-top:14px;text-align:left;">'
-                            + '<div style="font-size:12.5px;color:#92400e;line-height:1.7;">'
-                            + 'ตำแหน่ง <strong>' + posLabel + '</strong> ของภาควิชานี้ มีคนครองอยู่แล้วคือ<br>'
-                            + '<strong style="font-size:14px;color:#78350f;">' + name + '</strong>'
-                            + '</div>'
-                            + '<div style="font-size:12px;color:#b45309;margin-top:8px;padding-top:8px;border-top:1px solid #fde68a;">'
-                            + 'หากบันทึก ระบบจะถอดถอนท่านเดิมและแต่งตั้งท่านนี้แทนโดยอัตโนมัติ'
-                            + '</div></div></div>';
-
-                        Swal.fire({
-                            html: innerHtml,
-                            showCancelButton: true,
-                            confirmButtonText: 'ดำเนินการต่อ',
-                            cancelButtonText: 'ยกเลิก',
-                            reverseButtons: true,
-                            focusCancel: true,
-                            buttonsStyling: false,
-                            customClass: {
-                                popup:         'tpss-delete-popup',
-                                confirmButton: 'tpss-warn-confirm',
-                                cancelButton:  'tpss-delete-cancel',
-                                actions:       'tpss-delete-actions',
-                            }
-                        }).then(function(result) {
-                            if (result.isConfirmed) form.submit();
-                        });
+                        this.errorMsg = `${conflict.posLabel} ของภาควิชานี้มีผู้ดำรงอยู่แล้ว: ${conflict.name} กรุณาถอดตำแหน่งเดิมก่อนบันทึกคนใหม่`;
+                        const modalBody = document.querySelector('.modal-body');
+                        if (modalBody) modalBody.scrollTo({ top: 0, behavior: 'smooth' });
                         return false;
                     }
                     return true;
@@ -867,15 +846,7 @@
                                     @foreach(['admin' => 'ผู้ดูแลระบบ', 'staff' => 'เจ้าหน้าที่', 'course_head' => 'หัวหน้าวิชา', 'executive' => 'ผู้บริหาร', 'instructor' => 'อาจารย์ผู้สอน'] as $val => $label)
                                         <div class="role-card"
                                             :class="{ 'is-selected': currentUser.roles.includes('{{ $val }}'), 'is-primary': currentUser.primary_role === '{{ $val }}' }"
-                                            @click='if(currentUser.roles.includes("{{ $val }}")) { 
-                                                                             if(currentUser.roles.length > 1 || currentUser.primary_role !== "{{ $val }}") {
-                                                                                 currentUser.roles = currentUser.roles.filter(r => r !== "{{ $val }}"); 
-                                                                                 if(currentUser.primary_role === "{{ $val }}") currentUser.primary_role = currentUser.roles[0] || ""; 
-                                                                             }
-                                                                          } else { 
-                                                                             currentUser.roles.push("{{ $val }}"); 
-                                                                             if(!currentUser.primary_role) currentUser.primary_role = "{{ $val }}"; 
-                                                                          }'>
+                                            @click='toggleRole("{{ $val }}")'>
 
                                             <div class="role-check">
                                                 <svg x-show='currentUser.roles.includes("{{ $val }}")' viewBox="0 0 24 24"
@@ -947,13 +918,13 @@
                                                 <option value="ผู้ช่วยอาจารย์ (สอนภาคปฏิบัติ)">ผู้ช่วยอาจารย์ (สอนภาคปฏิบัติ)</option>
                                             </select>
                                         </div>
-                                        <!-- ภาควิชา: แสดงเฉพาะ instructor และ course_head -->
-                                        <div class="form-group" x-show="needsDept">
-                                            <label>ภาควิชา / หน่วยงาน <span style="color: #ef4444;" x-show="needsDept">*</span></label>
+                                        <!-- ภาควิชา: ใช้กับ instructor/course_head และเมื่อกำหนดตำแหน่งบริหาร -->
+                                        <div class="form-group" x-show="showDepartmentPicker">
+                                            <label>ภาควิชา / หน่วยงาน <span style="color: #ef4444;" x-show="needsDepartmentSelection">*</span></label>
                                             <select name="instructor_department_id"
                                                 class="tpss-custom-select"
                                                 x-model="instructorProfile.department_id"
-                                                :required="needsDept">
+                                                :required="needsDepartmentSelection">
                                                 <option value="">-- เลือกภาควิชา --</option>
                                                 @foreach($departments as $dept)
                                                     <option value="{{ $dept->id }}">{{ $dept->name }}</option>
@@ -973,18 +944,18 @@
                                         </select>
                                     </div>
 
-                                    <!-- ตำแหน่งบริหารในภาควิชา: เฉพาะ instructor/course_head -->
-                                    <div class="form-group" style="margin-bottom: 20px;" x-show="needsDept">
+                                    <!-- ตำแหน่งบริหารในภาควิชา -->
+                                    <div class="form-group" style="margin-bottom: 20px;" x-show="showDepartmentPosition">
                                         <label>ตำแหน่งบริหารในภาควิชา <span style="font-weight: normal; color: var(--fg-3); font-size: 0.9em;">(ไม่บังคับ)</span></label>
-                                        <select name="instructor_department_position" class="tpss-custom-select" x-model="instructorProfile.department_position">
+                                        <select name="instructor_department_position" class="tpss-custom-select" x-model="instructorProfile.department_position" data-testid="department-position-select">
                                             <option value="">-- ไม่มีตำแหน่งบริหาร --</option>
-                                            <option value="head">หัวหน้าภาควิชา</option>
+                                            <option value="head" :disabled="!hasExecutive">หัวหน้าภาควิชา</option>
                                             <option value="secretary">เลขานุการภาควิชา</option>
                                         </select>
 
                                         {{-- Backend validation error (most reliable) --}}
                                         @error('instructor_department_position')
-                                            <div style="margin-top: 8px; padding: 10px 14px; background: #fef2f2; border: 1.5px solid #fca5a5; border-radius: 8px; display: flex; align-items: flex-start; gap: 10px;">
+                                            <div data-testid="department-position-error" style="margin-top: 8px; padding: 10px 14px; background: #fef2f2; border: 1.5px solid #fca5a5; border-radius: 8px; display: flex; align-items: flex-start; gap: 10px;">
                                                 <div style="background: #ef4444; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;">
                                                     <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="white" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                                                 </div>
@@ -995,7 +966,7 @@
                                             </div>
                                         @enderror
 
-                                        <p style="font-size: 11px; color: var(--fg-3); margin-top: 4px;">* เมื่อเลือกตำแหน่ง ระบบจะอัปเดตข้อมูลในภาควิชาที่เลือกด้านบนให้อัตโนมัติ</p>
+                                        <p style="font-size: 11px; color: var(--fg-3); margin-top: 4px;">* หัวหน้าภาควิชาเลือกได้เฉพาะผู้ใช้ที่มี role ผู้บริหาร และต้องไม่มีหัวหน้าภาคเดิมอยู่แล้ว</p>
                                     </div>
 
                                     <!-- Employment + PA: เฉพาะ instructor role เท่านั้น -->
@@ -1060,6 +1031,12 @@
                                             </div>
                                         </div>
 
+                                    <div x-show="hasInstructor"
+                                        style="background: var(--bg-2); border-radius: 8px; padding: 14px 16px; border: 1px solid var(--border); margin-top: 8px; color: var(--fg-2); font-size: 13px; line-height: 1.7;">
+                                        สัดส่วน PA ให้อาจารย์กรอกเองภายหลังผ่านเมนู <strong>กรอกสัดส่วน PA</strong> ในบทบาทอาจารย์ ผู้ดูแลระบบบันทึกเฉพาะข้อมูลพื้นฐานของอาจารย์ในหน้านี้
+                                    </div>
+
+                                    <template x-if="false">
                                     <div x-show="hasInstructor"
                                         style="background: var(--surface); border-radius: 12px; padding: 20px; border: 1px solid var(--border); margin-top: 8px;">
                                         <div
@@ -1138,6 +1115,7 @@
                                         <input type="hidden" name="instructor_teaching_quota"
                                             :value="instructorProfile.teaching_quota">
                                     </div>
+                                    </template>
                                 </div>
                             </template>
                         </div>

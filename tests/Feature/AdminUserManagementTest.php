@@ -283,21 +283,32 @@ class AdminUserManagementTest extends TestCase
 
     // ===== Validation =====
 
-    public function test_instructor_percentages_must_total_100(): void
+    public function test_admin_can_create_instructor_without_pa_percentages(): void
     {
         $dept = Department::create(['name' => 'Dept A']);
         $this->actingAs($this->admin);
 
-        $response = $this->post('/admin/users', $this->validInstructorPayload($dept, [
-            'instructor_teaching_pct' => 50,
-            'instructor_research_pct' => 20,
-            'instructor_service_pct' => 10,
-            'instructor_culture_pct' => 10,
-            'instructor_other_pct' => 5, // total 95
-        ]));
+        $payload = $this->validInstructorPayload($dept);
+        unset(
+            $payload['instructor_teaching_pct'],
+            $payload['instructor_research_pct'],
+            $payload['instructor_service_pct'],
+            $payload['instructor_culture_pct'],
+            $payload['instructor_other_pct']
+        );
 
-        $response->assertSessionHasErrors('instructor_teaching_pct');
-        $this->assertDatabaseMissing('users', ['username' => 'inst1']);
+        $response = $this->post('/admin/users', $payload);
+
+        $response->assertRedirect('/admin/users');
+        $user = User::where('username', 'inst1')->firstOrFail();
+        $this->assertDatabaseHas('instructor_profiles', [
+            'user_id' => $user->id,
+            'teaching_pct' => 0,
+            'research_pct' => 0,
+            'service_pct' => 0,
+            'culture_pct' => 0,
+            'other_pct' => 0,
+        ]);
     }
 
     public function test_primary_role_must_be_in_roles_list(): void
@@ -471,7 +482,7 @@ class AdminUserManagementTest extends TestCase
 
     // ===== Department position handoff =====
 
-    public function test_assigning_new_head_clears_previous_holder(): void
+    public function test_assigning_new_head_is_blocked_when_department_already_has_head(): void
     {
         $dept = Department::create(['name' => 'Handoff Dept']);
         $oldHead = $this->makeUser('oldhead', 'instructor');
@@ -481,11 +492,45 @@ class AdminUserManagementTest extends TestCase
         $response = $this->post('/admin/users', $this->validInstructorPayload($dept, [
             'username' => 'newhead',
             'email' => 'newhead@example.com',
+            'roles' => ['instructor', 'executive'],
+            'instructor_department_position' => 'head',
+        ]));
+
+        $response->assertSessionHasErrors('instructor_department_position');
+        $this->assertSame($oldHead->id, $dept->fresh()->head_user_id);
+        $this->assertDatabaseMissing('users', ['username' => 'newhead']);
+    }
+
+    public function test_department_head_requires_executive_role(): void
+    {
+        $dept = Department::create(['name' => 'Executive Gate Dept']);
+        $this->actingAs($this->admin);
+
+        $response = $this->post('/admin/users', $this->validInstructorPayload($dept, [
+            'username' => 'not-executive-head',
+            'email' => 'not-executive-head@example.com',
+            'instructor_department_position' => 'head',
+        ]));
+
+        $response->assertSessionHasErrors('instructor_department_position');
+        $this->assertNull($dept->fresh()->head_user_id);
+    }
+
+    public function test_executive_can_be_assigned_department_head(): void
+    {
+        $dept = Department::create(['name' => 'Executive Head Dept']);
+        $this->actingAs($this->admin);
+
+        $response = $this->post('/admin/users', $this->validInstructorPayload($dept, [
+            'username' => 'executive-head',
+            'email' => 'executive-head@example.com',
+            'roles' => ['instructor', 'executive'],
+            'primary_role' => 'executive',
             'instructor_department_position' => 'head',
         ]));
 
         $response->assertRedirect('/admin/users');
-        $newHead = User::where('username', 'newhead')->first();
+        $newHead = User::where('username', 'executive-head')->firstOrFail();
         $this->assertSame($newHead->id, $dept->fresh()->head_user_id);
     }
 

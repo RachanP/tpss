@@ -21,4 +21,9 @@ class AcademicYear extends Model
     {
         return $this->hasMany(CourseOffering::class);
     }
+
+    public function paRounds(): HasMany
+    {
+        return $this->hasMany(PaRound::class);
+    }
 }

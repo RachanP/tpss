@@ -53,7 +53,7 @@ class DashboardController extends Controller
 
         return $canHelpSchedule
             ? redirect()->route('maker.schedules.index')
-            : redirect()->route('dashboard.coming_soon');
+            : redirect()->route('instructor.pa.edit');
     }
 
     // ── Per-role placeholders ──────────────────────────────────────
