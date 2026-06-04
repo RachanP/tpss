@@ -31,6 +31,12 @@
 
 **🔲 Phase ถัดไป (rotation — ไม่ใช่ Master Data):** rotation_rounds/assignments (หมุนกลุ่มปี 3-4 หลังสอบ), cross-course group conflict, visual dashboard (V3 ข้อ 8.1)
 
+## 🆕 Requirement V4 (ประชุมลูกค้า) — 🔲 PROPOSED ยังไม่ implement
+
+> เอกสาร: `Doc/requirement/requirement_v4.md` (ข้อ 13) · รายละเอียด design ดู `architecture.md#-requirement-v4-update`
+
+7 ข้อใหม่: (1) หัวข้อกิจกรรม dropdown สำเร็จรูปต่อวิชา · (2) ⚠️ **หัวหน้าวิชาจัดกลุ่ม นศ. เองตั้งแต่กรอกตาราง อิงจำนวน นศ.ชั้นปี — กลับทิศจาก 30–31 พ.ค.** ต้อง re-confirm · (3) executive=หัวหน้าภาค, gate สิทธิ์กำหนดหัวหน้าภาค · (4) หลักสูตรนับงานบริการวิชาการอย่างเดียว (workload flag) · (5) อาจารย์กรอกสัดส่วน PA เอง (self-service) · (6) สลับเวรผ่านหัวหน้าวิชา + last-updated timestamp บนหน้าตาราง · (7) สร้างกิจกรรมลากช่วงวันที่ (Start–End) ต่อยอด series · ดู memory [[project-requirement-v4]]
+
 ## Phase Overview
 
 | Phase | ชื่อ | สถานะ |
