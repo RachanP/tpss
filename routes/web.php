@@ -111,6 +111,10 @@ Route::middleware(['auth', 'no-back'])->group(function () {
         Route::put('/admin/settings/holidays/{holiday}', 'App\Http\Controllers\AdminSettingController@updateHoliday')->name('admin.settings.holidays.update');
         Route::delete('/admin/settings/holidays/{holiday}', 'App\Http\Controllers\AdminSettingController@destroyHoliday')->name('admin.settings.holidays.destroy');
         Route::post('/admin/settings/holidays/sync', 'App\Http\Controllers\AdminSettingController@syncHolidays')->name('admin.settings.holidays.sync');
+        // ปฏิทินการศึกษาตามกลุ่ม (V4 ข้อ 8)
+        Route::post('/admin/settings/academic-years/{year}/calendars', 'App\Http\Controllers\AdminSettingController@storeCalendar')->name('admin.settings.calendars.store');
+        Route::put('/admin/settings/calendars/{calendar}', 'App\Http\Controllers\AdminSettingController@updateCalendar')->name('admin.settings.calendars.update');
+        Route::delete('/admin/settings/calendars/{calendar}', 'App\Http\Controllers\AdminSettingController@destroyCalendar')->name('admin.settings.calendars.destroy');
 
         Route::get('/admin/master-data', 'App\Http\Controllers\Admin\MasterDataController@index')->name('admin.master_data');
         Route::get('/admin/alerts', [AlertController::class, 'index'])->name('admin.alerts');
@@ -156,6 +160,10 @@ Route::middleware(['auth', 'no-back'])->group(function () {
         Route::put('/staff/settings/holidays/{holiday}', 'App\Http\Controllers\Staff\SettingController@updateHoliday')->name('staff.settings.holidays.update');
         Route::delete('/staff/settings/holidays/{holiday}', 'App\Http\Controllers\Staff\SettingController@destroyHoliday')->name('staff.settings.holidays.destroy');
         Route::post('/staff/settings/holidays/sync', 'App\Http\Controllers\Staff\SettingController@syncHolidays')->name('staff.settings.holidays.sync');
+        // ปฏิทินการศึกษาตามกลุ่ม (V4 ข้อ 8)
+        Route::post('/staff/settings/academic-years/{year}/calendars', 'App\Http\Controllers\Staff\SettingController@storeCalendar')->name('staff.settings.calendars.store');
+        Route::put('/staff/settings/calendars/{calendar}', 'App\Http\Controllers\Staff\SettingController@updateCalendar')->name('staff.settings.calendars.update');
+        Route::delete('/staff/settings/calendars/{calendar}', 'App\Http\Controllers\Staff\SettingController@destroyCalendar')->name('staff.settings.calendars.destroy');
 
         Route::get('/staff/master-data', 'App\Http\Controllers\Staff\MasterDataController@index')->name('staff.master_data');
         Route::post('/staff/master-data/departments', 'App\Http\Controllers\Staff\MasterDataController@storeDepartment')->name('staff.departments.store');
