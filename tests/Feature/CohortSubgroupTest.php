@@ -129,6 +129,27 @@ class CohortSubgroupTest extends TestCase
         $this->assertEquals(0, StudentCohort::where('curriculum_id', $curr->id)->count());
     }
 
+    public function test_seeders_support_new_columns(): void
+    {
+        $this->seed(\Database\Seeders\CurriculumSeeder::class);
+        $this->seed(\Database\Seeders\StudentCohortSeeder::class);
+
+        // counts_service_only: ป.ตรี=false · หลักสูตรเฉพาะทาง=true
+        $this->assertDatabaseHas('curriculums', [
+            'name' => 'หลักสูตรพยาบาลศาสตรบัณฑิต (ปรับปรุง 2565)', 'counts_service_only' => 0,
+        ]);
+        $this->assertDatabaseHas('curriculums', ['counts_service_only' => 1]);
+
+        // parent_id: กลุ่มใหญ่ A ปี 3 มีกลุ่มย่อย 2 กลุ่ม (A1, A2)
+        $majorA = StudentCohort::where('code', 'A')->where('year_level', 3)->whereNull('parent_id')->first();
+        $this->assertNotNull($majorA);
+        $subs = StudentCohort::where('parent_id', $majorA->id)->orderBy('code')->pluck('code')->all();
+        $this->assertEquals(['A1', 'A2'], $subs);
+
+        // ปี 3-4 = 4 กลุ่มใหญ่ A–D (V4)
+        $this->assertEquals(4, StudentCohort::where('year_level', 3)->whereNull('parent_id')->count());
+    }
+
     public function test_duplicate_subgroup_codes_are_rejected(): void
     {
         $this->actingAdmin();
