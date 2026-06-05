@@ -426,30 +426,34 @@ class CoursePoolManagementTest extends TestCase
             ->assertSee('ตรงกับแม่แบบ');
     }
 
-    public function test_master_data_courses_tab_shows_deviation_link_only_for_locked_courses(): void
+    public function test_alerts_page_lists_deviating_course_and_links_to_detail(): void
     {
+        // รายงาน deviation ย้ายไปหน้าแจ้งเตือนแล้ว — โผล่เฉพาะวิชาที่ต่างจากแม่แบบ
         $admin = $this->makeUser('admin');
         $head = $this->makeUser('course_head');
 
-        $lockedCourse = $this->makeCourse(['head_instructor_id' => $head->id, 'course_code' => 'LOCK 111']);
-        $unlockedCourse = $this->makeCourse(['head_instructor_id' => $head->id, 'course_code' => 'OPEN 111']);
-
-        // Lock the first course by giving it an offering in scheduling phase
-        $schedulingYear = $this->makeYear(['phase' => 'scheduling']);
+        // วิชา deviate: offering.requires_practicum_rotation ต่างจาก template ของวิชา
+        $devCourse = $this->makeCourse(['head_instructor_id' => $head->id, 'course_code' => 'DEV 111', 'requires_practicum_rotation' => false]);
+        $year = $this->makeYear(['phase' => 'scheduling']);
         CourseOffering::create([
-            'course_id' => $lockedCourse->id,
-            'academic_year_id' => $schedulingYear->id,
+            'course_id' => $devCourse->id,
+            'academic_year_id' => $year->id,
             'coordinator_id' => $head->id,
             'approval_status' => 'draft',
+            'requires_practicum_rotation' => true,
         ]);
+
+        // วิชาที่ไม่มี offering ในรอบจัดตาราง → ไม่ deviate → ไม่ขึ้นในแจ้งเตือน
+        $plainCourse = $this->makeCourse(['head_instructor_id' => $head->id, 'course_code' => 'PLAIN 111']);
 
         $this->actingAsRole($admin, 'admin');
 
-        $response = $this->get(route('admin.master_data', ['tab' => 'courses']));
+        $response = $this->get(route('admin.alerts'));
 
         $response->assertOk();
-        $response->assertSee(route('admin.courses.instructor_deviation', $lockedCourse), false);
-        $response->assertDontSee(route('admin.courses.instructor_deviation', $unlockedCourse), false);
+        $response->assertSee('รายวิชาที่ผู้สอนต่างจากแม่แบบ');
+        $response->assertSee(route('admin.courses.instructor_deviation', $devCourse), false);
+        $response->assertDontSee(route('admin.courses.instructor_deviation', $plainCourse), false);
     }
 
     public function test_instructor_deviation_includes_all_phases_for_pattern_analysis(): void
@@ -517,7 +521,7 @@ class CoursePoolManagementTest extends TestCase
             ->assertSee($instructor->name);
     }
 
-    public function test_master_data_shows_deviation_dot_only_when_course_actually_deviates(): void
+    public function test_alerts_deviation_section_excludes_matching_course(): void
     {
         $admin = $this->makeUser('admin');
         $head = $this->makeUser('course_head');
@@ -562,14 +566,12 @@ class CoursePoolManagementTest extends TestCase
 
         $this->actingAsRole($admin, 'admin');
 
-        $response = $this->get(route('admin.master_data', ['tab' => 'courses']));
+        $response = $this->get(route('admin.alerts'));
 
         $response->assertOk();
-        // ทั้งสองวิชาเห็นปุ่ม deviation (locked offering)
-        $response->assertSee(route('admin.courses.instructor_deviation', $matchCourse), false);
+        // หน้าแจ้งเตือนแสดงเฉพาะวิชาที่ deviate (DEV 1) — วิชาที่ตรงแม่แบบ (MATCH 1) ต้องไม่ขึ้น
         $response->assertSee(route('admin.courses.instructor_deviation', $devCourse), false);
-        // มี red dot 1 ครั้ง — สำหรับ DEV 1 เท่านั้น
-        $this->assertSame(1, substr_count($response->getContent(), 'data-testid="courses-deviation-dot"'));
+        $response->assertDontSee(route('admin.courses.instructor_deviation', $matchCourse), false);
     }
 
     public function test_instructor_deviation_detects_rotation_override_from_course_head(): void

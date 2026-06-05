@@ -537,6 +537,25 @@
             this.showCourseModal = true;
             this.$nextTick(() => this.normalizeCourseFormSelects({ resetInvalidYear: false }));
         },
+        /* ── V4 ข้อ 1: หัวข้อกิจกรรมสำเร็จรูปต่อวิชา ── */
+        showTopicsModal: false,
+        topicsCourse: { route_key: '', course_code: '', name_th: '' },
+        topicsList: [],
+        openCourseTopics(course) {
+            this.topicsCourse = { route_key: course.course_code || '', course_code: course.course_code || '', name_th: course.name_th || '' };
+            this.topicsList = (course.topics || []).map(t => ({ name: t.name || '' }));
+            this.showTopicsModal = true;
+        },
+        addTopicRow() {
+            this.topicsList.push({ name: '' });
+            this.$nextTick(() => {
+                const inputs = document.querySelectorAll('[data-topic-input]');
+                if (inputs.length) inputs[inputs.length - 1].focus();
+            });
+        },
+        removeTopicRow(i) {
+            this.topicsList.splice(i, 1);
+        },
         selectCourseHead(user) {
             this.currentCourse.head_instructor_id = user.id;
             this.courseHeadSearch = user.formatted_name || user.name;
@@ -1631,7 +1650,7 @@
                                     data-year-level="{{ $course->default_year_level ?? '' }}"
                                     data-status="{{ $course->status ?? '' }}"
                                     x-show="courseRowMatches($el)"
-                                    style="{{ $course->status === 'inactive' ? 'opacity: 0.45; filter: grayscale(1); background: #fafafa;' : '' }}">
+                                    @class(['md-course-row-inactive' => $course->status === 'inactive'])>
                                     <td style="vertical-align: middle;">
                                         <div style="display: flex; align-items: center; gap: 8px;">
                                             <div style="width: 4px; height: 18px; border-radius: 2px; background: {{ $course->color_code ?? 'var(--bg-3)' }};"></div>
@@ -1686,27 +1705,21 @@
                                     </td>
                                     <td style="text-align: center;">
                                         <div style="display:inline-flex;gap:6px;align-items:center;">
-                                            @if($canManageMasterData && $course->has_locked_offering)
-                                                <a
-                                                    href="{{ route($routePrefix . '.courses.instructor_deviation', $course) }}"
-                                                    class="action-btn"
-                                                    data-testid="courses-deviation-button"
-                                                    title="{{ ($course->has_deviation ?? false) ? 'มีการเปลี่ยนแปลงนอกเหนือจากแม่แบบ — กดดูรายละเอียด' : 'ดูการใช้งานจริงของแม่แบบผู้สอน' }}"
-                                                    style="position:relative;color:var(--brand-navy);text-decoration:none;"
-                                                >
-                                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                        <line x1="18" y1="20" x2="18" y2="10"/>
-                                                        <line x1="12" y1="20" x2="12" y2="4"/>
-                                                        <line x1="6" y1="20" x2="6" y2="14"/>
+                                            @if($canManageMasterData)
+                                                <button class="action-btn" title="หัวข้อกิจกรรมสำเร็จรูป" data-testid="courses-topics-button"
+                                                    @click="openCourseTopics({{ Js::from($course) }})">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                        <line x1="8" y1="6" x2="21" y2="6" />
+                                                        <line x1="8" y1="12" x2="21" y2="12" />
+                                                        <line x1="8" y1="18" x2="21" y2="18" />
+                                                        <line x1="3" y1="6" x2="3.01" y2="6" />
+                                                        <line x1="3" y1="12" x2="3.01" y2="12" />
+                                                        <line x1="3" y1="18" x2="3.01" y2="18" />
                                                     </svg>
-                                                    @if($course->has_deviation ?? false)
-                                                        <span
-                                                            data-testid="courses-deviation-dot"
-                                                            aria-label="มีการเปลี่ยนแปลงนอกเหนือจากแม่แบบ"
-                                                            style="position:absolute;top:-2px;right:-2px;width:9px;height:9px;background:var(--status-warning-fg, #d97706);border:2px solid var(--bg-1, #fff);border-radius:50%;"
-                                                        ></span>
+                                                    @if($course->topics->isNotEmpty())
+                                                        <span style="font-size:11px;font-weight:700;margin-left:2px;">{{ $course->topics->count() }}</span>
                                                     @endif
-                                                </a>
+                                                </button>
                                             @endif
                                             <button class="action-btn" title="แก้ไข" @click="openEditCourse({{ Js::from($course) }})">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -2794,6 +2807,51 @@
             </div>
         </template>
 
+        {{-- ── V4 ข้อ 1: หัวข้อกิจกรรมสำเร็จรูปต่อวิชา ── --}}
+        <template x-if="showTopicsModal">
+            <div class="overlay" x-cloak @keydown.escape.window="showTopicsModal = false">
+                <div class="modal-center" style="max-width: 520px;"
+                    x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+                    <div class="modal-hdr" style="background: var(--bg-2);">
+                        <div class="modal-ttl" style="font-family: var(--font-display);">
+                            หน่วยการเรียนหรือกิจกรรม — <span x-text="topicsCourse.course_code"></span>
+                        </div>
+                        <button type="button" class="modal-cls" @click="showTopicsModal = false">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                        </button>
+                    </div>
+                    <form method="POST" :action="'{{ url($routePrefix . '/master-data/courses') }}/' + encodeURIComponent(topicsCourse.route_key) + '/topics'">
+                        @csrf
+                        <div class="modal-body">
+                            <div style="font-size:12px;color:var(--fg-3);line-height:1.6;margin-bottom:14px;">
+                                กรอกหัวข้อกิจกรรม/บทเรียนที่ใช้บ่อยของวิชา <strong x-text="topicsCourse.name_th"></strong> ไว้ล่วงหน้า — หัวหน้าวิชาจะกดเลือกได้เลยตอนจัดตาราง (ยังพิมพ์เองได้)
+                            </div>
+                            <template x-if="topicsList.length === 0">
+                                <div style="font-size:12px;color:var(--fg-3);padding:14px;text-align:center;background:var(--surface-sunken);border-radius:8px;">
+                                    ยังไม่มีหัวข้อ — กด "เพิ่มหัวข้อ" เพื่อเริ่ม
+                                </div>
+                            </template>
+                            <template x-for="(topic, i) in topicsList" :key="i">
+                                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                                    <span style="font-size:12px;color:var(--fg-4);width:20px;text-align:right;flex-shrink:0;" x-text="(i + 1) + '.'"></span>
+                                    <input type="text" :name="'topics[' + i + ']'" x-model="topic.name" data-topic-input
+                                        maxlength="255" placeholder="เช่น ปฐมนิเทศรายวิชา, การพยาบาลผู้ป่วยภาวะวิกฤต" style="flex:1;">
+                                    <button type="button" class="action-btn" title="ลบหัวข้อ" @click="removeTopicRow(i)" style="color:var(--status-conflict-fg);flex-shrink:0;">
+                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                    </button>
+                                </div>
+                            </template>
+                            <button type="button" class="btn btn-ghost" @click="addTopicRow()" style="font-size:13px;margin-top:6px;">+ เพิ่มหัวข้อ</button>
+                        </div>
+                        <div class="modal-foot">
+                            <button type="button" class="btn btn-ghost" @click="showTopicsModal = false">ยกเลิก</button>
+                            <button type="submit" class="btn btn-primary" data-testid="course-topics-submit">บันทึกหัวข้อ</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </template>
+
         <!-- Add/Edit Modal (Curriculum) -->
         <template x-if="showCurriculumModal">
             <div class="overlay" x-cloak>
@@ -2985,13 +3043,13 @@
                                     </td>
                                     <td style="font-weight: 600; color: var(--fg-1);">{{ $at->name }}</td>
                                     <td>
-                                        <span class="pill" style="{{ $catStyle[$at->category] ?? $catStyle['other'] }}{{ $pillShape }}">{{ $catLabel[$at->category] ?? $at->category }}</span>
+                                        <span class="pill md-pill-shape md-pill-{{ array_key_exists($at->category, $catStyle) ? $at->category : 'other' }}">{{ $catLabel[$at->category] ?? $at->category }}</span>
                                     </td>
                                     <td>
                                         @if($at->counts_toward_workload)
-                                            <span class="pill" style="background:#e6fffa;color:#047481;border:1px solid #b2f5ea;{{ $pillShape }}">นับภาระงาน</span>
+                                            <span class="pill md-pill-shape md-pill-counts">นับภาระงาน</span>
                                         @else
-                                            <span class="pill" style="background:#f7fafc;color:#718096;border:1px solid #e2e8f0;{{ $pillShape }}">ไม่นับ</span>
+                                            <span class="pill md-pill-shape md-pill-nocount">ไม่นับ</span>
                                         @endif
                                     </td>
                                     @if($canManageMasterData)
@@ -5022,12 +5080,32 @@
         .master-data-page .search-item:hover {
             background: color-mix(in oklch, var(--brand-navy) 7%, var(--surface));
         }
+
+        /* pill ประเภทกิจกรรม / ภาระงาน + แถววิชาปิดสอน — ย้ายจาก inline style เป็น class */
+        .md-pill-shape { border-radius: 999px; padding: 0 11px; height: 21px; }
+        .md-pill-lecture   { background: #eef4ff; color: #1e40af; border: 1px solid #c7d7fe; }
+        .md-pill-practicum { background: #f3effd; color: #6b21a8; border: 1px solid #ddd0f7; }
+        .md-pill-thesis    { background: #eef6f9; color: #155e75; border: 1px solid #cce4ed; }
+        .md-pill-other     { background: #f7fafc; color: #475569; border: 1px solid #e2e8f0; }
+        .md-pill-counts    { background: #e6fffa; color: #047481; border: 1px solid #b2f5ea; }
+        .md-pill-nocount   { background: #f7fafc; color: #718096; border: 1px solid #e2e8f0; }
+        .md-course-row-inactive { opacity: 0.45; filter: grayscale(1); background: #fafafa; }
     </style>
 
+    {{-- ข้อมูล bootstrap วางใน JSON tag (ไม่ถูก parse เป็น JS → กัน false-positive ของ embedded JS validator) --}}
+    @php
+        $mdBootstrap = [
+            'staffUsers' => $staffUsers->map(fn($u) => ['id' => $u->id, 'name' => $u->formatted_name, 'formatted_name' => $u->formatted_name])->values(),
+            'courseInstructorUsers' => $courseInstructorUsers->map(fn($u) => ['id' => $u->id, 'name' => $u->formatted_name, 'formatted_name' => $u->formatted_name, 'department' => $u->instructorProfile?->department?->name ?? '-', 'department_id' => $u->instructorProfile?->department_id])->values(),
+            'courseRoleOptions' => $courseRoles->map(fn($role) => ['id' => $role->id, 'name' => $role->name_th])->values(),
+        ];
+    @endphp
+    <script type="application/json" id="md-bootstrap-data">{!! json_encode($mdBootstrap, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) !!}</script>
     <script>
-        const staffUsers = {{ Js::from($staffUsers->map(fn($u) => ['id' => $u->id, 'name' => $u->formatted_name, 'formatted_name' => $u->formatted_name])) }};
-        const courseInstructorUsers = {{ Js::from($courseInstructorUsers->map(fn($u) => ['id' => $u->id, 'name' => $u->formatted_name, 'formatted_name' => $u->formatted_name, 'department' => $u->instructorProfile?->department?->name ?? '-', 'department_id' => $u->instructorProfile?->department_id])) }};
-        const courseRoleOptions = {{ Js::from($courseRoles->map(fn($role) => ['id' => $role->id, 'name' => $role->name_th])->values()) }};
+        const _mdBootstrap = JSON.parse(document.getElementById('md-bootstrap-data').textContent);
+        const staffUsers = _mdBootstrap.staffUsers;
+        const courseInstructorUsers = _mdBootstrap.courseInstructorUsers;
+        const courseRoleOptions = _mdBootstrap.courseRoleOptions;
 
         function tpssDeptConflictWarn(form, lines, opts) {
             opts = opts || {};

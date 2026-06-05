@@ -103,6 +103,7 @@ Route::middleware(['auth', 'no-back'])->group(function () {
         Route::get('/admin/settings', 'App\Http\Controllers\AdminSettingController@index')->name('admin.settings');
         Route::post('/admin/settings/academic-years', 'App\Http\Controllers\AdminSettingController@storeYear')->name('admin.settings.years.store');
         Route::put('/admin/settings/academic-years/{year}', 'App\Http\Controllers\AdminSettingController@updateYear')->name('admin.settings.years.update');
+        Route::delete('/admin/settings/academic-years/{year}', 'App\Http\Controllers\AdminSettingController@destroyYear')->name('admin.settings.years.destroy');
         Route::post('/admin/settings/update-constants', 'App\Http\Controllers\AdminSettingController@updateConstants')->name('admin.settings.constants.update');
         Route::patch('/admin/settings/scheduling/{year}/open', 'App\Http\Controllers\AdminSettingController@openSchedulingWindow')->name('admin.settings.scheduling.open');
         Route::patch('/admin/settings/scheduling/{year}/close', 'App\Http\Controllers\AdminSettingController@closeSchedulingWindow')->name('admin.settings.scheduling.close');
@@ -111,6 +112,10 @@ Route::middleware(['auth', 'no-back'])->group(function () {
         Route::put('/admin/settings/holidays/{holiday}', 'App\Http\Controllers\AdminSettingController@updateHoliday')->name('admin.settings.holidays.update');
         Route::delete('/admin/settings/holidays/{holiday}', 'App\Http\Controllers\AdminSettingController@destroyHoliday')->name('admin.settings.holidays.destroy');
         Route::post('/admin/settings/holidays/sync', 'App\Http\Controllers\AdminSettingController@syncHolidays')->name('admin.settings.holidays.sync');
+        // ปฏิทินการศึกษาตามกลุ่ม (V4 ข้อ 8)
+        Route::post('/admin/settings/academic-years/{year}/calendars', 'App\Http\Controllers\AdminSettingController@storeCalendar')->name('admin.settings.calendars.store');
+        Route::put('/admin/settings/calendars/{calendar}', 'App\Http\Controllers\AdminSettingController@updateCalendar')->name('admin.settings.calendars.update');
+        Route::delete('/admin/settings/calendars/{calendar}', 'App\Http\Controllers\AdminSettingController@destroyCalendar')->name('admin.settings.calendars.destroy');
 
         Route::get('/admin/master-data', 'App\Http\Controllers\Admin\MasterDataController@index')->name('admin.master_data');
         Route::get('/admin/alerts', [AlertController::class, 'index'])->name('admin.alerts');
@@ -132,6 +137,8 @@ Route::middleware(['auth', 'no-back'])->group(function () {
         Route::put('/admin/master-data/courses/{course}', 'App\Http\Controllers\Admin\MasterDataController@updateCourse')->name('admin.courses.update');
         Route::delete('/admin/master-data/courses/{course}', 'App\Http\Controllers\Admin\MasterDataController@destroyCourse')->name('admin.courses.destroy');
         Route::get('/admin/master-data/courses/{course}/instructor-deviation', 'App\Http\Controllers\Admin\MasterDataController@courseInstructorDeviation')->name('admin.courses.instructor_deviation');
+        Route::get('/admin/master-data/courses/{course}/topics', 'App\Http\Controllers\Admin\MasterDataController@courseTopics')->name('admin.courses.topics.index');
+        Route::post('/admin/master-data/courses/{course}/topics', 'App\Http\Controllers\Admin\MasterDataController@syncCourseTopics')->name('admin.courses.topics.sync');
         Route::post('/admin/master-data/curriculums', 'App\Http\Controllers\Admin\MasterDataController@storeCurriculum')->name('admin.curriculums.store');
         Route::put('/admin/master-data/curriculums/{curriculum}', 'App\Http\Controllers\Admin\MasterDataController@updateCurriculum')->name('admin.curriculums.update');
         Route::post('/admin/master-data/curriculums/{curriculum}/clone', 'App\Http\Controllers\Admin\MasterDataController@cloneCurriculum')->name('admin.curriculums.clone');
@@ -152,10 +159,15 @@ Route::middleware(['auth', 'no-back'])->group(function () {
         Route::get('/staff/settings', 'App\Http\Controllers\Staff\SettingController@index')->name('staff.settings');
         Route::post('/staff/settings/academic-years', 'App\Http\Controllers\Staff\SettingController@storeYear')->name('staff.settings.years.store');
         Route::put('/staff/settings/academic-years/{year}', 'App\Http\Controllers\Staff\SettingController@updateYear')->name('staff.settings.years.update');
+        Route::delete('/staff/settings/academic-years/{year}', 'App\Http\Controllers\Staff\SettingController@destroyYear')->name('staff.settings.years.destroy');
         Route::post('/staff/settings/holidays', 'App\Http\Controllers\Staff\SettingController@storeHoliday')->name('staff.settings.holidays.store');
         Route::put('/staff/settings/holidays/{holiday}', 'App\Http\Controllers\Staff\SettingController@updateHoliday')->name('staff.settings.holidays.update');
         Route::delete('/staff/settings/holidays/{holiday}', 'App\Http\Controllers\Staff\SettingController@destroyHoliday')->name('staff.settings.holidays.destroy');
         Route::post('/staff/settings/holidays/sync', 'App\Http\Controllers\Staff\SettingController@syncHolidays')->name('staff.settings.holidays.sync');
+        // ปฏิทินการศึกษาตามกลุ่ม (V4 ข้อ 8)
+        Route::post('/staff/settings/academic-years/{year}/calendars', 'App\Http\Controllers\Staff\SettingController@storeCalendar')->name('staff.settings.calendars.store');
+        Route::put('/staff/settings/calendars/{calendar}', 'App\Http\Controllers\Staff\SettingController@updateCalendar')->name('staff.settings.calendars.update');
+        Route::delete('/staff/settings/calendars/{calendar}', 'App\Http\Controllers\Staff\SettingController@destroyCalendar')->name('staff.settings.calendars.destroy');
 
         Route::get('/staff/master-data', 'App\Http\Controllers\Staff\MasterDataController@index')->name('staff.master_data');
         Route::post('/staff/master-data/departments', 'App\Http\Controllers\Staff\MasterDataController@storeDepartment')->name('staff.departments.store');
@@ -174,6 +186,8 @@ Route::middleware(['auth', 'no-back'])->group(function () {
         Route::put('/staff/master-data/courses/{course}', 'App\Http\Controllers\Staff\MasterDataController@updateCourse')->name('staff.courses.update');
         Route::delete('/staff/master-data/courses/{course}', 'App\Http\Controllers\Staff\MasterDataController@destroyCourse')->name('staff.courses.destroy');
         Route::get('/staff/master-data/courses/{course}/instructor-deviation', 'App\Http\Controllers\Staff\MasterDataController@courseInstructorDeviation')->name('staff.courses.instructor_deviation');
+        Route::get('/staff/master-data/courses/{course}/topics', 'App\Http\Controllers\Staff\MasterDataController@courseTopics')->name('staff.courses.topics.index');
+        Route::post('/staff/master-data/courses/{course}/topics', 'App\Http\Controllers\Staff\MasterDataController@syncCourseTopics')->name('staff.courses.topics.sync');
         Route::post('/staff/master-data/curriculums', 'App\Http\Controllers\Staff\MasterDataController@storeCurriculum')->name('staff.curriculums.store');
         Route::put('/staff/master-data/curriculums/{curriculum}', 'App\Http\Controllers\Staff\MasterDataController@updateCurriculum')->name('staff.curriculums.update');
         Route::post('/staff/master-data/curriculums/{curriculum}/clone', 'App\Http\Controllers\Staff\MasterDataController@cloneCurriculum')->name('staff.curriculums.clone');

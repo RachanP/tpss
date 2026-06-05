@@ -84,18 +84,22 @@ class HolidayManagementTest extends TestCase
         $this->assertSame(0, Holiday::count());
     }
 
-    public function test_creating_year_auto_fetches_holidays_for_spanned_calendar_years(): void
+    public function test_setting_calendar_terms_auto_fetches_holidays_for_spanned_years(): void
     {
+        // V4: holiday ดึงตอน "ตั้งเทอมในปฏิทิน" (วันปี derive จากเทอม) ไม่ใช่ตอนสร้างปี
         $this->fakeGoogleHolidays();
         $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
 
-        $this->post(route('admin.settings.years.store'), [
-            'name'  => '2569',
+        $this->post(route('admin.settings.years.store'), ['name' => '2569'])->assertSessionHasNoErrors();
+        $year = \App\Models\AcademicYear::where('name', '2569')->firstOrFail();
+
+        $this->put(route('admin.settings.calendars.update', $year->fallbackCalendar()), [
+            'name'  => 'ปฏิทินหลัก',
             'terms' => [
                 ['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '2026-06-01', 'end_date' => '2026-10-15'],
                 ['sequence' => 2, 'name' => 'ภาคเรียนที่ 2', 'start_date' => '2026-11-02', 'end_date' => '2027-03-12'],
             ],
-        ])->assertRedirect(route('admin.settings', ['tab' => 'academic']));
+        ])->assertSessionHasNoErrors();
 
         // ปีคร่อม 2026+2027 → ดึงทั้งสองปี (2 + 1 = 3 วัน)
         $this->assertDatabaseHas('holidays', ['date' => '2026-01-01']);
@@ -103,18 +107,20 @@ class HolidayManagementTest extends TestCase
         $this->assertSame(3, Holiday::count());
     }
 
-    public function test_year_create_still_succeeds_when_holiday_api_down(): void
+    public function test_setting_calendar_terms_succeeds_when_holiday_api_down(): void
     {
         Http::fake(['*' => Http::response('down', 503)]);
         $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
 
-        $this->post(route('admin.settings.years.store'), [
-            'name'  => '2569',
-            'terms' => [['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '2026-06-01', 'end_date' => '2026-10-15']],
-        ])->assertRedirect(route('admin.settings', ['tab' => 'academic']))
-            ->assertSessionHas('holiday_warning');
+        $this->post(route('admin.settings.years.store'), ['name' => '2569'])->assertSessionHasNoErrors();
+        $year = \App\Models\AcademicYear::where('name', '2569')->firstOrFail();
 
-        $this->assertDatabaseHas('academic_years', ['name' => '2569']);
+        $this->put(route('admin.settings.calendars.update', $year->fallbackCalendar()), [
+            'name'  => 'ปฏิทินหลัก',
+            'terms' => [['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '2026-06-01', 'end_date' => '2026-10-15']],
+        ])->assertRedirect()->assertSessionHas('holiday_warning');
+
+        $this->assertDatabaseHas('terms', ['name' => 'ภาคเรียนที่ 1']);
         $this->assertSame(0, Holiday::count());
     }
 

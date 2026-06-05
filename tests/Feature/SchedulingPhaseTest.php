@@ -250,11 +250,11 @@ class SchedulingPhaseTest extends TestCase
 
         $response = $this->get(route('admin.settings', ['tab' => 'academic']));
 
+        // ปุ่มเปิดช่วงจัดตารางอยู่ใน banner ปีปัจจุบัน — มีเฉพาะปี active เท่านั้น
         $response
             ->assertOk()
             ->assertSee('open-scheduling-' . $currentYear->id, false)
-            ->assertDontSee('open-scheduling-' . $otherYear->id, false)
-            ->assertSee('ตั้งเป็นปีปัจจุบันก่อน');
+            ->assertDontSee('open-scheduling-' . $otherYear->id, false);
     }
 
     public function test_setting_another_current_year_is_blocked_while_scheduling_window_is_open(): void
@@ -600,7 +600,7 @@ class SchedulingPhaseTest extends TestCase
 
     private function makeYear(array $overrides = []): AcademicYear
     {
-        return AcademicYear::create(array_merge([
+        $year = AcademicYear::create(array_merge([
             'name'       => '2569',
             'semester'   => 1,
             'start_date' => '2026-08-03',
@@ -608,6 +608,15 @@ class SchedulingPhaseTest extends TestCase
             'is_active'  => true,
             'phase'      => 'preparation',
         ], $overrides));
+
+        // V4 ข้อ 8: ปีต้องมีเทอมในปฏิทินค่าเริ่มต้น ไม่งั้นเปิดช่วงจัดตารางไม่ได้ (critical-gate)
+        $year->fallbackCalendar()->terms()->create([
+            'sequence' => 1, 'name' => 'ภาคเรียนที่ 1',
+            'start_date' => $year->start_date ?: '2026-08-03',
+            'end_date' => $year->end_date ?: '2026-12-31',
+        ]);
+
+        return $year;
     }
 
     private function makeCourse(array $overrides = []): Course

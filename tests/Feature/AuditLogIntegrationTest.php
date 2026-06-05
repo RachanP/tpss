@@ -921,12 +921,9 @@ class AuditLogIntegrationTest extends TestCase
 
     public function test_academic_year_create_and_update_use_master_data_category(): void
     {
+        // V4: ปีสร้างด้วยชื่อ + active (เทอมอยู่ในปฏิทิน)
         $this->actingAsAdmin()
-            ->post(route('admin.settings.years.store'), [
-                'name' => '2570',
-                'is_active' => '1',
-                'terms' => [['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '2027-08-01', 'end_date' => '2027-12-31']],
-            ])
+            ->post(route('admin.settings.years.store'), ['name' => '2570', 'is_active' => '1'])
             ->assertRedirect();
 
         $year = AcademicYear::where('name', '2570')->firstOrFail();
@@ -934,34 +931,34 @@ class AuditLogIntegrationTest extends TestCase
         $this->assertSame('ข้อมูลหลัก', $createLog->category);
         $this->assertSame('2570', $createLog->new_values['name']);
 
+        // แก้ชื่อปี → มี audit หมวดข้อมูลหลัก + เห็น diff ชื่อ
         $this->actingAsAdmin()
-            ->put(route('admin.settings.years.update', $year), [
-                'name' => '2570',
-                'is_active' => '1',
-                'terms' => [['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '2027-08-15', 'end_date' => '2027-12-31']],
-            ])
+            ->put(route('admin.settings.years.update', $year), ['name' => '2570 (แก้)', 'is_active' => '1'])
             ->assertRedirect();
 
         $updateLog = $this->latestLog('ข้อมูลหลัก.แก้ไข', 'academic_years');
-        $this->assertSame(['start_date'], array_keys($updateLog->old_values));
-        $this->assertSame('2027-08-01', $updateLog->old_values['start_date']);
-        $this->assertSame('2027-08-15', $updateLog->new_values['start_date']);
+        $this->assertSame('ข้อมูลหลัก', $updateLog->category);
+        $this->assertSame('2570', $updateLog->old_values['name']);
+        $this->assertSame('2570 (แก้)', $updateLog->new_values['name']);
     }
 
-    public function test_academic_year_dates_accept_thai_buddhist_input(): void
+    public function test_calendar_term_dates_accept_thai_buddhist_input(): void
     {
+        // V4: Thai พ.ศ. → ISO เกิดตอนตั้งเทอมในปฏิทิน · วันปี derive จากเทอม
         $this->actingAsAdmin()
-            ->post(route('admin.settings.years.store'), [
-                'name' => '2571',
+            ->post(route('admin.settings.years.store'), ['name' => '2571'])
+            ->assertRedirect();
+        $year = AcademicYear::where('name', '2571')->firstOrFail();
+
+        $this->actingAsAdmin()
+            ->put(route('admin.settings.calendars.update', $year->fallbackCalendar()), [
+                'name'  => 'ปฏิทินหลัก',
                 'terms' => [['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '23/06/2569', 'end_date' => '24/06/2569']],
             ])
             ->assertRedirect();
 
-        $this->assertDatabaseHas('academic_years', [
-            'name' => '2571',
-            'start_date' => '2026-06-23',
-            'end_date' => '2026-06-24',
-        ]);
+        $this->assertDatabaseHas('terms', ['name' => 'ภาคเรียนที่ 1', 'start_date' => '2026-06-23', 'end_date' => '2026-06-24']);
+        $this->assertDatabaseHas('academic_years', ['name' => '2571', 'start_date' => '2026-06-23', 'end_date' => '2026-06-24']);
     }
 
     public function test_instructor_master_data_update_logs_profile_fields_only_when_changed(): void
@@ -1654,7 +1651,7 @@ class AuditLogIntegrationTest extends TestCase
     {
         $n = $this->seq++;
 
-        return AcademicYear::create(array_merge([
+        $year = AcademicYear::create(array_merge([
             'name'       => "2569-{$n}",
             'semester'   => 1,
             'start_date' => '2026-08-01',
@@ -1662,6 +1659,13 @@ class AuditLogIntegrationTest extends TestCase
             'is_active'  => true,
             'phase'      => 'preparation',
         ], $overrides));
+
+        // V4 ข้อ 8: ปีต้องมีเทอมในปฏิทินค่าเริ่มต้น ไม่งั้นเปิดช่วงจัดตารางไม่ได้
+        $year->fallbackCalendar()->terms()->create([
+            'sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '2026-08-01', 'end_date' => '2026-12-31',
+        ]);
+
+        return $year;
     }
 
     private function makeCurriculum(): Curriculum

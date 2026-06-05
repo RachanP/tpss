@@ -28,13 +28,12 @@ class AcademicYearV2Test extends TestCase
         return $user;
     }
 
-    public function test_settings_page_renders(): void
+    /** สร้างปีผ่าน route (storeYear) → ได้ปี + ปฏิทินหลักว่าง */
+    private function createYear(string $name = '2570', array $extra = []): AcademicYear
     {
-        $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
-
-        $this->get(route('admin.settings', ['tab' => 'academic']))
-            ->assertOk()
-            ->assertSee('ปีการศึกษา');
+        $this->post(route('admin.settings.years.store'), array_merge(['name' => $name], $extra))
+            ->assertSessionHasNoErrors();
+        return AcademicYear::where('name', $name)->firstOrFail();
     }
 
     /** เทอมที่ส่งจากฟอร์ม (รูปแบบ ISO — normalizeTermDates รับได้) */
@@ -47,98 +46,134 @@ class AcademicYearV2Test extends TestCase
         ];
     }
 
-    public function test_create_year_persists_terms_and_derives_year_span(): void
+    public function test_settings_page_renders(): void
     {
         $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
 
-        $this->post(route('admin.settings.years.store'), [
-            'name'  => '2570',
-            'terms' => $this->termsPayload(),
-        ])->assertRedirect(route('admin.settings', ['tab' => 'academic']));
+        $this->get(route('admin.settings', ['tab' => 'academic']))
+            ->assertOk()
+            ->assertSee('ปีการศึกษา');
+    }
+
+    public function test_create_year_without_terms_creates_default_calendar(): void
+    {
+        $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
+
+        // V4: ปีสร้างได้โดยไม่ต้องมีเทอม (เทอมไปอยู่ในปฏิทิน)
+        $this->post(route('admin.settings.years.store'), ['name' => '2570'])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('admin.settings', ['tab' => 'academic']));
 
         $year = AcademicYear::where('name', '2570')->firstOrFail();
-        $this->assertCount(2, $year->terms);
-        $this->assertSame('ภาคเรียนที่ 1', $year->terms[0]->name);
-        // วันปี = min(start)..max(end) ของเทอม
-        $this->assertSame('2026-06-01', $year->start_date);
-        $this->assertSame('2027-03-12', $year->end_date);
-        // วันสอบเก็บถูก
-        $this->assertSame('2026-07-27', $year->terms[0]->midterm_start->format('Y-m-d'));
+        $this->assertNull($year->start_date);                       // ยังไม่มีเทอม → span ว่าง
+        // มีปฏิทิน fallback (ทุกหลักสูตร — curriculum/ชั้นปี = null) สร้างให้อัตโนมัติ
+        $this->assertEquals(1, $year->calendars()->whereNull('curriculum_id')->whereNull('year_levels')->count());
     }
 
-    public function test_create_year_requires_terms(): void
+    public function test_setting_default_calendar_terms_derives_year_span(): void
     {
         $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
+        $year = $this->createYear('2570');
+        $default = $year->fallbackCalendar();
 
-        $this->post(route('admin.settings.years.store'), ['name' => '2570'])
-            ->assertSessionHasErrors('terms');
+        $this->put(route('admin.settings.calendars.update', $default), [
+            'name'  => 'ปฏิทินหลัก',
+            'terms' => $this->termsPayload(),
+        ])->assertSessionHasNoErrors();
+
+        $year->refresh();
+        $this->assertSame('2026-06-01', (string) $year->start_date);  // min ของวันเริ่มเทอม
+        $this->assertSame('2027-03-12', (string) $year->end_date);    // max ของวันสิ้นสุดเทอม
+        $this->assertCount(2, $default->fresh()->terms);
+        $this->assertSame('2026-07-27', $default->fresh()->terms[0]->midterm_start->format('Y-m-d'));
     }
 
-    public function test_term_end_before_start_is_rejected(): void
+    public function test_calendar_term_end_before_start_is_rejected(): void
     {
         $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
+        $year = $this->createYear('2570');
 
-        $this->post(route('admin.settings.years.store'), [
-            'name'  => '2570',
+        $this->post(route('admin.settings.calendars.store', $year), [
+            'name'  => 'ทดสอบ',
             'terms' => [
                 ['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '2026-10-15', 'end_date' => '2026-06-01'],
             ],
-        ])->assertSessionHasErrors('terms');
-
-        $this->assertDatabaseMissing('academic_years', ['name' => '2570']);
+        ])->assertSessionHasErrors('calendar_terms');
     }
 
-    public function test_exam_outside_term_range_is_rejected(): void
+    public function test_calendar_exam_outside_term_range_is_rejected(): void
     {
         $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
+        $year = $this->createYear('2570');
 
-        $this->post(route('admin.settings.years.store'), [
-            'name'  => '2570',
+        $this->post(route('admin.settings.calendars.store', $year), [
+            'name'  => 'ทดสอบ',
             'terms' => [
                 ['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '2026-06-01', 'end_date' => '2026-10-15',
-                 'midterm_start' => '2026-12-01', 'midterm_end' => '2026-12-05'], // นอกช่วงเทอม
+                 'midterm_start' => '2026-12-01', 'midterm_end' => '2026-12-05'],
             ],
-        ])->assertSessionHasErrors('terms');
+        ])->assertSessionHasErrors('calendar_terms');
     }
 
-    public function test_final_exam_before_midterm_is_rejected(): void
+    public function test_calendar_final_exam_before_midterm_is_rejected(): void
     {
         $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
+        $year = $this->createYear('2570');
 
-        $this->post(route('admin.settings.years.store'), [
-            'name'  => '2570',
+        $this->post(route('admin.settings.calendars.store', $year), [
+            'name'  => 'ทดสอบ',
             'terms' => [
                 ['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '2026-06-01', 'end_date' => '2026-10-15',
                  'midterm_start' => '2026-09-01', 'midterm_end' => '2026-09-05',
-                 'final_start' => '2026-07-01', 'final_end' => '2026-07-05'], // ปลายภาคมาก่อนกลางภาค
+                 'final_start' => '2026-07-01', 'final_end' => '2026-07-05'],
             ],
-        ])->assertSessionHasErrors('terms');
-
-        $this->assertDatabaseMissing('academic_years', ['name' => '2570']);
+        ])->assertSessionHasErrors('calendar_terms');
     }
 
-    public function test_overlapping_terms_are_rejected(): void
+    public function test_calendar_overlapping_terms_are_rejected(): void
     {
         $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
+        $year = $this->createYear('2570');
 
-        $this->post(route('admin.settings.years.store'), [
-            'name'  => '2570',
+        $this->post(route('admin.settings.calendars.store', $year), [
+            'name'  => 'ทดสอบ',
             'terms' => [
                 ['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '2026-06-01', 'end_date' => '2026-10-15'],
-                ['sequence' => 2, 'name' => 'ภาคเรียนที่ 2', 'start_date' => '2026-10-10', 'end_date' => '2027-03-12'], // ซ้อนเทอม 1
+                ['sequence' => 2, 'name' => 'ภาคเรียนที่ 2', 'start_date' => '2026-10-10', 'end_date' => '2027-03-12'],
             ],
-        ])->assertSessionHasErrors('terms');
+        ])->assertSessionHasErrors('calendar_terms');
     }
 
-    public function test_year_name_is_unique_without_semester(): void
+    public function test_admin_can_delete_non_active_year_with_calendars(): void
+    {
+        $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
+        $year = $this->createYear('2570');
+        $cal = $year->fallbackCalendar();
+        $cal->terms()->create(['sequence' => 1, 'name' => 'เทอม 1', 'start_date' => '2026-08-01', 'end_date' => '2026-12-01']);
+
+        $this->delete(route('admin.settings.years.destroy', $year))->assertSessionHasNoErrors();
+
+        $this->assertDatabaseMissing('academic_years', ['id' => $year->id]);
+        $this->assertDatabaseMissing('academic_calendars', ['id' => $cal->id]); // cascade
+    }
+
+    public function test_active_year_cannot_be_deleted(): void
+    {
+        $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
+        $year = AcademicYear::create(['name' => '2570', 'is_active' => true, 'phase' => 'preparation']);
+
+        $this->delete(route('admin.settings.years.destroy', $year))->assertSessionHas('error');
+
+        $this->assertDatabaseHas('academic_years', ['id' => $year->id]);
+    }
+
+    public function test_year_name_is_unique(): void
     {
         $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
         AcademicYear::create(['name' => '2570', 'start_date' => '2026-06-01', 'end_date' => '2027-03-12', 'is_active' => false]);
 
-        $this->post(route('admin.settings.years.store'), [
-            'name'  => '2570',
-            'terms' => $this->termsPayload(),
-        ])->assertSessionHasErrors('name');
+        $this->post(route('admin.settings.years.store'), ['name' => '2570'])
+            ->assertSessionHasErrors('name');
     }
 
     /**
@@ -158,17 +193,15 @@ class AcademicYearV2Test extends TestCase
 
         $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
 
+        // V4: สร้างปี active โดยไม่ต้องมีเทอม
         $this->post(route('admin.settings.years.store'), [
             'name'      => '2571',
             'is_active' => '1',
-            'terms'     => $this->termsPayload(),
         ])->assertRedirect(route('admin.settings', ['tab' => 'academic']));
 
-        // วิชาใน active curriculum → เปิด · วิชาใน inactive curriculum → ปิด (ไม่สนเทอม)
         $this->assertSame('active', $courseActive->fresh()->status);
         $this->assertSame('inactive', $courseClosed->fresh()->status);
 
-        // scope ใหม่ดึงเฉพาะวิชา active ใน active curriculum
         $offerable = Course::offerableForActiveCurriculum()->pluck('course_code')->all();
         $this->assertContains('ACT 101', $offerable);
         $this->assertNotContains('CLO 101', $offerable);

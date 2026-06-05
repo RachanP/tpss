@@ -1116,12 +1116,14 @@ class ScheduleManagementTest extends TestCase
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
         // ตั้งเทอม + สัปดาห์สอบ · เทอมจบ 30 พ.ย. → ธ.ค. (ยังในปี) = ปิดภาคเรียน
-        \App\Models\Term::create([
-            'academic_year_id' => $offering->academic_year_id,
-            'sequence' => 1, 'name' => 'ภาคเรียนที่ 1',
-            'start_date' => '2026-08-01', 'end_date' => '2026-11-30',
-            'midterm_start' => '2026-09-21', 'midterm_end' => '2026-09-25',
-        ]);
+        // V4: term สังกัดปฏิทินหลัก (default calendar) ของปี
+        \App\Models\AcademicYear::find($offering->academic_year_id)
+            ->fallbackCalendar()
+            ->terms()->create([
+                'sequence' => 1, 'name' => 'ภาคเรียนที่ 1',
+                'start_date' => '2026-08-01', 'end_date' => '2026-11-30',
+                'midterm_start' => '2026-09-21', 'midterm_end' => '2026-09-25',
+            ]);
 
         $this->actingAsCourseHead($head);
 

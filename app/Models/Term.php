@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Term extends Model
 {
     protected $fillable = [
-        'academic_year_id',
+        'academic_calendar_id',
         'sequence',
         'name',
         'start_date',
@@ -24,7 +24,7 @@ class Term extends Model
     ];
 
     protected $casts = [
-        'academic_year_id' => 'integer',
+        'academic_calendar_id' => 'integer',
         'sequence' => 'integer',
         'start_date' => 'date',
         'end_date' => 'date',
@@ -34,8 +34,8 @@ class Term extends Model
         'final_end' => 'date',
     ];
 
-    public function academicYear(): BelongsTo
+    public function academicCalendar(): BelongsTo
     {
-        return $this->belongsTo(AcademicYear::class);
+        return $this->belongsTo(AcademicCalendar::class);
     }
 }

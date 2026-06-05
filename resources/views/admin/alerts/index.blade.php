@@ -90,17 +90,17 @@
                     <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M9 12h6"/><path d="M9 16h4"/></svg>
                 </span>
             </div>
-            <div class="alerts-summary-card is-muted">
+            <div class="alerts-summary-card {{ $instructorDeviations->count() > 0 ? 'is-soft' : 'is-muted' }}">
                 <div class="alerts-summary-top">
                     <span class="alerts-summary-index">03</span>
-                    <span class="alerts-summary-label">ปิดแจ้งเตือนอยู่</span>
+                    <span class="alerts-summary-label">ผู้สอนต่างจากแม่แบบ</span>
                 </div>
                 <div class="alerts-summary-body">
-                    <div class="alerts-summary-value">{{ number_format($dismissedWarningCount) }}</div>
-                    <div class="alerts-summary-note">ซ่อนจากตัวเลขแจ้งเตือนในเมนูด้านซ้าย</div>
+                    <div class="alerts-summary-value">{{ number_format($instructorDeviations->count()) }}</div>
+                    <div class="alerts-summary-note">{{ $instructorDeviations->count() > 0 ? 'รายวิชาที่แก้ผู้สอน/รายละเอียดต่างจากแม่แบบ' : 'ยังไม่มีวิชาที่ต่างจากแม่แบบ' }}</div>
                 </div>
                 <span class="alerts-summary-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 </span>
             </div>
         </section>
@@ -240,6 +240,48 @@
                                     </td>
                                     <td class="alerts-table-action">
                                         <a href="{{ route('admin.master_data', ['tab' => 'instructors', 'edit_instructor' => $violation['user']->id]) }}" class="alerts-mini-btn">แก้ไข</a>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        @endif
+
+        @if($instructorDeviations->isNotEmpty())
+            <section id="instructor-deviations" class="alerts-section is-warning-section">
+                <div class="alerts-section-head">
+                    <div class="alerts-section-title-group">
+                        <span class="alerts-section-kicker">รายงานรายวิชา</span>
+                        <div>
+                            <div class="alerts-section-title is-warning">รายวิชาที่ผู้สอนต่างจากแม่แบบ</div>
+                            <div class="alerts-section-sub">ชุดผู้สอน/รายละเอียดในรอบที่เปิดสอน ถูกแก้ต่างจากแม่แบบรายวิชา — กดดูว่าต่างตรงไหน</div>
+                        </div>
+                    </div>
+                    <span class="alerts-count-pill is-warning">{{ number_format($instructorDeviations->count()) }} วิชา</span>
+                </div>
+                <div class="alerts-table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>รหัส</th>
+                                <th>ชื่อวิชา</th>
+                                <th>หลักสูตร / ภาควิชา</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($instructorDeviations as $course)
+                                <tr>
+                                    <td class="alerts-code">{{ $course->course_code }}</td>
+                                    <td><strong>{{ $course->name_th }}</strong></td>
+                                    <td class="alerts-muted">
+                                        {{ $course->curriculum->name ?? '-' }}
+                                        <span>{{ $course->department->name ?? 'ไม่สังกัดภาควิชา' }}</span>
+                                    </td>
+                                    <td class="alerts-table-action">
+                                        <a href="{{ route('admin.courses.instructor_deviation', $course) }}" class="alerts-mini-btn">ดูรายละเอียด</a>
                                     </td>
                                 </tr>
                             @endforeach
@@ -580,6 +622,17 @@
             background:
                 linear-gradient(180deg, color-mix(in oklch, var(--status-success) 10%, var(--surface)), var(--surface) 54%),
                 color-mix(in oklch, var(--status-success) 3%, var(--surface));
+        }
+
+        .alerts-summary-card.is-soft {
+            border-color: color-mix(in oklch, oklch(72% 0.06 250) 42%, var(--border));
+            background:
+                linear-gradient(180deg, color-mix(in oklch, oklch(72% 0.06 250) 12%, var(--surface)), var(--surface) 54%),
+                color-mix(in oklch, oklch(72% 0.06 250) 4%, var(--surface));
+        }
+
+        .alerts-summary-card.is-soft .alerts-summary-value {
+            color: oklch(48% 0.09 250);
         }
 
         .alerts-summary-label {

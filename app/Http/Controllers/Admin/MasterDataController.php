@@ -122,6 +122,7 @@ class MasterDataController extends Controller
             'assignedStaff',
             'instructors.instructorProfile.department',
             'prerequisites:id,course_code,name_th,name_en',
+            'topics:id,course_id,name,sort_order',
         ])
             ->withExists([
                 'courseOfferings as has_locked_offering' => fn ($query) => $query->whereHas(
@@ -132,33 +133,8 @@ class MasterDataController extends Controller
             ->orderBy('course_code')
             ->get();
 
-        // คำนวณว่าวิชาไหนมี deviation จากแม่แบบบ้าง (สำหรับ red dot บนปุ่ม report)
-        // โหลด offerings + pool เฉพาะวิชาที่ locked เพื่อ minimize query
-        // หมายเหตุ: `instructors` ถูก eager-loaded ไปแล้วใน with() ด้านบน → deviation helper จะใช้ cache
-        $lockedCourseIds = $courses->where('has_locked_offering', true)->pluck('id');
-        if ($lockedCourseIds->isNotEmpty()) {
-            $offeringsForDiff = CourseOffering::with(['instructorPool', 'academicYear'])
-                ->whereIn('course_id', $lockedCourseIds)
-                ->whereHas('academicYear', fn ($q) => $q->whereIn('phase', ['scheduling', 'published']))
-                ->get()
-                ->groupBy('course_id');
-
-            foreach ($courses as $course) {
-                $course->has_deviation = false;
-                if (! $course->has_locked_offering) continue;
-
-                foreach ($offeringsForDiff[$course->id] ?? [] as $offering) {
-                    $instructorDiff = $course->instructorPoolDeviationFor($offering);
-                    $detailsDiff = $course->offeringDetailsDeviationFor($offering);
-                    $hasAny = count($instructorDiff['added']) + count($instructorDiff['removed'])
-                        + count($instructorDiff['role_changed']) + count($detailsDiff);
-                    if ($hasAny > 0) {
-                        $course->has_deviation = true;
-                        break;
-                    }
-                }
-            }
-        }
+        // หมายเหตุ: รายงาน deviation (ผู้สอนต่างจากแม่แบบ) ย้ายไปอยู่หน้าแจ้งเตือนแล้ว
+        // (App\Support\CourseDeviationFinder + section ใน admin.alerts) — เลิกคำนวณ/แสดงปุ่มที่นี่
 
         $courseRoles = app(ReferenceDataCache::class)
             ->courseRoles()
@@ -1125,6 +1101,52 @@ class MasterDataController extends Controller
         } catch (\Illuminate\Database\QueryException $e) {
             return redirect()->back()->with('error', 'ไม่สามารถลบได้เนื่องจากมีข้อมูลผูกพันอยู่');
         }
+    }
+
+    /**
+     * V4 ข้อ 1 — บันทึกชุดหัวข้อกิจกรรมของวิชา (replace ทั้งชุด)
+     */
+    public function syncCourseTopics(Request $request, Course $course)
+    {
+        $validated = $request->validate([
+            'topics'   => ['nullable', 'array'],
+            'topics.*' => ['nullable', 'string', 'max:255'],
+        ], [
+            'topics.*.max' => 'หัวข้อกิจกรรมต้องไม่เกิน 255 ตัวอักษร',
+        ]);
+
+        $names = collect($validated['topics'] ?? [])
+            ->map(fn ($n) => trim((string) $n))
+            ->filter()
+            ->values();
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($course, $names) {
+            $course->topics()->delete();
+            foreach ($names as $i => $name) {
+                $course->topics()->create(['name' => $name, 'sort_order' => $i]);
+            }
+        });
+
+        AuditLogger::log(
+            action: 'ข้อมูลหลัก.แก้ไข',
+            table: 'activity_topics',
+            recordId: $course->id,
+            oldValues: null,
+            newValues: ['course' => $course->course_code, 'topics' => $names->all()],
+            description: "ตั้งหัวข้อกิจกรรมของวิชา {$course->course_code} ({$names->count()} หัวข้อ)",
+        );
+
+        return back()->with('success', "บันทึกหัวข้อกิจกรรมของวิชา {$course->course_code} เรียบร้อยแล้ว ({$names->count()} หัวข้อ)");
+    }
+
+    /**
+     * V4 ข้อ 1 — รายการหัวข้อกิจกรรมของวิชา (JSON) สำหรับหน้าจัดตาราง (Branch A เรียกใช้)
+     */
+    public function courseTopics(Course $course)
+    {
+        return response()->json([
+            'topics' => $course->topics()->get(['id', 'name']),
+        ]);
     }
 
     public function courseInstructorDeviation(Course $course)

@@ -98,6 +98,12 @@ class Course extends Model
         return $this->hasMany(CourseOffering::class);
     }
 
+    /** V4 ข้อ 1 — หัวข้อกิจกรรมสำเร็จรูปของวิชา */
+    public function topics(): HasMany
+    {
+        return $this->hasMany(ActivityTopic::class)->orderBy('sort_order');
+    }
+
     /**
      * วิชาที่พร้อมเปิดสอนในปีการศึกษา (V2: วิชาเปิดทั้งปี — ดูแค่ active + มีหัวหน้า + อยู่ใน active curriculum)
      * เลิกผูกเทอม (default_semester ถูกตัดออกแล้ว)

@@ -20,6 +20,7 @@
             hasSummer: false,
             terms: [],
         },
+        copyFromYearId: '',
         openScheduleConfirmForm: null,
         openScheduleConfirmLabel: '',
         openScheduleCountdown: 0,
@@ -51,6 +52,75 @@
         resetSummerTerm() {
             this.currentYear.terms[2] = this.emptyTerm('ภาคฤดูร้อน');
         },
+        /* ── ปฏิทินการศึกษาตามกลุ่ม (V4 ข้อ 8) ── */
+        calCurriculums: {{ Js::from($calendarCurriculums ?? []) }},
+        calYears: {{ Js::from(($academicYears ?? collect())->map(fn ($y) => ['id' => $y->id, 'name' => $y->name])->values()) }},
+        showCalendarsModal: false,
+        calYearId: '', calYearName: '', calList: [],
+        showCalEditor: false,
+        editCalMode: false,
+        dupMode: false,
+        dupSourceLabel: '',
+        currentCal: { id: '', name: '', curriculum_id: '', year_levels: [], hasSummer: false, terms: [] },
+        openCalendars(year) {
+            this.calYearId = year.id;
+            this.calYearName = year.name;
+            this.calList = Array.isArray(year.calendars) ? year.calendars : [];
+            this.showCalendarsModal = true;
+        },
+        calBuildTerms(list) {
+            const a = Array.isArray(list) ? list : [];
+            const s = (i, fn) => {
+                const t = a[i];
+                if (!t) return this.emptyTerm(fn);
+                return { name: t.name || fn, start_date: this.thaiDateForInput(t.start_date), end_date: this.thaiDateForInput(t.end_date), midterm_start: this.thaiDateForInput(t.midterm_start), midterm_end: this.thaiDateForInput(t.midterm_end), final_start: this.thaiDateForInput(t.final_start), final_end: this.thaiDateForInput(t.final_end) };
+            };
+            return [s(0, 'ภาคเรียนที่ 1'), s(1, 'ภาคเรียนที่ 2'), s(2, 'ภาคฤดูร้อน')];
+        },
+        openAddCalendar() {
+            this.editCalMode = false;
+            this.dupMode = false;
+            this.currentCal = { id: '', name: '', curriculum_id: '', year_levels: [], hasSummer: false, terms: this.calBuildTerms([]) };
+            this.showCalEditor = true;
+        },
+        openEditCalendar(cal) {
+            this.editCalMode = true;
+            this.dupMode = false;
+            const terms = cal.terms || [];
+            this.currentCal = { id: cal.id, name: cal.name || '', curriculum_id: cal.curriculum_id ? String(cal.curriculum_id) : '', year_levels: Array.isArray(cal.year_levels) ? cal.year_levels.map(Number) : [], hasSummer: terms.length >= 3, terms: this.calBuildTerms(terms) };
+            this.showCalEditor = true;
+        },
+        openDuplicateCalendar(cal) {
+            // คัดลอก = ใช้ช่วงเทอม/สอบเดิม แต่เปลี่ยนขอบเขต (หลักสูตร/ชั้นปี) · ซ่อนการแก้วันที่ — แก้ภายหลังได้
+            this.editCalMode = false;
+            this.dupMode = true;
+            this.dupSourceLabel = this.calScopeLabel(cal);
+            const terms = cal.terms || [];
+            this.currentCal = { id: '', name: ((cal.name || '') + ' (สำเนา)').slice(0, 100), curriculum_id: cal.curriculum_id ? String(cal.curriculum_id) : '', year_levels: Array.isArray(cal.year_levels) ? cal.year_levels.map(Number) : [], hasSummer: terms.length >= 3, terms: this.calBuildTerms(terms) };
+            this.showCalEditor = true;
+        },
+        calCurriculumUsesYear() {
+            const c = this.calCurriculums.find(x => String(x.id) === String(this.currentCal.curriculum_id));
+            return c ? !!c.uses_year_level : false;
+        },
+        calYearLevels() {
+            const c = this.calCurriculums.find(x => String(x.id) === String(this.currentCal.curriculum_id));
+            const dur = c ? (c.duration_years || 4) : 4;
+            return Array.from({ length: dur }, (_, i) => i + 1);
+        },
+        calToggleYear(y) {
+            const i = this.currentCal.year_levels.indexOf(y);
+            if (i === -1) this.currentCal.year_levels.push(y); else this.currentCal.year_levels.splice(i, 1);
+        },
+        calScopeLabel(cal) {
+            const parts = [];
+            parts.push(cal.curriculum && cal.curriculum.name ? cal.curriculum.name : 'ทุกหลักสูตร');
+            const yl = Array.isArray(cal.year_levels) ? cal.year_levels : [];
+            if (yl.length) {
+                parts.push('ปี ' + yl.slice().sort((a, b) => a - b).join(', '));
+            }
+            return parts.join(' · ');
+        },
         showHolidayModal: false,
         editHolidayMode: false,
         currentHoliday: { id: '', date: '', name: '', remark: '' },
@@ -71,7 +141,8 @@
         },
         openAddModal() {
             this.editMode = false;
-            this.currentYear = { id: '', name: '', start_date: '', end_date: '', is_active: false, hasSummer: false, terms: this.buildTerms([]) };
+            this.copyFromYearId = '';
+            this.currentYear = { id: '', name: '', start_date: '', end_date: '', is_active: false, hasSummer: false, terms: this.buildTerms([]), calendars: [] };
             this.showModal = true;
         },
         openEditModal(year) {
@@ -85,6 +156,7 @@
                 is_active: !!year.is_active,
                 hasSummer: terms.length >= 3,
                 terms: this.buildTerms(terms),
+                calendars: year.calendars || [],
             };
             this.showModal = true;
         },
@@ -219,6 +291,60 @@
                 </div>
             @endif
 
+            @if($isAdmin)
+                @php $activeYear = $academicYears->firstWhere('is_active', true); @endphp
+                @if($activeYear)
+                    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:space-between;border:1.5px solid color-mix(in oklch,var(--brand-navy) 28%,var(--border));border-radius:12px;padding:16px 20px;margin-bottom:16px;background:linear-gradient(180deg,color-mix(in oklch,var(--brand-navy) 7%,var(--surface)),var(--surface));box-shadow:0 1px 2px rgba(0,36,84,.08),0 14px 30px -24px rgba(0,36,84,.4);">
+                        <div style="display:flex;align-items:center;gap:14px;min-width:0;">
+                            <span style="width:46px;height:46px;border-radius:11px;background:var(--brand-navy);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                            </span>
+                            <div style="min-width:0;">
+                                <div style="font-size:12px;color:var(--fg-3);font-weight:600;">ปีการศึกษาปัจจุบัน</div>
+                                <div style="font-size:18px;font-weight:800;color:var(--fg-1);font-family:var(--font-display);">{{ $activeYear->name }}
+                                    @if($activeYear->phase === 'scheduling')
+                                        <span class="badge" style="background:oklch(90% 0.1 145);color:oklch(30% 0.15 145);border:1px solid oklch(70% 0.15 145);font-size:11px;margin-left:6px;vertical-align:middle;">เปิดช่วงจัดตารางอยู่</span>
+                                    @elseif($activeYear->phase === 'published')
+                                        <span class="badge badge-primary" style="font-size:11px;margin-left:6px;vertical-align:middle;">เผยแพร่แล้ว</span>
+                                    @else
+                                        <span class="badge badge-gray" style="font-size:11px;margin-left:6px;vertical-align:middle;">เตรียมข้อมูล</span>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            @if($activeYear->phase === 'preparation')
+                                <form id="open-scheduling-{{ $activeYear->id }}" method="POST" action="{{ route('admin.settings.scheduling.open', $activeYear) }}" style="margin:0;">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="button"
+                                        class="{{ $hasSchedulingCriticals ? 'btn btn-ghost is-locked' : 'btn btn-primary' }}"
+                                        style="font-size:14px;padding:10px 22px;font-weight:800;"
+                                        @if($hasSchedulingCriticals)
+                                            disabled
+                                            title="ต้องแก้ Critical ให้หมดก่อนเปิดช่วงจัดตาราง"
+                                        @else
+                                            @click="startOpenScheduleCountdown('open-scheduling-{{ $activeYear->id }}', 'ปีการศึกษา {{ $activeYear->name }}')"
+                                        @endif>
+                                        เปิดช่วงจัดตาราง
+                                    </button>
+                                </form>
+                            @elseif($activeYear->phase === 'scheduling')
+                                <form id="close-scheduling-{{ $activeYear->id }}" method="POST" action="{{ route('admin.settings.scheduling.close', $activeYear) }}" style="margin:0;">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="button" class="btn btn-ghost"
+                                        style="font-size:14px;padding:10px 22px;border:1px solid var(--border);"
+                                        @click="startCloseScheduleConfirm('close-scheduling-{{ $activeYear->id }}', 'ปีการศึกษา {{ $activeYear->name }}')">
+                                        ปิดช่วงจัดตาราง
+                                    </button>
+                                </form>
+                            @endif
+                        </div>
+                    </div>
+                @endif
+            @endif
+
             <div class="card">
                 <div class="card-hdr">
                     <div>
@@ -252,11 +378,16 @@
                                 <tr>
                                     <td style="font-weight: 600; color: var(--fg-1);">{{ $year->name }}</td>
                                     <td style="font-size: 12px; color: var(--fg-2);">
-                                        @forelse($year->terms as $t)
+                                        @php
+                                            $fallbackCal = $year->calendars->first(fn ($c) => is_null($c->curriculum_id) && empty($c->year_levels));
+                                            $needsTerms = ! $fallbackCal || $fallbackCal->terms->isEmpty();
+                                        @endphp
+                                        @foreach($year->terms as $t)
                                             <span class="badge badge-gray" style="margin:1px 2px;display:inline-block;">{{ $t->name }}</span>
-                                        @empty
-                                            <span style="color: var(--fg-3);">—</span>
-                                        @endforelse
+                                        @endforeach
+                                        @if($needsTerms)
+                                            <span class="badge" title="ยังไม่ได้กำหนดเทอม/ช่วงสอบในปฏิทินค่าเริ่มต้น (ทุกหลักสูตร)" style="display:inline-block;margin:1px 2px;background:oklch(95% 0.05 75);color:oklch(45% 0.13 65);border:1px solid oklch(80% 0.12 75);">⚠ ยังไม่ได้กำหนดเทอม</span>
+                                        @endif
                                     </td>
                                     <td style="color: var(--fg-2); font-size: 13px;">
                                         {{ \App\Support\ThaiDate::formatForInput($year->start_date) }} -
@@ -285,7 +416,7 @@
                                         @endif
                                     </td>
                                     <td class="settings-action-cell">
-                                        <div class="academic-year-actions {{ $isAdmin ? '' : 'is-icon-only' }}">
+                                        <div class="academic-year-icons">
                                             <button class="action-btn" title="แก้ไข"
                                                 @click="openEditModal({{ json_encode($year) }})">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -294,40 +425,17 @@
                                                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                                                 </svg>
                                             </button>
-                                            @if($isAdmin)
-                                                <div class="academic-year-schedule-action">
-                                                    @if(!$year->is_active)
-                                                        <span style="font-size:12px;color:var(--fg-3);white-space:nowrap;">ตั้งเป็นปีปัจจุบันก่อน</span>
-                                                    @elseif($year->phase === 'preparation')
-                                                        <form id="open-scheduling-{{ $year->id }}" method="POST" action="{{ route('admin.settings.scheduling.open', $year) }}" style="margin:0;">
-                                                            @csrf
-                                                            @method('PATCH')
-                                                            <button type="button"
-                                                                class="{{ $hasSchedulingCriticals ? 'btn btn-ghost' : 'btn btn-primary' }}"
-                                                                style="font-size: 13px; padding: 6px 14px; {{ $hasSchedulingCriticals ? 'opacity:0.55;cursor:not-allowed;' : '' }}"
-                                                                @if($hasSchedulingCriticals)
-                                                                    disabled
-                                                                    title="ต้องแก้ Critical ให้หมดก่อนเปิดช่วงจัดตาราง"
-                                                                @else
-                                                                    @click="startOpenScheduleCountdown('open-scheduling-{{ $year->id }}', 'ปีการศึกษา {{ $year->name }}')"
-                                                                @endif>
-                                                                เปิดช่วงจัดตาราง
-                                                            </button>
-                                                        </form>
-                                                    @elseif($year->phase === 'scheduling')
-                                                        <form id="close-scheduling-{{ $year->id }}" method="POST" action="{{ route('admin.settings.scheduling.close', $year) }}" style="margin:0;">
-                                                            @csrf
-                                                            @method('PATCH')
-                                                            <button type="button"
-                                                                class="btn btn-ghost"
-                                                                style="font-size: 13px; padding: 6px 14px; border: 1px solid var(--border);"
-                                                                @click="startCloseScheduleConfirm('close-scheduling-{{ $year->id }}', 'ปีการศึกษา {{ $year->name }}')">
-                                                                ปิดช่วงจัดตาราง
-                                                            </button>
-                                                        </form>
-                                                    @endif
-                                                </div>
-                                            @endif
+                                            <button class="action-btn" title="ปฏิทินการศึกษาตามกลุ่ม (หลักสูตร/ชั้นปี)"
+                                                @click="openCalendars({{ json_encode($year) }})">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                    stroke-linecap="round" stroke-linejoin="round">
+                                                    <rect x="3" y="4" width="18" height="18" rx="2" />
+                                                    <line x1="16" y1="2" x2="16" y2="6" />
+                                                    <line x1="8" y1="2" x2="8" y2="6" />
+                                                    <line x1="3" y1="10" x2="21" y2="10" />
+                                                </svg>
+                                                <span x-text="'{{ $year->calendars->count() }}'" style="font-size:11px;font-weight:700;margin-left:3px;"></span>
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -487,52 +595,208 @@
                                     <label>ปีการศึกษา (พ.ศ.)</label>
                                     <input type="text" name="name" x-model="currentYear.name" required
                                         placeholder="เช่น 2569"
-                                        style="{{ $errors->has('name') ? 'border-color: var(--red, #dc2626);' : '' }}">
+                                        @class(['input-invalid' => $errors->has('name')])>
                                     @error('name')
                                         <span style="color: var(--red, #dc2626); font-size: 12px; margin-top: 4px; display: block;">{{ $message }}</span>
                                     @enderror
                                 </div>
                             </div>
-                            @if($errors->has('terms'))
-                                <div style="margin-bottom: 10px; padding: 8px 10px; background: oklch(97% 0.02 20); border: 1px solid oklch(82% 0.08 25); border-radius: 6px; color: var(--status-conflict-fg); font-size: 12px; line-height: 1.6;">
-                                    @foreach($errors->get('terms') as $msg)
-                                        <div>• {{ $msg }}</div>
-                                    @endforeach
+                            <template x-if="!editMode && calYears.length > 0">
+                                <div class="form-group" style="margin-top: 4px;">
+                                    <label>คัดลอกปฏิทินจากปีก่อน <span style="font-weight:400;color:var(--fg-4);font-size:11px;">(ไม่บังคับ)</span></label>
+                                    <select name="copy_from_year_id" x-model="copyFromYearId">
+                                        <option value="">ไม่คัดลอก</option>
+                                        <template x-for="y in calYears" :key="y.id">
+                                            <option :value="y.id" x-text="'คัดลอกจากปี ' + y.name"></option>
+                                        </template>
+                                    </select>
                                 </div>
-                            @endif
-                            <div style="margin-top: 4px; border-top: 1px solid var(--border); padding-top: 14px;">
-                                <div style="font-weight: 600; font-size: 13px; color: var(--fg-1); margin-bottom: 4px;">ภาคการศึกษา (เทอม)</div>
-                                <div style="font-size: 11px; color: var(--fg-3); margin-bottom: 10px; line-height: 1.5;">
-                                    กำหนดช่วงวันของแต่ละเทอม + ช่วงสัปดาห์สอบ (ไม่บังคับ) · <strong>วันเริ่ม-สิ้นสุดของปีการศึกษาคำนวณจากเทอมให้อัตโนมัติ</strong> · ช่วงปิดภาคเรียน = ช่องว่างระหว่างเทอม
+                            </template>
+                            <template x-if="editMode">
+                                <div style="margin-top: 4px; border-top: 1px solid var(--border); padding-top: 14px;">
+                                    <button type="button" class="btn btn-ghost" style="font-size:12px;padding:6px 14px;"
+                                        @click="showModal = false; $nextTick(() => openCalendars(currentYear))">จัดการปฏิทินการศึกษา →</button>
                                 </div>
-                                @include('shared.settings._term_fields', ['index' => 0, 'seq' => 1, 'label' => 'ภาคเรียนที่ 1'])
-                                @include('shared.settings._term_fields', ['index' => 1, 'seq' => 2, 'label' => 'ภาคเรียนที่ 2'])
-                                <div x-show="currentYear.hasSummer" x-cloak>
-                                    @include('shared.settings._term_fields', ['index' => 2, 'seq' => 3, 'label' => 'ภาคฤดูร้อน'])
-                                    <button type="button" @click="currentYear.hasSummer = false; resetSummerTerm()"
-                                        style="font-size: 12px; color: var(--status-conflict-fg); background: none; border: none; cursor: pointer; padding: 2px 0; margin-bottom: 6px;">
-                                        ลบภาคฤดูร้อน
-                                    </button>
-                                </div>
-                                <button type="button" x-show="!currentYear.hasSummer" @click="currentYear.hasSummer = true"
-                                    class="btn btn-ghost" style="font-size: 12px; padding: 5px 12px;">
-                                    + เพิ่มภาคฤดูร้อน
-                                </button>
-                            </div>
-                            <div class="form-group" style="margin-top: 16px;">
-                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; color: var(--fg-1);">
-                                    <input type="checkbox" name="is_active" value="1" x-model="currentYear.is_active"
-                                        style="width: 16px; height: 16px; accent-color: var(--brand-navy);">
-                                    ตั้งเป็นปีการศึกษาปัจจุบัน (Active)
+                            </template>
+                            <div class="form-group" style="margin-top: 18px;">
+                                <label
+                                    :style="(currentYear.is_active
+                                        ? 'border-color:var(--brand-navy);background:color-mix(in oklch,var(--brand-navy) 8%,var(--surface));box-shadow:0 1px 2px rgba(0,36,84,.1);'
+                                        : 'border-color:var(--border);background:var(--surface);')
+                                        + 'display:flex;align-items:center;gap:14px;cursor:pointer;border-width:1.5px;border-style:solid;border-radius:10px;padding:14px 16px;transition:all .15s ease;'">
+                                    <input type="checkbox" name="is_active" value="1" x-model="currentYear.is_active" style="display:none;">
+                                    <span :style="(currentYear.is_active ? 'background:var(--brand-navy);color:#fff;' : 'background:var(--bg-3);color:var(--fg-3);') + 'width:40px;height:40px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s ease;'">
+                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="m9 16 2 2 4-4"/></svg>
+                                    </span>
+                                    <div style="flex:1;min-width:0;">
+                                        <div style="font-weight:700;font-size:14px;color:var(--fg-1);"
+                                            x-text="currentYear.is_active ? 'เป็นปีการศึกษาปัจจุบัน' : 'ตั้งเป็นปีการศึกษาปัจจุบัน'"></div>
+                                    </div>
+                                    <span :style="(currentYear.is_active ? 'background:var(--brand-navy);' : 'background:var(--border-strong,#cbd5e1);') + 'width:44px;height:25px;border-radius:999px;position:relative;flex-shrink:0;transition:background .15s ease;'">
+                                        <span :style="(currentYear.is_active ? 'left:22px;' : 'left:3px;') + 'position:absolute;top:3px;width:19px;height:19px;border-radius:50%;background:#fff;transition:left .15s ease;box-shadow:0 1px 2px rgba(0,0,0,.25);'"></span>
+                                    </span>
                                 </label>
                                 @error('is_active')
                                     <span style="color: var(--red, #dc2626); font-size: 12px; margin-top: 6px; display: block;">{{ $message }}</span>
                                 @enderror
                             </div>
                         </div>
+                        <div class="modal-foot" style="display:flex;justify-content:space-between;align-items:center;">
+                            <template x-if="editMode && !currentYear.is_active">
+                                <button type="button" class="btn btn-ghost" style="color:var(--status-conflict-fg);"
+                                    @click="if (confirm('ลบปีการศึกษา ' + currentYear.name + ' และปฏิทิน/เทอมทั้งหมดของปีนี้?\n(ลบไม่ได้ถ้ามีรายวิชาที่เปิดสอนผูกอยู่)')) $refs.deleteYearForm.submit()">ลบปีการศึกษา</button>
+                            </template>
+                            <div style="display:flex;gap:8px;margin-left:auto;">
+                                <button type="button" class="btn btn-ghost" @click="showModal = false">ยกเลิก</button>
+                                <button type="submit" class="btn btn-primary">บันทึกข้อมูล</button>
+                            </div>
+                        </div>
+                    </form>
+                    <form x-ref="deleteYearForm" method="POST" :action="'{{ url($routePrefix . '/settings/academic-years') }}/' + currentYear.id" style="display:none;">
+                        @csrf
+                        @method('DELETE')
+                    </form>
+                </div>
+            </div>
+        </template>
+
+        {{-- ── ปฏิทินการศึกษาตามกลุ่ม (V4 ข้อ 8) — รายการปฏิทินต่อปี ── --}}
+        <template x-if="showCalendarsModal">
+            <div class="overlay" x-cloak @keydown.escape.window="showCalendarsModal = false">
+                <div class="modal-center" style="max-width: 640px;">
+                    <div class="modal-hdr" style="background: var(--bg-2);">
+                        <div class="modal-ttl" style="font-family: var(--font-display);"
+                            x-text="'ปฏิทินการศึกษา — ปี ' + calYearName"></div>
+                        <button type="button" class="modal-cls" @click="showCalendarsModal = false">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <template x-if="calList.length === 0">
+                            <div style="font-size:12px;color:var(--fg-3);padding:14px;text-align:center;background:var(--surface-sunken);border-radius:8px;">
+                                ยังไม่มีปฏิทิน — กด "เพิ่มปฏิทิน" เพื่อกำหนดเทอมและช่วงสอบ
+                            </div>
+                        </template>
+                        <template x-for="cal in calList" :key="cal.id">
+                            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--surface);">
+                                <div style="min-width:0;">
+                                    <div style="display:flex;align-items:center;gap:8px;">
+                                        <span style="font-weight:600;font-size:13px;color:var(--fg-1);" x-text="cal.name"></span>
+                                        <span x-show="!cal.curriculum_id && (!cal.year_levels || cal.year_levels.length === 0)" style="font-size:10px;font-weight:700;color:var(--brand-navy);background:var(--brand-navy-50);padding:2px 8px;border-radius:999px;">ค่าเริ่มต้น</span>
+                                    </div>
+                                    <div style="font-size:11px;color:var(--fg-3);margin-top:3px;">
+                                        <span x-text="calScopeLabel(cal)"></span> ·
+                                        <span x-text="(cal.terms ? cal.terms.length : 0) + ' เทอม'"></span>
+                                    </div>
+                                </div>
+                                <div style="display:flex;gap:4px;flex-shrink:0;">
+                                    <button type="button" class="action-btn" title="แก้ไข" @click="openEditCalendar(cal)">
+                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                    </button>
+                                    <button type="button" class="action-btn" title="คัดลอกปฏิทินนี้ (เติมให้แล้วปรับ scope/วันที่)" @click="openDuplicateCalendar(cal)">
+                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                    </button>
+                                    <form method="POST" :action="'{{ url($routePrefix . '/settings/calendars') }}/' + cal.id" style="margin:0;"
+                                        @submit="return confirm('ลบปฏิทิน ' + cal.name + ' และเทอมทั้งหมดในปฏิทินนี้?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="action-btn" title="ลบ" style="color:var(--status-conflict-fg);">
+                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                    <div class="modal-foot" style="display:flex;justify-content:space-between;">
+                        <button type="button" class="btn btn-primary" @click="openAddCalendar()" style="font-size:13px;">+ เพิ่มปฏิทิน</button>
+                        <button type="button" class="btn btn-ghost" @click="showCalendarsModal = false">ปิด</button>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        {{-- ── ตัวแก้/เพิ่มปฏิทิน (styled แบบ modal หลักสูตร) ── --}}
+        <template x-if="showCalEditor">
+            <div class="overlay" x-cloak @keydown.escape.window="showCalEditor = false" style="z-index: calc(var(--z-modal) + 10);">
+                <div class="modal-center" x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+                    <div class="modal-hdr" style="background: var(--bg-2);">
+                        <div class="modal-ttl" style="font-family: var(--font-display);"
+                            x-text="dupMode ? 'คัดลอกปฏิทิน' : (editCalMode ? 'แก้ไขปฏิทิน' : 'เพิ่มปฏิทิน')"></div>
+                        <button type="button" class="modal-cls" @click="showCalEditor = false">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                        </button>
+                    </div>
+                    <form method="POST"
+                        :action="editCalMode ? '{{ url($routePrefix . '/settings/calendars') }}/' + currentCal.id : ('{{ url($routePrefix . '/settings/academic-years') }}/' + calYearId + '/calendars')">
+                        @csrf
+                        <template x-if="editCalMode"><input type="hidden" name="_method" value="PUT"></template>
+                        <div class="modal-body">
+                            <template x-if="dupMode">
+                                <div style="display:flex;gap:10px;align-items:flex-start;padding:12px 14px;margin-bottom:16px;border:1px solid color-mix(in oklch,var(--brand-navy) 22%,var(--border));border-radius:8px;background:color-mix(in oklch,var(--brand-navy) 6%,var(--surface));">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--brand-navy)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px;"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                    <div style="font-size:12px;color:var(--fg-2);line-height:1.6;">
+                                        คัดลอกช่วงเทอม/สอบจาก <strong style="color:var(--fg-1);" x-text="dupSourceLabel"></strong>
+                                        <span x-text="'(' + (currentCal.terms ? currentCal.terms.filter(t => t.start_date).length : 0) + ' เทอม)'"></span>
+                                        — เลือก<strong style="color:var(--fg-1);">หลักสูตร/ชั้นปี</strong>ที่ต่างออกไป แล้วบันทึก · วันที่ปรับภายหลังได้ที่ปุ่มแก้ไข
+                                    </div>
+                                </div>
+                            </template>
+                            <div style="font-weight:700;font-size:12px;color:var(--brand-navy);border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:14px;" x-text="dupMode ? 'ขอบเขตปฏิทินใหม่' : 'ข้อมูลปฏิทิน'"></div>
+                            <div class="form-group" style="margin-bottom:16px;">
+                                <label>ชื่อปฏิทิน <span style="color: var(--status-conflict-fg)">*</span></label>
+                                <input type="text" name="name" x-model="currentCal.name" required placeholder="เช่น ป.ตรี ปี 3-4, ป.โท">
+                            </div>
+                            {{-- ขอบเขต: หลักสูตร + ช่วงชั้นปี · เว้นว่าง = ปฏิทิน "ทุกหลักสูตร" (ค่าเริ่มต้น) --}}
+                            <div class="form-group" style="margin-bottom:16px;">
+                                <label>ใช้กับหลักสูตร</label>
+                                <select name="curriculum_id" x-model="currentCal.curriculum_id">
+                                    <option value="">ทุกหลักสูตร</option>
+                                    <template x-for="c in calCurriculums" :key="c.id">
+                                        <option :value="c.id" x-text="c.name"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            <div class="form-group" x-show="calCurriculumUsesYear()" x-cloak>
+                                <label>ใช้กับชั้นปี <span style="font-weight:400;color:var(--fg-4);font-size:11px;">(ไม่ติ๊ก = ทุกชั้นปี)</span></label>
+                                {{-- ส่ง year_levels[] — hidden ว่างไว้กันกรณีไม่ติ๊กเลย (server มองเป็น null) --}}
+                                <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                                    <template x-for="y in calYearLevels()" :key="y">
+                                        <button type="button" @click="calToggleYear(y)"
+                                            :style="(currentCal.year_levels.includes(y) ? 'background:var(--brand-navy);color:#fff;border-color:var(--brand-navy);' : 'background:var(--surface);color:var(--fg-2);border-color:var(--border-strong);') + 'padding:7px 16px;border-width:1px;border-style:solid;border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;transition:all .12s ease;'"
+                                            x-text="'ปี ' + y"></button>
+                                    </template>
+                                </div>
+                                <template x-for="y in currentCal.year_levels" :key="'h'+y">
+                                    <input type="hidden" name="year_levels[]" :value="y">
+                                </template>
+                            </div>
+                            <div style="font-size:11px;color:var(--fg-4);margin-bottom:14px;">เว้นว่าง = ใช้กับทุกหลักสูตร/ทุกชั้นปี (ปฏิทินค่าเริ่มต้น) · ระบุหลักสูตร/ชั้นปีเพื่อให้กลุ่มนั้นใช้ปฏิทินนี้แทน</div>
+                            @if($errors->has('calendar_terms'))
+                                <div style="margin-bottom:10px;padding:8px 10px;background:oklch(97% 0.02 20);border:1px solid oklch(82% 0.08 25);border-radius:6px;color:var(--status-conflict-fg);font-size:12px;line-height:1.6;">
+                                    @foreach($errors->get('calendar_terms') as $msg)<div>• {{ $msg }}</div>@endforeach
+                                </div>
+                            @endif
+                            {{-- โหมดคัดลอก: ซ่อนการแก้วันที่ (ลอกช่วงเดิม) แต่ inputs ยังอยู่ใน DOM → submit ค่าเดิมไปด้วย --}}
+                            <div x-show="dupMode" x-cloak style="font-size:12px;color:var(--fg-3);padding:11px 13px;background:var(--surface-sunken);border-radius:8px;">
+                                ใช้ช่วงเทอม/สอบเดียวกับต้นฉบับ — แก้ไขวันที่ภายหลังได้ที่ปุ่มแก้ไขปฏิทิน
+                            </div>
+                            <div x-show="!dupMode">
+                                <div style="font-weight:700;font-size:12px;color:var(--brand-navy);border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:12px;">ภาคการศึกษา (เทอม)</div>
+                                @include('shared.settings._term_fields', ['index' => 0, 'seq' => 1, 'label' => 'ภาคเรียนที่ 1', 'model' => 'currentCal.terms'])
+                                @include('shared.settings._term_fields', ['index' => 1, 'seq' => 2, 'label' => 'ภาคเรียนที่ 2', 'model' => 'currentCal.terms'])
+                                <div x-show="currentCal.hasSummer" x-cloak>
+                                    @include('shared.settings._term_fields', ['index' => 2, 'seq' => 3, 'label' => 'ภาคฤดูร้อน', 'model' => 'currentCal.terms'])
+                                    <button type="button" @click="currentCal.hasSummer = false; currentCal.terms[2] = { name:'ภาคฤดูร้อน', start_date:'', end_date:'', midterm_start:'', midterm_end:'', final_start:'', final_end:'' }"
+                                        style="font-size:12px;color:var(--status-conflict-fg);background:none;border:none;cursor:pointer;padding:2px 0;margin-bottom:6px;">ลบภาคฤดูร้อน</button>
+                                </div>
+                                <button type="button" x-show="!currentCal.hasSummer" @click="currentCal.hasSummer = true" class="btn btn-ghost" style="font-size:12px;padding:5px 12px;">+ เพิ่มภาคฤดูร้อน</button>
+                            </div>
+                        </div>
                         <div class="modal-foot">
-                            <button type="button" class="btn btn-ghost" @click="showModal = false">ยกเลิก</button>
-                            <button type="submit" class="btn btn-primary">บันทึกข้อมูล</button>
+                            <button type="button" class="btn btn-ghost" @click="showCalEditor = false">ยกเลิก</button>
+                            <button type="submit" class="btn btn-primary" x-text="dupMode ? 'คัดลอกปฏิทิน' : 'บันทึกปฏิทิน'"></button>
                         </div>
                     </form>
                 </div>
@@ -748,28 +1012,21 @@
             border-radius: 6px;
             border: 1px solid var(--border);
         }
-        .academic-year-actions {
-            display: grid;
-            grid-template-columns: 32px minmax(150px, 1fr);
+        .academic-year-icons {
+            display: flex;
             align-items: center;
-            gap: 8px;
             justify-content: center;
-            margin: 0 auto;
-            width: fit-content;
+            gap: 4px;
         }
         .settings-action-cell {
             text-align: center;
         }
-        .academic-year-actions.is-icon-only {
-            display: flex;
-            justify-content: center;
-            width: 100%;
+        .settings-page .is-locked {
+            opacity: 0.55;
+            cursor: not-allowed;
         }
-        .academic-year-schedule-action {
-            display: flex;
-            align-items: center;
-            justify-content: flex-start;
-            min-width: 150px;
+        .settings-page input.input-invalid {
+            border-color: var(--red, #dc2626) !important;
         }
 
         .settings-flash {

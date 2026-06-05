@@ -60,6 +60,9 @@ class AlertController extends Controller
 
         $dismissedWarnings = self::getDismissedWarnings();
 
+        // วิชาที่ผู้สอน/รายละเอียดต่างจากแม่แบบ — โผล่เฉพาะวิชาที่ deviate จริง
+        $instructorDeviations = \App\Support\CourseDeviationFinder::coursesWithDeviation();
+
         $viewData = compact(
             'criticals',
             'paViolations',
@@ -67,6 +70,7 @@ class AlertController extends Controller
             'roomsWithIssues',
             'coursesWithoutStaff',
             'activeCoursesMissingHead',
+            'instructorDeviations',
             'dismissedWarnings',
         );
 
@@ -100,6 +104,21 @@ class AlertController extends Controller
             $criticals[] = ['key' => 'no_activity_type', 'label' => 'ยังไม่มีประเภทกิจกรรมในระบบ',  'link' => route('admin.master_data') . '?tab=activity_types','linkTxt' => 'เพิ่มประเภทกิจกรรม'];
         if (!LocationType::exists())
             $criticals[] = ['key' => 'no_location_type', 'label' => 'ยังไม่มีประเภทสถานที่ในระบบ',  'link' => route('admin.master_data') . '?tab=location_types', 'linkTxt' => 'เพิ่มประเภทสถานที่'];
+
+        // V4 ข้อ 8: ปีปัจจุบันต้องมีเทอมในปฏิทินค่าเริ่มต้น (ทุกหลักสูตร) — ไม่งั้นระบบไม่รู้ช่วงสอบ/ปิดเทอม
+        $activeYear = AcademicYear::where('is_active', true)->first();
+        if ($activeYear) {
+            $fallback = $activeYear->calendars()
+                ->whereNull('curriculum_id')->whereNull('year_levels')->first();
+            if (!$fallback || $fallback->terms()->doesntExist()) {
+                $criticals[] = [
+                    'key'     => 'active_year_missing_calendar_terms',
+                    'label'   => 'ปีการศึกษาปัจจุบันยังไม่ได้กำหนดเทอม/ช่วงสอบในปฏิทินค่าเริ่มต้น (ทุกหลักสูตร)',
+                    'link'    => route('admin.settings') . '?tab=academic',
+                    'linkTxt' => 'ตั้งค่าปฏิทิน',
+                ];
+            }
+        }
 
         $activeCoursesCount = Course::where('status', 'active')->count();
         if ($activeCoursesCount === 0) {
@@ -162,6 +181,8 @@ class AlertController extends Controller
 
             $courseStaffCount = Course::doesntHave('assignedStaff')->count();
 
+            $deviationCount = \App\Support\CourseDeviationFinder::coursesWithDeviation()->count();
+
             $dismissed = self::getDismissedWarnings();
             $counts = [
                 'departments'  => in_array('departments',  $dismissed) ? 0 : $deptCount,
@@ -171,10 +192,11 @@ class AlertController extends Controller
             $warningCount = array_sum($counts);
 
             return array_merge($counts, [
-                'critical'  => $criticalCount,
-                'warnings'  => $warningCount,
-                'total'     => $criticalCount + $warningCount,
-                'dismissed' => $dismissed,
+                'critical'   => $criticalCount,
+                'warnings'   => $warningCount,
+                'deviations' => $deviationCount,
+                'total'      => $criticalCount + $warningCount,
+                'dismissed'  => $dismissed,
             ]);
         });
     }

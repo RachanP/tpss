@@ -16,7 +16,8 @@ return new class extends Migration
     {
         Schema::create('terms', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('academic_year_id')->constrained('academic_years')->cascadeOnDelete();
+            $table->foreignId('academic_calendar_id')->constrained('academic_calendars')->cascadeOnDelete()
+                ->comment('V4: เทอมสังกัด "ปฏิทิน" (academic_calendars) ไม่ใช่ปีตรง ๆ');
             $table->unsignedTinyInteger('sequence')->comment('ลำดับเทอม 1, 2, 3(ฤดูร้อน)');
             $table->string('name', 100)->comment('เช่น "ภาคเรียนที่ 1", "ภาคฤดูร้อน"');
             $table->date('start_date');
@@ -27,7 +28,7 @@ return new class extends Migration
             $table->date('final_end')->nullable();
             $table->timestamps();
 
-            $table->unique(['academic_year_id', 'sequence']);
+            $table->unique(['academic_calendar_id', 'sequence']);
         });
     }
 

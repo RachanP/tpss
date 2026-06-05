@@ -864,6 +864,18 @@ body {
   background: oklch(66% 0.17 65);
 }
 
+/* soft badge — โทนนุ่มกว่า warning (เช่น รายงานผู้สอนต่างจากแม่แบบ) */
+.nv-bd-soft {
+  background: oklch(72% 0.06 250);
+  color: oklch(99% 0.004 250);
+  box-shadow: 0 0 0 1px color-mix(in oklch, oklch(72% 0.06 250) 35%, transparent);
+}
+
+.nv.on .nv-bd-soft,
+.nv:hover .nv-bd-soft {
+  background: oklch(66% 0.08 250);
+}
+
 .sb-foot {
   padding: 10px 10px 16px;
   border-top: 1px solid var(--nav-border);
