@@ -103,6 +103,7 @@ Route::middleware(['auth', 'no-back'])->group(function () {
         Route::get('/admin/settings', 'App\Http\Controllers\AdminSettingController@index')->name('admin.settings');
         Route::post('/admin/settings/academic-years', 'App\Http\Controllers\AdminSettingController@storeYear')->name('admin.settings.years.store');
         Route::put('/admin/settings/academic-years/{year}', 'App\Http\Controllers\AdminSettingController@updateYear')->name('admin.settings.years.update');
+        Route::delete('/admin/settings/academic-years/{year}', 'App\Http\Controllers\AdminSettingController@destroyYear')->name('admin.settings.years.destroy');
         Route::post('/admin/settings/update-constants', 'App\Http\Controllers\AdminSettingController@updateConstants')->name('admin.settings.constants.update');
         Route::patch('/admin/settings/scheduling/{year}/open', 'App\Http\Controllers\AdminSettingController@openSchedulingWindow')->name('admin.settings.scheduling.open');
         Route::patch('/admin/settings/scheduling/{year}/close', 'App\Http\Controllers\AdminSettingController@closeSchedulingWindow')->name('admin.settings.scheduling.close');
@@ -156,6 +157,7 @@ Route::middleware(['auth', 'no-back'])->group(function () {
         Route::get('/staff/settings', 'App\Http\Controllers\Staff\SettingController@index')->name('staff.settings');
         Route::post('/staff/settings/academic-years', 'App\Http\Controllers\Staff\SettingController@storeYear')->name('staff.settings.years.store');
         Route::put('/staff/settings/academic-years/{year}', 'App\Http\Controllers\Staff\SettingController@updateYear')->name('staff.settings.years.update');
+        Route::delete('/staff/settings/academic-years/{year}', 'App\Http\Controllers\Staff\SettingController@destroyYear')->name('staff.settings.years.destroy');
         Route::post('/staff/settings/holidays', 'App\Http\Controllers\Staff\SettingController@storeHoliday')->name('staff.settings.holidays.store');
         Route::put('/staff/settings/holidays/{holiday}', 'App\Http\Controllers\Staff\SettingController@updateHoliday')->name('staff.settings.holidays.update');
         Route::delete('/staff/settings/holidays/{holiday}', 'App\Http\Controllers\Staff\SettingController@destroyHoliday')->name('staff.settings.holidays.destroy');

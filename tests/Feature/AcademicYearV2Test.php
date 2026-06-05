@@ -144,6 +144,29 @@ class AcademicYearV2Test extends TestCase
         ])->assertSessionHasErrors('calendar_terms');
     }
 
+    public function test_admin_can_delete_non_active_year_with_calendars(): void
+    {
+        $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
+        $year = $this->createYear('2570');
+        $cal = $year->fallbackCalendar();
+        $cal->terms()->create(['sequence' => 1, 'name' => 'เทอม 1', 'start_date' => '2026-08-01', 'end_date' => '2026-12-01']);
+
+        $this->delete(route('admin.settings.years.destroy', $year))->assertSessionHasNoErrors();
+
+        $this->assertDatabaseMissing('academic_years', ['id' => $year->id]);
+        $this->assertDatabaseMissing('academic_calendars', ['id' => $cal->id]); // cascade
+    }
+
+    public function test_active_year_cannot_be_deleted(): void
+    {
+        $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
+        $year = AcademicYear::create(['name' => '2570', 'is_active' => true, 'phase' => 'preparation']);
+
+        $this->delete(route('admin.settings.years.destroy', $year))->assertSessionHas('error');
+
+        $this->assertDatabaseHas('academic_years', ['id' => $year->id]);
+    }
+
     public function test_year_name_is_unique(): void
     {
         $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
