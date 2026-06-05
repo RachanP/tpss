@@ -7,6 +7,7 @@ use App\Models\InstructorProfile;
 use App\Models\User;
 use App\Models\UserRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
@@ -92,6 +93,11 @@ class AdminUserManagementTest extends TestCase
         $this->assertDatabaseHas('users', ['username' => 'newuser']);
         $this->assertDatabaseHas('user_roles', ['role' => 'staff', 'is_primary' => true]);
         $this->assertDatabaseHas('user_roles', ['role' => 'instructor', 'is_primary' => false]);
+        $user = User::where('username', 'newuser')->firstOrFail();
+        $this->assertDatabaseHas('instructor_profiles', [
+            'user_id' => $user->id,
+            'department_id' => $department->id,
+        ]);
     }
 
     public function test_admin_user_instructor_hired_date_accepts_thai_buddhist_input(): void
@@ -303,12 +309,90 @@ class AdminUserManagementTest extends TestCase
         $user = User::where('username', 'inst1')->firstOrFail();
         $this->assertDatabaseHas('instructor_profiles', [
             'user_id' => $user->id,
+            'department_id' => $dept->id,
             'teaching_pct' => 0,
             'research_pct' => 0,
             'service_pct' => 0,
             'culture_pct' => 0,
             'other_pct' => 0,
         ]);
+    }
+
+    public function test_instructor_department_is_required(): void
+    {
+        $dept = Department::create(['name' => 'Required Instructor Dept']);
+        $this->actingAs($this->admin);
+
+        $payload = $this->validInstructorPayload($dept, [
+            'username' => 'missing-dept-inst',
+            'email' => 'missing-dept-inst@example.com',
+        ]);
+        unset($payload['instructor_department_id']);
+
+        $response = $this->post('/admin/users', $payload);
+
+        $response->assertSessionHasErrors('instructor_department_id');
+        $this->assertDatabaseMissing('users', ['username' => 'missing-dept-inst']);
+    }
+
+    public function test_admin_can_update_instructor_department(): void
+    {
+        $oldDept = Department::create(['name' => 'Old Instructor Dept']);
+        $newDept = Department::create(['name' => 'New Instructor Dept']);
+        $user = $this->makeInstructorWithProfile($oldDept);
+
+        $this->actingAs($this->admin);
+
+        $response = $this->put("/admin/users/{$user->id}", $this->validInstructorUpdatePayload($user, [
+            'instructor_department_id' => $newDept->id,
+        ]));
+
+        $response->assertRedirect('/admin/users');
+        $this->assertDatabaseHas('instructor_profiles', [
+            'user_id' => $user->id,
+            'department_id' => $newDept->id,
+        ]);
+    }
+
+    public function test_imported_instructor_is_assigned_department(): void
+    {
+        $dept = Department::create(['name' => 'CSV Instructor Dept']);
+        $this->actingAs($this->admin);
+
+        $csv = implode("\n", [
+            'username,email,name,password,roles,primary_role,employee_id,title,academic_degree,department_name,employment_type,hired_date',
+            'csv_inst,csv-inst@example.com,CSV Instructor,password123,instructor,instructor,EMP-CSV-1,Instructor,Master,CSV Instructor Dept,Full-time,2026-01-01',
+            '',
+        ]);
+
+        $response = $this->post(route('admin.users.import'), [
+            'csv_file' => $this->csvFile($csv),
+        ]);
+
+        $response->assertRedirect('/admin/users');
+        $user = User::where('username', 'csv_inst')->firstOrFail();
+        $this->assertDatabaseHas('instructor_profiles', [
+            'user_id' => $user->id,
+            'department_id' => $dept->id,
+        ]);
+    }
+
+    public function test_imported_instructor_requires_department_name(): void
+    {
+        $this->actingAs($this->admin);
+
+        $csv = implode("\n", [
+            'username,email,name,password,roles,primary_role,employee_id,title,academic_degree,department_name,employment_type,hired_date',
+            'csv_missing_dept,csv-missing-dept@example.com,CSV Missing Dept,password123,instructor,instructor,EMP-CSV-2,Instructor,Master,,Full-time,2026-01-01',
+            '',
+        ]);
+
+        $response = $this->post(route('admin.users.import'), [
+            'csv_file' => $this->csvFile($csv),
+        ]);
+
+        $response->assertSessionHas('import_errors');
+        $this->assertDatabaseMissing('users', ['username' => 'csv_missing_dept']);
     }
 
     public function test_primary_role_must_be_in_roles_list(): void
@@ -671,5 +755,13 @@ class AdminUserManagementTest extends TestCase
             'instructor_teaching_quota' => $profile->teaching_quota,
             'instructor_is_english_passed' => $profile->is_english_passed ? 1 : 0,
         ], $overrides);
+    }
+
+    private function csvFile(string $content, string $name = 'import.csv'): UploadedFile
+    {
+        $tmp = tempnam(sys_get_temp_dir(), 'admin-users-csv');
+        file_put_contents($tmp, $content);
+
+        return new UploadedFile($tmp, $name, 'text/csv', null, true);
     }
 }

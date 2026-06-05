@@ -57,8 +57,8 @@ class AdminUserController extends Controller
         $isCourseHead = in_array('course_head', $roles, true);
         $isExecutive  = in_array('executive', $roles, true);
         $canUseDepartment = $isCourseHead || $isExecutive;
-        $needsDept    = $canUseDepartment;
         $needsProfile = $isInstructor || $canUseDepartment;
+        $needsDept    = $needsProfile;
 
         $reqTitle  = $needsProfile ? 'required' : 'nullable';
         $reqDept   = $needsDept    ? 'required' : 'nullable';
@@ -99,7 +99,7 @@ class AdminUserController extends Controller
         $this->validateDepartmentRoleSync($validated, $roles);
 
         $createdUser = null;
-        DB::transaction(function () use ($validated, $request, $needsProfile, $isInstructor, $canUseDepartment, &$createdUser) {
+        DB::transaction(function () use ($validated, $request, $needsProfile, $isInstructor, &$createdUser) {
             $user = User::create([
                 'username'    => $validated['username'],
                 'prefix'      => $validated['prefix'] ?? null,
@@ -139,9 +139,7 @@ class AdminUserController extends Controller
                         'is_english_passed' => $request->boolean('instructor_is_english_passed'),
                     ];
                 }
-                if ($canUseDepartment) {
-                    $profileData['department_id'] = $validated['instructor_department_id'] ?? null;
-                }
+                $profileData['department_id'] = $validated['instructor_department_id'] ?? null;
                 InstructorProfile::create($profileData);
 
                 $this->syncDepartmentHeadFromRoles($user, $validated['roles'], $validated['instructor_department_id'] ?? null);
@@ -181,8 +179,8 @@ class AdminUserController extends Controller
         $isCourseHead = in_array('course_head', $roles, true);
         $isExecutive  = in_array('executive', $roles, true);
         $canUseDepartment = $isCourseHead || $isExecutive;
-        $needsDept    = $canUseDepartment;
         $needsProfile = $isInstructor || $canUseDepartment;
+        $needsDept    = $needsProfile;
 
         $reqTitle  = $needsProfile ? 'required' : 'nullable';
         $reqDept   = $needsDept    ? 'required' : 'nullable';
@@ -231,7 +229,7 @@ class AdminUserController extends Controller
             $this->buildInstructorProfileAuditSnapshot($user->instructorProfile, $user),
         );
 
-        DB::transaction(function () use ($validated, $user, $request, $needsProfile, $isInstructor, $canUseDepartment, $passwordChanged) {
+        DB::transaction(function () use ($validated, $user, $request, $needsProfile, $isInstructor, $passwordChanged) {
             $user->update([
                 'username'    => $validated['username'],
                 'prefix'      => $validated['prefix'] ?? null,
@@ -268,9 +266,7 @@ class AdminUserController extends Controller
                         'is_english_passed' => $request->boolean('instructor_is_english_passed'),
                     ];
                 }
-                if ($canUseDepartment) {
-                    $profileData['department_id'] = $validated['instructor_department_id'] ?? null;
-                }
+                $profileData['department_id'] = $validated['instructor_department_id'] ?? null;
                 $profile = InstructorProfile::firstOrNew(['user_id' => $user->id]);
                 $isNewProfile = ! $profile->exists;
                 $profile->fill($profileData);
@@ -452,8 +448,8 @@ class AdminUserController extends Controller
             $isCourseHead = in_array('course_head', $roles, true);
             $isExecutive  = in_array('executive', $roles, true);
             $canUseDepartment = $isCourseHead || $isExecutive;
-            $needsDept    = $canUseDepartment;
             $needsProfile = $isInstructor || $canUseDepartment;
+            $needsDept    = $needsProfile;
 
             if ($needsProfile) {
                 $missingFields = [];
@@ -492,8 +488,8 @@ class AdminUserController extends Controller
 
             try {
                 $isUpdate = (bool) $existing;
-                DB::transaction(function () use ($csv, $username, $email, $name, $roles, $primaryRole, $departments, $existing, $password, $isInstructor, $canUseDepartment, $needsProfile) {
-                    $profileData = $this->buildProfileData($csv, $departments, $isInstructor, $canUseDepartment);
+                DB::transaction(function () use ($csv, $username, $email, $name, $roles, $primaryRole, $departments, $existing, $password, $isInstructor, $needsProfile) {
+                    $profileData = $this->buildProfileData($csv, $departments, $isInstructor, $needsProfile);
 
                     if ($existing) {
                         // Update: name, prefix, employee_id, roles, profile — no password change
@@ -615,7 +611,7 @@ class AdminUserController extends Controller
         return $redirect;
     }
 
-    private function buildProfileData(array $csv, array $departments, bool $isInstructor = false, bool $canUseDepartment = false): ?array
+    private function buildProfileData(array $csv, array $departments, bool $isInstructor = false, bool $needsDepartment = false): ?array
     {
         $title    = trim($csv['title'] ?? '');
         $deptName = trim($csv['department_name'] ?? '');
@@ -626,7 +622,7 @@ class AdminUserController extends Controller
         }
 
         $deptId = null;
-        if ($canUseDepartment && $deptName) {
+        if ($needsDepartment && $deptName) {
             $deptId = $departments[$deptName] ?? null;
             if (!$deptId) {
                 foreach ($departments as $dbName => $id) {
@@ -642,7 +638,7 @@ class AdminUserController extends Controller
             'title'           => $title ?: null,
             'academic_degree' => trim($csv['academic_degree'] ?? '') ?: null,
         ];
-        if ($canUseDepartment) {
+        if ($needsDepartment) {
             $profile['department_id'] = $deptId;
         }
 

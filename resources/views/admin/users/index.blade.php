@@ -184,7 +184,7 @@
                     return this.currentUser.roles.includes('course_head');
                 },
                 get needsDept() {
-                    return this.hasExecutive || this.hasCourseHead;
+                    return this.hasInstructor || this.hasExecutive || this.hasCourseHead;
                 },
                 get showDepartmentPicker() {
                     return this.needsDept;
@@ -915,8 +915,7 @@
                                         ข้อมูลโปรไฟล์คณาจารย์
                                     </div>
 
-                                    <div class="form-row users-profile-main-row"
-                                        :class="{ 'is-instructor-only': hasInstructor && !needsDept }">
+                                    <div class="form-row users-profile-main-row">
                                         <div class="form-group">
                                             <label>ตำแหน่งทางวิชาการ <span style="color: #ef4444;">*</span></label>
                                             <select name="instructor_title" class="tpss-custom-select" x-model="instructorProfile.title" required>
@@ -1364,14 +1363,6 @@
 
         .users-modal-body .role-grid {
             margin-top: 0;
-        }
-
-        .users-profile-main-row.is-instructor-only > .form-group {
-            flex: 1 1 0;
-        }
-
-        .users-profile-main-row.is-instructor-only .users-degree-field {
-            flex: 1 1 0;
         }
 
         .users-employment-row > .form-group {
