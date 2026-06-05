@@ -346,6 +346,7 @@
                                     </td>
                                     <td class="settings-action-cell">
                                         <div class="academic-year-actions {{ $isAdmin ? '' : 'is-icon-only' }}">
+                                            <div class="academic-year-icons">
                                             <button class="action-btn" title="แก้ไข"
                                                 @click="openEditModal({{ json_encode($year) }})">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -365,6 +366,7 @@
                                                 </svg>
                                                 <span x-text="'{{ $year->calendars->count() }}'" style="font-size:11px;font-weight:700;margin-left:3px;"></span>
                                             </button>
+                                            </div>
                                             @if($isAdmin)
                                                 <div class="academic-year-schedule-action">
                                                     @if(!$year->is_active)
@@ -942,9 +944,15 @@
             border-radius: 6px;
             border: 1px solid var(--border);
         }
+        .academic-year-icons {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
         .academic-year-actions {
             display: grid;
-            grid-template-columns: 32px minmax(150px, 1fr);
+            grid-template-columns: max-content minmax(150px, 1fr);
             align-items: center;
             gap: 8px;
             justify-content: center;
