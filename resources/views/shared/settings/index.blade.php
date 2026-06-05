@@ -57,7 +57,7 @@
         calYearId: '', calYearName: '', calList: [],
         showCalEditor: false,
         editCalMode: false,
-        currentCal: { id: '', name: '', curriculum_id: '', year_level_min: '', year_level_max: '', hasSummer: false, terms: [] },
+        currentCal: { id: '', name: '', curriculum_id: '', year_levels: [], hasSummer: false, terms: [] },
         openCalendars(year) {
             this.calYearId = year.id;
             this.calYearName = year.name;
@@ -75,13 +75,13 @@
         },
         openAddCalendar() {
             this.editCalMode = false;
-            this.currentCal = { id: '', name: '', curriculum_id: '', year_level_min: '', year_level_max: '', hasSummer: false, terms: this.calBuildTerms([]) };
+            this.currentCal = { id: '', name: '', curriculum_id: '', year_levels: [], hasSummer: false, terms: this.calBuildTerms([]) };
             this.showCalEditor = true;
         },
         openEditCalendar(cal) {
             this.editCalMode = true;
             const terms = cal.terms || [];
-            this.currentCal = { id: cal.id, name: cal.name || '', curriculum_id: cal.curriculum_id ? String(cal.curriculum_id) : '', year_level_min: cal.year_level_min ?? '', year_level_max: cal.year_level_max ?? '', hasSummer: terms.length >= 3, terms: this.calBuildTerms(terms) };
+            this.currentCal = { id: cal.id, name: cal.name || '', curriculum_id: cal.curriculum_id ? String(cal.curriculum_id) : '', year_levels: Array.isArray(cal.year_levels) ? cal.year_levels.map(Number) : [], hasSummer: terms.length >= 3, terms: this.calBuildTerms(terms) };
             this.showCalEditor = true;
         },
         calCurriculumUsesYear() {
@@ -93,13 +93,16 @@
             const dur = c ? (c.duration_years || 4) : 4;
             return Array.from({ length: dur }, (_, i) => i + 1);
         },
+        calToggleYear(y) {
+            const i = this.currentCal.year_levels.indexOf(y);
+            if (i === -1) this.currentCal.year_levels.push(y); else this.currentCal.year_levels.splice(i, 1);
+        },
         calScopeLabel(cal) {
             const parts = [];
             parts.push(cal.curriculum && cal.curriculum.name ? cal.curriculum.name : 'ทุกหลักสูตร');
-            if (cal.year_level_min || cal.year_level_max) {
-                const lo = cal.year_level_min || '?';
-                const hi = (cal.year_level_max && cal.year_level_max != cal.year_level_min) ? ('-' + cal.year_level_max) : '';
-                parts.push('ปี ' + lo + hi);
+            const yl = Array.isArray(cal.year_levels) ? cal.year_levels : [];
+            if (yl.length) {
+                parts.push('ปี ' + yl.slice().sort((a, b) => a - b).join(', '));
             }
             return parts.join(' · ');
         },
@@ -306,7 +309,7 @@
                                     <td style="font-weight: 600; color: var(--fg-1);">{{ $year->name }}</td>
                                     <td style="font-size: 12px; color: var(--fg-2);">
                                         @php
-                                            $fallbackCal = $year->calendars->first(fn ($c) => is_null($c->curriculum_id) && is_null($c->year_level_min) && is_null($c->year_level_max));
+                                            $fallbackCal = $year->calendars->first(fn ($c) => is_null($c->curriculum_id) && empty($c->year_levels));
                                             $needsTerms = ! $fallbackCal || $fallbackCal->terms->isEmpty();
                                         @endphp
                                         @foreach($year->terms as $t)
@@ -625,7 +628,7 @@
                                 <div style="min-width:0;">
                                     <div style="display:flex;align-items:center;gap:8px;">
                                         <span style="font-weight:600;font-size:13px;color:var(--fg-1);" x-text="cal.name"></span>
-                                        <span x-show="!cal.curriculum_id && !cal.year_level_min" style="font-size:10px;font-weight:700;color:var(--brand-navy);background:var(--brand-navy-50);padding:2px 8px;border-radius:999px;">ค่าเริ่มต้น</span>
+                                        <span x-show="!cal.curriculum_id && (!cal.year_levels || cal.year_levels.length === 0)" style="font-size:10px;font-weight:700;color:var(--brand-navy);background:var(--brand-navy-50);padding:2px 8px;border-radius:999px;">ค่าเริ่มต้น</span>
                                     </div>
                                     <div style="font-size:11px;color:var(--fg-3);margin-top:3px;">
                                         <span x-text="calScopeLabel(cal)"></span> ·
@@ -688,25 +691,19 @@
                                     </template>
                                 </select>
                             </div>
-                            <div class="form-row" x-show="calCurriculumUsesYear()" x-cloak>
-                                <div class="form-group">
-                                    <label>ชั้นปีต่ำสุด</label>
-                                    <select name="year_level_min" x-model="currentCal.year_level_min">
-                                        <option value="">ทุกชั้นปี</option>
-                                        <template x-for="y in calYearLevels()" :key="y">
-                                            <option :value="y" x-text="'ปี ' + y"></option>
-                                        </template>
-                                    </select>
+                            <div class="form-group" x-show="calCurriculumUsesYear()" x-cloak>
+                                <label>ใช้กับชั้นปี <span style="font-weight:400;color:var(--fg-4);font-size:11px;">(ไม่ติ๊ก = ทุกชั้นปี)</span></label>
+                                {{-- ส่ง year_levels[] — hidden ว่างไว้กันกรณีไม่ติ๊กเลย (server มองเป็น null) --}}
+                                <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                                    <template x-for="y in calYearLevels()" :key="y">
+                                        <button type="button" @click="calToggleYear(y)"
+                                            :style="(currentCal.year_levels.includes(y) ? 'background:var(--brand-navy);color:#fff;border-color:var(--brand-navy);' : 'background:var(--surface);color:var(--fg-2);border-color:var(--border-strong);') + 'padding:7px 16px;border-width:1px;border-style:solid;border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;transition:all .12s ease;'"
+                                            x-text="'ปี ' + y"></button>
+                                    </template>
                                 </div>
-                                <div class="form-group">
-                                    <label>ชั้นปีสูงสุด</label>
-                                    <select name="year_level_max" x-model="currentCal.year_level_max">
-                                        <option value="">ทุกชั้นปี</option>
-                                        <template x-for="y in calYearLevels()" :key="y">
-                                            <option :value="y" x-text="'ปี ' + y"></option>
-                                        </template>
-                                    </select>
-                                </div>
+                                <template x-for="y in currentCal.year_levels" :key="'h'+y">
+                                    <input type="hidden" name="year_levels[]" :value="y">
+                                </template>
                             </div>
                             <div style="font-size:11px;color:var(--fg-4);margin-bottom:14px;">เว้นว่าง = ใช้กับทุกหลักสูตร/ทุกชั้นปี (ปฏิทินค่าเริ่มต้น) · ระบุหลักสูตร/ชั้นปีเพื่อให้กลุ่มนั้นใช้ปฏิทินนี้แทน</div>
                             @if($errors->has('calendar_terms'))

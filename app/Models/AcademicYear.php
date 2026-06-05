@@ -25,7 +25,7 @@ class AcademicYear extends Model
     public function fallbackCalendar(): AcademicCalendar
     {
         return $this->calendars()->firstOrCreate(
-            ['curriculum_id' => null, 'year_level_min' => null, 'year_level_max' => null],
+            ['curriculum_id' => null, 'year_levels' => null],
             ['name' => 'ทุกหลักสูตร']
         );
     }

@@ -22,8 +22,7 @@ return new class extends Migration
             $table->string('name', 100)->comment('ชื่อปฏิทิน เช่น "ป.ตรี ปี 1-2", "ป.โท"');
             $table->foreignId('curriculum_id')->nullable()->constrained('curriculums')->nullOnDelete()
                 ->comment('ขอบเขต: หลักสูตร (null = ทุกหลักสูตร)');
-            $table->unsignedTinyInteger('year_level_min')->nullable()->comment('ขอบเขตชั้นปีต่ำสุด (null = ไม่จำกัด)');
-            $table->unsignedTinyInteger('year_level_max')->nullable()->comment('ขอบเขตชั้นปีสูงสุด (null = ไม่จำกัด)');
+            $table->json('year_levels')->nullable()->comment('รายการชั้นปีที่ใช้ เช่น [3,4] — null/ว่าง = ทุกชั้นปี');
             $table->timestamps();
 
             $table->index(['academic_year_id', 'curriculum_id']);

@@ -294,13 +294,12 @@ class AdminSettingController extends Controller
         return $request->validate([
             'name'           => ['required', 'string', 'max:100'],
             'curriculum_id'  => ['nullable', \Illuminate\Validation\Rule::exists('curriculums', 'id')],
-            'year_level_min' => ['nullable', 'integer', 'min:1', 'max:12'],
-            'year_level_max' => ['nullable', 'integer', 'min:1', 'max:12', 'gte:year_level_min'],
+            'year_levels'    => ['nullable', 'array'],
+            'year_levels.*'  => ['integer', 'min:1', 'max:12'],
             'terms'          => ['required', 'array', 'min:1'],
         ], [
             'name.required'        => 'กรุณาตั้งชื่อปฏิทิน',
             'curriculum_id.exists' => 'ไม่พบหลักสูตรที่เลือก',
-            'year_level_max.gte'   => 'ชั้นปีสูงสุดต้องไม่น้อยกว่าชั้นปีต่ำสุด',
             'terms.required'       => 'ต้องระบุอย่างน้อย 1 ภาคการศึกษา',
         ]);
     }
@@ -318,8 +317,7 @@ class AdminSettingController extends Controller
             $calendar = $year->calendars()->create([
                 'name'           => $validated['name'],
                 'curriculum_id'  => $validated['curriculum_id'] ?? null,
-                'year_level_min' => $validated['year_level_min'] ?? null,
-                'year_level_max' => $validated['year_level_max'] ?? null,
+                'year_levels'    => ! empty($validated['year_levels']) ? array_values(array_map('intval', $validated['year_levels'])) : null,
             ]);
             $this->syncCalendarTerms($calendar, $request);
         });
@@ -354,8 +352,7 @@ class AdminSettingController extends Controller
             $calendar->update([
                 'name'           => $validated['name'],
                 'curriculum_id'  => $validated['curriculum_id'] ?? null,
-                'year_level_min' => $validated['year_level_min'] ?? null,
-                'year_level_max' => $validated['year_level_max'] ?? null,
+                'year_levels'    => ! empty($validated['year_levels']) ? array_values(array_map('intval', $validated['year_levels'])) : null,
             ]);
             $this->syncCalendarTerms($calendar, $request);
         });

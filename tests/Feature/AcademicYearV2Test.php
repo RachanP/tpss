@@ -67,7 +67,7 @@ class AcademicYearV2Test extends TestCase
         $year = AcademicYear::where('name', '2570')->firstOrFail();
         $this->assertNull($year->start_date);                       // ยังไม่มีเทอม → span ว่าง
         // มีปฏิทิน fallback (ทุกหลักสูตร — curriculum/ชั้นปี = null) สร้างให้อัตโนมัติ
-        $this->assertEquals(1, $year->calendars()->whereNull('curriculum_id')->whereNull('year_level_min')->count());
+        $this->assertEquals(1, $year->calendars()->whereNull('curriculum_id')->whereNull('year_levels')->count());
     }
 
     public function test_setting_default_calendar_terms_derives_year_span(): void
