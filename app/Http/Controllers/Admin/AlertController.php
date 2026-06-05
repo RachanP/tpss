@@ -181,6 +181,8 @@ class AlertController extends Controller
 
             $courseStaffCount = Course::doesntHave('assignedStaff')->count();
 
+            $deviationCount = \App\Support\CourseDeviationFinder::coursesWithDeviation()->count();
+
             $dismissed = self::getDismissedWarnings();
             $counts = [
                 'departments'  => in_array('departments',  $dismissed) ? 0 : $deptCount,
@@ -190,10 +192,11 @@ class AlertController extends Controller
             $warningCount = array_sum($counts);
 
             return array_merge($counts, [
-                'critical'  => $criticalCount,
-                'warnings'  => $warningCount,
-                'total'     => $criticalCount + $warningCount,
-                'dismissed' => $dismissed,
+                'critical'   => $criticalCount,
+                'warnings'   => $warningCount,
+                'deviations' => $deviationCount,
+                'total'      => $criticalCount + $warningCount,
+                'dismissed'  => $dismissed,
             ]);
         });
     }
