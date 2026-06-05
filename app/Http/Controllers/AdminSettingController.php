@@ -304,6 +304,35 @@ class AdminSettingController extends Controller
         ]);
     }
 
+    /** normalize ชั้นปีเป็น array int เรียง (null/ว่าง → []) เพื่อเทียบ scope */
+    private function normalizeYearLevels($levels): array
+    {
+        if (empty($levels)) {
+            return [];
+        }
+        $ints = array_map('intval', (array) $levels);
+        sort($ints);
+        return array_values(array_unique($ints));
+    }
+
+    /** มีปฏิทินอื่นในปีเดียวกันที่ scope (หลักสูตร + ชั้นปี) ซ้ำกันไหม */
+    private function calendarScopeConflict(AcademicYear $year, ?int $curriculumId, $yearLevels, ?int $exceptId = null): bool
+    {
+        $normalized = $this->normalizeYearLevels($yearLevels);
+
+        return $year->calendars()
+            ->when($exceptId, fn ($q) => $q->where('id', '!=', $exceptId))
+            ->get()
+            ->contains(fn ($cal) => (int) $cal->curriculum_id === (int) $curriculumId
+                && $this->normalizeYearLevels($cal->year_levels) === $normalized);
+    }
+
+    /** ข้อความ error เมื่อ scope ซ้ำ */
+    private function calendarScopeError(): array
+    {
+        return ['curriculum_id' => 'มีปฏิทินสำหรับหลักสูตร/ชั้นปีนี้อยู่แล้วในปีการศึกษานี้ — กรุณาแก้ปฏิทินเดิม หรือเลือกขอบเขตอื่น'];
+    }
+
     public function storeCalendar(Request $request, AcademicYear $year)
     {
         $this->normalizeTermDates($request);
@@ -311,6 +340,10 @@ class AdminSettingController extends Controller
 
         if ($termErrors = $this->termValidationErrors($request)) {
             return back()->withInput()->withErrors(['calendar_terms' => $termErrors]);
+        }
+
+        if ($this->calendarScopeConflict($year, $validated['curriculum_id'] ?? null, $validated['year_levels'] ?? null)) {
+            return back()->withInput()->withErrors($this->calendarScopeError());
         }
 
         DB::transaction(function () use ($year, $validated, $request) {
@@ -348,6 +381,10 @@ class AdminSettingController extends Controller
             return back()->withInput()->withErrors(['calendar_terms' => $termErrors]);
         }
 
+        if ($this->calendarScopeConflict($calendar->academicYear, $validated['curriculum_id'] ?? null, $validated['year_levels'] ?? null, $calendar->id)) {
+            return back()->withInput()->withErrors($this->calendarScopeError());
+        }
+
         DB::transaction(function () use ($calendar, $validated, $request) {
             $calendar->update([
                 'name'           => $validated['name'],
@@ -369,6 +406,51 @@ class AdminSettingController extends Controller
         }
 
         return back()->with('success', 'ลบปฏิทินการศึกษาเรียบร้อยแล้ว');
+    }
+
+    private function shiftDate($date, int $years): ?string
+    {
+        return $date ? Carbon::parse((string) $date)->addYears($years)->toDateString() : null;
+    }
+
+    /** คัดลอกปฏิทินทั้งชุดจากปีอื่น (เลื่อนวันที่ตามผลต่างปี) — ทับปฏิทินเดิมของปีนี้ */
+    public function copyCalendarsFromYear(Request $request, AcademicYear $year)
+    {
+        $validated = $request->validate([
+            'source_year_id' => ['required', \Illuminate\Validation\Rule::exists('academic_years', 'id'), 'different:current'],
+        ], ['source_year_id.required' => 'กรุณาเลือกปีการศึกษาต้นทาง']);
+
+        $source = AcademicYear::with('calendars.terms')->findOrFail($validated['source_year_id']);
+        if ($source->id === $year->id) {
+            return back()->with('error', 'เลือกปีต้นทางที่ต่างจากปีนี้');
+        }
+
+        $diff = (int) $year->name - (int) $source->name;
+
+        DB::transaction(function () use ($year, $source, $diff) {
+            $year->calendars()->delete(); // ทับของเดิม (cascades terms)
+            foreach ($source->calendars as $cal) {
+                $new = $year->calendars()->create([
+                    'name'          => $cal->name,
+                    'curriculum_id' => $cal->curriculum_id,
+                    'year_levels'   => $cal->year_levels,
+                ]);
+                foreach ($cal->terms as $t) {
+                    $new->terms()->create([
+                        'sequence'      => $t->sequence,
+                        'name'          => $t->name,
+                        'start_date'    => $this->shiftDate($t->start_date, $diff),
+                        'end_date'      => $this->shiftDate($t->end_date, $diff),
+                        'midterm_start' => $this->shiftDate($t->midterm_start, $diff),
+                        'midterm_end'   => $this->shiftDate($t->midterm_end, $diff),
+                        'final_start'   => $this->shiftDate($t->final_start, $diff),
+                        'final_end'     => $this->shiftDate($t->final_end, $diff),
+                    ]);
+                }
+            }
+        });
+
+        return $this->calendarSavedRedirect($year, "คัดลอกปฏิทินจากปี {$source->name} แล้ว (เลื่อนวันที่ {$diff} ปี — โปรดตรวจ/ปรับวันที่)");
     }
 
     private function hasOtherOpenSchedulingWindow(AcademicYear $year): bool

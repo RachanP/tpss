@@ -53,6 +53,7 @@
         },
         /* ── ปฏิทินการศึกษาตามกลุ่ม (V4 ข้อ 8) ── */
         calCurriculums: {{ Js::from($calendarCurriculums ?? []) }},
+        calYears: {{ Js::from(($academicYears ?? collect())->map(fn ($y) => ['id' => $y->id, 'name' => $y->name])->values()) }},
         showCalendarsModal: false,
         calYearId: '', calYearName: '', calList: [],
         showCalEditor: false,
@@ -82,6 +83,13 @@
             this.editCalMode = true;
             const terms = cal.terms || [];
             this.currentCal = { id: cal.id, name: cal.name || '', curriculum_id: cal.curriculum_id ? String(cal.curriculum_id) : '', year_levels: Array.isArray(cal.year_levels) ? cal.year_levels.map(Number) : [], hasSummer: terms.length >= 3, terms: this.calBuildTerms(terms) };
+            this.showCalEditor = true;
+        },
+        openDuplicateCalendar(cal) {
+            // คัดลอก = เปิดฟอร์มเป็น "ปฏิทินใหม่" เติมข้อมูลให้ (เทอม+scope) แล้วให้ปรับ scope/ชื่อก่อนบันทึก (ผ่าน validation)
+            this.editCalMode = false;
+            const terms = cal.terms || [];
+            this.currentCal = { id: '', name: ((cal.name || '') + ' (สำเนา)').slice(0, 100), curriculum_id: cal.curriculum_id ? String(cal.curriculum_id) : '', year_levels: Array.isArray(cal.year_levels) ? cal.year_levels.map(Number) : [], hasSummer: terms.length >= 3, terms: this.calBuildTerms(terms) };
             this.showCalEditor = true;
         },
         calCurriculumUsesYear() {
@@ -639,6 +647,9 @@
                                     <button type="button" class="action-btn" title="แก้ไข" @click="openEditCalendar(cal)">
                                         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                     </button>
+                                    <button type="button" class="action-btn" title="คัดลอกปฏิทินนี้ (เติมให้แล้วปรับ scope/วันที่)" @click="openDuplicateCalendar(cal)">
+                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                    </button>
                                     <form method="POST" :action="'{{ url($routePrefix . '/settings/calendars') }}/' + cal.id" style="margin:0;"
                                         @submit="return confirm('ลบปฏิทิน ' + cal.name + ' และเทอมทั้งหมดในปฏิทินนี้?')">
                                         @csrf
@@ -650,6 +661,23 @@
                                 </div>
                             </div>
                         </template>
+                        <div x-show="calYears.filter(y => String(y.id) !== String(calYearId)).length > 0" style="margin-top:14px;padding-top:14px;border-top:1px dashed var(--border);">
+                            <form method="POST" :action="'{{ url($routePrefix . '/settings/academic-years') }}/' + calYearId + '/calendars/copy'"
+                                @submit="return confirm('คัดลอกปฏิทินจากปีที่เลือก มาทับปฏิทินทั้งหมดของปีนี้?')"
+                                style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;">
+                                @csrf
+                                <div class="form-group" style="margin:0;flex:1;min-width:180px;">
+                                    <label style="font-size:12px;">คัดลอกปฏิทินจากปีอื่น <span style="color:var(--fg-4);font-weight:400;">(ทับของปีนี้ · เลื่อนวันที่อัตโนมัติ)</span></label>
+                                    <select name="source_year_id" required>
+                                        <option value="">— เลือกปีต้นทาง —</option>
+                                        <template x-for="y in calYears.filter(yy => String(yy.id) !== String(calYearId))" :key="y.id">
+                                            <option :value="y.id" x-text="y.name"></option>
+                                        </template>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-ghost" style="font-size:12px;white-space:nowrap;">คัดลอกมา</button>
+                            </form>
+                        </div>
                     </div>
                     <div class="modal-foot" style="display:flex;justify-content:space-between;">
                         <button type="button" class="btn btn-primary" @click="openAddCalendar()" style="font-size:13px;">+ เพิ่มปฏิทิน</button>
