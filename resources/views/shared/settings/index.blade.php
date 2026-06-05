@@ -594,11 +594,23 @@
                                         @click="showModal = false; $nextTick(() => openCalendars(currentYear))">จัดการปฏิทินการศึกษา →</button>
                                 </div>
                             </template>
-                            <div class="form-group" style="margin-top: 16px;">
-                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; color: var(--fg-1);">
-                                    <input type="checkbox" name="is_active" value="1" x-model="currentYear.is_active"
-                                        style="width: 16px; height: 16px; accent-color: var(--brand-navy);">
-                                    ตั้งเป็นปีการศึกษาปัจจุบัน (Active)
+                            <div class="form-group" style="margin-top: 18px;">
+                                <label
+                                    :style="(currentYear.is_active
+                                        ? 'border-color:var(--brand-navy);background:color-mix(in oklch,var(--brand-navy) 8%,var(--surface));box-shadow:0 1px 2px rgba(0,36,84,.1);'
+                                        : 'border-color:var(--border);background:var(--surface);')
+                                        + 'display:flex;align-items:center;gap:14px;cursor:pointer;border-width:1.5px;border-style:solid;border-radius:10px;padding:14px 16px;transition:all .15s ease;'">
+                                    <input type="checkbox" name="is_active" value="1" x-model="currentYear.is_active" style="display:none;">
+                                    <span :style="(currentYear.is_active ? 'background:var(--brand-navy);color:#fff;' : 'background:var(--bg-3);color:var(--fg-3);') + 'width:40px;height:40px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s ease;'">
+                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="m9 16 2 2 4-4"/></svg>
+                                    </span>
+                                    <div style="flex:1;min-width:0;">
+                                        <div style="font-weight:700;font-size:14px;color:var(--fg-1);">ตั้งเป็นปีการศึกษาปัจจุบัน</div>
+                                        <div style="font-size:12px;color:var(--fg-3);margin-top:2px;line-height:1.5;">ระบบจะใช้ปีนี้เป็นปีหลักในการจัดตาราง แจ้งเตือน และรายงาน · มีได้ปีเดียว</div>
+                                    </div>
+                                    <span :style="(currentYear.is_active ? 'background:var(--brand-navy);' : 'background:var(--border-strong,#cbd5e1);') + 'width:44px;height:25px;border-radius:999px;position:relative;flex-shrink:0;transition:background .15s ease;'">
+                                        <span :style="(currentYear.is_active ? 'left:22px;' : 'left:3px;') + 'position:absolute;top:3px;width:19px;height:19px;border-radius:50%;background:#fff;transition:left .15s ease;box-shadow:0 1px 2px rgba(0,0,0,.25);'"></span>
+                                    </span>
                                 </label>
                                 @error('is_active')
                                     <span style="color: var(--red, #dc2626); font-size: 12px; margin-top: 6px; display: block;">{{ $message }}</span>
