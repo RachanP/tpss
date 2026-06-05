@@ -137,6 +137,8 @@ Route::middleware(['auth', 'no-back'])->group(function () {
         Route::put('/admin/master-data/courses/{course}', 'App\Http\Controllers\Admin\MasterDataController@updateCourse')->name('admin.courses.update');
         Route::delete('/admin/master-data/courses/{course}', 'App\Http\Controllers\Admin\MasterDataController@destroyCourse')->name('admin.courses.destroy');
         Route::get('/admin/master-data/courses/{course}/instructor-deviation', 'App\Http\Controllers\Admin\MasterDataController@courseInstructorDeviation')->name('admin.courses.instructor_deviation');
+        Route::get('/admin/master-data/courses/{course}/topics', 'App\Http\Controllers\Admin\MasterDataController@courseTopics')->name('admin.courses.topics.index');
+        Route::post('/admin/master-data/courses/{course}/topics', 'App\Http\Controllers\Admin\MasterDataController@syncCourseTopics')->name('admin.courses.topics.sync');
         Route::post('/admin/master-data/curriculums', 'App\Http\Controllers\Admin\MasterDataController@storeCurriculum')->name('admin.curriculums.store');
         Route::put('/admin/master-data/curriculums/{curriculum}', 'App\Http\Controllers\Admin\MasterDataController@updateCurriculum')->name('admin.curriculums.update');
         Route::post('/admin/master-data/curriculums/{curriculum}/clone', 'App\Http\Controllers\Admin\MasterDataController@cloneCurriculum')->name('admin.curriculums.clone');
@@ -184,6 +186,8 @@ Route::middleware(['auth', 'no-back'])->group(function () {
         Route::put('/staff/master-data/courses/{course}', 'App\Http\Controllers\Staff\MasterDataController@updateCourse')->name('staff.courses.update');
         Route::delete('/staff/master-data/courses/{course}', 'App\Http\Controllers\Staff\MasterDataController@destroyCourse')->name('staff.courses.destroy');
         Route::get('/staff/master-data/courses/{course}/instructor-deviation', 'App\Http\Controllers\Staff\MasterDataController@courseInstructorDeviation')->name('staff.courses.instructor_deviation');
+        Route::get('/staff/master-data/courses/{course}/topics', 'App\Http\Controllers\Staff\MasterDataController@courseTopics')->name('staff.courses.topics.index');
+        Route::post('/staff/master-data/courses/{course}/topics', 'App\Http\Controllers\Staff\MasterDataController@syncCourseTopics')->name('staff.courses.topics.sync');
         Route::post('/staff/master-data/curriculums', 'App\Http\Controllers\Staff\MasterDataController@storeCurriculum')->name('staff.curriculums.store');
         Route::put('/staff/master-data/curriculums/{curriculum}', 'App\Http\Controllers\Staff\MasterDataController@updateCurriculum')->name('staff.curriculums.update');
         Route::post('/staff/master-data/curriculums/{curriculum}/clone', 'App\Http\Controllers\Staff\MasterDataController@cloneCurriculum')->name('staff.curriculums.clone');

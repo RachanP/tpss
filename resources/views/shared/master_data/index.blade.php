@@ -537,6 +537,25 @@
             this.showCourseModal = true;
             this.$nextTick(() => this.normalizeCourseFormSelects({ resetInvalidYear: false }));
         },
+        /* ── V4 ข้อ 1: หัวข้อกิจกรรมสำเร็จรูปต่อวิชา ── */
+        showTopicsModal: false,
+        topicsCourse: { route_key: '', course_code: '', name_th: '' },
+        topicsList: [],
+        openCourseTopics(course) {
+            this.topicsCourse = { route_key: course.course_code || '', course_code: course.course_code || '', name_th: course.name_th || '' };
+            this.topicsList = (course.topics || []).map(t => ({ name: t.name || '' }));
+            this.showTopicsModal = true;
+        },
+        addTopicRow() {
+            this.topicsList.push({ name: '' });
+            this.$nextTick(() => {
+                const inputs = document.querySelectorAll('[data-topic-input]');
+                if (inputs.length) inputs[inputs.length - 1].focus();
+            });
+        },
+        removeTopicRow(i) {
+            this.topicsList.splice(i, 1);
+        },
         selectCourseHead(user) {
             this.currentCourse.head_instructor_id = user.id;
             this.courseHeadSearch = user.formatted_name || user.name;
@@ -1708,6 +1727,22 @@
                                                     @endif
                                                 </a>
                                             @endif
+                                            @if($canManageMasterData)
+                                                <button class="action-btn" title="หัวข้อกิจกรรมสำเร็จรูป" data-testid="courses-topics-button"
+                                                    @click="openCourseTopics({{ Js::from($course) }})">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                        <line x1="8" y1="6" x2="21" y2="6" />
+                                                        <line x1="8" y1="12" x2="21" y2="12" />
+                                                        <line x1="8" y1="18" x2="21" y2="18" />
+                                                        <line x1="3" y1="6" x2="3.01" y2="6" />
+                                                        <line x1="3" y1="12" x2="3.01" y2="12" />
+                                                        <line x1="3" y1="18" x2="3.01" y2="18" />
+                                                    </svg>
+                                                    @if($course->topics->isNotEmpty())
+                                                        <span style="font-size:11px;font-weight:700;margin-left:2px;">{{ $course->topics->count() }}</span>
+                                                    @endif
+                                                </button>
+                                            @endif
                                             <button class="action-btn" title="แก้ไข" @click="openEditCourse({{ Js::from($course) }})">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                                     stroke-linecap="round" stroke-linejoin="round">
@@ -2789,6 +2824,51 @@
                     <form id="deleteCourseForm" :action="'{{ route($routePrefix . '.courses.destroy', '__COURSE__') }}'.replace('__COURSE__', encodeURIComponent(currentCourse.route_key))" method="POST" style="display: none;">
                         @csrf
                         @method('DELETE')
+                    </form>
+                </div>
+            </div>
+        </template>
+
+        {{-- ── V4 ข้อ 1: หัวข้อกิจกรรมสำเร็จรูปต่อวิชา ── --}}
+        <template x-if="showTopicsModal">
+            <div class="overlay" x-cloak @keydown.escape.window="showTopicsModal = false">
+                <div class="modal-center" style="max-width: 520px;"
+                    x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+                    <div class="modal-hdr" style="background: var(--bg-2);">
+                        <div class="modal-ttl" style="font-family: var(--font-display);">
+                            หน่วยการเรียนหรือกิจกรรม — <span x-text="topicsCourse.course_code"></span>
+                        </div>
+                        <button type="button" class="modal-cls" @click="showTopicsModal = false">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                        </button>
+                    </div>
+                    <form method="POST" :action="'{{ url($routePrefix . '/master-data/courses') }}/' + encodeURIComponent(topicsCourse.route_key) + '/topics'">
+                        @csrf
+                        <div class="modal-body">
+                            <div style="font-size:12px;color:var(--fg-3);line-height:1.6;margin-bottom:14px;">
+                                กรอกหัวข้อกิจกรรม/บทเรียนที่ใช้บ่อยของวิชา <strong x-text="topicsCourse.name_th"></strong> ไว้ล่วงหน้า — หัวหน้าวิชาจะกดเลือกได้เลยตอนจัดตาราง (ยังพิมพ์เองได้)
+                            </div>
+                            <template x-if="topicsList.length === 0">
+                                <div style="font-size:12px;color:var(--fg-3);padding:14px;text-align:center;background:var(--surface-sunken);border-radius:8px;">
+                                    ยังไม่มีหัวข้อ — กด "เพิ่มหัวข้อ" เพื่อเริ่ม
+                                </div>
+                            </template>
+                            <template x-for="(topic, i) in topicsList" :key="i">
+                                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                                    <span style="font-size:12px;color:var(--fg-4);width:20px;text-align:right;flex-shrink:0;" x-text="(i + 1) + '.'"></span>
+                                    <input type="text" :name="'topics[' + i + ']'" x-model="topic.name" data-topic-input
+                                        maxlength="255" placeholder="เช่น ปฐมนิเทศรายวิชา, การพยาบาลผู้ป่วยภาวะวิกฤต" style="flex:1;">
+                                    <button type="button" class="action-btn" title="ลบหัวข้อ" @click="removeTopicRow(i)" style="color:var(--status-conflict-fg);flex-shrink:0;">
+                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                    </button>
+                                </div>
+                            </template>
+                            <button type="button" class="btn btn-ghost" @click="addTopicRow()" style="font-size:13px;margin-top:6px;">+ เพิ่มหัวข้อ</button>
+                        </div>
+                        <div class="modal-foot">
+                            <button type="button" class="btn btn-ghost" @click="showTopicsModal = false">ยกเลิก</button>
+                            <button type="submit" class="btn btn-primary" data-testid="course-topics-submit">บันทึกหัวข้อ</button>
+                        </div>
                     </form>
                 </div>
             </div>
