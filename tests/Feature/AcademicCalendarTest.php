@@ -48,8 +48,7 @@ class AcademicCalendarTest extends TestCase
         $this->post(route('admin.settings.calendars.store', $year), [
             'name' => 'ป.ตรี ปี 3-4',
             'curriculum_id' => $curr->id,
-            'year_level_min' => 3,
-            'year_level_max' => 4,
+            'year_levels' => [3, 4],
             'terms' => $this->terms(),
         ])->assertSessionHasNoErrors();
 
@@ -57,7 +56,7 @@ class AcademicCalendarTest extends TestCase
         $this->assertNotNull($cal);
         $this->assertSame('ป.ตรี ปี 3-4', $cal->name);
         $this->assertSame($curr->id, $cal->curriculum_id);
-        $this->assertSame(3, $cal->year_level_min);
+        $this->assertSame([3, 4], $cal->year_levels);
         $this->assertEquals(2, $cal->terms()->count());
     }
 
@@ -69,7 +68,7 @@ class AcademicCalendarTest extends TestCase
         // fallback = ปฏิทินที่ curriculum/ชั้นปี = null (ทุกหลักสูตร) — สร้างอัตโนมัติ
         $fallback = $year->fallbackCalendar();
         $this->assertNull($fallback->curriculum_id);
-        $this->assertNull($fallback->year_level_min);
+        $this->assertNull($fallback->year_levels);
 
         // เรียกซ้ำได้ตัวเดิม (ไม่ซ้ำ)
         $this->assertSame($fallback->id, $year->fallbackCalendar()->id);

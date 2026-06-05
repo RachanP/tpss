@@ -18,15 +18,13 @@ class AcademicCalendar extends Model
         'academic_year_id',
         'name',
         'curriculum_id',
-        'year_level_min',
-        'year_level_max',
+        'year_levels',
     ];
 
     protected $casts = [
         'academic_year_id' => 'integer',
         'curriculum_id' => 'integer',
-        'year_level_min' => 'integer',
-        'year_level_max' => 'integer',
+        'year_levels' => 'array',
     ];
 
     public function academicYear(): BelongsTo

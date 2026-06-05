@@ -105,7 +105,7 @@ class AlertController extends Controller
         $activeYear = AcademicYear::where('is_active', true)->first();
         if ($activeYear) {
             $fallback = $activeYear->calendars()
-                ->whereNull('curriculum_id')->whereNull('year_level_min')->whereNull('year_level_max')->first();
+                ->whereNull('curriculum_id')->whereNull('year_levels')->first();
             if (!$fallback || $fallback->terms()->doesntExist()) {
                 $criticals[] = [
                     'key'     => 'active_year_missing_calendar_terms',
