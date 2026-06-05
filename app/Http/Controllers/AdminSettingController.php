@@ -70,7 +70,7 @@ class AdminSettingController extends Controller
      */
     private function createDefaultTerms(AcademicYear $year): void
     {
-        $calendar = $year->defaultCalendar();
+        $calendar = $year->fallbackCalendar();
         if ($calendar->terms()->exists()) {
             return;
         }
@@ -241,7 +241,7 @@ class AdminSettingController extends Controller
             return;
         }
 
-        $calendar = $year->defaultCalendar();
+        $calendar = $year->fallbackCalendar();
         $keptSeqs = [];
         foreach ($terms as $i => $t) {
             $seq = (int) ($t['sequence'] ?? ($i + 1));
@@ -320,7 +320,6 @@ class AdminSettingController extends Controller
                 'curriculum_id'  => $validated['curriculum_id'] ?? null,
                 'year_level_min' => $validated['year_level_min'] ?? null,
                 'year_level_max' => $validated['year_level_max'] ?? null,
-                'is_default'     => false,
             ]);
             $this->syncCalendarTerms($calendar, $request);
         });
@@ -352,15 +351,12 @@ class AdminSettingController extends Controller
         }
 
         DB::transaction(function () use ($calendar, $validated, $request) {
-            // ปฏิทินหลัก (is_default) แก้ได้เฉพาะเทอม — ไม่ผูกขอบเขตหลักสูตร/ชั้นปี
-            if (! $calendar->is_default) {
-                $calendar->update([
-                    'name'           => $validated['name'],
-                    'curriculum_id'  => $validated['curriculum_id'] ?? null,
-                    'year_level_min' => $validated['year_level_min'] ?? null,
-                    'year_level_max' => $validated['year_level_max'] ?? null,
-                ]);
-            }
+            $calendar->update([
+                'name'           => $validated['name'],
+                'curriculum_id'  => $validated['curriculum_id'] ?? null,
+                'year_level_min' => $validated['year_level_min'] ?? null,
+                'year_level_max' => $validated['year_level_max'] ?? null,
+            ]);
             $this->syncCalendarTerms($calendar, $request);
         });
 
@@ -369,10 +365,6 @@ class AdminSettingController extends Controller
 
     public function destroyCalendar(AcademicCalendar $calendar)
     {
-        if ($calendar->is_default) {
-            return back()->with('error', 'ไม่สามารถลบปฏิทินหลักของปีการศึกษาได้');
-        }
-
         $year = $calendar->academicYear;
         $calendar->delete(); // terms cascade
         if ($year) {
@@ -391,7 +383,7 @@ class AdminSettingController extends Controller
 
     public function index()
     {
-        $academicYears = AcademicYear::with(['terms', 'calendars' => fn ($q) => $q->orderByDesc('is_default')->orderBy('name'), 'calendars.terms', 'calendars.curriculum'])
+        $academicYears = AcademicYear::with(['terms', 'calendars' => fn ($q) => $q->orderBy('curriculum_id')->orderBy('name'), 'calendars.terms', 'calendars.curriculum'])
             ->orderBy('name', 'desc')->get();
         $calendarCurriculums = Curriculum::orderBy('education_level')->orderBy('name')
             ->get(['id', 'name', 'uses_year_level', 'duration_years']);
@@ -446,7 +438,7 @@ class AdminSettingController extends Controller
         }
 
         $year = AcademicYear::create($validated); // start/end = null จนกว่าจะตั้งเทอมในปฏิทิน
-        $year->defaultCalendar(); // สร้างปฏิทินหลักว่างไว้ให้กรอกเทอม
+        $year->fallbackCalendar(); // สร้างปฏิทินหลักว่างไว้ให้กรอกเทอม
 
         AuditLogger::log(
             action: 'ข้อมูลหลัก.สร้าง',

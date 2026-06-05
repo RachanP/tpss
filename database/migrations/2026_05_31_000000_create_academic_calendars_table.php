@@ -11,7 +11,7 @@ return new class extends Migration
      * 1 ปี มีได้หลายปฏิทิน เพื่อให้เปิด/ปิดเทอม + ช่วงสอบต่างกันตามหลักสูตร/ชั้นปี
      *  - curriculum_id = null → ใช้ได้ทุกหลักสูตร
      *  - year_level_min/max = null → ไม่จำกัดชั้นปี
-     *  - is_default = ปฏิทินหลัก (fallback) ของปีนั้น
+     *  - ปฏิทินที่ curriculum=null & ชั้นปี=null = ปฏิทิน "ทุกหลักสูตร" = fallback (ไม่ต้องมี flag แยก)
      * terms สังกัดปฏิทิน (ไม่ใช่สังกัดปีตรง ๆ อีกต่อไป)
      */
     public function up(): void
@@ -24,7 +24,6 @@ return new class extends Migration
                 ->comment('ขอบเขต: หลักสูตร (null = ทุกหลักสูตร)');
             $table->unsignedTinyInteger('year_level_min')->nullable()->comment('ขอบเขตชั้นปีต่ำสุด (null = ไม่จำกัด)');
             $table->unsignedTinyInteger('year_level_max')->nullable()->comment('ขอบเขตชั้นปีสูงสุด (null = ไม่จำกัด)');
-            $table->boolean('is_default')->default(false)->comment('ปฏิทินหลักของปี (ใช้เมื่อไม่มีปฏิทินเฉพาะกลุ่มที่ match)');
             $table->timestamps();
 
             $table->index(['academic_year_id', 'curriculum_id']);

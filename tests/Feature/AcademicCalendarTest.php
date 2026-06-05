@@ -53,7 +53,7 @@ class AcademicCalendarTest extends TestCase
             'terms' => $this->terms(),
         ])->assertSessionHasNoErrors();
 
-        $cal = AcademicCalendar::where('academic_year_id', $year->id)->where('is_default', false)->first();
+        $cal = AcademicCalendar::where('academic_year_id', $year->id)->whereNotNull('curriculum_id')->first();
         $this->assertNotNull($cal);
         $this->assertSame('ป.ตรี ปี 3-4', $cal->name);
         $this->assertSame($curr->id, $cal->curriculum_id);
@@ -61,23 +61,25 @@ class AcademicCalendarTest extends TestCase
         $this->assertEquals(2, $cal->terms()->count());
     }
 
-    public function test_default_calendar_cannot_be_deleted(): void
+    public function test_fallback_calendar_is_catch_all_and_auto_created(): void
     {
         $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
         $year = $this->year();
-        $default = $year->defaultCalendar();
 
-        $this->delete(route('admin.settings.calendars.destroy', $default))
-            ->assertSessionHas('error');
+        // fallback = ปฏิทินที่ curriculum/ชั้นปี = null (ทุกหลักสูตร) — สร้างอัตโนมัติ
+        $fallback = $year->fallbackCalendar();
+        $this->assertNull($fallback->curriculum_id);
+        $this->assertNull($fallback->year_level_min);
 
-        $this->assertDatabaseHas('academic_calendars', ['id' => $default->id]);
+        // เรียกซ้ำได้ตัวเดิม (ไม่ซ้ำ)
+        $this->assertSame($fallback->id, $year->fallbackCalendar()->id);
     }
 
     public function test_group_calendar_can_be_deleted_with_terms(): void
     {
         $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
         $year = $this->year();
-        $cal = $year->calendars()->create(['name' => 'ป.โท', 'is_default' => false]);
+        $cal = $year->calendars()->create(['name' => 'ป.โท', 'curriculum_id' => null]);
         $cal->terms()->create(['sequence' => 1, 'name' => 'เทอม 1', 'start_date' => '2026-08-01', 'end_date' => '2026-12-01']);
 
         $this->delete(route('admin.settings.calendars.destroy', $cal))->assertSessionHasNoErrors();

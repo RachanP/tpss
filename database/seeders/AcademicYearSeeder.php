@@ -46,7 +46,7 @@ class AcademicYearSeeder extends Seeder
             $year = AcademicYear::updateOrCreate(['name' => $yearData['name']], $yearData);
 
             // V4: terms สังกัด "ปฏิทินหลัก" ของปี (default calendar)
-            $calendar = $year->defaultCalendar();
+            $calendar = $year->fallbackCalendar();
             foreach ($terms as $termData) {
                 $calendar->terms()->updateOrCreate(
                     ['sequence' => $termData['sequence']],

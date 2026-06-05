@@ -20,7 +20,6 @@ class AcademicCalendar extends Model
         'curriculum_id',
         'year_level_min',
         'year_level_max',
-        'is_default',
     ];
 
     protected $casts = [
@@ -28,7 +27,6 @@ class AcademicCalendar extends Model
         'curriculum_id' => 'integer',
         'year_level_min' => 'integer',
         'year_level_max' => 'integer',
-        'is_default' => 'boolean',
     ];
 
     public function academicYear(): BelongsTo
