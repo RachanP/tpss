@@ -579,7 +579,7 @@ class AuditLogIntegrationTest extends TestCase
         $this->assertDatabaseCount('audit_logs', 0);
     }
 
-    public function test_admin_update_pa_percentages_creates_user_edit_audit_log(): void
+    public function test_admin_user_update_ignores_pa_percentage_inputs(): void
     {
         $user = $this->makeInstructorForAdminUpdate([
             'teaching_pct' => 50,
@@ -596,11 +596,10 @@ class AuditLogIntegrationTest extends TestCase
             ]))
             ->assertRedirect();
 
-        $log = $this->latestLog(self::USER_EDIT_ACTION, 'users');
-        $this->assertSame(50, $log->old_values['teaching_pct']);
-        $this->assertSame(45, $log->new_values['teaching_pct']);
-        $this->assertSame(20, $log->old_values['research_pct']);
-        $this->assertSame(25, $log->new_values['research_pct']);
+        $profile = $user->fresh('instructorProfile')->instructorProfile;
+        $this->assertSame(50, (int) $profile->teaching_pct);
+        $this->assertSame(20, (int) $profile->research_pct);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_admin_update_profile_identity_fields_creates_user_edit_audit_log(): void
@@ -612,6 +611,10 @@ class AuditLogIntegrationTest extends TestCase
             'department_id' => $oldDepartment->id,
             'academic_degree' => 'ปริญญาโท',
         ]);
+        UserRole::updateOrCreate(
+            ['user_id' => $user->id, 'role' => 'course_head'],
+            ['is_primary' => false],
+        );
 
         $this->actingAsAdmin()
             ->put(route('admin.users.update', $user), $this->adminInstructorUpdatePayload($user, [
@@ -639,13 +642,16 @@ class AuditLogIntegrationTest extends TestCase
 
         $this->actingAsAdmin()
             ->put(route('admin.users.update', $user), $this->adminInstructorUpdatePayload($user, [
-                'instructor_department_position' => 'head',
+                'roles' => ['executive'],
+                'primary_role' => 'executive',
+                'instructor_department_id' => $department->id,
             ]))
             ->assertRedirect();
 
         $log = $this->latestLog(self::USER_EDIT_ACTION, 'users');
         $this->assertNull($log->old_values['department_position']);
         $this->assertSame('head', $log->new_values['department_position']);
+        $this->assertSame($user->id, $department->fresh()->head_user_id);
     }
 
     public function test_admin_password_only_update_creates_password_audit_only(): void
@@ -694,7 +700,7 @@ class AuditLogIntegrationTest extends TestCase
         $this->assertNoSensitivePasswordFields($passwordLog->new_values);
     }
 
-    public function test_admin_profile_validation_failure_does_not_create_audit_log(): void
+    public function test_admin_pa_percentage_inputs_do_not_validate_or_create_audit_log(): void
     {
         $user = $this->makeInstructorForAdminUpdate();
 
@@ -702,7 +708,7 @@ class AuditLogIntegrationTest extends TestCase
             ->put(route('admin.users.update', $user), $this->adminInstructorUpdatePayload($user, [
                 'instructor_teaching_pct' => 40,
             ]))
-            ->assertSessionHasErrors('instructor_teaching_pct');
+            ->assertRedirect();
 
         $this->assertDatabaseCount('audit_logs', 0);
     }

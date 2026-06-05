@@ -61,7 +61,7 @@ class RoleSwitchTest extends TestCase
         $response->assertRedirect('/dashboard');
         $this->assertEquals('instructor', session('active_role'));
 
-        $this->get('/dashboard')->assertRedirect(route('dashboard.coming_soon'));
+        $this->get('/dashboard')->assertRedirect(route('lecturer.dashboard'));
     }
 
     public function test_user_cannot_switch_to_unauthorized_role(): void
@@ -97,7 +97,7 @@ class RoleSwitchTest extends TestCase
         $this->get('/dashboard')->assertRedirect(route('staff.settings'));
 
         $this->withSession(['active_role' => 'instructor']);
-        $this->get('/dashboard')->assertRedirect(route('dashboard.coming_soon'));
+        $this->get('/dashboard')->assertRedirect(route('lecturer.dashboard'));
 
         UserRole::create([
             'user_id' => $this->user->id,

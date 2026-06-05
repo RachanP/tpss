@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class AdminUserController extends Controller
 {
@@ -50,10 +51,14 @@ class AdminUserController extends Controller
     {
         $this->normalizeThaiDateInput($request, 'instructor_hired_at');
 
-        $roles        = $request->input('roles', []);
-        $isInstructor = in_array('instructor', $roles);
-        $needsDept    = $isInstructor || in_array('course_head', $roles);
-        $needsProfile = $needsDept || in_array('executive', $roles);
+        $roles        = $this->normalizeRoles($request->input('roles', []));
+        $request->merge(['roles' => $roles]);
+        $isInstructor = in_array('instructor', $roles, true);
+        $isCourseHead = in_array('course_head', $roles, true);
+        $isExecutive  = in_array('executive', $roles, true);
+        $canUseDepartment = $isCourseHead || $isExecutive;
+        $needsProfile = $isInstructor || $canUseDepartment;
+        $needsDept    = $needsProfile;
 
         $reqTitle  = $needsProfile ? 'required' : 'nullable';
         $reqDept   = $needsDept    ? 'required' : 'nullable';
@@ -76,12 +81,6 @@ class AdminUserController extends Controller
             'instructor_academic_degree' => "$reqDegree|string|max:100",
             'instructor_employment_type' => "$reqEmpl|string|max:100",
             'instructor_hired_at'        => $this->strictThaiDateRules($reqEmpl),
-            'instructor_teaching_pct'    => "$reqEmpl|integer|min:0|max:100",
-            'instructor_research_pct'    => "$reqEmpl|integer|min:0|max:100",
-            'instructor_service_pct'     => "$reqEmpl|integer|min:0|max:100",
-            'instructor_culture_pct'     => "$reqEmpl|integer|min:0|max:100",
-            'instructor_other_pct'       => "$reqEmpl|integer|min:0|max:100",
-            'instructor_teaching_quota'  => 'nullable|integer|min:0',
             'instructor_is_english_passed' => 'nullable|boolean',
             'instructor_department_position' => 'nullable|string|in:head,secretary',
         ], [
@@ -97,14 +96,7 @@ class AdminUserController extends Controller
             'roles.required'      => 'กรุณาเลือกสิทธิ์อย่างน้อย 1 บทบาท',
         ]);
 
-        if ($isInstructor) {
-            $totalPct = (int)$request->instructor_teaching_pct + (int)$request->instructor_research_pct + (int)$request->instructor_service_pct + (int)$request->instructor_culture_pct + (int)$request->instructor_other_pct;
-            if ($totalPct !== 100) {
-                return back()->withErrors([
-                    'instructor_teaching_pct' => "สัดส่วนภาระงานรวมต้องเท่ากับ 100% (ปัจจุบัน {$totalPct}%)"
-                ])->withInput();
-            }
-        }
+        $this->validateDepartmentRoleSync($validated, $roles);
 
         $createdUser = null;
         DB::transaction(function () use ($validated, $request, $needsProfile, $isInstructor, &$createdUser) {
@@ -132,35 +124,25 @@ class AdminUserController extends Controller
                 $profileData = [
                     'user_id'         => $user->id,
                     'title'           => $validated['instructor_title'] ?? null,
-                    'department_id'   => $validated['instructor_department_id'] ?? null,
                     'academic_degree' => $validated['instructor_academic_degree'] ?? null,
+                    'teaching_pct'    => 0,
+                    'research_pct'    => 0,
+                    'service_pct'     => 0,
+                    'culture_pct'     => 0,
+                    'other_pct'       => 0,
+                    'teaching_quota'  => 0,
                 ];
                 if ($isInstructor) {
                     $profileData += [
                         'employment_type'   => $validated['instructor_employment_type'] ?? null,
                         'hired_at'          => $validated['instructor_hired_at'] ?? null,
-                        'teaching_pct'      => $validated['instructor_teaching_pct'] ?? 0,
-                        'research_pct'      => $validated['instructor_research_pct'] ?? 0,
-                        'service_pct'       => $validated['instructor_service_pct'] ?? 0,
-                        'culture_pct'       => $validated['instructor_culture_pct'] ?? 0,
-                        'other_pct'         => $validated['instructor_other_pct'] ?? 0,
-                        'teaching_quota'    => $validated['instructor_teaching_quota'] ?? 0,
                         'is_english_passed' => $request->boolean('instructor_is_english_passed'),
                     ];
                 }
+                $profileData['department_id'] = $validated['instructor_department_id'] ?? null;
                 InstructorProfile::create($profileData);
 
-                // Handle department positions — clear old holder first, then assign new
-                if ($request->filled('instructor_department_position') && $request->filled('instructor_department_id')) {
-                    $deptId = $validated['instructor_department_id'];
-                    if ($validated['instructor_department_position'] === 'head') {
-                        Department::where('head_user_id', $user->id)->update(['head_user_id' => null]);
-                        Department::where('id', $deptId)->update(['head_user_id' => $user->id]);
-                    } else if ($validated['instructor_department_position'] === 'secretary') {
-                        Department::where('secretary_user_id', $user->id)->update(['secretary_user_id' => null]);
-                        Department::where('id', $deptId)->update(['secretary_user_id' => $user->id]);
-                    }
-                }
+                $this->syncDepartmentHeadFromRoles($user, $validated['roles'], $validated['instructor_department_id'] ?? null);
             }
         });
 
@@ -191,10 +173,14 @@ class AdminUserController extends Controller
     {
         $this->normalizeThaiDateInput($request, 'instructor_hired_at');
 
-        $roles        = $request->input('roles', []);
-        $isInstructor = in_array('instructor', $roles);
-        $needsDept    = $isInstructor || in_array('course_head', $roles);
-        $needsProfile = $needsDept || in_array('executive', $roles);
+        $roles        = $this->normalizeRoles($request->input('roles', []));
+        $request->merge(['roles' => $roles]);
+        $isInstructor = in_array('instructor', $roles, true);
+        $isCourseHead = in_array('course_head', $roles, true);
+        $isExecutive  = in_array('executive', $roles, true);
+        $canUseDepartment = $isCourseHead || $isExecutive;
+        $needsProfile = $isInstructor || $canUseDepartment;
+        $needsDept    = $needsProfile;
 
         $reqTitle  = $needsProfile ? 'required' : 'nullable';
         $reqDept   = $needsDept    ? 'required' : 'nullable';
@@ -217,12 +203,6 @@ class AdminUserController extends Controller
             'instructor_academic_degree' => "$reqDegree|string|max:100",
             'instructor_employment_type' => "$reqEmpl|string|max:100",
             'instructor_hired_at'        => $this->strictThaiDateRules($reqEmpl),
-            'instructor_teaching_pct'    => "$reqEmpl|integer|min:0|max:100",
-            'instructor_research_pct'    => "$reqEmpl|integer|min:0|max:100",
-            'instructor_service_pct'     => "$reqEmpl|integer|min:0|max:100",
-            'instructor_culture_pct'     => "$reqEmpl|integer|min:0|max:100",
-            'instructor_other_pct'       => "$reqEmpl|integer|min:0|max:100",
-            'instructor_teaching_quota'  => 'nullable|integer|min:0',
             'instructor_is_english_passed' => 'nullable|boolean',
             'instructor_department_position' => 'nullable|string|in:head,secretary',
         ], [
@@ -237,14 +217,7 @@ class AdminUserController extends Controller
             'roles.required'      => 'กรุณาเลือกสิทธิ์อย่างน้อย 1 บทบาท',
         ]);
 
-        if ($isInstructor) {
-            $totalPct = (int)$request->instructor_teaching_pct + (int)$request->instructor_research_pct + (int)$request->instructor_service_pct + (int)$request->instructor_culture_pct + (int)$request->instructor_other_pct;
-            if ($totalPct !== 100) {
-                return back()->withErrors([
-                    'instructor_teaching_pct' => "สัดส่วนภาระงานรวมต้องเท่ากับ 100% (ปัจจุบัน {$totalPct}%)"
-                ])->withInput();
-            }
-        }
+        $this->validateDepartmentRoleSync($validated, $roles, $user);
 
         $passwordChanged = $request->filled('password')
             && !Hash::check($request->input('password'), $user->password);
@@ -284,36 +257,34 @@ class AdminUserController extends Controller
             if ($needsProfile) {
                 $profileData = [
                     'title'           => $validated['instructor_title'] ?? null,
-                    'department_id'   => $validated['instructor_department_id'] ?? null,
                     'academic_degree' => $validated['instructor_academic_degree'] ?? null,
                 ];
                 if ($isInstructor) {
                     $profileData += [
                         'employment_type'   => $validated['instructor_employment_type'] ?? null,
                         'hired_at'          => $validated['instructor_hired_at'] ?? null,
-                        'teaching_pct'      => $validated['instructor_teaching_pct'] ?? 0,
-                        'research_pct'      => $validated['instructor_research_pct'] ?? 0,
-                        'service_pct'       => $validated['instructor_service_pct'] ?? 0,
-                        'culture_pct'       => $validated['instructor_culture_pct'] ?? 0,
-                        'other_pct'         => $validated['instructor_other_pct'] ?? 0,
-                        'teaching_quota'    => $validated['instructor_teaching_quota'] ?? 0,
                         'is_english_passed' => $request->boolean('instructor_is_english_passed'),
                     ];
                 }
-                InstructorProfile::updateOrCreate(['user_id' => $user->id], $profileData);
-
-                // Handle department positions (clear old positions first)
-                Department::where('head_user_id', $user->id)->update(['head_user_id' => null]);
-                Department::where('secretary_user_id', $user->id)->update(['secretary_user_id' => null]);
-
-                if ($request->filled('instructor_department_position') && $request->filled('instructor_department_id')) {
-                    if ($validated['instructor_department_position'] === 'head') {
-                        Department::where('id', $validated['instructor_department_id'])->update(['head_user_id' => $user->id]);
-                    } else if ($validated['instructor_department_position'] === 'secretary') {
-                        Department::where('id', $validated['instructor_department_id'])->update(['secretary_user_id' => $user->id]);
-                    }
+                $profileData['department_id'] = $validated['instructor_department_id'] ?? null;
+                $profile = InstructorProfile::firstOrNew(['user_id' => $user->id]);
+                $isNewProfile = ! $profile->exists;
+                $profile->fill($profileData);
+                if ($isNewProfile) {
+                    $profile->fill([
+                        'teaching_pct' => 0,
+                        'research_pct' => 0,
+                        'service_pct' => 0,
+                        'culture_pct' => 0,
+                        'other_pct' => 0,
+                        'teaching_quota' => 0,
+                    ]);
                 }
+                $profile->save();
+
+                $this->syncDepartmentHeadFromRoles($user, $validated['roles'], $validated['instructor_department_id'] ?? null);
             } else {
+                Department::where('head_user_id', $user->id)->update(['head_user_id' => null]);
                 // Remove profile when neither instructor nor course_head
                 InstructorProfile::where('user_id', $user->id)->delete();
             }
@@ -435,8 +406,6 @@ class AdminUserController extends Controller
         $departments     = Department::pluck('id', 'name')->toArray();
         $validRoles      = ['admin', 'staff', 'course_head', 'executive', 'instructor'];
         $updateOnDup     = $request->boolean('update_on_duplicate');
-        $paCriteria      = json_decode(\App\Models\SystemSetting::get('pa_criteria_config', '{}'), true);
-
         $successCount = 0;
         $createdCount = 0;
         $updatedCount = 0;
@@ -464,7 +433,7 @@ class AdminUserController extends Controller
                 continue;
             }
 
-            $roles = array_values(array_filter(array_map('trim', explode('|', $rolesStr))));
+            $roles = $this->normalizeRoles(array_values(array_filter(array_map('trim', explode('|', $rolesStr)))));
             $invalid = array_diff($roles, $validRoles);
             if ($invalid) {
                 $errors[] = "แถว {$row}: role ไม่ถูกต้อง: " . implode(', ', $invalid);
@@ -475,9 +444,12 @@ class AdminUserController extends Controller
                 continue;
             }
 
-            $isInstructor = in_array('instructor', $roles);
-            $needsDept    = $isInstructor || in_array('course_head', $roles);
-            $needsProfile = $needsDept || in_array('executive', $roles);
+            $isInstructor = in_array('instructor', $roles, true);
+            $isCourseHead = in_array('course_head', $roles, true);
+            $isExecutive  = in_array('executive', $roles, true);
+            $canUseDepartment = $isCourseHead || $isExecutive;
+            $needsProfile = $isInstructor || $canUseDepartment;
+            $needsDept    = $needsProfile;
 
             if ($needsProfile) {
                 $missingFields = [];
@@ -500,17 +472,6 @@ class AdminUserController extends Controller
                         $errors[] = "แถว {$row}: hired_date ไม่ถูกต้อง กรุณาใช้รูปแบบ YYYY-MM-DD, วว/ดด/พ.ศ., วว-ดด-พ.ศ. หรือเลข 8 หลัก";
                         continue;
                     }
-
-                    $t = max(0, min(100, (int)(trim($csv['teaching_pct'] ?? '0') ?: '0')));
-                    $r = max(0, min(100, (int)(trim($csv['research_pct'] ?? '0') ?: '0')));
-                    $s = max(0, min(100, (int)(trim($csv['service_pct'] ?? '0') ?: '0')));
-                    $c = max(0, min(100, (int)(trim($csv['culture_pct'] ?? '0') ?: '0')));
-                    $o = max(0, min(100, (int)(trim($csv['other_pct'] ?? '0') ?: '0')));
-                    $total = $t + $r + $s + $c + $o;
-                    if ($total !== 100) {
-                        $errors[] = "แถว {$row}: สัดส่วนภาระงานรวมของอาจารย์ต้องเท่ากับ 100% (ปัจจุบัน {$total}%)";
-                        continue;
-                    }
                 }
             }
 
@@ -527,8 +488,8 @@ class AdminUserController extends Controller
 
             try {
                 $isUpdate = (bool) $existing;
-                DB::transaction(function () use ($csv, $username, $email, $name, $roles, $primaryRole, $departments, $existing, $password, &$warnings, $paCriteria, $row, $isInstructor, $needsProfile) {
-                    $profileData = $this->buildProfileData($csv, $departments, $isInstructor);
+                DB::transaction(function () use ($csv, $username, $email, $name, $roles, $primaryRole, $departments, $existing, $password, $isInstructor, $needsProfile) {
+                    $profileData = $this->buildProfileData($csv, $departments, $isInstructor, $needsProfile);
 
                     if ($existing) {
                         // Update: name, prefix, employee_id, roles, profile — no password change
@@ -548,17 +509,23 @@ class AdminUserController extends Controller
                         }
 
                         if ($needsProfile && $profileData !== null) {
-                            $profile = InstructorProfile::updateOrCreate(
-                                ['user_id' => $existing->id],
-                                $profileData
-                            );
-                            if ($isInstructor) {
-                                $profileWarnings = $profile->getProfileWarnings($paCriteria);
-                                if (!empty($profileWarnings)) {
-                                    $warnings[] = "แถว {$row} ({$name}): " . implode(', ', $profileWarnings);
-                                }
+                            $profile = InstructorProfile::firstOrNew(['user_id' => $existing->id]);
+                            $isNewProfile = ! $profile->exists;
+                            $profile->fill($profileData);
+                            if ($isNewProfile) {
+                                $profile->fill([
+                                    'teaching_pct' => 0,
+                                    'research_pct' => 0,
+                                    'service_pct' => 0,
+                                    'culture_pct' => 0,
+                                    'other_pct' => 0,
+                                    'teaching_quota' => 0,
+                                ]);
                             }
+                            $profile->save();
+                            $this->syncDepartmentHeadFromRoles($existing, $roles, $profileData['department_id'] ?? null);
                         } else {
+                            Department::where('head_user_id', $existing->id)->update(['head_user_id' => null]);
                             InstructorProfile::where('user_id', $existing->id)->delete();
                         }
                     } else {
@@ -581,13 +548,19 @@ class AdminUserController extends Controller
                         }
 
                         if ($needsProfile && $profileData !== null) {
-                            $profile = InstructorProfile::create(array_merge(['user_id' => $user->id], $profileData));
-                            if ($isInstructor) {
-                                $profileWarnings = $profile->getProfileWarnings($paCriteria);
-                                if (!empty($profileWarnings)) {
-                                    $warnings[] = "แถว {$row} ({$name}): " . implode(', ', $profileWarnings);
-                                }
-                            }
+                            InstructorProfile::create(array_merge(
+                                ['user_id' => $user->id],
+                                $profileData,
+                                [
+                                    'teaching_pct' => 0,
+                                    'research_pct' => 0,
+                                    'service_pct' => 0,
+                                    'culture_pct' => 0,
+                                    'other_pct' => 0,
+                                    'teaching_quota' => 0,
+                                ]
+                            ));
+                            $this->syncDepartmentHeadFromRoles($user, $roles, $profileData['department_id'] ?? null);
                         }
                     }
                 });
@@ -638,7 +611,7 @@ class AdminUserController extends Controller
         return $redirect;
     }
 
-    private function buildProfileData(array $csv, array $departments, bool $isInstructor = false): ?array
+    private function buildProfileData(array $csv, array $departments, bool $isInstructor = false, bool $needsDepartment = false): ?array
     {
         $title    = trim($csv['title'] ?? '');
         $deptName = trim($csv['department_name'] ?? '');
@@ -649,7 +622,7 @@ class AdminUserController extends Controller
         }
 
         $deptId = null;
-        if ($deptName) {
+        if ($needsDepartment && $deptName) {
             $deptId = $departments[$deptName] ?? null;
             if (!$deptId) {
                 foreach ($departments as $dbName => $id) {
@@ -663,21 +636,17 @@ class AdminUserController extends Controller
 
         $profile = [
             'title'           => $title ?: null,
-            'department_id'   => $deptId,
             'academic_degree' => trim($csv['academic_degree'] ?? '') ?: null,
         ];
+        if ($needsDepartment) {
+            $profile['department_id'] = $deptId;
+        }
 
         if ($isInstructor) {
             $parsedHiredAt = $hiredAt ? ThaiDate::parseToIso($hiredAt) : null;
             $profile += [
                 'employment_type' => trim($csv['employment_type'] ?? '') ?: null,
                 'hired_at'        => $parsedHiredAt,
-                'teaching_pct'    => max(0, min(100, (int)(trim($csv['teaching_pct'] ?? '0') ?: '0'))),
-                'research_pct'    => max(0, min(100, (int)(trim($csv['research_pct'] ?? '0') ?: '0'))),
-                'service_pct'     => max(0, min(100, (int)(trim($csv['service_pct'] ?? '0') ?: '0'))),
-                'culture_pct'     => max(0, min(100, (int)(trim($csv['culture_pct'] ?? '0') ?: '0'))),
-                'other_pct'       => max(0, min(100, (int)(trim($csv['other_pct'] ?? '0') ?: '0'))),
-                'teaching_quota'  => 0,
             ];
         }
 
@@ -687,6 +656,66 @@ class AdminUserController extends Controller
     public function settings()
     {
         return view('admin.settings');
+    }
+
+    private function normalizeRoles(array $roles): array
+    {
+        $roles = array_values(array_unique(array_filter(array_map('strval', $roles))));
+
+        if ((in_array('executive', $roles, true) || in_array('course_head', $roles, true))
+            && ! in_array('instructor', $roles, true)) {
+            $roles[] = 'instructor';
+        }
+
+        return $roles;
+    }
+
+    private function validateDepartmentRoleSync(array $validated, array $roles, ?User $user = null): void
+    {
+        if (! in_array('executive', $roles, true)) {
+            return;
+        }
+
+        $departmentId = $validated['instructor_department_id'] ?? null;
+        if (! $departmentId) {
+            return;
+        }
+
+        $headUserId = Department::whereKey($departmentId)->value('head_user_id');
+        if ($headUserId && (! $user || (int) $headUserId !== (int) $user->id)) {
+            throw ValidationException::withMessages([
+                'instructor_department_id' => 'ภาควิชานี้มีหัวหน้าภาควิชาอยู่แล้ว กรุณาถอดตำแหน่งเดิมก่อนบันทึกคนใหม่',
+            ]);
+        }
+    }
+
+    private function syncDepartmentHeadFromRoles(User $user, array $roles, mixed $departmentId): void
+    {
+        if (! in_array('executive', $roles, true)) {
+            Department::where('head_user_id', $user->id)->update(['head_user_id' => null]);
+            return;
+        }
+
+        if (! $departmentId) {
+            return;
+        }
+
+        $department = Department::whereKey((int) $departmentId)->lockForUpdate()->first();
+        if (! $department) {
+            return;
+        }
+
+        if ($department->head_user_id && (int) $department->head_user_id !== (int) $user->id) {
+            throw ValidationException::withMessages([
+                'instructor_department_id' => 'ภาควิชานี้มีหัวหน้าภาควิชาอยู่แล้ว กรุณาถอดตำแหน่งเดิมก่อนบันทึกคนใหม่',
+            ]);
+        }
+
+        Department::where('head_user_id', $user->id)
+            ->where('id', '!=', $department->id)
+            ->update(['head_user_id' => null]);
+
+        $department->update(['head_user_id' => $user->id]);
     }
 
     private function buildUserAuditSnapshot(User $user): array

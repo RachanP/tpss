@@ -21,6 +21,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class MasterDataController extends Controller
 {
@@ -477,8 +478,6 @@ class MasterDataController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:departments,name',
-            'head_user_id' => 'nullable|exists:users,id',
-            'secretary_user_id' => 'nullable|exists:users,id',
         ]);
 
         $department = Department::create($validated);
@@ -496,21 +495,15 @@ class MasterDataController extends Controller
     {
         $validated = $request->validate([
             'name'             => 'required|string|max:255|unique:departments,name,' . $department->id,
-            'head_user_id'     => 'nullable|exists:users,id',
             'secretary_user_id'=> 'nullable|exists:users,id',
         ]);
+        $this->validateDepartmentSecretary($validated['secretary_user_id'] ?? null, $department);
 
-        $newHeadId = $validated['head_user_id'] ?? null;
         $newSecId  = $validated['secretary_user_id'] ?? null;
         $forceOverride = $request->boolean('force_position_override');
 
-        // If override confirmed by user, release positions from other depts first
+        // If override confirmed by user, release secretary role from other depts first
         if ($forceOverride) {
-            if ($newHeadId) {
-                Department::where('id', '!=', $department->id)
-                    ->where('head_user_id', $newHeadId)
-                    ->update(['head_user_id' => null]);
-            }
             if ($newSecId) {
                 Department::where('id', '!=', $department->id)
                     ->where('secretary_user_id', $newSecId)
@@ -534,6 +527,24 @@ class MasterDataController extends Controller
         );
         AlertController::flushCache();
         return redirect()->back()->with('success', 'อัปเดตภาควิชาเรียบร้อยแล้ว');
+    }
+
+    private function validateDepartmentSecretary(mixed $secretaryUserId, Department $department): void
+    {
+        if (! $secretaryUserId) {
+            return;
+        }
+
+        $secretary = User::with(['instructorProfile', 'roles'])->find($secretaryUserId);
+        $hasInstructorRole = $secretary?->roles
+            ? $secretary->roles->pluck('role')->intersect(['instructor', 'course_head'])->isNotEmpty()
+            : false;
+
+        if (! $secretary?->instructorProfile || ! $hasInstructorRole || (int) $secretary->instructorProfile->department_id !== (int) $department->id) {
+            throw ValidationException::withMessages([
+                'secretary_user_id' => 'เลขานุการภาควิชาต้องเป็นอาจารย์ที่อยู่ในภาควิชานี้เท่านั้น',
+            ]);
+        }
     }
 
     public function updateInstructor(Request $request, $id)

@@ -6,6 +6,7 @@ use App\Models\ActivityType;
 use App\Models\Course;
 use App\Models\Curriculum;
 use App\Models\Department;
+use App\Models\InstructorProfile;
 use App\Models\LocationType;
 use App\Models\Room;
 use App\Models\User;
@@ -144,24 +145,55 @@ class MasterDataRedirectTest extends TestCase
         $response->assertRedirect(route('admin.master_data', ['tab' => 'activity_types']));
     }
 
-    public function test_admin_can_confirm_same_person_as_department_head_and_secretary(): void
+    public function test_admin_can_confirm_course_head_as_department_secretary(): void
     {
         $admin = $this->makeUser('admin');
-        $instructor = $this->makeUser('instructor');
         $department = Department::create(['name' => 'ภาควิชาทดสอบ']);
+        $courseHead = $this->makeUser('course_head');
+        InstructorProfile::create([
+            'user_id' => $courseHead->id,
+            'title' => 'อาจารย์',
+            'department_id' => $department->id,
+            'academic_degree' => 'ปริญญาโท',
+        ]);
 
         $this->actingAs($admin)->withSession(['active_role' => 'admin']);
 
         $this->put(route('admin.departments.update', $department), [
             'name' => $department->name,
-            'head_user_id' => $instructor->id,
-            'secretary_user_id' => $instructor->id,
+            'secretary_user_id' => $courseHead->id,
             'force_position_override' => '1',
         ])->assertRedirect();
 
         $department->refresh();
-        $this->assertSame($instructor->id, $department->head_user_id);
-        $this->assertSame($instructor->id, $department->secretary_user_id);
+        $this->assertNull($department->head_user_id);
+        $this->assertSame($courseHead->id, $department->secretary_user_id);
+    }
+
+    public function test_department_secretary_must_belong_to_department(): void
+    {
+        $admin = $this->makeUser('admin');
+        $department = Department::create(['name' => 'ภาควิชาเป้าหมาย']);
+        $otherDepartment = Department::create(['name' => 'ภาควิชาอื่น']);
+        $instructor = $this->makeUser('instructor');
+        InstructorProfile::create([
+            'user_id' => $instructor->id,
+            'title' => 'อาจารย์',
+            'department_id' => $otherDepartment->id,
+            'academic_degree' => 'ปริญญาโท',
+        ]);
+
+        $this->actingAs($admin)->withSession(['active_role' => 'admin']);
+
+        $this->from(route('admin.master_data', ['tab' => 'departments']))
+            ->put(route('admin.departments.update', $department), [
+                'name' => $department->name,
+                'secretary_user_id' => $instructor->id,
+            ])
+            ->assertRedirect(route('admin.master_data', ['tab' => 'departments']))
+            ->assertSessionHasErrors('secretary_user_id');
+
+        $this->assertNull($department->fresh()->secretary_user_id);
     }
 
     // ── Course composite unique ───────────────────────────────────────

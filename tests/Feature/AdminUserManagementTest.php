@@ -7,6 +7,7 @@ use App\Models\InstructorProfile;
 use App\Models\User;
 use App\Models\UserRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
@@ -92,6 +93,11 @@ class AdminUserManagementTest extends TestCase
         $this->assertDatabaseHas('users', ['username' => 'newuser']);
         $this->assertDatabaseHas('user_roles', ['role' => 'staff', 'is_primary' => true]);
         $this->assertDatabaseHas('user_roles', ['role' => 'instructor', 'is_primary' => false]);
+        $user = User::where('username', 'newuser')->firstOrFail();
+        $this->assertDatabaseHas('instructor_profiles', [
+            'user_id' => $user->id,
+            'department_id' => $department->id,
+        ]);
     }
 
     public function test_admin_user_instructor_hired_date_accepts_thai_buddhist_input(): void
@@ -283,21 +289,110 @@ class AdminUserManagementTest extends TestCase
 
     // ===== Validation =====
 
-    public function test_instructor_percentages_must_total_100(): void
+    public function test_admin_can_create_instructor_without_pa_percentages(): void
     {
         $dept = Department::create(['name' => 'Dept A']);
         $this->actingAs($this->admin);
 
-        $response = $this->post('/admin/users', $this->validInstructorPayload($dept, [
-            'instructor_teaching_pct' => 50,
-            'instructor_research_pct' => 20,
-            'instructor_service_pct' => 10,
-            'instructor_culture_pct' => 10,
-            'instructor_other_pct' => 5, // total 95
+        $payload = $this->validInstructorPayload($dept);
+        unset(
+            $payload['instructor_teaching_pct'],
+            $payload['instructor_research_pct'],
+            $payload['instructor_service_pct'],
+            $payload['instructor_culture_pct'],
+            $payload['instructor_other_pct']
+        );
+
+        $response = $this->post('/admin/users', $payload);
+
+        $response->assertRedirect('/admin/users');
+        $user = User::where('username', 'inst1')->firstOrFail();
+        $this->assertDatabaseHas('instructor_profiles', [
+            'user_id' => $user->id,
+            'department_id' => $dept->id,
+            'teaching_pct' => 0,
+            'research_pct' => 0,
+            'service_pct' => 0,
+            'culture_pct' => 0,
+            'other_pct' => 0,
+        ]);
+    }
+
+    public function test_instructor_department_is_required(): void
+    {
+        $dept = Department::create(['name' => 'Required Instructor Dept']);
+        $this->actingAs($this->admin);
+
+        $payload = $this->validInstructorPayload($dept, [
+            'username' => 'missing-dept-inst',
+            'email' => 'missing-dept-inst@example.com',
+        ]);
+        unset($payload['instructor_department_id']);
+
+        $response = $this->post('/admin/users', $payload);
+
+        $response->assertSessionHasErrors('instructor_department_id');
+        $this->assertDatabaseMissing('users', ['username' => 'missing-dept-inst']);
+    }
+
+    public function test_admin_can_update_instructor_department(): void
+    {
+        $oldDept = Department::create(['name' => 'Old Instructor Dept']);
+        $newDept = Department::create(['name' => 'New Instructor Dept']);
+        $user = $this->makeInstructorWithProfile($oldDept);
+
+        $this->actingAs($this->admin);
+
+        $response = $this->put("/admin/users/{$user->id}", $this->validInstructorUpdatePayload($user, [
+            'instructor_department_id' => $newDept->id,
         ]));
 
-        $response->assertSessionHasErrors('instructor_teaching_pct');
-        $this->assertDatabaseMissing('users', ['username' => 'inst1']);
+        $response->assertRedirect('/admin/users');
+        $this->assertDatabaseHas('instructor_profiles', [
+            'user_id' => $user->id,
+            'department_id' => $newDept->id,
+        ]);
+    }
+
+    public function test_imported_instructor_is_assigned_department(): void
+    {
+        $dept = Department::create(['name' => 'CSV Instructor Dept']);
+        $this->actingAs($this->admin);
+
+        $csv = implode("\n", [
+            'username,email,name,password,roles,primary_role,employee_id,title,academic_degree,department_name,employment_type,hired_date',
+            'csv_inst,csv-inst@example.com,CSV Instructor,password123,instructor,instructor,EMP-CSV-1,Instructor,Master,CSV Instructor Dept,Full-time,2026-01-01',
+            '',
+        ]);
+
+        $response = $this->post(route('admin.users.import'), [
+            'csv_file' => $this->csvFile($csv),
+        ]);
+
+        $response->assertRedirect('/admin/users');
+        $user = User::where('username', 'csv_inst')->firstOrFail();
+        $this->assertDatabaseHas('instructor_profiles', [
+            'user_id' => $user->id,
+            'department_id' => $dept->id,
+        ]);
+    }
+
+    public function test_imported_instructor_requires_department_name(): void
+    {
+        $this->actingAs($this->admin);
+
+        $csv = implode("\n", [
+            'username,email,name,password,roles,primary_role,employee_id,title,academic_degree,department_name,employment_type,hired_date',
+            'csv_missing_dept,csv-missing-dept@example.com,CSV Missing Dept,password123,instructor,instructor,EMP-CSV-2,Instructor,Master,,Full-time,2026-01-01',
+            '',
+        ]);
+
+        $response = $this->post(route('admin.users.import'), [
+            'csv_file' => $this->csvFile($csv),
+        ]);
+
+        $response->assertSessionHas('import_errors');
+        $this->assertDatabaseMissing('users', ['username' => 'csv_missing_dept']);
     }
 
     public function test_primary_role_must_be_in_roles_list(): void
@@ -471,7 +566,7 @@ class AdminUserManagementTest extends TestCase
 
     // ===== Department position handoff =====
 
-    public function test_assigning_new_head_clears_previous_holder(): void
+    public function test_assigning_new_head_is_blocked_when_department_already_has_head(): void
     {
         $dept = Department::create(['name' => 'Handoff Dept']);
         $oldHead = $this->makeUser('oldhead', 'instructor');
@@ -481,12 +576,52 @@ class AdminUserManagementTest extends TestCase
         $response = $this->post('/admin/users', $this->validInstructorPayload($dept, [
             'username' => 'newhead',
             'email' => 'newhead@example.com',
-            'instructor_department_position' => 'head',
+            'roles' => ['instructor', 'executive'],
+        ]));
+
+        $response->assertSessionHasErrors('instructor_department_id');
+        $this->assertSame($oldHead->id, $dept->fresh()->head_user_id);
+        $this->assertDatabaseMissing('users', ['username' => 'newhead']);
+    }
+
+    public function test_course_head_department_syncs_profile_without_setting_department_head(): void
+    {
+        $dept = Department::create(['name' => 'Course Head Dept']);
+        $this->actingAs($this->admin);
+
+        $response = $this->post('/admin/users', $this->validInstructorPayload($dept, [
+            'username' => 'course-head-user',
+            'email' => 'course-head-user@example.com',
+            'roles' => ['course_head'],
+            'primary_role' => 'course_head',
         ]));
 
         $response->assertRedirect('/admin/users');
-        $newHead = User::where('username', 'newhead')->first();
+        $user = User::where('username', 'course-head-user')->firstOrFail();
+        $this->assertDatabaseHas('instructor_profiles', [
+            'user_id' => $user->id,
+            'department_id' => $dept->id,
+        ]);
+        $this->assertDatabaseHas('user_roles', ['user_id' => $user->id, 'role' => 'instructor']);
+        $this->assertNull($dept->fresh()->head_user_id);
+    }
+
+    public function test_executive_can_be_assigned_department_head(): void
+    {
+        $dept = Department::create(['name' => 'Executive Head Dept']);
+        $this->actingAs($this->admin);
+
+        $response = $this->post('/admin/users', $this->validInstructorPayload($dept, [
+            'username' => 'executive-head',
+            'email' => 'executive-head@example.com',
+            'roles' => ['executive'],
+            'primary_role' => 'executive',
+        ]));
+
+        $response->assertRedirect('/admin/users');
+        $newHead = User::where('username', 'executive-head')->firstOrFail();
         $this->assertSame($newHead->id, $dept->fresh()->head_user_id);
+        $this->assertDatabaseHas('user_roles', ['user_id' => $newHead->id, 'role' => 'instructor']);
     }
 
     // ===== Toggle status =====
@@ -620,5 +755,13 @@ class AdminUserManagementTest extends TestCase
             'instructor_teaching_quota' => $profile->teaching_quota,
             'instructor_is_english_passed' => $profile->is_english_passed ? 1 : 0,
         ], $overrides);
+    }
+
+    private function csvFile(string $content, string $name = 'import.csv'): UploadedFile
+    {
+        $tmp = tempnam(sys_get_temp_dir(), 'admin-users-csv');
+        file_put_contents($tmp, $content);
+
+        return new UploadedFile($tmp, $name, 'text/csv', null, true);
     }
 }

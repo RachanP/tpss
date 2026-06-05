@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\CourseHead\CourseOfferingController;
 use App\Http\Controllers\CourseHead\ConflictBadgeStatusController;
 use App\Http\Controllers\CourseHead\ScheduleController;
+use App\Http\Controllers\Instructor\PaController;
 use Illuminate\Support\Facades\Route;
 
 // ── Root redirect ──────────────────────────────────────────────────
@@ -37,6 +38,7 @@ Route::middleware(['auth', 'no-back'])->group(function () {
     Route::get('/maker/dashboard',    [DashboardController::class, 'maker'])   ->name('maker.dashboard')   ->middleware('\App\Http\Middleware\CheckRole:course_head');
     Route::get('/approver/dashboard', [DashboardController::class, 'approver'])->name('approver.dashboard')->middleware('\App\Http\Middleware\CheckRole:executive');
     Route::get('/lecturer/dashboard', [DashboardController::class, 'lecturer'])->name('lecturer.dashboard')->middleware('\App\Http\Middleware\CheckRole:instructor');
+    Route::put('/lecturer/dashboard/pa', [PaController::class, 'update'])->name('lecturer.pa.update')->middleware('\App\Http\Middleware\CheckRole:instructor');
 
     // V2 delegation: งานจัดตาราง (workspace/alerts/slot CRUD) เปิดให้หัวหน้าวิชา + อาจารย์ที่ถูกมอบหมาย + เจ้าหน้าที่ที่ดูแลวิชา
     // access จริงต่อ offering กรองด้วย CourseOffering::scopeSchedulableBy / canBeScheduledBy

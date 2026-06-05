@@ -73,6 +73,11 @@ class User extends Authenticatable
             ->withPivot('is_lead');
     }
 
+    public function paAllocations(): HasMany
+    {
+        return $this->hasMany(InstructorPaAllocation::class);
+    }
+
     public function headOfDepartments()
     {
         return $this->hasMany(Department::class, 'head_user_id');

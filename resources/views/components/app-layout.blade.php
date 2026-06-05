@@ -595,7 +595,9 @@
 
                     const minLeft = clipLeft + margin - controlRect.left;
                     const maxLeft = clipRight - margin - controlRect.left - popWidth;
-                    const left = Math.round(Math.max(minLeft, Math.min(0, maxLeft)));
+                    const inUsersModal = !!control.closest('.users-modal-body');
+                    const preferredLeft = inUsersModal ? (controlRect.width - popWidth) : 0;
+                    const left = Math.round(Math.max(minLeft, Math.min(preferredLeft, maxLeft)));
 
                     this.tdiPopStyle = `top: calc(100% + 8px); bottom: auto; left: ${left}px; right: auto;`;
                 },
@@ -1294,12 +1296,38 @@
                         if (menu.hidden) return;
 
                         var rect = positionAnchor().getBoundingClientRect();
+                        var modalBody = trigger.closest('.modal-body, .users-modal-body');
+                        var boundary = modalBody ? modalBody.getBoundingClientRect() : {
+                            top: 12,
+                            bottom: window.innerHeight - 12
+                        };
+                        var gutter = 6;
+                        var minHeight = 96;
+                        var desiredHeight = Math.min(menu.scrollHeight || 280, 280);
+                        var belowSpace = Math.max(0, boundary.bottom - rect.bottom - gutter);
+                        var aboveSpace = Math.max(0, rect.top - boundary.top - gutter);
+                        var openUp = belowSpace < desiredHeight && aboveSpace > belowSpace;
+                        var available = openUp ? aboveSpace : belowSpace;
+                        var menuHeight = Math.min(desiredHeight, Math.max(minHeight, available));
+
+                        if (modalBody) {
+                            menu.style.position = 'absolute';
+                            menu.style.left = '0';
+                            menu.style.top = openUp ? 'auto' : (rect.height + gutter) + 'px';
+                            menu.style.bottom = openUp ? (rect.height + gutter) + 'px' : 'auto';
+                            menu.style.width = '100%';
+                            menu.style.maxHeight = menuHeight + 'px';
+                            return;
+                        }
+
                         menu.style.position = 'fixed';
                         menu.style.left = rect.left + 'px';
-                        menu.style.top = (rect.bottom + 6) + 'px';
+                        menu.style.top = openUp
+                            ? Math.max(boundary.top + gutter, rect.top - menuHeight - gutter) + 'px'
+                            : (rect.bottom + gutter) + 'px';
                         menu.style.bottom = 'auto';
                         menu.style.width = rect.width + 'px';
-                        menu.style.maxHeight = Math.max(140, window.innerHeight - rect.bottom - 18) + 'px';
+                        menu.style.maxHeight = menuHeight + 'px';
                     };
 
                     var sync = function() {

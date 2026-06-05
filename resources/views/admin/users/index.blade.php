@@ -2,7 +2,7 @@
     <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('userManagement', () => ({
-                showModal: {{ $errors->hasAny(['username','email','employee_id','password','name','roles','primary_role','instructor_title','instructor_department_id','instructor_employment_type','instructor_hired_at','instructor_academic_degree','instructor_teaching_pct']) ? 'true' : 'false' }},
+                showModal: {{ $errors->hasAny(['username','email','employee_id','password','name','roles','primary_role','instructor_title','instructor_department_id','instructor_employment_type','instructor_hired_at','instructor_academic_degree','instructor_department_position']) ? 'true' : 'false' }},
                 hasServerError: {{ $errors->any() ? 'true' : 'false' }},
                 showImportModal: false,
                 editMode: {{ old('editing_user_id') ? 'true' : 'false' }},
@@ -177,9 +177,54 @@
                 get hasInstructor() {
                     return this.currentUser.roles.includes('instructor');
                 },
+                get hasExecutive() {
+                    return this.currentUser.roles.includes('executive');
+                },
+                get hasCourseHead() {
+                    return this.currentUser.roles.includes('course_head');
+                },
                 get needsDept() {
-                    return this.currentUser.roles.includes('instructor')
-                        || this.currentUser.roles.includes('course_head');
+                    return this.hasInstructor || this.hasExecutive || this.hasCourseHead;
+                },
+                get showDepartmentPicker() {
+                    return this.needsDept;
+                },
+                get needsDepartmentSelection() {
+                    return this.needsDept;
+                },
+                get showDepartmentPosition() {
+                    return false;
+                },
+                toggleRole(role) {
+                    if (role === 'instructor' && this.currentUser.roles.includes('instructor') && (this.hasExecutive || this.hasCourseHead)) {
+                        return;
+                    }
+
+                    if (this.currentUser.roles.includes(role)) {
+                        if (this.currentUser.roles.length > 1 || this.currentUser.primary_role !== role) {
+                            this.currentUser.roles = this.currentUser.roles.filter(r => r !== role);
+                            if (this.currentUser.primary_role === role) {
+                                this.currentUser.primary_role = this.currentUser.roles[0] || '';
+                            }
+                        }
+                    } else {
+                        this.currentUser.roles.push(role);
+                        if (!this.currentUser.primary_role) this.currentUser.primary_role = role;
+                    }
+
+                    if ((role === 'executive' || role === 'course_head')
+                        && this.currentUser.roles.includes(role)
+                        && !this.currentUser.roles.includes('instructor')) {
+                        this.currentUser.roles.push('instructor');
+                    }
+
+                    this.currentUser.roles = [...new Set(this.currentUser.roles)];
+
+                    if (!this.needsDept) {
+                        this.instructorProfile.department_id = '';
+                        this.instructorProfile.department_position = '';
+                    }
+                    this.refreshModalSelects();
                 },
                 isOutOfRange(value, rule) {
                     if (!rule || rule === '-') return false;
@@ -314,6 +359,7 @@
                     
                     const deptId = String(this.instructorProfile.department_id);
                     const pos = this.instructorProfile.department_position;
+                    if (pos !== 'head') return null;
                     
                     const dept = this.departmentsData.find(d => String(d.id) === deptId);
                     if (!dept) return null;
@@ -331,75 +377,20 @@
                 },
                 confirmSave(e) {
                     this.errorMsg = '';
-                    if (this.hasInstructor) { // PA validation only applies to instructor role
-                        const outOfRange =
-                            this.isOutOfRange(this.instructorProfile.teaching_pct, this.paRules.t) ||
-                            this.isOutOfRange(this.instructorProfile.research_pct, this.paRules.r) ||
-                            this.isOutOfRange(this.instructorProfile.service_pct, this.paRules.s) ||
-                            this.isOutOfRange(this.instructorProfile.culture_pct, this.paRules.c) ||
-                            this.isOutOfRange(this.instructorProfile.other_pct, this.paRules.o);
-
-                        if (outOfRange) {
-                            this.errorMsg = `กรุณาระบุสัดส่วนภาระงานแต่ละด้านให้อยู่ในช่วงที่กำหนดตามเกณฑ์ตำแหน่ง`;
-                            const modalBody = document.querySelector('.modal-body');
-                            if(modalBody) modalBody.scrollTo({ top: 0, behavior: 'smooth' });
-                            e.preventDefault();
-                            return false;
-                        }
-
-                        if (this.paTotal !== 100) {
-                            this.errorMsg = `สัดส่วนภาระงานรวมต้องเท่ากับ 100% (ปัจจุบันรวมได้ ${this.paTotal}%)`;
-                            const modalBody = document.querySelector('.modal-body');
-                            if(modalBody) modalBody.scrollTo({ top: 0, behavior: 'smooth' });
-                            e.preventDefault();
-                            return false;
-                        }
+                    if (this.instructorProfile.department_position === 'head' && !this.hasExecutive) {
+                        this.errorMsg = 'ตำแหน่งหัวหน้าภาควิชาต้องกำหนดให้ผู้ใช้ที่มี role ผู้บริหารเท่านั้น';
+                        const modalBody = document.querySelector('.modal-body');
+                        if (modalBody) modalBody.scrollTo({ top: 0, behavior: 'smooth' });
+                        e.preventDefault();
+                        return false;
                     }
                     
                     const conflict = this.getConflictInfo();
                     if (conflict) {
                         e.preventDefault();
-                        var form = e.target;
-                        var posLabel = conflict.posLabel;
-                        var name = conflict.name;
-
-                        var innerHtml = '<div style="text-align:center;">'
-                            + '<div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#fffbeb,#fef3c7);'
-                            + 'border:2px solid #fcd34d;display:flex;align-items:center;justify-content:center;'
-                            + 'margin:0 auto 16px;box-shadow:0 4px 16px rgba(217,119,6,0.15);">'
-                            + '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#d97706" stroke-width="2" '
-                            + 'stroke-linecap="round" stroke-linejoin="round">'
-                            + '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>'
-                            + '<line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>'
-                            + '<div style="font-family:Kanit,sans-serif;font-size:19px;font-weight:700;color:#0f172a;line-height:1.2;">'
-                            + 'ตำแหน่งนี้มีผู้ดำรงอยู่แล้ว</div>'
-                            + '<div style="font-size:13px;color:#94a3b8;margin-top:4px;">กรุณาตรวจสอบก่อนดำเนินการ</div>'
-                            + '<div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:10px;padding:14px 16px;margin-top:14px;text-align:left;">'
-                            + '<div style="font-size:12.5px;color:#92400e;line-height:1.7;">'
-                            + 'ตำแหน่ง <strong>' + posLabel + '</strong> ของภาควิชานี้ มีคนครองอยู่แล้วคือ<br>'
-                            + '<strong style="font-size:14px;color:#78350f;">' + name + '</strong>'
-                            + '</div>'
-                            + '<div style="font-size:12px;color:#b45309;margin-top:8px;padding-top:8px;border-top:1px solid #fde68a;">'
-                            + 'หากบันทึก ระบบจะถอดถอนท่านเดิมและแต่งตั้งท่านนี้แทนโดยอัตโนมัติ'
-                            + '</div></div></div>';
-
-                        Swal.fire({
-                            html: innerHtml,
-                            showCancelButton: true,
-                            confirmButtonText: 'ดำเนินการต่อ',
-                            cancelButtonText: 'ยกเลิก',
-                            reverseButtons: true,
-                            focusCancel: true,
-                            buttonsStyling: false,
-                            customClass: {
-                                popup:         'tpss-delete-popup',
-                                confirmButton: 'tpss-warn-confirm',
-                                cancelButton:  'tpss-delete-cancel',
-                                actions:       'tpss-delete-actions',
-                            }
-                        }).then(function(result) {
-                            if (result.isConfirmed) form.submit();
-                        });
+                        this.errorMsg = `${conflict.posLabel} ของภาควิชานี้มีผู้ดำรงอยู่แล้ว: ${conflict.name} กรุณาถอดตำแหน่งเดิมก่อนบันทึกคนใหม่`;
+                        const modalBody = document.querySelector('.modal-body');
+                        if (modalBody) modalBody.scrollTo({ top: 0, behavior: 'smooth' });
                         return false;
                     }
                     return true;
@@ -751,10 +742,10 @@
 
         <!-- Add/Edit Modal -->
         <!-- ใช้ x-show (ไม่ใช่ x-if) เพื่อให้ select อยู่ใน DOM ตั้งแต่โหลด → global tpssInitChoices() แปลงเป็น custom dropdown ได้ (แพทเทิร์นเดียวกับ schedule modal) -->
-        <div class="overlay" x-show="showModal" x-cloak>
+        <div class="overlay users-modal-overlay" x-show="showModal" x-cloak>
                 <div class="modal-center users-modal" x-transition:enter="transition ease-out duration-300"
                     x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
-                    <div class="modal-hdr" style="background: var(--bg-2);">
+                    <div class="modal-hdr users-modal-hdr" style="background: var(--bg-2);">
                         <div class="modal-ttl" style="font-family: var(--font-display); letter-spacing: -0.01em;"
                             x-text="editMode ? 'แก้ไขข้อมูลผู้ใช้งาน' : 'เพิ่มผู้ใช้งานใหม่'"></div>
                         <button type="button" class="modal-cls" @click="showModal = false">
@@ -867,15 +858,7 @@
                                     @foreach(['admin' => 'ผู้ดูแลระบบ', 'staff' => 'เจ้าหน้าที่', 'course_head' => 'หัวหน้าวิชา', 'executive' => 'ผู้บริหาร', 'instructor' => 'อาจารย์ผู้สอน'] as $val => $label)
                                         <div class="role-card"
                                             :class="{ 'is-selected': currentUser.roles.includes('{{ $val }}'), 'is-primary': currentUser.primary_role === '{{ $val }}' }"
-                                            @click='if(currentUser.roles.includes("{{ $val }}")) { 
-                                                                             if(currentUser.roles.length > 1 || currentUser.primary_role !== "{{ $val }}") {
-                                                                                 currentUser.roles = currentUser.roles.filter(r => r !== "{{ $val }}"); 
-                                                                                 if(currentUser.primary_role === "{{ $val }}") currentUser.primary_role = currentUser.roles[0] || ""; 
-                                                                             }
-                                                                          } else { 
-                                                                             currentUser.roles.push("{{ $val }}"); 
-                                                                             if(!currentUser.primary_role) currentUser.primary_role = "{{ $val }}"; 
-                                                                          }'>
+                                            @click='toggleRole("{{ $val }}")'>
 
                                             <div class="role-check">
                                                 <svg x-show='currentUser.roles.includes("{{ $val }}")' viewBox="0 0 24 24"
@@ -932,7 +915,7 @@
                                         ข้อมูลโปรไฟล์คณาจารย์
                                     </div>
 
-                                    <div class="form-row">
+                                    <div class="form-row users-profile-main-row">
                                         <div class="form-group">
                                             <label>ตำแหน่งทางวิชาการ <span style="color: #ef4444;">*</span></label>
                                             <select name="instructor_title" class="tpss-custom-select" x-model="instructorProfile.title" required>
@@ -947,44 +930,45 @@
                                                 <option value="ผู้ช่วยอาจารย์ (สอนภาคปฏิบัติ)">ผู้ช่วยอาจารย์ (สอนภาคปฏิบัติ)</option>
                                             </select>
                                         </div>
-                                        <!-- ภาควิชา: แสดงเฉพาะ instructor และ course_head -->
-                                        <div class="form-group" x-show="needsDept">
-                                            <label>ภาควิชา / หน่วยงาน <span style="color: #ef4444;" x-show="needsDept">*</span></label>
+                                        <div class="form-group users-degree-field">
+                                            <label style="font-weight: 700;">วุฒิการศึกษาสูงสุด <span style="color: #ef4444;">*</span></label>
+                                            <select name="instructor_academic_degree" class="tpss-custom-select" x-model="instructorProfile.academic_degree" required>
+                                                <option value="" disabled>-- เลือกวุฒิการศึกษา --</option>
+                                                <option value="ปริญญาเอก">ปริญญาเอก</option>
+                                                <option value="ปริญญาโท">ปริญญาโท</option>
+                                                <option value="ปริญญาตรี">ปริญญาตรี</option>
+                                            </select>
+                                        </div>
+                                        <!-- ภาควิชา: ใช้กับ instructor/course_head และเมื่อกำหนดตำแหน่งบริหาร -->
+                                        <div class="form-group" x-show="showDepartmentPicker">
+                                            <label>ภาควิชา / หน่วยงาน <span style="color: #ef4444;" x-show="needsDepartmentSelection">*</span></label>
                                             <select name="instructor_department_id"
                                                 class="tpss-custom-select"
                                                 x-model="instructorProfile.department_id"
-                                                :required="needsDept">
+                                                :required="needsDepartmentSelection">
                                                 <option value="">-- เลือกภาควิชา --</option>
                                                 @foreach($departments as $dept)
                                                     <option value="{{ $dept->id }}">{{ $dept->name }}</option>
                                                 @endforeach
                                             </select>
+                                            <p style="font-size: 11px; color: var(--fg-3); margin-top: 4px;">
+                                                ผู้บริหารจะถูกซิงค์เป็นหัวหน้าภาควิชานี้อัตโนมัติ ส่วนหัวหน้าวิชาจะถูกผูกกับภาควิชานี้
+                                            </p>
                                         </div>
                                     </div>
 
-                                    <!-- วุฒิการศึกษา: แสดงสำหรับทุก role ที่มี profile -->
-                                    <div class="form-group" style="margin-bottom: 20px;">
-                                        <label style="font-weight: 700;">วุฒิการศึกษาสูงสุด <span style="color: #ef4444;">*</span></label>
-                                        <select name="instructor_academic_degree" class="tpss-custom-select" x-model="instructorProfile.academic_degree" required>
-                                            <option value="" disabled>-- เลือกวุฒิการศึกษา --</option>
-                                            <option value="ปริญญาเอก">ปริญญาเอก</option>
-                                            <option value="ปริญญาโท">ปริญญาโท</option>
-                                            <option value="ปริญญาตรี">ปริญญาตรี</option>
-                                        </select>
-                                    </div>
-
-                                    <!-- ตำแหน่งบริหารในภาควิชา: เฉพาะ instructor/course_head -->
-                                    <div class="form-group" style="margin-bottom: 20px;" x-show="needsDept">
+                                    <!-- ตำแหน่งบริหารในภาควิชา -->
+                                    <div class="form-group" style="margin-bottom: 20px;" x-show="showDepartmentPosition">
                                         <label>ตำแหน่งบริหารในภาควิชา <span style="font-weight: normal; color: var(--fg-3); font-size: 0.9em;">(ไม่บังคับ)</span></label>
-                                        <select name="instructor_department_position" class="tpss-custom-select" x-model="instructorProfile.department_position">
+                                        <select name="instructor_department_position" class="tpss-custom-select" x-model="instructorProfile.department_position" data-testid="department-position-select">
                                             <option value="">-- ไม่มีตำแหน่งบริหาร --</option>
-                                            <option value="head">หัวหน้าภาควิชา</option>
+                                            <option value="head" :disabled="!hasExecutive">หัวหน้าภาควิชา</option>
                                             <option value="secretary">เลขานุการภาควิชา</option>
                                         </select>
 
                                         {{-- Backend validation error (most reliable) --}}
                                         @error('instructor_department_position')
-                                            <div style="margin-top: 8px; padding: 10px 14px; background: #fef2f2; border: 1.5px solid #fca5a5; border-radius: 8px; display: flex; align-items: flex-start; gap: 10px;">
+                                            <div data-testid="department-position-error" style="margin-top: 8px; padding: 10px 14px; background: #fef2f2; border: 1.5px solid #fca5a5; border-radius: 8px; display: flex; align-items: flex-start; gap: 10px;">
                                                 <div style="background: #ef4444; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;">
                                                     <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="white" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                                                 </div>
@@ -995,7 +979,7 @@
                                             </div>
                                         @enderror
 
-                                        <p style="font-size: 11px; color: var(--fg-3); margin-top: 4px;">* เมื่อเลือกตำแหน่ง ระบบจะอัปเดตข้อมูลในภาควิชาที่เลือกด้านบนให้อัตโนมัติ</p>
+                                        <p style="font-size: 11px; color: var(--fg-3); margin-top: 4px;">* หัวหน้าภาควิชาเลือกได้เฉพาะผู้ใช้ที่มี role ผู้บริหาร และต้องไม่มีหัวหน้าภาคเดิมอยู่แล้ว</p>
                                     </div>
 
                                     <!-- Employment + PA: เฉพาะ instructor role เท่านั้น -->
@@ -1006,7 +990,7 @@
                                             </svg>
                                             การจ้างงาน (Employment)
                                         </div>
-                                        <div class="form-row">
+                                        <div class="form-row users-employment-row">
                                             <div class="form-group">
                                                 <label>ประเภทการจ้างงาน <span style="color: #ef4444;">*</span></label>
                                                 <select name="instructor_employment_type" class="tpss-custom-select" x-model="instructorProfile.employment_type" :required="hasInstructor">
@@ -1060,6 +1044,12 @@
                                             </div>
                                         </div>
 
+                                    <div x-show="hasInstructor"
+                                        style="background: var(--bg-2); border-radius: 8px; padding: 14px 16px; border: 1px solid var(--border); margin-top: 8px; color: var(--fg-2); font-size: 13px; line-height: 1.7;">
+                                        สัดส่วน PA ให้อาจารย์กรอกเองภายหลังผ่านเมนู <strong>ภาระงานสอน</strong> ในบทบาทอาจารย์ ผู้ดูแลระบบบันทึกเฉพาะข้อมูลพื้นฐานของอาจารย์ในหน้านี้
+                                    </div>
+
+                                    <template x-if="false">
                                     <div x-show="hasInstructor"
                                         style="background: var(--surface); border-radius: 12px; padding: 20px; border: 1px solid var(--border); margin-top: 8px;">
                                         <div
@@ -1138,6 +1128,7 @@
                                         <input type="hidden" name="instructor_teaching_quota"
                                             :value="instructorProfile.teaching_quota">
                                     </div>
+                                    </template>
                                 </div>
                             </template>
                         </div>
@@ -1231,24 +1222,102 @@
 
     <style>
         .users-modal {
-            width: min(1080px, calc(100vw - 48px));
+            width: min(1320px, calc(100vw - 32px));
             max-width: none;
-            max-height: 90vh;
+            max-height: 92vh;
+            overflow: hidden;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 22%, var(--border));
+            border-radius: 12px;
+            background: var(--surface);
+            box-shadow:
+                0 28px 70px -36px rgba(0, 36, 84, 0.62),
+                0 2px 10px rgba(0, 36, 84, 0.10);
+        }
+
+        .users-modal-hdr {
+            position: relative;
+            min-height: 68px;
+            padding: 18px 22px;
+            border-bottom: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border));
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 9%, var(--surface)), color-mix(in oklch, var(--brand-navy) 4%, var(--surface))) !important;
+        }
+
+        .users-modal-hdr::after {
+            content: "กำหนดข้อมูลบัญชี บทบาท และโปรไฟล์อาจารย์";
+            position: absolute;
+            left: 22px;
+            bottom: 13px;
+            max-width: calc(100% - 92px);
+            overflow: hidden;
+            color: var(--fg-3);
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1.35;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .users-modal-hdr .modal-ttl {
+            margin-bottom: 17px;
+            color: var(--brand-navy);
+            font-size: 22px;
+            font-weight: 850;
+            line-height: 1.2;
+        }
+
+        .users-modal-hdr .modal-cls {
+            width: 38px;
+            height: 38px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 14%, var(--border));
+            border-radius: 9px;
+            background: var(--surface);
+            color: var(--fg-2);
+            transition: border-color 150ms ease, color 150ms ease, background 150ms ease, box-shadow 150ms ease;
+        }
+
+        .users-modal-hdr .modal-cls:hover,
+        .users-modal-hdr .modal-cls:focus-visible {
+            border-color: var(--brand-navy);
+            background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
+            color: var(--brand-navy);
+            box-shadow: 0 0 0 3px color-mix(in oklch, var(--brand-navy) 12%, transparent);
+            outline: 0;
         }
 
         .users-modal > form {
             display: flex;
             flex-direction: column;
             min-height: 0;
+            max-height: calc(92vh - 68px);
         }
 
         .users-modal-body {
             min-height: 0;
-            max-height: calc(90vh - 132px);
-            padding: 24px;
+            max-height: calc(92vh - 148px);
+            padding: 22px;
             overflow-y: auto;
             overscroll-behavior: contain;
-            background: oklch(99% 0.004 220);
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 4%, var(--bg)) 0%, var(--bg) 100%);
+            scrollbar-width: thin;
+            scrollbar-color: color-mix(in oklch, var(--brand-navy) 34%, transparent) transparent;
+        }
+
+        .users-modal-body > .form-row,
+        .users-modal-body > .form-group,
+        .users-modal-body > template + div,
+        .users-modal-body > div[x-show="errorMsg"] {
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 13%, var(--border));
+            border-radius: 10px;
+            background: var(--surface);
+            box-shadow: 0 1px 2px rgba(0, 36, 84, 0.05);
+        }
+
+        .users-modal-body > .form-row,
+        .users-modal-body > .form-group {
+            padding: 16px;
+            margin-bottom: 12px;
         }
 
         .users-modal-body .form-row {
@@ -1258,22 +1327,106 @@
 
         .users-modal-body .form-row > .form-group {
             min-width: 0;
+            margin-bottom: 0;
+        }
+
+        .users-modal-body label,
+        .users-modal-body .frm-lbl {
+            color: var(--fg-2);
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: .01em;
+        }
+
+        .users-modal-body input[type="text"],
+        .users-modal-body input[type="email"],
+        .users-modal-body input[type="password"],
+        .users-modal-body input[type="number"],
+        .users-modal-body select,
+        .users-modal-body .tpss-select-trigger {
+            min-height: 42px;
+            border-color: color-mix(in oklch, var(--brand-navy) 16%, var(--border));
+            border-radius: 8px;
+            background: color-mix(in oklch, var(--brand-navy) 2%, var(--surface));
+            color: var(--fg-1);
+            transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
+        }
+
+        .users-modal-body input:focus,
+        .users-modal-body select:focus,
+        .users-modal-body .tpss-select-trigger:focus {
+            border-color: var(--brand-navy);
+            background: var(--surface);
+            box-shadow: 0 0 0 3px color-mix(in oklch, var(--brand-navy) 12%, transparent);
+            outline: 0;
+        }
+
+        .users-modal-body .role-grid {
+            margin-top: 0;
+        }
+
+        .users-employment-row > .form-group {
+            flex: 1 1 0;
+            min-width: 0;
+        }
+
+        .users-employment-row .tpss-select,
+        .users-employment-row .tpss-select-trigger,
+        .users-employment-row input {
+            width: 100%;
+        }
+
+        .users-modal-body [style*="border-top: 1px solid var(--border)"] {
+            margin-top: 14px !important;
+            padding: 16px !important;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 13%, var(--border)) !important;
+            border-radius: 10px !important;
+            background: var(--surface);
+            box-shadow: 0 1px 2px rgba(0, 36, 84, 0.05);
         }
 
         .users-modal-foot {
             justify-content: flex-end;
             flex-shrink: 0;
+            gap: 10px;
+            padding: 14px 22px;
+            border-top: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border));
+            background: color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
+        }
+
+        .users-modal-foot .btn {
+            min-height: 42px;
+            border-radius: 8px;
+            font-weight: 800;
+        }
+
+        .users-modal-foot .btn-primary {
+            box-shadow: 0 10px 20px -15px rgba(0, 36, 84, 0.75);
         }
 
         .users-role-grid-compact {
-            gap: 5px;
+            display: grid;
+            grid-template-columns: repeat(5, minmax(220px, 1fr));
+            gap: 8px;
         }
 
         .users-role-grid-compact .role-card {
-            min-height: 46px;
+            display: grid;
+            grid-template-columns: 20px minmax(84px, 1fr) auto;
+            align-items: center;
+            min-height: 58px;
             gap: 10px;
-            padding: 10px 12px;
-            border-radius: 8px;
+            padding: 11px 12px;
+            border-color: color-mix(in oklch, var(--brand-navy) 14%, var(--border));
+            border-radius: 9px;
+            background: color-mix(in oklch, var(--brand-navy) 2%, var(--surface));
+            transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+        }
+
+        .users-role-grid-compact .role-card:hover {
+            border-color: color-mix(in oklch, var(--brand-navy) 38%, var(--border));
+            background: var(--surface);
+            transform: translateY(-1px);
         }
 
         .users-role-grid-compact .role-check {
@@ -1289,7 +1442,20 @@
 
         .users-role-grid-compact .role-name {
             font-size: 13px;
+            font-weight: 800;
             line-height: 1.35;
+            white-space: nowrap;
+        }
+
+        .users-role-grid-compact .role-info {
+            min-width: 0;
+            padding-top: 1px;
+        }
+
+        .users-role-grid-compact .role-actions {
+            justify-self: end;
+            max-width: 100%;
+            min-width: 0;
         }
 
         .users-pa-grid {
@@ -1313,11 +1479,24 @@
         }
 
         .users-role-grid-compact .btn-primary-role {
-            padding: 3px 8px;
-            border-radius: 7px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            max-width: 100%;
+            height: 24px;
+            box-sizing: border-box;
+            padding: 0 10px;
+            border-radius: 999px;
             font-size: 10px;
+            line-height: 1;
             letter-spacing: 0;
             text-transform: none;
+            white-space: nowrap;
+        }
+
+        .users-role-grid-compact .btn-primary-role span {
+            display: block;
+            line-height: 1;
         }
 
         .users-filter-bar {
@@ -1538,6 +1717,25 @@
 
             .users-pa-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .users-role-grid-compact {
+                grid-template-columns: 1fr;
+            }
+
+            .users-modal-hdr {
+                padding: 16px 18px;
+            }
+
+            .users-modal-hdr::after {
+                left: 18px;
+                max-width: calc(100% - 78px);
+            }
+
+            .users-modal-foot {
+                align-items: stretch;
+                flex-direction: column-reverse;
+                padding: 12px 18px;
             }
 
             .users-filter-bar {
