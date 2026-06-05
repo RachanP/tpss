@@ -250,11 +250,11 @@ class SchedulingPhaseTest extends TestCase
 
         $response = $this->get(route('admin.settings', ['tab' => 'academic']));
 
+        // ปุ่มเปิดช่วงจัดตารางอยู่ใน banner ปีปัจจุบัน — มีเฉพาะปี active เท่านั้น
         $response
             ->assertOk()
             ->assertSee('open-scheduling-' . $currentYear->id, false)
-            ->assertDontSee('open-scheduling-' . $otherYear->id, false)
-            ->assertSee('ตั้งเป็นปีปัจจุบันก่อน');
+            ->assertDontSee('open-scheduling-' . $otherYear->id, false);
     }
 
     public function test_setting_another_current_year_is_blocked_while_scheduling_window_is_open(): void
