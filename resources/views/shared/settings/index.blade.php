@@ -285,6 +285,60 @@
                 </div>
             @endif
 
+            @if($isAdmin)
+                @php $activeYear = $academicYears->firstWhere('is_active', true); @endphp
+                @if($activeYear)
+                    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:space-between;border:1.5px solid color-mix(in oklch,var(--brand-navy) 28%,var(--border));border-radius:12px;padding:16px 20px;margin-bottom:16px;background:linear-gradient(180deg,color-mix(in oklch,var(--brand-navy) 7%,var(--surface)),var(--surface));box-shadow:0 1px 2px rgba(0,36,84,.08),0 14px 30px -24px rgba(0,36,84,.4);">
+                        <div style="display:flex;align-items:center;gap:14px;min-width:0;">
+                            <span style="width:46px;height:46px;border-radius:11px;background:var(--brand-navy);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                            </span>
+                            <div style="min-width:0;">
+                                <div style="font-size:12px;color:var(--fg-3);font-weight:600;">ปีการศึกษาปัจจุบัน</div>
+                                <div style="font-size:18px;font-weight:800;color:var(--fg-1);font-family:var(--font-display);">{{ $activeYear->name }}
+                                    @if($activeYear->phase === 'scheduling')
+                                        <span class="badge" style="background:oklch(90% 0.1 145);color:oklch(30% 0.15 145);border:1px solid oklch(70% 0.15 145);font-size:11px;margin-left:6px;vertical-align:middle;">เปิดช่วงจัดตารางอยู่</span>
+                                    @elseif($activeYear->phase === 'published')
+                                        <span class="badge badge-primary" style="font-size:11px;margin-left:6px;vertical-align:middle;">เผยแพร่แล้ว</span>
+                                    @else
+                                        <span class="badge badge-gray" style="font-size:11px;margin-left:6px;vertical-align:middle;">เตรียมข้อมูล</span>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            @if($activeYear->phase === 'preparation')
+                                <form id="open-scheduling-{{ $activeYear->id }}" method="POST" action="{{ route('admin.settings.scheduling.open', $activeYear) }}" style="margin:0;">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="button"
+                                        class="{{ $hasSchedulingCriticals ? 'btn btn-ghost is-locked' : 'btn btn-primary' }}"
+                                        style="font-size:14px;padding:10px 22px;font-weight:800;"
+                                        @if($hasSchedulingCriticals)
+                                            disabled
+                                            title="ต้องแก้ Critical ให้หมดก่อนเปิดช่วงจัดตาราง"
+                                        @else
+                                            @click="startOpenScheduleCountdown('open-scheduling-{{ $activeYear->id }}', 'ปีการศึกษา {{ $activeYear->name }}')"
+                                        @endif>
+                                        เปิดช่วงจัดตาราง
+                                    </button>
+                                </form>
+                            @elseif($activeYear->phase === 'scheduling')
+                                <form id="close-scheduling-{{ $activeYear->id }}" method="POST" action="{{ route('admin.settings.scheduling.close', $activeYear) }}" style="margin:0;">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="button" class="btn btn-ghost"
+                                        style="font-size:14px;padding:10px 22px;border:1px solid var(--border);"
+                                        @click="startCloseScheduleConfirm('close-scheduling-{{ $activeYear->id }}', 'ปีการศึกษา {{ $activeYear->name }}')">
+                                        ปิดช่วงจัดตาราง
+                                    </button>
+                                </form>
+                            @endif
+                        </div>
+                    </div>
+                @endif
+            @endif
+
             <div class="card">
                 <div class="card-hdr">
                     <div>
@@ -356,8 +410,7 @@
                                         @endif
                                     </td>
                                     <td class="settings-action-cell">
-                                        <div class="academic-year-actions {{ $isAdmin ? '' : 'is-icon-only' }}">
-                                            <div class="academic-year-icons">
+                                        <div class="academic-year-icons">
                                             <button class="action-btn" title="แก้ไข"
                                                 @click="openEditModal({{ json_encode($year) }})">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -377,41 +430,6 @@
                                                 </svg>
                                                 <span x-text="'{{ $year->calendars->count() }}'" style="font-size:11px;font-weight:700;margin-left:3px;"></span>
                                             </button>
-                                            </div>
-                                            @if($isAdmin)
-                                                <div class="academic-year-schedule-action">
-                                                    @if(!$year->is_active)
-                                                        <span style="font-size:12px;color:var(--fg-3);white-space:nowrap;">ตั้งเป็นปีปัจจุบันก่อน</span>
-                                                    @elseif($year->phase === 'preparation')
-                                                        <form id="open-scheduling-{{ $year->id }}" method="POST" action="{{ route('admin.settings.scheduling.open', $year) }}" style="margin:0;">
-                                                            @csrf
-                                                            @method('PATCH')
-                                                            <button type="button"
-                                                                class="{{ $hasSchedulingCriticals ? 'btn btn-ghost is-locked' : 'btn btn-primary' }}"
-                                                                style="font-size: 13px; padding: 6px 14px;"
-                                                                @if($hasSchedulingCriticals)
-                                                                    disabled
-                                                                    title="ต้องแก้ Critical ให้หมดก่อนเปิดช่วงจัดตาราง"
-                                                                @else
-                                                                    @click="startOpenScheduleCountdown('open-scheduling-{{ $year->id }}', 'ปีการศึกษา {{ $year->name }}')"
-                                                                @endif>
-                                                                เปิดช่วงจัดตาราง
-                                                            </button>
-                                                        </form>
-                                                    @elseif($year->phase === 'scheduling')
-                                                        <form id="close-scheduling-{{ $year->id }}" method="POST" action="{{ route('admin.settings.scheduling.close', $year) }}" style="margin:0;">
-                                                            @csrf
-                                                            @method('PATCH')
-                                                            <button type="button"
-                                                                class="btn btn-ghost"
-                                                                style="font-size: 13px; padding: 6px 14px; border: 1px solid var(--border);"
-                                                                @click="startCloseScheduleConfirm('close-scheduling-{{ $year->id }}', 'ปีการศึกษา {{ $year->name }}')">
-                                                                ปิดช่วงจัดตาราง
-                                                            </button>
-                                                        </form>
-                                                    @endif
-                                                </div>
-                                            @endif
                                         </div>
                                     </td>
                                 </tr>
@@ -982,28 +1000,8 @@
             justify-content: center;
             gap: 4px;
         }
-        .academic-year-actions {
-            display: grid;
-            grid-template-columns: max-content minmax(150px, 1fr);
-            align-items: center;
-            gap: 8px;
-            justify-content: center;
-            margin: 0 auto;
-            width: fit-content;
-        }
         .settings-action-cell {
             text-align: center;
-        }
-        .academic-year-actions.is-icon-only {
-            display: flex;
-            justify-content: center;
-            width: 100%;
-        }
-        .academic-year-schedule-action {
-            display: flex;
-            align-items: center;
-            justify-content: flex-start;
-            min-width: 150px;
         }
         .settings-page .is-locked {
             opacity: 0.55;
