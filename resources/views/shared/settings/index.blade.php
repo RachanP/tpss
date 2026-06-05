@@ -309,11 +309,9 @@
                                             $fallbackCal = $year->calendars->first(fn ($c) => is_null($c->curriculum_id) && is_null($c->year_level_min) && is_null($c->year_level_max));
                                             $needsTerms = ! $fallbackCal || $fallbackCal->terms->isEmpty();
                                         @endphp
-                                        @forelse($year->terms as $t)
+                                        @foreach($year->terms as $t)
                                             <span class="badge badge-gray" style="margin:1px 2px;display:inline-block;">{{ $t->name }}</span>
-                                        @empty
-                                            <span style="color: var(--fg-3);">—</span>
-                                        @endforelse
+                                        @endforeach
                                         @if($needsTerms)
                                             <span class="badge" title="ยังไม่ได้กำหนดเทอม/ช่วงสอบในปฏิทินค่าเริ่มต้น (ทุกหลักสูตร)" style="display:inline-block;margin:1px 2px;background:oklch(95% 0.05 75);color:oklch(45% 0.13 65);border:1px solid oklch(80% 0.12 75);">⚠ ยังไม่ได้กำหนดเทอม</span>
                                         @endif
