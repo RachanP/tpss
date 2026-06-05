@@ -124,25 +124,30 @@ class AcademicCalendarTest extends TestCase
         ])->assertSessionHasNoErrors();
     }
 
-    public function test_copy_calendars_from_another_year_shifts_dates(): void
+    public function test_create_year_copying_from_previous_year_shifts_dates(): void
     {
         $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
 
+        // ปีต้นทางมีปฏิทิน + เทอม
         $source = AcademicYear::create(['name' => '2569', 'is_active' => false, 'phase' => 'preparation']);
         $sourceCal = $source->fallbackCalendar();
         $sourceCal->terms()->create(['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '2026-08-01', 'end_date' => '2026-11-30']);
 
-        $target = AcademicYear::create(['name' => '2571', 'is_active' => false, 'phase' => 'preparation']);
+        // สร้างปีใหม่ผ่านโมดัล "เพิ่มปีการศึกษา" + เลือกคัดลอกจากปีต้นทาง
+        $this->post(route('admin.settings.years.store'), [
+            'name'              => '2571',
+            'copy_from_year_id' => $source->id,
+        ])->assertSessionHasNoErrors()->assertRedirect();
 
-        $this->post(route('admin.settings.calendars.copy', $target), ['source_year_id' => $source->id])
-            ->assertSessionHasNoErrors();
-
-        $copied = $target->fresh()->calendars()->whereNull('curriculum_id')->first();
+        $target = AcademicYear::where('name', '2571')->firstOrFail();
+        $copied = $target->calendars()->whereNull('curriculum_id')->first();
         $this->assertNotNull($copied);
         $term = $copied->terms()->first();
         // 2571 - 2569 = 2 ปี → เลื่อนวันที่ +2 ปี
         $this->assertSame('2028-08-01', $term->start_date->format('Y-m-d'));
         $this->assertSame('2028-11-30', $term->end_date->format('Y-m-d'));
+        // วันเริ่ม-สิ้นสุดปีถูก derive จากเทอมที่คัดลอกมา
+        $this->assertSame('2028-08-01', (string) $target->fresh()->start_date);
     }
 
     public function test_group_calendar_can_be_deleted_with_terms(): void
