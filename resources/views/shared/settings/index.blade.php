@@ -605,8 +605,8 @@
                                         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="m9 16 2 2 4-4"/></svg>
                                     </span>
                                     <div style="flex:1;min-width:0;">
-                                        <div style="font-weight:700;font-size:14px;color:var(--fg-1);">ตั้งเป็นปีการศึกษาปัจจุบัน</div>
-                                        <div style="font-size:12px;color:var(--fg-3);margin-top:2px;line-height:1.5;">ระบบจะใช้ปีนี้เป็นปีหลักในการจัดตาราง แจ้งเตือน และรายงาน · มีได้ปีเดียว</div>
+                                        <div style="font-weight:700;font-size:14px;color:var(--fg-1);"
+                                            x-text="currentYear.is_active ? 'เป็นปีการศึกษาปัจจุบัน' : 'ตั้งเป็นปีการศึกษาปัจจุบัน'"></div>
                                     </div>
                                     <span :style="(currentYear.is_active ? 'background:var(--brand-navy);' : 'background:var(--border-strong,#cbd5e1);') + 'width:44px;height:25px;border-radius:999px;position:relative;flex-shrink:0;transition:background .15s ease;'">
                                         <span :style="(currentYear.is_active ? 'left:22px;' : 'left:3px;') + 'position:absolute;top:3px;width:19px;height:19px;border-radius:50%;background:#fff;transition:left .15s ease;box-shadow:0 1px 2px rgba(0,0,0,.25);'"></span>
