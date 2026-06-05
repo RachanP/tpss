@@ -672,10 +672,6 @@
                         </button>
                     </div>
                     <div class="modal-body">
-                        <div style="font-size:12px;color:var(--fg-3);line-height:1.6;margin-bottom:14px;">
-                            1 ปีมีได้หลายปฏิทิน — เปิด/ปิดเทอม + ช่วงสอบต่างกันตามหลักสูตร/ชั้นปี ·
-                            ปฏิทิน <strong>"ทุกหลักสูตร"</strong> (ค่าเริ่มต้น) ใช้กับกลุ่มที่ไม่มีปฏิทินเฉพาะ · เพิ่ม<strong>ปฏิทินตามกลุ่ม</strong>เพื่อกำหนดช่วงต่างออกไป
-                        </div>
                         <template x-if="calList.length === 0">
                             <div style="font-size:12px;color:var(--fg-3);padding:14px;text-align:center;background:var(--surface-sunken);border-radius:8px;">
                                 ยังไม่มีปฏิทิน — กด "เพิ่มปฏิทิน" เพื่อกำหนดเทอมและช่วงสอบ

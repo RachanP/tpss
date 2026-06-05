@@ -305,7 +305,7 @@ class AdminSettingController extends Controller
     }
 
     /** normalize ชั้นปีเป็น array int เรียง (null/ว่าง → []) เพื่อเทียบ scope */
-    private function normalizeYearLevels($levels): array
+    private function normalizeYearLevels(?array $levels): array
     {
         if (empty($levels)) {
             return [];
@@ -316,7 +316,7 @@ class AdminSettingController extends Controller
     }
 
     /** มีปฏิทินอื่นในปีเดียวกันที่ scope (หลักสูตร + ชั้นปี) ซ้ำกันไหม */
-    private function calendarScopeConflict(AcademicYear $year, ?int $curriculumId, $yearLevels, ?int $exceptId = null): bool
+    private function calendarScopeConflict(AcademicYear $year, ?int $curriculumId, ?array $yearLevels, ?int $exceptId = null): bool
     {
         $normalized = $this->normalizeYearLevels($yearLevels);
 
@@ -410,7 +410,7 @@ class AdminSettingController extends Controller
         return back()->with('success', 'ลบปฏิทินการศึกษาเรียบร้อยแล้ว');
     }
 
-    private function shiftDate($date, int $years): ?string
+    private function shiftDate(mixed $date, int $years): ?string
     {
         return $date ? Carbon::parse((string) $date)->addYears($years)->toDateString() : null;
     }
