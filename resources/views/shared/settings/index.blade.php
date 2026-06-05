@@ -59,6 +59,8 @@
         calYearId: '', calYearName: '', calList: [],
         showCalEditor: false,
         editCalMode: false,
+        dupMode: false,
+        dupSourceLabel: '',
         currentCal: { id: '', name: '', curriculum_id: '', year_levels: [], hasSummer: false, terms: [] },
         openCalendars(year) {
             this.calYearId = year.id;
@@ -77,18 +79,22 @@
         },
         openAddCalendar() {
             this.editCalMode = false;
+            this.dupMode = false;
             this.currentCal = { id: '', name: '', curriculum_id: '', year_levels: [], hasSummer: false, terms: this.calBuildTerms([]) };
             this.showCalEditor = true;
         },
         openEditCalendar(cal) {
             this.editCalMode = true;
+            this.dupMode = false;
             const terms = cal.terms || [];
             this.currentCal = { id: cal.id, name: cal.name || '', curriculum_id: cal.curriculum_id ? String(cal.curriculum_id) : '', year_levels: Array.isArray(cal.year_levels) ? cal.year_levels.map(Number) : [], hasSummer: terms.length >= 3, terms: this.calBuildTerms(terms) };
             this.showCalEditor = true;
         },
         openDuplicateCalendar(cal) {
-            // คัดลอก = เปิดฟอร์มเป็นปฏิทินใหม่ เติมข้อมูลให้ (เทอม+scope) แล้วให้ปรับ scope/ชื่อก่อนบันทึก (ผ่าน validation)
+            // คัดลอก = ใช้ช่วงเทอม/สอบเดิม แต่เปลี่ยนขอบเขต (หลักสูตร/ชั้นปี) · ซ่อนการแก้วันที่ — แก้ภายหลังได้
             this.editCalMode = false;
+            this.dupMode = true;
+            this.dupSourceLabel = this.calScopeLabel(cal);
             const terms = cal.terms || [];
             this.currentCal = { id: '', name: ((cal.name || '') + ' (สำเนา)').slice(0, 100), curriculum_id: cal.curriculum_id ? String(cal.curriculum_id) : '', year_levels: Array.isArray(cal.year_levels) ? cal.year_levels.map(Number) : [], hasSummer: terms.length >= 3, terms: this.calBuildTerms(terms) };
             this.showCalEditor = true;
@@ -721,7 +727,7 @@
                     x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
                     <div class="modal-hdr" style="background: var(--bg-2);">
                         <div class="modal-ttl" style="font-family: var(--font-display);"
-                            x-text="editCalMode ? 'แก้ไขปฏิทิน' : 'เพิ่มปฏิทิน'"></div>
+                            x-text="dupMode ? 'คัดลอกปฏิทิน' : (editCalMode ? 'แก้ไขปฏิทิน' : 'เพิ่มปฏิทิน')"></div>
                         <button type="button" class="modal-cls" @click="showCalEditor = false">
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                         </button>
@@ -731,7 +737,17 @@
                         @csrf
                         <template x-if="editCalMode"><input type="hidden" name="_method" value="PUT"></template>
                         <div class="modal-body">
-                            <div style="font-weight:700;font-size:12px;color:var(--brand-navy);border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:14px;">ข้อมูลปฏิทิน</div>
+                            <template x-if="dupMode">
+                                <div style="display:flex;gap:10px;align-items:flex-start;padding:12px 14px;margin-bottom:16px;border:1px solid color-mix(in oklch,var(--brand-navy) 22%,var(--border));border-radius:8px;background:color-mix(in oklch,var(--brand-navy) 6%,var(--surface));">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--brand-navy)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px;"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                    <div style="font-size:12px;color:var(--fg-2);line-height:1.6;">
+                                        คัดลอกช่วงเทอม/สอบจาก <strong style="color:var(--fg-1);" x-text="dupSourceLabel"></strong>
+                                        <span x-text="'(' + (currentCal.terms ? currentCal.terms.filter(t => t.start_date).length : 0) + ' เทอม)'"></span>
+                                        — เลือก<strong style="color:var(--fg-1);">หลักสูตร/ชั้นปี</strong>ที่ต่างออกไป แล้วบันทึก · วันที่ปรับภายหลังได้ที่ปุ่มแก้ไข
+                                    </div>
+                                </div>
+                            </template>
+                            <div style="font-weight:700;font-size:12px;color:var(--brand-navy);border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:14px;" x-text="dupMode ? 'ขอบเขตปฏิทินใหม่' : 'ข้อมูลปฏิทิน'"></div>
                             <div class="form-group" style="margin-bottom:16px;">
                                 <label>ชื่อปฏิทิน <span style="color: var(--status-conflict-fg)">*</span></label>
                                 <input type="text" name="name" x-model="currentCal.name" required placeholder="เช่น ป.ตรี ปี 3-4, ป.โท">
@@ -766,19 +782,25 @@
                                     @foreach($errors->get('calendar_terms') as $msg)<div>• {{ $msg }}</div>@endforeach
                                 </div>
                             @endif
-                            <div style="font-weight:700;font-size:12px;color:var(--brand-navy);border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:12px;">ภาคการศึกษา (เทอม)</div>
-                            @include('shared.settings._term_fields', ['index' => 0, 'seq' => 1, 'label' => 'ภาคเรียนที่ 1', 'model' => 'currentCal.terms'])
-                            @include('shared.settings._term_fields', ['index' => 1, 'seq' => 2, 'label' => 'ภาคเรียนที่ 2', 'model' => 'currentCal.terms'])
-                            <div x-show="currentCal.hasSummer" x-cloak>
-                                @include('shared.settings._term_fields', ['index' => 2, 'seq' => 3, 'label' => 'ภาคฤดูร้อน', 'model' => 'currentCal.terms'])
-                                <button type="button" @click="currentCal.hasSummer = false; currentCal.terms[2] = { name:'ภาคฤดูร้อน', start_date:'', end_date:'', midterm_start:'', midterm_end:'', final_start:'', final_end:'' }"
-                                    style="font-size:12px;color:var(--status-conflict-fg);background:none;border:none;cursor:pointer;padding:2px 0;margin-bottom:6px;">ลบภาคฤดูร้อน</button>
+                            {{-- โหมดคัดลอก: ซ่อนการแก้วันที่ (ลอกช่วงเดิม) แต่ inputs ยังอยู่ใน DOM → submit ค่าเดิมไปด้วย --}}
+                            <div x-show="dupMode" x-cloak style="font-size:12px;color:var(--fg-3);padding:11px 13px;background:var(--surface-sunken);border-radius:8px;">
+                                ใช้ช่วงเทอม/สอบเดียวกับต้นฉบับ — แก้ไขวันที่ภายหลังได้ที่ปุ่มแก้ไขปฏิทิน
                             </div>
-                            <button type="button" x-show="!currentCal.hasSummer" @click="currentCal.hasSummer = true" class="btn btn-ghost" style="font-size:12px;padding:5px 12px;">+ เพิ่มภาคฤดูร้อน</button>
+                            <div x-show="!dupMode">
+                                <div style="font-weight:700;font-size:12px;color:var(--brand-navy);border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:12px;">ภาคการศึกษา (เทอม)</div>
+                                @include('shared.settings._term_fields', ['index' => 0, 'seq' => 1, 'label' => 'ภาคเรียนที่ 1', 'model' => 'currentCal.terms'])
+                                @include('shared.settings._term_fields', ['index' => 1, 'seq' => 2, 'label' => 'ภาคเรียนที่ 2', 'model' => 'currentCal.terms'])
+                                <div x-show="currentCal.hasSummer" x-cloak>
+                                    @include('shared.settings._term_fields', ['index' => 2, 'seq' => 3, 'label' => 'ภาคฤดูร้อน', 'model' => 'currentCal.terms'])
+                                    <button type="button" @click="currentCal.hasSummer = false; currentCal.terms[2] = { name:'ภาคฤดูร้อน', start_date:'', end_date:'', midterm_start:'', midterm_end:'', final_start:'', final_end:'' }"
+                                        style="font-size:12px;color:var(--status-conflict-fg);background:none;border:none;cursor:pointer;padding:2px 0;margin-bottom:6px;">ลบภาคฤดูร้อน</button>
+                                </div>
+                                <button type="button" x-show="!currentCal.hasSummer" @click="currentCal.hasSummer = true" class="btn btn-ghost" style="font-size:12px;padding:5px 12px;">+ เพิ่มภาคฤดูร้อน</button>
+                            </div>
                         </div>
                         <div class="modal-foot">
                             <button type="button" class="btn btn-ghost" @click="showCalEditor = false">ยกเลิก</button>
-                            <button type="submit" class="btn btn-primary">บันทึกปฏิทิน</button>
+                            <button type="submit" class="btn btn-primary" x-text="dupMode ? 'คัดลอกปฏิทิน' : 'บันทึกปฏิทิน'"></button>
                         </div>
                     </form>
                 </div>
