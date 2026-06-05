@@ -115,6 +115,7 @@ Route::middleware(['auth', 'no-back'])->group(function () {
         Route::post('/admin/settings/academic-years/{year}/calendars', 'App\Http\Controllers\AdminSettingController@storeCalendar')->name('admin.settings.calendars.store');
         Route::put('/admin/settings/calendars/{calendar}', 'App\Http\Controllers\AdminSettingController@updateCalendar')->name('admin.settings.calendars.update');
         Route::delete('/admin/settings/calendars/{calendar}', 'App\Http\Controllers\AdminSettingController@destroyCalendar')->name('admin.settings.calendars.destroy');
+        Route::post('/admin/settings/academic-years/{year}/calendars/copy', 'App\Http\Controllers\AdminSettingController@copyCalendarsFromYear')->name('admin.settings.calendars.copy');
 
         Route::get('/admin/master-data', 'App\Http\Controllers\Admin\MasterDataController@index')->name('admin.master_data');
         Route::get('/admin/alerts', [AlertController::class, 'index'])->name('admin.alerts');
@@ -164,6 +165,7 @@ Route::middleware(['auth', 'no-back'])->group(function () {
         Route::post('/staff/settings/academic-years/{year}/calendars', 'App\Http\Controllers\Staff\SettingController@storeCalendar')->name('staff.settings.calendars.store');
         Route::put('/staff/settings/calendars/{calendar}', 'App\Http\Controllers\Staff\SettingController@updateCalendar')->name('staff.settings.calendars.update');
         Route::delete('/staff/settings/calendars/{calendar}', 'App\Http\Controllers\Staff\SettingController@destroyCalendar')->name('staff.settings.calendars.destroy');
+        Route::post('/staff/settings/academic-years/{year}/calendars/copy', 'App\Http\Controllers\Staff\SettingController@copyCalendarsFromYear')->name('staff.settings.calendars.copy');
 
         Route::get('/staff/master-data', 'App\Http\Controllers\Staff\MasterDataController@index')->name('staff.master_data');
         Route::post('/staff/master-data/departments', 'App\Http\Controllers\Staff\MasterDataController@storeDepartment')->name('staff.departments.store');

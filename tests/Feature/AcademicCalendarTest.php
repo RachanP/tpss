@@ -88,6 +88,63 @@ class AcademicCalendarTest extends TestCase
         $this->assertNotContains('active_year_missing_calendar_terms', $keys2);
     }
 
+    public function test_duplicate_scope_calendar_is_rejected(): void
+    {
+        $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
+        $year = $this->year();
+        $curr = Curriculum::create(['name' => 'พย.บ. 2565', 'effective_year' => 2565, 'education_level' => 'bachelor', 'duration_years' => 4, 'uses_year_level' => true, 'is_active' => true]);
+
+        $payload = ['name' => 'ป.ตรี ปี 3-4', 'curriculum_id' => $curr->id, 'year_levels' => [3, 4], 'terms' => $this->terms()];
+        $this->post(route('admin.settings.calendars.store', $year), $payload)->assertSessionHasNoErrors();
+
+        // สร้างซ้ำ scope เดิม (สลับลำดับชั้นปีก็ถือว่าซ้ำ) → ถูกบล็อก
+        $this->post(route('admin.settings.calendars.store', $year), array_merge($payload, ['name' => 'อีกอัน', 'year_levels' => [4, 3]]))
+            ->assertSessionHasErrors('curriculum_id');
+
+        $this->assertEquals(1, AcademicCalendar::where('academic_year_id', $year->id)->where('curriculum_id', $curr->id)->count());
+    }
+
+    public function test_update_calendar_to_existing_scope_is_rejected(): void
+    {
+        $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
+        $year = $this->year();
+        $curr = Curriculum::create(['name' => 'พย.บ. 2565', 'effective_year' => 2565, 'education_level' => 'bachelor', 'duration_years' => 4, 'uses_year_level' => true, 'is_active' => true]);
+
+        $year->calendars()->create(['name' => 'A', 'curriculum_id' => $curr->id, 'year_levels' => [1]]);
+        $calB = $year->calendars()->create(['name' => 'B', 'curriculum_id' => $curr->id, 'year_levels' => [2]]);
+
+        // แก้ B ให้ scope ชนกับ A → บล็อก
+        $this->put(route('admin.settings.calendars.update', $calB), [
+            'name' => 'B', 'curriculum_id' => $curr->id, 'year_levels' => [1], 'terms' => $this->terms(),
+        ])->assertSessionHasErrors('curriculum_id');
+
+        // แก้ B โดยคง scope เดิม (ไม่ชนตัวเอง) → ผ่าน
+        $this->put(route('admin.settings.calendars.update', $calB), [
+            'name' => 'B2', 'curriculum_id' => $curr->id, 'year_levels' => [2], 'terms' => $this->terms(),
+        ])->assertSessionHasNoErrors();
+    }
+
+    public function test_copy_calendars_from_another_year_shifts_dates(): void
+    {
+        $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
+
+        $source = AcademicYear::create(['name' => '2569', 'is_active' => false, 'phase' => 'preparation']);
+        $sourceCal = $source->fallbackCalendar();
+        $sourceCal->terms()->create(['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '2026-08-01', 'end_date' => '2026-11-30']);
+
+        $target = AcademicYear::create(['name' => '2571', 'is_active' => false, 'phase' => 'preparation']);
+
+        $this->post(route('admin.settings.calendars.copy', $target), ['source_year_id' => $source->id])
+            ->assertSessionHasNoErrors();
+
+        $copied = $target->fresh()->calendars()->whereNull('curriculum_id')->first();
+        $this->assertNotNull($copied);
+        $term = $copied->terms()->first();
+        // 2571 - 2569 = 2 ปี → เลื่อนวันที่ +2 ปี
+        $this->assertSame('2028-08-01', $term->start_date->format('Y-m-d'));
+        $this->assertSame('2028-11-30', $term->end_date->format('Y-m-d'));
+    }
+
     public function test_group_calendar_can_be_deleted_with_terms(): void
     {
         $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);
