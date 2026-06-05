@@ -413,24 +413,19 @@ class AdminSettingController extends Controller
         return $date ? Carbon::parse((string) $date)->addYears($years)->toDateString() : null;
     }
 
-    /** คัดลอกปฏิทินทั้งชุดจากปีอื่น (เลื่อนวันที่ตามผลต่างปี) — ทับปฏิทินเดิมของปีนี้ */
-    public function copyCalendarsFromYear(Request $request, AcademicYear $year)
+    /**
+     * คัดลอกปฏิทินทั้งชุดจาก $source → $target (ทับของเดิม) เลื่อนวันที่ตามผลต่างปี
+     * คืนค่า diff (จำนวนปีที่เลื่อน) เพื่อใช้ใน flash message
+     */
+    private function copyCalendarsInto(AcademicYear $target, AcademicYear $source): int
     {
-        $validated = $request->validate([
-            'source_year_id' => ['required', \Illuminate\Validation\Rule::exists('academic_years', 'id'), 'different:current'],
-        ], ['source_year_id.required' => 'กรุณาเลือกปีการศึกษาต้นทาง']);
+        $source->loadMissing('calendars.terms');
+        $diff = (int) $target->name - (int) $source->name;
 
-        $source = AcademicYear::with('calendars.terms')->findOrFail($validated['source_year_id']);
-        if ($source->id === $year->id) {
-            return back()->with('error', 'เลือกปีต้นทางที่ต่างจากปีนี้');
-        }
-
-        $diff = (int) $year->name - (int) $source->name;
-
-        DB::transaction(function () use ($year, $source, $diff) {
-            $year->calendars()->delete(); // ทับของเดิม (cascades terms)
+        DB::transaction(function () use ($target, $source, $diff) {
+            $target->calendars()->delete(); // ทับของเดิม (cascades terms)
             foreach ($source->calendars as $cal) {
-                $new = $year->calendars()->create([
+                $new = $target->calendars()->create([
                     'name'          => $cal->name,
                     'curriculum_id' => $cal->curriculum_id,
                     'year_levels'   => $cal->year_levels,
@@ -450,7 +445,7 @@ class AdminSettingController extends Controller
             }
         });
 
-        return $this->calendarSavedRedirect($year, "คัดลอกปฏิทินจากปี {$source->name} แล้ว (เลื่อนวันที่ {$diff} ปี — โปรดตรวจ/ปรับวันที่)");
+        return $diff;
     }
 
     private function hasOtherOpenSchedulingWindow(AcademicYear $year): bool
@@ -493,12 +488,15 @@ class AdminSettingController extends Controller
     {
         // V4: ปีการศึกษา = ชื่อ + active เท่านั้น · เทอม+สอบไปอยู่ใน "ปฏิทิน" (วันเริ่ม-สิ้นสุดปี derive ภายหลัง)
         $validated = $request->validate([
-            'name' => ['required', 'string', \Illuminate\Validation\Rule::unique('academic_years')],
+            'name'               => ['required', 'string', \Illuminate\Validation\Rule::unique('academic_years')],
+            'copy_from_year_id'  => ['nullable', \Illuminate\Validation\Rule::exists('academic_years', 'id')],
         ], [
             'name.required' => 'กรุณากรอกปีการศึกษา',
             'name.unique'   => 'ปีการศึกษา ' . $request->input('name') . ' มีอยู่แล้วในระบบ',
         ]);
 
+        $copyFromYearId = $validated['copy_from_year_id'] ?? null;
+        unset($validated['copy_from_year_id']);
         $validated['is_active'] = $request->has('is_active');
 
         if ($validated['is_active']) {
@@ -519,6 +517,17 @@ class AdminSettingController extends Controller
         $year = AcademicYear::create($validated); // start/end = null จนกว่าจะตั้งเทอมในปฏิทิน
         $year->fallbackCalendar(); // สร้างปฏิทินหลักว่างไว้ให้กรอกเทอม
 
+        // คัดลอกปฏิทินจากปีก่อน (ถ้าเลือก) — ลอกทั้งชุด เลื่อนวันที่ตามผลต่างปี
+        $copySource = $copyFromYearId ? AcademicYear::find($copyFromYearId) : null;
+        if ($copySource && $copySource->id !== $year->id) {
+            $diff = $this->copyCalendarsInto($year, $copySource);
+            $this->recomputeYearSpan($year);
+            $note = $this->autoFetchHolidays($year->fresh());
+            $successMsg = "เพิ่มปีการศึกษาเรียบร้อยแล้ว — คัดลอกปฏิทินจากปี {$copySource->name} (เลื่อนวันที่ {$diff} ปี · โปรดตรวจ/ปรับวันที่) · {$note['message']}";
+        } else {
+            $successMsg = 'เพิ่มปีการศึกษาเรียบร้อยแล้ว — กดไอคอนปฏิทินที่แถวปีเพื่อกำหนดเทอมและช่วงสอบ';
+        }
+
         AuditLogger::log(
             action: 'ข้อมูลหลัก.สร้าง',
             table: 'academic_years',
@@ -530,7 +539,7 @@ class AdminSettingController extends Controller
 
         AlertController::flushCache();
         return redirect()->route($this->settingsRoute(), ['tab' => 'academic'])
-            ->with('success', 'เพิ่มปีการศึกษาเรียบร้อยแล้ว — กดไอคอนปฏิทินที่แถวปีเพื่อกำหนดเทอมและช่วงสอบ');
+            ->with('success', $successMsg);
     }
 
     public function updateYear(Request $request, AcademicYear $year)

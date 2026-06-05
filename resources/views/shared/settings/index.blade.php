@@ -20,6 +20,7 @@
             hasSummer: false,
             terms: [],
         },
+        copyFromYearId: '',
         openScheduleConfirmForm: null,
         openScheduleConfirmLabel: '',
         openScheduleCountdown: 0,
@@ -134,6 +135,7 @@
         },
         openAddModal() {
             this.editMode = false;
+            this.copyFromYearId = '';
             this.currentYear = { id: '', name: '', start_date: '', end_date: '', is_active: false, hasSummer: false, terms: this.buildTerms([]), calendars: [] };
             this.showModal = true;
         },
@@ -575,6 +577,17 @@
                                     @enderror
                                 </div>
                             </div>
+                            <template x-if="!editMode && calYears.length > 0">
+                                <div class="form-group" style="margin-top: 4px;">
+                                    <label>คัดลอกปฏิทินจากปีก่อน <span style="font-weight:400;color:var(--fg-4);font-size:11px;">(ไม่บังคับ)</span></label>
+                                    <select name="copy_from_year_id" x-model="copyFromYearId">
+                                        <option value="">ไม่คัดลอก</option>
+                                        <template x-for="y in calYears" :key="y.id">
+                                            <option :value="y.id" x-text="'คัดลอกจากปี ' + y.name"></option>
+                                        </template>
+                                    </select>
+                                </div>
+                            </template>
                             <div style="margin-top: 4px; border-top: 1px solid var(--border); padding-top: 14px;">
                                 <div style="font-weight: 600; font-size: 13px; color: var(--fg-1); margin-bottom: 6px;">เทอม + ช่วงสอบ</div>
                                 <div style="font-size:12px;color:var(--fg-3);line-height:1.6;padding:11px 13px;background:var(--surface-sunken);border-radius:8px;">
@@ -661,23 +674,6 @@
                                 </div>
                             </div>
                         </template>
-                        <div x-show="calYears.filter(y => String(y.id) !== String(calYearId)).length > 0" style="margin-top:14px;padding-top:14px;border-top:1px dashed var(--border);">
-                            <form method="POST" :action="'{{ url($routePrefix . '/settings/academic-years') }}/' + calYearId + '/calendars/copy'"
-                                @submit="return confirm('คัดลอกปฏิทินจากปีที่เลือก มาทับปฏิทินทั้งหมดของปีนี้?')"
-                                style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;">
-                                @csrf
-                                <div class="form-group" style="margin:0;flex:1;min-width:180px;">
-                                    <label style="font-size:12px;">คัดลอกปฏิทินจากปีอื่น <span style="color:var(--fg-4);font-weight:400;">(ทับของปีนี้ · เลื่อนวันที่อัตโนมัติ)</span></label>
-                                    <select name="source_year_id" required>
-                                        <option value="">— เลือกปีต้นทาง —</option>
-                                        <template x-for="y in calYears.filter(yy => String(yy.id) !== String(calYearId))" :key="y.id">
-                                            <option :value="y.id" x-text="y.name"></option>
-                                        </template>
-                                    </select>
-                                </div>
-                                <button type="submit" class="btn btn-ghost" style="font-size:12px;white-space:nowrap;">คัดลอกมา</button>
-                            </form>
-                        </div>
                     </div>
                     <div class="modal-foot" style="display:flex;justify-content:space-between;">
                         <button type="button" class="btn btn-primary" @click="openAddCalendar()" style="font-size:13px;">+ เพิ่มปฏิทิน</button>
