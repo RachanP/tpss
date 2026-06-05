@@ -327,10 +327,12 @@ class AdminSettingController extends Controller
                 && $this->normalizeYearLevels($cal->year_levels) === $normalized);
     }
 
-    /** ข้อความ error เมื่อ scope ซ้ำ */
+    private const CALENDAR_SCOPE_MESSAGE = 'มีปฏิทินสำหรับหลักสูตร/ชั้นปีนี้อยู่แล้วในปีการศึกษานี้ — กรุณาแก้ปฏิทินเดิม หรือเลือกขอบเขตอื่น';
+
+    /** ข้อความ error เมื่อ scope ซ้ำ (ผูกกับช่อง curriculum_id) */
     private function calendarScopeError(): array
     {
-        return ['curriculum_id' => 'มีปฏิทินสำหรับหลักสูตร/ชั้นปีนี้อยู่แล้วในปีการศึกษานี้ — กรุณาแก้ปฏิทินเดิม หรือเลือกขอบเขตอื่น'];
+        return ['curriculum_id' => self::CALENDAR_SCOPE_MESSAGE];
     }
 
     public function storeCalendar(Request $request, AcademicYear $year)
@@ -343,7 +345,7 @@ class AdminSettingController extends Controller
         }
 
         if ($this->calendarScopeConflict($year, $validated['curriculum_id'] ?? null, $validated['year_levels'] ?? null)) {
-            return back()->withInput()->withErrors($this->calendarScopeError());
+            return back()->withInput()->withErrors($this->calendarScopeError())->with('error', self::CALENDAR_SCOPE_MESSAGE);
         }
 
         DB::transaction(function () use ($year, $validated, $request) {
@@ -382,7 +384,7 @@ class AdminSettingController extends Controller
         }
 
         if ($this->calendarScopeConflict($calendar->academicYear, $validated['curriculum_id'] ?? null, $validated['year_levels'] ?? null, $calendar->id)) {
-            return back()->withInput()->withErrors($this->calendarScopeError());
+            return back()->withInput()->withErrors($this->calendarScopeError())->with('error', self::CALENDAR_SCOPE_MESSAGE);
         }
 
         DB::transaction(function () use ($calendar, $validated, $request) {
