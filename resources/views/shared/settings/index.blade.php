@@ -86,7 +86,7 @@
             this.showCalEditor = true;
         },
         openDuplicateCalendar(cal) {
-            // คัดลอก = เปิดฟอร์มเป็น "ปฏิทินใหม่" เติมข้อมูลให้ (เทอม+scope) แล้วให้ปรับ scope/ชื่อก่อนบันทึก (ผ่าน validation)
+            // คัดลอก = เปิดฟอร์มเป็นปฏิทินใหม่ เติมข้อมูลให้ (เทอม+scope) แล้วให้ปรับ scope/ชื่อก่อนบันทึก (ผ่าน validation)
             this.editCalMode = false;
             const terms = cal.terms || [];
             this.currentCal = { id: '', name: ((cal.name || '') + ' (สำเนา)').slice(0, 100), curriculum_id: cal.curriculum_id ? String(cal.curriculum_id) : '', year_levels: Array.isArray(cal.year_levels) ? cal.year_levels.map(Number) : [], hasSummer: terms.length >= 3, terms: this.calBuildTerms(terms) };
