@@ -1118,7 +1118,7 @@ class ScheduleManagementTest extends TestCase
         // ตั้งเทอม + สัปดาห์สอบ · เทอมจบ 30 พ.ย. → ธ.ค. (ยังในปี) = ปิดภาคเรียน
         // V4: term สังกัดปฏิทินหลัก (default calendar) ของปี
         \App\Models\AcademicYear::find($offering->academic_year_id)
-            ->defaultCalendar()
+            ->fallbackCalendar()
             ->terms()->create([
                 'sequence' => 1, 'name' => 'ภาคเรียนที่ 1',
                 'start_date' => '2026-08-01', 'end_date' => '2026-11-30',

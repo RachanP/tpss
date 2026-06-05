@@ -93,7 +93,7 @@ class HolidayManagementTest extends TestCase
         $this->post(route('admin.settings.years.store'), ['name' => '2569'])->assertSessionHasNoErrors();
         $year = \App\Models\AcademicYear::where('name', '2569')->firstOrFail();
 
-        $this->put(route('admin.settings.calendars.update', $year->defaultCalendar()), [
+        $this->put(route('admin.settings.calendars.update', $year->fallbackCalendar()), [
             'name'  => 'ปฏิทินหลัก',
             'terms' => [
                 ['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '2026-06-01', 'end_date' => '2026-10-15'],
@@ -115,7 +115,7 @@ class HolidayManagementTest extends TestCase
         $this->post(route('admin.settings.years.store'), ['name' => '2569'])->assertSessionHasNoErrors();
         $year = \App\Models\AcademicYear::where('name', '2569')->firstOrFail();
 
-        $this->put(route('admin.settings.calendars.update', $year->defaultCalendar()), [
+        $this->put(route('admin.settings.calendars.update', $year->fallbackCalendar()), [
             'name'  => 'ปฏิทินหลัก',
             'terms' => [['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '2026-06-01', 'end_date' => '2026-10-15']],
         ])->assertRedirect()->assertSessionHas('holiday_warning');

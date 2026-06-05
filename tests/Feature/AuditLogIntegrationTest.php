@@ -951,7 +951,7 @@ class AuditLogIntegrationTest extends TestCase
         $year = AcademicYear::where('name', '2571')->firstOrFail();
 
         $this->actingAsAdmin()
-            ->put(route('admin.settings.calendars.update', $year->defaultCalendar()), [
+            ->put(route('admin.settings.calendars.update', $year->fallbackCalendar()), [
                 'name'  => 'ปฏิทินหลัก',
                 'terms' => [['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '23/06/2569', 'end_date' => '24/06/2569']],
             ])

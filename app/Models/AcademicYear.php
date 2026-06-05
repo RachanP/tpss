@@ -19,14 +19,14 @@ class AcademicYear extends Model
     }
 
     /**
-     * ปฏิทินหลัก (default) ของปี — สร้างให้อัตโนมัติถ้ายังไม่มี
-     * ใช้เป็นที่เก็บ terms ของ flow เดิม (ปฏิทินเดียวต่อปี)
+     * ปฏิทิน fallback ของปี = ปฏิทินที่ใช้กับ "ทุกหลักสูตร + ทุกชั้นปี" (curriculum/ชั้นปี = null)
+     * สร้างให้อัตโนมัติถ้ายังไม่มี · ใช้เมื่อไม่มีปฏิทินเฉพาะกลุ่มที่ match + เป็นที่เก็บเทอมเริ่มต้น
      */
-    public function defaultCalendar(): AcademicCalendar
+    public function fallbackCalendar(): AcademicCalendar
     {
         return $this->calendars()->firstOrCreate(
-            ['is_default' => true],
-            ['name' => 'ปฏิทินหลัก']
+            ['curriculum_id' => null, 'year_level_min' => null, 'year_level_max' => null],
+            ['name' => 'ทุกหลักสูตร']
         );
     }
 
