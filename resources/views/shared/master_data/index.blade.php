@@ -1705,28 +1705,6 @@
                                     </td>
                                     <td style="text-align: center;">
                                         <div style="display:inline-flex;gap:6px;align-items:center;">
-                                            @if($canManageMasterData && $course->has_locked_offering)
-                                                <a
-                                                    href="{{ route($routePrefix . '.courses.instructor_deviation', $course) }}"
-                                                    class="action-btn"
-                                                    data-testid="courses-deviation-button"
-                                                    title="{{ ($course->has_deviation ?? false) ? 'มีการเปลี่ยนแปลงนอกเหนือจากแม่แบบ — กดดูรายละเอียด' : 'ดูการใช้งานจริงของแม่แบบผู้สอน' }}"
-                                                    style="position:relative;color:var(--brand-navy);text-decoration:none;"
-                                                >
-                                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                        <line x1="18" y1="20" x2="18" y2="10"/>
-                                                        <line x1="12" y1="20" x2="12" y2="4"/>
-                                                        <line x1="6" y1="20" x2="6" y2="14"/>
-                                                    </svg>
-                                                    @if($course->has_deviation ?? false)
-                                                        <span
-                                                            data-testid="courses-deviation-dot"
-                                                            aria-label="มีการเปลี่ยนแปลงนอกเหนือจากแม่แบบ"
-                                                            style="position:absolute;top:-2px;right:-2px;width:9px;height:9px;background:var(--status-warning-fg, #d97706);border:2px solid var(--bg-1, #fff);border-radius:50%;"
-                                                        ></span>
-                                                    @endif
-                                                </a>
-                                            @endif
                                             @if($canManageMasterData)
                                                 <button class="action-btn" title="หัวข้อกิจกรรมสำเร็จรูป" data-testid="courses-topics-button"
                                                     @click="openCourseTopics({{ Js::from($course) }})">

@@ -60,6 +60,9 @@ class AlertController extends Controller
 
         $dismissedWarnings = self::getDismissedWarnings();
 
+        // วิชาที่ผู้สอน/รายละเอียดต่างจากแม่แบบ — โผล่เฉพาะวิชาที่ deviate จริง
+        $instructorDeviations = \App\Support\CourseDeviationFinder::coursesWithDeviation();
+
         $viewData = compact(
             'criticals',
             'paViolations',
@@ -67,6 +70,7 @@ class AlertController extends Controller
             'roomsWithIssues',
             'coursesWithoutStaff',
             'activeCoursesMissingHead',
+            'instructorDeviations',
             'dismissedWarnings',
         );
 
