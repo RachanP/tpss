@@ -133,33 +133,8 @@ class MasterDataController extends Controller
             ->orderBy('course_code')
             ->get();
 
-        // คำนวณว่าวิชาไหนมี deviation จากแม่แบบบ้าง (สำหรับ red dot บนปุ่ม report)
-        // โหลด offerings + pool เฉพาะวิชาที่ locked เพื่อ minimize query
-        // หมายเหตุ: `instructors` ถูก eager-loaded ไปแล้วใน with() ด้านบน → deviation helper จะใช้ cache
-        $lockedCourseIds = $courses->where('has_locked_offering', true)->pluck('id');
-        if ($lockedCourseIds->isNotEmpty()) {
-            $offeringsForDiff = CourseOffering::with(['instructorPool', 'academicYear'])
-                ->whereIn('course_id', $lockedCourseIds)
-                ->whereHas('academicYear', fn ($q) => $q->whereIn('phase', ['scheduling', 'published']))
-                ->get()
-                ->groupBy('course_id');
-
-            foreach ($courses as $course) {
-                $course->has_deviation = false;
-                if (! $course->has_locked_offering) continue;
-
-                foreach ($offeringsForDiff[$course->id] ?? [] as $offering) {
-                    $instructorDiff = $course->instructorPoolDeviationFor($offering);
-                    $detailsDiff = $course->offeringDetailsDeviationFor($offering);
-                    $hasAny = count($instructorDiff['added']) + count($instructorDiff['removed'])
-                        + count($instructorDiff['role_changed']) + count($detailsDiff);
-                    if ($hasAny > 0) {
-                        $course->has_deviation = true;
-                        break;
-                    }
-                }
-            }
-        }
+        // หมายเหตุ: รายงาน deviation (ผู้สอนต่างจากแม่แบบ) ย้ายไปอยู่หน้าแจ้งเตือนแล้ว
+        // (App\Support\CourseDeviationFinder + section ใน admin.alerts) — เลิกคำนวณ/แสดงปุ่มที่นี่
 
         $courseRoles = app(ReferenceDataCache::class)
             ->courseRoles()

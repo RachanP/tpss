@@ -249,6 +249,48 @@
             </section>
         @endif
 
+        @if($instructorDeviations->isNotEmpty())
+            <section id="instructor-deviations" class="alerts-section is-warning-section">
+                <div class="alerts-section-head">
+                    <div class="alerts-section-title-group">
+                        <span class="alerts-section-kicker">รายงานรายวิชา</span>
+                        <div>
+                            <div class="alerts-section-title is-warning">รายวิชาที่ผู้สอนต่างจากแม่แบบ</div>
+                            <div class="alerts-section-sub">ชุดผู้สอน/รายละเอียดในรอบที่เปิดสอน ถูกแก้ต่างจากแม่แบบรายวิชา — กดดูว่าต่างตรงไหน</div>
+                        </div>
+                    </div>
+                    <span class="alerts-count-pill is-warning">{{ number_format($instructorDeviations->count()) }} วิชา</span>
+                </div>
+                <div class="alerts-table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>รหัส</th>
+                                <th>ชื่อวิชา</th>
+                                <th>หลักสูตร / ภาควิชา</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($instructorDeviations as $course)
+                                <tr>
+                                    <td class="alerts-code">{{ $course->course_code }}</td>
+                                    <td><strong>{{ $course->name_th }}</strong></td>
+                                    <td class="alerts-muted">
+                                        {{ $course->curriculum->name ?? '-' }}
+                                        <span>{{ $course->department->name ?? 'ไม่สังกัดภาควิชา' }}</span>
+                                    </td>
+                                    <td class="alerts-table-action">
+                                        <a href="{{ route('admin.courses.instructor_deviation', $course) }}" class="alerts-mini-btn">ดูรายละเอียด</a>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        @endif
+
         <section class="alerts-section is-warning-section">
             <div class="alerts-section-head">
                 <div class="alerts-section-title-group">
