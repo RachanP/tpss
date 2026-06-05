@@ -1651,7 +1651,7 @@ class AuditLogIntegrationTest extends TestCase
     {
         $n = $this->seq++;
 
-        return AcademicYear::create(array_merge([
+        $year = AcademicYear::create(array_merge([
             'name'       => "2569-{$n}",
             'semester'   => 1,
             'start_date' => '2026-08-01',
@@ -1659,6 +1659,13 @@ class AuditLogIntegrationTest extends TestCase
             'is_active'  => true,
             'phase'      => 'preparation',
         ], $overrides));
+
+        // V4 ข้อ 8: ปีต้องมีเทอมในปฏิทินค่าเริ่มต้น ไม่งั้นเปิดช่วงจัดตารางไม่ได้
+        $year->fallbackCalendar()->terms()->create([
+            'sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '2026-08-01', 'end_date' => '2026-12-31',
+        ]);
+
+        return $year;
     }
 
     private function makeCurriculum(): Curriculum

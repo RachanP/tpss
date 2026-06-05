@@ -101,6 +101,21 @@ class AlertController extends Controller
         if (!LocationType::exists())
             $criticals[] = ['key' => 'no_location_type', 'label' => 'ยังไม่มีประเภทสถานที่ในระบบ',  'link' => route('admin.master_data') . '?tab=location_types', 'linkTxt' => 'เพิ่มประเภทสถานที่'];
 
+        // V4 ข้อ 8: ปีปัจจุบันต้องมีเทอมในปฏิทินค่าเริ่มต้น (ทุกหลักสูตร) — ไม่งั้นระบบไม่รู้ช่วงสอบ/ปิดเทอม
+        $activeYear = AcademicYear::where('is_active', true)->first();
+        if ($activeYear) {
+            $fallback = $activeYear->calendars()
+                ->whereNull('curriculum_id')->whereNull('year_level_min')->whereNull('year_level_max')->first();
+            if (!$fallback || $fallback->terms()->doesntExist()) {
+                $criticals[] = [
+                    'key'     => 'active_year_missing_calendar_terms',
+                    'label'   => 'ปีการศึกษาปัจจุบันยังไม่ได้กำหนดเทอม/ช่วงสอบในปฏิทินค่าเริ่มต้น (ทุกหลักสูตร)',
+                    'link'    => route('admin.settings') . '?tab=academic',
+                    'linkTxt' => 'ตั้งค่าปฏิทิน',
+                ];
+            }
+        }
+
         $activeCoursesCount = Course::where('status', 'active')->count();
         if ($activeCoursesCount === 0) {
             $criticals[] = [
