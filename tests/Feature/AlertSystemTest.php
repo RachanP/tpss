@@ -63,7 +63,9 @@ class AlertSystemTest extends TestCase
 
     private function seedMinimalCriticals(): void
     {
-        AcademicYear::create(['name' => '2568', 'semester' => 1, 'start_date' => '2025-08-01', 'end_date' => '2026-01-31', 'is_active' => true]);
+        $year = AcademicYear::create(['name' => '2568', 'semester' => 1, 'start_date' => '2025-08-01', 'end_date' => '2026-01-31', 'is_active' => true]);
+        // V4 ข้อ 8: ปีปัจจุบันต้องมีเทอมในปฏิทินค่าเริ่มต้น (ไม่งั้นเป็น critical)
+        $year->fallbackCalendar()->terms()->create(['sequence' => 1, 'name' => 'ภาคเรียนที่ 1', 'start_date' => '2025-08-01', 'end_date' => '2026-01-31']);
         $dept = Department::create(['name' => 'ภาควิชาทดสอบ']);
         $curr = Curriculum::create(['name' => 'หลักสูตรทดสอบ', 'effective_year' => 2568, 'is_active' => true]);
         ActivityType::create(['name' => 'บรรยาย', 'color_code' => '#000000', 'category' => 'lecture']);

@@ -75,6 +75,20 @@ class AcademicCalendarTest extends TestCase
         $this->assertSame($fallback->id, $year->fallbackCalendar()->id);
     }
 
+    public function test_active_year_without_default_calendar_terms_is_critical(): void
+    {
+        $year = \App\Models\AcademicYear::create(['name' => '2569', 'is_active' => true, 'phase' => 'preparation']);
+        $year->fallbackCalendar(); // ปฏิทินค่าเริ่มต้นว่าง (ยังไม่มีเทอม)
+
+        $keys = collect(\App\Http\Controllers\Admin\AlertController::getCriticals())->pluck('key')->all();
+        $this->assertContains('active_year_missing_calendar_terms', $keys);
+
+        // กำหนดเทอม → critical หาย
+        $year->fallbackCalendar()->terms()->create(['sequence' => 1, 'name' => 'เทอม 1', 'start_date' => '2026-08-01', 'end_date' => '2026-12-01']);
+        $keys2 = collect(\App\Http\Controllers\Admin\AlertController::getCriticals())->pluck('key')->all();
+        $this->assertNotContains('active_year_missing_calendar_terms', $keys2);
+    }
+
     public function test_group_calendar_can_be_deleted_with_terms(): void
     {
         $this->actingAs($this->admin())->withSession(['active_role' => 'admin']);

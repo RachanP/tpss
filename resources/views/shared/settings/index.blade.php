@@ -305,11 +305,18 @@
                                 <tr>
                                     <td style="font-weight: 600; color: var(--fg-1);">{{ $year->name }}</td>
                                     <td style="font-size: 12px; color: var(--fg-2);">
+                                        @php
+                                            $fallbackCal = $year->calendars->first(fn ($c) => is_null($c->curriculum_id) && is_null($c->year_level_min) && is_null($c->year_level_max));
+                                            $needsTerms = ! $fallbackCal || $fallbackCal->terms->isEmpty();
+                                        @endphp
                                         @forelse($year->terms as $t)
                                             <span class="badge badge-gray" style="margin:1px 2px;display:inline-block;">{{ $t->name }}</span>
                                         @empty
                                             <span style="color: var(--fg-3);">—</span>
                                         @endforelse
+                                        @if($needsTerms)
+                                            <span class="badge" title="ยังไม่ได้กำหนดเทอม/ช่วงสอบในปฏิทินค่าเริ่มต้น (ทุกหลักสูตร)" style="display:inline-block;margin:1px 2px;background:oklch(95% 0.05 75);color:oklch(45% 0.13 65);border:1px solid oklch(80% 0.12 75);">⚠ ยังไม่ได้กำหนดเทอม</span>
+                                        @endif
                                     </td>
                                     <td style="color: var(--fg-2); font-size: 13px;">
                                         {{ \App\Support\ThaiDate::formatForInput($year->start_date) }} -
