@@ -385,8 +385,8 @@
                                                             @csrf
                                                             @method('PATCH')
                                                             <button type="button"
-                                                                class="{{ $hasSchedulingCriticals ? 'btn btn-ghost' : 'btn btn-primary' }}"
-                                                                style="font-size: 13px; padding: 6px 14px; {{ $hasSchedulingCriticals ? 'opacity:0.55;cursor:not-allowed;' : '' }}"
+                                                                class="{{ $hasSchedulingCriticals ? 'btn btn-ghost is-locked' : 'btn btn-primary' }}"
+                                                                style="font-size: 13px; padding: 6px 14px;"
                                                                 @if($hasSchedulingCriticals)
                                                                     disabled
                                                                     title="ต้องแก้ Critical ให้หมดก่อนเปิดช่วงจัดตาราง"
@@ -569,7 +569,7 @@
                                     <label>ปีการศึกษา (พ.ศ.)</label>
                                     <input type="text" name="name" x-model="currentYear.name" required
                                         placeholder="เช่น 2569"
-                                        style="{{ $errors->has('name') ? 'border-color: var(--red, #dc2626);' : '' }}">
+                                        @class(['input-invalid' => $errors->has('name')])>
                                     @error('name')
                                         <span style="color: var(--red, #dc2626); font-size: 12px; margin-top: 4px; display: block;">{{ $message }}</span>
                                     @enderror
@@ -995,6 +995,13 @@
             align-items: center;
             justify-content: flex-start;
             min-width: 150px;
+        }
+        .settings-page .is-locked {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+        .settings-page input.input-invalid {
+            border-color: var(--red, #dc2626) !important;
         }
 
         .settings-flash {
