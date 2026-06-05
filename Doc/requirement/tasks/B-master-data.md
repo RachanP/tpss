@@ -5,13 +5,16 @@
 
 ## งานที่ต้องทำ
 
-### ข้อ 1 — หัวข้อกิจกรรมสำเร็จรูป (Activity Topic Templates) (M)
+### ข้อ 1 — หัวข้อกิจกรรมสำเร็จรูป (Activity Topic Templates) (M) ✅ CORE DONE
 
-- [ ] migration: ตาราง activity topics ผูกรายวิชา (course_id หรือ activity_type) — code, name, sort_order
-- [ ] CRUD ใน Master Data ให้ Admin กรอกหัวข้อ/บทเรียนต่อวิชาล่วงหน้า
-- [ ] endpoint คืนรายการหัวข้อตามวิชา (ให้หน้า schedule เรียกใช้)
-- [ ] partial dropdown `<select>` หัวข้อกิจกรรม (ยังพิมพ์เองได้ = free text)
-- [ ] **ประสานกับ Branch A**: เสียบ dropdown ใน slot modal **หลัง A merge เข้า to-serve แล้ว rebase** (A เป็นเจ้าของ modal)
+- [x] migration: ตาราง `activity_topics` ผูกรายวิชา (`course_id` cascade, name, sort_order)
+- [x] Model `ActivityTopic` + `Course::topics()` hasMany (ordered) + eager-load ใน index
+- [x] CRUD ใน Master Data: โมดัล "หัวข้อกิจกรรม" ต่อวิชา (เพิ่ม/ลบแถว + บันทึกทั้งชุด) · ปุ่มในแถววิชา + badge นับจำนวน
+- [x] `syncCourseTopics` (replace ทั้งชุด, trim+กรองแถวว่าง, audit log) + route admin+staff
+- [x] endpoint JSON `courseTopics` (`*.courses.topics.index`) คืนหัวข้อตามวิชา — ให้หน้า schedule เรียกใช้
+- [x] test: `ActivityTopicTest` (5 tests — save ordered/replace/clear/json/cascade)
+- [ ] partial dropdown `<select>` ในหน้า schedule (ยังพิมพ์เองได้ = free text) — **อยู่ในความรับผิดชอบ Branch A**
+- [ ] **ประสานกับ Branch A**: เสียบ dropdown ใน slot modal **หลัง A merge เข้า to-serve แล้ว rebase** · A เรียก endpoint `courses.topics.index`
 
 ### ข้อ 4 — หลักสูตรนับบริการวิชาการอย่างเดียว (S) ✅ DONE
 
