@@ -1650,7 +1650,7 @@
                                     data-year-level="{{ $course->default_year_level ?? '' }}"
                                     data-status="{{ $course->status ?? '' }}"
                                     x-show="courseRowMatches($el)"
-                                    style="{{ $course->status === 'inactive' ? 'opacity: 0.45; filter: grayscale(1); background: #fafafa;' : '' }}">
+                                    @class(['md-course-row-inactive' => $course->status === 'inactive'])>
                                     <td style="vertical-align: middle;">
                                         <div style="display: flex; align-items: center; gap: 8px;">
                                             <div style="width: 4px; height: 18px; border-radius: 2px; background: {{ $course->color_code ?? 'var(--bg-3)' }};"></div>
@@ -3043,13 +3043,13 @@
                                     </td>
                                     <td style="font-weight: 600; color: var(--fg-1);">{{ $at->name }}</td>
                                     <td>
-                                        <span class="pill" style="{{ $catStyle[$at->category] ?? $catStyle['other'] }}{{ $pillShape }}">{{ $catLabel[$at->category] ?? $at->category }}</span>
+                                        <span class="pill md-pill-shape md-pill-{{ array_key_exists($at->category, $catStyle) ? $at->category : 'other' }}">{{ $catLabel[$at->category] ?? $at->category }}</span>
                                     </td>
                                     <td>
                                         @if($at->counts_toward_workload)
-                                            <span class="pill" style="background:#e6fffa;color:#047481;border:1px solid #b2f5ea;{{ $pillShape }}">นับภาระงาน</span>
+                                            <span class="pill md-pill-shape md-pill-counts">นับภาระงาน</span>
                                         @else
-                                            <span class="pill" style="background:#f7fafc;color:#718096;border:1px solid #e2e8f0;{{ $pillShape }}">ไม่นับ</span>
+                                            <span class="pill md-pill-shape md-pill-nocount">ไม่นับ</span>
                                         @endif
                                     </td>
                                     @if($canManageMasterData)
@@ -5080,6 +5080,16 @@
         .master-data-page .search-item:hover {
             background: color-mix(in oklch, var(--brand-navy) 7%, var(--surface));
         }
+
+        /* pill ประเภทกิจกรรม / ภาระงาน + แถววิชาปิดสอน — ย้ายจาก inline style เป็น class */
+        .md-pill-shape { border-radius: 999px; padding: 0 11px; height: 21px; }
+        .md-pill-lecture   { background: #eef4ff; color: #1e40af; border: 1px solid #c7d7fe; }
+        .md-pill-practicum { background: #f3effd; color: #6b21a8; border: 1px solid #ddd0f7; }
+        .md-pill-thesis    { background: #eef6f9; color: #155e75; border: 1px solid #cce4ed; }
+        .md-pill-other     { background: #f7fafc; color: #475569; border: 1px solid #e2e8f0; }
+        .md-pill-counts    { background: #e6fffa; color: #047481; border: 1px solid #b2f5ea; }
+        .md-pill-nocount   { background: #f7fafc; color: #718096; border: 1px solid #e2e8f0; }
+        .md-course-row-inactive { opacity: 0.45; filter: grayscale(1); background: #fafafa; }
     </style>
 
     {{-- ข้อมูล bootstrap วางใน JSON tag (ไม่ถูก parse เป็น JS → กัน false-positive ของ embedded JS validator) --}}
