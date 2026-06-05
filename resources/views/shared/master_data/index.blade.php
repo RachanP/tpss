@@ -5082,10 +5082,20 @@
         }
     </style>
 
+    {{-- ข้อมูล bootstrap วางใน JSON tag (ไม่ถูก parse เป็น JS → กัน false-positive ของ embedded JS validator) --}}
+    @php
+        $mdBootstrap = [
+            'staffUsers' => $staffUsers->map(fn($u) => ['id' => $u->id, 'name' => $u->formatted_name, 'formatted_name' => $u->formatted_name])->values(),
+            'courseInstructorUsers' => $courseInstructorUsers->map(fn($u) => ['id' => $u->id, 'name' => $u->formatted_name, 'formatted_name' => $u->formatted_name, 'department' => $u->instructorProfile?->department?->name ?? '-', 'department_id' => $u->instructorProfile?->department_id])->values(),
+            'courseRoleOptions' => $courseRoles->map(fn($role) => ['id' => $role->id, 'name' => $role->name_th])->values(),
+        ];
+    @endphp
+    <script type="application/json" id="md-bootstrap-data">{!! json_encode($mdBootstrap, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) !!}</script>
     <script>
-        const staffUsers = {{ Js::from($staffUsers->map(fn($u) => ['id' => $u->id, 'name' => $u->formatted_name, 'formatted_name' => $u->formatted_name])) }};
-        const courseInstructorUsers = {{ Js::from($courseInstructorUsers->map(fn($u) => ['id' => $u->id, 'name' => $u->formatted_name, 'formatted_name' => $u->formatted_name, 'department' => $u->instructorProfile?->department?->name ?? '-', 'department_id' => $u->instructorProfile?->department_id])) }};
-        const courseRoleOptions = {{ Js::from($courseRoles->map(fn($role) => ['id' => $role->id, 'name' => $role->name_th])->values()) }};
+        const _mdBootstrap = JSON.parse(document.getElementById('md-bootstrap-data').textContent);
+        const staffUsers = _mdBootstrap.staffUsers;
+        const courseInstructorUsers = _mdBootstrap.courseInstructorUsers;
+        const courseRoleOptions = _mdBootstrap.courseRoleOptions;
 
         function tpssDeptConflictWarn(form, lines, opts) {
             opts = opts || {};
