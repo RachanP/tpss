@@ -588,21 +588,12 @@
                                     </select>
                                 </div>
                             </template>
-                            <div style="margin-top: 4px; border-top: 1px solid var(--border); padding-top: 14px;">
-                                <div style="font-weight: 600; font-size: 13px; color: var(--fg-1); margin-bottom: 6px;">เทอม + ช่วงสอบ</div>
-                                <div style="font-size:12px;color:var(--fg-3);line-height:1.6;padding:11px 13px;background:var(--surface-sunken);border-radius:8px;">
-                                    กำหนดเทอม + ช่วงสอบใน <strong>ปฏิทินการศึกษา</strong> — 1 ปีมีได้หลายปฏิทินตามหลักสูตร/ชั้นปี · วันเริ่ม-สิ้นสุดปีคำนวณจากเทอมให้อัตโนมัติ
-                                    <template x-if="editMode">
-                                        <div style="margin-top:10px;">
-                                            <button type="button" class="btn btn-primary" style="font-size:12px;padding:6px 14px;"
-                                                @click="showModal = false; $nextTick(() => openCalendars(currentYear))">จัดการปฏิทินและเทอม →</button>
-                                        </div>
-                                    </template>
-                                    <template x-if="!editMode">
-                                        <div style="margin-top:8px;color:var(--fg-4);">บันทึกปีการศึกษาก่อน แล้วกดไอคอนปฏิทินที่แถวปีเพื่อกำหนดเทอม</div>
-                                    </template>
+                            <template x-if="editMode">
+                                <div style="margin-top: 4px; border-top: 1px solid var(--border); padding-top: 14px;">
+                                    <button type="button" class="btn btn-ghost" style="font-size:12px;padding:6px 14px;"
+                                        @click="showModal = false; $nextTick(() => openCalendars(currentYear))">จัดการปฏิทินการศึกษา →</button>
                                 </div>
-                            </div>
+                            </template>
                             <div class="form-group" style="margin-top: 16px;">
                                 <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; color: var(--fg-1);">
                                     <input type="checkbox" name="is_active" value="1" x-model="currentYear.is_active"
@@ -614,10 +605,20 @@
                                 @enderror
                             </div>
                         </div>
-                        <div class="modal-foot">
-                            <button type="button" class="btn btn-ghost" @click="showModal = false">ยกเลิก</button>
-                            <button type="submit" class="btn btn-primary">บันทึกข้อมูล</button>
+                        <div class="modal-foot" style="display:flex;justify-content:space-between;align-items:center;">
+                            <template x-if="editMode && !currentYear.is_active">
+                                <button type="button" class="btn btn-ghost" style="color:var(--status-conflict-fg);"
+                                    @click="if (confirm('ลบปีการศึกษา ' + currentYear.name + ' และปฏิทิน/เทอมทั้งหมดของปีนี้?\n(ลบไม่ได้ถ้ามีรายวิชาที่เปิดสอนผูกอยู่)')) $refs.deleteYearForm.submit()">ลบปีการศึกษา</button>
+                            </template>
+                            <div style="display:flex;gap:8px;margin-left:auto;">
+                                <button type="button" class="btn btn-ghost" @click="showModal = false">ยกเลิก</button>
+                                <button type="submit" class="btn btn-primary">บันทึกข้อมูล</button>
+                            </div>
                         </div>
+                    </form>
+                    <form x-ref="deleteYearForm" method="POST" :action="'{{ url($routePrefix . '/settings/academic-years') }}/' + currentYear.id" style="display:none;">
+                        @csrf
+                        @method('DELETE')
                     </form>
                 </div>
             </div>

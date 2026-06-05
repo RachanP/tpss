@@ -587,6 +587,40 @@ class AdminSettingController extends Controller
             ->with('success', 'อัปเดตปีการศึกษาเรียบร้อยแล้ว');
     }
 
+    public function destroyYear(AcademicYear $year)
+    {
+        // ห้ามลบปีปัจจุบัน — ต้องมีปีที่ใช้งานอยู่เสมอ
+        if ($year->is_active) {
+            return redirect()->route($this->settingsRoute(), ['tab' => 'academic'])
+                ->with('error', 'ไม่สามารถลบปีการศึกษาปัจจุบันได้ — ตั้งปีอื่นเป็นปีปัจจุบันก่อน แล้วจึงลบ');
+        }
+
+        // ห้ามลบถ้ามีรายวิชาที่เปิดสอน (course offering) ผูกอยู่ — กันข้อมูลตารางหาย
+        if ($year->courseOfferings()->exists()) {
+            return redirect()->route($this->settingsRoute(), ['tab' => 'academic'])
+                ->with('error', "ไม่สามารถลบปีการศึกษา {$year->name} ได้ — มีรายวิชาที่เปิดสอน/ตารางผูกอยู่กับปีนี้");
+        }
+
+        $snapshot = $this->auditSnapshot($year);
+        $yearId = $year->id;
+        $name = $year->name;
+
+        $year->delete(); // ปฏิทิน + เทอม cascade ตาม FK
+
+        AuditLogger::log(
+            action: 'ข้อมูลหลัก.ลบ',
+            table: 'academic_years',
+            recordId: $yearId,
+            oldValues: $snapshot,
+            newValues: null,
+            description: "ลบปีการศึกษา {$name}",
+        );
+
+        AlertController::flushCache();
+        return redirect()->route($this->settingsRoute(), ['tab' => 'academic'])
+            ->with('success', "ลบปีการศึกษา {$name} เรียบร้อยแล้ว");
+    }
+
     public function openSchedulingWindow(AcademicYear $year)
     {
         if (!$year->is_active) {
