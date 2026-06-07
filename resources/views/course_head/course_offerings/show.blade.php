@@ -641,9 +641,16 @@
                             <span x-text="guideText()"></span>
                         </div>
 
-                        <div class="student-group-preview" data-testid="student-group-list">
-                            <div class="student-group-preview-note" x-text="hint()"></div>
-                            <div class="student-group-bulk-actions" x-show="rows.length > 0" x-cloak>
+                            <div class="student-group-preview" data-testid="student-group-list">
+                                <div class="student-group-preview-note" x-text="hint()"></div>
+                                <template x-if="capacityWarnings().length > 0">
+                                    <div class="section-error-alert" data-testid="student-group-capacity-warning">
+                                        <template x-for="warning in capacityWarnings()" :key="warning">
+                                            <div x-text="warning"></div>
+                                        </template>
+                                    </div>
+                                </template>
+                                <div class="student-group-bulk-actions" x-show="rows.length > 0" x-cloak>
                                 <label class="student-group-check-all">
                                     <input type="checkbox" :checked="allRowsSelected()" @change="toggleAllRows($event.target.checked)" data-testid="student-groups-select-all">
                                     <span>เลือกทั้งหมด</span>
@@ -657,8 +664,7 @@
                             <div class="student-group-preview-empty" x-show="rows.length === 0">เลือกกลุ่มต้นทางและใส่จำนวนกลุ่มเพื่อเริ่มสร้างแถว</div>
                             <template x-if="rows.length > 0">
                                 <div class="student-group-preview-head student-group-editor-head">
-                                    <span></span>
-                                    <span>สี</span>
+                                    <span>เลือก / สี</span>
                                     <span>ชื่อกลุ่ม</span>
                                     <span>กลุ่มต้นทาง</span>
                                     <span>จำนวนนักศึกษา</span>
@@ -668,18 +674,29 @@
                             <template x-for="(row, index) in rows" :key="row.key">
                                 <div :class="row.id ? 'student-group-preview-row student-group-editor-row' : 'student-group-preview-row student-group-editor-row is-new'" :data-testid="`student-group-row-${row.id || row.key}`">
                                     <input type="hidden" :name="`rows[${index}][id]`" x-model="row.id">
-                                    <input type="checkbox" :value="row.key" :checked="selectedKeys.includes(row.key)" @change="toggleRow(row.key, $event.target.checked)" :data-testid="`student-group-select-${index}`">
-                                    <div class="student-group-color-cell">
-                                        <input type="color" x-model="row.color_code" :name="`rows[${index}][color_code]`" :data-testid="`student-group-color-${index}`">
-                                        <span class="student-group-new-badge" x-show="!row.id">ใหม่</span>
+                                    <div class="student-group-mobile-row-head">
+                                        <input type="checkbox" :value="row.key" :checked="selectedKeys.includes(row.key)" @change="toggleRow(row.key, $event.target.checked)" :data-testid="`student-group-select-${index}`">
+                                        <div class="student-group-color-cell">
+                                            <input type="color" x-model="row.color_code" :name="`rows[${index}][color_code]`" :data-testid="`student-group-color-${index}`">
+                                            <span class="student-group-new-badge" x-show="!row.id">ใหม่</span>
+                                        </div>
                                     </div>
-                                    <input type="text" x-model="row.group_code" :name="`rows[${index}][group_code]`" required maxlength="255" :data-testid="`student-group-code-${index}`">
-                                    <select x-model="row.cohort_group_id" @change="sortRows()" :name="`rows[${index}][cohort_group_id]`" required :data-testid="`student-group-cohort-${index}`">
-                                        <template x-for="cohort in cohorts" :key="cohort.id">
-                                            <option :value="cohort.id" x-text="cohort.label"></option>
-                                        </template>
-                                    </select>
-                                    <input type="number" x-model.number="row.student_count" :name="`rows[${index}][student_count]`" min="1" max="9999" required :data-testid="`student-group-count-${index}`">
+                                    <label class="student-group-field">
+                                        <span>ชื่อกลุ่ม</span>
+                                        <input type="text" x-model="row.group_code" :name="`rows[${index}][group_code]`" required maxlength="255" :data-testid="`student-group-code-${index}`">
+                                    </label>
+                                    <label class="student-group-field">
+                                        <span>กลุ่มต้นทาง</span>
+                                        <select x-model="row.cohort_group_id" @change="sortRows()" :name="`rows[${index}][cohort_group_id]`" required :data-testid="`student-group-cohort-${index}`">
+                                            <template x-for="cohort in cohorts" :key="cohort.id">
+                                                <option :value="cohort.id" x-text="cohort.label"></option>
+                                            </template>
+                                        </select>
+                                    </label>
+                                    <label class="student-group-field">
+                                        <span>จำนวนนักศึกษา</span>
+                                        <input type="number" x-model.number="row.student_count" :name="`rows[${index}][student_count]`" min="1" max="9999" required :data-testid="`student-group-count-${index}`">
+                                    </label>
                                     <button type="button" class="btn btn-danger" x-show="!row.id" @click="removeRow(index)">ลบ</button>
                                     <button type="submit" class="btn btn-danger" x-show="row.id" :form="`delete-student-group-${row.id}`">ลบ</button>
                                 </div>
@@ -687,14 +704,16 @@
                             <div class="student-group-add-row">
                                 <label>
                                     <span x-text="rows.length === 0 ? 'สร้างจากกลุ่มต้นทาง' : 'เพิ่มจากกลุ่มต้นทาง'"></span>
-                                    <select x-model="cohortId" @change="syncSource()" data-testid="group-editor-source">
-                                        <option value="">เลือกกลุ่มหลักหรือกลุ่มย่อย</option>
-                                        @foreach($availableCohortGroups as $cohort)
-                                            <option value="{{ $cohort->id }}">
-                                                {{ $cohort->parent ? $cohort->parent->code . ' › ' : '' }}{{ $cohort->code }} · {{ number_format($cohort->student_count) }} คน
-                                            </option>
-                                        @endforeach
-                                    </select>
+                                    <span class="student-group-select-wrap">
+                                        <select class="student-group-source-select" x-model="cohortId" @change="syncSource()" data-testid="group-editor-source">
+                                            <option value="">เลือกกลุ่มหลักหรือกลุ่มย่อย</option>
+                                            @foreach($availableCohortGroups as $cohort)
+                                                <option value="{{ $cohort->id }}">
+                                                    {{ $cohort->parent ? $cohort->parent->code . ' › ' : '' }}{{ $cohort->code }} · {{ number_format($cohort->student_count) }} คน
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </span>
                                 </label>
                                 <label>
                                     <span x-text="rows.length === 0 ? 'จำนวนกลุ่ม' : 'จำนวนกลุ่มใหม่'"></span>
@@ -703,7 +722,7 @@
                             </div>
                             <div class="student-group-create-actions">
                                 <span class="student-group-preview-note" x-text="summary()"></span>
-                                <button type="submit" class="btn btn-primary" :disabled="rows.length === 0" data-testid="student-groups-save">บันทึกการจัดกลุ่ม</button>
+                                <button type="submit" class="btn btn-primary" :disabled="rows.length === 0 || capacityWarnings().length > 0" data-testid="student-groups-save">บันทึกการจัดกลุ่ม</button>
                             </div>
                         </div>
                     </form>
@@ -913,7 +932,20 @@
                     const total = this.rows.reduce((sum, row) => sum + Number(row.student_count || 0), 0);
                     return `${this.rows.length} กลุ่ม · ${total.toLocaleString('th-TH')} คน`;
                 },
+                capacityWarnings() {
+                    return this.cohorts
+                        .map((cohort) => {
+                            const total = this.rowsForCohort(cohort.id)
+                                .reduce((sum, row) => sum + Number(row.student_count || 0), 0);
+
+                            if (total <= Number(cohort.student_count || 0)) return null;
+
+                            return `จำนวนนักศึกษาของกลุ่ม ${cohort.label} รวม ${total.toLocaleString('th-TH')} คน เกินกลุ่มต้นทางที่มี ${Number(cohort.student_count || 0).toLocaleString('th-TH')} คน`;
+                        })
+                        .filter(Boolean);
+                },
                 hint() {
+                    if (this.capacityWarnings().length > 0) return 'จำนวนนักศึกษารวมเกินกลุ่มต้นทาง กรุณาปรับจำนวนก่อนบันทึก';
                     if (this.selectedKeys.length > 0) return 'เลือกกลุ่มแล้ว สามารถกดลบที่เลือก หรือติ๊กออกเพื่อยกเลิกการเลือก';
                     if (this.rows.length === 0 && !this.selected) return 'ขั้นที่ 1: เลือกกลุ่มต้นทางจาก Master Data';
                     if (this.rows.length === 0 && this.selected) return 'ขั้นที่ 2: ใส่จำนวนกลุ่ม ระบบจะสร้างแถวให้ทันที';
@@ -1015,9 +1047,13 @@
         },
         openDropdown() {
             const r = this.$refs.searchInput.getBoundingClientRect();
+            const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+            const margin = viewportWidth <= 480 ? 10 : 0;
+            const maxWidth = Math.max(240, viewportWidth - (margin * 2));
+            const width = Math.min(r.width, maxWidth);
             this.ddTop = r.bottom + window.scrollY + 4;
-            this.ddLeft = r.left + window.scrollX;
-            this.ddWidth = r.width;
+            this.ddLeft = Math.max(margin, Math.min(r.left + window.scrollX, viewportWidth - width - margin));
+            this.ddWidth = width;
             this.open = true;
         },
         async add(user) {
@@ -1107,7 +1143,7 @@
                 </button>
             </div>
         </div>
-        <div style="padding:20px;" x-show="!$store.offeringPage.collapsed.instructors" x-cloak @if($canEdit) :inert="!$store.offeringPage.editing.instructors" @endif>
+        <div class="instructor-section-body" style="padding:20px;" x-show="!$store.offeringPage.collapsed.instructors" x-cloak @if($canEdit) :inert="!$store.offeringPage.editing.instructors" @endif>
             @if($instructorErrorKey)
                 <div class="section-error-alert">
                     {{ $errors->first($instructorErrorKey) }}
@@ -1202,7 +1238,7 @@
             {{-- Pills --}}
             <div style="display:flex;flex-direction:column;gap:8px;" x-show="pool.length > 0">
                 <template x-for="user in pool" :key="user.id">
-                    <div style="display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px 16px;transition:border-color 0.15s;"
+                    <div class="instructor-pool-card" style="display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px 16px;transition:border-color 0.15s;"
                          @mouseover="$el.style.borderColor='var(--brand-navy-300)'"
                          @mouseout="$el.style.borderColor='var(--border)'">
                         <div style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;flex-shrink:0;background:var(--brand-navy-50);color:var(--brand-navy);border-radius:50%;font-weight:700;font-size:0.875rem;font-family:var(--font-display);"
@@ -1624,13 +1660,79 @@
             font-weight: 800;
         }
 
+        .student-group-select-wrap {
+            position: relative;
+            display: block;
+            min-width: 0;
+        }
+
+        .student-group-select-wrap::after {
+            content: '';
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            width: 9px;
+            height: 9px;
+            border-right: 2.25px solid var(--brand-navy);
+            border-bottom: 2.25px solid var(--brand-navy);
+            transform: translateY(-62%) rotate(45deg);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .student-group-source-select {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            min-height: 44px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            background-color: var(--surface);
+            background-image: none;
+            color: var(--fg-1);
+            font: inherit;
+            font-weight: 700;
+            line-height: 1.45;
+            padding-right: 48px !important;
+            text-overflow: ellipsis;
+            cursor: pointer;
+        }
+
+        .student-group-source-select::-ms-expand {
+            display: none;
+        }
+
+        .student-group-source-select option {
+            background: var(--surface);
+            color: var(--fg-1);
+            font-weight: 700;
+        }
+
+        .student-group-source-select option:checked {
+            background: color-mix(in oklch, var(--brand-navy) 12%, var(--surface));
+            color: var(--brand-navy);
+        }
+
         .student-group-create-grid label,
-        .student-group-edit-form label {
+        .student-group-edit-form label,
+        .student-group-field {
             display: grid;
             gap: 7px;
             color: var(--fg-1);
             font-size: 12px;
             font-weight: 800;
+        }
+
+        .student-group-field {
+            min-width: 0;
+        }
+
+        .student-group-field > span {
+            display: none;
+            color: var(--fg-3);
+            font-size: 11px;
+            font-weight: 900;
+            line-height: 1.35;
         }
 
         .student-group-create-grid input,
@@ -1690,7 +1792,7 @@
         .student-group-preview-head,
         .student-group-preview-row {
             display: grid;
-            grid-template-columns: 28px 52px minmax(160px, 1fr) minmax(180px, 260px) minmax(110px, 150px) auto;
+            grid-template-columns: 92px minmax(160px, 1fr) minmax(180px, 260px) minmax(110px, 150px) auto;
             gap: 12px;
             align-items: center;
         }
@@ -1722,7 +1824,7 @@
             line-height: 1;
         }
 
-        .student-group-preview-row > input[type='checkbox'],
+        .student-group-preview-row input[type='checkbox'],
         .student-group-check-all input {
             width: 18px;
             height: 18px;
@@ -1742,6 +1844,14 @@
             display: none;
         }
 
+        .student-group-mobile-row-head {
+            display: grid;
+            grid-template-columns: 18px 52px;
+            align-items: center;
+            gap: 14px;
+            min-width: 0;
+        }
+
         .student-group-preview-head {
             color: var(--fg-3);
             font-size: 11px;
@@ -1753,6 +1863,7 @@
             border: 1px solid var(--border);
             border-radius: 8px;
             background: color-mix(in oklch, var(--brand-navy) 2%, var(--surface));
+            min-width: 0;
         }
 
         .student-group-preview-row.is-new {
@@ -2600,18 +2711,124 @@
         }
 
         @media (max-width: 720px) {
+            html,
+            body {
+                overflow-x: hidden;
+            }
+
+            .content-area {
+                width: 100%;
+                max-width: 100vw;
+                overflow-x: hidden;
+                padding-left: 10px !important;
+                padding-right: 10px !important;
+            }
+
+            .page-shell,
+            .card,
+            .card#course-info,
+            .card#student-groups,
+            .card#instructors,
+            .course-summary-tile,
+            .student-group-create-panel,
+            .student-group-preview,
+            .student-group-add-row,
+            .student-group-preview-row,
+            .instructor-pool-card {
+                max-width: 100%;
+                min-width: 0;
+                box-sizing: border-box;
+            }
+
+            .card#course-info,
+            .card#student-groups,
+            .card#instructors {
+                overflow: hidden !important;
+            }
+
+            .card#course-info > .card-hdr,
+            .card#student-groups > .card-hdr,
+            .card#instructors > .card-hdr {
+                padding: 14px;
+            }
+
+            .card#instructors > .card-hdr {
+                gap: 12px;
+                align-items: flex-start;
+            }
+
+            .card#instructors > .card-hdr > div:first-child {
+                min-width: 0;
+            }
+
+            .instructor-section-body {
+                padding: 14px !important;
+            }
+
+            .instructor-pool-card {
+                align-items: flex-start !important;
+                flex-wrap: wrap;
+                gap: 10px !important;
+                padding: 12px !important;
+            }
+
+            .instructor-pool-card > div:nth-child(2) {
+                flex: 1 1 calc(100% - 48px) !important;
+                min-width: 0;
+            }
+
+            .card#student-groups > .card-hdr {
+                gap: 12px;
+                align-items: flex-start;
+            }
+
+            .card#student-groups > .card-hdr > div:first-child {
+                min-width: 0;
+            }
+
+            .student-groups-body {
+                padding: 14px !important;
+            }
+
+            .student-groups-return-banner {
+                grid-template-columns: 1fr;
+                align-items: stretch;
+            }
+
+            .student-groups-return-banner .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
             .instructor-pool-actions {
-                width:100%;
-                grid-template-columns:1fr;
+                width: 100%;
+                grid-template-columns: 1fr;
                 gap:8px;
+                margin-left: 48px;
             }
             .course-role-control,
             .course-role-badge-head {
                 width: 100%;
             }
+            .course-role-trigger,
+            .course-role-readonly,
+            .course-role-badge,
             .delegate-toggle,
             .delegate-toggle-spacer {
                 width: 100%;
+            }
+            .course-role-menu {
+                left: 0;
+                right: 0;
+                width: 100%;
+                min-width: 0;
+            }
+            .instructor-remove-button {
+                width: 100%;
+                border-radius: 8px;
+                background: var(--status-conflict-bg);
+                color: var(--status-conflict-fg);
+                border: 1px solid var(--status-conflict-border);
             }
             .instructor-action-spacer {
                 display: none;
@@ -2654,10 +2871,16 @@
             .student-group-help {
                 grid-template-columns: 1fr;
                 gap: 8px;
+                padding: 10px 12px;
             }
 
             .student-group-help strong {
                 justify-self: flex-start;
+            }
+
+            .student-group-create-panel,
+            .student-group-preview {
+                padding: 12px;
             }
 
             .student-group-create-grid,
@@ -2665,10 +2888,57 @@
             .student-group-preview-head,
             .student-group-preview-row {
                 grid-template-columns: 1fr;
+                width: 100%;
             }
 
             .student-group-preview-head {
                 display: none;
+            }
+
+            .student-group-preview-row {
+                gap: 9px;
+                padding: 10px;
+                overflow: hidden;
+            }
+
+            .student-group-preview-row input,
+            .student-group-preview-row select,
+            .student-group-add-row input,
+            .student-group-add-row select {
+                min-width: 0;
+            }
+
+            .student-group-mobile-row-head {
+                grid-template-columns: 22px 44px minmax(0, 1fr);
+                gap: 9px;
+                padding-bottom: 2px;
+            }
+
+            .student-group-mobile-row-head::after {
+                content: 'เลือกและกำหนดสี';
+                color: var(--fg-3);
+                font-size: 11px;
+                font-weight: 800;
+                line-height: 1.35;
+            }
+
+            .student-group-color-cell {
+                justify-items: start;
+                gap: 0;
+            }
+
+            .student-group-preview-row input[type='color'] {
+                width: 38px;
+                min-height: 38px;
+                padding: 3px;
+            }
+
+            .student-group-new-badge {
+                margin-top: 4px;
+            }
+
+            .student-group-field > span {
+                display: block;
             }
 
             .student-group-inline-actions,
@@ -2680,6 +2950,129 @@
 
             .student-group-bulk-actions {
                 grid-template-columns: 1fr;
+                min-height: 0;
+                padding: 10px;
+            }
+
+            .student-group-check-all {
+                width: 100%;
+                min-height: 40px;
+            }
+
+            .student-group-inline-actions {
+                justify-content: flex-start;
+            }
+
+            .student-group-inline-actions .btn,
+            .student-group-create-actions .btn,
+            .student-group-preview-row .btn-danger {
+                width: 100%;
+            }
+
+            .student-group-create-actions {
+                gap: 10px;
+            }
+        }
+
+        @media (max-width: 390px) {
+            .page-shell {
+                padding-inline: 8px !important;
+            }
+
+            .content-area {
+                padding-left: 6px !important;
+                padding-right: 6px !important;
+            }
+
+            .card#course-info,
+            .card#student-groups,
+            .card#instructors {
+                border-radius: 8px;
+            }
+
+            .card#student-groups > .card-hdr {
+                padding: 14px 12px;
+            }
+
+            .card#instructors > .card-hdr {
+                padding: 14px 12px;
+            }
+
+            .card#student-groups > .card-hdr > div:first-child {
+                gap: 10px !important;
+            }
+
+            .card#student-groups .card-ttl,
+            .card#instructors .card-ttl {
+                font-size: 15px;
+            }
+
+            .instructor-section-body {
+                padding: 10px !important;
+            }
+
+            .instructor-pool-card {
+                padding: 10px !important;
+            }
+
+            .instructor-pool-actions {
+                margin-left: 0;
+            }
+
+            .student-groups-body {
+                padding: 10px !important;
+            }
+
+            .student-group-create-panel {
+                gap: 12px;
+                padding: 10px;
+            }
+
+            .student-group-create-title strong {
+                font-size: 15px;
+            }
+
+            .student-group-help {
+                padding: 10px;
+            }
+
+            .student-group-help span {
+                font-size: 12px;
+                line-height: 1.6;
+            }
+
+            .student-group-preview {
+                padding: 10px;
+            }
+
+            .student-group-add-row {
+                padding: 10px;
+            }
+
+            .student-group-preview-row {
+                padding: 9px;
+                gap: 8px;
+            }
+
+            .student-group-mobile-row-head {
+                grid-template-columns: 20px 40px minmax(0, 1fr);
+            }
+
+            .student-group-preview-row input[type='color'] {
+                width: 36px;
+                min-height: 36px;
+            }
+
+            .student-group-create-grid input,
+            .student-group-create-grid select,
+            .student-group-add-row input,
+            .student-group-add-row select,
+            .student-group-preview-row input,
+            .student-group-preview-row select,
+            .student-group-edit-form input,
+            .student-group-edit-form select {
+                min-height: 42px;
+                padding: 8px 10px;
             }
         }
 

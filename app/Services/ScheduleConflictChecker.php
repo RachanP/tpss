@@ -124,22 +124,49 @@ class ScheduleConflictChecker
             return collect();
         }
 
+        $incomingGroups = $incoming?->studentGroups ?? collect();
+        $incomingGroupIds = $incomingGroups->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $incomingRootIds = $incomingGroups
+            ->map(fn (StudentGroup $group) => $this->studentGroupRootId($group))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
         return $this->overlappingSchedules($data, $ignoreScheduleId)
-            ->whereHas('studentGroups', fn (Builder $query) => $query->whereIn('student_groups.id', $studentGroupIds))
+            ->whereHas('studentGroups', function (Builder $query) use ($studentGroupIds, $incomingRootIds): void {
+                $query->whereIn('student_groups.id', $studentGroupIds);
+
+                if ($incomingRootIds !== []) {
+                    $query->orWhereIn('student_groups.cohort_group_id', $incomingRootIds)
+                        ->orWhereHas('cohortGroup', fn (Builder $query) => $query->whereIn('parent_id', $incomingRootIds));
+                }
+            })
             ->with([
                 'activityType',
                 'courseOffering.course',
                 'room',
-                'studentGroups' => fn ($query) => $query->whereIn('student_groups.id', $studentGroupIds),
+                'studentGroups.cohortGroup.parent',
             ])
             ->get()
-            ->flatMap(function (Schedule $schedule) use ($incoming) {
+            ->flatMap(function (Schedule $schedule) use ($incoming, $incomingGroups, $incomingGroupIds, $incomingRootIds) {
                 if ($incoming && $this->policy->suppresses('group_overlap', $incoming, $schedule)) {
                     return collect();
                 }
 
-                $groupCodes = $schedule->studentGroups
-                    ->pluck('group_code')
+                $matches = $this->studentGroupConflictLabels(
+                    $incoming,
+                    $schedule,
+                    $incomingGroups,
+                    $incomingGroupIds,
+                    $incomingRootIds
+                );
+
+                if ($matches === []) {
+                    return collect();
+                }
+
+                $groupCodes = collect($matches)
                     ->filter()
                     ->unique()
                     ->values()
@@ -210,11 +237,63 @@ class ScheduleConflictChecker
             ->with('course:id,course_code,name_th,name_en,requires_practicum_rotation')
             ->find($data['course_offering_id']));
         $schedule->setRelation('studentGroups', StudentGroup::query()
-            ->select(['id', 'course_offering_id', 'group_code'])
+            ->select(['id', 'course_offering_id', 'cohort_group_id', 'group_code'])
             ->whereIn('id', array_map('intval', $studentGroupIds))
+            ->with('cohortGroup.parent')
             ->get());
 
         return $schedule;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function studentGroupConflictLabels(
+        ?Schedule $incoming,
+        Schedule $candidate,
+        Collection $incomingGroups,
+        array $incomingGroupIds,
+        array $incomingRootIds
+    ): array {
+        if (! $incoming) {
+            return $candidate->studentGroups->pluck('group_code')->filter()->values()->all();
+        }
+
+        $sameCourseOffering = (int) $incoming->course_offering_id === (int) $candidate->course_offering_id;
+
+        if ($sameCourseOffering) {
+            return $candidate->studentGroups
+                ->filter(fn (StudentGroup $group) => in_array((int) $group->id, $incomingGroupIds, true))
+                ->pluck('group_code')
+                ->filter()
+                ->values()
+                ->all();
+        }
+
+        return $candidate->studentGroups
+            ->filter(fn (StudentGroup $group) => in_array($this->studentGroupRootId($group), $incomingRootIds, true))
+            ->map(fn (StudentGroup $group) => $this->studentGroupRootLabel($group, $incomingGroups) ?: $group->group_code)
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    private function studentGroupRootId(StudentGroup $group): int
+    {
+        return (int) ($group->cohortGroup?->parent_id ?? $group->cohort_group_id ?? $group->id);
+    }
+
+    private function studentGroupRootLabel(StudentGroup $candidateGroup, Collection $incomingGroups): string
+    {
+        $rootId = $this->studentGroupRootId($candidateGroup);
+        $source = $incomingGroups->first(fn (StudentGroup $group) => $this->studentGroupRootId($group) === $rootId);
+        $rootCode = $candidateGroup->cohortGroup?->parent?->code
+            ?? $candidateGroup->cohortGroup?->code
+            ?? $source?->cohortGroup?->parent?->code
+            ?? $source?->cohortGroup?->code
+            ?? '';
+
+        return $rootCode !== '' ? "กลุ่มต้นทาง {$rootCode}" : '';
     }
 
     private function scheduleLabel(Schedule $schedule): string
@@ -252,6 +331,14 @@ class ScheduleConflictChecker
                 : [],
             'group_ids'  => $s->relationLoaded('studentGroups')
                 ? $s->studentGroups->pluck('id')->map(fn ($v) => (int) $v)->all()
+                : [],
+            'group_roots' => $s->relationLoaded('studentGroups')
+                ? $s->studentGroups
+                    ->map(fn (StudentGroup $group) => $this->studentGroupRootId($group))
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->all()
                 : [],
         ])->values()->all();
 
@@ -320,9 +407,13 @@ class ScheduleConflictChecker
                     ];
                 }
 
-                // Student group overlap — one entry per shared group
+                // Student group overlap — same course uses exact groups, cross-course uses same root cohort.
                 $sharedGroups = array_intersect($a['group_ids'], $b['group_ids']);
-                if (! empty($sharedGroups)) {
+                $sharedRootGroups = ((int) $a['course_offering_id'] === (int) $b['course_offering_id'])
+                    ? []
+                    : array_intersect($a['group_roots'], $b['group_roots']);
+
+                if (! empty($sharedGroups) || ! empty($sharedRootGroups)) {
                     $groupsById = $a['schedule']->studentGroups->keyBy('id');
                     foreach ($sharedGroups as $groupId) {
                         $code = $groupsById[$groupId]->group_code ?? "#{$groupId}";
@@ -337,6 +428,29 @@ class ScheduleConflictChecker
                             'schedule_id' => $a['id'],
                             'course_offering_id' => $a['course_offering_id'],
                             'message'     => "กลุ่มนักศึกษา {$code} มีตารางซ้อนกับ {$labelA}",
+                        ];
+                    }
+
+                    foreach ($sharedRootGroups as $rootId) {
+                        $sourceGroup = $a['schedule']->studentGroups
+                            ->first(fn (StudentGroup $group) => $this->studentGroupRootId($group) === (int) $rootId);
+                        $candidateGroup = $b['schedule']->studentGroups
+                            ->first(fn (StudentGroup $group) => $this->studentGroupRootId($group) === (int) $rootId);
+                        $label = $sourceGroup
+                            ? ($this->studentGroupRootLabel($sourceGroup, $b['schedule']->studentGroups) ?: ($sourceGroup->group_code ?? "กลุ่ม {$rootId}"))
+                            : "กลุ่มต้นทาง {$rootId}";
+
+                        $conflictMap[$a['id']][] = [
+                            'type'        => 'group_overlap',
+                            'schedule_id' => $b['id'],
+                            'course_offering_id' => $b['course_offering_id'],
+                            'message'     => "{$label} มีตารางซ้อนกับ {$labelB}",
+                        ];
+                        $conflictMap[$b['id']][] = [
+                            'type'        => 'group_overlap',
+                            'schedule_id' => $a['id'],
+                            'course_offering_id' => $a['course_offering_id'],
+                            'message'     => "{$label} มีตารางซ้อนกับ {$labelA}",
                         ];
                     }
                 }

@@ -20,6 +20,9 @@
     $scheduleTopicMap = $schedulingOfferings->mapWithKeys(fn ($offering) => [
         (string) $offering->id => ($offering->course?->topics ?? collect())->pluck('name')->filter()->values()->all(),
     ])->all();
+    $scheduleCheckUrls = $schedulingOfferings->mapWithKeys(fn ($offering) => [
+        (string) $offering->id => route('maker.course_offerings.schedules.check_conflicts', $offering, false),
+    ])->all();
     // ลิงก์ไปหน้าจัดการกลุ่มของรายวิชา (กลับมาหน้าตารางได้ผ่าน return_to)
     $scheduleGroupManageUrl = function ($offering) {
         return route('maker.course_offerings.show', [
@@ -5336,6 +5339,7 @@
             initialSelectedOfferingId: @js($selectedOfferingId),
             selectedOfferingId: @js($selectedOfferingId),
             topicOptionsMap: @js($scheduleTopicMap),
+            scheduleCheckUrls: @js($scheduleCheckUrls),
             currentTopicOptions() {
                 return this.topicOptionsMap[this.selectedOfferingId] || [];
             },
@@ -5408,16 +5412,23 @@
             liveWarnings: {},
             liveChecking: false,
             liveTimer: null,
+            liveCheckSeq: 0,
             get liveBlocking() { return Object.keys(this.liveIssues).length > 0; },
             get liveWarningActive() { return Object.keys(this.liveWarnings).length > 0; },
             liveIssue(field) { return this.liveIssues[field] || []; },
             liveWarning(field) { return this.liveWarnings[field] || []; },
             init() {
                 this.$el.__tpssScheduleShell = this;
+                window.tpssScheduleRunLiveCheck = (form) => this.runScheduleCheck(form);
                 this.$watch('view', val => sessionStorage.setItem('tpss-schedule-view', val));
                 this.$watch('selectedOfferingId', () => {
                     this.createInstructorSearch = '';
                     this.createGroupSearch = '';
+                    this.liveIssues = {};
+                    this.liveWarnings = {};
+                    this.$nextTick(() => {
+                        if (this.$refs.createForm) this.runScheduleCheck(this.$refs.createForm);
+                    });
                 });
                 const scrollY = sessionStorage.getItem('tpss-schedule-scroll-y');
                 if (scrollY !== null) {
@@ -5467,6 +5478,24 @@
                     sessionStorage.setItem('tpss-schedule-scroll-height', document.documentElement.scrollHeight);
                 });
 
+                const runStudentGroupLiveCheck = (e) => {
+                    const target = e.target instanceof HTMLInputElement ? e.target : null;
+                    if (!target || target.name !== 'student_group_ids[]') return;
+
+                    const form = target.closest('form');
+                    if (!form) return;
+
+                    if (this.liveTimer) {
+                        clearTimeout(this.liveTimer);
+                        this.liveTimer = null;
+                    }
+
+                    this.$nextTick(() => window.tpssScheduleRunLiveCheck?.(form));
+                };
+
+                this.$el.addEventListener('change', runStudentGroupLiveCheck);
+                document.addEventListener('change', runStudentGroupLiveCheck);
+
                 // Re-init Choices when modals open (modal content may be rendered dynamically)
                 this.$watch('showCreate', (val) => {
                     if (val) {
@@ -5483,8 +5512,8 @@
                     if (val) {
                         this.$nextTick(() => {
                             window.tpssInitChoices(document.querySelector('.schedule-modal.is-form'));
-                            // ตรวจการชนทันทีจากค่าที่กรอกไว้แล้วในรายการที่เปิดแก้ (selector ใช้ single quote เท่านั้น — กัน x-data attribute พัง)
-                            const editForm = document.querySelector('form[data-schedule-check]');
+                            const modalId = String(val).replace(/^schedule-/, '');
+                            const editForm = this.scheduleRootElement().querySelector(`[data-schedule-modal-id='${modalId}'] form[data-schedule-check]`);
                             if (editForm) this.runScheduleCheck(editForm);
                         });
                     }
@@ -5588,6 +5617,17 @@
 
                 return url;
             },
+            scheduleCheckUrlFor(form) {
+                const explicit = form?.dataset?.checkUrl || '';
+                if (explicit) return this.sameOriginUrl(explicit);
+
+                const offeringInput = form?.querySelector('[name=course_offering_id]');
+                const offeringId = String(offeringInput?.value || this.selectedOfferingId || '');
+                const mapped = offeringId ? (this.scheduleCheckUrls?.[offeringId] || '') : '';
+                const fallback = @js((! $isWorkspace && $courseOffering) ? route('maker.course_offerings.schedules.check_conflicts', $courseOffering, false) : '');
+
+                return this.sameOriginUrl(mapped || fallback);
+            },
             async refreshCopyWeekPreview() {
                 const url = this.sameOriginUrl(@js((! $isWorkspace && $courseOffering) ? route('maker.course_offerings.schedules.copy_week.preview', $courseOffering, false) : ''));
                 if (!url || !this.copyWeekSource || !this.copyWeekTarget) return;
@@ -5625,9 +5665,10 @@
                 this.liveTimer = setTimeout(() => this.runScheduleCheck(form), 400);
             },
             async runScheduleCheck(formEl) {
-                const url = this.sameOriginUrl(@js((! $isWorkspace && $courseOffering) ? route('maker.course_offerings.schedules.check_conflicts', $courseOffering, false) : ''));
                 const form = formEl || this.$refs.createForm;
+                const url = this.scheduleCheckUrlFor(form);
                 if (!url || !form) return;
+                const seq = ++this.liveCheckSeq;
                 this.liveChecking = true;
                 try {
                     const res = await fetch(url.toString(), {
@@ -5638,13 +5679,15 @@
                     });
                     if (!res.ok) throw new Error('check failed');
                     const data = await res.json();
+                    if (seq !== this.liveCheckSeq) return;
                     this.liveIssues = data.fields || {};
                     this.liveWarnings = data.warnings || {};
                 } catch (e) {
+                    if (seq !== this.liveCheckSeq) return;
                     this.liveIssues = {};
                     this.liveWarnings = {};
                 } finally {
-                    this.liveChecking = false;
+                    if (seq === this.liveCheckSeq) this.liveChecking = false;
                 }
             },
             restoreSeriesWeekDefaults() {
@@ -8478,6 +8521,7 @@
                                                     <input type="checkbox" name="student_group_ids[]" value="{{ $group->id }}"
                                                         @checked(in_array((string) $group->id, $selectedGroupIds, true))
                                                         :disabled="selectedOfferingId !== '{{ $offeringOption->id }}'"
+                                                        @change="$nextTick(() => window.tpssScheduleRunLiveCheck?.($el.closest('form')))"
                                                         data-testid="schedule-group-option">
                                                     <span style="display:inline-flex;align-items:center;gap:7px;">
                                                         <span style="flex:0 0 9px;width:9px;height:9px;border-radius:50%;background:{{ $group->color_code ?: 'var(--brand-navy)' }};"></span>

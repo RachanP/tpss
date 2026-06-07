@@ -1751,21 +1751,29 @@ class ScheduleController extends Controller
             'end_date' => 'วันที่สิ้นสุด',
         ]);
 
+        $ignoreScheduleId = $request->integer('schedule_id') ?: null;
+        $editingSchedule = $ignoreScheduleId
+            ? Schedule::query()
+                ->where('course_offering_id', $courseOffering->id)
+                ->find($ignoreScheduleId)
+            : null;
+        $scheduleDate = fn (?CarbonInterface $value): ?string => $value?->toDateString();
+        $scheduleTime = fn ($value): ?string => $value ? substr((string) $value, 0, 5) : null;
+
         $data = [
             'course_offering_id' => $courseOffering->id,
-            'start_date' => $request->input('start_date') ?: null,
-            'end_date' => $request->input('end_date') ?: null,
-            'start_time' => $request->input('start_time') ?: null,
-            'end_time' => $request->input('end_time') ?: null,
-            'activity_type_id' => $request->input('activity_type_id') ?: null,
-            'room_id' => $request->input('room_id') ?: null,
-            'capacity_required' => $request->input('capacity_required') ?: null,
-            'sub_group_label' => $request->input('sub_group_label') ?: null,
+            'start_date' => $request->input('start_date') ?: $scheduleDate($editingSchedule?->start_date),
+            'end_date' => $request->input('end_date') ?: $scheduleDate($editingSchedule?->end_date),
+            'start_time' => $request->input('start_time') ?: $scheduleTime($editingSchedule?->start_time),
+            'end_time' => $request->input('end_time') ?: $scheduleTime($editingSchedule?->end_time),
+            'activity_type_id' => $request->input('activity_type_id') ?: $editingSchedule?->activity_type_id,
+            'room_id' => $request->input('room_id') ?: $editingSchedule?->room_id,
+            'capacity_required' => $request->input('capacity_required') ?: $editingSchedule?->capacity_required,
+            'sub_group_label' => $request->input('sub_group_label') ?: $editingSchedule?->sub_group_label,
             'instructor_ids' => array_values(array_filter(array_map('intval', (array) $request->input('instructor_ids', [])))),
             'student_group_ids' => array_values(array_filter(array_map('intval', (array) $request->input('student_group_ids', [])))),
-            'lead_instructor_id' => $request->input('lead_instructor_id') ?: null,
+            'lead_instructor_id' => $request->input('lead_instructor_id') ?: $editingSchedule?->lead_instructor_id,
         ];
-        $ignoreScheduleId = $request->integer('schedule_id') ?: null;
 
         $fields = $dateErrors;
         $warnings = [];
@@ -1789,6 +1797,9 @@ class ScheduleController extends Controller
         if (! empty($data['instructor_ids'])) {
             $collect('instructor_ids', fn () => $this->assertInstructorsBelongToCourseDepartment($courseOffering, $data['instructor_ids']));
             $collect('lead_instructor_id', fn () => $this->assertLeadInstructorSelected($data));
+        }
+        if (empty($data['student_group_ids'])) {
+            $fields['student_group_ids'][] = 'กรุณาเลือกกลุ่มนักศึกษาอย่างน้อย 1 กลุ่ม';
         }
         $collect('student_group_ids', fn () => $this->assertSelectedGroupsFitCapacity($courseOffering, $data));
 
@@ -2269,8 +2280,8 @@ class ScheduleController extends Controller
                 Rule::exists('course_offering_instructors', 'user_id')
                     ->where(fn ($query) => $query->where('course_offering_id', $courseOffering->id)),
             ],
-            // V2: กลุ่มย่อยนักศึกษามาหลังอนุมัติ (โดยอาจารย์) → slot สร้างได้โดยยังไม่มีกลุ่ม
-            'student_group_ids' => ['nullable', 'array'],
+            // V4: ทุกกิจกรรมต้องเลือกกลุ่มนักศึกษา เพื่อให้ตรวจกลุ่มชนได้ตั้งแต่สร้างกิจกรรม
+            'student_group_ids' => ['required', 'array', 'min:1'],
             'student_group_ids.*' => [
                 'integer',
                 'distinct',
@@ -2362,7 +2373,7 @@ class ScheduleController extends Controller
                 Rule::exists('course_offering_instructors', 'user_id')
                     ->where(fn ($query) => $query->where('course_offering_id', $courseOffering->id)),
             ],
-            'student_group_ids' => ['nullable', 'array'],
+            'student_group_ids' => ['required', 'array', 'min:1'],
             'student_group_ids.*' => [
                 'integer',
                 'distinct',

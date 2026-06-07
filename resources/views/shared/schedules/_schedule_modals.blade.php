@@ -369,7 +369,7 @@
                     $instructorConflictNote = $showConflictHints ? $conflictFieldNote($editConflicts, ['instructor_overlap'], 'ผู้สอน') : null;
                     $groupConflictNote = $showConflictHints ? $conflictFieldNote($editConflicts, ['group_overlap'], 'กลุ่มนักศึกษา') : null;
                 @endphp
-                <div class="schedule-modal-backdrop" x-show="editModal === 'schedule-{{ $schedule->id }}'" x-cloak @click.self="closeEdit()" data-testid="schedule-edit-modal">
+                <div class="schedule-modal-backdrop" x-show="editModal === 'schedule-{{ $schedule->id }}'" x-cloak @click.self="closeEdit()" data-testid="schedule-edit-modal" data-schedule-modal-id="{{ $schedule->id }}">
                     <template x-if="editModal === 'schedule-{{ $schedule->id }}'">
                         <section class="schedule-modal is-form" role="dialog" aria-modal="true" aria-labelledby="schedule-edit-title-{{ $schedule->id }}">
                         <div class="modal-handle"></div>
@@ -385,6 +385,7 @@
                             action="{{ route('maker.course_offerings.schedules.update', [$offering, $schedule]) }}"
                             data-testid="schedule-edit-form"
                             data-schedule-check
+                            data-check-url="{{ route('maker.course_offerings.schedules.check_conflicts', $offering, false) }}"
                             @input="queueScheduleCheck($el)"
                             @change="queueScheduleCheck($el)"
                             x-data="{
@@ -710,6 +711,7 @@
                                                 <label class="modal-choice">
                                                     <input type="checkbox" name="student_group_ids[]" value="{{ $group->id }}"
                                                         @checked(in_array((string) $group->id, $editGroupIds, true))
+                                                        @change="$nextTick(() => window.tpssScheduleRunLiveCheck?.($el.closest('form')))"
                                                         data-testid="schedule-edit-group-option">
                                                     <span style="display:inline-flex;align-items:center;gap:7px;">
                                                         <span style="flex:0 0 9px;width:9px;height:9px;border-radius:50%;background:{{ $group->color_code ?: 'var(--brand-navy)' }};"></span>

@@ -269,7 +269,9 @@ class ConflictRecomputeJob implements ShouldQueue, ShouldBeUnique
                 'courseOffering.course:id,course_code,name_th,name_en',
                 'instructors:id,name,prefix',
                 'instructors.instructorProfile:id,user_id,title,academic_degree',
-                'studentGroups:id,course_offering_id,group_code,color_code',
+                'studentGroups:id,course_offering_id,cohort_group_id,group_code,color_code',
+                'studentGroups.cohortGroup:id,parent_id,code',
+                'studentGroups.cohortGroup.parent:id,code',
             ])
             ->whereHas('courseOffering', fn (Builder $query) => $query->withActiveCourse());
     }

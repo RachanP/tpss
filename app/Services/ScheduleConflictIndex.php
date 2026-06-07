@@ -43,6 +43,7 @@ class ScheduleConflictIndex
                         isset($seen[$seenKey])
                         || (int) $candidate->id === (int) $schedule->id
                         || ! $this->schedulesOverlap($schedule, $candidate)
+                        || $this->isSameOfferingRootGroupMatch($schedule, $candidate, $candidateResource['resource'])
                         || $this->policy->suppresses($candidateResource['type'], $schedule, $candidate)
                     ) {
                         continue;
@@ -75,7 +76,7 @@ class ScheduleConflictIndex
             'courseOffering.course',
             'room.locationType:id,is_shared',
             'instructors.instructorProfile',
-            'studentGroups',
+            'studentGroups.cohortGroup.parent',
         ]);
     }
 
@@ -140,6 +141,12 @@ class ScheduleConflictIndex
             ->unique()
             ->values()
             ->all();
+        $groupRootIds = $schedules
+            ->flatMap(fn (Schedule $schedule) => $schedule->studentGroups->map(fn ($group) => $this->studentGroupRootId($group)))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
 
         if (! $startDate || ! $endDate || (empty($roomIds) && empty($instructorIds) && empty($groupIds))) {
             return collect();
@@ -147,7 +154,7 @@ class ScheduleConflictIndex
 
         $query = $this->filterSchedulesByDateRange($this->baseScheduleQuery(), $startDate, $endDate);
 
-        $query->where(function (Builder $query) use ($roomIds, $instructorIds, $groupIds): void {
+        $query->where(function (Builder $query) use ($roomIds, $instructorIds, $groupIds, $groupRootIds): void {
             $hasClause = false;
 
             if (! empty($roomIds)) {
@@ -163,7 +170,14 @@ class ScheduleConflictIndex
 
             if (! empty($groupIds)) {
                 $method = $hasClause ? 'orWhereHas' : 'whereHas';
-                $query->{$method}('studentGroups', fn (Builder $query) => $query->whereIn('student_groups.id', $groupIds));
+                $query->{$method}('studentGroups', function (Builder $query) use ($groupIds, $groupRootIds): void {
+                    $query->whereIn('student_groups.id', $groupIds);
+
+                    if ($groupRootIds !== []) {
+                        $query->orWhereIn('student_groups.cohort_group_id', $groupRootIds)
+                            ->orWhereHas('cohortGroup', fn (Builder $query) => $query->whereIn('parent_id', $groupRootIds));
+                    }
+                });
             }
         });
 
@@ -182,7 +196,9 @@ class ScheduleConflictIndex
                 'courseOffering.course:id,course_code,name_th,name_en,requires_practicum_rotation',
                 'instructors:id,name,prefix',
                 'instructors.instructorProfile:id,user_id,title,academic_degree',
-                'studentGroups:id,course_offering_id,group_code,color_code',
+                'studentGroups:id,course_offering_id,cohort_group_id,group_code,color_code',
+                'studentGroups.cohortGroup:id,parent_id,code',
+                'studentGroups.cohortGroup.parent:id,code',
             ])
             ->whereHas('courseOffering', fn (Builder $query) => $query->withActiveCourse());
     }
@@ -273,8 +289,18 @@ class ScheduleConflictIndex
                     'type' => 'group_overlap',
                     'key' => 'group:' . (int) $group->id . ':' . $dateKey,
                     'schedule' => $schedule,
-                    'resource' => $group,
+                    'resource' => ['group' => $group, 'match' => 'exact'],
                 ];
+
+                $rootId = $this->studentGroupRootId($group);
+                if ($rootId) {
+                    $entries[] = [
+                        'type' => 'group_overlap',
+                        'key' => 'group-root:' . $rootId . ':' . $dateKey,
+                        'schedule' => $schedule,
+                        'resource' => ['group' => $group, 'match' => 'root'],
+                    ];
+                }
             }
         }
 
@@ -301,6 +327,10 @@ class ScheduleConflictIndex
     private function messageFor(string $type, Schedule $candidate, mixed $resource): array
     {
         $scheduleLabel = $this->scheduleLabel($candidate);
+        $groupResource = is_array($resource) ? ($resource['group'] ?? null) : $resource;
+        $groupLabel = is_array($resource) && ($resource['match'] ?? null) === 'root'
+            ? $this->studentGroupRootLabel($groupResource)
+            : ($groupResource?->group_code ?? '');
 
         return match ($type) {
             'room_overlap' => [
@@ -321,8 +351,8 @@ class ScheduleConflictIndex
                 'type' => $type,
                 'schedule_id' => $candidate->id,
                 'schedule_label' => $scheduleLabel,
-                'resource_label' => $resource->group_code,
-                'message' => 'กลุ่มนักศึกษา ' . $resource->group_code . ' มีตารางซ้อนกับ ' . $scheduleLabel,
+                'resource_label' => $groupLabel,
+                'message' => 'กลุ่มนักศึกษา ' . $groupLabel . ' มีตารางซ้อนกับ ' . $scheduleLabel,
             ],
             default => [
                 'type' => $type,
@@ -332,6 +362,32 @@ class ScheduleConflictIndex
                 'message' => 'ตารางซ้อนกับ ' . $scheduleLabel,
             ],
         };
+    }
+
+    private function isSameOfferingRootGroupMatch(Schedule $source, Schedule $candidate, mixed $resource): bool
+    {
+        return is_array($resource)
+            && ($resource['match'] ?? null) === 'root'
+            && (int) $source->course_offering_id === (int) $candidate->course_offering_id;
+    }
+
+    private function studentGroupRootId($group): int
+    {
+        return (int) ($group->cohortGroup?->parent_id ?? $group->cohort_group_id ?? $group->id);
+    }
+
+    private function studentGroupRootLabel($group): string
+    {
+        if (! $group) {
+            return '';
+        }
+
+        $rootCode = $group->cohortGroup?->parent?->code
+            ?? $group->cohortGroup?->code
+            ?? $group->group_code
+            ?? '';
+
+        return $rootCode !== '' ? "กลุ่มต้นทาง {$rootCode}" : '';
     }
 
     private function schedulesOverlap(Schedule $left, Schedule $right): bool

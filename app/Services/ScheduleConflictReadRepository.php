@@ -540,7 +540,9 @@ class ScheduleConflictReadRepository
             'courseOffering.course:id,course_code,name_th,name_en',
             'instructors:id,name,prefix',
             'instructors.instructorProfile:id,user_id,title,academic_degree',
-            'studentGroups:id,course_offering_id,group_code,color_code',
+            'studentGroups:id,course_offering_id,cohort_group_id,group_code,color_code',
+            'studentGroups.cohortGroup:id,parent_id,code',
+            'studentGroups.cohortGroup.parent:id,code',
         ];
     }
 
@@ -574,10 +576,20 @@ class ScheduleConflictReadRepository
                 ?? '',
             'instructor' => $this->namedRelationLabel($source?->instructors, $resourceId)
                 ?: $this->namedRelationLabel($conflicting?->instructors, $resourceId),
-            'student_group' => $this->groupRelationLabel($source?->studentGroups, $resourceId)
+            'student_group' => $this->rootGroupLabelFromMessage((string) $result->message)
+                ?: $this->groupRelationLabel($source?->studentGroups, $resourceId)
                 ?: $this->groupRelationLabel($conflicting?->studentGroups, $resourceId),
             default => '',
         };
+    }
+
+    private function rootGroupLabelFromMessage(string $message): string
+    {
+        if (preg_match('/กลุ่มต้นทาง\s+([^\s,·]+)/u', $message, $matches)) {
+            return 'กลุ่มต้นทาง ' . trim($matches[1]);
+        }
+
+        return '';
     }
 
     private function namedRelationLabel(?Collection $items, int $id): string
@@ -627,7 +639,9 @@ class ScheduleConflictReadRepository
                 'courseOffering:id,course_id,academic_year_id,coordinator_id',
                 'courseOffering.course:id,course_code,name_th,name_en',
                 'instructors:id,name,prefix',
-                'studentGroups:id,course_offering_id,group_code,color_code',
+                'studentGroups:id,course_offering_id,cohort_group_id,group_code,color_code',
+                'studentGroups.cohortGroup:id,parent_id,code',
+                'studentGroups.cohortGroup.parent:id,code',
             ])
             ->whereIn('id', $scheduleIds->all())
             ->get()
