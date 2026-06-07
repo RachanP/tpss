@@ -84,6 +84,12 @@
             };
             $scheduleResourceCopyItems = $scheduleResourceCopyItems ?? collect();
             $scheduleReturnUrl = $scheduleReturnUrl ?? request()->fullUrl();
+            $scheduleGroupManageUrl = $scheduleGroupManageUrl ?? function ($offering) {
+                return route('maker.course_offerings.show', [
+                    'courseOffering' => $offering,
+                    'return_to' => request()->fullUrl(),
+                ]) . '#student-groups';
+            };
         @endphp
 
         @foreach($modalSchedules as $schedule)
@@ -307,9 +313,19 @@
                                                 @endforeach
                                             </select>
                                         </div>
+                                        @php $seriesTopicOptions = $offering?->course?->topics ?? collect(); @endphp
                                         <div class="modal-field-full">
                                             <label class="modal-label" for="series_edit_topic_{{ $schedule->id }}">หัวข้อกิจกรรม <span class="required-mark">*</span></label>
-                                            <input id="series_edit_topic_{{ $schedule->id }}" name="topic" type="text" maxlength="255" required class="modal-control" value="{{ $seriesOld('topic', $seriesTemplate->topic) }}">
+                                            <input id="series_edit_topic_{{ $schedule->id }}" name="topic" type="text" maxlength="255" required class="modal-control"
+                                                @if($seriesTopicOptions->isNotEmpty()) list="series-edit-topic-options-{{ $schedule->id }}" autocomplete="off" @endif
+                                                value="{{ $seriesOld('topic', $seriesTemplate->topic) }}" placeholder="{{ $seriesTopicOptions->isNotEmpty() ? 'เลือกหัวข้อสำเร็จรูป หรือพิมพ์เอง' : '' }}">
+                                            @if($seriesTopicOptions->isNotEmpty())
+                                                <datalist id="series-edit-topic-options-{{ $schedule->id }}">
+                                                    @foreach($seriesTopicOptions as $topic)
+                                                        <option value="{{ $topic->name }}"></option>
+                                                    @endforeach
+                                                </datalist>
+                                            @endif
                                         </div>
                                     </div>
                                 </div>
@@ -607,9 +623,19 @@
                                             <div class="modal-conflict-field">{{ $roomConflictNote }}</div>
                                         @endif
                                     </div>
+                                    @php $editTopicOptions = $offering?->course?->topics ?? collect(); @endphp
                                     <div class="modal-field-full">
                                         <label class="modal-label" for="edit_topic_{{ $schedule->id }}">หัวข้อกิจกรรม <span class="required-mark">*</span></label>
-                                        <input id="edit_topic_{{ $schedule->id }}" name="topic" type="text" maxlength="255" required class="modal-control" value="{{ $editOld('topic', $schedule->topic) }}" placeholder="เช่น บรรยายเรื่องการประเมินผู้ป่วย">
+                                        <input id="edit_topic_{{ $schedule->id }}" name="topic" type="text" maxlength="255" required class="modal-control"
+                                            @if($editTopicOptions->isNotEmpty()) list="edit-topic-options-{{ $schedule->id }}" autocomplete="off" @endif
+                                            value="{{ $editOld('topic', $schedule->topic) }}" placeholder="{{ $editTopicOptions->isNotEmpty() ? 'เลือกหัวข้อสำเร็จรูป หรือพิมพ์เอง' : 'เช่น บรรยายเรื่องการประเมินผู้ป่วย' }}">
+                                        @if($editTopicOptions->isNotEmpty())
+                                            <datalist id="edit-topic-options-{{ $schedule->id }}">
+                                                @foreach($editTopicOptions as $topic)
+                                                    <option value="{{ $topic->name }}"></option>
+                                                @endforeach
+                                            </datalist>
+                                        @endif
                                     </div>
                                     <div class="modal-field-full">
                                         <label class="modal-label" for="edit_remark_{{ $schedule->id }}">หมายเหตุ</label>
@@ -653,10 +679,50 @@
                                     @endif
                                 </div>
 
-                                {{-- V2: หัวหน้าวิชาไม่จัดกลุ่มย่อย (กลุ่มจัดหลังอนุมัติ โดยอาจารย์) — เก็บกลุ่มเดิมไว้ผ่าน hidden กัน update ล้าง --}}
-                                @foreach($editGroupIds as $gid)
-                                    <input type="hidden" name="student_group_ids[]" value="{{ $gid }}">
-                                @endforeach
+                                <div class="modal-section {{ $groupConflictNote ? 'modal-field-has-conflict' : '' }}" data-testid="schedule-edit-group-selector">
+                                    <div class="modal-section-title">กลุ่มนักศึกษา <span class="required-mark">*</span></div>
+                                    <template x-if="liveIssue('student_group_ids').length">
+                                        <div class="field-live-error" data-testid="live-error-student-group-ids">
+                                            <template x-for="msg in liveIssue('student_group_ids')" :key="msg"><div x-text="msg"></div></template>
+                                        </div>
+                                    </template>
+                                    @if($offering->studentGroups->isEmpty())
+                                        <div class="schedule-empty schedule-group-empty">
+                                            ยังไม่มีกลุ่มนักศึกษาในรายวิชานี้
+                                            @if((int) $offering->coordinator_id === (int) auth()->id())
+                                                <a href="{{ $scheduleGroupManageUrl($offering) }}" data-testid="schedule-edit-manage-groups-link">ไปสร้างกลุ่มในหน้ารายวิชา</a>
+                                            @endif
+                                        </div>
+                                    @else
+                                        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+                                            @if((int) $offering->coordinator_id === (int) auth()->id())
+                                                <a href="{{ $scheduleGroupManageUrl($offering) }}" class="schedule-group-manage-mini" data-testid="schedule-edit-manage-groups-link">จัดการกลุ่มในหน้ารายวิชา</a>
+                                            @else
+                                                <span></span>
+                                            @endif
+                                            <button type="button" class="btn btn-secondary" style="padding:6px 10px;font-size:12px;"
+                                                @click="$el.closest('.modal-section').querySelectorAll('input[name=&quot;student_group_ids[]&quot;]').forEach(input => { input.checked = true; input.dispatchEvent(new Event('change', { bubbles: true })); })">
+                                                เลือกทุกกลุ่ม
+                                            </button>
+                                        </div>
+                                        <div class="modal-choice-grid">
+                                            @foreach($offering->studentGroups as $group)
+                                                <label class="modal-choice">
+                                                    <input type="checkbox" name="student_group_ids[]" value="{{ $group->id }}"
+                                                        @checked(in_array((string) $group->id, $editGroupIds, true))
+                                                        data-testid="schedule-edit-group-option">
+                                                    <span style="display:inline-flex;align-items:center;gap:7px;">
+                                                        <span style="flex:0 0 9px;width:9px;height:9px;border-radius:50%;background:{{ $group->color_code ?: 'var(--brand-navy)' }};"></span>
+                                                        {{ $group->group_code }} · {{ $group->student_count }} คน
+                                                    </span>
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                    @if($groupConflictNote)
+                                        <div class="modal-conflict-field">{{ $groupConflictNote }}</div>
+                                    @endif
+                                </div>
                             </div>
                             <div class="schedule-live-warning" x-show="liveWarningActive && !liveBlocking" x-cloak data-testid="schedule-live-warning">
                                 <span class="schedule-live-warning-icon" aria-hidden="true">!</span>

@@ -15,6 +15,7 @@ class StudentCohort extends Model
 {
     protected $fillable = [
         'curriculum_id',
+        'academic_year_id',
         'parent_id',
         'year_level',
         'code',
@@ -24,6 +25,7 @@ class StudentCohort extends Model
 
     protected $casts = [
         'curriculum_id' => 'integer',
+        'academic_year_id' => 'integer',
         'parent_id' => 'integer',
         'year_level' => 'integer',
         'student_count' => 'integer',
@@ -32,6 +34,11 @@ class StudentCohort extends Model
     public function curriculum(): BelongsTo
     {
         return $this->belongsTo(Curriculum::class);
+    }
+
+    public function academicYear(): BelongsTo
+    {
+        return $this->belongsTo(AcademicYear::class);
     }
 
     /** กลุ่มใหญ่ที่กลุ่มย่อยนี้สังกัด */
@@ -44,6 +51,16 @@ class StudentCohort extends Model
     public function subgroups(): HasMany
     {
         return $this->hasMany(StudentCohort::class, 'parent_id');
+    }
+
+    public function offeringGroups(): HasMany
+    {
+        return $this->hasMany(StudentGroup::class, 'cohort_group_id');
+    }
+
+    public function rootGroupId(): int
+    {
+        return (int) ($this->parent_id ?? $this->id);
     }
 
     /** เป็นกลุ่มใหญ่ (ไม่มี parent) หรือไม่ */
