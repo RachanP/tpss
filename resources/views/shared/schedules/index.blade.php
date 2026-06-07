@@ -5413,9 +5413,35 @@
             liveChecking: false,
             liveTimer: null,
             liveCheckSeq: 0,
-            get liveBlocking() { return Object.keys(this.liveIssues).length > 0; },
+            get liveBlocking() { return Object.keys(this.visibleLiveIssues()).length > 0; },
             get liveWarningActive() { return Object.keys(this.liveWarnings).length > 0; },
-            liveIssue(field) { return this.liveIssues[field] || []; },
+            visibleLiveIssues() {
+                const issues = { ...this.liveIssues };
+                const groupIssues = this.visibleStudentGroupIssues();
+
+                if (groupIssues.length > 0) {
+                    issues.student_group_ids = groupIssues;
+                } else {
+                    delete issues.student_group_ids;
+                }
+
+                return issues;
+            },
+            visibleStudentGroupIssues() {
+                const messages = this.liveIssues.student_group_ids || [];
+                if (!this.showCreate) return messages;
+
+                const form = this.$refs.createForm;
+                const hasSelectedGroup = form
+                    ? Array.from(form.elements).some((field) => field?.name === 'student_group_ids[]' && field.checked && !field.disabled)
+                    : false;
+
+                return hasSelectedGroup ? messages : [];
+            },
+            liveIssue(field) {
+                if (field === 'student_group_ids') return this.visibleStudentGroupIssues();
+                return this.liveIssues[field] || [];
+            },
             liveWarning(field) { return this.liveWarnings[field] || []; },
             init() {
                 this.$el.__tpssScheduleShell = this;
@@ -5671,11 +5697,14 @@
                 const seq = ++this.liveCheckSeq;
                 this.liveChecking = true;
                 try {
+                    // กัน method spoofing: edit form มี _method=PUT ถ้าส่งไปด้วย Laravel จะ route เป็น PUT → ชน {schedule} → 404
+                    const checkBody = new FormData(form);
+                    checkBody.delete('_method');
                     const res = await fetch(url.toString(), {
                         method: 'POST',
                         credentials: 'same-origin',
                         headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': this.csrf },
-                        body: new FormData(form),
+                        body: checkBody,
                     });
                     if (!res.ok) throw new Error('check failed');
                     const data = await res.json();

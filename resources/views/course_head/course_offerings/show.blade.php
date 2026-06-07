@@ -658,7 +658,7 @@
                                 <div class="student-group-inline-actions">
                                     <span class="student-group-preview-note" x-text="selectedSummary()"></span>
                                     <button type="button" class="btn btn-danger" @click="deleteSelected()" :disabled="selectedKeys.length === 0" data-testid="student-groups-delete-selected">ลบที่เลือก</button>
-                                    <button type="button" class="btn btn-danger" @click="deleteAll()" :disabled="rows.length === 0" data-testid="student-groups-delete-all">ลบทั้งหมด</button>
+                                    <button type="button" class="btn btn-danger student-group-delete-all-btn" @click="deleteAll()" :disabled="rows.length === 0" data-testid="student-groups-delete-all">ลบทั้งหมด</button>
                                 </div>
                             </div>
                             <div class="student-group-preview-empty" x-show="rows.length === 0">เลือกกลุ่มต้นทางและใส่จำนวนกลุ่มเพื่อเริ่มสร้างแถว</div>
@@ -698,14 +698,14 @@
                                         <input type="number" x-model.number="row.student_count" :name="`rows[${index}][student_count]`" min="1" max="9999" required :data-testid="`student-group-count-${index}`">
                                     </label>
                                     <button type="button" class="btn btn-danger" x-show="!row.id" @click="removeRow(index)">ลบ</button>
-                                    <button type="submit" class="btn btn-danger" x-show="row.id" :form="`delete-student-group-${row.id}`">ลบ</button>
+                                    <button type="button" class="btn btn-danger" x-show="row.id" @click="requestDeleteRows([row])">ลบ</button>
                                 </div>
                             </template>
                             <div class="student-group-add-row">
                                 <label>
                                     <span x-text="rows.length === 0 ? 'สร้างจากกลุ่มต้นทาง' : 'เพิ่มจากกลุ่มต้นทาง'"></span>
                                     <span class="student-group-select-wrap">
-                                        <select class="student-group-source-select" x-model="cohortId" @change="syncSource()" data-testid="group-editor-source">
+                                        <select class="student-group-source-select tpss-custom-select" x-model="cohortId" @change="syncSource()" data-testid="group-editor-source">
                                             <option value="">เลือกกลุ่มหลักหรือกลุ่มย่อย</option>
                                             @foreach($availableCohortGroups as $cohort)
                                                 <option value="{{ $cohort->id }}">
@@ -725,6 +725,28 @@
                                 <button type="submit" class="btn btn-primary" :disabled="rows.length === 0 || capacityWarnings().length > 0" data-testid="student-groups-save">บันทึกการจัดกลุ่ม</button>
                             </div>
                         </div>
+
+                        <template x-teleport="body">
+                            <div class="student-group-delete-popover"
+                                x-show="confirmDeleteOpen"
+                                x-cloak
+                                x-transition.opacity.duration.150ms
+                                @keydown.escape.window="cancelDelete()"
+                                data-testid="student-group-delete-confirm">
+                                <div class="student-group-delete-backdrop" @click="cancelDelete()"></div>
+                                <section class="student-group-delete-dialog" role="dialog" aria-modal="true" aria-labelledby="student-group-delete-title">
+                                    <div class="student-group-delete-icon" aria-hidden="true"></div>
+                                    <div>
+                                        <h3 id="student-group-delete-title">ยืนยันการลบกลุ่มนักศึกษา</h3>
+                                        <p x-text="deleteConfirmText()"></p>
+                                    </div>
+                                    <div class="student-group-delete-actions">
+                                        <button type="button" class="btn btn-secondary student-group-delete-action-btn" @click="cancelDelete()">ยกเลิก</button>
+                                        <button type="button" class="btn btn-danger student-group-delete-action-btn" @click="confirmPendingDelete()" x-text="deleteConfirmButtonText()" data-testid="student-group-delete-confirm-submit">ลบกลุ่ม</button>
+                                    </div>
+                                </section>
+                            </div>
+                        </template>
                     </form>
 
                     @foreach($courseOffering->studentGroups as $group)
@@ -771,6 +793,9 @@
                 selected: null,
                 count: '',
                 selectedKeys: [],
+                confirmDeleteOpen: false,
+                pendingDeleteRows: [],
+                pendingDeleteMode: 'selected',
                 colors: ['#2563eb', '#16a34a', '#d97706', '#dc2626', '#7c3aed', '#0891b2'],
                 syncSource() {
                     this.selected = this.cohorts.find((cohort) => String(cohort.id) === String(this.cohortId)) || null;
@@ -898,11 +923,35 @@
                 deleteSelected() {
                     const rows = this.selectedRows();
                     if (rows.length === 0) return;
-                    this.deleteRows(rows);
+                    this.requestDeleteRows(rows, 'selected');
                 },
                 deleteAll() {
                     if (this.rows.length === 0) return;
-                    this.deleteRows([...this.rows]);
+                    this.requestDeleteRows([...this.rows], 'all');
+                },
+                requestDeleteRows(rows, mode = 'selected') {
+                    const persistedIds = rows
+                        .map((row) => row.id)
+                        .filter((id) => id);
+
+                    if (persistedIds.length === 0) {
+                        this.deleteRows(rows);
+                        return;
+                    }
+
+                    this.pendingDeleteRows = rows;
+                    this.pendingDeleteMode = mode;
+                    this.confirmDeleteOpen = true;
+                },
+                cancelDelete() {
+                    this.confirmDeleteOpen = false;
+                    this.pendingDeleteRows = [];
+                    this.pendingDeleteMode = 'selected';
+                },
+                confirmPendingDelete() {
+                    const rows = [...this.pendingDeleteRows];
+                    this.cancelDelete();
+                    this.deleteRows(rows);
                 },
                 deleteRows(rows) {
                     const persistedIds = rows
@@ -926,6 +975,23 @@
                         form.appendChild(input);
                     });
                     form.submit();
+                },
+                deleteConfirmText() {
+                    const total = this.pendingDeleteRows
+                        .filter((row) => row.id)
+                        .length;
+                    const count = Number(total || 1).toLocaleString('th-TH');
+
+                    if (this.pendingDeleteMode === 'all') {
+                        return `ต้องการลบกลุ่มนักศึกษาทั้งหมด ${count} กลุ่มหรือไม่? เมื่อลบแล้วจะไม่สามารถกู้คืนจากหน้านี้ได้`;
+                    }
+
+                    return total > 1
+                        ? `ต้องการลบกลุ่มนักศึกษา ${count} กลุ่มหรือไม่? เมื่อลบแล้วจะไม่สามารถกู้คืนจากหน้านี้ได้`
+                        : 'ต้องการลบกลุ่มนักศึกษานี้หรือไม่? เมื่อลบแล้วจะไม่สามารถกู้คืนจากหน้านี้ได้';
+                },
+                deleteConfirmButtonText() {
+                    return this.pendingDeleteMode === 'all' ? 'ลบทั้งหมด' : 'ลบกลุ่ม';
                 },
                 summary() {
                     if (this.rows.length === 0) return '';
@@ -1640,6 +1706,110 @@
             min-height: 44px;
         }
 
+        .student-group-delete-popover {
+            position: fixed;
+            inset: 0 0 0 var(--sidebar-w, 0px);
+            z-index: calc(var(--z-modal, 200) + 20);
+            display: grid;
+            place-items: center;
+            padding: 18px;
+        }
+
+        .student-group-delete-backdrop {
+            position: absolute;
+            inset: 0;
+            background: color-mix(in oklch, var(--brand-navy) 34%, transparent);
+        }
+
+        .student-group-delete-dialog {
+            position: relative;
+            z-index: 1;
+            width: min(460px, 100%);
+            display: grid;
+            grid-template-columns: 52px minmax(0, 1fr);
+            gap: 14px;
+            padding: 18px;
+            border: 1px solid var(--status-conflict-border);
+            border-radius: 10px;
+            background: var(--surface);
+            box-shadow: 0 18px 44px color-mix(in oklch, var(--brand-navy) 24%, transparent);
+            transform: translateY(0);
+        }
+
+        .student-group-delete-icon {
+            position: relative;
+            width: 52px;
+            height: 52px;
+            display: inline-grid;
+            place-items: center;
+            align-self: start;
+            border-radius: 12px;
+            background: var(--status-conflict-bg);
+            color: var(--status-conflict-fg);
+        }
+
+        .student-group-delete-icon::before,
+        .student-group-delete-icon::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            display: block;
+            background: var(--status-conflict-fg);
+        }
+
+        .student-group-delete-icon::before {
+            top: 13px;
+            width: 4px;
+            height: 19px;
+            border-radius: 999px;
+        }
+
+        .student-group-delete-icon::after {
+            top: 36px;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+        }
+
+        .student-group-delete-dialog h3 {
+            margin: 0 0 4px;
+            color: var(--fg-1);
+            font-size: 18px;
+            font-weight: 900;
+            line-height: 1.35;
+        }
+
+        .student-group-delete-dialog p {
+            margin: 0;
+            color: var(--fg-2);
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.6;
+        }
+
+        .student-group-delete-actions {
+            grid-column: 1 / -1;
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            align-items: stretch;
+            gap: 10px;
+            padding-top: 4px;
+        }
+
+        .student-group-delete-action-btn {
+            width: 100% !important;
+            min-height: 44px !important;
+            height: 44px !important;
+            display: inline-grid !important;
+            place-content: center !important;
+            margin: 0 !important;
+            padding: 0 14px !important;
+            text-align: center !important;
+            line-height: 1 !important;
+            vertical-align: middle !important;
+        }
+
         .student-group-add-row {
             display: grid;
             grid-template-columns: minmax(220px, 1fr) minmax(140px, 220px);
@@ -1678,6 +1848,11 @@
             transform: translateY(-62%) rotate(45deg);
             pointer-events: none;
             z-index: 1;
+        }
+
+        /* เมื่อ tpss-custom-select สร้าง trigger (มี chevron ของตัวเอง) → ซ่อนลูกศรเดิม กันซ้อน */
+        .student-group-select-wrap:has(.tpss-select-trigger)::after {
+            display: none;
         }
 
         .student-group-source-select {

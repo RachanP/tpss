@@ -85,9 +85,10 @@
             $scheduleResourceCopyItems = $scheduleResourceCopyItems ?? collect();
             $scheduleReturnUrl = $scheduleReturnUrl ?? request()->fullUrl();
             $scheduleGroupManageUrl = $scheduleGroupManageUrl ?? function ($offering) {
+                // return_to = หน้า schedule เต็ม (ไม่ใช่ week-fragment ที่ modal โหลดผ่าน AJAX)
                 return route('maker.course_offerings.show', [
                     'courseOffering' => $offering,
-                    'return_to' => request()->fullUrl(),
+                    'return_to' => route('maker.course_offerings.schedules.index', $offering),
                 ]) . '#student-groups';
             };
         @endphp

@@ -1328,7 +1328,7 @@ class ScheduleController extends Controller
                 'status' => 'draft',
                 'remark' => $validated['remark'] ?? null,
                 'check_conflicts' => true,
-                'populate_resources' => 'all',
+                'populate_resources' => 'first',
             ]);
         });
 
