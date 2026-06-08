@@ -16,6 +16,7 @@ use App\Models\ScheduleConflictRun;
 use App\Models\StudentGroup;
 use App\Models\User;
 use App\Models\UserRole;
+use App\Services\CoordinatorAlertService;
 use App\Services\NavigationBadgeService;
 use App\Services\ScheduleConflictInvalidationService;
 use App\Services\ScheduleConflictIndex;
@@ -353,10 +354,14 @@ class ConflictRecomputeJobTest extends TestCase
         $this->assertGreaterThan(0, $repository->getScheduleSummaryPageForUser($head->id, $year->id, 1)->count());
     }
 
-    public function test_async_sidebar_badge_keeps_pending_state_without_visible_label(): void
+    public function test_async_sidebar_badge_falls_back_to_sync_count_while_pending(): void
     {
+        // ข้อ 17: read model ยังไม่พร้อม (run = pending) → badge ต้องคำนวณ sync แสดงเลขทันที
+        // (เดิมจะซ่อน badge ไว้จนกว่า recompute job เสร็จ ทำให้ขึ้นช้ามาก)
         config(['conflicts.async_reads' => true]);
-        [$year, $head] = $this->makeReadyOffering();
+        Cache::flush();
+        [$year, $head] = $this->makeConflictDataset();
+        ScheduleConflictRun::query()->delete(); // ล้าง run จาก observer แล้วตั้ง state ที่ต้องการเอง
         ScheduleConflictRun::query()->create([
             'academic_year_id' => $year->id,
             'status' => 'pending',
@@ -368,10 +373,14 @@ class ConflictRecomputeJobTest extends TestCase
 
         $badge = app(NavigationBadgeService::class)->forRole('course_head', $head->id);
 
-        $this->assertNull($badge['maker_conflict_count']);
-        $this->assertSame('pending', $badge['maker_conflict_status']);
-        $this->assertTrue($badge['maker_conflict_pending']);
-        $this->assertNull($badge['maker_conflict_label']);
+        $expected = app(ScheduleConflictIndex::class)->countForCoordinator($head->id, $year->id)
+            + app(CoordinatorAlertService::class)->warningCount($head->id, $year->id);
+
+        $this->assertSame('ready', $badge['maker_conflict_status']);
+        $this->assertFalse($badge['maker_conflict_pending']);
+        $this->assertGreaterThanOrEqual(2, $badge['maker_conflict_count']); // อย่างน้อย 2 schedule ที่ชน
+        $this->assertSame($expected, $badge['maker_conflict_count']);       // ตรงกับ engine หน้าแจ้งเตือน
+        $this->assertSame((string) $expected, $badge['maker_conflict_label']);
     }
 
     public function test_conflict_badge_status_endpoint_returns_ready_json_for_course_head(): void
@@ -400,25 +409,26 @@ class ConflictRecomputeJobTest extends TestCase
         $this->assertSame((string) $response->json('count'), $response->json('label'));
     }
 
-    public function test_conflict_badge_status_endpoint_polls_when_results_are_missing(): void
+    public function test_conflict_badge_status_endpoint_returns_sync_count_and_warms_async_when_missing(): void
     {
+        // ข้อ 17: read model ยังไม่มี → endpoint คืนเลข sync ทันที (ไม่บังคับ poll)
+        // พร้อมสั่ง recompute เบื้องหลังไว้ให้รอบหน้าใช้ async
         config(['conflicts.async_reads' => true]);
         Cache::flush();
         Queue::fake();
-        [, $head] = $this->makeReadyOffering();
+        [, $head] = $this->makeReadyOffering(); // ยังไม่มีกิจกรรม → 0 รายการ
         $this->attachRole($head, 'course_head');
 
         $this->actingAs($head)
             ->withSession(['active_role' => 'course_head'])
             ->getJson(route('maker.conflict_badge_status'))
             ->assertOk()
-            ->assertJsonPath('status', 'missing')
-            ->assertJsonPath('count', null)
-            ->assertJsonPath('pending', true)
-            ->assertJsonPath('label', null)
-            ->assertJsonPath('poll', true);
+            ->assertJsonPath('status', 'ready')
+            ->assertJsonPath('count', 0)
+            ->assertJsonPath('pending', false)
+            ->assertJsonPath('poll', false);
 
-        Queue::assertPushed(ConflictRecomputeJob::class);
+        Queue::assertPushed(ConflictRecomputeJob::class); // ยัง warm async เบื้องหลัง
     }
 
     public function test_conflict_badge_status_endpoint_is_scoped_to_the_current_course_head(): void
@@ -537,10 +547,11 @@ class ConflictRecomputeJobTest extends TestCase
 
         $badge = app(NavigationBadgeService::class)->forRole('course_head', $head->id);
 
-        $this->assertNull($badge['maker_conflict_count']);
-        $this->assertSame('missing', $badge['maker_conflict_status']);
-        $this->assertTrue($badge['maker_conflict_pending']);
-        $this->assertNull($badge['maker_conflict_label']);
+        // badge แสดงเลข sync ทันที (0 = ยังไม่มีกิจกรรม) แทนที่จะซ่อนรอ job
+        $this->assertSame('ready', $badge['maker_conflict_status']);
+        $this->assertFalse($badge['maker_conflict_pending']);
+        $this->assertSame(0, $badge['maker_conflict_count']);
+        // แต่ยัง warm async recompute เบื้องหลัง
         $this->assertDatabaseHas('schedule_conflict_runs', [
             'academic_year_id' => $year->id,
             'status' => 'pending',
@@ -549,10 +560,14 @@ class ConflictRecomputeJobTest extends TestCase
         Queue::assertPushed(ConflictRecomputeJob::class, fn (ConflictRecomputeJob $job) => $job->academicYearId === $year->id);
     }
 
-    public function test_async_sidebar_badge_shows_failed_label_instead_of_zero(): void
+    public function test_async_sidebar_badge_falls_back_to_sync_count_when_async_failed(): void
     {
+        // ข้อ 17: async recompute ล้มเหลว → badge ยังคำนวณ sync แสดงเลขจริงทันที
+        // (ดีกว่าโชว์ error ในเมนูหลัก — ผู้ใช้เห็นจำนวนที่ถูกต้องเหมือนหน้าแจ้งเตือน)
         config(['conflicts.async_reads' => true]);
-        [$year, $head] = $this->makeReadyOffering();
+        Cache::flush();
+        [$year, $head] = $this->makeConflictDataset();
+        ScheduleConflictRun::query()->delete(); // ล้าง run จาก observer แล้วตั้ง state ที่ต้องการเอง
         ScheduleConflictRun::query()->create([
             'academic_year_id' => $year->id,
             'status' => 'failed',
@@ -566,10 +581,13 @@ class ConflictRecomputeJobTest extends TestCase
 
         $badge = app(NavigationBadgeService::class)->forRole('course_head', $head->id);
 
-        $this->assertNull($badge['maker_conflict_count']);
-        $this->assertSame('failed', $badge['maker_conflict_status']);
-        $this->assertTrue($badge['maker_conflict_pending']);
-        $this->assertSame('ตรวจสอบไม่สำเร็จ', $badge['maker_conflict_label']);
+        $expected = app(ScheduleConflictIndex::class)->countForCoordinator($head->id, $year->id)
+            + app(CoordinatorAlertService::class)->warningCount($head->id, $year->id);
+
+        $this->assertSame('ready', $badge['maker_conflict_status']);
+        $this->assertFalse($badge['maker_conflict_pending']);
+        $this->assertGreaterThanOrEqual(2, $badge['maker_conflict_count']);
+        $this->assertSame($expected, $badge['maker_conflict_count']);
     }
 
     public function test_async_sidebar_badge_shows_ready_count_after_recompute(): void
