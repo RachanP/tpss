@@ -362,12 +362,32 @@
     $scheduleFilterItems = $singleCourseSchedules->map(function ($schedule) use ($formatDate, $formatTime, $scheduleDepartmentInstructors, $weekNumberForDate) {
         $instructors = $scheduleDepartmentInstructors($schedule);
 
+        // ทุกสัปดาห์ที่ schedule นี้ครอบ (start_date→end_date) — ให้ตรงกับ list ที่กระจายรายวัน
+        // schedule ที่กินข้ามสัปดาห์ต้องถูกนับ/กรองในทุกสัปดาห์ที่มันโผล่ ไม่ใช่แค่สัปดาห์เริ่ม
+        $weeks = collect();
+        if ($schedule->start_date) {
+            $weekStartDate = \Carbon\CarbonImmutable::parse($schedule->start_date)->startOfDay();
+            $weekEndDate = $schedule->end_date
+                ? \Carbon\CarbonImmutable::parse($schedule->end_date)->startOfDay()
+                : $weekStartDate;
+            if ($weekEndDate->lt($weekStartDate)) {
+                $weekEndDate = $weekStartDate;
+            }
+            $weeks = collect(\Carbon\CarbonPeriod::create($weekStartDate, $weekEndDate))
+                ->map(fn ($date) => $weekNumberForDate($date))
+                ->filter()
+                ->unique()
+                ->map(fn ($week) => (string) $week)
+                ->values();
+        }
+
         return [
             'id' => (string) $schedule->id,
             'activity' => (string) $schedule->activity_type_id,
             'groups' => $schedule->studentGroups->pluck('id')->map(fn ($id) => (string) $id)->values(),
             'instructors' => $instructors->pluck('id')->map(fn ($id) => (string) $id)->values(),
             'week' => (string) ($weekNumberForDate($schedule->start_date) ?? ''),
+            'weeks' => $weeks,
             'date' => $schedule->start_date?->toDateString(),
             'search' => mb_strtolower(collect([
                 $formatDate($schedule->start_date),
@@ -404,10 +424,11 @@
             return [str_replace('-', '', $dateString) => $lazyScheduleList && ! $loadedWeekStartSet->has($weekStartIso)];
         })
         ->toArray();
+    // นับรายการต่อสัปดาห์จากทุกสัปดาห์ที่ schedule ครอบ (ตรงกับ list) ไม่ใช่แค่สัปดาห์เริ่ม
     $countsByWeek = $scheduleFilterItems
-        ->filter(fn ($item) => $item['week'] !== '')
-        ->groupBy('week')
-        ->map(fn ($items) => $items->count());
+        ->flatMap(fn ($item) => $item['weeks'])
+        ->groupBy(fn ($week) => (string) $week)
+        ->map(fn ($weeks) => $weeks->count());
     $scheduleWeekOptions = collect(range(1, max(1, $totalAcademicWeeks)))
         ->map(fn ($week) => [
             'week' => $week,
@@ -5963,7 +5984,7 @@
                     && (!this.scheduleActivity || item.activity === this.scheduleActivity)
                     && (!this.scheduleGroup || item.groups.includes(this.scheduleGroup))
                     && (!this.scheduleInstructor || item.instructors.includes(this.scheduleInstructor))
-                    && (!this.scheduleWeek || item.week === this.scheduleWeek);
+                    && (!this.scheduleWeek || (item.weeks || []).includes(this.scheduleWeek));
             },
             matchedScheduleCount() {
                 return this.scheduleItems.filter((item) => this.matchesSchedule(item.id)).length;

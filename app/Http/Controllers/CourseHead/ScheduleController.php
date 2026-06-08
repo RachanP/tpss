@@ -892,17 +892,34 @@ class ScheduleController extends Controller
             ? CarbonImmutable::parse($academicYear->start_date)->startOfWeek(CarbonInterface::MONDAY)
             : null;
 
-        return $schedules->map(function (Schedule $schedule) use ($academicStartDate) {
+        $academicWeekOf = fn ($date) => (string) (max(1, (int) floor(
+            $academicStartDate->diffInDays(
+                CarbonImmutable::parse($date)->startOfWeek(CarbonInterface::MONDAY),
+                false
+            ) / 7
+        ) + 1));
+
+        return $schedules->map(function (Schedule $schedule) use ($academicStartDate, $academicWeekOf) {
             $instructors = $schedule->instructors ?? collect();
             $week = '';
+            $weeks = [];
 
             if ($academicStartDate && $schedule->start_date) {
-                $week = (string) (max(1, (int) floor(
-                    $academicStartDate->diffInDays(
-                        CarbonImmutable::parse($schedule->start_date)->startOfWeek(CarbonInterface::MONDAY),
-                        false
-                    ) / 7
-                ) + 1));
+                $week = $academicWeekOf($schedule->start_date);
+
+                // ทุกสัปดาห์ที่ schedule ครอบ (start_date→end_date) — ตรงกับ list ที่กระจายรายวัน
+                $spanStart = CarbonImmutable::parse($schedule->start_date)->startOfDay();
+                $spanEnd = $schedule->end_date
+                    ? CarbonImmutable::parse($schedule->end_date)->startOfDay()
+                    : $spanStart;
+                if ($spanEnd->lt($spanStart)) {
+                    $spanEnd = $spanStart;
+                }
+                $weeks = collect(CarbonPeriod::create($spanStart, $spanEnd))
+                    ->map(fn ($date) => $academicWeekOf($date))
+                    ->unique()
+                    ->values()
+                    ->all();
             }
 
             return [
@@ -911,6 +928,7 @@ class ScheduleController extends Controller
                 'groups' => $schedule->studentGroups->pluck('id')->map(fn ($id) => (string) $id)->values()->all(),
                 'instructors' => $instructors->pluck('id')->map(fn ($id) => (string) $id)->values()->all(),
                 'week' => $week,
+                'weeks' => $weeks,
                 'date' => $schedule->start_date?->toDateString(),
                 'search' => mb_strtolower(collect([
                     $schedule->start_date ? ThaiDate::date($schedule->start_date) : null,
