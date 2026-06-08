@@ -9075,6 +9075,10 @@ document.addEventListener('DOMContentLoaded', function () {
     document.addEventListener('mousemove', function (e) {
         mx = e.clientX;
         my = e.clientY;
+        // เซลล์ใหญ่ (นอกช่วงปี/วันหยุด): ให้ tooltip ตามเคอร์เซอร์ ไม่ค้างที่จุดเข้า
+        if (current && tip && tip.classList.contains('is-visible')) {
+            position(true, current);
+        }
     }, { passive: true });
 
     function ensureTip() {
@@ -9087,19 +9091,10 @@ document.addEventListener('DOMContentLoaded', function () {
         return tip;
     }
 
-    // useCursor=true → วางใกล้เคอร์เซอร์ (hover) · false → วางใต้ element (โฟกัสคีย์บอร์ด)
-    function place(el, useCursor) {
-        var text = (el.getAttribute('data-tip') || '').trim();
-        if (!text) { hide(); return; }
-
-        var t = ensureTip();
-        t.textContent = text;
-        t.style.maxWidth = Math.min(280, window.innerWidth - 16) + 'px';
-        t.style.left = '0px';
-        t.style.top = '0px';
-        t.classList.add('is-visible');
-
-        var tr = t.getBoundingClientRect();
+    // จัดตำแหน่งเท่านั้น (ไม่แตะ text) — useCursor=true ใกล้เคอร์เซอร์ · false ใต้ element
+    function position(useCursor, el) {
+        if (!tip) return;
+        var tr = tip.getBoundingClientRect();
         var margin = 8;
         var left, top;
 
@@ -9118,10 +9113,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
         left = Math.max(margin, Math.min(left, window.innerWidth - tr.width - margin));
         top = Math.max(margin, Math.min(top, window.innerHeight - tr.height - margin));
-        t.style.left = Math.round(left) + 'px';
-        t.style.top = Math.round(top) + 'px';
+        tip.style.left = Math.round(left) + 'px';
+        tip.style.top = Math.round(top) + 'px';
+    }
+
+    // useCursor=true → วางใกล้เคอร์เซอร์ (hover) · false → วางใต้ element (โฟกัสคีย์บอร์ด)
+    function place(el, useCursor) {
+        var text = (el.getAttribute('data-tip') || '').trim();
+        if (!text) { hide(); return; }
+
+        var t = ensureTip();
+        t.textContent = text;
+        t.style.maxWidth = Math.min(280, window.innerWidth - 16) + 'px';
+        t.style.left = '0px';
+        t.style.top = '0px';
+        t.classList.add('is-visible');
 
         current = el;
+        position(useCursor, el);
     }
 
     function hide() {
