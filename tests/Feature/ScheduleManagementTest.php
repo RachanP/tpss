@@ -1634,7 +1634,7 @@ class ScheduleManagementTest extends TestCase
         $this->assertDatabaseCount('schedules', 1);
     }
 
-    public function test_same_offering_conflict_with_generated_week_two_blocks_save(): void
+    public function test_same_offering_conflict_with_generated_week_one_blocks_save(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
 
@@ -1656,17 +1656,19 @@ class ScheduleManagementTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
+        // V4: เฉพาะสัปดาห์แรก (2026-08-03) ที่ได้ resource ครบ → ชนกับ slot ใหม่วันเดียวกัน
+        // (สัปดาห์ที่สองเป็น shell ไม่มีผู้สอน/ห้อง/กลุ่ม จึงไม่ก่อให้เกิดการชน)
         $this->post(route('maker.course_offerings.schedules.store', $offering), $this->schedulePayload($instructor, $group, $activityType, $room, [
-            'start_date' => '2026-08-10',
-            'end_date' => '2026-08-10',
-            'topic' => 'Conflicts with generated week two',
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-03',
+            'topic' => 'Conflicts with generated week one',
         ]))
             ->assertRedirect()
             ->assertSessionHasErrors('schedule');
 
         $this->assertDatabaseMissing('schedules', [
             'course_offering_id' => $offering->id,
-            'topic' => 'Conflicts with generated week two',
+            'topic' => 'Conflicts with generated week one',
         ]);
     }
 

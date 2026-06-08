@@ -151,18 +151,27 @@ class ScheduleSeriesGeneratorTest extends TestCase
             ->get();
 
         $this->assertCount(2, $instances);
-        $this->assertTrue($instances->every(fn ($schedule) => (int) $schedule->room_id === (int) $room->id));
-        $this->assertTrue($instances->every(fn ($schedule) => $schedule->instructors()->where('users.id', $instructor->id)->wherePivot('is_lead', true)->exists()));
-        $this->assertTrue($instances->every(fn ($schedule) => $schedule->studentGroups()->where('student_groups.id', $group->id)->exists()));
+
+        // V4: เฉพาะสัปดาห์แรกที่ได้ resource (ห้อง/ผู้สอน/กลุ่ม) — สัปดาห์ถัด ๆ ไปเป็น shell ให้ไปเติมเอง
+        $firstWeek = $instances->firstWhere('series_week_number', 1);
+        $this->assertSame((int) $room->id, (int) $firstWeek->room_id);
+        $this->assertTrue($firstWeek->instructors()->where('users.id', $instructor->id)->wherePivot('is_lead', true)->exists());
+        $this->assertTrue($firstWeek->studentGroups()->where('student_groups.id', $group->id)->exists());
+
+        $secondWeek = $instances->firstWhere('series_week_number', 2);
+        $this->assertNull($secondWeek->room_id);
+        $this->assertSame(0, $secondWeek->instructors()->count());
+        $this->assertSame(0, $secondWeek->studentGroups()->count());
     }
 
-    public function test_course_head_can_create_weekly_series_without_room_instructors_or_groups(): void
+    public function test_course_head_can_create_weekly_series_without_room_or_instructors(): void
     {
         [$offering, $instructor, $group, $activityType, $room, $head] = $this->fixture();
 
         $this->actingAs($head);
         $this->withSession(['active_role' => 'course_head']);
 
+        // V4: กลุ่มนักศึกษาบังคับตั้งแต่สร้าง series — แต่ห้อง/ผู้สอนเว้นว่างได้ (ไปเติมภายหลัง)
         $this->post(route('maker.course_offerings.schedules.series.store', $offering), [
             'weekday' => 1,
             'start_week' => 1,
@@ -171,6 +180,7 @@ class ScheduleSeriesGeneratorTest extends TestCase
             'end_time' => '12:00',
             'activity_type_id' => $activityType->id,
             'topic' => 'Rotation shell',
+            'student_group_ids' => [$group->id],
         ])
             ->assertRedirect()
             ->assertSessionHasNoErrors();
@@ -179,8 +189,16 @@ class ScheduleSeriesGeneratorTest extends TestCase
 
         $this->assertCount(2, $instances);
         $this->assertTrue($instances->every(fn ($schedule) => $schedule->room_id === null));
-        $this->assertSame(0, $instances->first()->instructors()->count());
-        $this->assertSame(0, $instances->first()->studentGroups()->count());
+
+        // สัปดาห์แรกได้กลุ่มที่กรอก แต่ยังไม่มีผู้สอน
+        $firstWeek = $instances->firstWhere('series_week_number', 1);
+        $this->assertSame(0, $firstWeek->instructors()->count());
+        $this->assertSame(1, $firstWeek->studentGroups()->count());
+
+        // สัปดาห์ถัดไปเป็น shell — ไม่มีทั้งผู้สอนและกลุ่ม
+        $secondWeek = $instances->firstWhere('series_week_number', 2);
+        $this->assertSame(0, $secondWeek->instructors()->count());
+        $this->assertSame(0, $secondWeek->studentGroups()->count());
 
         $this->get(route('maker.course_offerings.schedules.index', $offering))
             ->assertOk()
@@ -581,6 +599,7 @@ class ScheduleSeriesGeneratorTest extends TestCase
             'end_time' => '11:00',
             'activity_type_id' => $activityType->id,
             'topic' => 'Custom range series',
+            'student_group_ids' => [$group->id],
             'use_custom_series_range' => '1',
             'starts_on' => '17/08/2569',
             'ends_on' => '07/09/2569',
