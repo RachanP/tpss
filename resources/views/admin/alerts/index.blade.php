@@ -294,7 +294,7 @@
                                                 <span>{{ $od['note'] }}</span>
                                             </div>
                                         @else
-                                            <div class="alerts-deviation-note is-missing">ยังไม่ได้ระบุเหตุผล</div>
+                                            <div class="alerts-deviation-note is-empty">ไม่มีหมายเหตุ (วิชานี้ยังไม่ได้ตั้งแม่แบบผู้สอน)</div>
                                         @endif
                                     </div>
                                 @endforeach
@@ -499,7 +499,7 @@
         .diff-mark.diff-role { color: var(--brand-navy); }
         .alerts-deviation-note { display: flex; flex-direction: column; gap: 2px; background: var(--bg-2); border-left: 3px solid var(--status-warning-fg); border-radius: 4px; padding: 8px 10px; font-size: 0.85rem; }
         .alerts-deviation-note-label { font-weight: 700; color: var(--fg-2); font-size: 0.75rem; }
-        .alerts-deviation-note.is-missing { color: var(--status-conflict-fg); border-left-color: var(--status-conflict-fg); font-style: italic; }
+        .alerts-deviation-note.is-empty { color: var(--fg-3); border-left-color: var(--border); background: transparent; font-style: italic; }
         .alerts-page {
             width: 100%;
             max-width: 1440px;

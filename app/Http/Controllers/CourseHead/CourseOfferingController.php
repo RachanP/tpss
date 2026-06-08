@@ -435,8 +435,15 @@ class CourseOfferingController extends Controller
     private function resolveInstructorPoolNote(Request $request, CourseOffering $courseOffering, array $predictedActual): ?string
     {
         $courseOffering->loadMissing('course');
+        $template = $this->templatePoolMap($courseOffering->course);
 
-        if (! $this->poolMapDeviates($this->templatePoolMap($courseOffering->course), $predictedActual)) {
+        // วิชาที่ยังไม่ได้ตั้งแม่แบบผู้สอน → ไม่มีฐานให้เทียบ → ไม่บังคับเหตุผล (เก็บได้ถ้ากรอกมา)
+        if ($template === []) {
+            $provided = trim((string) $request->input('note', ''));
+            return $provided !== '' ? $provided : null;
+        }
+
+        if (! $this->poolMapDeviates($template, $predictedActual)) {
             return null;
         }
 

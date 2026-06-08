@@ -189,37 +189,68 @@ class CourseOfferingShowPageTest extends TestCase
 
     public function test_store_instructor_requires_note_when_pool_deviates_from_template(): void
     {
-        $head       = $this->makeUser('course_head');
-        $instructor = $this->makeUser('instructor');
-        $offering   = $this->makeOffering($head); // แม่แบบรายวิชาว่าง → เพิ่มผู้สอน = ต่างจากแม่แบบ
+        $head        = $this->makeUser('course_head');
+        $templateInstr = $this->makeUser('instructor');
+        $newInstr    = $this->makeUser('instructor');
+        $role        = CourseRole::where('name_th', 'อาจารย์ผู้สอน')->first();
+
+        // วิชามีแม่แบบผู้สอน → การเพิ่มคนนอกแม่แบบ = ต่างจากแม่แบบ → ต้องมีเหตุผล
+        $course   = $this->makeCourse();
+        $course->instructors()->attach($templateInstr->id, ['course_role_id' => $role->id]);
+        $offering = $this->makeOffering($head, $course);
 
         $this->actingAsCourseHead($head);
 
         // ไม่ส่งเหตุผล → 422 + errors.note
         $this->postJson(route('maker.course_offerings.instructors.store', $offering), [
-            'user_id' => $instructor->id,
+            'user_id' => $newInstr->id,
         ])->assertStatus(422)->assertJsonValidationErrors('note');
 
         $this->assertDatabaseMissing('course_offering_instructors', [
             'course_offering_id' => $offering->id,
-            'user_id'            => $instructor->id,
+            'user_id'            => $newInstr->id,
         ]);
 
         // ส่งเหตุผล → สำเร็จ + เก็บลง instructor_pool_note
         $this->postJson(route('maker.course_offerings.instructors.store', $offering), [
-            'user_id' => $instructor->id,
+            'user_id' => $newInstr->id,
             'note'    => 'อ.A ลาศึกษาต่อ จึงให้ อ.B สอนแทน',
         ])->assertOk();
 
         $this->assertSame('อ.A ลาศึกษาต่อ จึงให้ อ.B สอนแทน', $offering->fresh()->instructor_pool_note);
     }
 
+    public function test_change_without_template_does_not_require_note(): void
+    {
+        // วิชาที่ยังไม่ได้ตั้งแม่แบบผู้สอน → ไม่บังคับเหตุผล (แต่ยังขึ้นในแจ้งเตือนว่ามีการปรับ)
+        $head       = $this->makeUser('course_head');
+        $instructor = $this->makeUser('instructor');
+        $offering   = $this->makeOffering($head); // แม่แบบว่าง
+
+        $this->actingAsCourseHead($head);
+
+        $this->postJson(route('maker.course_offerings.instructors.store', $offering), [
+            'user_id' => $instructor->id,
+        ])->assertOk();
+
+        $this->assertDatabaseHas('course_offering_instructors', [
+            'course_offering_id' => $offering->id,
+            'user_id'            => $instructor->id,
+        ]);
+        $this->assertNull($offering->fresh()->instructor_pool_note);
+    }
+
     public function test_second_change_does_not_require_note_again_when_reason_exists(): void
     {
-        $head        = $this->makeUser('course_head');
-        $instructorA = $this->makeUser('instructor');
-        $instructorB = $this->makeUser('instructor');
-        $offering    = $this->makeOffering($head);
+        $head          = $this->makeUser('course_head');
+        $templateInstr = $this->makeUser('instructor');
+        $instructorA   = $this->makeUser('instructor');
+        $instructorB   = $this->makeUser('instructor');
+        $role          = CourseRole::where('name_th', 'อาจารย์ผู้สอน')->first();
+
+        $course   = $this->makeCourse();
+        $course->instructors()->attach($templateInstr->id, ['course_role_id' => $role->id]);
+        $offering = $this->makeOffering($head, $course);
 
         $this->actingAsCourseHead($head);
 
