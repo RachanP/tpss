@@ -69,6 +69,8 @@
     $scheduleIncompleteReasons = function ($schedule) use ($scheduleDepartmentInstructors) {
         return collect([
             $scheduleDepartmentInstructors($schedule)->isEmpty() ? 'รอกำหนดผู้สอน' : null,
+            ($schedule?->studentGroups?->isEmpty() ?? true) ? 'รอกำหนดกลุ่มนักศึกษา' : null,
+            $schedule?->room_id ? null : 'รอกำหนดสถานที่',
         ])->filter()->values();
     };
 @endphp
