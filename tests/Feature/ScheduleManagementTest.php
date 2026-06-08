@@ -416,6 +416,38 @@ class ScheduleManagementTest extends TestCase
             ->assertSee('มีรายการสอน · 2 สัปดาห์');
     }
 
+    public function test_weekend_activities_appear_in_day_and_month_views(): void
+    {
+        // ข้อ 18: กิจกรรม (รวม recurring) ที่ตกวันเสาร์/อาทิตย์ ต้องแสดงในมุมมองวัน/เดือน
+        // (เดิม occurrences กรองเสาร์อาทิตย์ทิ้ง → เซลล์ว่าง/การ์ดหาย)
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'start_date' => '2026-08-08', // วันเสาร์
+            'end_date' => '2026-08-08',
+            'topic' => 'Weekend recurring item',
+        ]);
+
+        $this->actingAsCourseHead($head);
+
+        // มุมมองวัน (วันเสาร์)
+        $this->get(route('maker.course_offerings.schedules.index', [
+            $offering,
+            'period' => 'day',
+            'date' => '2026-08-08',
+        ]))
+            ->assertOk()
+            ->assertSee('Weekend recurring item');
+
+        // มุมมองเดือน
+        $this->get(route('maker.course_offerings.schedules.index', [
+            $offering,
+            'period' => 'month',
+            'date' => '2026-08-01',
+        ]))
+            ->assertOk()
+            ->assertSee('Weekend recurring item');
+    }
+
     public function test_block_date_schedule_displays_across_matching_week_days(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();

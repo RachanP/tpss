@@ -550,7 +550,11 @@ class ScheduleController extends Controller
             ->map(fn ($date) => CarbonImmutable::parse($date))
             ->filter(fn (CarbonImmutable $date) => $period === 'day' || $includeWeekends || $date->dayOfWeekIso <= 5)
             ->values();
-        $occurrences = $this->scheduleOccurrences($schedules, $periodStart, $gridEnd, $includeWeekends);
+        // day/month แสดงทุกวันที่เกี่ยวข้องอยู่แล้ว (day=วันเดียว, month=ตารางครบ 7 วันรวมเสาร์อาทิตย์)
+        // จึงต้องรวม occurrence วันเสาร์อาทิตย์ด้วย ไม่งั้นกิจกรรม (รวม recurring) ที่ตกเสาร์อาทิตย์จะหาย
+        // week คงเคารพปุ่ม toggle weekend ตามเดิม
+        $occurrenceIncludeWeekends = $includeWeekends || $period !== 'week';
+        $occurrences = $this->scheduleOccurrences($schedules, $periodStart, $gridEnd, $occurrenceIncludeWeekends);
         $timeSlots = $this->scheduleTimeSlots($occurrences);
         $occurrencesByDate = $occurrences->groupBy(fn ($item) => $item['date']->toDateString());
         // List view: group by actual calendar date (start_date) เรียงตามวันที่จริง
