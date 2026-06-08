@@ -18,7 +18,7 @@
 // course_offerings.course_type  ❌ DROPPED ทั้ง column (V2 baseline consolidation)
 // เดิม Sprint 3 ทำเป็น nullable + UI ลบทิ้ง → V2 consolidate ตัด column ออกจาก
 // create_course_offerings_table baseline เลย (ตรวจ db-check 4 มิ.ย.: column ไม่มีอยู่จริง)
-// UI infer จาก lecture_hours + lab_hours + requires_practicum_rotation
+// UI infer จาก lecture_hours + lab_hours (requires_practicum_rotation ถูก drop แล้ว 8 มิ.ย.)
 //
 // ⚠️ คนละตัวกับ courses.course_type ที่ "ยังอยู่" = enum('theory','practicum','theory_practicum')
 //    nullable, default null (UI ไม่ใช้ — infer แทน) — drop เฉพาะฝั่ง offering เท่านั้น
@@ -159,9 +159,9 @@ URL:         /admin/course-pool/NSBS%20111 (space encoded เป็น %20)
 
 ## Student Group — Schema Pattern
 
-```
-courses.capacity = 270  ← max รวม (Master Data M1)
+> ⚠️ **`courses.capacity` ถูก drop แล้ว (8 มิ.ย. teardown)** — ไม่มี downstream จริง (เคย sync → `course_offerings.total_student_count` ที่ไม่ถูกอ่าน) · ฐานการแบ่งกลุ่ม = จำนวน นศ.ชั้นปีจาก `student_cohorts.student_count` · capacity gate ราย-slot ใช้ `schedules.capacity_required` (กรอกในฟอร์มจัดตาราง) ไม่ใช่ courses.capacity
 
+```
 course_offerings
 └── student_groups: FK → course_offering_id  ← ไม่ใช่ curriculum_id+year_level
     └── NSBS 301/2569: A1(30), A2(30), ... A9(30)
@@ -252,8 +252,13 @@ terms            :  NEW ลูกของปี (academic_year_id, sequence, na
                     ช่วงปิดภาคเรียน = derive จากช่องว่างระหว่างเทอม (ไม่เก็บแยก)
                     วันปีการศึกษา (start/end) = derive จาก min/max ของ terms
 courses          :  ตัด default_semester (วิชาเปิดทั้งปี)
+                    ⚠️ teardown 8 มิ.ย.: ตัด capacity + requires_practicum_rotation ออกด้วย (dead/ไม่ใช้)
 course_offerings :  academic_year_id → ราย-ปี · unique(course_id, academic_year_id)
                     auto-open: ทุกวิชาที่ course.curriculum.is_active = true (เลิกผูกเทอม)
+                    ⚠️ teardown 8 มิ.ย.: ตัด total_student_count, planned_practicum_hours,
+                    requires_practicum_rotation, practicum_note (rotation/practicum override เลิก)
+                    + instructor_pool_note (NEW): เหตุผลที่หัวหน้าวิชาแก้ชุดผู้สอนต่างจากแม่แบบ
+                    (บังคับเฉพาะ action ที่ทำให้ pool ต่างจาก template ที่ "มีอยู่" · ไม่มี template = ไม่บังคับ)
 holidays         :  NEW (date unique, name, remark, source enum-ish 'google'|'manual')
                     auto-fetch Google Thai ICS ตอนสร้าง/แก้ปี · refresh ลบเฉพาะ source=google
                     คงของ manual + ปีอื่น · SSL ใช้ resources/certs/cacert.pem

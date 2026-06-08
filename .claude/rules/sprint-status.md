@@ -101,9 +101,9 @@
 - `bulkStoreStudentGroups` — สร้างหลายกลุ่มทีเดียวพร้อม auto-distribution + auto-color
 - `course_offering_instructors.course_role_id` FK + `role_in_course` → varchar(100)
 - Course-head show page: AJAX combobox + role chip dropdown (no reload)
-- Practicum-note override flow: required เฉพาะตอน rotation ต่างจาก Master Data
+- ~~Practicum-note override flow~~ ⚠️ ลบแล้ว (teardown 8 มิ.ย. — rotation/practicum_note ถอดทั้งหมด)
 - Executive ถูกกรองออกจาก available instructor pool
-- `course_type` ทำเป็น nullable + ลบจาก UI (UI infer จาก lecture/lab/requires_practicum_rotation)
+- `course_type` ทำเป็น nullable + ลบจาก UI (UI infer จาก lecture/lab — rotation ถูก drop 8 มิ.ย.)
 
 ### Master Data — ย้าย Prerequisite
 - Prerequisite ย้ายจาก per-offering (M2) → per-course (M1 Master Data)
@@ -174,7 +174,7 @@
 ### Test Coverage (134 tests / 133 passing — pre-Schedule Suite)
 - `CoursePoolManagementTest` (18) — CRUD + lock + RBAC
 - `CourseOfferingHardeningTest` (11) — template sync + bulk groups + critical gate
-- `CourseOfferingShowPageTest` (13) — practicum_note override + AJAX flow
+- `CourseOfferingShowPageTest` — instructor AJAX flow + `instructor_pool_note` (note เมื่อ pool ต่างจาก template · 8 มิ.ย.) — ⚠️ practicum_note override tests ลบแล้ว
 - `SchedulingPhaseTest` (13) — เพิ่ม critical-gate test, ลบ prereq/schedule guards
 - `CourseOfferingManagementTest` updated — ลบ prereq tests, fix view assertions
 - `AlertSystemTest` updated — `seedMinimalCriticals` รวม active course + head
