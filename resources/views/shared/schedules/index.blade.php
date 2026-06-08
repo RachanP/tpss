@@ -5361,21 +5361,6 @@
             opacity: 1;
             transform: translateY(0);
         }
-        .tpss-tip::after {
-            content: "";
-            position: absolute;
-            left: var(--tip-arrow-left, 50%);
-            width: 8px;
-            height: 8px;
-            background: var(--brand-navy);
-            transform: translateX(-50%) rotate(45deg);
-        }
-        .tpss-tip.is-below::after {
-            top: -4px;
-        }
-        .tpss-tip:not(.is-below)::after {
-            bottom: -4px;
-        }
     </style>
 
     <div
@@ -9081,9 +9066,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
 // ข้อ 14: tooltip กลาง (portal) — แสดง data-tip เป็นกล่อง styled แทน native title
 // portal ไป body + position:fixed → ไม่โดน overflow ของตาราง/การ์ด clip
+// ยึดตำแหน่งเคอร์เซอร์ (mouse) เพื่อโผล่ใกล้จุดที่ชี้ ไม่ทับ element/เนื้อหารอบข้าง
 (function () {
     var tip = null;
     var current = null;
+    var mx = 0, my = 0;
+
+    document.addEventListener('mousemove', function (e) {
+        mx = e.clientX;
+        my = e.clientY;
+    }, { passive: true });
 
     function ensureTip() {
         if (!tip) {
@@ -9095,43 +9087,39 @@ document.addEventListener('DOMContentLoaded', function () {
         return tip;
     }
 
-    function place(el) {
+    // useCursor=true → วางใกล้เคอร์เซอร์ (hover) · false → วางใต้ element (โฟกัสคีย์บอร์ด)
+    function place(el, useCursor) {
         var text = (el.getAttribute('data-tip') || '').trim();
         if (!text) { hide(); return; }
 
         var t = ensureTip();
         t.textContent = text;
-        t.classList.remove('is-below');
         t.style.maxWidth = Math.min(280, window.innerWidth - 16) + 'px';
-        // วัดขนาดก่อนจัดตำแหน่ง
         t.style.left = '0px';
         t.style.top = '0px';
         t.classList.add('is-visible');
 
-        var r = el.getBoundingClientRect();
         var tr = t.getBoundingClientRect();
-        var gap = 8;
         var margin = 8;
+        var left, top;
 
-        // แนวตั้ง: เหนือ element ก่อน ถ้าไม่พอค่อยลงล่าง
-        var top = r.top - tr.height - gap;
-        var below = false;
-        if (top < margin) {
-            top = r.bottom + gap;
-            below = true;
+        if (useCursor) {
+            // ใต้-ขวาของเคอร์เซอร์ ถ้าชนขอบค่อยพลิกข้าง/ขึ้นบน
+            left = mx + 14;
+            top = my + 18;
+            if (left + tr.width + margin > window.innerWidth) left = mx - tr.width - 14;
+            if (top + tr.height + margin > window.innerHeight) top = my - tr.height - 12;
+        } else {
+            var r = el.getBoundingClientRect();
+            left = r.left + r.width / 2 - tr.width / 2;
+            top = r.bottom + 8;
+            if (top + tr.height + margin > window.innerHeight) top = r.top - tr.height - 8;
         }
-        t.classList.toggle('is-below', below);
 
-        // แนวนอน: จัดกึ่งกลาง element แล้ว clamp ไม่ให้ล้นจอ
-        var centerX = r.left + r.width / 2;
-        var left = centerX - tr.width / 2;
         left = Math.max(margin, Math.min(left, window.innerWidth - tr.width - margin));
+        top = Math.max(margin, Math.min(top, window.innerHeight - tr.height - margin));
         t.style.left = Math.round(left) + 'px';
         t.style.top = Math.round(top) + 'px';
-
-        // ลูกศรชี้ไปที่ element แม้ tooltip ถูก clamp
-        var arrow = Math.max(10, Math.min(centerX - left, tr.width - 10));
-        t.style.setProperty('--tip-arrow-left', Math.round(arrow) + 'px');
 
         current = el;
     }
@@ -9143,7 +9131,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.addEventListener('mouseover', function (e) {
         var el = e.target.closest ? e.target.closest('[data-tip]') : null;
-        if (el && el !== current) place(el);
+        if (el && el !== current) place(el, true);
     });
     document.addEventListener('mouseout', function (e) {
         var el = e.target.closest ? e.target.closest('[data-tip]') : null;
@@ -9151,7 +9139,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     document.addEventListener('focusin', function (e) {
         var el = e.target.closest ? e.target.closest('[data-tip]') : null;
-        if (el) place(el);
+        if (el) place(el, false);
     });
     document.addEventListener('focusout', hide);
     window.addEventListener('scroll', hide, true);
