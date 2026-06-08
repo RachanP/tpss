@@ -3073,6 +3073,34 @@
             transform: translateY(-1px);
             box-shadow: 0 4px 10px oklch(0% 0 0 / 0.11);
         }
+        /* ข้อ 14: tooltip "เพิ่มกิจกรรม" แบบ styled (แทน native title) — อยู่ในเซลล์ ไม่โดน overflow clip */
+        .grid-cell.is-addable::after {
+            content: "เพิ่มกิจกรรม";
+            position: absolute;
+            bottom: 9px;
+            right: 38px;
+            max-width: calc(100% - 46px);
+            padding: 2px 8px;
+            border-radius: 6px;
+            background: var(--brand-navy);
+            color: var(--surface);
+            font-size: 10px;
+            font-weight: 800;
+            line-height: 1.5;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            opacity: 0;
+            transform: translateY(2px);
+            transition: opacity 0.14s, transform 0.14s;
+            pointer-events: none;
+            box-shadow: 0 2px 6px oklch(0% 0 0 / 0.14);
+        }
+        .grid-cell.is-addable:hover::after,
+        .grid-cell.is-addable:focus-visible::after {
+            opacity: 1;
+            transform: translateY(0);
+        }
         .grid-time {
             background: oklch(97% 0.007 232);
             color: var(--schedule-muted);
@@ -7202,7 +7230,7 @@
                                                             <span class="sched-day-group-count">· {{ $daySchedules->count() }} รายการสอน</span>
                                                         </div>
                                                         @if($canEdit && ! $di['blocked'])
-                                                            <button type="button" class="sched-day-add" @click.stop="openCreate('{{ $dateObj->toDateString() }}')" data-testid="list-day-add" title="เพิ่มกิจกรรมในวันนี้">+ เพิ่มกิจกรรม</button>
+                                                            <button type="button" class="sched-day-add" @click.stop="openCreate('{{ $dateObj->toDateString() }}')" data-testid="list-day-add">+ เพิ่มกิจกรรม</button>
                                                         @endif
                                                     </div>
                                                 </td>
@@ -7316,7 +7344,7 @@
                                                         <span class="sched-day-group-count is-muted">· 0 รายการสอน</span>
                                                     </div>
                                                     @if($canEdit)
-                                                        <button type="button" class="sched-day-add" @click.stop="openCreate(day.iso)" data-testid="list-empty-day-add" title="เพิ่มกิจกรรมในวันนี้">+ เพิ่มกิจกรรม</button>
+                                                        <button type="button" class="sched-day-add" @click.stop="openCreate(day.iso)" data-testid="list-empty-day-add">+ เพิ่มกิจกรรม</button>
                                                     @endif
                                                 </div>
                                             </td>
@@ -7374,7 +7402,6 @@
                                         role="button" tabindex="0"
                                         data-testid="month-empty-cell"
                                         aria-label="เพิ่มรายการสอนวันที่ {{ $formatDate($day) }}"
-                                        title="คลิกเพื่อเพิ่มกิจกรรมในวันนี้"
                                     @elseif($isOutsideAcademic) title="นอกช่วงปีการศึกษา"
                                     @elseif($di['label']) title="{{ $di['label'] }}"
                                     @endif>
@@ -7443,7 +7470,7 @@
                             <div class="grid-cell grid-time" style="grid-column:1; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};">{{ $slot }}</div>
                             @foreach($weekDays as $dayIndex => $day)
                                 @php $dayOutside = $isDayOutsideAcademic($day); $di = $dayInfo($day); $dayBlocked = $dayOutside || $di['blocked']; $dayKindClass = ! $dayOutside && $di['kind'] !== 'normal' ? 'day-' . $di['kind'] : ''; @endphp
-                                <div class="grid-cell {{ $dayOutside ? 'is-outside-academic' : '' }} {{ $dayKindClass }} {{ $canEdit && ! $dayBlocked ? 'is-addable' : '' }}" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};" @if($canEdit && ! $dayBlocked) @click="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" @keydown.enter.prevent="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" @keydown.space.prevent="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" role="button" tabindex="0" aria-label="เพิ่มรายการสอน {{ $formatDate($day) }} เวลา {{ $slot }}" data-testid="grid-empty-cell" title="คลิกเพื่อเพิ่มกิจกรรม {{ $slot }}" @elseif($canEdit && $dayBlocked && $di['label']) title="{{ $di['label'] }} — เพิ่มกิจกรรมไม่ได้" @endif></div>
+                                <div class="grid-cell {{ $dayOutside ? 'is-outside-academic' : '' }} {{ $dayKindClass }} {{ $canEdit && ! $dayBlocked ? 'is-addable' : '' }}" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};" @if($canEdit && ! $dayBlocked) @click="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" @keydown.enter.prevent="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" @keydown.space.prevent="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" role="button" tabindex="0" aria-label="เพิ่มรายการสอน {{ $formatDate($day) }} เวลา {{ $slot }}" data-testid="grid-empty-cell" @elseif($canEdit && $dayBlocked && $di['label']) title="{{ $di['label'] }} — เพิ่มกิจกรรมไม่ได้" @endif></div>
                             @endforeach
                         @endforeach
 
@@ -7884,7 +7911,7 @@
                         <div class="grid-cell grid-time" style="grid-column:1; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};">{{ $slot }}</div>
                         @foreach($weekDays as $dayIndex => $day)
                             @php $dayOutside = $isDayOutsideAcademic($day); $di = $dayInfo($day); $dayBlocked = $dayOutside || $di['blocked']; $dayKindClass = ! $dayOutside && $di['kind'] !== 'normal' ? 'day-' . $di['kind'] : ''; @endphp
-                            <div class="grid-cell {{ $dayOutside ? 'is-outside-academic' : '' }} {{ $dayKindClass }} {{ $canEdit && ! $dayBlocked ? 'is-addable' : '' }}" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};" @if($canEdit && ! $dayBlocked) @click="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" @keydown.enter.prevent="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" @keydown.space.prevent="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" role="button" tabindex="0" aria-label="เพิ่มรายการสอน {{ $formatDate($day) }} เวลา {{ $slot }}" data-testid="grid-empty-cell" title="คลิกเพื่อเพิ่มกิจกรรม {{ $slot }}" @elseif($canEdit && $dayBlocked && $di['label']) title="{{ $di['label'] }} — เพิ่มกิจกรรมไม่ได้" @endif></div>
+                            <div class="grid-cell {{ $dayOutside ? 'is-outside-academic' : '' }} {{ $dayKindClass }} {{ $canEdit && ! $dayBlocked ? 'is-addable' : '' }}" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};" @if($canEdit && ! $dayBlocked) @click="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" @keydown.enter.prevent="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" @keydown.space.prevent="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" role="button" tabindex="0" aria-label="เพิ่มรายการสอน {{ $formatDate($day) }} เวลา {{ $slot }}" data-testid="grid-empty-cell" @elseif($canEdit && $dayBlocked && $di['label']) title="{{ $di['label'] }} — เพิ่มกิจกรรมไม่ได้" @endif></div>
                         @endforeach
                     @endforeach
 
