@@ -138,6 +138,7 @@ class CourseOfferingController extends Controller
         $validated = $request->validate([
             'user_id'        => ['required', 'integer', 'exists:users,id'],
             'course_role_id' => ['nullable', 'integer', 'exists:course_roles,id'],
+            'note'           => ['nullable', 'string', 'max:1000'],
         ]);
 
         $user = User::with('instructorProfile.department')->find($validated['user_id']);
@@ -175,16 +176,22 @@ class CourseOfferingController extends Controller
 
         $roleId = $validated['course_role_id'] ?? CourseRole::where('name_th', 'อาจารย์ผู้สอน')->value('id');
 
+        // ทำนาย pool หลังเพิ่ม → ถ้าผลลัพธ์ต่างจากแม่แบบและยังไม่มีเหตุผล จะ throw ขอ note ก่อน mutate
+        $predicted = $this->currentPoolMap($courseOffering);
+        $predicted[(int) $user->id] = $roleId ? (int) $roleId : null;
+        $note = $this->resolveInstructorPoolNote($request, $courseOffering, $predicted);
+
         $courseOffering->instructorPool()->attach($user->id, [
             'role_in_course' => 'instructor',
             'course_role_id' => $roleId,
         ]);
+        $courseOffering->update(['instructor_pool_note' => $note]);
         NavigationBadgeService::flushCourseHead((int) $courseOffering->coordinator_id);
 
         $this->logCourseManagementCreate(
             table: 'course_offering_instructors',
             recordId: $courseOffering->id,
-            newValues: $this->offeringInstructorAuditValues($courseOffering, $user, $roleId, 'instructor'),
+            newValues: $this->offeringInstructorAuditValues($courseOffering, $user, $roleId, 'instructor') + ['note' => $note],
             description: "เพิ่มผู้สอนในรายวิชา {$this->offeringCourseLabel($courseOffering)}",
         );
 
@@ -210,6 +217,7 @@ class CourseOfferingController extends Controller
 
         $validated = $request->validate([
             'course_role_id' => ['nullable', 'integer', 'exists:course_roles,id'],
+            'note'           => ['nullable', 'string', 'max:1000'],
         ]);
 
         if (! $courseOffering->instructorPool()->where('users.id', $user->id)->exists()) {
@@ -226,9 +234,17 @@ class CourseOfferingController extends Controller
         $oldRoleId = $currentInstructor?->pivot?->course_role_id ? (int) $currentInstructor->pivot->course_role_id : null;
         $newRoleId = isset($validated['course_role_id']) ? (int) $validated['course_role_id'] : null;
 
+        // ทำนาย pool หลังเปลี่ยนบทบาท → ขอ note ถ้าผลต่างจากแม่แบบและยังไม่มีเหตุผล
+        $predicted = $this->currentPoolMap($courseOffering);
+        if (array_key_exists((int) $user->id, $predicted)) {
+            $predicted[(int) $user->id] = $newRoleId;
+        }
+        $note = $this->resolveInstructorPoolNote($request, $courseOffering, $predicted);
+
         $courseOffering->instructorPool()->updateExistingPivot($user->id, [
             'course_role_id' => $newRoleId,
         ]);
+        $courseOffering->update(['instructor_pool_note' => $note]);
         NavigationBadgeService::flushCourseHead((int) $courseOffering->coordinator_id);
 
         if ($oldRoleId !== $newRoleId) {
@@ -236,7 +252,7 @@ class CourseOfferingController extends Controller
                 table: 'course_offering_instructors',
                 recordId: $courseOffering->id,
                 oldValues: $this->offeringInstructorAuditValues($courseOffering, $user, $oldRoleId, 'instructor'),
-                newValues: $this->offeringInstructorAuditValues($courseOffering, $user, $newRoleId, 'instructor'),
+                newValues: $this->offeringInstructorAuditValues($courseOffering, $user, $newRoleId, 'instructor') + ['note' => $note],
                 description: "เปลี่ยนบทบาทผู้สอนในรายวิชา {$this->offeringCourseLabel($courseOffering)}",
             );
         }
@@ -322,19 +338,31 @@ class CourseOfferingController extends Controller
                 ->withErrors(['instructor_pool' => 'ไม่สามารถนำหัวหน้าวิชาหลักออกจากชุดผู้สอนได้']);
         }
 
+        $request->validate([
+            'note' => ['nullable', 'string', 'max:1000'],
+        ]);
+
         $currentInstructor = $courseOffering->instructorPool()
             ->where('users.id', $user->id)
             ->first();
         $oldRoleId = $currentInstructor?->pivot?->course_role_id ? (int) $currentInstructor->pivot->course_role_id : null;
 
+        // ทำนาย pool หลังนำออก → ขอ note ถ้าผลต่างจากแม่แบบและยังไม่มีเหตุผล (ก่อน detach)
+        $predicted = $this->currentPoolMap($courseOffering);
+        unset($predicted[(int) $user->id]);
+        $note = $this->resolveInstructorPoolNote($request, $courseOffering, $predicted);
+
         $detached = $courseOffering->instructorPool()->detach($user->id);
+        if ($detached > 0) {
+            $courseOffering->update(['instructor_pool_note' => $note]);
+        }
         NavigationBadgeService::flushCourseHead((int) $courseOffering->coordinator_id);
 
         if ($detached > 0) {
             $this->logCourseManagementDelete(
                 table: 'course_offering_instructors',
                 recordId: $courseOffering->id,
-                oldValues: $this->offeringInstructorAuditValues($courseOffering, $user, $oldRoleId, $currentInstructor?->pivot?->role_in_course ?? 'instructor'),
+                oldValues: $this->offeringInstructorAuditValues($courseOffering, $user, $oldRoleId, $currentInstructor?->pivot?->role_in_course ?? 'instructor') + ['note' => $note],
                 newValues: $this->offeringAuditContext($courseOffering),
                 description: "ลบผู้สอนออกจากรายวิชา {$this->offeringCourseLabel($courseOffering)}",
             );
@@ -345,6 +373,86 @@ class CourseOfferingController extends Controller
         }
 
         return back()->with('success', 'ลบอาจารย์ออกจากชุดผู้สอนเรียบร้อยแล้ว');
+    }
+
+    /**
+     * แผนผังบทบาทของชุดผู้สอนในแม่แบบรายวิชา (ตัดหัวหน้าวิชาออก) — [userId => roleId|null]
+     */
+    private function templatePoolMap(?\App\Models\Course $course): array
+    {
+        if (! $course) {
+            return [];
+        }
+        $coordId = (int) ($course->head_instructor_id ?? 0);
+
+        return $course->instructors()->get()
+            ->reject(fn ($u) => (int) $u->id === $coordId)
+            ->mapWithKeys(fn ($u) => [(int) $u->id => ((int) ($u->pivot->course_role_id ?? 0)) ?: null])
+            ->all();
+    }
+
+    /**
+     * แผนผังบทบาทของชุดผู้สอนปัจจุบันใน offering (ตัดหัวหน้าวิชาออก) — [userId => roleId|null]
+     */
+    private function currentPoolMap(CourseOffering $courseOffering): array
+    {
+        $coordId = (int) ($courseOffering->coordinator_id ?? 0);
+
+        return $courseOffering->instructorPool()->get()
+            ->reject(fn ($u) => (int) $u->id === $coordId)
+            ->mapWithKeys(fn ($u) => [(int) $u->id => ((int) ($u->pivot->course_role_id ?? 0)) ?: null])
+            ->all();
+    }
+
+    /**
+     * เทียบ pool ที่ทำนายไว้กับแม่แบบ — true = ต่างจากแม่แบบ (deviate)
+     *
+     * @param  array<int, int|null>  $template
+     * @param  array<int, int|null>  $actual
+     */
+    private function poolMapDeviates(array $template, array $actual): bool
+    {
+        if (count($template) !== count($actual)) {
+            return true;
+        }
+        foreach ($template as $id => $role) {
+            if (! array_key_exists($id, $actual) || $actual[$id] !== $role) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * ตัดสินค่า instructor_pool_note ที่จะเซฟตามผล deviation หลังการเปลี่ยน pool
+     *  - ไม่ต่างจากแม่แบบ → null (เคลียร์เหตุผลเดิม)
+     *  - ต่าง + มีเหตุผล (จาก request หรือที่เคยกรอกไว้) → ใช้เหตุผลนั้น (ไม่ต้องกรอกซ้ำ)
+     *  - ต่าง + ยังไม่มีเหตุผล → throw ValidationException (errors.note) — caller ยังไม่ mutate
+     *
+     * @param  array<int, int|null>  $predictedActual
+     */
+    private function resolveInstructorPoolNote(Request $request, CourseOffering $courseOffering, array $predictedActual): ?string
+    {
+        $courseOffering->loadMissing('course');
+
+        if (! $this->poolMapDeviates($this->templatePoolMap($courseOffering->course), $predictedActual)) {
+            return null;
+        }
+
+        $provided = trim((string) $request->input('note', ''));
+        if ($provided !== '') {
+            return $provided;
+        }
+
+        $existing = trim((string) ($courseOffering->instructor_pool_note ?? ''));
+        if ($existing !== '') {
+            return (string) $courseOffering->instructor_pool_note;
+        }
+
+        throw ValidationException::withMessages([
+            'note' => 'กรุณาระบุเหตุผลที่ชุดผู้สอนต่างจากแม่แบบรายวิชา',
+        ]);
     }
 
     public function storeStudentGroup(Request $request, CourseOffering $courseOffering): RedirectResponse|JsonResponse

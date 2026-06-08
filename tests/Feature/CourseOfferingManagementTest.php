@@ -197,6 +197,7 @@ class CourseOfferingManagementTest extends TestCase
         $this->from(route('maker.course_offerings.show', $offering))
             ->patch(route('maker.course_offerings.instructors.role', [$offering, $instructor]), [
                 'course_role_id' => null,
+                'note' => 'ปรับบทบาทเฉพาะรอบนี้',
             ])
             ->assertSessionHasNoErrors();
 
@@ -363,6 +364,7 @@ class CourseOfferingManagementTest extends TestCase
         $this->from(route('maker.course_offerings.show', $offering))
             ->post(route('maker.course_offerings.instructors.store', $offering), [
                 'user_id' => $activeInstructor->id,
+                'note' => 'เพิ่มผู้สอนในรอบนี้',
             ])
             ->assertRedirect(route('maker.course_offerings.show', $offering));
 

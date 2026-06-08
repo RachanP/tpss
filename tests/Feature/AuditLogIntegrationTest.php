@@ -1073,6 +1073,7 @@ class AuditLogIntegrationTest extends TestCase
             ->post(route('maker.course_offerings.instructors.store', $offering), [
                 'user_id' => $instructor->id,
                 'course_role_id' => $roleA->id,
+                'note' => 'เพิ่มผู้สอนในรอบนี้',
             ])
             ->assertRedirect();
 
@@ -1083,6 +1084,7 @@ class AuditLogIntegrationTest extends TestCase
         $this->actingAsCourseHead($head)
             ->patch(route('maker.course_offerings.instructors.role', [$offering, $instructor]), [
                 'course_role_id' => $roleB->id,
+                'note' => 'ปรับบทบาทเป็นผู้สอนปฏิบัติ',
             ])
             ->assertRedirect();
 

@@ -60,8 +60,8 @@ class AlertController extends Controller
 
         $dismissedWarnings = self::getDismissedWarnings();
 
-        // วิชาที่ผู้สอน/รายละเอียดต่างจากแม่แบบ — โผล่เฉพาะวิชาที่ deviate จริง
-        $instructorDeviations = \App\Support\CourseDeviationFinder::coursesWithDeviation();
+        // วิชาที่ผู้สอนต่างจากแม่แบบ — โผล่เฉพาะวิชาที่ deviate จริง พร้อมรายละเอียด (diff + เหตุผล) สำหรับกางในหน้านี้
+        $instructorDeviations = \App\Support\CourseDeviationFinder::detailed();
 
         $viewData = compact(
             'criticals',

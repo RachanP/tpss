@@ -25,6 +25,8 @@ return new class extends Migration
             $table->unsignedInteger('planned_lecture_hours')->nullable();
             $table->unsignedInteger('planned_lab_hours')->nullable();
             $table->unsignedTinyInteger('teaching_weeks')->nullable();
+            // เหตุผลที่หัวหน้าวิชาแก้ชุดผู้สอนต่างจากแม่แบบรายวิชา (เพิ่ม/เปลี่ยนบทบาท/ลบ) — แสดงในหน้าแจ้งเตือน admin
+            $table->text('instructor_pool_note')->nullable();
 
             $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->nullable();

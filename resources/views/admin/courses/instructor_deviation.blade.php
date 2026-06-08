@@ -324,6 +324,16 @@
                                             </ul>
                                         </div>
                                     @endif
+
+                                    @if(!empty($offering->instructor_pool_note))
+                                        <div data-testid="deviation-note" class="diff-bucket" style="grid-column:1 / -1;">
+                                            <div class="diff-bucket-label diff-bucket-label--warning">
+                                                <span class="diff-bucket-symbol">!</span>
+                                                เหตุผลจากหัวหน้าวิชา
+                                            </div>
+                                            <div style="margin-top:4px;color:var(--fg-2);font-style:italic;">"{{ $offering->instructor_pool_note }}"</div>
+                                        </div>
+                                    @endif
                                 </div>
                             @endif
                         </div>

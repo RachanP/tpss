@@ -459,6 +459,36 @@ class CoursePoolManagementTest extends TestCase
         $response->assertDontSee(route('admin.courses.instructor_deviation', $plainCourse), false);
     }
 
+    public function test_alerts_page_shows_deviation_detail_and_note_inline(): void
+    {
+        // หน้าแจ้งเตือนต้องกางรายละเอียด (ต่างตรงไหน) + เหตุผลจากหัวหน้าวิชา ในหน้าเดียว
+        $admin = $this->makeUser('admin');
+        $head = $this->makeUser('course_head');
+        $instructor = $this->makeUser('instructor');
+        $role = CourseRole::where('name_th', 'อาจารย์ผู้สอน')->first();
+
+        // แม่แบบมีผู้สอน 1 คน แต่ offering ไม่มี → deviate (removed) + แนบเหตุผล
+        $course = $this->makeCourse(['head_instructor_id' => $head->id, 'course_code' => 'DEVNOTE 1']);
+        $course->instructors()->attach($instructor->id, ['course_role_id' => $role->id]);
+        $year = $this->makeYear(['phase' => 'scheduling']);
+        CourseOffering::create([
+            'course_id' => $course->id,
+            'academic_year_id' => $year->id,
+            'coordinator_id' => $head->id,
+            'approval_status' => 'draft',
+            'instructor_pool_note' => 'อ.X ติดราชการทั้งปี จึงปรับผู้สอน',
+        ]);
+
+        $this->actingAsRole($admin, 'admin');
+
+        $this->get(route('admin.alerts'))
+            ->assertOk()
+            ->assertSee('DEVNOTE 1')
+            ->assertSee('data-testid="deviation-note"', false)
+            ->assertSee('อ.X ติดราชการทั้งปี จึงปรับผู้สอน')
+            ->assertSee($instructor->name);
+    }
+
     public function test_instructor_deviation_includes_all_phases_for_pattern_analysis(): void
     {
         // Admin ต้องเห็นทุกรอบ (รวม preparation + เก่า ๆ ที่เผยแพร่แล้ว) เพื่อดู pattern ข้ามปี

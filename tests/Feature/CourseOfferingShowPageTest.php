@@ -46,7 +46,7 @@ class CourseOfferingShowPageTest extends TestCase
         $this->actingAsCourseHead($head);
         $response = $this->postJson(
             route('maker.course_offerings.instructors.store', $offering),
-            ['user_id' => $instructor->id]
+            ['user_id' => $instructor->id, 'note' => 'เพิ่มผู้สอนเสริมปีนี้']
         );
 
         $response->assertOk()
@@ -75,6 +75,7 @@ class CourseOfferingShowPageTest extends TestCase
         $this->postJson(route('maker.course_offerings.instructors.store', $offering), [
             'user_id'        => $instructor->id,
             'course_role_id' => $advisor->id,
+            'note'           => 'มอบหมายอาจารย์ประจำกลุ่มเพิ่ม',
         ])->assertOk()
             ->assertJsonFragment(['role_name' => 'อาจารย์ประจำกลุ่ม']);
 
@@ -115,7 +116,7 @@ class CourseOfferingShowPageTest extends TestCase
         $this->actingAsCourseHead($head);
         $this->patchJson(
             route('maker.course_offerings.instructors.role', [$offering, $instructor]),
-            ['course_role_id' => $newRole->id]
+            ['course_role_id' => $newRole->id, 'note' => 'ปรับบทบาทเป็นเลขานุการวิชา']
         )->assertOk()
             ->assertJsonFragment(['role_name' => 'เลขานุการวิชา']);
 
@@ -140,7 +141,7 @@ class CourseOfferingShowPageTest extends TestCase
         $this->actingAsCourseHead($head);
         $this->patchJson(
             route('maker.course_offerings.instructors.role', [$offering, $instructor]),
-            ['course_role_id' => null]
+            ['course_role_id' => null, 'note' => 'ล้างบทบาทเฉพาะรอบนี้']
         )->assertOk();
 
         $this->assertDatabaseHas('course_offering_instructors', [
@@ -182,6 +183,58 @@ class CourseOfferingShowPageTest extends TestCase
             'course_offering_id' => $offering->id,
             'user_id'            => $head->id,
         ]);
+    }
+
+    // ── instructor_pool_note (เหตุผลเมื่อต่างจากแม่แบบ) ────────────────
+
+    public function test_store_instructor_requires_note_when_pool_deviates_from_template(): void
+    {
+        $head       = $this->makeUser('course_head');
+        $instructor = $this->makeUser('instructor');
+        $offering   = $this->makeOffering($head); // แม่แบบรายวิชาว่าง → เพิ่มผู้สอน = ต่างจากแม่แบบ
+
+        $this->actingAsCourseHead($head);
+
+        // ไม่ส่งเหตุผล → 422 + errors.note
+        $this->postJson(route('maker.course_offerings.instructors.store', $offering), [
+            'user_id' => $instructor->id,
+        ])->assertStatus(422)->assertJsonValidationErrors('note');
+
+        $this->assertDatabaseMissing('course_offering_instructors', [
+            'course_offering_id' => $offering->id,
+            'user_id'            => $instructor->id,
+        ]);
+
+        // ส่งเหตุผล → สำเร็จ + เก็บลง instructor_pool_note
+        $this->postJson(route('maker.course_offerings.instructors.store', $offering), [
+            'user_id' => $instructor->id,
+            'note'    => 'อ.A ลาศึกษาต่อ จึงให้ อ.B สอนแทน',
+        ])->assertOk();
+
+        $this->assertSame('อ.A ลาศึกษาต่อ จึงให้ อ.B สอนแทน', $offering->fresh()->instructor_pool_note);
+    }
+
+    public function test_second_change_does_not_require_note_again_when_reason_exists(): void
+    {
+        $head        = $this->makeUser('course_head');
+        $instructorA = $this->makeUser('instructor');
+        $instructorB = $this->makeUser('instructor');
+        $offering    = $this->makeOffering($head);
+
+        $this->actingAsCourseHead($head);
+
+        // ครั้งแรก deviate → ต้องมีเหตุผล
+        $this->postJson(route('maker.course_offerings.instructors.store', $offering), [
+            'user_id' => $instructorA->id,
+            'note'    => 'ปรับชุดผู้สอนปีนี้',
+        ])->assertOk();
+
+        // ครั้งถัดมา (ยัง deviate + มีเหตุผลเดิมแล้ว) → ไม่ต้องกรอกซ้ำ
+        $this->postJson(route('maker.course_offerings.instructors.store', $offering), [
+            'user_id' => $instructorB->id,
+        ])->assertOk();
+
+        $this->assertSame('ปรับชุดผู้สอนปีนี้', $offering->fresh()->instructor_pool_note);
     }
 
     // ── Show page rendering ──────────────────────────────────────────

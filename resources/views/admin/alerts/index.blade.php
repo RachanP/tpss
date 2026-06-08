@@ -261,32 +261,47 @@
                     </div>
                     <span class="alerts-count-pill is-warning">{{ number_format($instructorDeviations->count()) }} วิชา</span>
                 </div>
-                <div class="alerts-table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>รหัส</th>
-                                <th>ชื่อวิชา</th>
-                                <th>หลักสูตร / ภาควิชา</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($instructorDeviations as $course)
-                                <tr>
-                                    <td class="alerts-code">{{ $course->course_code }}</td>
-                                    <td><strong>{{ $course->name_th }}</strong></td>
-                                    <td class="alerts-muted">
-                                        {{ $course->curriculum->name ?? '-' }}
-                                        <span>{{ $course->department->name ?? 'ไม่สังกัดภาควิชา' }}</span>
-                                    </td>
-                                    <td class="alerts-table-action">
-                                        <a href="{{ route('admin.courses.instructor_deviation', $course) }}" class="alerts-mini-btn">ดูรายละเอียด</a>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                <div class="alerts-deviation-list">
+                    @foreach($instructorDeviations as $item)
+                        @php $course = $item['course']; @endphp
+                        <div class="alerts-deviation-card" x-data="{ open: false }" data-testid="deviation-card" data-course="{{ $course->course_code }}">
+                            <button type="button" class="alerts-deviation-head" @click="open = !open">
+                                <div class="alerts-deviation-title">
+                                    <span class="alerts-code">{{ $course->course_code }}</span>
+                                    <strong>{{ $course->name_th }}</strong>
+                                    <span class="alerts-muted">{{ $course->curriculum->name ?? '-' }} · {{ $course->department->name ?? 'ไม่สังกัดภาควิชา' }}</span>
+                                </div>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" :style="open ? 'transform:rotate(180deg);transition:transform .15s;' : 'transition:transform .15s;'"><polyline points="6 9 12 15 18 9"/></svg>
+                            </button>
+                            <div class="alerts-deviation-body" x-show="open" x-cloak>
+                                @foreach($item['offerings'] as $od)
+                                    <div class="alerts-deviation-offering">
+                                        <div class="alerts-deviation-year">ปีการศึกษา {{ $od['offering']->academicYear?->name ?? '-' }}</div>
+                                        <ul class="alerts-deviation-diff">
+                                            @foreach($od['added'] as $a)
+                                                <li><span class="diff-mark diff-add">+</span> {{ $a['name'] }} <span class="alerts-muted">({{ $a['role'] }})</span></li>
+                                            @endforeach
+                                            @foreach($od['removed'] as $r)
+                                                <li><span class="diff-mark diff-remove">−</span> {{ $r['name'] }} <span class="alerts-muted">({{ $r['role'] }})</span></li>
+                                            @endforeach
+                                            @foreach($od['role_changed'] as $rc)
+                                                <li><span class="diff-mark diff-role">↻</span> {{ $rc['name'] }} <span class="alerts-muted">: {{ $rc['from'] }} → {{ $rc['to'] }}</span></li>
+                                            @endforeach
+                                        </ul>
+                                        @if(!empty($od['note']))
+                                            <div class="alerts-deviation-note" data-testid="deviation-note">
+                                                <span class="alerts-deviation-note-label">เหตุผลจากหัวหน้าวิชา</span>
+                                                <span>{{ $od['note'] }}</span>
+                                            </div>
+                                        @else
+                                            <div class="alerts-deviation-note is-missing">ยังไม่ได้ระบุเหตุผล</div>
+                                        @endif
+                                    </div>
+                                @endforeach
+                                <a href="{{ route('admin.courses.instructor_deviation', $course) }}" class="alerts-mini-btn">เปิดหน้าเต็ม</a>
+                            </div>
+                        </div>
+                    @endforeach
                 </div>
             </section>
         @endif
@@ -468,6 +483,23 @@
     </div>
 
     <style>
+        /* รายการ deviation แบบกางรายละเอียด (ผู้สอนต่างจากแม่แบบ) */
+        .alerts-deviation-list { display: flex; flex-direction: column; gap: 8px; }
+        .alerts-deviation-card { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+        .alerts-deviation-head { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; background: none; border: 0; cursor: pointer; text-align: left; font: inherit; color: var(--fg-1); }
+        .alerts-deviation-head:hover { background: var(--bg-2); }
+        .alerts-deviation-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+        .alerts-deviation-body { padding: 4px 14px 14px; border-top: 1px dashed var(--border); display: flex; flex-direction: column; gap: 12px; }
+        .alerts-deviation-offering { padding-top: 10px; }
+        .alerts-deviation-year { font-weight: 600; font-size: 0.85rem; color: var(--fg-2); margin-bottom: 6px; }
+        .alerts-deviation-diff { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 0.875rem; }
+        .alerts-deviation-diff .diff-mark { display: inline-flex; width: 18px; justify-content: center; font-weight: 700; }
+        .diff-mark.diff-add { color: var(--status-success-fg); }
+        .diff-mark.diff-remove { color: var(--status-conflict-fg); }
+        .diff-mark.diff-role { color: var(--brand-navy); }
+        .alerts-deviation-note { display: flex; flex-direction: column; gap: 2px; background: var(--bg-2); border-left: 3px solid var(--status-warning-fg); border-radius: 4px; padding: 8px 10px; font-size: 0.85rem; }
+        .alerts-deviation-note-label { font-weight: 700; color: var(--fg-2); font-size: 0.75rem; }
+        .alerts-deviation-note.is-missing { color: var(--status-conflict-fg); border-left-color: var(--status-conflict-fg); font-style: italic; }
         .alerts-page {
             width: 100%;
             max-width: 1440px;

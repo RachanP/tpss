@@ -23,6 +23,7 @@ class CourseOffering extends Model
         'planned_lecture_hours',
         'planned_lab_hours',
         'teaching_weeks',
+        'instructor_pool_note',
     ];
 
     protected $casts = [

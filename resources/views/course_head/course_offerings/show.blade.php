@@ -905,16 +905,35 @@
         permissionBase: '{{ route('maker.course_offerings.instructors.permission', [$courseOffering, '__ID__']) }}',
         csrfToken: '{{ csrf_token() }}',
         courseDeptId: {{ $courseDeptId ?? 'null' }},
-        async changeRole(userId, roleId) {
+        // โมดัลกรอกเหตุผล — เปิดเฉพาะเมื่อ action ทำให้ชุดผู้สอนต่างจากแม่แบบและยังไม่มีเหตุผล
+        noteModal: { open: false, text: '', error: '', retry: null },
+        openNoteModal(retry) {
+            this.roleMenuId = null;
+            this.noteModal = { open: true, text: '', error: '', retry };
+        },
+        async confirmNote() {
+            const note = (this.noteModal.text || '').trim();
+            if (!note) { this.noteModal.error = 'กรุณาระบุเหตุผล'; return; }
+            const retry = this.noteModal.retry;
+            this.noteModal.open = false;
+            if (retry) { await retry(note); }
+        },
+        _needsNote(status, data) {
+            return status === 422 && data && data.errors && data.errors.note;
+        },
+        async changeRole(userId, roleId, note = null) {
             this.loading = true; this.error = '';
             try {
                 const r = await fetch(this.roleBase.replace('__ID__', userId), {
                     method: 'PATCH', credentials: 'same-origin',
                     headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': this.csrfToken, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ course_role_id: roleId })
+                    body: JSON.stringify({ course_role_id: roleId, note })
                 });
                 const data = await r.json();
-                if (!r.ok) { this.error = data.message ?? 'เกิดข้อผิดพลาด'; return; }
+                if (!r.ok) {
+                    if (this._needsNote(r.status, data)) { this.openNoteModal((n) => this.changeRole(userId, roleId, n)); return; }
+                    this.error = data.message ?? 'เกิดข้อผิดพลาด'; return;
+                }
                 const u = this.pool.find(x => x.id === userId);
                 if (u) { u.course_role_id = data.course_role_id; u.role_name = data.role_name; }
                 this.roleMenuId = null;
@@ -943,31 +962,38 @@
             this.ddWidth = width;
             this.open = true;
         },
-        async add(user) {
+        async add(user, note = null) {
             this.loading = true; this.error = '';
             try {
                 const r = await fetch(this.storeUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': this.csrfToken },
-                    body: JSON.stringify({ user_id: user.id })
+                    body: JSON.stringify({ user_id: user.id, note })
                 });
                 const data = await r.json();
-                if (!r.ok) { this.error = data.message ?? 'เกิดข้อผิดพลาด'; return; }
+                if (!r.ok) {
+                    if (this._needsNote(r.status, data)) { this.openNoteModal((n) => this.add(user, n)); return; }
+                    this.error = data.message ?? 'เกิดข้อผิดพลาด'; return;
+                }
                 this.pool.push(data);
                 this.search = ''; this.open = false;
             } catch { this.error = 'ไม่สามารถเชื่อมต่อได้'; }
             finally { this.loading = false; }
         },
-        async remove(userId) {
+        async remove(userId, note = null) {
             this.error = '';
             const url = this.destroyBase.replace('__ID__', userId);
             try {
                 const r = await fetch(url, {
                     method: 'DELETE',
-                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': this.csrfToken }
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': this.csrfToken },
+                    body: JSON.stringify({ note })
                 });
                 const data = await r.json();
-                if (!r.ok) { this.error = data.message ?? 'เกิดข้อผิดพลาด'; return; }
+                if (!r.ok) {
+                    if (this._needsNote(r.status, data)) { this.openNoteModal((n) => this.remove(userId, n)); return; }
+                    this.error = data.message ?? 'เกิดข้อผิดพลาด'; return;
+                }
                 this.pool = this.pool.filter(u => u.id !== userId);
             } catch { this.error = 'ไม่สามารถเชื่อมต่อได้'; }
         },
@@ -989,6 +1015,30 @@
             finally { this.loading = false; }
         }
     }">
+        {{-- โมดัลกรอกเหตุผล (โผล่เมื่อชุดผู้สอนต่างจากแม่แบบ) --}}
+        <template x-teleport="body">
+            <div x-show="noteModal.open" x-cloak
+                 style="position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(15,23,42,0.45);"
+                 @click.self="noteModal.open = false" @keydown.escape.window="noteModal.open = false">
+                <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;max-width:440px;width:100%;padding:22px;box-shadow:0 24px 60px -24px rgba(0,36,84,0.5);">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--status-warning-fg);flex-shrink:0;">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                        </svg>
+                        <div style="font-weight:700;font-size:0.95rem;color:var(--fg-1);">ระบุเหตุผลที่ต่างจากแม่แบบ</div>
+                    </div>
+                    <div class="caption" style="margin-bottom:12px;">การแก้ชุดผู้สอนครั้งนี้ทำให้ต่างจากแม่แบบรายวิชา — กรุณาระบุเหตุผลเพื่อให้ผู้ดูแลระบบเห็นในหน้าแจ้งเตือน</div>
+                    <textarea x-model="noteModal.text" rows="3" maxlength="1000"
+                              placeholder="เช่น ปีนี้ อ.A ลาศึกษาต่อ จึงให้ อ.B สอนแทน"
+                              style="width:100%;box-sizing:border-box;" @keydown.enter.prevent="confirmNote()"></textarea>
+                    <div x-show="noteModal.error" x-cloak style="color:var(--status-conflict-fg);font-size:0.8rem;margin-top:6px;" x-text="noteModal.error"></div>
+                    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+                        <button type="button" class="btn btn-secondary" @click="noteModal.open = false">ยกเลิก</button>
+                        <button type="button" class="btn btn-primary" @click="confirmNote()">บันทึกเหตุผล</button>
+                    </div>
+                </div>
+            </div>
+        </template>
         <div class="card-hdr">
             <div style="display:flex;align-items:center;gap:12px;">
                 <div style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;background:var(--brand-navy-50);color:var(--brand-navy);border-radius:8px;flex-shrink:0;">
