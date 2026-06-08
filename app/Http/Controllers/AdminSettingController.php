@@ -694,13 +694,9 @@ class AdminSettingController extends Controller
                 if ($course) {
                     $offering->fill([
                         'coordinator_id' => $course->head_instructor_id,
-                        'total_student_count' => $course->capacity,
                         'planned_lecture_hours' => $course->lecture_hours,
-                        'planned_lab_hours' => $course->requires_practicum_rotation ? 0 : $course->lab_hours,
-                        'planned_practicum_hours' => $course->requires_practicum_rotation ? $course->lab_hours : 0,
+                        'planned_lab_hours' => $course->lab_hours,
                         'teaching_weeks' => $teachingWeeks,
-                        'requires_practicum_rotation' => $course->requires_practicum_rotation,
-                        'practicum_note' => null,
                     ])->save();
                 }
                 $offering->syncInstructorPoolFromCourseTemplate($coordinatorRoleId);

@@ -547,13 +547,11 @@ class NursingWorkflowDemoSeeder extends Seeder
                     'course_type' => ($data['practicum'] ?? false) ? 'practicum' : 'theory',
                     'default_year_level' => $data['year'],
                     'default_semester' => 1,
-                    'requires_practicum_rotation' => (bool) ($data['practicum'] ?? false),
                     'is_required' => true,
                     'credits' => $data['credits'],
                     'lecture_hours' => $data['lecture_hours'],
                     'lab_hours' => $data['lab_hours'],
                     'self_study_hours' => max(0, $data['credits'] * 2),
-                    'capacity' => $data['capacity'],
                     'color_code' => $data['color'],
                     'status' => 'active',
                 ]
@@ -587,13 +585,9 @@ class NursingWorkflowDemoSeeder extends Seeder
                 [
                     'coordinator_id' => $course->head_instructor_id,
                     'approval_status' => 'draft',
-                    'total_student_count' => $course->capacity,
                     'planned_lecture_hours' => $course->lecture_hours,
-                    'planned_lab_hours' => $course->requires_practicum_rotation ? 0 : $course->lab_hours,
-                    'planned_practicum_hours' => $course->requires_practicum_rotation ? $course->lab_hours : 0,
+                    'planned_lab_hours' => $course->lab_hours,
                     'teaching_weeks' => 19,
-                    'requires_practicum_rotation' => $course->requires_practicum_rotation,
-                    'practicum_note' => null,
                 ]
             );
 

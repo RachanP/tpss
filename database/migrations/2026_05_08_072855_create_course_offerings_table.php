@@ -21,14 +21,10 @@ return new class extends Migration
             $table->enum('approval_status', ['draft', 'pending', 'published', 'rejected']);
             $table->text('rejection_reason')->nullable();
 
-            // M2 planning fields — snapshot ของจำนวน นศ. + ชั่วโมง + รอบฝึกตอน open scheduling
-            $table->unsignedInteger('total_student_count')->nullable();
+            // M2 planning fields — snapshot ของชั่วโมงตอน open scheduling
             $table->unsignedInteger('planned_lecture_hours')->nullable();
             $table->unsignedInteger('planned_lab_hours')->nullable();
-            $table->unsignedInteger('planned_practicum_hours')->nullable();
             $table->unsignedTinyInteger('teaching_weeks')->nullable();
-            $table->boolean('requires_practicum_rotation')->default(false);
-            $table->text('practicum_note')->nullable()->comment('override note เมื่อ rotation ต่างจาก Master Data');
 
             $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->nullable();

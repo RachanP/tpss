@@ -437,52 +437,6 @@ class SchedulingPhaseTest extends TestCase
         $this->patch(route('admin.settings.scheduling.close', $year))->assertForbidden();
     }
 
-    // ── Phase Guard: CourseOffering info update ───────────────────────
-
-    public function test_offering_info_update_blocked_during_preparation(): void
-    {
-        $head    = $this->makeCourseHead();
-        $year    = $this->makeYear(['phase' => 'preparation']);
-        $offering = $this->makeOffering($head, $year);
-
-        $this->actingAsCourseHead($head);
-
-        $this->from(route('maker.course_offerings.show', $offering))
-            ->put(route('maker.course_offerings.update', $offering), [
-                'requires_practicum_rotation' => 1,
-                'practicum_note'              => 'override note',
-            ])
-            ->assertRedirect(route('maker.course_offerings.show', $offering) . '#course-info')
-            ->assertSessionHas('error');
-
-        $fresh = $offering->fresh();
-        $this->assertFalse((bool) $fresh->requires_practicum_rotation);
-        $this->assertNull($fresh->practicum_note);
-    }
-
-    public function test_offering_info_update_allowed_during_scheduling(): void
-    {
-        // After M2 hardening, the update endpoint only writes requires_practicum_rotation
-        // (+ a required practicum_note when overriding the course default).
-        $head    = $this->makeCourseHead();
-        $year    = $this->makeYear(['phase' => 'scheduling']);
-        $offering = $this->makeOffering($head, $year);
-
-        $this->actingAsCourseHead($head);
-
-        $this->from(route('maker.course_offerings.show', $offering))
-            ->put(route('maker.course_offerings.update', $offering), [
-                'requires_practicum_rotation' => 1,
-                'practicum_note'              => 'ใช้ simulation lab แทนการหมุนเวียน',
-            ])
-            ->assertRedirect(route('maker.course_offerings.show', $offering) . '#course-info')
-            ->assertSessionHasNoErrors();
-
-        $fresh = $offering->fresh();
-        $this->assertTrue((bool) $fresh->requires_practicum_rotation);
-        $this->assertSame('ใช้ simulation lab แทนการหมุนเวียน', $fresh->practicum_note);
-    }
-
     // ── Phase Guard: Instructor pool mutations ────────────────────────
 
     public function test_instructor_pool_mutations_blocked_during_preparation(): void

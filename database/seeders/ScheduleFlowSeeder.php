@@ -104,7 +104,7 @@ class ScheduleFlowSeeder extends Seeder
                     'group_code' => 'A1',
                 ],
                 [
-                    'student_count' => max(1, min((int) ($offering->total_student_count ?: 30), 30)),
+                    'student_count' => 30,
                     'color_code' => $colors[$index % count($colors)],
                 ]
             );

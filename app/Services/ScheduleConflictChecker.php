@@ -233,8 +233,8 @@ class ScheduleConflictChecker
             ->select(['id', 'name', 'category'])
             ->find($data['activity_type_id']));
         $schedule->setRelation('courseOffering', CourseOffering::query()
-            ->select(['id', 'course_id', 'requires_practicum_rotation', 'planned_practicum_hours'])
-            ->with('course:id,course_code,name_th,name_en,requires_practicum_rotation')
+            ->select(['id', 'course_id'])
+            ->with('course:id,course_code,name_th,name_en')
             ->find($data['course_offering_id']));
         $schedule->setRelation('studentGroups', StudentGroup::query()
             ->select(['id', 'course_offering_id', 'cohort_group_id', 'group_code'])
@@ -278,9 +278,19 @@ class ScheduleConflictChecker
             ->all();
     }
 
-    private function studentGroupRootId(StudentGroup $group): int
+    /**
+     * Root cohort id ของกลุ่ม — ใช้เทียบ "กลุ่มชนข้ามวิชา" (cohort เดียวกันห้ามอยู่ 2 วิชาพร้อมกัน)
+     *
+     * คืน null เมื่อกลุ่มไม่ได้ผูก cohort → กลุ่มแบบนี้จะไม่ถูกนับเป็น "กลุ่มร่วม" ข้ามวิชา
+     * (เดิม fallback เป็น student_groups.id ทำให้ค่าจาก namespace student_groups ปนกับ
+     *  student_cohorts.id แล้ว match กันโดยบังเอิญ = false positive ข้ามวิชา)
+     * การชนภายใน offering เดียวกันใช้ student_groups.id ตรง ๆ อยู่แล้ว ไม่ผ่าน root นี้
+     */
+    private function studentGroupRootId(StudentGroup $group): ?int
     {
-        return (int) ($group->cohortGroup?->parent_id ?? $group->cohort_group_id ?? $group->id);
+        $rootId = (int) ($group->cohortGroup?->parent_id ?? $group->cohort_group_id ?? 0);
+
+        return $rootId > 0 ? $rootId : null;
     }
 
     private function studentGroupRootLabel(StudentGroup $candidateGroup, Collection $incomingGroups): string

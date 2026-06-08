@@ -1,7 +1,6 @@
 @php
     $instructorDiffCount = fn ($d) => count($d['added']) + count($d['removed']) + count($d['role_changed']);
-    $detailsDiffCount = fn ($d) => count($d);
-    $offeringDiffCount = fn ($oid) => $instructorDiffCount($deviations[$oid]) + $detailsDiffCount($detailsDeviations[$oid] ?? []);
+    $offeringDiffCount = fn ($oid) => $instructorDiffCount($deviations[$oid]);
 
     $totalDeviations = $offerings->sum(fn ($o) => $offeringDiffCount($o->id));
     $deviatedOfferings = $offerings->filter(fn ($o) => $offeringDiffCount($o->id) > 0)->count();
@@ -103,12 +102,6 @@
             <div class="dash-meta-cell">
                 <div class="dash-meta-label">ชั้นปี</div>
                 <div class="dash-meta-value">ปี {{ $course->default_year_level }}</div>
-            </div>
-            @endif
-            @if($course->capacity)
-            <div class="dash-meta-cell">
-                <div class="dash-meta-label">รับได้</div>
-                <div class="dash-meta-value">{{ number_format($course->capacity) }} คน</div>
             </div>
             @endif
         </div>
@@ -243,8 +236,7 @@
                     @foreach($offerings as $offering)
                         @php
                             $diff = $deviations[$offering->id];
-                            $details = $detailsDeviations[$offering->id] ?? [];
-                            $count = $instructorDiffCount($diff) + $detailsDiffCount($details);
+                            $count = $instructorDiffCount($diff);
                             $phase = $offering->academicYear?->phase;
                             $pl = $phaseLabel($phase);
                         @endphp
@@ -329,27 +321,6 @@
                                                         <span>{{ $roleName($entry['template_role_id']) }} → {{ $roleName($entry['offering_role_id']) }}</span>
                                                     </li>
                                                 @endforeach
-                                            </ul>
-                                        </div>
-                                    @endif
-
-                                    @if(isset($details['rotation']))
-                                        <div data-testid="deviation-rotation" class="diff-bucket" style="grid-column:1 / -1;">
-                                            <div class="diff-bucket-label diff-bucket-label--warning">
-                                                <span class="diff-bucket-symbol">⚠</span>
-                                                การตั้งค่าระดับรอบเปิดสอนต่างจากแม่แบบ
-                                            </div>
-                                            <ul class="diff-list">
-                                                <li>
-                                                    <strong>การหมุนเวียนแหล่งฝึก</strong>
-                                                    <span>
-                                                        แม่แบบ: {{ $details['rotation']['template'] ? 'มีการหมุนเวียน' : 'ไม่มีการหมุนเวียน' }}
-                                                        → รอบนี้: {{ $details['rotation']['offering'] ? 'มีการหมุนเวียน' : 'ไม่มีการหมุนเวียน' }}
-                                                    </span>
-                                                    @if(!empty($details['rotation']['note']))
-                                                        <span style="margin-top:4px;color:var(--fg-2);font-style:italic;">เหตุผลจากหัวหน้าวิชา: "{{ $details['rotation']['note'] }}"</span>
-                                                    @endif
-                                                </li>
                                             </ul>
                                         </div>
                                     @endif

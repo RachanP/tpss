@@ -47,10 +47,8 @@ class CourseOfferingHardeningTest extends TestCase
         $year   = $this->makeYear(['phase' => 'preparation']);
         $course = $this->makeCourse([
             'head_instructor_id'          => $head->id,
-            'capacity'                    => 180,
             'lecture_hours'               => 3,
             'lab_hours'                   => 2,
-            'requires_practicum_rotation' => true,
         ]);
         SystemSetting::set('teaching_load_weeks', 16);
         $this->seedBaselineCriticals();
@@ -61,13 +59,9 @@ class CourseOfferingHardeningTest extends TestCase
 
         $offering = CourseOffering::firstWhere('course_id', $course->id);
         $this->assertNotNull($offering);
-        $this->assertSame(180, $offering->total_student_count);
         $this->assertSame(3,   $offering->planned_lecture_hours);
-        $this->assertSame(0,   $offering->planned_lab_hours);
-        $this->assertSame(2,   $offering->planned_practicum_hours);
+        $this->assertSame(2,   $offering->planned_lab_hours);
         $this->assertSame(16,  $offering->teaching_weeks);
-        $this->assertTrue((bool) $offering->requires_practicum_rotation);
-        $this->assertNull($offering->practicum_note);
     }
 
     public function test_open_syncs_instructor_pool_from_course_template(): void

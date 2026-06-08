@@ -195,13 +195,6 @@ class CourseOfferingManagementTest extends TestCase
             ->assertSee('NSBS 232');
 
         $this->from(route('maker.course_offerings.show', $offering))
-            ->put(route('maker.course_offerings.update', $offering), [
-                'requires_practicum_rotation' => 0,
-            ])
-            ->assertRedirect(route('maker.course_offerings.show', $offering) . '#course-info')
-            ->assertSessionHasNoErrors();
-
-        $this->from(route('maker.course_offerings.show', $offering))
             ->patch(route('maker.course_offerings.instructors.role', [$offering, $instructor]), [
                 'course_role_id' => null,
             ])

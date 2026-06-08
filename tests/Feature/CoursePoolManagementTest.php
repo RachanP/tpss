@@ -432,15 +432,18 @@ class CoursePoolManagementTest extends TestCase
         $admin = $this->makeUser('admin');
         $head = $this->makeUser('course_head');
 
-        // วิชา deviate: offering.requires_practicum_rotation ต่างจาก template ของวิชา
-        $devCourse = $this->makeCourse(['head_instructor_id' => $head->id, 'course_code' => 'DEV 111', 'requires_practicum_rotation' => false]);
+        // วิชา deviate: instructor pool ของ offering ต่างจาก template ของวิชา
+        $instructor = $this->makeUser('instructor');
+        $role = CourseRole::where('name_th', 'อาจารย์ผู้สอน')->first();
+        $devCourse = $this->makeCourse(['head_instructor_id' => $head->id, 'course_code' => 'DEV 111']);
+        $devCourse->instructors()->attach($instructor->id, ['course_role_id' => $role->id]);
         $year = $this->makeYear(['phase' => 'scheduling']);
+        // offering ไม่ sync instructor pool → template มี 1 คน แต่ offering ไม่มี → deviate
         CourseOffering::create([
             'course_id' => $devCourse->id,
             'academic_year_id' => $year->id,
             'coordinator_id' => $head->id,
             'approval_status' => 'draft',
-            'requires_practicum_rotation' => true,
         ]);
 
         // วิชาที่ไม่มี offering ในรอบจัดตาราง → ไม่ deviate → ไม่ขึ้นในแจ้งเตือน
@@ -549,19 +552,20 @@ class CoursePoolManagementTest extends TestCase
             $instructor->id => ['role_in_course' => 'instructor',  'course_role_id' => $role->id],
         ]);
 
-        // วิชา B: rotation override → ควรมี red dot
+        // วิชา B: instructor pool ต่างจาก template → ควรมี red dot
+        $devInstructor = $this->makeUser('instructor');
         $devCourse = $this->makeCourse([
             'head_instructor_id' => $head->id,
             'course_code' => 'DEV 1',
-            'requires_practicum_rotation' => false,
         ]);
+        $devCourse->instructors()->attach($devInstructor->id, ['course_role_id' => $role->id]);
         $year2 = $this->makeYear(['phase' => 'scheduling']);
+        // offering pool ว่าง → template มี devInstructor → deviate
         CourseOffering::create([
             'course_id' => $devCourse->id,
             'academic_year_id' => $year2->id,
             'coordinator_id' => $head->id,
             'approval_status' => 'draft',
-            'requires_practicum_rotation' => true,
         ]);
 
         $this->actingAsRole($admin, 'admin');
@@ -572,39 +576,6 @@ class CoursePoolManagementTest extends TestCase
         // หน้าแจ้งเตือนแสดงเฉพาะวิชาที่ deviate (DEV 1) — วิชาที่ตรงแม่แบบ (MATCH 1) ต้องไม่ขึ้น
         $response->assertSee(route('admin.courses.instructor_deviation', $devCourse), false);
         $response->assertDontSee(route('admin.courses.instructor_deviation', $matchCourse), false);
-    }
-
-    public function test_instructor_deviation_detects_rotation_override_from_course_head(): void
-    {
-        $admin = $this->makeUser('admin');
-        $head = $this->makeUser('course_head');
-
-        $course = $this->makeCourse([
-            'head_instructor_id' => $head->id,
-            'course_code' => 'ROT 111',
-            'requires_practicum_rotation' => false, // แม่แบบ: ไม่หมุนเวียน
-        ]);
-        $year = $this->makeYear(['phase' => 'scheduling']);
-
-        // Offering override เป็น "มีการหมุนเวียน" + แนบเหตุผล
-        CourseOffering::create([
-            'course_id' => $course->id,
-            'academic_year_id' => $year->id,
-            'coordinator_id' => $head->id,
-            'approval_status' => 'draft',
-            'requires_practicum_rotation' => true,
-            'practicum_note' => 'ปีนี้ต้องหมุนเวียนเพราะแหล่งฝึกใหม่',
-        ]);
-
-        $this->actingAsRole($admin, 'admin');
-
-        $response = $this->get(route('admin.courses.instructor_deviation', $course));
-
-        $response->assertOk();
-        $response->assertSee('การตั้งค่าระดับรอบเปิดสอนต่างจากแม่แบบ');
-        $response->assertSee('การหมุนเวียนแหล่งฝึก');
-        $response->assertSee('ปีนี้ต้องหมุนเวียนเพราะแหล่งฝึกใหม่');
-        $response->assertSee('แก้ไข 1 รายการ');
     }
 
     public function test_instructor_deviation_shows_empty_state_when_no_offerings_at_all(): void

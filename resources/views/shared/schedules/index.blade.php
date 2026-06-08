@@ -6828,9 +6828,6 @@
                         @else
                             <span class="badge badge-gray">{{ $phase ?? 'ไม่ระบุ' }}</span>
                         @endif
-                        @if($courseOffering->requires_practicum_rotation || $course?->requires_practicum_rotation)
-                            <span class="badge badge-warn">มีรอบฝึกปฏิบัติ</span>
-                        @endif
                         <span class="badge {{ $approvalMeta['class'] }}">สถานะรายวิชา: {{ $approvalMeta['label'] }}</span>
                     </div>
                 </div>

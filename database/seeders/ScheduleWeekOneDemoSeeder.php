@@ -131,7 +131,7 @@ class ScheduleWeekOneDemoSeeder extends Seeder
             return $existing;
         }
 
-        $count = (int) ($offering->total_student_count ?: 30);
+        $count = 30;
 
         return StudentGroup::create([
             'course_offering_id' => $offering->id,

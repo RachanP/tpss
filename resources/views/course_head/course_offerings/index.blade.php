@@ -151,7 +151,6 @@
                             $approvalMeta = $approvalLabels[$approval] ?? ['label' => $approval, 'badge' => 'badge-gray'];
                             $lectureHours  = $offering->planned_lecture_hours ?? $course?->lecture_hours ?? 0;
                             $labHours      = $offering->planned_lab_hours ?? $course?->lab_hours ?? 0;
-                            $practicumHours = $offering->planned_practicum_hours ?? 0;
                         @endphp
                         <tr class="course-offering-row">
                             <td>
@@ -159,9 +158,6 @@
                                 <div class="body-sm" style="margin-top:3px;">{{ $course?->name_th ?? $course?->name_en ?? '-' }}</div>
                                 <div style="display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap;">
                                     <span class="caption">{{ $course?->credits ?? '-' }} หน่วยกิต</span>
-                                    @if($offering->requires_practicum_rotation)
-                                        <span class="badge badge-warn" style="font-size:0.7rem;">ฝึกปฏิบัติ</span>
-                                    @endif
                                 </div>
                             </td>
                             <td>
@@ -174,9 +170,6 @@
                                 <div class="body-sm" style="white-space:nowrap;">
                                     บรรยาย <strong>{{ $lectureHours }}</strong> · ปฏิบัติ <strong>{{ $labHours }}</strong> ชม.
                                 </div>
-                                @if($practicumHours > 0)
-                                    <div class="caption" style="margin-top:4px;white-space:nowrap;">ฝึกปฏิบัติ {{ $practicumHours }} ชม.</div>
-                                @endif
                             </td>
                             <td style="white-space:nowrap;">
                                 @if($phase === 'scheduling')

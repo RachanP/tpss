@@ -20,22 +20,15 @@ class CourseOffering extends Model
         'coordinator_id',
         'approval_status',
         'rejection_reason',
-        'total_student_count',
         'planned_lecture_hours',
         'planned_lab_hours',
-        'planned_practicum_hours',
         'teaching_weeks',
-        'requires_practicum_rotation',
-        'practicum_note',
     ];
 
     protected $casts = [
-        'total_student_count' => 'integer',
         'planned_lecture_hours' => 'integer',
         'planned_lab_hours' => 'integer',
-        'planned_practicum_hours' => 'integer',
         'teaching_weeks' => 'integer',
-        'requires_practicum_rotation' => 'boolean',
     ];
 
     public function getRouteKey()

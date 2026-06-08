@@ -42,9 +42,8 @@ class CourseDeviationFinder
         return $courses->filter(function (Course $course) use ($offerings) {
             foreach ($offerings[$course->id] ?? [] as $offering) {
                 $instructorDiff = $course->instructorPoolDeviationFor($offering);
-                $detailsDiff    = $course->offeringDetailsDeviationFor($offering);
                 $hasAny = count($instructorDiff['added']) + count($instructorDiff['removed'])
-                    + count($instructorDiff['role_changed']) + count($detailsDiff);
+                    + count($instructorDiff['role_changed']);
                 if ($hasAny > 0) {
                     return true;
                 }

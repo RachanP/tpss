@@ -14,6 +14,7 @@ use App\Models\LocationType;
 use App\Models\Room;
 use App\Models\Schedule;
 use App\Models\ScheduleTemplate;
+use App\Models\StudentCohort;
 use App\Models\StudentGroup;
 use App\Models\User;
 use App\Models\UserRole;
@@ -1731,6 +1732,50 @@ class ScheduleManagementTest extends TestCase
         $this->assertDatabaseCount('schedules', 1);
     }
 
+    public function test_student_group_overlap_blocks_save_across_offerings_when_sharing_root_cohort(): void
+    {
+        // V4 ข้อ 2: กลุ่มที่อ้างอิง cohort root เดียวกัน ห้ามอยู่ 2 วิชาพร้อมกันในเวลาทับ
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        [, $otherOffering, $otherInstructor, $otherGroup, $otherActivityType, $otherRoom] = $this->makeReadyOffering();
+
+        $cohort = $this->makeCohort('Y2-A');
+        $group->update(['cohort_group_id' => $cohort->id]);
+        $otherGroup->update(['cohort_group_id' => $cohort->id]);
+
+        // ตารางวิชาอื่น: คนละอาจารย์ คนละห้อง ชนเฉพาะ "กลุ่ม" (cohort เดียวกัน) เท่านั้น
+        $this->makeSchedule($otherOffering, $otherActivityType, $otherRoom, [$otherInstructor], [$otherGroup]);
+
+        $this->actingAsCourseHead($head);
+
+        $this->post(route('maker.course_offerings.schedules.store', $offering), $this->schedulePayload($instructor, $group, $activityType, $room))
+            ->assertRedirect()
+            ->assertSessionHasErrors('schedule');
+
+        $this->assertDatabaseCount('schedules', 1);
+    }
+
+    public function test_student_group_does_not_conflict_across_offerings_with_different_cohorts(): void
+    {
+        // regression: cross-course group conflict ต้องอิง cohort root จริงเท่านั้น
+        // กลุ่มคนละ cohort (และกลุ่มที่ไม่ผูก cohort) ต้องไม่ชนกันข้ามวิชา
+        // กัน false positive จากการเอา student_groups.id ไปเทียบกับ cohort_group_id
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        [, $otherOffering, $otherInstructor, $otherGroup, $otherActivityType, $otherRoom] = $this->makeReadyOffering();
+
+        $group->update(['cohort_group_id' => $this->makeCohort('Y2-A')->id]);
+        $otherGroup->update(['cohort_group_id' => $this->makeCohort('Y2-B')->id]);
+
+        $this->makeSchedule($otherOffering, $otherActivityType, $otherRoom, [$otherInstructor], [$otherGroup]);
+
+        $this->actingAsCourseHead($head);
+
+        $this->post(route('maker.course_offerings.schedules.store', $offering), $this->schedulePayload($instructor, $group, $activityType, $room))
+            ->assertRedirect(route('maker.course_offerings.schedules.index', $offering))
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseCount('schedules', 2);
+    }
+
     public function test_adjacent_time_does_not_conflict(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
@@ -2178,6 +2223,16 @@ class ScheduleManagementTest extends TestCase
             'lead_instructor_id' => $instructor->id,
             'student_group_ids' => [$group->id],
         ], $overrides);
+    }
+
+    private function makeCohort(string $code): StudentCohort
+    {
+        return StudentCohort::create([
+            'curriculum_id' => $this->curriculum()->id,
+            'year_level' => 2,
+            'code' => $code,
+            'student_count' => 80,
+        ]);
     }
 
     private function department(): Department

@@ -4,8 +4,7 @@
     $canEdit          = $academicYear?->phase === 'scheduling';
     $lectureHours     = $course?->lecture_hours ?? 0;
     $labHours         = $course?->lab_hours ?? 0;
-    $defaultRotation  = (bool) ($course?->requires_practicum_rotation ?? false);
-    $courseInfoErrorKeys = ['requires_practicum_rotation', 'practicum_note'];
+    $courseInfoErrorKeys = [];
     $instructorErrorKeys = ['user_id', 'course_role_id', 'instructor_pool'];
     $studentGroupErrorKeys = ['cohort_group_id', 'group_code', 'student_count', 'group_count', 'group_details', 'rows', 'student_groups'];
     $courseInfoErrorKey = collect($courseInfoErrorKeys)->first(fn ($key) => $errors->has($key));
@@ -190,9 +189,6 @@
                     <p class="body-sm" style="margin:0;">
                         {{ $course?->curriculum?->name ?? '-' }} · ปีการศึกษา {{ $academicYear?->name ?? '-' }}
                     </p>
-                    @if($courseOffering->requires_practicum_rotation)
-                        <span class="badge badge-warn" style="font-size:0.7rem;">ฝึกปฏิบัติ</span>
-                    @endif
                 </div>
             </div>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -317,16 +313,6 @@
                 </div>
             </div>
             <div style="display:inline-flex;align-items:center;gap:0;margin-left:auto;" x-data>
-                @if($canEdit)
-                    <button
-                        type="button"
-                        @click="$store.offeringPage.startEditing('courseInfo')"
-                        class="section-edit-quick-toggle"
-                        :aria-pressed="$store.offeringPage.editing.courseInfo ? 'true' : 'false'"
-                        data-testid="section-edit-quick-toggle-course-info"
-                        x-text="$store.offeringPage.editing.courseInfo ? 'เสร็จสิ้น' : 'แก้ไข'"
-                    ></button>
-                @endif
                 <button type="button"
                     @click="$store.offeringPage.toggleCollapse('courseInfo')"
                     :class="$store.offeringPage.collapsed.courseInfo ? 'section-collapse-toggle is-collapsed' : 'section-collapse-toggle'"
@@ -362,10 +348,6 @@
                     <div class="caption">ชั้นปี</div>
                     <div style="font-weight:600;margin-top:4px;font-size:0.95rem;">{{ $course?->default_year_level ? 'ชั้นปีที่ ' . $course->default_year_level : '-' }}</div>
                 </div>
-                <div>
-                    <div class="caption">จำนวนที่เปิดรับ</div>
-                    <div style="font-weight:600;margin-top:4px;font-size:0.95rem;">{{ ($course?->capacity ?? 0) ?: '-' }} คน</div>
-                </div>
             </div>
 
             {{-- Secondary fields --}}
@@ -380,167 +362,6 @@
                 </div>
             </div>
 
-            @if($canEdit)
-            <div
-                x-data="rotationAutosave({
-                    rotation: '{{ old('requires_practicum_rotation', $courseOffering->requires_practicum_rotation ? '1' : '0') }}',
-                    note: {{ Js::from(old('practicum_note', $courseOffering->practicum_note ?? '')) }},
-                    defaultRotation: '{{ $defaultRotation ? '1' : '0' }}',
-                    updateUrl: {{ Js::from(route('maker.course_offerings.update', $courseOffering)) }},
-                    csrfToken: {{ Js::from(csrf_token()) }},
-                })"
-                style="margin-top:24px;padding:18px 20px;background:var(--bg-2);border:1px solid var(--border);border-radius:10px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:4px;flex-wrap:wrap;">
-                    <div style="display:flex;align-items:center;gap:8px;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--brand-navy);">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                        </svg>
-                        <div style="font-weight:700;font-size:0.9375rem;color:var(--fg-1);">ค่าที่ปรับได้เฉพาะรอบเปิดสอนนี้</div>
-                    </div>
-                    {{-- Saving/saved status --}}
-                    <div style="display:inline-flex;align-items:center;gap:6px;font-size:0.75rem;min-height:18px;">
-                        <template x-if="saving">
-                            <span style="display:inline-flex;align-items:center;gap:6px;color:var(--fg-3);">
-                                <span style="width:12px;height:12px;border:2px solid var(--brand-navy-300);border-top-color:var(--brand-navy);border-radius:50%;animation:rotation-spin 0.8s linear infinite;"></span>
-                                กำลังบันทึก...
-                            </span>
-                        </template>
-                        <template x-if="!saving && savedFlash">
-                            <span x-transition style="display:inline-flex;align-items:center;gap:4px;color:var(--status-success-fg);">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                บันทึกแล้ว
-                            </span>
-                        </template>
-                        <template x-if="!saving && error">
-                            <span style="color:var(--status-conflict-fg);" x-text="error"></span>
-                        </template>
-                    </div>
-                </div>
-                <div class="caption" style="margin-bottom:14px;">ข้อมูลข้างต้นมาจาก Master Data (อ่านอย่างเดียว) — ส่วนนี้คือค่าที่หัวหน้าวิชาปรับได้ตามสถานการณ์ของภาคเรียน</div>
-
-                <div class="course-info-fields" :class="!$store.offeringPage.editing.courseInfo ? 'is-locked' : ''" style="border:0;padding:0;margin:0;min-width:0;">
-                    <div class="form-group" style="margin-bottom:14px;">
-                        <label>การจัดรอบฝึกปฏิบัติ</label>
-                        <select class="tpss-custom-select course-rotation-select" x-model="rotation" :disabled="!$store.offeringPage.editing.courseInfo" @change="onRotationChange()">
-                            <option value="0" @selected(! $courseOffering->requires_practicum_rotation)>ไม่มีการหมุนเวียนแหล่งฝึก</option>
-                            <option value="1" @selected($courseOffering->requires_practicum_rotation)>มีการหมุนเวียนแหล่งฝึก</option>
-                        </select>
-                        <div class="caption" style="margin-top:6px;">
-                            ค่าเริ่มต้นจาก Master Data: {{ $defaultRotation ? 'มีการหมุนเวียนแหล่งฝึก' : 'ไม่มีการหมุนเวียนแหล่งฝึก' }}
-                        </div>
-                    </div>
-
-                    <div class="form-group" x-show="isOverride" x-cloak style="margin-bottom:0;">
-                        <label style="display:flex;align-items:center;gap:6px;">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--status-warning-fg);flex-shrink:0;">
-                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                                <line x1="12" y1="9" x2="12" y2="13"/>
-                                <line x1="12" y1="17" x2="12.01" y2="17"/>
-                            </svg>
-                            ระบุเหตุผลการแก้ไข <span style="color:var(--status-conflict-fg)">*</span>
-                        </label>
-                        <textarea
-                            x-model="note"
-                            :disabled="!$store.offeringPage.editing.courseInfo"
-                            @input.debounce.700ms="onNoteInput()"
-                            rows="3"
-                            maxlength="1000"
-                            placeholder="เช่น ปีการศึกษานี้ใช้ simulation lab แทนการหมุนเวียนแหล่งฝึก"></textarea>
-                    </div>
-                </div>
-            </div>
-
-            <style>@keyframes rotation-spin { to { transform: rotate(360deg); } }</style>
-            <script>
-                function rotationAutosave(config) {
-                    return {
-                        rotation: config.rotation,
-                        note: config.note || '',
-                        defaultRotation: config.defaultRotation,
-                        updateUrl: config.updateUrl,
-                        csrfToken: config.csrfToken,
-                        saving: false,
-                        savedFlash: false,
-                        error: '',
-                        _flashTimer: null,
-                        _abort: null,
-                        get isOverride() { return this.rotation !== this.defaultRotation; },
-                        onRotationChange() {
-                            // ถ้ากลับมาตรง default → ล้าง note + save ทันที
-                            if (!this.isOverride) {
-                                this.note = '';
-                                this.save();
-                                return;
-                            }
-                            // override mode — ถ้ามี note เดิมแล้ว save เลย ไม่งั้นรอ user พิมพ์
-                            if (this.note.trim().length > 0) {
-                                this.save();
-                            }
-                        },
-                        onNoteInput() {
-                            // save เฉพาะกรณี override + มี note
-                            if (this.isOverride && this.note.trim().length > 0) {
-                                this.save();
-                            }
-                        },
-                        async save() {
-                            if (this._abort) this._abort.abort();
-                            const controller = new AbortController();
-                            this._abort = controller;
-                            this.error = '';
-                            this.saving = true;
-                            this.savedFlash = false;
-                            try {
-                                const formData = new FormData();
-                                formData.append('_method', 'PUT');
-                                formData.append('_token', this.csrfToken);
-                                formData.append('requires_practicum_rotation', this.rotation);
-                                if (this.isOverride) formData.append('practicum_note', this.note);
-                                const res = await fetch(this.updateUrl, {
-                                    method: 'POST',
-                                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                                    body: formData,
-                                    signal: controller.signal,
-                                });
-                                const data = await res.json().catch(() => ({}));
-                                if (!res.ok) {
-                                    this.error = data.message || 'บันทึกไม่สำเร็จ';
-                                } else {
-                                    this.savedFlash = true;
-                                    clearTimeout(this._flashTimer);
-                                    this._flashTimer = setTimeout(() => { this.savedFlash = false; }, 2000);
-                                }
-                            } catch (e) {
-                                if (e.name === 'AbortError') return;
-                                this.error = 'เชื่อมต่อไม่ได้';
-                            } finally {
-                                if (this._abort === controller) {
-                                    this._abort = null;
-                                    this.saving = false;
-                                }
-                            }
-                        },
-                    };
-                }
-            </script>
-            @else
-            <div style="border-top:1px solid var(--border);padding-top:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">
-                <div>
-                    <div class="caption">การจัดรอบฝึกปฏิบัติ</div>
-                    <div style="font-weight:600;margin-top:4px;">{{ $courseOffering->requires_practicum_rotation ? 'มีการหมุนเวียนแหล่งฝึก' : 'ไม่มีการหมุนเวียนแหล่งฝึก' }}</div>
-                    @if($courseOffering->requires_practicum_rotation !== $defaultRotation)
-                        <div class="caption" style="margin-top:5px;color:var(--status-warning-fg);">ต่างจากค่าเริ่มต้นใน Master Data</div>
-                    @endif
-                </div>
-                @if($courseOffering->practicum_note)
-                <div>
-                    <div class="caption">หมายเหตุการฝึกปฏิบัติ</div>
-                    <div style="margin-top:4px;">{{ $courseOffering->practicum_note }}</div>
-                </div>
-                @endif
-            </div>
-            @endif
         </div>
     </div>
 

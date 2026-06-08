@@ -37,10 +37,8 @@
                 'lecture_hours' => old('lecture_hours', 0),
                 'lab_hours' => old('lab_hours', 0),
                 'self_study_hours' => old('self_study_hours', 0),
-                'capacity' => old('capacity', ''),
                 'color_code' => old('color_code', '#3b82f6'),
                 'status' => old('status', 'active'),
-                'requires_practicum_rotation' => old('requires_practicum_rotation', '0'),
                 'prerequisite_ids' => array_map('strval', $courseOldPrerequisiteIds),
                 'staff_ids' => array_map('intval', $courseOldStaffIds),
                 'instructor_ids' => array_map('intval', $courseOldInstructorIds),
@@ -454,10 +452,8 @@
             lecture_hours: 0,
             lab_hours: 0,
             self_study_hours: 0,
-            capacity: '',
             color_code: '#3b82f6',
             status: 'active',
-            requires_practicum_rotation: false,
             is_required: '1',
             prerequisite_ids: [],
             has_locked_offering: false
@@ -505,7 +501,6 @@
             hydrated.head_instructor_id = stringValue(course.head_instructor_id);
             hydrated.default_year_level = stringValue(course.default_year_level);
             hydrated.default_semester = stringValue(course.default_semester);
-            hydrated.requires_practicum_rotation = course.requires_practicum_rotation ? '1' : '0';
             hydrated.is_required = (course.is_required ?? true) ? '1' : '0';
             hydrated.prerequisite_ids = (course.prerequisites || []).map(prerequisite => String(prerequisite.id));
 
@@ -522,7 +517,7 @@
         showAllCourseInstructors: false,
         openAddCourse() {
             this.editCourseMode = false;
-            this.currentCourse = { id: '', route_key: '', course_code: '', name_th: '', name_en: '', curriculum_id: '', department_id: '', head_instructor_id: '', default_year_level: '', default_semester: '', credits: '', lecture_hours: 0, lab_hours: 0, self_study_hours: 0, capacity: '', color_code: '#3b82f6', status: 'active', requires_practicum_rotation: '0', is_required: '1', prerequisite_ids: [], has_locked_offering: false };
+            this.currentCourse = { id: '', route_key: '', course_code: '', name_th: '', name_en: '', curriculum_id: '', department_id: '', head_instructor_id: '', default_year_level: '', default_semester: '', credits: '', lecture_hours: 0, lab_hours: 0, self_study_hours: 0, color_code: '#3b82f6', status: 'active', is_required: '1', prerequisite_ids: [], has_locked_offering: false };
             this.courseHeadSearch = '';
             this.selectedStaff = [];
             this.staffSearch = '';
@@ -927,7 +922,7 @@
         }
         restoreFilters();
         sanitizeRestoredFilters();
-        @if($errors->hasAny(['course_code','name_th','name_en','curriculum_id','department_id','head_instructor_id','default_year_level','default_semester','credits','lecture_hours','lab_hours','self_study_hours','capacity','color_code','status','requires_practicum_rotation','is_required','prerequisite_ids','prerequisite_ids.*']))
+        @if($errors->hasAny(['course_code','name_th','name_en','curriculum_id','department_id','head_instructor_id','default_year_level','default_semester','credits','lecture_hours','lab_hours','self_study_hours','color_code','status','is_required','prerequisite_ids','prerequisite_ids.*']))
             activeTab = 'courses';
             editCourseMode = {{ old('course_form_id') ? 'true' : 'false' }};
             currentCourse = {
@@ -944,10 +939,8 @@
                 lecture_hours: {{ Js::from(old('lecture_hours', 0)) }},
                 lab_hours: {{ Js::from(old('lab_hours', 0)) }},
                 self_study_hours: {{ Js::from(old('self_study_hours', 0)) }},
-                capacity: {{ Js::from(old('capacity', '')) }},
                 color_code: {{ Js::from(old('color_code', '#3b82f6')) }},
                 status: {{ Js::from(old('status', 'active')) }},
-                requires_practicum_rotation: {{ Js::from(old('requires_practicum_rotation', '0')) }},
                 is_required: {{ Js::from(old('is_required', '1')) }},
                 prerequisite_ids: {{ Js::from(array_map('strval', old('prerequisite_ids', []))) }},
             };
@@ -1663,7 +1656,7 @@
                         <tbody>
                             @forelse($courses as $course)
                                 <tr
-                                    data-search="{{ Str::lower($course->course_code . ' ' . $course->name_th . ' ' . ($course->name_en ?? '') . ' ' . ($course->headInstructor->formatted_name ?? '') . ' ' . ($course->department->name ?? '') . ' ' . ($course->curriculum->name ?? '') . ' ' . ($course->credits ?? '') . ' หน่วยกิต ' . ($course->lecture_hours ?? 0) . '-' . ($course->lab_hours ?? 0) . '-' . ($course->self_study_hours ?? 0) . ' ' . ($course->default_year_level ?? '') . ' ปี ' . ($course->default_semester ?? '') . ' ภาค ' . ($course->capacity ?? '') . ' คน ' . ($course->is_required ? 'บังคับ' : 'เลือก') . ' ' . ($course->status ?? '') . ' ' . ($course->status === 'active' ? 'เปิดสอน' : 'ปิดสอน')) }}"
+                                    data-search="{{ Str::lower($course->course_code . ' ' . $course->name_th . ' ' . ($course->name_en ?? '') . ' ' . ($course->headInstructor->formatted_name ?? '') . ' ' . ($course->department->name ?? '') . ' ' . ($course->curriculum->name ?? '') . ' ' . ($course->credits ?? '') . ' หน่วยกิต ' . ($course->lecture_hours ?? 0) . '-' . ($course->lab_hours ?? 0) . '-' . ($course->self_study_hours ?? 0) . ' ' . ($course->default_year_level ?? '') . ' ปี ' . ($course->default_semester ?? '') . ' ภาค ' . ($course->is_required ? 'บังคับ' : 'เลือก') . ' ' . ($course->status ?? '') . ' ' . ($course->status === 'active' ? 'เปิดสอน' : 'ปิดสอน')) }}"
                                     data-department-id="{{ $course->department_id ?? '' }}"
                                     data-curriculum-id="{{ $course->curriculum_id ?? '' }}"
                                     data-year-level="{{ $course->default_year_level ?? '' }}"
@@ -1682,9 +1675,6 @@
                                         <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px;">
                                             @if($course->default_year_level)
                                                 <span style="font-size: 10px; font-weight: 600; color: var(--fg-1); background: var(--bg-2); border: 1px solid var(--border-strong, #c8cdd6); border-radius: 4px; padding: 2px 7px; white-space: nowrap;">ปี {{ $course->default_year_level }}</span>
-                                            @endif
-                                            @if($course->capacity)
-                                                <span style="font-size: 10px; font-weight: 600; color: #1a56a0; background: #e8f0fb; border: 1px solid #b3cdf0; border-radius: 4px; padding: 2px 7px; white-space: nowrap;">รับ {{ number_format($course->capacity) }} คน</span>
                                             @endif
                                         </div>
                                     </td>
@@ -2744,7 +2734,7 @@
                             <section class="course-form-section">
                                 <div class="course-section-head">
                                     <div class="course-section-title">ชั่วโมงและเงื่อนไข</div>
-                                    <div class="course-section-copy">ชั่วโมงสอน จำนวนรับ การหมุนเวียนแหล่งฝึก และ prerequisite</div>
+                                    <div class="course-section-copy">ชั่วโมงสอน และ prerequisite</div>
                                 </div>
                                 <div class="course-form-grid course-form-grid--hours">
                                     <div class="form-group">
@@ -2758,17 +2748,6 @@
                                     <div class="form-group">
                                         <label>ศึกษาด้วยตนเอง (ชม.) <span style="color:var(--status-conflict-fg)">*</span></label>
                                         <input type="number" name="self_study_hours" x-model="currentCourse.self_study_hours" min="0" placeholder="0" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>จำนวนนักศึกษาสูงสุด (คน) <span style="color:var(--status-conflict-fg)">*</span></label>
-                                        <input type="number" name="capacity" x-model="currentCourse.capacity" min="1" placeholder="เช่น 240" required onwheel="this.blur()">
-                                    </div>
-                                    <div class="form-group course-rotation-field">
-                                        <label>การหมุนเวียนกลุ่มนักศึกษาระหว่างแหล่งฝึก</label>
-                                        <select name="requires_practicum_rotation" x-model="currentCourse.requires_practicum_rotation">
-                                            <option value="0">ไม่มีการหมุนเวียนแหล่งฝึก</option>
-                                            <option value="1">มีการหมุนเวียนแหล่งฝึก</option>
-                                        </select>
                                     </div>
                                 </div>
 

@@ -1061,40 +1061,6 @@ class AuditLogIntegrationTest extends TestCase
         $this->assertDatabaseCount('audit_logs', 0);
     }
 
-    public function test_course_offering_practicum_update_logs_changed_fields_and_no_op_is_skipped(): void
-    {
-        $head = $this->makeCourseHead();
-        $offering = $this->makeOffering($head);
-
-        $this->actingAsCourseHead($head)
-            ->put(route('maker.course_offerings.update', $offering), [
-                'requires_practicum_rotation' => 1,
-                'practicum_note' => 'หมุนเวียนแหล่งฝึก',
-            ])
-            ->assertRedirect();
-
-        $log = $this->latestLog('รายวิชาและผู้รับผิดชอบ.แก้ไข', 'course_offerings');
-        $this->assertSame('รายวิชาและผู้รับผิดชอบ', $log->category);
-        $this->assertEqualsCanonicalizing(
-            ['requires_practicum_rotation', 'practicum_note'],
-            array_keys($log->old_values)
-        );
-        $this->assertFalse($log->old_values['requires_practicum_rotation']);
-        $this->assertTrue($log->new_values['requires_practicum_rotation']);
-        $this->assertSame($offering->id, $log->new_values['course_offering_id']);
-
-        $this->actingAsCourseHead($head)
-            ->put(route('maker.course_offerings.update', $offering->fresh()), [
-                'requires_practicum_rotation' => 1,
-                'practicum_note' => 'หมุนเวียนแหล่งฝึก',
-            ])
-            ->assertRedirect();
-
-        $this->assertSame(1, AuditLog::where('action', 'รายวิชาและผู้รับผิดชอบ.แก้ไข')
-            ->where('table_affected', 'course_offerings')
-            ->count());
-    }
-
     public function test_offering_instructor_add_role_update_and_remove_are_audited(): void
     {
         $head = $this->makeCourseHead();
@@ -1152,23 +1118,25 @@ class AuditLogIntegrationTest extends TestCase
         $otherHead = $this->makeCourseHead();
         $offering = $this->makeOffering($head);
 
+        $instructor = $this->makeInstructor();
+
         // validation failure: เพิ่มผู้สอนโดยไม่ส่ง user_id → ไม่ log
         $this->actingAsCourseHead($head)
             ->post(route('maker.course_offerings.instructors.store', $offering), [])
             ->assertSessionHasErrors('user_id');
 
+        // unauthorized: หัวหน้าวิชาคนอื่นเพิ่มผู้สอนในวิชาที่ไม่ใช่ของตน → forbidden
         $this->actingAsCourseHead($otherHead)
-            ->put(route('maker.course_offerings.update', $offering), [
-                'requires_practicum_rotation' => 1,
-                'practicum_note' => 'ไม่ได้รับสิทธิ์',
+            ->post(route('maker.course_offerings.instructors.store', $offering), [
+                'user_id' => $instructor->id,
             ])
             ->assertForbidden();
 
+        // phase-blocked: ยังไม่เปิดช่วงจัดตาราง → ไม่ log
         $blockedOffering = $this->makeOffering($head, [], ['phase' => 'preparation']);
         $this->actingAsCourseHead($head)
-            ->put(route('maker.course_offerings.update', $blockedOffering), [
-                'requires_practicum_rotation' => 1,
-                'practicum_note' => 'ยังไม่เปิดช่วง',
+            ->post(route('maker.course_offerings.instructors.store', $blockedOffering), [
+                'user_id' => $instructor->id,
             ])
             ->assertRedirect();
 

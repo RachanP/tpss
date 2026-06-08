@@ -701,7 +701,6 @@ class MasterDataController extends Controller
                 ->withInput();
         }
 
-        $validated['requires_practicum_rotation'] = $request->boolean('requires_practicum_rotation');
         $validated['is_required'] = $request->boolean('is_required');
         if ($curriculum && ! $curriculum->uses_year_level) {
             $validated['default_year_level'] = null;
@@ -751,7 +750,6 @@ class MasterDataController extends Controller
                 ->withInput();
         }
 
-        $validated['requires_practicum_rotation'] = $request->boolean('requires_practicum_rotation');
         $validated['is_required'] = $request->boolean('is_required');
         if ($curriculum && ! $curriculum->uses_year_level) {
             $validated['default_year_level'] = null;
@@ -856,10 +854,8 @@ class MasterDataController extends Controller
             'lecture_hours'               => 'required|integer|min:0',
             'lab_hours'                   => 'required|integer|min:0',
             'self_study_hours'            => 'required|integer|min:0',
-            'capacity'                    => 'required|integer|min:1',
             'color_code'                  => 'nullable|string|max:7',
             'status'                      => 'required|in:active,inactive',
-            'requires_practicum_rotation' => 'required|boolean',
             'is_required'                 => 'required|boolean',
             'prerequisite_ids'            => 'nullable|array',
             'prerequisite_ids.*'          => ['integer', 'distinct', 'exists:courses,id'],
@@ -1186,10 +1182,6 @@ class MasterDataController extends Controller
             return [$offering->id => $diff];
         });
 
-        $detailsDeviations = $offerings->mapWithKeys(function ($offering) use ($course) {
-            return [$offering->id => $course->offeringDetailsDeviationFor($offering)];
-        });
-
         $users = User::whereIn('id', $userIds->unique()->values())
             ->with('instructorProfile.department')
             ->get()
@@ -1205,7 +1197,6 @@ class MasterDataController extends Controller
             'course'             => $course,
             'offerings'          => $offerings,
             'deviations'         => $deviations,
-            'detailsDeviations'  => $detailsDeviations,
             'users'              => $users,
             'courseRoles'        => $courseRoles,
             'templateUpdatedAt'  => $templateUpdatedAt,
@@ -1818,26 +1809,11 @@ class MasterDataController extends Controller
             }
             $yearLevelValue = ($usesYearLevel && $yearLevel !== '') ? (int) $yearLevel : null;
 
-            $capacity = trim($csv['capacity'] ?? '');
-            if ($capacity === '' || (int)$capacity < 1) {
-                $errors[] = "แถว {$row}: ต้องระบุ capacity (จำนวนนักศึกษาสูงสุด ≥ 1)";
-                continue;
-            }
-
             $courseType = trim($csv['course_type'] ?? '') ?: 'theory';
             if (!in_array($courseType, ['theory', 'practicum', 'theory_practicum'], true)) {
                 $errors[] = "แถว {$row}: course_type ต้องเป็น theory, practicum หรือ theory_practicum";
                 continue;
             }
-
-            // requires_practicum_rotation บังคับสำหรับ practicum / theory_practicum
-            $courseType = trim($csv['course_type'] ?? '') ?: 'theory';
-            $rotationRaw = trim($csv['requires_practicum_rotation'] ?? '');
-            if (in_array($courseType, ['practicum', 'theory_practicum']) && $rotationRaw === '') {
-                $errors[] = "แถว {$row}: วิชาประเภท {$courseType} ต้องระบุ requires_practicum_rotation (0 หรือ 1)";
-                continue;
-            }
-            $rotation = in_array($rotationRaw, ['1', 'true', 'yes']) ? true : false;
 
             $exists = Course::where('course_code', $code)->where('curriculum_id', $currId)->exists();
             if ($exists && !$updateOnDup) {
@@ -1867,8 +1843,6 @@ class MasterDataController extends Controller
                         'lab_hours'                   => $lab,
                         'self_study_hours'            => $selfStudy,
                         'default_year_level'          => $yearLevelValue,
-                        'capacity'                    => (int)$capacity,
-                        'requires_practicum_rotation' => $rotation,
                         'is_required'                 => $isRequired,
                         'color_code'                  => $colorCode,
                         'status'                      => $status,

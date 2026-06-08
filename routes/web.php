@@ -84,7 +84,6 @@ Route::middleware(['auth', 'no-back'])->group(function () {
         ->group(function () {
             Route::get('/', [CourseOfferingController::class, 'index'])->name('index');
             Route::get('/{courseOffering}', [CourseOfferingController::class, 'show'])->name('show');
-            Route::put('/{courseOffering}', [CourseOfferingController::class, 'update'])->name('update');
             Route::post('/{courseOffering}/instructors', [CourseOfferingController::class, 'storeInstructor'])->name('instructors.store');
             Route::patch('/{courseOffering}/instructors/{user}/role', [CourseOfferingController::class, 'updateInstructorRole'])->name('instructors.role');
             Route::patch('/{courseOffering}/instructors/{user}/permission', [CourseOfferingController::class, 'updateInstructorPermission'])->name('instructors.permission');

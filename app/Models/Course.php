@@ -19,25 +19,21 @@ class Course extends Model
         'name_en',
         'course_type',
         'default_year_level',
-        'requires_practicum_rotation',
         'is_required',
         'credits',
         'lecture_hours',
         'lab_hours',
         'self_study_hours',
-        'capacity',
         'color_code',
         'status'
     ];
 
     protected $casts = [
-        'requires_practicum_rotation' => 'boolean',
         'is_required' => 'boolean',
         'credits' => 'integer',
         'lecture_hours' => 'integer',
         'lab_hours' => 'integer',
         'self_study_hours' => 'integer',
-        'capacity' => 'integer',
         'default_year_level' => 'integer',
     ];
 
@@ -177,30 +173,6 @@ class Course extends Model
         }
 
         return ['added' => $added, 'removed' => $removed, 'role_changed' => $roleChanged];
-    }
-
-    /**
-     * เปรียบเทียบค่า "ระดับรอบเปิดสอน" ที่ Course Head override ได้ vs ค่าใน Master Data.
-     * คืน array ของ field ที่ต่าง — ถ้าไม่ต่างคืน array ว่าง
-     *
-     * @return array<string, array{template: mixed, offering: mixed, note?: ?string}>
-     */
-    public function offeringDetailsDeviationFor(CourseOffering $offering): array
-    {
-        $diff = [];
-
-        // requires_practicum_rotation — Course Head ปรับ override ได้ + แนบเหตุผลใน practicum_note
-        $templateRotation = (bool) ($this->requires_practicum_rotation ?? false);
-        $offeringRotation = (bool) ($offering->requires_practicum_rotation ?? false);
-        if ($templateRotation !== $offeringRotation) {
-            $diff['rotation'] = [
-                'template' => $templateRotation,
-                'offering' => $offeringRotation,
-                'note'     => $offering->practicum_note,
-            ];
-        }
-
-        return $diff;
     }
 
     public function prerequisites(): BelongsToMany
