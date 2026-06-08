@@ -32,6 +32,13 @@
                     ? $color
                     : 'var(--brand-navy)';
             };
+            $groupTone = $groupTone ?? function ($group) {
+                $color = (string) ($group->color_code ?? '');
+
+                return str_starts_with($color, '#') || str_starts_with($color, 'oklch') || str_starts_with($color, 'var(')
+                    ? $color
+                    : 'oklch(58% 0.095 84)';
+            };
             $eligibleScheduleInstructors = $eligibleScheduleInstructors ?? function ($offering) {
                 $departmentId = $offering?->course?->department_id;
                 $pool = $offering?->instructorPool ?? collect();
@@ -163,6 +170,23 @@
                                                     <span>{{ $inst->formatted_name ?? $inst->name }}</span>
                                                     @if($roleName !== 'อาจารย์ผู้สอน')<span style="color:var(--fg-3);font-size:11px;margin-left:4px;">({{ $roleName }})</span>@endif
                                                 </div>
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <span style="color:var(--fg-3);">-</span>
+                                    @endif
+                                </div>
+                            </div>
+                            <div class="detail-row" style="align-items:flex-start;">
+                                <div class="detail-row-label" style="padding-top:1px;">กลุ่มนักศึกษา</div>
+                                <div class="detail-row-value">
+                                    @if($schedule->studentGroups->isNotEmpty())
+                                        <div class="detail-groups-list">
+                                            @foreach($schedule->studentGroups as $group)
+                                                <span class="co-group-badge" style="--group-color: {{ $groupTone($group) }};">
+                                                    <span class="co-group-dot" aria-hidden="true"></span>
+                                                    <span>{{ $group->group_code }}</span>
+                                                </span>
                                             @endforeach
                                         </div>
                                     @else

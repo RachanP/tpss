@@ -3893,6 +3893,9 @@
             font-size: 9.5px;
             font-weight: 850;
         }
+        .month-group-summary.has-tooltip {
+            cursor: help;
+        }
         .month-activity .activity-tag,
         .month-activity .co-group-badge {
             min-height: 17px;
@@ -4220,6 +4223,12 @@
             font-size: 11px;
             color: var(--fg-3);
             font-weight: 600;
+        }
+        /* ข้อ 15: รายละเอียดกลุ่มนักศึกษาใน detail modal — chip โค้ดกลุ่ม */
+        .detail-groups-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
         }
         .detail-chips {
             display: flex;
@@ -7392,7 +7401,7 @@
                                                 <div class="month-activity-tags">
                                                     <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }};">{{ $activity?->name ?? 'กิจกรรม' }}</span>
                                                     @if($schedule->studentGroups->isNotEmpty())
-                                                        <span class="month-group-summary">{{ $schedule->studentGroups->count() }} กลุ่ม</span>
+                                                        <span class="month-group-summary has-tooltip" title="กลุ่มนักศึกษา: {{ $schedule->studentGroups->pluck('group_code')->implode(', ') }}">{{ $schedule->studentGroups->count() }} กลุ่ม</span>
                                                     @endif
                                                     @if($schedule->schedule_template_id)
                                                         @include('shared.schedules._series_badge', ['schedule' => $schedule])
@@ -7493,7 +7502,8 @@
                                             <div class="grid-activity-time">{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }} · {{ $formatDuration($occurrence['duration_minutes']) }}</div>
                                             <div class="grid-activity-foot">
                                                 <span class="grid-activity-room">{{ $room?->room_name ?? $room?->room_code ?? 'ไม่ระบุสถานที่' }}</span>
-                                                <span class="grid-activity-groups">
+                                                <span class="grid-activity-groups {{ $schedule->studentGroups->isNotEmpty() ? 'has-tooltip' : '' }}"
+                                                    @if($schedule->studentGroups->isNotEmpty()) title="กลุ่มนักศึกษา: {{ $schedule->studentGroups->pluck('group_code')->implode(', ') }}" @endif>
                                                     {{ $schedule->studentGroups->isNotEmpty() ? $schedule->studentGroups->count() . ' กลุ่ม' : 'ไม่มีกลุ่ม' }}
                                                 </span>
                                             </div>
@@ -7608,7 +7618,8 @@
                                                     <div class="grid-activity-time">{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }} · {{ $formatDuration($occurrence['duration_minutes']) }}</div>
                                                     <div class="grid-activity-foot">
                                                         <span class="grid-activity-room">{{ $room?->room_name ?? $room?->room_code ?? 'ไม่ระบุสถานที่' }}</span>
-                                                        <span class="grid-activity-groups">
+                                                        <span class="grid-activity-groups {{ $schedule->studentGroups->isNotEmpty() ? 'has-tooltip' : '' }}"
+                                                            @if($schedule->studentGroups->isNotEmpty()) title="กลุ่มนักศึกษา: {{ $schedule->studentGroups->pluck('group_code')->implode(', ') }}" @endif>
                                                             {{ $schedule->studentGroups->isNotEmpty() ? $schedule->studentGroups->count() . ' กลุ่ม' : 'ไม่มีกลุ่ม' }}
                                                         </span>
                                                     </div>
@@ -7836,7 +7847,7 @@
                                             <div class="month-activity-tags">
                                                 <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }};">{{ $activity?->name ?? 'กิจกรรม' }}</span>
                                                 @if($schedule->studentGroups->isNotEmpty())
-                                                    <span class="month-group-summary">{{ $schedule->studentGroups->count() }} กลุ่ม</span>
+                                                    <span class="month-group-summary has-tooltip" title="กลุ่มนักศึกษา: {{ $schedule->studentGroups->pluck('group_code')->implode(', ') }}">{{ $schedule->studentGroups->count() }} กลุ่ม</span>
                                                 @endif
                                                 @if($itemConflicts->isNotEmpty())
                                                     @include('shared.schedules._conflict_pill', ['conflicts' => $itemConflicts])
