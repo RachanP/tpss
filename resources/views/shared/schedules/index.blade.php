@@ -15,6 +15,21 @@
     $schedulingOfferings = ($isWorkspace ? $availableOfferings : collect($courseOffering ? [$courseOffering] : []))
         ->filter(fn ($offering) => $offering?->academicYear?->phase === 'scheduling')
         ->values();
+    // V4 ข้อ 1: หัวข้อกิจกรรมสำเร็จรูปต่อวิชา → dropdown/datalist ใน slot modal (ยังพิมพ์เองได้)
+    $schedulingOfferings->each(fn ($offering) => $offering->loadMissing('course.topics'));
+    $scheduleTopicMap = $schedulingOfferings->mapWithKeys(fn ($offering) => [
+        (string) $offering->id => ($offering->course?->topics ?? collect())->pluck('name')->filter()->values()->all(),
+    ])->all();
+    $scheduleCheckUrls = $schedulingOfferings->mapWithKeys(fn ($offering) => [
+        (string) $offering->id => route('maker.course_offerings.schedules.check_conflicts', $offering, false),
+    ])->all();
+    // ลิงก์ไปหน้าจัดการกลุ่มของรายวิชา (กลับมาหน้าตารางได้ผ่าน return_to)
+    $scheduleGroupManageUrl = function ($offering) {
+        return route('maker.course_offerings.show', [
+            'courseOffering' => $offering,
+            'return_to' => request()->fullUrl(),
+        ]) . '#student-groups';
+    };
     $createAction = $isWorkspace
         ? route('maker.schedules.store')
         : ($courseOffering ? route('maker.course_offerings.schedules.store', $courseOffering) : '#');
@@ -4558,6 +4573,29 @@
             grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 10px;
         }
+        .schedule-group-empty {
+            text-align: left;
+            line-height: 1.55;
+        }
+        .schedule-group-empty a {
+            color: var(--brand-navy);
+            font-weight: 900;
+            text-decoration: none;
+        }
+        .schedule-group-empty a:hover {
+            text-decoration: underline;
+        }
+        /* ลิงก์ "จัดการกลุ่ม" แบบเล็ก/ไม่เด่น (เมื่อมีกลุ่มแล้ว เน้นที่รายการกลุ่มแทน) */
+        .schedule-group-manage-mini {
+            color: var(--schedule-muted);
+            font-size: 12px;
+            font-weight: 600;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+        .schedule-group-manage-mini:hover {
+            color: var(--brand-navy);
+        }
         .modal-choice-search {
             width: 100%;
             min-height: 36px;
@@ -5300,6 +5338,11 @@
             focusedScheduleId: @js($focusedScheduleId),
             initialSelectedOfferingId: @js($selectedOfferingId),
             selectedOfferingId: @js($selectedOfferingId),
+            topicOptionsMap: @js($scheduleTopicMap),
+            scheduleCheckUrls: @js($scheduleCheckUrls),
+            currentTopicOptions() {
+                return this.topicOptionsMap[this.selectedOfferingId] || [];
+            },
             scheduleItems: @js($scheduleFilterItems),
             scheduleResourceCopies: @js($scheduleResourceCopyItems->keyBy('id')),
             scheduleSearch: '',
@@ -5369,16 +5412,49 @@
             liveWarnings: {},
             liveChecking: false,
             liveTimer: null,
-            get liveBlocking() { return Object.keys(this.liveIssues).length > 0; },
+            liveCheckSeq: 0,
+            get liveBlocking() { return Object.keys(this.visibleLiveIssues()).length > 0; },
             get liveWarningActive() { return Object.keys(this.liveWarnings).length > 0; },
-            liveIssue(field) { return this.liveIssues[field] || []; },
+            visibleLiveIssues() {
+                const issues = { ...this.liveIssues };
+                const groupIssues = this.visibleStudentGroupIssues();
+
+                if (groupIssues.length > 0) {
+                    issues.student_group_ids = groupIssues;
+                } else {
+                    delete issues.student_group_ids;
+                }
+
+                return issues;
+            },
+            visibleStudentGroupIssues() {
+                const messages = this.liveIssues.student_group_ids || [];
+                if (!this.showCreate) return messages;
+
+                const form = this.$refs.createForm;
+                const hasSelectedGroup = form
+                    ? Array.from(form.elements).some((field) => field?.name === 'student_group_ids[]' && field.checked && !field.disabled)
+                    : false;
+
+                return hasSelectedGroup ? messages : [];
+            },
+            liveIssue(field) {
+                if (field === 'student_group_ids') return this.visibleStudentGroupIssues();
+                return this.liveIssues[field] || [];
+            },
             liveWarning(field) { return this.liveWarnings[field] || []; },
             init() {
                 this.$el.__tpssScheduleShell = this;
+                window.tpssScheduleRunLiveCheck = (form) => this.runScheduleCheck(form);
                 this.$watch('view', val => sessionStorage.setItem('tpss-schedule-view', val));
                 this.$watch('selectedOfferingId', () => {
                     this.createInstructorSearch = '';
                     this.createGroupSearch = '';
+                    this.liveIssues = {};
+                    this.liveWarnings = {};
+                    this.$nextTick(() => {
+                        if (this.$refs.createForm) this.runScheduleCheck(this.$refs.createForm);
+                    });
                 });
                 const scrollY = sessionStorage.getItem('tpss-schedule-scroll-y');
                 if (scrollY !== null) {
@@ -5428,6 +5504,24 @@
                     sessionStorage.setItem('tpss-schedule-scroll-height', document.documentElement.scrollHeight);
                 });
 
+                const runStudentGroupLiveCheck = (e) => {
+                    const target = e.target instanceof HTMLInputElement ? e.target : null;
+                    if (!target || target.name !== 'student_group_ids[]') return;
+
+                    const form = target.closest('form');
+                    if (!form) return;
+
+                    if (this.liveTimer) {
+                        clearTimeout(this.liveTimer);
+                        this.liveTimer = null;
+                    }
+
+                    this.$nextTick(() => window.tpssScheduleRunLiveCheck?.(form));
+                };
+
+                this.$el.addEventListener('change', runStudentGroupLiveCheck);
+                document.addEventListener('change', runStudentGroupLiveCheck);
+
                 // Re-init Choices when modals open (modal content may be rendered dynamically)
                 this.$watch('showCreate', (val) => {
                     if (val) {
@@ -5444,8 +5538,8 @@
                     if (val) {
                         this.$nextTick(() => {
                             window.tpssInitChoices(document.querySelector('.schedule-modal.is-form'));
-                            // ตรวจการชนทันทีจากค่าที่กรอกไว้แล้วในรายการที่เปิดแก้ (selector ใช้ single quote เท่านั้น — กัน x-data attribute พัง)
-                            const editForm = document.querySelector('form[data-schedule-check]');
+                            const modalId = String(val).replace(/^schedule-/, '');
+                            const editForm = this.scheduleRootElement().querySelector(`[data-schedule-modal-id='${modalId}'] form[data-schedule-check]`);
                             if (editForm) this.runScheduleCheck(editForm);
                         });
                     }
@@ -5549,6 +5643,17 @@
 
                 return url;
             },
+            scheduleCheckUrlFor(form) {
+                const explicit = form?.dataset?.checkUrl || '';
+                if (explicit) return this.sameOriginUrl(explicit);
+
+                const offeringInput = form?.querySelector('[name=course_offering_id]');
+                const offeringId = String(offeringInput?.value || this.selectedOfferingId || '');
+                const mapped = offeringId ? (this.scheduleCheckUrls?.[offeringId] || '') : '';
+                const fallback = @js((! $isWorkspace && $courseOffering) ? route('maker.course_offerings.schedules.check_conflicts', $courseOffering, false) : '');
+
+                return this.sameOriginUrl(mapped || fallback);
+            },
             async refreshCopyWeekPreview() {
                 const url = this.sameOriginUrl(@js((! $isWorkspace && $courseOffering) ? route('maker.course_offerings.schedules.copy_week.preview', $courseOffering, false) : ''));
                 if (!url || !this.copyWeekSource || !this.copyWeekTarget) return;
@@ -5586,26 +5691,32 @@
                 this.liveTimer = setTimeout(() => this.runScheduleCheck(form), 400);
             },
             async runScheduleCheck(formEl) {
-                const url = this.sameOriginUrl(@js((! $isWorkspace && $courseOffering) ? route('maker.course_offerings.schedules.check_conflicts', $courseOffering, false) : ''));
                 const form = formEl || this.$refs.createForm;
+                const url = this.scheduleCheckUrlFor(form);
                 if (!url || !form) return;
+                const seq = ++this.liveCheckSeq;
                 this.liveChecking = true;
                 try {
+                    // กัน method spoofing: edit form มี _method=PUT ถ้าส่งไปด้วย Laravel จะ route เป็น PUT → ชน {schedule} → 404
+                    const checkBody = new FormData(form);
+                    checkBody.delete('_method');
                     const res = await fetch(url.toString(), {
                         method: 'POST',
                         credentials: 'same-origin',
                         headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': this.csrf },
-                        body: new FormData(form),
+                        body: checkBody,
                     });
                     if (!res.ok) throw new Error('check failed');
                     const data = await res.json();
+                    if (seq !== this.liveCheckSeq) return;
                     this.liveIssues = data.fields || {};
                     this.liveWarnings = data.warnings || {};
                 } catch (e) {
+                    if (seq !== this.liveCheckSeq) return;
                     this.liveIssues = {};
                     this.liveWarnings = {};
                 } finally {
-                    this.liveChecking = false;
+                    if (seq === this.liveCheckSeq) this.liveChecking = false;
                 }
             },
             restoreSeriesWeekDefaults() {
@@ -8354,7 +8465,15 @@
                                 </div>
                                 <div class="modal-field-full">
                                     <label class="modal-label" for="topic">หัวข้อกิจกรรม <span class="required-mark">*</span></label>
-                                    <input id="topic" name="topic" type="text" maxlength="255" required class="modal-control" value="{{ old('topic') }}" placeholder="เช่น บรรยายเรื่องการประเมินผู้ป่วย">
+                                    <input id="topic" name="topic" type="text" maxlength="255" required class="modal-control"
+                                        list="schedule-topic-options" autocomplete="off" value="{{ old('topic') }}"
+                                        placeholder="เลือกหัวข้อสำเร็จรูป หรือพิมพ์เอง" data-testid="schedule-topic-input">
+                                    <datalist id="schedule-topic-options">
+                                        <template x-for="topic in currentTopicOptions()" :key="topic">
+                                            <option :value="topic"></option>
+                                        </template>
+                                    </datalist>
+                                    <p style="margin-top:4px;font-size:11px;color:var(--fg-3);" x-show="currentTopicOptions().length" x-cloak>เลือกจากหัวข้อที่ตั้งไว้ในรายวิชา หรือพิมพ์หัวข้อใหม่ได้</p>
                                 </div>
                                 <div class="modal-field-full">
                                     <label class="modal-label" for="remark">หมายเหตุ</label>
@@ -8398,7 +8517,49 @@
                                         <div class="modal-choice-empty" x-show="hasCreateSearch(createInstructorSearch) && !hasCreateSearchMatches(@js($createInstructorSearchItems), createInstructorSearch)" x-cloak>ไม่พบข้อมูลที่ค้นหา</div>
                                     </div>
 
-                                    {{-- V2: หัวหน้าวิชาไม่จัดกลุ่มย่อยตอนสร้างกิจกรรม (กลุ่มจัดหลังอนุมัติ โดยอาจารย์) — ตัด selector ออก --}}
+                                    <div class="modal-section" data-testid="schedule-group-selector">
+                                        <div class="modal-section-title">กลุ่มนักศึกษา <span class="required-mark">*</span></div>
+                                        <template x-if="liveIssue('student_group_ids').length">
+                                            <div class="field-live-error" data-testid="live-error-student-group-ids">
+                                                <template x-for="msg in liveIssue('student_group_ids')" :key="msg"><div x-text="msg"></div></template>
+                                            </div>
+                                        </template>
+                                        @if($offeringOption->studentGroups->isEmpty())
+                                            <div class="schedule-empty schedule-group-empty">
+                                                ยังไม่มีกลุ่มนักศึกษาในรายวิชานี้
+                                                @if((int) $offeringOption->coordinator_id === (int) auth()->id())
+                                                    <a href="{{ $scheduleGroupManageUrl($offeringOption) }}" data-testid="schedule-manage-groups-link">ไปสร้างกลุ่มในหน้ารายวิชา</a>
+                                                @endif
+                                            </div>
+                                        @endif
+                                        @if($offeringOption->studentGroups->isNotEmpty())
+                                            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+                                                @if((int) $offeringOption->coordinator_id === (int) auth()->id())
+                                                    <a href="{{ $scheduleGroupManageUrl($offeringOption) }}" class="schedule-group-manage-mini" data-testid="schedule-manage-groups-link">จัดการกลุ่มในหน้ารายวิชา</a>
+                                                @else
+                                                    <span></span>
+                                                @endif
+                                                <button type="button" class="btn btn-secondary" style="padding:6px 10px;font-size:12px;"
+                                                    @click="$el.closest('.modal-section').querySelectorAll('input[name=&quot;student_group_ids[]&quot;]:not(:disabled)').forEach(input => { input.checked = true; input.dispatchEvent(new Event('change', { bubbles: true })); })"
+                                                    data-testid="schedule-groups-select-all">เลือกทุกกลุ่ม</button>
+                                            </div>
+                                        @endif
+                                        <div class="modal-choice-grid">
+                                            @foreach($offeringOption->studentGroups as $group)
+                                                <label class="modal-choice">
+                                                    <input type="checkbox" name="student_group_ids[]" value="{{ $group->id }}"
+                                                        @checked(in_array((string) $group->id, $selectedGroupIds, true))
+                                                        :disabled="selectedOfferingId !== '{{ $offeringOption->id }}'"
+                                                        @change="$nextTick(() => window.tpssScheduleRunLiveCheck?.($el.closest('form')))"
+                                                        data-testid="schedule-group-option">
+                                                    <span style="display:inline-flex;align-items:center;gap:7px;">
+                                                        <span style="flex:0 0 9px;width:9px;height:9px;border-radius:50%;background:{{ $group->color_code ?: 'var(--brand-navy)' }};"></span>
+                                                        {{ $group->group_code }} · {{ $group->student_count }} คน
+                                                    </span>
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                    </div>
                                 </div>
                             @endforeach
                         </div>

@@ -89,8 +89,12 @@ Route::middleware(['auth', 'no-back'])->group(function () {
             Route::patch('/{courseOffering}/instructors/{user}/role', [CourseOfferingController::class, 'updateInstructorRole'])->name('instructors.role');
             Route::patch('/{courseOffering}/instructors/{user}/permission', [CourseOfferingController::class, 'updateInstructorPermission'])->name('instructors.permission');
             Route::delete('/{courseOffering}/instructors/{user}', [CourseOfferingController::class, 'destroyInstructor'])->name('instructors.destroy');
-            // หมายเหตุ: กลุ่มย่อยนักศึกษาไม่ใช่งานหัวหน้าวิชา (V2 — กลุ่มเกิดหลังอนุมัติ โดยอาจารย์)
-            // routes student_groups.* ถูกถอดออก · ตาราง/model/pivot ยังอยู่สำหรับเฟส "อาจารย์จัดกลุ่ม" ภายหลัง
+            Route::post('/{courseOffering}/student-groups', [CourseOfferingController::class, 'storeStudentGroup'])->name('student_groups.store');
+            Route::post('/{courseOffering}/student-groups/bulk', [CourseOfferingController::class, 'bulkStoreStudentGroups'])->name('student_groups.bulk_store');
+            Route::post('/{courseOffering}/student-groups/save', [CourseOfferingController::class, 'saveStudentGroups'])->name('student_groups.save');
+            Route::delete('/{courseOffering}/student-groups', [CourseOfferingController::class, 'destroyStudentGroups'])->name('student_groups.destroy_many');
+            Route::put('/{courseOffering}/student-groups/{studentGroup}', [CourseOfferingController::class, 'updateStudentGroup'])->name('student_groups.update');
+            Route::delete('/{courseOffering}/student-groups/{studentGroup}', [CourseOfferingController::class, 'destroyStudentGroup'])->name('student_groups.destroy');
         });
 
     // Admin User Management
