@@ -7,8 +7,10 @@
 | `admin` | จัดการผู้ใช้/ข้อมูลหลัก/ตั้งค่าระบบ; **ไม่มีสิทธิสร้างหรือแก้ไขตารางสอน**; ดูได้เฉพาะตารางสอนที่เผยแพร่แล้ว และอ่าน/นำออกรายงานภาระงาน |
 | `staff` | CRUD rooms/location_types/courses; Read-only departments/instructors/curriculums/activity_types; จัดการ academic_year; บันทึกตารางร่วมกับ course_head |
 | `course_head` | สร้าง/แก้ไขตาราง, ตรวจ conflict/warning, **ส่งขออนุมัติ** → executive |
-| `executive` | Read-only ทุกรายวิชา + **Approve/Reject เท่านั้น** — ห้าม implement ปุ่ม edit |
-| `instructor` | Read-only เฉพาะตารางและภาระงานของตัวเอง |
+| `executive` | Read-only ทุกรายวิชา + **Approve/Reject เท่านั้น** — ห้าม implement ปุ่ม edit · **(V4 ข้อ 3) กำหนดตำแหน่งหัวหน้าภาควิชาได้** (เฉพาะ executive/admin · instructor ทำไม่ได้ → gate) |
+| `instructor` | Read-only ตาราง/ภาระงานของตัวเอง · **(V4 ข้อ 5) กรอกสัดส่วน PA ของตัวเองได้** (self-service ผ่าน `Instructor/PaController` + `pa_rounds`/`instructor_pa_allocations`) — ใช้ validation 100% + min/max เดิม |
+
+> ⚠️ **Requirement V4 (merged `to-serve`)** เพิ่มสิทธิ์ 2 จุดในตารางข้างบน: executive แต่งตั้งหัวหน้าภาค (ข้อ 3) · instructor กรอก PA เอง (ข้อ 5). ดู `architecture.md` "Requirement V4 Update"
 
 ## Multi-Role RBAC
 

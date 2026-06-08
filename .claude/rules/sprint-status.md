@@ -29,13 +29,15 @@
 
 **🟢 Delegation (อาจารย์ + เจ้าหน้าที่ช่วยจัดตาราง) — เสร็จแล้ว (1 มิ.ย.):** `CourseOffering::canBeScheduledBy`/`scopeSchedulableBy` = coordinator หรือ instructor `schedule_permission='schedule'` หรือ staff ใน `course_staff` + toggle รายอาจารย์ในหน้า offering (`instructors.permission`) + staff มอบหมายผ่าน modal รายวิชา + route จัดตาราง = `course_head,instructor,staff` (จัดการ offering + conflict-badge คง course_head) + sidebar อาจารย์/เจ้าหน้าที่เมนู "ช่วยจัดตาราง" (gate `canHelpSchedule`) · 12 tests (`ScheduleDelegationTest`) · ดู memory [[project-delegation-deferred]]
 
-**🔲 Phase ถัดไป (rotation — ไม่ใช่ Master Data):** rotation_rounds/assignments (หมุนกลุ่มปี 3-4 หลังสอบ), cross-course group conflict, visual dashboard (V3 ข้อ 8.1)
+**🔲 Phase ถัดไป (rotation — ไม่ใช่ Master Data):** rotation_rounds/assignments (หมุนกลุ่มปี 3-4 หลังสอบ), visual dashboard (V3 ข้อ 8.1) · ~~cross-course group conflict~~ ✅ DONE ใน V4 แล้ว
 
-## 🆕 Requirement V4 (ประชุมลูกค้า) — 🔲 PROPOSED ยังไม่ implement
+## 🆕 Requirement V4 (ประชุมลูกค้า) — ✅ IMPLEMENTED + merged เข้า `to-serve`
 
-> เอกสาร: `Doc/requirement/requirement_v4.md` (ข้อ 13) · รายละเอียด design ดู `architecture.md#-requirement-v4-update`
+> เอกสาร: `Doc/requirement/requirement_v4.md` (ข้อ 13) · แผนแบ่งงาน: `Doc/requirement/v4_work_split.md` · design ดู `architecture.md` "Requirement V4 Update"
+> ทำเสร็จ 3 branch แล้ว merge เข้า **`to-serve`** (integration branch ใหม่ ต่อจาก `sprint`): A=`feat/v4-schedule-groups` · B=`feat/v4-master-data` · C=`feat/v4-rbac-pa-ops`
 
-7 ข้อใหม่: (1) หัวข้อกิจกรรม dropdown สำเร็จรูปต่อวิชา · (2) ⚠️ **หัวหน้าวิชาจัดกลุ่ม นศ. เองตั้งแต่กรอกตาราง อิงจำนวน นศ.ชั้นปี — กลับทิศจาก 30–31 พ.ค.** ต้อง re-confirm · (3) executive=หัวหน้าภาค, gate สิทธิ์กำหนดหัวหน้าภาค · (4) หลักสูตรนับงานบริการวิชาการอย่างเดียว (workload flag) · (5) อาจารย์กรอกสัดส่วน PA เอง (self-service) · (6) สลับเวรผ่านหัวหน้าวิชา + last-updated timestamp บนหน้าตาราง · (7) สร้างกิจกรรมลากช่วงวันที่ (Start–End) ต่อยอด series · ดู memory [[project-requirement-v4]]
+✅ (1) หัวข้อกิจกรรม dropdown ต่อวิชา (`activity_topics`) · ✅ (2) **หัวหน้าวิชาจัดกลุ่ม นศ. เอง** — group selector กลับเข้า modal + routes `student_groups.*` + `student_groups.cohort_group_id` + **cross-course GROUP conflict** (`group_overlap`) + ปี 3-4 = 4 กลุ่มใหญ่ · ✅ (3) executive=หัวหน้าภาค gate · ✅ (4) `curriculums.counts_service_only` · ✅ (5) อาจารย์กรอก PA เอง (`Instructor/PaController` + `pa_rounds`/`instructor_pa_allocations`) · ✅ (6) สลับเวรผ่านหัวหน้าวิชา + last-updated timestamp · ✅ (7) ลากช่วงวันที่ (`storeSeries` date-range) · ✅ **(8 🆕 นอกลิสต์เดิม) ปฏิทินแยกตามหลักสูตร/ชั้นปี** (`academic_calendars`) · ดู memory [[project-requirement-v4]]
+🔲 เหลือ: **rotation_rounds/assignments** (หมุนกลุ่มปี 3-4 หลังสอบ) = phase ถัดไป · `rooms.campus` (optional)
 
 ## Phase Overview
 
@@ -462,12 +464,14 @@ Controller logic + modal form (commit msg เดิม "แก้บัคยั
 
 ```
 main ← production-ready
-  └── sprint ← integration (ใช้แทน develop)
-        ├── feature/admin-dashboard-alerts  ✅ merge แล้ว
-        ├── 7-m7-search_and_filter          ✅ merge แล้ว
-        ├── 3-m2-course_management          ✅ merge แล้ว (18 พ.ค.)
-        ├── test/user-management-coverage   ✅ merge แล้ว (8ecdfb1)
-        ├── fix/m1-master-data-bugs         ✅ merge แล้ว (d614817 + 6770a65 + fe0ebee review fixes)
-        ├── fix/m2-ux-bugs                  ✅ merge แล้ว (23b4e0f + 5ef4386 review fixes)
-        └── (next) Schedule Suite M3+M4+M8  🟢 พร้อมเริ่ม
+  └── sprint ← integration เดิม (Sprint 1-7 + Schedule Suite + V2 master-data cleanup)
+        ├── feature/admin-dashboard-alerts / 7-m7 / 3-m2 / fix/* ... ✅ merge ครบแล้ว
+        └── feat/v2-requirement              ✅ V2/V3 Master Data Cleanup
+  └── to-serve ← integration ปัจจุบัน (ต่อจาก sprint · ใช้ทำ V4 + เตรียม demo/serve)
+        ├── feat/v4-master-data        (Branch B) ✅ merge — V4 ข้อ 1,4 + cohort parent_id
+        ├── feat/v4-rbac-pa-ops        (Branch C) ✅ merge — V4 ข้อ 3,5,6
+        ├── feat/v4-schedule-groups    (Branch A) ✅ merge — V4 ข้อ 2,7
+        ├── (UX lecturer/dashboard ของเพื่อน)      ✅ merge
+        └── (external dev skills .claude/skills)   ✅ chore
 ```
+> ⚠️ งาน V4 ทั้งหมดอยู่บน `to-serve` (ยังไม่ได้ merge กลับ `sprint`/`main`) — ทำงานต่อให้ base จาก `to-serve`

@@ -21,7 +21,12 @@
 | ห้อง / สถานที่ฝึก | `room` |
 | ประเภทสถานที่ | `location_type` |
 | ประเภทกิจกรรม | `activity_type` |
+| หัวข้อกิจกรรม/บทเรียน (ต่อวิชา, V4) | `activity_topic` |
 | ปีการศึกษา | `academic_year` |
+| ปฏิทินการศึกษา (แยกตามหลักสูตร/ชั้นปี, V4) | `academic_calendar` |
+| รอบการประเมิน PA (V4) | `pa_round` |
+| สัดส่วนภาระงาน PA ที่อาจารย์กรอกเอง (V4) | `instructor_pa_allocation` |
+| กลุ่มย่อย (ของกลุ่มชั้นปี, V4) | `student_cohorts.parent_id` (self-ref) |
 | ระดับการศึกษา (ของหลักสูตร) | `curriculums.education_level` enum |
 | ปริญญาตรี / โท / เอก | `bachelor` / `master` / `doctorate` |
 | จำนวนปีของหลักสูตร | `curriculums.duration_years` |
