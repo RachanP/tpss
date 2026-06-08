@@ -126,7 +126,7 @@
                             <div class="modal-title-detail" id="schedule-detail-title-{{ $schedule->id }}" title="{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
                             <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }}; margin-top:5px;">{{ $activity?->name ?? 'กิจกรรม' }}</span>
                             @if($schedule->schedule_template_id)
-                                <span class="series-badge" style="margin-top:5px;" title="กิจกรรมทำซ้ำรายสัปดาห์">
+                                <span class="series-badge" style="margin-top:5px;" data-tip="กิจกรรมทำซ้ำรายสัปดาห์">
                                     <span class="series-dot" aria-hidden="true"></span>
                                     <span>ทำซ้ำ</span>
                                     @if($schedule->series_week_number)
@@ -454,7 +454,7 @@
                                             ->values();
                                     @endphp
                                     <div class="series-toggle-panel" style="margin-bottom:12px;">
-                                        <span class="series-badge" title="กิจกรรมทำซ้ำรายสัปดาห์">
+                                        <span class="series-badge" data-tip="กิจกรรมทำซ้ำรายสัปดาห์">
                                             <span class="series-dot" aria-hidden="true"></span>
                                             <span>รายการทำซ้ำ</span>
                                             @if($schedule->series_week_number)
@@ -761,7 +761,7 @@
                             </div>
                             <div class="modal-actions">
                                 <button type="button" class="btn btn-secondary" @click="closeEdit()">ยกเลิก</button>
-                                <button type="submit" class="btn btn-primary" data-testid="schedule-submit" x-bind:disabled="liveBlocking" x-bind:title="liveBlocking ? 'แก้ไขข้อมูลที่บล็อกก่อนบันทึก' : ''">บันทึกการแก้ไข</button>
+                                <button type="submit" class="btn btn-primary" data-testid="schedule-submit" x-bind:disabled="liveBlocking" x-bind:data-tip="liveBlocking ? 'แก้ไขข้อมูลที่บล็อกก่อนบันทึก' : ''">บันทึกการแก้ไข</button>
                             </div>
                         </form>
                     </section>
