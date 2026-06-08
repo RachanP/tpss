@@ -404,7 +404,7 @@ class AdminUserController extends Controller
         }
 
         $departments     = Department::pluck('id', 'name')->toArray();
-        $validRoles      = ['admin', 'staff', 'course_head', 'executive', 'instructor'];
+        $validRoles      = UserRole::VALID_ROLES;
         $updateOnDup     = $request->boolean('update_on_duplicate');
         $successCount = 0;
         $createdCount = 0;
@@ -433,12 +433,15 @@ class AdminUserController extends Controller
                 continue;
             }
 
-            $roles = $this->normalizeRoles(array_values(array_filter(array_map('trim', explode('|', $rolesStr)))));
-            $invalid = array_diff($roles, $validRoles);
+            // ตรวจ raw roles กับ allowlist "ก่อน" normalize เพื่อให้แจ้ง role แปลกปลอมได้ชัด
+            // (normalizeRoles จะตัด role ที่ไม่ถูกต้องทิ้งเงียบ ๆ — CSV ควรบอก user ว่าแถวไหนพิมพ์ผิด)
+            $rawRoles = array_values(array_unique(array_filter(array_map('trim', explode('|', $rolesStr)))));
+            $invalid = array_diff($rawRoles, $validRoles);
             if ($invalid) {
                 $errors[] = "แถว {$row}: role ไม่ถูกต้อง: " . implode(', ', $invalid);
                 continue;
             }
+            $roles = $this->normalizeRoles($rawRoles);
             if (!in_array($primaryRole, $roles)) {
                 $errors[] = "แถว {$row}: primary_role '{$primaryRole}' ต้องอยู่ใน roles";
                 continue;
@@ -661,6 +664,10 @@ class AdminUserController extends Controller
     private function normalizeRoles(array $roles): array
     {
         $roles = array_values(array_unique(array_filter(array_map('strval', $roles))));
+
+        // กรองเฉพาะบทบาทที่ระบบยอมรับ — backstop กัน role แปลกปลอม (เช่น "superadmin")
+        // ครอบทุก path ที่เรียก normalizeRoles (store / update / CSV import)
+        $roles = array_values(array_intersect($roles, UserRole::VALID_ROLES));
 
         if ((in_array('executive', $roles, true) || in_array('course_head', $roles, true))
             && ! in_array('instructor', $roles, true)) {
