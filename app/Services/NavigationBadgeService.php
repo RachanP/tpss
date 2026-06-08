@@ -109,8 +109,9 @@ class NavigationBadgeService
         }
 
         // เลขรวมใน badge = การชน + warning (incomplete/holiday/ฯลฯ) ให้ตรงกับยอดรวมในหน้าแจ้งเตือน
+        // การชนนับเป็น distinct schedule (1 การ์ด/1 schedule) ไม่ใช่ edge — ให้ตรงกับ totalWarningCount
         $count = $status['status'] === 'ready'
-            ? (int) $this->conflictReadRepository->getCountForUser($userId, $academicYearId)
+            ? (int) $this->conflictReadRepository->getDistinctScheduleCountForUser($userId, $academicYearId)
                 + app(CoordinatorAlertService::class)->warningCount($userId, $academicYearId)
             : null;
 

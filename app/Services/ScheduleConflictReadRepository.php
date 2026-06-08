@@ -65,6 +65,32 @@ class ScheduleConflictReadRepository
     }
 
     /**
+     * จำนวน "schedule ที่ชน" แบบ distinct (ไม่นับ conflict edge ซ้ำต่อ schedule)
+     * ใช้กับ sidebar badge ให้ตรงกับหน้าแจ้งเตือนซึ่งแสดง 1 การ์ดต่อ 1 schedule ที่ชน
+     * (getCountForUser นับเป็น "แถว" = edge ใช้กับ recompute job — คนละความหมาย)
+     */
+    public function getDistinctScheduleCountForUser(int $userId, ?int $academicYearId): ?int
+    {
+        if (! $academicYearId || ! $this->userHasAcademicYearScope($userId, $academicYearId)) {
+            return null;
+        }
+
+        $run = $this->latestReadyRun((int) $academicYearId);
+
+        if (! $run) {
+            return null;
+        }
+
+        return Cache::remember(
+            $this->badgeCacheKey($userId, (int) $academicYearId, (int) $run->generation) . ':distinct',
+            self::CACHE_TTL_SECONDS,
+            fn () => (int) $this->scopedResultQuery((int) $run->id, $userId, (int) $academicYearId)
+                ->distinct()
+                ->count('schedule_conflict_results.schedule_id')
+        );
+    }
+
+    /**
      * Total conflict count for a course_head user, broken down by conflict_type.
      *
      * @return array<string, int>  e.g. ['instructor_overlap' => 30, 'room_overlap' => 25, 'group_overlap' => 22]

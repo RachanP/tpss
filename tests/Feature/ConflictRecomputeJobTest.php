@@ -210,6 +210,32 @@ class ConflictRecomputeJobTest extends TestCase
         $this->assertNull($repository->getCountForUser($this->makeUser('Outside')->id, $year->id));
     }
 
+    public function test_distinct_schedule_count_collapses_conflict_edges_for_sidebar_badge(): void
+    {
+        // ข้อ 17: badge ต้องนับ "schedule ที่ชน" แบบ distinct (= จำนวนการ์ดในหน้าแจ้งเตือน)
+        // ไม่ใช่จำนวน conflict edge (2 schedule ชนกันบน ผู้สอน+ห้อง+กลุ่ม = 6 edge แต่ = 2 schedule)
+        $year = AcademicYear::query()->create([
+            'name' => '2572',
+            'semester' => 1,
+            'start_date' => '2028-08-01',
+            'end_date' => '2028-12-31',
+            'is_active' => true,
+            'phase' => 'scheduling',
+        ]);
+        [, $head] = $this->makeConflictDataset($year, 'Badge');
+
+        $this->artisan('conflicts:recompute', [
+            '--academic-year' => $year->id,
+            '--sync' => true,
+        ])->assertExitCode(0);
+
+        $repository = app(ScheduleConflictReadRepository::class);
+
+        $this->assertSame(6, $repository->getCountForUser($head->id, $year->id));            // edge/row
+        $this->assertSame(2, $repository->getDistinctScheduleCountForUser($head->id, $year->id)); // distinct schedule
+        $this->assertNull($repository->getDistinctScheduleCountForUser($this->makeUser('Outsider')->id, $year->id));
+    }
+
     public function test_conflict_detail_endpoint_enforces_scope_and_academic_year(): void
     {
         $year = AcademicYear::query()->create([
