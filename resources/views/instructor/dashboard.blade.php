@@ -252,8 +252,11 @@
         .workload-stat-text {
             display: block;
             overflow: hidden;
+            max-width: 100%;
             font-size: 18px;
+            line-height: 1.5;
             text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .workload-stat-sub {
