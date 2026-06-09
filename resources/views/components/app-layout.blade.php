@@ -1296,7 +1296,7 @@
                         if (menu.hidden) return;
 
                         var rect = positionAnchor().getBoundingClientRect();
-                        var modalBody = trigger.closest('.modal-body, .users-modal-body');
+                        var modalBody = trigger.closest('.modal-form-body, .modal-body, .users-modal-body');
                         var boundary = modalBody ? modalBody.getBoundingClientRect() : {
                             top: 12,
                             bottom: window.innerHeight - 12
@@ -1306,7 +1306,8 @@
                         var desiredHeight = Math.min(menu.scrollHeight || 280, 280);
                         var belowSpace = Math.max(0, boundary.bottom - rect.bottom - gutter);
                         var aboveSpace = Math.max(0, rect.top - boundary.top - gutter);
-                        var openUp = belowSpace < desiredHeight && aboveSpace > belowSpace;
+                        var forceBottom = el.dataset.menuPlacement === 'bottom' || !!trigger.closest('.schedule-modal');
+                        var openUp = !forceBottom && belowSpace < desiredHeight && aboveSpace > belowSpace;
                         var available = openUp ? aboveSpace : belowSpace;
                         var menuHeight = Math.min(desiredHeight, Math.max(minHeight, available));
 

@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 import { login } from './support/auth';
 
 async function selectTime(page, pickerId: string, hour: string, minute: string) {
@@ -38,6 +38,29 @@ async function ensureStudentGroup(page: Page, scheduleUrl: string) {
   return response.ok();
 }
 
+async function expectCustomSelectOpensBelow(modal: Locator, selectName: string) {
+  const select = modal.locator(`select[name="${selectName}"]`);
+  const wrapper = select.locator('xpath=..');
+  await expect(wrapper).toHaveClass(/tpss-select/, { timeout: 5000 });
+
+  const trigger = wrapper.locator('.tpss-select-trigger');
+  await trigger.scrollIntoViewIfNeeded();
+  await trigger.click();
+
+  const menu = wrapper.locator('.tpss-select-menu:not([hidden])');
+  await expect(menu).toBeVisible({ timeout: 5000 });
+
+  const triggerBox = await trigger.boundingBox();
+  const menuBox = await menu.boundingBox();
+  expect(triggerBox, `${selectName} trigger has a layout box`).not.toBeNull();
+  expect(menuBox, `${selectName} menu has a layout box`).not.toBeNull();
+  expect(menuBox!.y, `${selectName} dropdown opens below the trigger`).toBeGreaterThanOrEqual(
+    triggerBox!.y + triggerBox!.height - 1,
+  );
+
+  await trigger.click();
+}
+
 test('schedule modal shows muted "ไม่มีผู้สอน" and datepicker popover appears', async ({ page }) => {
   await login(page, 'head_med');
 
@@ -74,6 +97,26 @@ test('schedule modal shows muted "ไม่มีผู้สอน" and datepic
     const pop = page.locator('.tdi-pop:visible').first();
     await expect(pop).toBeVisible({ timeout: 5000 });
   }
+});
+
+test('schedule create modal dropdowns open below fields without covering date inputs', async ({ page }) => {
+  await login(page, 'head_med');
+
+  await page.goto('/maker/course-offerings', { waitUntil: 'domcontentloaded' });
+  const links = await page.getByTestId('course-offering-schedule-link').evaluateAll((els) => els.map((a: HTMLAnchorElement) => a.href));
+  test.expect(links.length, 'expected at least one offering with schedules').toBeGreaterThan(0);
+
+  await page.goto(links[0], { waitUntil: 'domcontentloaded' });
+  const createButton = page.locator('[data-testid="schedule-create-link"]:visible').first();
+  await expect(createButton).toBeVisible({ timeout: 10_000 });
+  await createButton.click();
+
+  const modal = page.getByTestId('schedule-create-modal');
+  await expect(modal).toBeVisible({ timeout: 5_000 });
+  await modal.getByTestId('schedule-type-block').click();
+
+  await expectCustomSelectOpensBelow(modal, 'activity_type_id');
+  await expectCustomSelectOpensBelow(modal, 'room_id');
 });
 
 test('schedule create modal accepts a filled single-day schedule and closes after save', async ({ page }, testInfo) => {

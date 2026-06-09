@@ -8637,7 +8637,7 @@
                                 </div>
                                 <div>
                                     <label class="modal-label" for="activity_type_id">ประเภทกิจกรรม <span class="required-mark">*</span></label>
-                                    <select id="activity_type_id" name="activity_type_id" required class="modal-control">
+                                    <select id="activity_type_id" name="activity_type_id" required class="modal-control tpss-choices">
                                         <option value="">เลือกประเภทกิจกรรม</option>
                                         @foreach($activityTypes as $activityType)
                                             <option value="{{ $activityType->id }}" @selected((string) old('activity_type_id') === (string) $activityType->id)>
