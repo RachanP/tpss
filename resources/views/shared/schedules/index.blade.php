@@ -1832,12 +1832,12 @@
         .copy-week-item-body strong { color: var(--fg-1); font-size: 13.5px; font-weight: 850; }
         .copy-week-item-body small { color: var(--fg-3); font-size: 12px; font-weight: 650; }
         .copy-week-reason { color: var(--status-conflict-fg) !important; font-weight: 750 !important; }
-        .schedule-shell.is-course-head-schedule .schedule-copy-week-backdrop {
+        .schedule-shell .schedule-copy-week-backdrop {
             align-items: flex-start !important;
             padding-top: clamp(72px, 10vh, 112px) !important;
             padding-bottom: 32px !important;
         }
-        .schedule-shell.is-course-head-schedule .schedule-copy-week-modal {
+        .schedule-shell .schedule-copy-week-modal {
             width: min(940px, calc(100vw - 48px)) !important;
             max-height: none !important;
             overflow: visible !important;
@@ -1845,25 +1845,25 @@
             background: color-mix(in oklch, var(--surface) 92%, var(--brand-navy)) !important;
             box-shadow: 0 22px 58px rgb(15 23 42 / 0.24), 0 1px 0 rgb(255 255 255 / 0.72) inset !important;
         }
-        .schedule-shell.is-course-head-schedule .schedule-copy-week-modal > .modal-head {
+        .schedule-shell .schedule-copy-week-modal > .modal-head {
             background: linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 14%, var(--surface)), color-mix(in oklch, var(--brand-navy) 6%, var(--surface)));
             border-bottom-color: color-mix(in oklch, var(--brand-navy) 28%, var(--schedule-border));
         }
-        .schedule-shell.is-course-head-schedule .schedule-copy-week-modal > .modal-form-body {
+        .schedule-shell .schedule-copy-week-modal > .modal-form-body {
             flex: 0 0 auto !important;
             overflow: visible !important;
         }
-        .schedule-shell.is-course-head-schedule .schedule-copy-week-modal .modal-form-body {
+        .schedule-shell .schedule-copy-week-modal .modal-form-body {
             padding: 18px 24px 18px;
         }
-        .schedule-shell.is-course-head-schedule .schedule-copy-week-modal .copy-week-weeks {
+        .schedule-shell .schedule-copy-week-modal .copy-week-weeks {
             display: grid;
             grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
             align-items: stretch;
             gap: 14px;
             margin-bottom: 18px;
         }
-        .schedule-shell.is-course-head-schedule .schedule-copy-week-modal .copy-week-pill {
+        .schedule-shell .schedule-copy-week-modal .copy-week-pill {
             position: relative;
             gap: 8px;
             padding: 14px 16px;
@@ -1873,31 +1873,31 @@
                 linear-gradient(180deg, var(--surface), color-mix(in oklch, var(--brand-navy) 5%, var(--surface)));
             box-shadow: 0 1px 0 rgb(255 255 255 / 0.82) inset;
         }
-        .schedule-shell.is-course-head-schedule .schedule-copy-week-modal .copy-week-pill.is-target {
+        .schedule-shell .schedule-copy-week-modal .copy-week-pill.is-target {
             border-color: color-mix(in oklch, var(--brand-navy) 48%, var(--schedule-border));
             background:
                 linear-gradient(90deg, color-mix(in oklch, var(--brand-navy) 16%, transparent), transparent 46%),
                 linear-gradient(180deg, var(--surface), color-mix(in oklch, var(--brand-navy) 8%, var(--surface)));
         }
-        .schedule-shell.is-course-head-schedule .schedule-copy-week-modal .copy-week-pill-label {
+        .schedule-shell .schedule-copy-week-modal .copy-week-pill-label {
             color: var(--brand-navy);
             letter-spacing: 0;
         }
-        .schedule-shell.is-course-head-schedule .schedule-copy-week-modal .copy-week-pill-date {
+        .schedule-shell .schedule-copy-week-modal .copy-week-pill-date {
             color: var(--brand-navy);
             font-size: 14.5px;
         }
-        .schedule-shell.is-course-head-schedule .schedule-copy-week-modal .copy-week-arrow {
+        .schedule-shell .schedule-copy-week-modal .copy-week-arrow {
             color: var(--brand-navy);
             font-size: 22px;
         }
-        .schedule-shell.is-course-head-schedule .copy-week-step:disabled {
+        .schedule-shell .copy-week-step:disabled {
             color: var(--fg-3);
             background: color-mix(in oklch, var(--surface) 72%, var(--schedule-border));
             cursor: not-allowed;
             opacity: 0.6;
         }
-        .schedule-shell.is-course-head-schedule .schedule-copy-week-actions {
+        .schedule-shell .schedule-copy-week-actions {
             display: flex !important;
             flex-direction: row !important;
             justify-content: flex-end !important;
@@ -1907,7 +1907,7 @@
             background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
             border-top-color: color-mix(in oklch, var(--brand-navy) 24%, var(--schedule-border));
         }
-        .schedule-shell.is-course-head-schedule .schedule-copy-week-actions .btn {
+        .schedule-shell .schedule-copy-week-actions .btn {
             flex: 0 0 auto !important;
             width: auto !important;
             min-width: 118px;
@@ -1917,18 +1917,18 @@
             justify-content: center;
         }
         @media (max-width: 720px) {
-            .schedule-shell.is-course-head-schedule .schedule-copy-week-backdrop {
+            .schedule-shell .schedule-copy-week-backdrop {
                 padding-top: 56px !important;
                 padding-bottom: 24px !important;
             }
-            .schedule-shell.is-course-head-schedule .schedule-copy-week-modal {
+            .schedule-shell .schedule-copy-week-modal {
                 width: calc(100vw - 24px) !important;
             }
-            .schedule-shell.is-course-head-schedule .schedule-copy-week-modal .modal-form-body {
+            .schedule-shell .schedule-copy-week-modal .modal-form-body {
                 padding-left: 14px;
                 padding-right: 14px;
             }
-            .schedule-shell.is-course-head-schedule .schedule-copy-week-modal .copy-week-weeks {
+            .schedule-shell .schedule-copy-week-modal .copy-week-weeks {
                 gap: 10px;
             }
             .copy-mode-seg,
@@ -1936,14 +1936,14 @@
             .copy-date-grid.is-range {
                 grid-template-columns: 1fr;
             }
-            .schedule-shell.is-course-head-schedule .schedule-copy-week-modal .copy-week-arrow {
+            .schedule-shell .schedule-copy-week-modal .copy-week-arrow {
                 transform: rotate(90deg);
                 line-height: 1;
             }
-            .schedule-shell.is-course-head-schedule .schedule-copy-week-actions {
+            .schedule-shell .schedule-copy-week-actions {
                 justify-content: stretch !important;
             }
-            .schedule-shell.is-course-head-schedule .schedule-copy-week-actions .btn {
+            .schedule-shell .schedule-copy-week-actions .btn {
                 flex: 1 1 0 !important;
                 min-width: 0;
             }
@@ -4352,7 +4352,7 @@
             border-radius: 7px;
             padding: 4px 14px;
         }
-        .schedule-shell.is-course-head-schedule .schedule-detail-actions {
+        .schedule-shell .schedule-detail-actions {
             align-items: center;
             display: grid;
             grid-template-columns: repeat(2, minmax(140px, 210px));
@@ -4360,20 +4360,20 @@
             gap: 10px;
             background: oklch(98% 0.006 232);
         }
-        .schedule-shell.is-course-head-schedule .schedule-detail-actions:has(button:nth-of-type(3)) {
+        .schedule-shell .schedule-detail-actions:has(button:nth-of-type(3)) {
             grid-template-columns: repeat(6, minmax(0, 1fr));
         }
-        .schedule-shell.is-course-head-schedule .schedule-detail-actions.has-many-actions {
+        .schedule-shell .schedule-detail-actions.has-many-actions {
             grid-template-columns: repeat(6, minmax(0, 1fr));
         }
-        .schedule-shell.is-course-head-schedule .schedule-detail-actions .btn {
+        .schedule-shell .schedule-detail-actions .btn {
             width: 100% !important;
             min-width: 0 !important;
             max-width: 210px;
             justify-content: center;
             padding: 7px 14px;
         }
-        .schedule-shell.is-course-head-schedule .schedule-detail-actions:has(button:nth-of-type(3)) .btn {
+        .schedule-shell .schedule-detail-actions:has(button:nth-of-type(3)) .btn {
             max-width: none;
             min-height: 40px;
             white-space: normal;
@@ -4381,39 +4381,39 @@
             padding-left: 10px;
             padding-right: 10px;
         }
-        .schedule-shell.is-course-head-schedule .schedule-detail-actions:has(button:nth-of-type(3)) .schedule-detail-edit-action {
+        .schedule-shell .schedule-detail-actions:has(button:nth-of-type(3)) .schedule-detail-edit-action {
             grid-column: span 3;
             grid-row: 1;
         }
-        .schedule-shell.is-course-head-schedule .schedule-detail-actions.has-many-actions .schedule-detail-edit-action {
+        .schedule-shell .schedule-detail-actions.has-many-actions .schedule-detail-edit-action {
             grid-column: span 3;
             grid-row: 1;
         }
-        .schedule-shell.is-course-head-schedule .schedule-detail-actions:has(button:nth-of-type(3)) .schedule-detail-delete-action {
+        .schedule-shell .schedule-detail-actions:has(button:nth-of-type(3)) .schedule-detail-delete-action {
             grid-column: span 3;
             grid-row: 2;
         }
-        .schedule-shell.is-course-head-schedule .schedule-detail-actions.has-many-actions .schedule-detail-delete-action {
+        .schedule-shell .schedule-detail-actions.has-many-actions .schedule-detail-delete-action {
             grid-column: span 3;
             grid-row: 2;
         }
-        .schedule-shell.is-course-head-schedule .schedule-detail-actions:has(button:nth-of-type(5)) .schedule-detail-delete-action {
+        .schedule-shell .schedule-detail-actions:has(button:nth-of-type(5)) .schedule-detail-delete-action {
             grid-column: span 2;
         }
-        .schedule-shell.is-course-head-schedule .schedule-detail-actions.has-series-delete-options .schedule-detail-delete-action {
+        .schedule-shell .schedule-detail-actions.has-series-delete-options .schedule-detail-delete-action {
             grid-column: span 2;
         }
-        .schedule-shell.is-course-head-schedule .schedule-detail-actions .btn-secondary {
+        .schedule-shell .schedule-detail-actions .btn-secondary {
             min-width: 0;
         }
-        .schedule-shell.is-course-head-schedule .schedule-detail-actions .btn-red {
+        .schedule-shell .schedule-detail-actions .btn-red {
             min-width: 0;
         }
         @media (max-width: 720px) {
-            .schedule-shell.is-course-head-schedule .schedule-detail-actions {
+            .schedule-shell .schedule-detail-actions {
                 padding: 12px 16px 16px;
             }
-            .schedule-shell.is-course-head-schedule .schedule-detail-actions .btn {
+            .schedule-shell .schedule-detail-actions .btn {
                 min-height: 40px;
             }
         }
@@ -4497,38 +4497,38 @@
         .schedule-modal > .modal-actions {
             flex: 0 0 auto !important;
         }
-        .schedule-shell.is-course-head-schedule .schedule-modal > .schedule-detail-actions {
+        .schedule-shell .schedule-modal > .schedule-detail-actions {
             display: grid !important;
             grid-template-columns: repeat(2, minmax(140px, 210px)) !important;
             justify-content: center !important;
             align-items: center !important;
         }
-        .schedule-shell.is-course-head-schedule .schedule-modal > .schedule-detail-actions:has(button:nth-of-type(3)) {
+        .schedule-shell .schedule-modal > .schedule-detail-actions:has(button:nth-of-type(3)) {
             grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
         }
-        .schedule-shell.is-course-head-schedule .schedule-modal > .schedule-detail-actions.has-many-actions {
+        .schedule-shell .schedule-modal > .schedule-detail-actions.has-many-actions {
             grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
         }
-        .schedule-shell.is-course-head-schedule .schedule-modal > .schedule-detail-actions:has(button:nth-of-type(3)) .schedule-detail-edit-action {
+        .schedule-shell .schedule-modal > .schedule-detail-actions:has(button:nth-of-type(3)) .schedule-detail-edit-action {
             grid-column: span 3 !important;
             grid-row: 1 !important;
         }
-        .schedule-shell.is-course-head-schedule .schedule-modal > .schedule-detail-actions.has-many-actions .schedule-detail-edit-action {
+        .schedule-shell .schedule-modal > .schedule-detail-actions.has-many-actions .schedule-detail-edit-action {
             grid-column: span 3 !important;
             grid-row: 1 !important;
         }
-        .schedule-shell.is-course-head-schedule .schedule-modal > .schedule-detail-actions:has(button:nth-of-type(3)) .schedule-detail-delete-action {
+        .schedule-shell .schedule-modal > .schedule-detail-actions:has(button:nth-of-type(3)) .schedule-detail-delete-action {
             grid-column: span 3 !important;
             grid-row: 2 !important;
         }
-        .schedule-shell.is-course-head-schedule .schedule-modal > .schedule-detail-actions.has-many-actions .schedule-detail-delete-action {
+        .schedule-shell .schedule-modal > .schedule-detail-actions.has-many-actions .schedule-detail-delete-action {
             grid-column: span 3 !important;
             grid-row: 2 !important;
         }
-        .schedule-shell.is-course-head-schedule .schedule-modal > .schedule-detail-actions:has(button:nth-of-type(5)) .schedule-detail-delete-action {
+        .schedule-shell .schedule-modal > .schedule-detail-actions:has(button:nth-of-type(5)) .schedule-detail-delete-action {
             grid-column: span 2 !important;
         }
-        .schedule-shell.is-course-head-schedule .schedule-modal > .schedule-detail-actions.has-series-delete-options .schedule-detail-delete-action {
+        .schedule-shell .schedule-modal > .schedule-detail-actions.has-series-delete-options .schedule-detail-delete-action {
             grid-column: span 2 !important;
         }
         @media (min-width: 1025px) {
