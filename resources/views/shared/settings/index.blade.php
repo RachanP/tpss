@@ -568,21 +568,25 @@
                     <template x-if="!calYearName">
                         <div style="font-size:12px;color:var(--fg-3);padding:14px;text-align:center;background:var(--surface-sunken);border-radius:8px;">ยังไม่มีปีการศึกษาปัจจุบัน — ตั้งปีปัจจุบันที่ตารางด้านบนก่อน จึงจะกำหนดปฏิทินได้</div>
                     </template>
-                    <div x-show="calYearName" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-                        <div style="display:flex;align-items:center;gap:9px;min-width:0;">
-                            <span style="font-size:13px;color:var(--fg-2);">ปีการศึกษา</span>
-                            <span style="font-weight:800;font-size:17px;color:var(--brand-navy);font-family:var(--font-display);" x-text="calYearName"></span>
-                            <span class="badge badge-primary" style="font-size:10px;">ปัจจุบัน</span>
+                    <div x-show="calYearName" style="display:flex;align-items:center;justify-content:space-between;gap:14px;">
+                        <div style="display:flex;align-items:center;gap:13px;min-width:0;">
+                            <span style="flex-shrink:0;display:flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:10px;background:var(--brand-navy);">
+                                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                            </span>
+                            <div style="min-width:0;">
+                                <div style="font-size:11px;color:var(--fg-3);font-weight:600;">ปีการศึกษาปัจจุบัน</div>
+                                <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;">
+                                    <span style="font-weight:800;font-size:18px;color:var(--fg-1);font-family:var(--font-display);" x-text="calYearName"></span>
+                                    <span x-show="centralHasTerms()" style="font-size:10px;font-weight:700;color:var(--status-success-fg);background:color-mix(in oklch,var(--status-success-fg) 14%,var(--surface));padding:2px 9px;border-radius:999px;white-space:nowrap;">กำหนดเทอมแล้ว</span>
+                                    <span x-show="!centralHasTerms()" x-cloak style="font-size:10px;font-weight:700;color:var(--status-warning-fg, #a87600);background:color-mix(in oklch,var(--status-warning-fg, #a87600) 16%,var(--surface));padding:2px 9px;border-radius:999px;white-space:nowrap;">ยังไม่กำหนดเทอม</span>
+                                </div>
+                            </div>
                         </div>
-                        <div style="display:flex;align-items:center;gap:12px;">
-                            <span x-show="centralHasTerms()" style="font-size:11px;font-weight:700;color:var(--status-success-fg);white-space:nowrap;">ตั้งค่าแล้ว</span>
-                            <span x-show="!centralHasTerms()" x-cloak style="font-size:11px;font-weight:700;color:var(--status-warning-fg, #a87600);white-space:nowrap;">ยังไม่ได้กำหนดเทอม</span>
-                            <button type="button" class="btn btn-primary" style="font-size:13px;white-space:nowrap;"
-                                @click="openScopeModal({ key: 'central', curriculum_id: '', year: null, isDefault: true })">
-                                <span x-show="centralHasTerms()">แก้ไขปฏิทินกลาง</span>
-                                <span x-show="!centralHasTerms()" x-cloak>กำหนดเทอม</span>
-                            </button>
-                        </div>
+                        <button type="button" class="btn btn-primary" style="font-size:13px;white-space:nowrap;flex-shrink:0;"
+                            @click="openScopeModal({ key: 'central', curriculum_id: '', year: null, isDefault: true })">
+                            <span x-show="centralHasTerms()">แก้ไขปฏิทินกลาง</span>
+                            <span x-show="!centralHasTerms()" x-cloak>กำหนดเทอม</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -614,7 +618,7 @@
                                         <button type="button" @click="toggleGroup(row.cid)"
                                             style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;text-align:start;border:none;background:none;cursor:pointer;font-family:inherit;padding:0;">
                                             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform .15s;color:var(--fg-3);" :style="calGroupOpen[row.cid] ? 'transform:rotate(90deg);' : ''"><polyline points="9 18 15 12 9 6"/></svg>
-                                            <span style="font-weight:700;font-size:13px;color:var(--fg-1);" x-text="row.label"></span>
+                                            <span style="font-weight:700;font-size:13px;color:var(--fg-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="row.label"></span>
                                         </button>
                                         <span style="display:flex;align-items:center;gap:11px;flex-shrink:0;">
                                             <span x-show="scopeStatus(row) === 'self'" style="font-size:10px;font-weight:700;color:var(--status-success-fg);white-space:nowrap;">ทุกชั้นปี · ตั้งค่าแล้ว</span>
@@ -633,7 +637,7 @@
                                 <template x-if="row.kind === 'scope'">
                                     <div x-show="!row.parent || calGroupOpen[row.parent]"
                                         :style="'display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--border);' + (row.parent ? 'padding:9px 14px 9px 36px;' : 'padding:11px 14px;background:var(--surface-sunken);')">
-                                        <span :style="'font-size:13px;color:var(--fg-1);min-width:0;' + (row.parent ? '' : 'font-weight:700;')" x-text="row.label"></span>
+                                        <span :style="'font-size:13px;color:var(--fg-1);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' + (row.parent ? '' : 'font-weight:700;')" x-text="row.label"></span>
                                         <span style="display:flex;align-items:center;gap:11px;flex-shrink:0;">
                                             <span x-show="scopeStatus(row) === 'self'" style="font-size:10px;font-weight:700;color:var(--status-success-fg);white-space:nowrap;">ตั้งค่าแล้ว</span>
                                             <span x-show="scopeStatus(row) === 'curriculum'" x-cloak style="font-size:10px;color:var(--fg-3);white-space:nowrap;">ใช้ของทั้งหลักสูตร</span>
