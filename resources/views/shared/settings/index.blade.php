@@ -1,6 +1,25 @@
 <x-app-layout title="{{ $isAdmin ? 'ตั้งค่าระบบ' : 'ตั้งค่าปีการศึกษา' }}">
     @php
         $canManageHolidays = $canManageHolidays ?? in_array($routePrefix ?? null, ['admin', 'staff'], true);
+
+        // เปิด modal ปฏิทินค้างไว้หลัง save/error/delete (flash จาก controller)
+        $calReopenPayload = null;
+        if ($reopenYearId = session('open_calendar_year')) {
+            $reopenYear = ($academicYears ?? collect())->firstWhere('id', $reopenYearId);
+            if ($reopenYear) {
+                $calReopenPayload = [
+                    'year' => ['id' => $reopenYear->id, 'name' => $reopenYear->name, 'calendars' => $reopenYear->calendars],
+                    'hasError' => $errors->has('calendar_terms') || $errors->has('curriculum_id'),
+                    'editId' => session('open_calendar_id'),
+                    'old' => [
+                        'name' => old('name'),
+                        'curriculum_id' => old('curriculum_id'),
+                        'year_levels' => old('year_levels', []),
+                        'terms' => old('terms', []),
+                    ],
+                ];
+            }
+        }
     @endphp
     <div class="settings-page" x-data="{
         activeTab: new URLSearchParams(window.location.search).get('tab') || 'academic',
@@ -55,18 +74,28 @@
         /* ── ปฏิทินการศึกษาตามกลุ่ม (V4 ข้อ 8) ── */
         calCurriculums: {{ Js::from($calendarCurriculums ?? []) }},
         calYears: {{ Js::from(($academicYears ?? collect())->map(fn ($y) => ['id' => $y->id, 'name' => $y->name])->values()) }},
-        showCalendarsModal: false,
         calYearId: '', calYearName: '', calList: [],
         showCalEditor: false,
         editCalMode: false,
         dupMode: false,
         dupSourceLabel: '',
+        selectedCalId: '',          // id ของปฏิทินที่เลือกใน dropdown · '__new__' = ปฏิทินใหม่
+        currentCalIsDefault: false, // ปฏิทินค่าเริ่มต้น (ทุกหลักสูตร) ลบไม่ได้
+        calBaseline: '',            // snapshot กันสลับทับการแก้ที่ยังไม่บันทึก
         currentCal: { id: '', name: '', curriculum_id: '', year_levels: [], hasSummer: false, terms: [] },
         openCalendars(year) {
             this.calYearId = year.id;
             this.calYearName = year.name;
             this.calList = Array.isArray(year.calendars) ? year.calendars : [];
-            this.showCalendarsModal = true;
+            // เปิดมาเลือกปฏิทินค่าเริ่มต้น (ทุกหลักสูตร) · ไม่มี → ตัวแรก · ว่างหมด → ปฏิทินใหม่
+            const def = this.calList.find(c => this.calIsDefault(c));
+            if (def) this.loadCalendar(def);
+            else if (this.calList.length) this.loadCalendar(this.calList[0]);
+            else this.newCalendar();
+            this.showCalEditor = true;
+        },
+        calIsDefault(cal) {
+            return !cal.curriculum_id && (!Array.isArray(cal.year_levels) || cal.year_levels.length === 0);
         },
         calBuildTerms(list) {
             const a = Array.isArray(list) ? list : [];
@@ -77,27 +106,69 @@
             };
             return [s(0, 'ภาคเรียนที่ 1'), s(1, 'ภาคเรียนที่ 2'), s(2, 'ภาคฤดูร้อน')];
         },
-        openAddCalendar() {
-            this.editCalMode = false;
-            this.dupMode = false;
-            this.currentCal = { id: '', name: '', curriculum_id: '', year_levels: [], hasSummer: false, terms: this.calBuildTerms([]) };
-            this.showCalEditor = true;
-        },
-        openEditCalendar(cal) {
+        calSnapshot() { this.calBaseline = JSON.stringify(this.currentCal); },
+        calIsDirty() { return JSON.stringify(this.currentCal) !== this.calBaseline; },
+        loadCalendar(cal) {
             this.editCalMode = true;
             this.dupMode = false;
             const terms = cal.terms || [];
             this.currentCal = { id: cal.id, name: cal.name || '', curriculum_id: cal.curriculum_id ? String(cal.curriculum_id) : '', year_levels: Array.isArray(cal.year_levels) ? cal.year_levels.map(Number) : [], hasSummer: terms.length >= 3, terms: this.calBuildTerms(terms) };
-            this.showCalEditor = true;
+            this.currentCalIsDefault = this.calIsDefault(cal);
+            this.selectedCalId = String(cal.id);
+            this.calSnapshot();
         },
-        openDuplicateCalendar(cal) {
-            // คัดลอก = ใช้ช่วงเทอม/สอบเดิม แต่เปลี่ยนขอบเขต (หลักสูตร/ชั้นปี) · ซ่อนการแก้วันที่ — แก้ภายหลังได้
+        newCalendar() {
+            this.editCalMode = false;
+            this.dupMode = false;
+            this.currentCal = { id: '', name: '', curriculum_id: '', year_levels: [], hasSummer: false, terms: this.calBuildTerms([]) };
+            this.currentCalIsDefault = false;
+            this.selectedCalId = '__new__';
+            this.calSnapshot();
+        },
+        duplicateCurrent() {
+            // คัดลอก = ใช้ช่วงเทอม/สอบเดิม แต่เปลี่ยนขอบเขต (หลักสูตร/ชั้นปี) — สร้างเป็นปฏิทินใหม่
+            const src = this.calList.find(c => String(c.id) === String(this.currentCal.id));
+            if (!src) return;
             this.editCalMode = false;
             this.dupMode = true;
-            this.dupSourceLabel = this.calScopeLabel(cal);
-            const terms = cal.terms || [];
-            this.currentCal = { id: '', name: ((cal.name || '') + ' (สำเนา)').slice(0, 100), curriculum_id: cal.curriculum_id ? String(cal.curriculum_id) : '', year_levels: Array.isArray(cal.year_levels) ? cal.year_levels.map(Number) : [], hasSummer: terms.length >= 3, terms: this.calBuildTerms(terms) };
-            this.showCalEditor = true;
+            this.dupSourceLabel = this.calScopeLabel(src);
+            const terms = src.terms || [];
+            this.currentCal = { id: '', name: ((src.name || '') + ' (สำเนา)').slice(0, 100), curriculum_id: src.curriculum_id ? String(src.curriculum_id) : '', year_levels: Array.isArray(src.year_levels) ? src.year_levels.map(Number) : [], hasSummer: terms.length >= 3, terms: this.calBuildTerms(terms) };
+            this.currentCalIsDefault = false;
+            this.selectedCalId = '__new__';
+            this.calSnapshot();
+        },
+        selectCalendar(val) {
+            // เตือนถ้ามีการแก้ค้างอยู่ก่อนสลับปฏิทิน (กัน data หาย)
+            if (this.calIsDirty() && !confirm('ยังไม่บันทึกการแก้ไขปฏิทินนี้ — ทิ้งการแก้ไขแล้วเปลี่ยนปฏิทิน?')) {
+                this.selectedCalId = this.currentCal.id ? String(this.currentCal.id) : '__new__';
+                return;
+            }
+            if (val === '__new__') { this.newCalendar(); return; }
+            const cal = this.calList.find(c => String(c.id) === String(val));
+            if (cal) this.loadCalendar(cal);
+        },
+        calBoot(payload) {
+            // เปิด modal ปฏิทินค้างหลัง save/error/delete (เรียกจาก x-init ด้วย flash จาก server)
+            if (!payload || !payload.year) return;
+            this.openCalendars(payload.year);
+            if (payload.hasError) {
+                // คืนค่าที่ผู้ใช้กรอกไว้ก่อน validation error
+                const o = payload.old || {};
+                this.editCalMode = !!payload.editId;
+                this.dupMode = false;
+                this.currentCal = {
+                    id: payload.editId || '',
+                    name: o.name || '',
+                    curriculum_id: o.curriculum_id ? String(o.curriculum_id) : '',
+                    year_levels: Array.isArray(o.year_levels) ? o.year_levels.map(Number) : [],
+                    hasSummer: Array.isArray(o.terms) && o.terms.length >= 3,
+                    terms: this.calBuildTerms(o.terms || []),
+                };
+                this.currentCalIsDefault = this.calIsDefault(this.currentCal);
+                this.selectedCalId = payload.editId ? String(payload.editId) : '__new__';
+                this.calSnapshot();
+            }
         },
         calCurriculumUsesYear() {
             const c = this.calCurriculums.find(x => String(x.id) === String(this.currentCal.curriculum_id));
@@ -221,7 +292,7 @@
             if (this.closeScheduleCountdown > 0 || !this.closeScheduleConfirmForm) return;
             document.getElementById(this.closeScheduleConfirmForm)?.submit();
         }
-    }">
+    }" x-init="calBoot({{ Js::from($calReopenPayload) }})">
 
         @if($isAdmin)
         <div class="tabs-container" style="display: flex; justify-content: flex-end; margin-bottom: 24px; width: 100%; overflow: hidden;">
@@ -660,73 +731,31 @@
             </div>
         </template>
 
-        {{-- ── ปฏิทินการศึกษาตามกลุ่ม (V4 ข้อ 8) — รายการปฏิทินต่อปี ── --}}
-        <template x-if="showCalendarsModal">
-            <div class="overlay" x-cloak @keydown.escape.window="showCalendarsModal = false">
-                <div class="modal-center" style="max-width: 640px;">
-                    <div class="modal-hdr" style="background: var(--bg-2);">
-                        <div class="modal-ttl" style="font-family: var(--font-display);"
-                            x-text="'ปฏิทินการศึกษา — ปี ' + calYearName"></div>
-                        <button type="button" class="modal-cls" @click="showCalendarsModal = false">
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                        </button>
-                    </div>
-                    <div class="modal-body">
-                        <template x-if="calList.length === 0">
-                            <div style="font-size:12px;color:var(--fg-3);padding:14px;text-align:center;background:var(--surface-sunken);border-radius:8px;">
-                                ยังไม่มีปฏิทิน — กด "เพิ่มปฏิทิน" เพื่อกำหนดเทอมและช่วงสอบ
-                            </div>
-                        </template>
-                        <template x-for="cal in calList" :key="cal.id">
-                            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--surface);">
-                                <div style="min-width:0;">
-                                    <div style="display:flex;align-items:center;gap:8px;">
-                                        <span style="font-weight:600;font-size:13px;color:var(--fg-1);" x-text="cal.name"></span>
-                                        <span x-show="!cal.curriculum_id && (!cal.year_levels || cal.year_levels.length === 0)" style="font-size:10px;font-weight:700;color:var(--brand-navy);background:var(--brand-navy-50);padding:2px 8px;border-radius:999px;">ค่าเริ่มต้น</span>
-                                    </div>
-                                    <div style="font-size:11px;color:var(--fg-3);margin-top:3px;">
-                                        <span x-text="calScopeLabel(cal)"></span> ·
-                                        <span x-text="(cal.terms ? cal.terms.length : 0) + ' เทอม'"></span>
-                                    </div>
-                                </div>
-                                <div style="display:flex;gap:4px;flex-shrink:0;">
-                                    <button type="button" class="action-btn" title="แก้ไข" @click="openEditCalendar(cal)">
-                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                    </button>
-                                    <button type="button" class="action-btn" title="คัดลอกปฏิทินนี้ (เติมให้แล้วปรับ scope/วันที่)" @click="openDuplicateCalendar(cal)">
-                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                                    </button>
-                                    <form method="POST" :action="'{{ url($routePrefix . '/settings/calendars') }}/' + cal.id" style="margin:0;"
-                                        @submit="return confirm('ลบปฏิทิน ' + cal.name + ' และเทอมทั้งหมดในปฏิทินนี้?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="action-btn" title="ลบ" style="color:var(--status-conflict-fg);">
-                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        </template>
-                    </div>
-                    <div class="modal-foot" style="display:flex;justify-content:space-between;">
-                        <button type="button" class="btn btn-primary" @click="openAddCalendar()" style="font-size:13px;">+ เพิ่มปฏิทิน</button>
-                        <button type="button" class="btn btn-ghost" @click="showCalendarsModal = false">ปิด</button>
-                    </div>
-                </div>
-            </div>
-        </template>
-
-        {{-- ── ตัวแก้/เพิ่มปฏิทิน (styled แบบ modal หลักสูตร) ── --}}
+        {{-- ── ปฏิทินการศึกษา (V4 ข้อ 8) — modal เดียว: dropdown สลับปฏิทิน + แก้ในที่เดียว ── --}}
         <template x-if="showCalEditor">
-            <div class="overlay" x-cloak @keydown.escape.window="showCalEditor = false" style="z-index: calc(var(--z-modal) + 10);">
-                <div class="modal-center" x-transition:enter="transition ease-out duration-200"
+            <div class="overlay" x-cloak @keydown.escape.window="showCalEditor = false">
+                <div class="modal-center" style="max-width: 640px;" x-transition:enter="transition ease-out duration-200"
                     x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
                     <div class="modal-hdr" style="background: var(--bg-2);">
                         <div class="modal-ttl" style="font-family: var(--font-display);"
-                            x-text="dupMode ? 'คัดลอกปฏิทิน' : (editCalMode ? 'แก้ไขปฏิทิน' : 'เพิ่มปฏิทิน')"></div>
+                            x-text="'ปฏิทินการศึกษา — ปี ' + calYearName"></div>
                         <button type="button" class="modal-cls" @click="showCalEditor = false">
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                         </button>
+                    </div>
+                    {{-- แถวเลือกปฏิทิน: dropdown สลับ + เพิ่ม/คัดลอก --}}
+                    <div style="display:flex;gap:8px;align-items:flex-end;padding:16px 24px 4px;">
+                        <div class="form-group" style="flex:1;margin:0;">
+                            <label>เลือกปฏิทิน</label>
+                            <select x-model="selectedCalId" @change="selectCalendar($event.target.value)">
+                                <template x-for="cal in calList" :key="cal.id">
+                                    <option :value="String(cal.id)" x-text="calScopeLabel(cal) + (calIsDefault(cal) ? ' (ค่าเริ่มต้น)' : '') + ' · ' + (cal.terms ? cal.terms.length : 0) + ' เทอม'"></option>
+                                </template>
+                                <option value="__new__" x-text="dupMode ? '— กำลังคัดลอก —' : '— ปฏิทินใหม่ —'"></option>
+                            </select>
+                        </div>
+                        <button type="button" class="btn btn-ghost" style="font-size:13px;white-space:nowrap;" @click="selectCalendar('__new__')">+ เพิ่ม</button>
+                        <button type="button" class="btn btn-ghost" style="font-size:13px;white-space:nowrap;" x-show="editCalMode" @click="duplicateCurrent()">คัดลอก</button>
                     </div>
                     <form method="POST"
                         :action="editCalMode ? '{{ url($routePrefix . '/settings/calendars') }}/' + currentCal.id : ('{{ url($routePrefix . '/settings/academic-years') }}/' + calYearId + '/calendars')">
@@ -794,10 +823,21 @@
                                 <button type="button" x-show="!currentCal.hasSummer" @click="currentCal.hasSummer = true" class="btn btn-ghost" style="font-size:12px;padding:5px 12px;">+ เพิ่มภาคฤดูร้อน</button>
                             </div>
                         </div>
-                        <div class="modal-foot">
-                            <button type="button" class="btn btn-ghost" @click="showCalEditor = false">ยกเลิก</button>
-                            <button type="submit" class="btn btn-primary" x-text="dupMode ? 'คัดลอกปฏิทิน' : 'บันทึกปฏิทิน'"></button>
+                        <div class="modal-foot" style="display:flex;justify-content:space-between;">
+                            {{-- ปฏิทิน "ทุกหลักสูตร" (ค่าเริ่มต้น) ลบไม่ได้ --}}
+                            <button type="button" class="btn btn-ghost" x-show="editCalMode && !currentCalIsDefault"
+                                @click="if (confirm('ลบปฏิทิน ' + currentCal.name + ' และเทอมทั้งหมดในปฏิทินนี้?')) $refs.deleteCalForm.submit()"
+                                style="color: var(--status-conflict-fg);">ลบปฏิทินนี้</button>
+                            <div style="display:flex;gap:8px;margin-left:auto;">
+                                <button type="button" class="btn btn-ghost" @click="showCalEditor = false">ยกเลิก</button>
+                                <button type="submit" class="btn btn-primary" x-text="dupMode ? 'คัดลอกปฏิทิน' : 'บันทึกปฏิทิน'"></button>
+                            </div>
                         </div>
+                    </form>
+                    {{-- ฟอร์มลบแยก (programmatic submit จากปุ่มลบ) --}}
+                    <form x-ref="deleteCalForm" method="POST" :action="'{{ url($routePrefix . '/settings/calendars') }}/' + currentCal.id" style="display:none;">
+                        @csrf
+                        @method('DELETE')
                     </form>
                 </div>
             </div>
