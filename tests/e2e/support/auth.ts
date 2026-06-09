@@ -5,7 +5,8 @@ export async function login(page: Page, username = 'admin_01', password = 'passw
   await page.getByTestId('login-username').fill(username);
   await page.getByTestId('login-password').fill(password);
   await page.getByTestId('login-submit').click();
-  await expect(page).toHaveURL(/\/dashboard|\/admin\/dashboard|\/staff\/dashboard|\/maker\/dashboard|\/lecturer\/dashboard/);
+  // staff ลงที่ /staff/settings (ไม่มี dashboard) — รับ landing ของทุก role
+  await expect(page).toHaveURL(/\/dashboard|\/admin\/dashboard|\/staff\/(dashboard|settings)|\/maker\/dashboard|\/lecturer\/dashboard/);
 }
 
 export async function switchRole(page: Page, role: 'admin' | 'staff' | 'course_head' | 'instructor' | 'executive') {
