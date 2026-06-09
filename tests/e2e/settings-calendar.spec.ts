@@ -2,32 +2,56 @@ import { test, expect } from '@playwright/test';
 import { login } from './support/auth';
 
 /**
- * ข้อ 1 — ปฏิทินการศึกษายุบจาก modal ซ้อน 2 ชั้น เหลือ modal เดียว + dropdown สลับปฏิทิน
+ * ข้อ 1 — จัดหน้าตั้งค่าปฏิทินใหม่:
+ *  - การ์ด "ปฏิทินกลางของคณะ" (บน) + dropdown เลือกปี + ปุ่มกำหนดเทอม
+ *  - การ์ด "ปฏิทินแยกตามหลักสูตร/ชั้นปี" (ล่าง) — accordion + ปุ่มแก้ไข → modal
+ *  - วันหยุด แยกเป็น tab
  */
-test.describe('Academic calendar modal (dropdown switcher)', () => {
-  test('opens single modal with dropdown and switches to new calendar', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name === 'mobile-chrome', 'Settings modal is desktop-only');
+test.describe('Settings: academic calendar layout', () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile-chrome', 'Settings is desktop-only');
+  });
 
-    // เก็บเฉพาะ JS error จริง (ข้าม resource 404 ของ static asset)
+  test('central calendar card on top, per-curriculum overrides below', async ({ page }) => {
     const jsErrors: string[] = [];
     page.on('pageerror', (e) => jsErrors.push(String(e)));
 
     await login(page, 'admin_01');
     await page.goto('/admin/settings?tab=academic', { waitUntil: 'domcontentloaded' });
 
-    // เปิด modal ปฏิทินจากปุ่มที่แถวปีการศึกษา
-    await page.locator('[title^="ปฏิทินการศึกษาตามกลุ่ม"]').first().click();
+    // การ์ดปฏิทินกลาง (บน): มี dropdown เลือกปี + ปุ่มแก้/กำหนดเทอม
+    await expect(page.getByText('ปฏิทินกลางของคณะ').first()).toBeVisible({ timeout: 3000 });
+    const yearSelect = page.locator('select').filter({ has: page.locator('option') }).first();
+    await expect(yearSelect).toBeVisible();
+    await page.getByRole('button', { name: /^(แก้ไขปฏิทินกลาง|กำหนดเทอม)$/ }).click();
+    await expect(page.locator('.modal-center').getByText('ปฏิทินกลางของคณะ')).toBeVisible();
+    await expect(page.locator('.modal-center').getByText('วันเริ่มเทอม').first()).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByText('วันเริ่มเทอม').first()).toBeHidden(); // modal ปิดแล้ว
 
-    // modal เดียว: มี dropdown "เลือกปฏิทิน" + term fields อยู่ในตัวเดียวกัน (ไม่ใช่ list แยก)
-    await expect(page.getByText('เลือกปฏิทิน')).toBeVisible({ timeout: 3000 });
-    await expect(page.locator('.modal-center select').first()).toBeVisible();
-    await expect(page.getByText('ภาคการศึกษา (เทอม)')).toBeVisible();
+    // การ์ดปฏิทินแยก (ล่าง) + ปุ่มแก้ไข/ตั้งค่า → เปิด modal ของขอบเขตนั้น
+    const section = page.locator('#cal-override-section');
+    await expect(section.getByText('ปฏิทินแยกตามหลักสูตร/ชั้นปี')).toBeVisible();
+    await expect(section.getByText(/ตั้งปฏิทินแยกแล้ว \d+ รายการ/)).toBeVisible();
+    const editBtn = section.getByRole('button', { name: /^(แก้ไข|ตั้งค่า)$/ }).first();
+    if (await editBtn.count()) {
+      await editBtn.click();
+      await expect(page.locator('.modal-center').getByText('วันเริ่มเทอม').first()).toBeVisible();
+    }
 
-    // กด "+ เพิ่ม" → ฟอร์มล้างเป็นปฏิทินใหม่ (ชื่อว่าง)
-    await page.locator('.modal-center').getByRole('button', { name: '+ เพิ่ม', exact: true }).click();
-    await expect(page.locator('.modal-center input[name="name"]')).toHaveValue('');
-
-    // ต้องไม่มี JS error (เช่น x-data พังจาก quote)
     expect(jsErrors).toEqual([]);
+  });
+
+  test('holidays moved to its own tab', async ({ page }) => {
+    await login(page, 'admin_01');
+    await page.goto('/admin/settings?tab=academic', { waitUntil: 'domcontentloaded' });
+
+    // แท็บปีการศึกษา: ไม่เห็นตารางวันหยุด
+    await expect(page.getByText('วันหยุดราชการ', { exact: false })).toBeHidden();
+
+    // กดแท็บ "วันหยุด" → เห็นตารางวันหยุด · section ปฏิทินแยกถูกซ่อน
+    await page.getByRole('button', { name: 'วันหยุด' }).click();
+    await expect(page.getByText('วันหยุดราชการ', { exact: false })).toBeVisible();
+    await expect(page.locator('#cal-override-section')).toBeHidden();
   });
 });
