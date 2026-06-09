@@ -104,22 +104,40 @@ class NavigationBadgeService
     {
         $status = $this->conflictReadRepository->getStatusForUser($userId, $academicYearId);
 
+        // เลขรวมใน badge = การชน + warning (incomplete/holiday/ฯลฯ) ให้ตรงกับยอดรวมในหน้าแจ้งเตือน
+        // การชนนับเป็น distinct schedule (1 การ์ด/1 schedule) ไม่ใช่ edge — ให้ตรงกับ totalWarningCount
+        $warningCount = app(CoordinatorAlertService::class)->warningCount($userId, $academicYearId);
+
+        // read model พร้อมแล้ว → ใช้ค่าที่ pre-compute (เร็ว + scale ดี)
+        if ($status['status'] === 'ready') {
+            $count = (int) $this->conflictReadRepository->getDistinctScheduleCountForUser($userId, $academicYearId)
+                + $warningCount;
+
+            return [
+                'maker_conflict_count' => $count,
+                'maker_conflict_status' => 'ready',
+                'maker_conflict_pending' => false,
+                'maker_conflict_academic_year_id' => $academicYearId,
+                'maker_conflict_label' => $this->courseHeadConflictLabel('ready', $count),
+            ];
+        }
+
+        // read model ยังไม่พร้อม (missing/pending/processing/failed) — เดิม badge จะว่าง
+        // จนกว่า recompute job จะเสร็จ ทำให้ขึ้น "ช้ามาก" (โดยเฉพาะถ้า queue worker ไม่ทำงาน)
+        // แก้: คำนวณ sync เฉพาะ coordinator คนนี้ (engine เดียวกับหน้าแจ้งเตือน, ต้นทุนน้อย)
+        // ให้ badge ขึ้นทันที + ตรงกับหน้าแจ้งเตือน · พร้อมสั่ง recompute เบื้องหลังไว้ให้รอบหน้าใช้ async
         if ($status['status'] === 'missing') {
             app(ScheduleConflictInvalidationService::class)->markDirty($academicYearId, 'manual');
         }
 
-        // เลขรวมใน badge = การชน + warning (incomplete/holiday/ฯลฯ) ให้ตรงกับยอดรวมในหน้าแจ้งเตือน
-        $count = $status['status'] === 'ready'
-            ? (int) $this->conflictReadRepository->getCountForUser($userId, $academicYearId)
-                + app(CoordinatorAlertService::class)->warningCount($userId, $academicYearId)
-            : null;
+        $count = $this->conflictIndex->countForCoordinator($userId, $academicYearId) + $warningCount;
 
         return [
             'maker_conflict_count' => $count,
-            'maker_conflict_status' => $status['status'],
-            'maker_conflict_pending' => $status['status'] !== 'ready',
+            'maker_conflict_status' => 'ready',
+            'maker_conflict_pending' => false,
             'maker_conflict_academic_year_id' => $academicYearId,
-            'maker_conflict_label' => $this->courseHeadConflictLabel($status['status'], $count),
+            'maker_conflict_label' => $this->courseHeadConflictLabel('ready', $count),
         ];
     }
 

@@ -32,6 +32,13 @@
                     ? $color
                     : 'var(--brand-navy)';
             };
+            $groupTone = $groupTone ?? function ($group) {
+                $color = (string) ($group->color_code ?? '');
+
+                return str_starts_with($color, '#') || str_starts_with($color, 'oklch') || str_starts_with($color, 'var(')
+                    ? $color
+                    : 'oklch(58% 0.095 84)';
+            };
             $eligibleScheduleInstructors = $eligibleScheduleInstructors ?? function ($offering) {
                 $departmentId = $offering?->course?->department_id;
                 $pool = $offering?->instructorPool ?? collect();
@@ -119,7 +126,7 @@
                             <div class="modal-title-detail" id="schedule-detail-title-{{ $schedule->id }}" title="{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}">{{ $schedule->topic ?: ($activity?->name ?? 'รายการสอน') }}</div>
                             <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }}; margin-top:5px;">{{ $activity?->name ?? 'กิจกรรม' }}</span>
                             @if($schedule->schedule_template_id)
-                                <span class="series-badge" style="margin-top:5px;" title="กิจกรรมทำซ้ำรายสัปดาห์">
+                                <span class="series-badge" style="margin-top:5px;" data-tip="กิจกรรมทำซ้ำรายสัปดาห์">
                                     <span class="series-dot" aria-hidden="true"></span>
                                     <span>ทำซ้ำ</span>
                                     @if($schedule->series_week_number)
@@ -163,6 +170,23 @@
                                                     <span>{{ $inst->formatted_name ?? $inst->name }}</span>
                                                     @if($roleName !== 'อาจารย์ผู้สอน')<span style="color:var(--fg-3);font-size:11px;margin-left:4px;">({{ $roleName }})</span>@endif
                                                 </div>
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <span style="color:var(--fg-3);">-</span>
+                                    @endif
+                                </div>
+                            </div>
+                            <div class="detail-row" style="align-items:flex-start;">
+                                <div class="detail-row-label" style="padding-top:1px;">กลุ่มนักศึกษา</div>
+                                <div class="detail-row-value">
+                                    @if($schedule->studentGroups->isNotEmpty())
+                                        <div class="detail-groups-list">
+                                            @foreach($schedule->studentGroups as $group)
+                                                <span class="co-group-badge" style="--group-color: {{ $groupTone($group) }};">
+                                                    <span class="co-group-dot" aria-hidden="true"></span>
+                                                    <span>{{ $group->group_code }}</span>
+                                                </span>
                                             @endforeach
                                         </div>
                                     @else
@@ -430,7 +454,7 @@
                                             ->values();
                                     @endphp
                                     <div class="series-toggle-panel" style="margin-bottom:12px;">
-                                        <span class="series-badge" title="กิจกรรมทำซ้ำรายสัปดาห์">
+                                        <span class="series-badge" data-tip="กิจกรรมทำซ้ำรายสัปดาห์">
                                             <span class="series-dot" aria-hidden="true"></span>
                                             <span>รายการทำซ้ำ</span>
                                             @if($schedule->series_week_number)
@@ -737,7 +761,7 @@
                             </div>
                             <div class="modal-actions">
                                 <button type="button" class="btn btn-secondary" @click="closeEdit()">ยกเลิก</button>
-                                <button type="submit" class="btn btn-primary" data-testid="schedule-submit" x-bind:disabled="liveBlocking" x-bind:title="liveBlocking ? 'แก้ไขข้อมูลที่บล็อกก่อนบันทึก' : ''">บันทึกการแก้ไข</button>
+                                <button type="submit" class="btn btn-primary" data-testid="schedule-submit" x-bind:disabled="liveBlocking" x-bind:data-tip="liveBlocking ? 'แก้ไขข้อมูลที่บล็อกก่อนบันทึก' : ''">บันทึกการแก้ไข</button>
                             </div>
                         </form>
                     </section>

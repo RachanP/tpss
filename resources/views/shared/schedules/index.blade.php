@@ -321,6 +321,8 @@
     $scheduleIncompleteReasons = function ($schedule) use ($scheduleDepartmentInstructors) {
         return collect([
             $scheduleDepartmentInstructors($schedule)->isEmpty() ? 'รอกำหนดผู้สอน' : null,
+            ($schedule?->studentGroups?->isEmpty() ?? true) ? 'รอกำหนดกลุ่มนักศึกษา' : null,
+            $schedule?->room_id ? null : 'รอกำหนดสถานที่',
         ])->filter()->values();
     };
     $scheduleResourceCopyItems = ($allSchedules ?? collect())
@@ -360,12 +362,32 @@
     $scheduleFilterItems = $singleCourseSchedules->map(function ($schedule) use ($formatDate, $formatTime, $scheduleDepartmentInstructors, $weekNumberForDate) {
         $instructors = $scheduleDepartmentInstructors($schedule);
 
+        // ทุกสัปดาห์ที่ schedule นี้ครอบ (start_date→end_date) — ให้ตรงกับ list ที่กระจายรายวัน
+        // schedule ที่กินข้ามสัปดาห์ต้องถูกนับ/กรองในทุกสัปดาห์ที่มันโผล่ ไม่ใช่แค่สัปดาห์เริ่ม
+        $weeks = collect();
+        if ($schedule->start_date) {
+            $weekStartDate = \Carbon\CarbonImmutable::parse($schedule->start_date)->startOfDay();
+            $weekEndDate = $schedule->end_date
+                ? \Carbon\CarbonImmutable::parse($schedule->end_date)->startOfDay()
+                : $weekStartDate;
+            if ($weekEndDate->lt($weekStartDate)) {
+                $weekEndDate = $weekStartDate;
+            }
+            $weeks = collect(\Carbon\CarbonPeriod::create($weekStartDate, $weekEndDate))
+                ->map(fn ($date) => $weekNumberForDate($date))
+                ->filter()
+                ->unique()
+                ->map(fn ($week) => (string) $week)
+                ->values();
+        }
+
         return [
             'id' => (string) $schedule->id,
             'activity' => (string) $schedule->activity_type_id,
             'groups' => $schedule->studentGroups->pluck('id')->map(fn ($id) => (string) $id)->values(),
             'instructors' => $instructors->pluck('id')->map(fn ($id) => (string) $id)->values(),
             'week' => (string) ($weekNumberForDate($schedule->start_date) ?? ''),
+            'weeks' => $weeks,
             'date' => $schedule->start_date?->toDateString(),
             'search' => mb_strtolower(collect([
                 $formatDate($schedule->start_date),
@@ -402,10 +424,11 @@
             return [str_replace('-', '', $dateString) => $lazyScheduleList && ! $loadedWeekStartSet->has($weekStartIso)];
         })
         ->toArray();
+    // นับรายการต่อสัปดาห์จากทุกสัปดาห์ที่ schedule ครอบ (ตรงกับ list) ไม่ใช่แค่สัปดาห์เริ่ม
     $countsByWeek = $scheduleFilterItems
-        ->filter(fn ($item) => $item['week'] !== '')
-        ->groupBy('week')
-        ->map(fn ($items) => $items->count());
+        ->flatMap(fn ($item) => $item['weeks'])
+        ->groupBy(fn ($week) => (string) $week)
+        ->map(fn ($weeks) => $weeks->count());
     $scheduleWeekOptions = collect(range(1, max(1, $totalAcademicWeeks)))
         ->map(fn ($week) => [
             'week' => $week,
@@ -3891,6 +3914,9 @@
             font-size: 9.5px;
             font-weight: 850;
         }
+        .month-group-summary.has-tooltip {
+            cursor: help;
+        }
         .month-activity .activity-tag,
         .month-activity .co-group-badge {
             min-height: 17px;
@@ -4218,6 +4244,12 @@
             font-size: 11px;
             color: var(--fg-3);
             font-weight: 600;
+        }
+        /* ข้อ 15: รายละเอียดกลุ่มนักศึกษาใน detail modal — chip โค้ดกลุ่ม */
+        .detail-groups-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
         }
         .detail-chips {
             display: flex;
@@ -5324,6 +5356,32 @@
                 gap: 8px;
             }
         }
+
+        /* ข้อ 14: tooltip กลาง (portal) — styled ตาม Impeccable, กัน overflow clip
+           ใช้แทน native title ทุกจุด ผ่าน data-tip + JS ปลายไฟล์ */
+        .tpss-tip {
+            position: fixed;
+            z-index: 2000;
+            max-width: 280px;
+            padding: 5px 9px;
+            border-radius: 7px;
+            background: var(--brand-navy);
+            color: var(--surface);
+            font-size: 11.5px;
+            font-weight: 700;
+            line-height: 1.4;
+            letter-spacing: 0.1px;
+            box-shadow: 0 6px 18px oklch(0% 0 0 / 0.20);
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(3px);
+            transition: opacity 0.12s ease, transform 0.12s ease;
+            white-space: normal;
+        }
+        .tpss-tip.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
     </style>
 
     <div
@@ -5926,7 +5984,7 @@
                     && (!this.scheduleActivity || item.activity === this.scheduleActivity)
                     && (!this.scheduleGroup || item.groups.includes(this.scheduleGroup))
                     && (!this.scheduleInstructor || item.instructors.includes(this.scheduleInstructor))
-                    && (!this.scheduleWeek || item.week === this.scheduleWeek);
+                    && (!this.scheduleWeek || (item.weeks || []).includes(this.scheduleWeek));
             },
             matchedScheduleCount() {
                 return this.scheduleItems.filter((item) => this.matchesSchedule(item.id)).length;
@@ -6790,7 +6848,7 @@
                         data-testid="schedule-create-link"
                         @click="openCreate()"
                         @disabled(! $canCreateInCurrentPeriod)
-                        title="{{ ! $canCreateInCurrentPeriod ? $outsideCreateHint : '' }}"
+                        data-tip="{{ ! $canCreateInCurrentPeriod ? $outsideCreateHint : '' }}"
                         aria-disabled="{{ ! $canCreateInCurrentPeriod ? 'true' : 'false' }}"
                     >+ เพิ่ม</button>
                 </div>
@@ -6849,7 +6907,7 @@
                             data-testid="schedule-create-link"
                             @click="openCreate()"
                             @disabled(! $canCreateScheduleNow)
-                            title="{{ $createDisabledHint }}"
+                            data-tip="{{ $createDisabledHint }}"
                             aria-disabled="{{ ! $canCreateScheduleNow ? 'true' : 'false' }}"
                             style="min-height:34px;padding:6px 12px;font-size:12.5px;"
                         >+ เพิ่มกิจกรรม</button>
@@ -7191,7 +7249,7 @@
                                                             <span class="sched-day-group-count">· {{ $daySchedules->count() }} รายการสอน</span>
                                                         </div>
                                                         @if($canEdit && ! $di['blocked'])
-                                                            <button type="button" class="sched-day-add" @click.stop="openCreate('{{ $dateObj->toDateString() }}')" data-testid="list-day-add" title="เพิ่มกิจกรรมในวันนี้">+ เพิ่มกิจกรรม</button>
+                                                            <button type="button" class="sched-day-add" @click.stop="openCreate('{{ $dateObj->toDateString() }}')" data-testid="list-day-add">+ เพิ่มกิจกรรม</button>
                                                         @endif
                                                     </div>
                                                 </td>
@@ -7305,7 +7363,7 @@
                                                         <span class="sched-day-group-count is-muted">· 0 รายการสอน</span>
                                                     </div>
                                                     @if($canEdit)
-                                                        <button type="button" class="sched-day-add" @click.stop="openCreate(day.iso)" data-testid="list-empty-day-add" title="เพิ่มกิจกรรมในวันนี้">+ เพิ่มกิจกรรม</button>
+                                                        <button type="button" class="sched-day-add" @click.stop="openCreate(day.iso)" data-testid="list-empty-day-add">+ เพิ่มกิจกรรม</button>
                                                     @endif
                                                 </div>
                                             </td>
@@ -7363,9 +7421,8 @@
                                         role="button" tabindex="0"
                                         data-testid="month-empty-cell"
                                         aria-label="เพิ่มรายการสอนวันที่ {{ $formatDate($day) }}"
-                                        title="คลิกเพื่อเพิ่มกิจกรรมในวันนี้"
-                                    @elseif($isOutsideAcademic) title="นอกช่วงปีการศึกษา"
-                                    @elseif($di['label']) title="{{ $di['label'] }}"
+                                    @elseif($isOutsideAcademic) data-tip="นอกช่วงปีการศึกษา"
+                                    @elseif($di['label']) data-tip="{{ $di['label'] }}"
                                     @endif>
                                     <div class="month-day-top">
                                         <span class="month-day-number">{{ $day->day }}</span>
@@ -7390,7 +7447,7 @@
                                                 <div class="month-activity-tags">
                                                     <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }};">{{ $activity?->name ?? 'กิจกรรม' }}</span>
                                                     @if($schedule->studentGroups->isNotEmpty())
-                                                        <span class="month-group-summary">{{ $schedule->studentGroups->count() }} กลุ่ม</span>
+                                                        <span class="month-group-summary has-tooltip" data-tip="กลุ่มนักศึกษา: {{ $schedule->studentGroups->pluck('group_code')->implode(', ') }}">{{ $schedule->studentGroups->count() }} กลุ่ม</span>
                                                     @endif
                                                     @if($schedule->schedule_template_id)
                                                         @include('shared.schedules._series_badge', ['schedule' => $schedule])
@@ -7418,7 +7475,7 @@
                         <div class="grid-cell grid-head" style="grid-area:1 / 1;"></div>
                         @foreach($weekDays as $dayIndex => $day)
                             @php $dayOutside = $isDayOutsideAcademic($day); $di = $dayInfo($day); $dayKindClass = ! $dayOutside && $di['kind'] !== 'normal' ? 'day-' . $di['kind'] : ''; @endphp
-                            <div class="grid-cell grid-head {{ $dayOutside ? 'is-outside-academic' : '' }} {{ $dayKindClass }}" style="grid-area:1 / {{ $dayIndex + 2 }};" @if($dayOutside) title="นอกช่วงปีการศึกษา" @elseif($di['label']) title="{{ $di['label'] }}" @endif>
+                            <div class="grid-cell grid-head {{ $dayOutside ? 'is-outside-academic' : '' }} {{ $dayKindClass }}" style="grid-area:1 / {{ $dayIndex + 2 }};" @if($dayOutside) data-tip="นอกช่วงปีการศึกษา" @elseif($di['label']) data-tip="{{ $di['label'] }}" @endif>
                                 {{ $thaiDays[$day->dayOfWeekIso] ?? $day->format('l') }}<br>
                                 <span class="caption">{{ $formatDate($day) }}</span>
                                 @if($dayKindClass)<span class="grid-day-chip is-{{ $di['kind'] }}">{{ $di['label'] }}</span>@endif
@@ -7432,7 +7489,7 @@
                             <div class="grid-cell grid-time" style="grid-column:1; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};">{{ $slot }}</div>
                             @foreach($weekDays as $dayIndex => $day)
                                 @php $dayOutside = $isDayOutsideAcademic($day); $di = $dayInfo($day); $dayBlocked = $dayOutside || $di['blocked']; $dayKindClass = ! $dayOutside && $di['kind'] !== 'normal' ? 'day-' . $di['kind'] : ''; @endphp
-                                <div class="grid-cell {{ $dayOutside ? 'is-outside-academic' : '' }} {{ $dayKindClass }} {{ $canEdit && ! $dayBlocked ? 'is-addable' : '' }}" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};" @if($canEdit && ! $dayBlocked) @click="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" @keydown.enter.prevent="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" @keydown.space.prevent="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" role="button" tabindex="0" aria-label="เพิ่มรายการสอน {{ $formatDate($day) }} เวลา {{ $slot }}" data-testid="grid-empty-cell" title="คลิกเพื่อเพิ่มกิจกรรม {{ $slot }}" @elseif($canEdit && $dayBlocked && $di['label']) title="{{ $di['label'] }} — เพิ่มกิจกรรมไม่ได้" @endif></div>
+                                <div class="grid-cell {{ $dayOutside ? 'is-outside-academic' : '' }} {{ $dayKindClass }} {{ $canEdit && ! $dayBlocked ? 'is-addable' : '' }}" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};" @if($canEdit && ! $dayBlocked) @click="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" @keydown.enter.prevent="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" @keydown.space.prevent="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" role="button" tabindex="0" aria-label="เพิ่มรายการสอน {{ $formatDate($day) }} เวลา {{ $slot }}" data-testid="grid-empty-cell" data-tip="เพิ่มกิจกรรม" @elseif($canEdit && $dayBlocked && $di['label']) data-tip="{{ $di['label'] }} — เพิ่มกิจกรรมไม่ได้" @endif></div>
                             @endforeach
                         @endforeach
 
@@ -7491,7 +7548,8 @@
                                             <div class="grid-activity-time">{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }} · {{ $formatDuration($occurrence['duration_minutes']) }}</div>
                                             <div class="grid-activity-foot">
                                                 <span class="grid-activity-room">{{ $room?->room_name ?? $room?->room_code ?? 'ไม่ระบุสถานที่' }}</span>
-                                                <span class="grid-activity-groups">
+                                                <span class="grid-activity-groups {{ $schedule->studentGroups->isNotEmpty() ? 'has-tooltip' : '' }}"
+                                                    @if($schedule->studentGroups->isNotEmpty()) data-tip="กลุ่มนักศึกษา: {{ $schedule->studentGroups->pluck('group_code')->implode(', ') }}" @endif>
                                                     {{ $schedule->studentGroups->isNotEmpty() ? $schedule->studentGroups->count() . ' กลุ่ม' : 'ไม่มีกลุ่ม' }}
                                                 </span>
                                             </div>
@@ -7606,7 +7664,8 @@
                                                     <div class="grid-activity-time">{{ $formatTime($schedule->start_time) }} - {{ $formatTime($schedule->end_time) }} · {{ $formatDuration($occurrence['duration_minutes']) }}</div>
                                                     <div class="grid-activity-foot">
                                                         <span class="grid-activity-room">{{ $room?->room_name ?? $room?->room_code ?? 'ไม่ระบุสถานที่' }}</span>
-                                                        <span class="grid-activity-groups">
+                                                        <span class="grid-activity-groups {{ $schedule->studentGroups->isNotEmpty() ? 'has-tooltip' : '' }}"
+                                                            @if($schedule->studentGroups->isNotEmpty()) data-tip="กลุ่มนักศึกษา: {{ $schedule->studentGroups->pluck('group_code')->implode(', ') }}" @endif>
                                                             {{ $schedule->studentGroups->isNotEmpty() ? $schedule->studentGroups->count() . ' กลุ่ม' : 'ไม่มีกลุ่ม' }}
                                                         </span>
                                                     </div>
@@ -7621,7 +7680,7 @@
                                                             x-show="{{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1)"
                                                             @if($stackCount > 3)
                                                                 @click.stop="page = (page + 1) % Math.ceil(count / 3); centerStackCard($el)"
-                                                                title="คลิกเพื่อดูการ์ดถัดไป"
+                                                                data-tip="คลิกเพื่อดูการ์ดถัดไป"
                                                             @endif
                                                         >
                                                             @if($stackCount > 3)
@@ -7709,7 +7768,7 @@
                                                     class="day-add-link"
                                                     @click="openCreate('{{ $day->toDateString() }}')"
                                                     @disabled(! $canCreateOnDay)
-                                                    title="{{ ! $canCreateOnDay ? $outsideCreateHint : '' }}"
+                                                    data-tip="{{ ! $canCreateOnDay ? $outsideCreateHint : '' }}"
                                                     aria-disabled="{{ ! $canCreateOnDay ? 'true' : 'false' }}"
                                                 >+ เพิ่ม</button>
                                             @endif
@@ -7801,7 +7860,7 @@
                                 $dayKindClass = ! $isOutsideAcademic && $di['kind'] !== 'normal' ? 'day-' . $di['kind'] : '';
                             @endphp
                             <div class="month-calendar-day {{ $isOutsideMonth ? 'is-outside' : '' }} {{ $isOutsideAcademic ? 'is-outside-academic' : '' }} {{ $dayKindClass }}"
-                                @if($isOutsideAcademic) title="นอกช่วงปีการศึกษา" @elseif($di['label']) title="{{ $di['label'] }}" @endif>
+                                @if($isOutsideAcademic) data-tip="นอกช่วงปีการศึกษา" @elseif($di['label']) data-tip="{{ $di['label'] }}" @endif>
                                 <div class="month-day-top">
                                     <span class="month-day-number">{{ $day->day }}</span>
                                     @if($dayOccurrences->isNotEmpty())
@@ -7834,7 +7893,7 @@
                                             <div class="month-activity-tags">
                                                 <span class="activity-tag" style="--activity-color: {{ $activityTone($schedule) }};">{{ $activity?->name ?? 'กิจกรรม' }}</span>
                                                 @if($schedule->studentGroups->isNotEmpty())
-                                                    <span class="month-group-summary">{{ $schedule->studentGroups->count() }} กลุ่ม</span>
+                                                    <span class="month-group-summary has-tooltip" data-tip="กลุ่มนักศึกษา: {{ $schedule->studentGroups->pluck('group_code')->implode(', ') }}">{{ $schedule->studentGroups->count() }} กลุ่ม</span>
                                                 @endif
                                                 @if($itemConflicts->isNotEmpty())
                                                     @include('shared.schedules._conflict_pill', ['conflicts' => $itemConflicts])
@@ -7857,7 +7916,7 @@
                     <div class="grid-cell grid-head" style="grid-area:1 / 1;"></div>
                     @foreach($weekDays as $dayIndex => $day)
                         @php $dayOutside = $isDayOutsideAcademic($day); $di = $dayInfo($day); $dayKindClass = ! $dayOutside && $di['kind'] !== 'normal' ? 'day-' . $di['kind'] : ''; @endphp
-                        <div class="grid-cell grid-head {{ $dayOutside ? 'is-outside-academic' : '' }} {{ $dayKindClass }}" style="grid-area:1 / {{ $dayIndex + 2 }};" @if($dayOutside) title="นอกช่วงปีการศึกษา" @elseif($di['label']) title="{{ $di['label'] }}" @endif>
+                        <div class="grid-cell grid-head {{ $dayOutside ? 'is-outside-academic' : '' }} {{ $dayKindClass }}" style="grid-area:1 / {{ $dayIndex + 2 }};" @if($dayOutside) data-tip="นอกช่วงปีการศึกษา" @elseif($di['label']) data-tip="{{ $di['label'] }}" @endif>
                             {{ $thaiDays[$day->dayOfWeekIso] ?? $day->format('l') }}<br>
                             <span class="caption">{{ $formatDate($day) }}</span>
                             @if($dayKindClass)<span class="grid-day-chip is-{{ $di['kind'] }}">{{ $di['label'] }}</span>@endif
@@ -7871,7 +7930,7 @@
                         <div class="grid-cell grid-time" style="grid-column:1; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};">{{ $slot }}</div>
                         @foreach($weekDays as $dayIndex => $day)
                             @php $dayOutside = $isDayOutsideAcademic($day); $di = $dayInfo($day); $dayBlocked = $dayOutside || $di['blocked']; $dayKindClass = ! $dayOutside && $di['kind'] !== 'normal' ? 'day-' . $di['kind'] : ''; @endphp
-                            <div class="grid-cell {{ $dayOutside ? 'is-outside-academic' : '' }} {{ $dayKindClass }} {{ $canEdit && ! $dayBlocked ? 'is-addable' : '' }}" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};" @if($canEdit && ! $dayBlocked) @click="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" @keydown.enter.prevent="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" @keydown.space.prevent="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" role="button" tabindex="0" aria-label="เพิ่มรายการสอน {{ $formatDate($day) }} เวลา {{ $slot }}" data-testid="grid-empty-cell" title="คลิกเพื่อเพิ่มกิจกรรม {{ $slot }}" @elseif($canEdit && $dayBlocked && $di['label']) title="{{ $di['label'] }} — เพิ่มกิจกรรมไม่ได้" @endif></div>
+                            <div class="grid-cell {{ $dayOutside ? 'is-outside-academic' : '' }} {{ $dayKindClass }} {{ $canEdit && ! $dayBlocked ? 'is-addable' : '' }}" style="grid-column:{{ $dayIndex + 2 }}; grid-row:{{ $hourRowStart }} / span {{ $gridRowsPerHour }};" @if($canEdit && ! $dayBlocked) @click="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" @keydown.enter.prevent="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" @keydown.space.prevent="openCreateAt('{{ $day->toDateString() }}', '{{ $slot }}')" role="button" tabindex="0" aria-label="เพิ่มรายการสอน {{ $formatDate($day) }} เวลา {{ $slot }}" data-testid="grid-empty-cell" data-tip="เพิ่มกิจกรรม" @elseif($canEdit && $dayBlocked && $di['label']) data-tip="{{ $di['label'] }} — เพิ่มกิจกรรมไม่ได้" @endif></div>
                         @endforeach
                     @endforeach
 
@@ -8123,7 +8182,7 @@
                                                         x-show="{{ $idx }} === Math.min((page + 1) * 3 - 1, count - 1)"
                                                         @if($stackCount > 3)
                                                             @click.stop="page = (page + 1) % Math.ceil(count / 3); centerStackCard($el)"
-                                                            title="คลิกเพื่อดูการ์ดถัดไป"
+                                                            data-tip="คลิกเพื่อดูการ์ดถัดไป"
                                                         @endif
                                                     >
                                                         @if($stackCount > 3)
@@ -8570,7 +8629,7 @@
                         </div>
                         <div class="modal-actions">
                             <button type="button" class="btn btn-secondary" @click="closeCreate()">ยกเลิก</button>
-                            <button type="submit" class="btn btn-primary" data-testid="schedule-submit" x-bind:disabled="liveBlocking" x-bind:title="liveBlocking ? 'แก้ไขข้อมูลที่บล็อกก่อนบันทึก' : ''">บันทึกรายการสอน</button>
+                            <button type="submit" class="btn btn-primary" data-testid="schedule-submit" x-bind:disabled="liveBlocking" x-bind:data-tip="liveBlocking ? 'แก้ไขข้อมูลที่บล็อกก่อนบันทึก' : ''">บันทึกรายการสอน</button>
                         </div>
                     </form>
                 </section>
@@ -9025,4 +9084,95 @@ document.addEventListener('DOMContentLoaded', function () {
     _tpObserver.observe(document.body, { childList: true, subtree: true });
 
 });
+
+// ข้อ 14: tooltip กลาง (portal) — แสดง data-tip เป็นกล่อง styled แทน native title
+// portal ไป body + position:fixed → ไม่โดน overflow ของตาราง/การ์ด clip
+// ยึดตำแหน่งเคอร์เซอร์ (mouse) เพื่อโผล่ใกล้จุดที่ชี้ ไม่ทับ element/เนื้อหารอบข้าง
+(function () {
+    var tip = null;
+    var current = null;
+    var mx = 0, my = 0;
+
+    document.addEventListener('mousemove', function (e) {
+        mx = e.clientX;
+        my = e.clientY;
+        // เซลล์ใหญ่ (นอกช่วงปี/วันหยุด): ให้ tooltip ตามเคอร์เซอร์ ไม่ค้างที่จุดเข้า
+        if (current && tip && tip.classList.contains('is-visible')) {
+            position(true, current);
+        }
+    }, { passive: true });
+
+    function ensureTip() {
+        if (!tip) {
+            tip = document.createElement('div');
+            tip.className = 'tpss-tip';
+            tip.setAttribute('role', 'tooltip');
+            document.body.appendChild(tip);
+        }
+        return tip;
+    }
+
+    // จัดตำแหน่งเท่านั้น (ไม่แตะ text) — useCursor=true ใกล้เคอร์เซอร์ · false ใต้ element
+    function position(useCursor, el) {
+        if (!tip) return;
+        var tr = tip.getBoundingClientRect();
+        var margin = 8;
+        var left, top;
+
+        if (useCursor) {
+            // ใต้-ขวาของเคอร์เซอร์ ถ้าชนขอบค่อยพลิกข้าง/ขึ้นบน
+            left = mx + 14;
+            top = my + 18;
+            if (left + tr.width + margin > window.innerWidth) left = mx - tr.width - 14;
+            if (top + tr.height + margin > window.innerHeight) top = my - tr.height - 12;
+        } else {
+            var r = el.getBoundingClientRect();
+            left = r.left + r.width / 2 - tr.width / 2;
+            top = r.bottom + 8;
+            if (top + tr.height + margin > window.innerHeight) top = r.top - tr.height - 8;
+        }
+
+        left = Math.max(margin, Math.min(left, window.innerWidth - tr.width - margin));
+        top = Math.max(margin, Math.min(top, window.innerHeight - tr.height - margin));
+        tip.style.left = Math.round(left) + 'px';
+        tip.style.top = Math.round(top) + 'px';
+    }
+
+    // useCursor=true → วางใกล้เคอร์เซอร์ (hover) · false → วางใต้ element (โฟกัสคีย์บอร์ด)
+    function place(el, useCursor) {
+        var text = (el.getAttribute('data-tip') || '').trim();
+        if (!text) { hide(); return; }
+
+        var t = ensureTip();
+        t.textContent = text;
+        t.style.maxWidth = Math.min(280, window.innerWidth - 16) + 'px';
+        t.style.left = '0px';
+        t.style.top = '0px';
+        t.classList.add('is-visible');
+
+        current = el;
+        position(useCursor, el);
+    }
+
+    function hide() {
+        if (tip) tip.classList.remove('is-visible');
+        current = null;
+    }
+
+    document.addEventListener('mouseover', function (e) {
+        var el = e.target.closest ? e.target.closest('[data-tip]') : null;
+        if (el && el !== current) place(el, true);
+    });
+    document.addEventListener('mouseout', function (e) {
+        var el = e.target.closest ? e.target.closest('[data-tip]') : null;
+        if (el && el === current && (!e.relatedTarget || !el.contains(e.relatedTarget))) hide();
+    });
+    document.addEventListener('focusin', function (e) {
+        var el = e.target.closest ? e.target.closest('[data-tip]') : null;
+        if (el) place(el, false);
+    });
+    document.addEventListener('focusout', hide);
+    window.addEventListener('scroll', hide, true);
+    window.addEventListener('resize', hide);
+})();
 </script>

@@ -398,6 +398,56 @@ class ScheduleManagementTest extends TestCase
             ->assertSee('นอกช่วงปีการศึกษา');
     }
 
+    public function test_week_filter_summary_counts_every_week_a_schedule_spans(): void
+    {
+        // ข้อ 16: schedule ที่กินข้ามสัปดาห์ (10 วัน) ต้องถูกนับในทุกสัปดาห์ที่โผล่ในตาราง
+        // ไม่ใช่แค่สัปดาห์เริ่ม (เดิม dropdown ขึ้น "1 สัปดาห์" ทั้งที่ตารางมีสัปดาห์ถัดไป)
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-12', // ครอบ 2 สัปดาห์ (Monday-aligned)
+            'topic' => 'Block spanning two weeks',
+        ]);
+
+        $this->actingAsCourseHead($head);
+
+        $this->get(route('maker.course_offerings.schedules.index', $offering))
+            ->assertOk()
+            ->assertSee('มีรายการสอน · 2 สัปดาห์');
+    }
+
+    public function test_weekend_activities_appear_in_day_and_month_views(): void
+    {
+        // ข้อ 18: กิจกรรม (รวม recurring) ที่ตกวันเสาร์/อาทิตย์ ต้องแสดงในมุมมองวัน/เดือน
+        // (เดิม occurrences กรองเสาร์อาทิตย์ทิ้ง → เซลล์ว่าง/การ์ดหาย)
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'start_date' => '2026-08-08', // วันเสาร์
+            'end_date' => '2026-08-08',
+            'topic' => 'Weekend recurring item',
+        ]);
+
+        $this->actingAsCourseHead($head);
+
+        // มุมมองวัน (วันเสาร์)
+        $this->get(route('maker.course_offerings.schedules.index', [
+            $offering,
+            'period' => 'day',
+            'date' => '2026-08-08',
+        ]))
+            ->assertOk()
+            ->assertSee('Weekend recurring item');
+
+        // มุมมองเดือน
+        $this->get(route('maker.course_offerings.schedules.index', [
+            $offering,
+            'period' => 'month',
+            'date' => '2026-08-01',
+        ]))
+            ->assertOk()
+            ->assertSee('Weekend recurring item');
+    }
+
     public function test_block_date_schedule_displays_across_matching_week_days(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();

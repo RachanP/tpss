@@ -200,11 +200,14 @@ class ScheduleSeriesGeneratorTest extends TestCase
         $this->assertSame(0, $secondWeek->instructors()->count());
         $this->assertSame(0, $secondWeek->studentGroups()->count());
 
-        $this->get(route('maker.course_offerings.schedules.index', $offering))
+        // ข้อ 21: badge ตรวจครบทั้งผู้สอน + กลุ่ม นศ. + สถานที่
+        // focus ไปสัปดาห์ 2 (shell ขาดทั้งสามอย่าง) เพื่อให้ list lazy-render สัปดาห์นั้น
+        $this->get(route('maker.course_offerings.schedules.index', [$offering, 'focus_schedule_id' => $secondWeek->id]))
             ->assertOk()
             ->assertSee('ข้อมูลยังไม่ครบ')
             ->assertSee('รอกำหนดผู้สอน')
-            ->assertDontSee('รอกำหนดกลุ่ม');
+            ->assertSee('รอกำหนดสถานที่')
+            ->assertSee('รอกำหนดกลุ่มนักศึกษา');
     }
 
     public function test_weekly_series_is_clamped_to_academic_year_dates(): void

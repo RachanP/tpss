@@ -95,7 +95,8 @@ class NavigationBadgePerformanceTest extends TestCase
                 'updated_at' => now(),
                 'has_scope' => true,
             ]);
-        $repository->shouldReceive('getCountForUser')
+        // badge นับ distinct schedule ที่ชน (ให้ตรงหน้าแจ้งเตือน) ไม่ใช่ row/edge
+        $repository->shouldReceive('getDistinctScheduleCountForUser')
             ->once()
             ->with($head->id, $year->id)
             ->andReturn(21);

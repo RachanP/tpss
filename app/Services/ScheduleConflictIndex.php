@@ -82,7 +82,9 @@ class ScheduleConflictIndex
 
     public function countForCoordinator(int $userId, ?int $academicYearId = null): int
     {
-        return $this->conflictsForCoordinator($userId, $academicYearId)['total'];
+        // นับ "schedule ที่ชน" แบบ distinct ให้ตรงกับ sidebar badge + หน้าแจ้งเตือน
+        // (['total'] = ผลรวม conflict edge ซึ่งนับซ้ำต่อ schedule)
+        return $this->conflictsForCoordinator($userId, $academicYearId)['schedules']->count();
     }
 
     /**
