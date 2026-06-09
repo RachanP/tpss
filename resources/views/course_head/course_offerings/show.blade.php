@@ -897,6 +897,7 @@
         showAll: false,
         loading: false,
         error: '',
+        warning: '',
         ddTop: 0, ddLeft: 0, ddWidth: 0,
         roleMenuId: null,
         storeUrl: '{{ $storeUrl }}',
@@ -920,6 +921,9 @@
         },
         _needsNote(status, data) {
             return status === 422 && data && data.errors && data.errors.note;
+        },
+        outsideDepartment(user) {
+            return Boolean(this.courseDeptId && user && Number(user.department_id) !== Number(this.courseDeptId));
         },
         async changeRole(userId, roleId, note = null) {
             this.loading = true; this.error = '';
@@ -963,7 +967,7 @@
             this.open = true;
         },
         async add(user, note = null) {
-            this.loading = true; this.error = '';
+            this.loading = true; this.error = ''; this.warning = '';
             try {
                 const r = await fetch(this.storeUrl, {
                     method: 'POST',
@@ -976,6 +980,7 @@
                     this.error = data.message ?? 'เกิดข้อผิดพลาด'; return;
                 }
                 this.pool.push(data);
+                if (data.warning) this.warning = data.warning;
                 this.search = ''; this.open = false;
             } catch { this.error = 'ไม่สามารถเชื่อมต่อได้'; }
             finally { this.loading = false; }
@@ -1094,6 +1099,7 @@
 
             {{-- Error message --}}
             <div x-show="error" x-text="error" style="background:var(--status-conflict-bg);border:1px solid var(--status-conflict-border);color:var(--status-conflict-fg);padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:14px;"></div>
+            <div x-show="warning" x-text="warning" style="background:var(--status-warning-bg);border:1px solid var(--status-warning-border);color:var(--status-warning-fg);padding:10px 14px;border-radius:6px;font-size:13px;font-weight:700;margin-bottom:14px;"></div>
 
             @if($canEdit)
             {{-- Combobox --}}
@@ -1159,6 +1165,7 @@
                                         <div style="font-weight:600;font-size:14px;" x-text="user.name"></div>
                                         <div style="font-size:12px;color:var(--fg-3);" x-text="user.department"></div>
                                     </div>
+                                    <span x-show="outsideDepartment(user)" x-cloak style="border:1px solid var(--status-warning-border);border-radius:999px;background:var(--status-warning-bg);color:var(--status-warning-fg);padding:2px 7px;font-size:10.5px;font-weight:800;white-space:nowrap;">ต่างภาค</span>
                                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.4;flex-shrink:0;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                                 </div>
                             </template>
@@ -1183,7 +1190,10 @@
                         </div>
                         <div style="flex:1;min-width:0;">
                             <div style="font-weight:600;font-size:14px;color:var(--fg-1);" x-text="user.name"></div>
-                            <div style="color:var(--fg-3);font-size:12px;margin-top:2px;" x-text="user.department"></div>
+                            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;color:var(--fg-3);font-size:12px;margin-top:2px;">
+                                <span x-text="user.department"></span>
+                                <span x-show="outsideDepartment(user)" x-cloak style="border:1px solid var(--status-warning-border);border-radius:999px;background:var(--status-warning-bg);color:var(--status-warning-fg);padding:1px 7px;font-size:10.5px;font-weight:800;">ต่างภาค</span>
+                            </div>
                         </div>
 
                         <div class="instructor-pool-actions">

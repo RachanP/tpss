@@ -286,16 +286,17 @@
             : 'oklch(58% 0.095 84)';
     };
     $eligibleScheduleInstructors = function ($offering) {
-        $departmentId = $offering?->course?->department_id;
         $pool = $offering?->instructorPool ?? collect();
 
-        if (! $departmentId) {
-            return $pool;
-        }
-
         return $pool
-            ->filter(fn ($instructor) => (int) $instructor->instructorProfile?->department_id === (int) $departmentId)
+            ->sortBy(fn ($instructor) => $instructor->formatted_name ?? $instructor->name)
             ->values();
+    };
+    $instructorDepartmentMismatch = function ($offering, $instructor) {
+        $departmentId = $offering?->course?->department_id;
+
+        return $departmentId
+            && (int) ($instructor?->instructorProfile?->department_id) !== (int) $departmentId;
     };
     $scheduleDepartmentInstructors = function ($schedule) use ($eligibleScheduleInstructors) {
         $eligibleIds = $eligibleScheduleInstructors($schedule?->courseOffering)
@@ -1666,12 +1667,59 @@
             font-weight: 650;
             line-height: 1.5;
         }
+        .copy-mode-seg {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 6px;
+            margin-bottom: 12px;
+            padding: 4px;
+            border: 1px solid var(--schedule-border);
+            border-radius: 10px;
+            background: oklch(97.5% 0.008 232);
+        }
+        .copy-mode-option {
+            min-height: 36px;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            background: transparent;
+            color: var(--fg-2);
+            cursor: pointer;
+            font: inherit;
+            font-size: 12.5px;
+            font-weight: 850;
+        }
+        .copy-mode-option:hover,
+        .copy-mode-option:focus-visible {
+            outline: none;
+            border-color: var(--schedule-border-strong);
+            background: var(--surface);
+        }
+        .copy-mode-option.is-active {
+            border-color: var(--brand-navy);
+            background: var(--brand-navy);
+            color: var(--surface);
+        }
         .copy-week-weeks {
             display: flex;
             align-items: stretch;
             gap: 12px;
             flex-wrap: wrap;
             margin-bottom: 16px;
+        }
+        .copy-date-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .copy-date-grid.is-range {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .copy-date-grid label {
+            display: flex;
+            min-width: 0;
+            flex-direction: column;
+            gap: 5px;
         }
         .copy-week-pill {
             flex: 1 1 200px;
@@ -1881,8 +1929,12 @@
                 padding-right: 14px;
             }
             .schedule-shell.is-course-head-schedule .schedule-copy-week-modal .copy-week-weeks {
-                grid-template-columns: 1fr;
                 gap: 10px;
+            }
+            .copy-mode-seg,
+            .copy-date-grid,
+            .copy-date-grid.is-range {
+                grid-template-columns: 1fr;
             }
             .schedule-shell.is-course-head-schedule .schedule-copy-week-modal .copy-week-arrow {
                 transform: rotate(90deg);
@@ -4605,6 +4657,12 @@
             grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 10px;
         }
+        .modal-choice-grid.is-scroll-list {
+            max-height: 360px;
+            overflow-y: auto;
+            padding-right: 4px;
+            scrollbar-gutter: stable;
+        }
         .schedule-group-empty {
             text-align: left;
             line-height: 1.55;
@@ -4669,6 +4727,34 @@
         .modal-choice:hover {
             border-color: var(--schedule-border-strong);
             background: oklch(96.5% 0.014 232);
+        }
+        .modal-choice.is-warning-choice {
+            border-color: var(--status-warning-border);
+            background: color-mix(in oklch, var(--status-warning-bg) 62%, var(--surface));
+        }
+        .modal-choice-main {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            line-height: 1.35;
+        }
+        .modal-choice-main small {
+            color: var(--fg-3);
+            font-size: 11px;
+            font-weight: 650;
+        }
+        .modal-choice-warning {
+            margin-left: auto;
+            align-self: flex-start;
+            border: 1px solid var(--status-warning-border);
+            border-radius: 999px;
+            background: var(--status-warning-bg);
+            color: var(--status-warning-fg);
+            padding: 2px 7px;
+            font-size: 10.5px;
+            font-weight: 900;
+            white-space: nowrap;
         }
         .modal-section {
             margin-top: 16px;
@@ -5463,6 +5549,12 @@
             copyWeekCurrent: @js(($weekStart ?? null) ? $weekStart->toDateString() : null),
             copyWeekSource: @js(($weekStart ?? null) ? $weekStart->subDays(7)->toDateString() : null),
             copyWeekTarget: @js(($weekStart ?? null) ? $weekStart->toDateString() : null),
+            copyMode: 'week',
+            copyDaySource: @js(($selectedScheduleDate ?? $weekStart ?? null) ? ($selectedScheduleDate ?? $weekStart)->subDays(7)->toDateString() : null),
+            copyDayTarget: @js(($selectedScheduleDate ?? $weekStart ?? null) ? ($selectedScheduleDate ?? $weekStart)->toDateString() : null),
+            copyRangeSourceStart: @js(($weekStart ?? null) ? $weekStart->subDays(7)->toDateString() : null),
+            copyRangeSourceEnd: @js(($weekStart ?? null) ? $weekStart->subDay()->toDateString() : null),
+            copyRangeTargetStart: @js(($weekStart ?? null) ? $weekStart->toDateString() : null),
             copyWeekPreview: null,
             copyWeekLoading: false,
             copyWeekError: '',
@@ -5648,7 +5740,18 @@
                 // มาที่ = สัปดาห์ที่กำลังดูอยู่ (มักเป็นสัปดาห์ว่าง), ดึงจาก = สัปดาห์ก่อนหน้าเป็น default
                 this.copyWeekTarget = this.copyWeekCurrent;
                 this.copyWeekSource = window.tpssShiftIso(this.copyWeekCurrent, -7);
+                this.copyDayTarget = this.copyWeekCurrent;
+                this.copyDaySource = window.tpssShiftIso(this.copyWeekCurrent, -7);
+                this.copyRangeTargetStart = this.copyWeekCurrent;
+                this.copyRangeSourceStart = window.tpssShiftIso(this.copyWeekCurrent, -7);
+                this.copyRangeSourceEnd = window.tpssShiftIso(this.copyWeekCurrent, -1);
                 this.copyWeekOpen = true;
+                this.$nextTick(() => this.refreshCopyWeekPreview());
+            },
+            setCopyMode(mode) {
+                this.copyMode = ['week', 'day', 'range'].includes(mode) ? mode : 'week';
+                this.copyWeekError = '';
+                this.copyWeekPreview = null;
                 this.$nextTick(() => this.refreshCopyWeekPreview());
             },
             isoCompare(a, b) {
@@ -5691,6 +5794,48 @@
                 this.copyWeekTarget = next;
                 this.refreshCopyWeekPreview();
             },
+            copyRangeTargetEnd() {
+                if (!this.copyRangeSourceStart || !this.copyRangeSourceEnd || !this.copyRangeTargetStart) return '';
+                const start = new Date(`${this.copyRangeSourceStart}T00:00:00`);
+                const end = new Date(`${this.copyRangeSourceEnd}T00:00:00`);
+                if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return '';
+                const diffDays = Math.round((end - start) / 86400000);
+                return window.tpssShiftIso(this.copyRangeTargetStart, diffDays);
+            },
+            copyRequestPayload() {
+                if (this.copyMode === 'day') {
+                    return {
+                        copy_mode: 'day',
+                        source_date: this.copyDaySource,
+                        target_date: this.copyDayTarget,
+                    };
+                }
+
+                if (this.copyMode === 'range') {
+                    return {
+                        copy_mode: 'range',
+                        source_start_date: this.copyRangeSourceStart,
+                        source_end_date: this.copyRangeSourceEnd,
+                        target_start_date: this.copyRangeTargetStart,
+                    };
+                }
+
+                return {
+                    copy_mode: 'week',
+                    source_week_start: this.copyWeekSource,
+                    target_week_start: this.copyWeekTarget,
+                };
+            },
+            canPreviewCopyRequest() {
+                const payload = this.copyRequestPayload();
+                if (this.copyMode === 'day') {
+                    return Boolean(payload.source_date && payload.target_date && payload.source_date !== payload.target_date);
+                }
+                if (this.copyMode === 'range') {
+                    return Boolean(payload.source_start_date && payload.source_end_date && payload.target_start_date && payload.source_end_date >= payload.source_start_date && payload.target_start_date !== payload.source_start_date);
+                }
+                return Boolean(payload.source_week_start && payload.target_week_start && payload.source_week_start !== payload.target_week_start);
+            },
             sameOriginUrl(value) {
                 if (!value) return null;
 
@@ -5714,7 +5859,10 @@
             },
             async refreshCopyWeekPreview() {
                 const url = this.sameOriginUrl(@js((! $isWorkspace && $courseOffering) ? route('maker.course_offerings.schedules.copy_week.preview', $courseOffering, false) : ''));
-                if (!url || !this.copyWeekSource || !this.copyWeekTarget) return;
+                if (!url || !this.canPreviewCopyRequest()) {
+                    this.copyWeekPreview = null;
+                    return;
+                }
                 this.copyWeekLoading = true;
                 this.copyWeekError = '';
                 try {
@@ -5722,7 +5870,7 @@
                         method: 'POST',
                         credentials: 'same-origin',
                         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': this.csrf },
-                        body: JSON.stringify({ source_week_start: this.copyWeekSource, target_week_start: this.copyWeekTarget }),
+                        body: JSON.stringify(this.copyRequestPayload()),
                     });
                     if (!res.ok) throw new Error('preview failed');
                     this.copyWeekPreview = await res.json();
@@ -8489,7 +8637,7 @@
                                 </div>
                                 <div>
                                     <label class="modal-label" for="activity_type_id">ประเภทกิจกรรม <span class="required-mark">*</span></label>
-                                    <select id="activity_type_id" name="activity_type_id" required class="modal-control tpss-choices">
+                                    <select id="activity_type_id" name="activity_type_id" required class="modal-control">
                                         <option value="">เลือกประเภทกิจกรรม</option>
                                         @foreach($activityTypes as $activityType)
                                             <option value="{{ $activityType->id }}" @selected((string) old('activity_type_id') === (string) $activityType->id)>
@@ -8555,18 +8703,28 @@
                                         @php
                                             $createInstructorOptions = $eligibleScheduleInstructors($offeringOption);
                                             $createInstructorSearchItems = $createInstructorOptions
-                                                ->map(fn ($instructor) => mb_strtolower($instructor->formatted_name ?? $instructor->name, 'UTF-8'))
+                                                ->map(fn ($instructor) => mb_strtolower(($instructor->formatted_name ?? $instructor->name) . ' ' . ($instructor->instructorProfile?->department?->name ?? ''), 'UTF-8'))
                                                 ->values();
                                         @endphp
                                         <input type="search" class="modal-choice-search" x-model="createInstructorSearch" placeholder="ค้นหาชื่อผู้สอน" aria-label="ค้นหาผู้สอน">
                                         <div class="modal-choice-grid">
                                             @foreach($createInstructorOptions as $instructor)
                                                 @php
-                                                    $instructorSearchText = mb_strtolower($instructor->formatted_name ?? $instructor->name, 'UTF-8');
+                                                    $isOutsideDepartment = $instructorDepartmentMismatch($offeringOption, $instructor);
+                                                    $instructorDepartment = $instructor->instructorProfile?->department?->name;
+                                                    $instructorSearchText = mb_strtolower(($instructor->formatted_name ?? $instructor->name) . ' ' . ($instructorDepartment ?? '') . ($isOutsideDepartment ? ' ต่างภาค' : ''), 'UTF-8');
                                                 @endphp
-                                                <label class="modal-choice" x-show="matchesCreateSearch(@js($instructorSearchText), createInstructorSearch)" x-cloak>
+                                                <label class="modal-choice {{ $isOutsideDepartment ? 'is-warning-choice' : '' }}" x-show="matchesCreateSearch(@js($instructorSearchText), createInstructorSearch)" x-cloak>
                                                     <input type="checkbox" name="instructor_ids[]" value="{{ $instructor->id }}" @checked(in_array((string) $instructor->id, $selectedInstructorIds, true)) :disabled="selectedOfferingId !== '{{ $offeringOption->id }}'" data-testid="schedule-instructor">
-                                                    <span>{{ $instructor->formatted_name ?? $instructor->name }}</span>
+                                                    <span class="modal-choice-main">
+                                                        <span>{{ $instructor->formatted_name ?? $instructor->name }}</span>
+                                                        @if($instructorDepartment)
+                                                            <small>{{ $instructorDepartment }}</small>
+                                                        @endif
+                                                    </span>
+                                                    @if($isOutsideDepartment)
+                                                        <span class="modal-choice-warning">ต่างภาค</span>
+                                                    @endif
                                                 </label>
                                             @endforeach
                                         </div>
@@ -8574,6 +8732,14 @@
                                     </div>
 
                                     <div class="modal-section" data-testid="schedule-group-selector">
+                                        @php
+                                            $createGroupOptions = $offeringOption->studentGroups
+                                                ->sortBy(fn ($group) => sprintf('%010d-%s', (int) preg_replace('/\D+/', '', (string) $group->group_code), (string) $group->group_code))
+                                                ->values();
+                                            $createGroupSearchItems = $createGroupOptions
+                                                ->map(fn ($group) => mb_strtolower($group->group_code . ' ' . $group->student_count . ' คน', 'UTF-8'))
+                                                ->values();
+                                        @endphp
                                         <div class="modal-section-title">กลุ่มนักศึกษา <span class="required-mark">*</span></div>
                                         <template x-if="liveIssue('student_group_ids').length">
                                             <div class="field-live-error" data-testid="live-error-student-group-ids">
@@ -8589,6 +8755,7 @@
                                             </div>
                                         @endif
                                         @if($offeringOption->studentGroups->isNotEmpty())
+                                            <input type="search" class="modal-choice-search" x-model="createGroupSearch" placeholder="ค้นหารหัสกลุ่มนักศึกษา" aria-label="ค้นหากลุ่มนักศึกษา">
                                             <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
                                                 @if((int) $offeringOption->coordinator_id === (int) auth()->id())
                                                     <a href="{{ $scheduleGroupManageUrl($offeringOption) }}" class="schedule-group-manage-mini" data-testid="schedule-manage-groups-link">จัดการกลุ่มในหน้ารายวิชา</a>
@@ -8600,9 +8767,12 @@
                                                     data-testid="schedule-groups-select-all">เลือกทุกกลุ่ม</button>
                                             </div>
                                         @endif
-                                        <div class="modal-choice-grid">
-                                            @foreach($offeringOption->studentGroups as $group)
-                                                <label class="modal-choice">
+                                        <div class="modal-choice-grid is-scroll-list">
+                                            @foreach($createGroupOptions as $group)
+                                                @php
+                                                    $groupSearchText = mb_strtolower($group->group_code . ' ' . $group->student_count . ' คน', 'UTF-8');
+                                                @endphp
+                                                <label class="modal-choice" x-show="matchesCreateSearch(@js($groupSearchText), createGroupSearch)" x-cloak>
                                                     <input type="checkbox" name="student_group_ids[]" value="{{ $group->id }}"
                                                         @checked(in_array((string) $group->id, $selectedGroupIds, true))
                                                         :disabled="selectedOfferingId !== '{{ $offeringOption->id }}'"
@@ -8615,6 +8785,7 @@
                                                 </label>
                                             @endforeach
                                         </div>
+                                        <div class="modal-choice-empty" x-show="hasCreateSearch(createGroupSearch) && !hasCreateSearchMatches(@js($createGroupSearchItems), createGroupSearch)" x-cloak>ไม่พบกลุ่มที่ค้นหา</div>
                                     </div>
                                 </div>
                             @endforeach
@@ -8640,8 +8811,14 @@
             <form method="POST" action="{{ route('maker.course_offerings.schedules.copy_week', $courseOffering) }}" x-ref="copyWeekForm" style="display:none;">
                 @csrf
                 <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
+                <input type="hidden" name="copy_mode" :value="copyMode">
                 <input type="hidden" name="source_week_start" :value="copyWeekSource">
                 <input type="hidden" name="target_week_start" :value="copyWeekTarget">
+                <input type="hidden" name="source_date" :value="copyDaySource">
+                <input type="hidden" name="target_date" :value="copyDayTarget">
+                <input type="hidden" name="source_start_date" :value="copyRangeSourceStart">
+                <input type="hidden" name="source_end_date" :value="copyRangeSourceEnd">
+                <input type="hidden" name="target_start_date" :value="copyRangeTargetStart">
             </form>
 
             <div class="schedule-modal-backdrop schedule-copy-week-backdrop" x-show="copyWeekOpen" x-cloak @click.self="copyWeekOpen = false" @keydown.escape.window="copyWeekOpen = false" data-testid="schedule-copy-week-modal">
@@ -8649,13 +8826,19 @@
                     <div class="modal-handle"></div>
                     <div class="modal-head">
                         <div>
-                            <div class="modal-title" id="copy-week-title">คัดลอกกิจกรรมจากสัปดาห์อื่น</div>
-                            <div class="copy-week-subtitle">ดึงกิจกรรมจากสัปดาห์ที่จัดไว้แล้วมาลงสัปดาห์นี้ หากมีรายการชน ระบบจะข้ามเฉพาะรายการนั้น</div>
+                            <div class="modal-title" id="copy-week-title">คัดลอกกิจกรรม</div>
+                            <div class="copy-week-subtitle">ดึงกิจกรรมจากวัน สัปดาห์ หรือช่วงวันที่ที่จัดไว้แล้ว หากมีรายการชน ระบบจะข้ามเฉพาะรายการนั้น</div>
                         </div>
                         <button type="button" class="modal-close" @click="copyWeekOpen = false" aria-label="ปิด">×</button>
                     </div>
                     <div class="modal-form-body">
-                        <div class="copy-week-weeks">
+                        <div class="copy-mode-seg" role="group" aria-label="รูปแบบการคัดลอก">
+                            <button type="button" class="copy-mode-option" :class="{ 'is-active': copyMode === 'week' }" @click="setCopyMode('week')">รายสัปดาห์</button>
+                            <button type="button" class="copy-mode-option" :class="{ 'is-active': copyMode === 'day' }" @click="setCopyMode('day')">รายวัน</button>
+                            <button type="button" class="copy-mode-option" :class="{ 'is-active': copyMode === 'range' }" @click="setCopyMode('range')">ช่วงวันที่</button>
+                        </div>
+
+                        <div class="copy-week-weeks" x-show="copyMode === 'week'" x-cloak>
                             <div class="copy-week-pill">
                                 <span class="copy-week-pill-label">ดึงจากสัปดาห์</span>
                                 <span class="copy-week-target-control">
@@ -8673,6 +8856,33 @@
                                     <button type="button" class="copy-week-step" @click="shiftCopyWeekTarget(1)" :disabled="!canShiftCopyWeek('target', 1)" aria-label="สัปดาห์ถัดไป">›</button>
                                 </span>
                             </div>
+                        </div>
+
+                        <div class="copy-date-grid" x-show="copyMode === 'day'" x-cloak>
+                            <label>
+                                <span class="copy-week-pill-label">ดึงจากวันที่</span>
+                                <input type="date" class="modal-control" x-model="copyDaySource" @change="refreshCopyWeekPreview()">
+                            </label>
+                            <label>
+                                <span class="copy-week-pill-label">ไปยังวันที่</span>
+                                <input type="date" class="modal-control" x-model="copyDayTarget" @change="refreshCopyWeekPreview()">
+                            </label>
+                        </div>
+
+                        <div class="copy-date-grid is-range" x-show="copyMode === 'range'" x-cloak>
+                            <label>
+                                <span class="copy-week-pill-label">ช่วงต้นทาง เริ่ม</span>
+                                <input type="date" class="modal-control" x-model="copyRangeSourceStart" @change="refreshCopyWeekPreview()">
+                            </label>
+                            <label>
+                                <span class="copy-week-pill-label">ช่วงต้นทาง สิ้นสุด</span>
+                                <input type="date" class="modal-control" x-model="copyRangeSourceEnd" @change="refreshCopyWeekPreview()">
+                            </label>
+                            <label>
+                                <span class="copy-week-pill-label">ช่วงปลายทาง เริ่ม</span>
+                                <input type="date" class="modal-control" x-model="copyRangeTargetStart" @change="refreshCopyWeekPreview()">
+                            </label>
+                            <div class="copy-week-status" x-show="copyRangeTargetEnd()" x-text="'ช่วงปลายทางจะสิ้นสุดวันที่ ' + copyRangeTargetEnd()"></div>
                         </div>
 
                         <div class="copy-week-status" x-show="copyWeekLoading">กำลังตรวจสอบการชน…</div>
@@ -8826,6 +9036,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ── Custom time-picker engine ───────────────────────────────────────────
     var _openDrop = null; // currently open .tp-drop
+    var _lastDropOpenedAt = 0;
 
     function centerTimeItem(selected, behavior) {
         if (!selected) return;
@@ -8891,6 +9102,7 @@ document.addEventListener('DOMContentLoaded', function () {
         drop.style.top  = (rect.bottom + 2) + 'px';
         drop.style.minWidth = Math.max(rect.width, 64) + 'px';
         drop.classList.add('tp-open');
+        _lastDropOpenedAt = Date.now();
         drop.querySelectorAll('.tp-col').forEach(bindCyclicTimeColumn);
 
         // align selected hour and minute with the center guide frame.
@@ -9030,6 +9242,35 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // Delegated fallback keeps hidden/dynamically revealed modal pickers clickable even
+    // if they missed the per-picker initializer.
+    document.addEventListener('click', function(e) {
+        var item = e.target.closest('.tp-hour-item, .tp-min-item');
+        if (item) {
+            var itemDrop = item.closest('.tp-drop');
+            var itemPicker = itemDrop ? itemDrop.closest('.time-picker') : null;
+            if (itemDrop && itemPicker) {
+                e.stopPropagation();
+                selectTimePart(item, item.classList.contains('tp-hour-item') ? 'hour' : 'min', itemPicker, itemDrop);
+                return;
+            }
+        }
+
+        var picker = e.target.closest('.time-picker');
+        if (picker) {
+            var drop = picker.querySelector('.tp-drop');
+            if (drop) {
+                e.stopPropagation();
+                if (drop.classList.contains('tp-open')) {
+                    if (!drop.contains(e.target)) closeDrop(drop);
+                } else {
+                    openDrop(drop, picker);
+                }
+                return;
+            }
+        }
+    });
+
     // close on outside click or scroll
     document.addEventListener('click', function(e) {
         if (_openDrop && !_openDrop.contains(e.target) && !e.target.closest('.time-picker')) {
@@ -9037,6 +9278,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
     document.addEventListener('scroll', function(e) {
+        if (_openDrop && Date.now() - _lastDropOpenedAt < 180) {
+            return;
+        }
         if (_openDrop && !_openDrop.contains(e.target)) {
             closeDrop(_openDrop);
         }

@@ -86,6 +86,29 @@ class CourseOfferingShowPageTest extends TestCase
         ]);
     }
 
+    public function test_store_instructor_allows_cross_department_json_with_warning(): void
+    {
+        $head       = $this->makeUser('course_head');
+        $instructor = $this->makeUser('instructor');
+        $instructor->instructorProfile()->update([
+            'department_id' => Department::create(['name' => 'Show Outside Dept'])->id,
+        ]);
+        $instructor->refresh();
+        $offering = $this->makeOffering($head);
+
+        $this->actingAsCourseHead($head);
+
+        $this->postJson(route('maker.course_offerings.instructors.store', $offering), [
+            'user_id' => $instructor->id,
+        ])->assertOk()
+            ->assertJsonPath('warning', 'อาจารย์คนนี้อยู่ต่างภาควิชาของรายวิชา ระบบอนุญาตให้เพิ่มได้และจะแสดงเป็นข้อเตือน');
+
+        $this->assertDatabaseHas('course_offering_instructors', [
+            'course_offering_id' => $offering->id,
+            'user_id' => $instructor->id,
+        ]);
+    }
+
     public function test_store_instructor_returns_422_json_on_validation_failure(): void
     {
         $head       = $this->makeUser('course_head');

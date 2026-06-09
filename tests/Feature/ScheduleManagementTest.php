@@ -272,6 +272,9 @@ class ScheduleManagementTest extends TestCase
         $this->assertStringContainsString('data-lazy-schedule-modal="' . $weekTwo->id . '"', $response->json('modal_html'));
         $this->assertStringContainsString('data-testid="schedule-series-edit-modal"', $response->json('modal_html'));
         $this->assertStringContainsString('series_edit_weekday_' . $weekTwo->id, $response->json('modal_html'));
+        $this->assertStringContainsString('data-tp-hidden="series_edit_start_time_' . $weekTwo->id . '"', $response->json('modal_html'));
+        $this->assertStringContainsString('data-tp-hidden="series_edit_end_time_' . $weekTwo->id . '"', $response->json('modal_html'));
+        $this->assertStringNotContainsString('type="time"', $response->json('modal_html'));
     }
 
     public function test_month_view_initial_dom_includes_modals_for_visible_month_schedules(): void
@@ -877,6 +880,54 @@ class ScheduleManagementTest extends TestCase
             ->assertSessionHasNoErrors();
     }
 
+    public function test_schedule_update_from_alert_deep_link_returns_to_alerts_after_update(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $schedule = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group]);
+
+        $this->actingAsCourseHead($head);
+
+        $payload = $this->schedulePayload($instructor, $group, $activityType, $room, [
+            'topic' => 'Resolved from alert deep link',
+            'return_url' => route('maker.course_offerings.schedules.index', [
+                $offering,
+                'edit_schedule_id' => $schedule->id,
+                'week_start' => '2026-08-03',
+                'return_url' => route('maker.alerts.index'),
+            ]),
+        ]);
+
+        $this->put(route('maker.course_offerings.schedules.update', [$offering, $schedule]), $payload)
+            ->assertRedirect(route('maker.alerts.index'))
+            ->assertSessionHasNoErrors();
+    }
+
+    public function test_schedule_update_clears_deep_link_query_after_successful_update(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $schedule = $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group]);
+
+        $this->actingAsCourseHead($head);
+
+        $payload = $this->schedulePayload($instructor, $group, $activityType, $room, [
+            'topic' => 'Updated without reopening modal',
+            'return_url' => route('maker.course_offerings.schedules.index', [
+                $offering,
+                'edit_schedule_id' => $schedule->id,
+                'focus_schedule_id' => $schedule->id,
+                'week_start' => '2026-08-03',
+                'modal' => 'create',
+            ]),
+        ]);
+
+        $this->put(route('maker.course_offerings.schedules.update', [$offering, $schedule]), $payload)
+            ->assertRedirect(route('maker.course_offerings.schedules.index', [
+                $offering,
+                'week_start' => '2026-08-03',
+            ]))
+            ->assertSessionHasNoErrors();
+    }
+
     public function test_schedule_update_ignores_week_fragment_return_url(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
@@ -1220,7 +1271,7 @@ class ScheduleManagementTest extends TestCase
         $this->assertDatabaseCount('schedules', 0);
     }
 
-    public function test_schedule_form_excludes_and_rejects_instructors_from_other_departments(): void
+    public function test_schedule_form_allows_instructors_from_other_departments_with_warning(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
         $outsideInstructor = $this->makeUser('instructor');
@@ -1235,15 +1286,18 @@ class ScheduleManagementTest extends TestCase
         $this->get(route('maker.course_offerings.schedules.index', [$offering, 'modal' => 'create']))
             ->assertOk()
             ->assertSee($instructor->name)
-            ->assertDontSee($outsideInstructor->name);
+            ->assertSee($outsideInstructor->name)
+            ->assertSee('ต่างภาค');
 
         $this->post(route('maker.course_offerings.schedules.store', $offering), $this->schedulePayload($outsideInstructor, $group, $activityType, $room))
-            ->assertSessionHasErrors('instructor_ids');
+            ->assertRedirect()
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('schedule_conflict_warning');
 
-        $this->assertDatabaseCount('schedules', 0);
+        $this->assertDatabaseCount('schedules', 1);
     }
 
-    public function test_schedule_page_hides_existing_schedule_instructors_from_other_departments(): void
+    public function test_schedule_page_shows_existing_schedule_instructors_from_other_departments(): void
     {
         [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
         $outsideInstructor = $this->makeUser('instructor');
@@ -1259,7 +1313,38 @@ class ScheduleManagementTest extends TestCase
         $this->get(route('maker.course_offerings.schedules.index', $offering))
             ->assertOk()
             ->assertSee($instructor->name)
-            ->assertDontSee($outsideInstructor->name);
+            ->assertSee($outsideInstructor->name);
+    }
+
+    public function test_check_conflicts_warns_for_instructors_from_other_departments(): void
+    {
+        [$head, $offering, , $group, $activityType, $room] = $this->makeReadyOffering();
+        $outsideInstructor = $this->makeUser('instructor');
+        $outsideInstructor->instructorProfile()->update([
+            'department_id' => Department::create(['name' => 'Outside Live Warning Department'])->id,
+        ]);
+        $outsideInstructor->refresh();
+        $offering->instructorPool()->attach($outsideInstructor->id, ['role_in_course' => 'instructor']);
+
+        $this->actingAsCourseHead($head);
+
+        $response = $this->postJson(route('maker.course_offerings.schedules.check_conflicts', $offering), [
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-07',
+            'start_time' => '08:00',
+            'end_time' => '10:00',
+            'activity_type_id' => $activityType->id,
+            'room_id' => $room->id,
+            'instructor_ids' => [$outsideInstructor->id],
+            'lead_instructor_id' => $outsideInstructor->id,
+            'student_group_ids' => [$group->id],
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('blocking', false);
+
+        $this->assertSame([], $response->json('fields'));
+        $this->assertNotEmpty($response->json('warnings.instructor_ids'));
     }
 
     public function test_schedule_index_filters_by_instructor(): void
@@ -1453,6 +1538,68 @@ class ScheduleManagementTest extends TestCase
             'start_date' => '2026-08-10',
             'topic' => 'WeekOneActivity',
             'status' => 'draft',
+        ]);
+    }
+
+    public function test_course_head_can_copy_single_day_into_empty_target_day(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'start_date' => '2026-08-05',
+            'end_date' => '2026-08-05',
+            'topic' => 'DayCopyActivity',
+        ]);
+
+        $this->actingAsCourseHead($head);
+
+        $this->post(route('maker.course_offerings.schedules.copy_week', $offering), [
+            'copy_mode' => 'day',
+            'source_date' => '2026-08-05',
+            'target_date' => '2026-08-12',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('schedules', [
+            'course_offering_id' => $offering->id,
+            'start_date' => '2026-08-12',
+            'end_date' => '2026-08-12',
+            'topic' => 'DayCopyActivity',
+        ]);
+    }
+
+    public function test_course_head_can_copy_custom_date_range_into_empty_target_range(): void
+    {
+        [$head, $offering, $instructor, $group, $activityType, $room] = $this->makeReadyOffering();
+        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-03',
+            'topic' => 'RangeCopyDayOne',
+        ]);
+        $this->makeSchedule($offering, $activityType, $room, [$instructor], [$group], [
+            'start_date' => '2026-08-04',
+            'end_date' => '2026-08-04',
+            'start_time' => '10:00',
+            'end_time' => '12:00',
+            'topic' => 'RangeCopyDayTwo',
+        ]);
+
+        $this->actingAsCourseHead($head);
+
+        $this->post(route('maker.course_offerings.schedules.copy_week', $offering), [
+            'copy_mode' => 'range',
+            'source_start_date' => '2026-08-03',
+            'source_end_date' => '2026-08-04',
+            'target_start_date' => '2026-08-17',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('schedules', [
+            'course_offering_id' => $offering->id,
+            'start_date' => '2026-08-17',
+            'topic' => 'RangeCopyDayOne',
+        ]);
+        $this->assertDatabaseHas('schedules', [
+            'course_offering_id' => $offering->id,
+            'start_date' => '2026-08-18',
+            'topic' => 'RangeCopyDayTwo',
         ]);
     }
 
