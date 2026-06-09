@@ -19,10 +19,9 @@ test.describe('Settings: academic calendar layout', () => {
     await login(page, 'admin_01');
     await page.goto('/admin/settings?tab=academic', { waitUntil: 'domcontentloaded' });
 
-    // การ์ดปฏิทินกลาง (บน): มี dropdown เลือกปี + ปุ่มแก้/กำหนดเทอม
+    // การ์ดปฏิทินกลาง (บน): อิงปีปัจจุบัน (label + badge) ไม่มี dropdown เลือกปี + ปุ่มแก้/กำหนดเทอม
     await expect(page.getByText('ปฏิทินกลางของคณะ').first()).toBeVisible({ timeout: 3000 });
-    const yearSelect = page.locator('select').filter({ has: page.locator('option') }).first();
-    await expect(yearSelect).toBeVisible();
+    await expect(page.getByText('ปัจจุบัน').first()).toBeVisible();
     await page.getByRole('button', { name: /^(แก้ไขปฏิทินกลาง|กำหนดเทอม)$/ }).click();
     await expect(page.locator('.modal-center').getByText('ปฏิทินกลางของคณะ')).toBeVisible();
     await expect(page.locator('.modal-center').getByText('วันเริ่มเทอม').first()).toBeVisible();

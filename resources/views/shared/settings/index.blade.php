@@ -2,9 +2,8 @@
     @php
         $canManageHolidays = $canManageHolidays ?? in_array($routePrefix ?? null, ['admin', 'staff'], true);
 
-        // ปีเริ่มต้นของ section "ปฏิทินแยกตามหลักสูตร/ชั้นปี" (override) = ปีปัจจุบัน หรือปีแรก
-        $calDefaultYearId = optional(($academicYears ?? collect())->firstWhere('is_active', true)
-            ?? ($academicYears ?? collect())->first())->id;
+        // ปฏิทินอิง "ปีการศึกษาปัจจุบัน" (active) เสมอ — ไม่มี dropdown ให้เลือกปีซ้ำ
+        $calDefaultYearId = optional(($academicYears ?? collect())->firstWhere('is_active', true))->id;
 
         // เปิด modal ปฏิทินค้างไว้หลัง save/error/delete (flash จาก controller)
         $calReopenPayload = null;
@@ -565,16 +564,17 @@
                     </div>
                 </div>
                 <div style="padding:16px 20px 18px;">
-                    <div style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;">
-                        <div class="form-group" style="margin:0;min-width:220px;flex:1;">
-                            <label>ปีการศึกษา</label>
-                            <select x-model="calOverrideYear" @change="selectOverrideYear($event.target.value)">
-                                <template x-for="y in calYearOptions" :key="y.id">
-                                    <option :value="y.id" x-text="y.name"></option>
-                                </template>
-                            </select>
+                    {{-- ยังไม่มีปีปัจจุบัน → ให้ตั้งก่อน --}}
+                    <template x-if="!calYearName">
+                        <div style="font-size:12px;color:var(--fg-3);padding:14px;text-align:center;background:var(--surface-sunken);border-radius:8px;">ยังไม่มีปีการศึกษาปัจจุบัน — ตั้งปีปัจจุบันที่ตารางด้านบนก่อน จึงจะกำหนดปฏิทินได้</div>
+                    </template>
+                    <div x-show="calYearName" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                        <div style="display:flex;align-items:center;gap:9px;min-width:0;">
+                            <span style="font-size:13px;color:var(--fg-2);">ปีการศึกษา</span>
+                            <span style="font-weight:800;font-size:17px;color:var(--brand-navy);font-family:var(--font-display);" x-text="calYearName"></span>
+                            <span class="badge badge-primary" style="font-size:10px;">ปัจจุบัน</span>
                         </div>
-                        <div style="display:flex;align-items:center;gap:12px;padding-bottom:6px;">
+                        <div style="display:flex;align-items:center;gap:12px;">
                             <span x-show="centralHasTerms()" style="font-size:11px;font-weight:700;color:var(--status-success-fg);white-space:nowrap;">ตั้งค่าแล้ว</span>
                             <span x-show="!centralHasTerms()" x-cloak style="font-size:11px;font-weight:700;color:var(--status-warning-fg, #a87600);white-space:nowrap;">ยังไม่ได้กำหนดเทอม</span>
                             <button type="button" class="btn btn-primary" style="font-size:13px;white-space:nowrap;"
@@ -599,10 +599,13 @@
                     </div>
                 </div>
                 <div style="padding:16px 20px 18px;">
-                    <template x-if="!calCurriculums.length">
+                    <template x-if="!calYearName">
+                        <div style="font-size:12px;color:var(--fg-3);padding:16px;text-align:center;background:var(--surface-sunken);border-radius:8px;">ตั้งปีการศึกษาปัจจุบันก่อน จึงจะตั้งปฏิทินแยกได้</div>
+                    </template>
+                    <template x-if="calYearName && !calCurriculums.length">
                         <div style="font-size:12px;color:var(--fg-3);padding:16px;text-align:center;background:var(--surface-sunken);border-radius:8px;">ยังไม่มีหลักสูตรใน Master Data — เพิ่มหลักสูตรก่อนจึงตั้งปฏิทินแยกได้</div>
                     </template>
-                    <div x-show="calCurriculums.length" style="border:1px solid var(--border);border-radius:9px;overflow:hidden;background:var(--surface);">
+                    <div x-show="calYearName && calCurriculums.length" style="border:1px solid var(--border);border-radius:9px;overflow:hidden;background:var(--surface);">
                         <template x-for="row in calRows()" :key="row.key">
                             <div>
                                 {{-- หัวกลุ่มหลักสูตร = ปฏิทิน "ทั้งหลักสูตร (ทุกชั้นปี)" · กดชื่อ=กางชั้นปี · ปุ่ม=แก้ทุกชั้นปี --}}
