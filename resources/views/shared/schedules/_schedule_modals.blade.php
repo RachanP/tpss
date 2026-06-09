@@ -305,7 +305,7 @@
                                     @endif
 
                                     <div class="modal-form-grid">
-                                        <div>
+                                        <div class="modal-field-full">
                                             <label class="modal-label" for="series_edit_weekday_{{ $schedule->id }}">วันในสัปดาห์ <span class="required-mark">*</span></label>
                                             <select id="series_edit_weekday_{{ $schedule->id }}" name="weekday" required class="modal-control">
                                                 @foreach($thaiDays as $dayIso => $dayName)
@@ -407,7 +407,7 @@
                                                 <span class="time-unit">น.</span>
                                             </div>
                                         </div>
-                                        <div>
+                                        <div class="modal-field-full">
                                             <label class="modal-label" for="series_edit_activity_type_id_{{ $schedule->id }}">ประเภทกิจกรรม <span class="required-mark">*</span></label>
                                             <select id="series_edit_activity_type_id_{{ $schedule->id }}" name="activity_type_id" required class="modal-control">
                                                 @foreach($activityTypes as $activityType)
