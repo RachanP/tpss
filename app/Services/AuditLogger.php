@@ -149,18 +149,15 @@ class AuditLogger
     }
 
     /**
-     * Sanitize an array — replace MASKED_FIELDS values with '[REDACTED]'.
+     * Sanitize an array — replace MASKED_FIELDS values with '[REDACTED]'
+     * at any depth (รวม nested array เช่น context หรือ new_values.user.password).
      */
     public static function sanitize(?array $data): ?array
     {
         if ($data === null) return null;
 
-        foreach (self::MASKED_FIELDS as $field) {
-            if (array_key_exists($field, $data)) {
-                $data[$field] = '[REDACTED]';
-            }
-        }
-        return $data;
+        $masked = [];
+        return self::maskRecursive($data, $masked);
     }
 
     /**
@@ -173,13 +170,32 @@ class AuditLogger
         if ($data === null) return [null, []];
 
         $masked = [];
-        foreach (self::MASKED_FIELDS as $field) {
-            if (array_key_exists($field, $data)) {
-                $data[$field] = '[REDACTED]';
-                $masked[]     = $field;
+        $clean  = self::maskRecursive($data, $masked);
+
+        return [$clean, array_values(array_unique($masked))];
+    }
+
+    /**
+     * เดินทุกระดับของ array — มาสก์ค่าของ key ที่อยู่ใน MASKED_FIELDS ไม่ว่าจะลึกแค่ไหน
+     * และเก็บรายชื่อ field ที่ถูกมาสก์ไว้ใน $masked (by-ref)
+     *
+     * @param string[] $masked
+     */
+    private static function maskRecursive(array $data, array &$masked): array
+    {
+        foreach ($data as $key => $value) {
+            if (is_string($key) && in_array($key, self::MASKED_FIELDS, true)) {
+                $data[$key] = '[REDACTED]';
+                $masked[]   = $key;
+                continue;
+            }
+
+            if (is_array($value)) {
+                $data[$key] = self::maskRecursive($value, $masked);
             }
         }
-        return [$data, $masked];
+
+        return $data;
     }
 
     /**

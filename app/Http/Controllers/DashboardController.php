@@ -13,6 +13,7 @@ use App\Models\Room;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Models\UserRole;
+use App\Services\AuditLogger;
 use App\Services\ScheduleConflictReadRepository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -195,7 +196,21 @@ class DashboardController extends Controller
             ->exists();
 
         if ($hasRole) {
+            $previousRole = $request->session()->get('active_role');
             $request->session()->put('active_role', $request->role);
+
+            // 8.3: บันทึกประวัติการสลับบทบาท (ใคร/จากบทบาทใด/เป็นบทบาทใด)
+            if ($previousRole !== $request->role) {
+                AuditLogger::log(
+                    action: 'ระบบ.เปลี่ยนบทบาท',
+                    table: 'users',
+                    recordId: $user->id,
+                    oldValues: ['active_role' => $previousRole],
+                    newValues: ['active_role' => $request->role],
+                    category: 'ระบบ',
+                    description: "เปลี่ยนบทบาท: {$user->name} ({$previousRole} → {$request->role})",
+                );
+            }
         }
 
         return redirect()->route('dashboard');
