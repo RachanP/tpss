@@ -37,7 +37,7 @@
     @endphp
 
     <div class="workload-page" x-data="{
-        paOpen: @js($errors->any()),
+        paOpen: true,
         values: @js($initialValues),
         paFields: @js(collect($fieldLabels)->map(fn ($meta, $field) => ['field' => $field, 'title' => $meta['title'], 'short' => $meta['short'], 'color' => $meta['color']])->values()),
         quotaBase: @js((float) ($quotaBase ?? 0)),
@@ -117,6 +117,95 @@
                 <p>ต้องมีปีการศึกษาในระบบก่อนจึงจะดูภาระงานสอนและกรอกสัดส่วน PA ได้</p>
             </div>
         @else
+            {{-- กรอกสัดส่วน PA ก่อน (action หลัก) → เลื่อนลงดูภาพรวมภาระงานที่คำนวณจากสัดส่วนนี้ --}}
+            <section class="workload-pa-panel" data-testid="pa-form">
+                <button type="button" class="workload-pa-toggle" @click="paOpen = !paOpen" :aria-expanded="paOpen.toString()">
+                    <span>
+                        <strong>ตั้งค่าสัดส่วน PA</strong>
+                        <small>ใช้คำนวณเกณฑ์ชั่วโมงสอน ไม่ใช่รายละเอียดคาบสอนที่ได้รับมอบหมาย</small>
+                    </span>
+                    <span class="workload-total" :class="{ 'is-complete': total() === 100, 'is-invalid': total() !== 100 }" data-testid="pa-total">
+                        <span x-text="total()"></span>%
+                    </span>
+                </button>
+
+                <div class="workload-pa-body" x-show="paOpen" x-collapse>
+                    <form method="POST" action="{{ route('lecturer.pa.update') }}" class="workload-form">
+                        @csrf
+                        @method('PUT')
+
+                        <div class="workload-form-meta">
+                            <div>
+                                <span>บันทึกล่าสุด</span>
+                                <strong data-testid="pa-submitted-at">{{ $allocation?->submitted_at ? $allocation->submitted_at->format('d/m/Y H:i') : 'ยังไม่เคยบันทึก' }}</strong>
+                            </div>
+                            <div>
+                                <span>เกณฑ์ตำแหน่ง</span>
+                                <strong>{{ $criteriaGroup ?? '-' }}</strong>
+                            </div>
+                        </div>
+
+                        <div class="workload-pa-editor">
+                            <div class="workload-fields">
+                                @foreach($fieldLabels as $field => $meta)
+                                    @php $rule = $paRules[$meta['key']] ?? null; @endphp
+                                    <label class="workload-field" style="--pa-color: {{ $meta['color'] }}">
+                                        <span class="workload-field-title">
+                                            <i aria-hidden="true"></i>
+                                            <span>
+                                                <strong>{{ $meta['title'] }}</strong>
+                                                <small>เกณฑ์ {{ $formatRule($rule) }}</small>
+                                            </span>
+                                        </span>
+                                        <span class="workload-input">
+                                            <input
+                                                type="number"
+                                                name="{{ $field }}"
+                                                min="0"
+                                                max="100"
+                                                step="1"
+                                                required
+                                                x-model.number="values.{{ $field }}"
+                                                data-testid="pa-{{ str_replace('_', '-', $field) }}"
+                                            >
+                                            <em>%</em>
+                                        </span>
+                                    </label>
+                                @endforeach
+                            </div>
+
+                            <aside class="workload-pa-chart" aria-label="สัดส่วนภาระงาน PA">
+                                {{-- donut: สัดส่วน 5 ด้านรวมเป็น 100% (conic-gradient) แยกสีต่อด้าน + รูตรงกลางโชว์ % รวม --}}
+                                <div class="workload-donut" :style="{ background: donutStyle() }">
+                                    <div class="workload-donut-center" :class="{ 'is-complete': total() === 100, 'is-invalid': total() !== 100 }">
+                                        <span>รวม</span>
+                                        <strong x-text="total() + '%'"></strong>
+                                    </div>
+                                </div>
+                                <div class="workload-pa-status" :class="{ 'is-complete': total() === 100, 'is-invalid': total() !== 100 }">
+                                    <span>ผลรวมสัดส่วน PA</span>
+                                    <strong x-text="total() + '%'"></strong>
+                                    <em x-text="total() === 100 ? 'พร้อมบันทึก' : (total() < 100 ? 'ยังขาด ' + (100 - total()) + '%' : 'เกิน ' + (total() - 100) + '%')"></em>
+                                    <span>ผลรวมสัดส่วน PA ต้องเท่ากับ 100%</span>
+                                </div>
+                                <div class="workload-pa-legend">
+                                    @foreach($fieldLabels as $field => $meta)
+                                        <div style="--pa-color: {{ $meta['color'] }}">
+                                            <span><i aria-hidden="true"></i>{{ $meta['title'] }}</span>
+                                            <strong x-text="valueFor('{{ $field }}') + '%'"></strong>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </aside>
+                        </div>
+
+                        <div class="workload-actions">
+                            <button type="submit" class="btn btn-primary" data-testid="pa-submit">บันทึก PA</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
             <section class="workload-overview" aria-label="ภาพรวมภาระงานสอน">
                 <div class="workload-overview-chart">
                     <div class="workload-chart-head">
@@ -334,94 +423,6 @@
                         </table>
                     </div>
                 @endif
-            </section>
-
-            <section class="workload-pa-panel" data-testid="pa-form">
-                <button type="button" class="workload-pa-toggle" @click="paOpen = !paOpen" :aria-expanded="paOpen.toString()">
-                    <span>
-                        <strong>ตั้งค่าสัดส่วน PA</strong>
-                        <small>ใช้คำนวณเกณฑ์ชั่วโมงสอน ไม่ใช่รายละเอียดคาบสอนที่ได้รับมอบหมาย</small>
-                    </span>
-                    <span class="workload-total" :class="{ 'is-complete': total() === 100, 'is-invalid': total() !== 100 }" data-testid="pa-total">
-                        <span x-text="total()"></span>%
-                    </span>
-                </button>
-
-                <div class="workload-pa-body" x-show="paOpen" x-collapse>
-                    <form method="POST" action="{{ route('lecturer.pa.update') }}" class="workload-form">
-                        @csrf
-                        @method('PUT')
-
-                        <div class="workload-form-meta">
-                            <div>
-                                <span>บันทึกล่าสุด</span>
-                                <strong data-testid="pa-submitted-at">{{ $allocation?->submitted_at ? $allocation->submitted_at->format('d/m/Y H:i') : 'ยังไม่เคยบันทึก' }}</strong>
-                            </div>
-                            <div>
-                                <span>เกณฑ์ตำแหน่ง</span>
-                                <strong>{{ $criteriaGroup ?? '-' }}</strong>
-                            </div>
-                        </div>
-
-                        <div class="workload-pa-editor">
-                            <div class="workload-fields">
-                                @foreach($fieldLabels as $field => $meta)
-                                    @php $rule = $paRules[$meta['key']] ?? null; @endphp
-                                    <label class="workload-field" style="--pa-color: {{ $meta['color'] }}">
-                                        <span class="workload-field-title">
-                                            <i aria-hidden="true"></i>
-                                            <span>
-                                                <strong>{{ $meta['title'] }}</strong>
-                                                <small>เกณฑ์ {{ $formatRule($rule) }}</small>
-                                            </span>
-                                        </span>
-                                        <span class="workload-input">
-                                            <input
-                                                type="number"
-                                                name="{{ $field }}"
-                                                min="0"
-                                                max="100"
-                                                step="1"
-                                                required
-                                                x-model.number="values.{{ $field }}"
-                                                data-testid="pa-{{ str_replace('_', '-', $field) }}"
-                                            >
-                                            <em>%</em>
-                                        </span>
-                                    </label>
-                                @endforeach
-                            </div>
-
-                            <aside class="workload-pa-chart" aria-label="สัดส่วนภาระงาน PA">
-                                {{-- donut: สัดส่วน 5 ด้านรวมเป็น 100% (conic-gradient) แยกสีต่อด้าน + รูตรงกลางโชว์ % รวม --}}
-                                <div class="workload-donut" :style="{ background: donutStyle() }">
-                                    <div class="workload-donut-center" :class="{ 'is-complete': total() === 100, 'is-invalid': total() !== 100 }">
-                                        <span>รวม</span>
-                                        <strong x-text="total() + '%'"></strong>
-                                    </div>
-                                </div>
-                                <div class="workload-pa-status" :class="{ 'is-complete': total() === 100, 'is-invalid': total() !== 100 }">
-                                    <span>ผลรวมสัดส่วน PA</span>
-                                    <strong x-text="total() + '%'"></strong>
-                                    <em x-text="total() === 100 ? 'พร้อมบันทึก' : (total() < 100 ? 'ยังขาด ' + (100 - total()) + '%' : 'เกิน ' + (total() - 100) + '%')"></em>
-                                    <span>ผลรวมสัดส่วน PA ต้องเท่ากับ 100%</span>
-                                </div>
-                                <div class="workload-pa-legend">
-                                    @foreach($fieldLabels as $field => $meta)
-                                        <div style="--pa-color: {{ $meta['color'] }}">
-                                            <span><i aria-hidden="true"></i>{{ $meta['title'] }}</span>
-                                            <strong x-text="valueFor('{{ $field }}') + '%'"></strong>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            </aside>
-                        </div>
-
-                        <div class="workload-actions">
-                            <button type="submit" class="btn btn-primary" data-testid="pa-submit">บันทึก PA</button>
-                        </div>
-                    </form>
-                </div>
             </section>
         @endif
     </div>
