@@ -9,11 +9,13 @@ use App\Models\AcademicYear;
 use App\Models\InstructorPaAllocation;
 use App\Models\InstructorProfile;
 use App\Models\PaRound;
+use App\Models\Schedule;
 use App\Models\SystemSetting;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Collection;
 
 class PaController extends Controller
 {
@@ -56,6 +58,22 @@ class PaController extends Controller
         $quotaBase = $profile ? $this->quotaBase($profile) : null;
         $teachingQuota = $allocation?->teaching_quota
             ?? ($profile ? $this->calculateTeachingQuota((int) ($allocation?->teaching_pct ?? $profile->teaching_pct), $profile) : null);
+        $approvedTeachingSchedules = ($academicYear && $profile)
+            ? $this->approvedTeachingSchedules($user->id, $academicYear->id)
+            : collect();
+        $approvedTeachingHours = round($approvedTeachingSchedules->sum('workload_hours'), 1);
+        $today = CarbonImmutable::today();
+        $taughtTeachingHours = round($approvedTeachingSchedules
+            ->filter(fn (Schedule $schedule) => $schedule->teaching_date?->lessThanOrEqualTo($today))
+            ->sum('workload_hours'), 1);
+        $upcomingTeachingHours = round(max(0, $approvedTeachingHours - $taughtTeachingHours), 1);
+        $remainingTeachingHours = $teachingQuota !== null
+            ? round($teachingQuota - $approvedTeachingHours, 1)
+            : null;
+        $remainingTeachingHoursToday = $teachingQuota !== null
+            ? round($teachingQuota - $taughtTeachingHours, 1)
+            : null;
+        $workloadCourseSummaries = $this->workloadCourseSummaries($approvedTeachingSchedules);
 
         return compact(
             'user',
@@ -67,8 +85,85 @@ class PaController extends Controller
             'criteriaGroup',
             'periodLabel',
             'quotaBase',
-            'teachingQuota'
+            'teachingQuota',
+            'approvedTeachingSchedules',
+            'workloadCourseSummaries',
+            'approvedTeachingHours',
+            'taughtTeachingHours',
+            'upcomingTeachingHours',
+            'remainingTeachingHours',
+            'remainingTeachingHoursToday'
         );
+    }
+
+    private function approvedTeachingSchedules(int $userId, int $academicYearId): Collection
+    {
+        return Schedule::query()
+            ->with([
+                'activityType',
+                'room',
+                'studentGroups',
+                'courseOffering.course',
+                'courseOffering.academicYear',
+                'instructors' => fn ($query) => $query->where('users.id', $userId),
+            ])
+            ->where('status', 'approved')
+            ->whereHas('activityType', fn ($query) => $query->where('counts_toward_workload', true))
+            ->whereHas('courseOffering', fn ($query) => $query->where('academic_year_id', $academicYearId))
+            ->whereHas('instructors', fn ($query) => $query->where('users.id', $userId))
+            ->orderBy('teaching_date')
+            ->orderBy('start_time')
+            ->get()
+            ->map(function (Schedule $schedule) use ($userId) {
+                $schedule->setAttribute('workload_hours', $this->scheduleHours($schedule));
+                $assigned = $schedule->instructors->firstWhere('id', $userId);
+                $schedule->setAttribute('workload_role', $assigned?->pivot?->is_lead ? 'ผู้สอนหลัก' : 'ผู้ร่วมสอน');
+
+                return $schedule;
+            });
+    }
+
+    private function workloadCourseSummaries(Collection $schedules): Collection
+    {
+        return $schedules
+            ->groupBy(fn (Schedule $schedule) => $schedule->course_offering_id)
+            ->map(function (Collection $courseSchedules) {
+                $first = $courseSchedules->first();
+                $course = $first?->courseOffering?->course;
+                $activityNames = $courseSchedules
+                    ->pluck('activityType.name')
+                    ->filter()
+                    ->unique()
+                    ->values();
+                $groupCodes = $courseSchedules
+                    ->flatMap(fn (Schedule $schedule) => $schedule->studentGroups->pluck('group_code'))
+                    ->filter()
+                    ->unique()
+                    ->values();
+
+                return [
+                    'course_code' => $course?->course_code ?? '-',
+                    'course_name' => $course?->name_th ?? $course?->name_en ?? '-',
+                    'activity_names' => $activityNames,
+                    'group_codes' => $groupCodes,
+                    'schedule_count' => $courseSchedules->count(),
+                    'hours' => round($courseSchedules->sum('workload_hours'), 1),
+                ];
+            })
+            ->sortBy('course_code')
+            ->values();
+    }
+
+    private function scheduleHours(Schedule $schedule): float
+    {
+        if (! $schedule->start_time || ! $schedule->end_time) {
+            return 0.0;
+        }
+
+        $start = CarbonImmutable::parse((string) $schedule->start_time);
+        $end = CarbonImmutable::parse((string) $schedule->end_time);
+
+        return max(0, $start->diffInMinutes($end, false) / 60);
     }
 
     public function update(Request $request)
