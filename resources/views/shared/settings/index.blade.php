@@ -563,17 +563,17 @@
                         <div style="font-size:12px;color:var(--fg-3);margin-top:2px;line-height:1.55;">เทอม/ช่วงสอบของทั้งคณะ — เป็นฐานให้ทุกหลักสูตร/ชั้นปีที่ไม่ได้ตั้งปฏิทินแยก</div>
                     </div>
                 </div>
-                <div style="padding:16px 20px 18px;">
+                <div class="central-calendar-card-body">
                     {{-- ยังไม่มีปีปัจจุบัน → ให้ตั้งก่อน --}}
                     <template x-if="!calYearName">
                         <div style="font-size:12px;color:var(--fg-3);padding:14px;text-align:center;background:var(--surface-sunken);border-radius:8px;">ยังไม่มีปีการศึกษาปัจจุบัน — ตั้งปีปัจจุบันที่ตารางด้านบนก่อน จึงจะกำหนดปฏิทินได้</div>
                     </template>
-                    <div x-show="calYearName" style="display:flex;align-items:center;justify-content:space-between;gap:14px;">
-                        <div style="display:flex;align-items:center;gap:13px;min-width:0;">
-                            <span style="flex-shrink:0;display:flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:10px;background:var(--brand-navy);">
+                    <div x-show="calYearName" class="central-calendar-summary">
+                        <div class="central-calendar-main">
+                            <span class="central-calendar-icon">
                                 <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                             </span>
-                            <div style="min-width:0;">
+                            <div class="central-calendar-copy">
                                 <div style="font-size:11px;color:var(--fg-3);font-weight:600;">ปีการศึกษาปัจจุบัน</div>
                                 <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;">
                                     <span style="font-weight:800;font-size:18px;color:var(--fg-1);font-family:var(--font-display);" x-text="calYearName"></span>
@@ -582,7 +582,7 @@
                                 </div>
                             </div>
                         </div>
-                        <button type="button" class="btn btn-primary" style="font-size:13px;white-space:nowrap;flex-shrink:0;"
+                        <button type="button" class="btn btn-primary central-calendar-action"
                             @click="openScopeModal({ key: 'central', curriculum_id: '', year: null, isDefault: true })">
                             <span x-show="centralHasTerms()">แก้ไขปฏิทินกลาง</span>
                             <span x-show="!centralHasTerms()" x-cloak>กำหนดเทอม</span>
@@ -609,14 +609,14 @@
                     <template x-if="calYearName && !calCurriculums.length">
                         <div style="font-size:12px;color:var(--fg-3);padding:16px;text-align:center;background:var(--surface-sunken);border-radius:8px;">ยังไม่มีหลักสูตรใน Master Data — เพิ่มหลักสูตรก่อนจึงตั้งปฏิทินแยกได้</div>
                     </template>
-                    <div x-show="calYearName && calCurriculums.length" style="border:1px solid var(--border);border-radius:9px;overflow:hidden;background:var(--surface);">
+                    <div class="cal-override-list" x-show="calYearName && calCurriculums.length">
                         <template x-for="row in calRows()" :key="row.key">
                             <div>
                                 {{-- หัวกลุ่มหลักสูตร = ปฏิทิน "ทั้งหลักสูตร (ทุกชั้นปี)" · กดชื่อ=กางชั้นปี · ปุ่ม=แก้ทุกชั้นปี --}}
                                 <template x-if="row.kind === 'group'">
-                                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--border);background:var(--surface-sunken);padding:11px 14px;">
+                                    <div class="cal-override-row is-group">
                                         <button type="button" @click="toggleGroup(row.cid)"
-                                            style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;text-align:start;border:none;background:none;cursor:pointer;font-family:inherit;padding:0;">
+                                            class="cal-override-title-button">
                                             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform .15s;color:var(--fg-3);" :style="calGroupOpen[row.cid] ? 'transform:rotate(90deg);' : ''"><polyline points="9 18 15 12 9 6"/></svg>
                                             <span style="font-weight:700;font-size:13px;color:var(--fg-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="row.label"></span>
                                         </button>
@@ -624,8 +624,7 @@
                                             <span x-show="scopeStatus(row) === 'self'" style="font-size:10px;font-weight:700;color:var(--status-success-fg);white-space:nowrap;">ทุกชั้นปี · ตั้งค่าแล้ว</span>
                                             <span x-show="scopeStatus(row) !== 'self'" x-cloak style="font-size:10px;color:var(--fg-4);white-space:nowrap;">ทุกชั้นปี · ใช้ปฏิทินกลาง</span>
                                             <span x-show="groupSummary(row.cid).set" x-cloak style="font-size:10px;color:var(--fg-3);white-space:nowrap;" x-text="'(' + groupSummary(row.cid).set + ' ปีตั้งต่าง)'"></span>
-                                            <button type="button" @click="openScopeModal(row)"
-                                                style="display:inline-flex;align-items:center;gap:3px;border:none;background:none;cursor:pointer;font-family:inherit;color:var(--brand-navy);font-size:12px;font-weight:700;white-space:nowrap;padding:0;">
+                                            <button type="button" @click="openScopeModal(row)" class="cal-override-action">
                                                 <span x-show="scopeStatus(row) === 'self'">แก้ไข</span>
                                                 <span x-show="scopeStatus(row) !== 'self'" x-cloak>ตั้งค่า</span>
                                                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
@@ -636,14 +635,20 @@
                                 {{-- แถว scope — มีปุ่มแก้ไข → เปิด modal ของขอบเขตนั้น --}}
                                 <template x-if="row.kind === 'scope'">
                                     <div x-show="!row.parent || calGroupOpen[row.parent]"
-                                        :style="'display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--border);' + (row.parent ? 'padding:9px 14px 9px 36px;' : 'padding:11px 14px;background:var(--surface-sunken);')">
-                                        <span :style="'font-size:13px;color:var(--fg-1);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' + (row.parent ? '' : 'font-weight:700;')" x-text="row.label"></span>
+                                        class="cal-override-row"
+                                        :class="{ 'is-child': row.parent, 'is-group': !row.parent }">
+                                        {{-- ซ้าย: ช่อง icon (จุดสำหรับหลักสูตรไม่มีชั้นปี — กว้างเท่า chevron หัวกลุ่ม) + ชื่อ → ทุกแถว align แนวเดียว --}}
+                                        <span style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+                                            <template x-if="!row.parent">
+                                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:var(--fg-4);"><circle cx="12" cy="12" r="3"/></svg>
+                                            </template>
+                                            <span :style="'font-size:13px;color:var(--fg-1);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' + (row.parent ? '' : 'font-weight:700;')" x-text="row.label"></span>
+                                        </span>
                                         <span style="display:flex;align-items:center;gap:11px;flex-shrink:0;">
                                             <span x-show="scopeStatus(row) === 'self'" style="font-size:10px;font-weight:700;color:var(--status-success-fg);white-space:nowrap;">ตั้งค่าแล้ว</span>
                                             <span x-show="scopeStatus(row) === 'curriculum'" x-cloak style="font-size:10px;color:var(--fg-3);white-space:nowrap;">ใช้ของทั้งหลักสูตร</span>
                                             <span x-show="scopeStatus(row) === 'central'" x-cloak style="font-size:10px;color:var(--fg-4);white-space:nowrap;">ใช้ปฏิทินกลาง</span>
-                                            <button type="button" @click="openScopeModal(row)"
-                                                style="display:inline-flex;align-items:center;gap:3px;border:none;background:none;cursor:pointer;font-family:inherit;color:var(--brand-navy);font-size:12px;font-weight:700;white-space:nowrap;padding:0;">
+                                            <button type="button" @click="openScopeModal(row)" class="cal-override-action">
                                                 <span x-show="scopeStatus(row) === 'self'">แก้ไข</span>
                                                 <span x-show="scopeStatus(row) !== 'self'" x-cloak>ตั้งค่า</span>
                                                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
@@ -660,7 +665,7 @@
             {{-- ── Modal กรอกวันของขอบเขต (แยกต่อหลักสูตร/ชั้นปี) ── --}}
             <template x-if="showCalEditor">
                 <div class="overlay" x-cloak @keydown.escape.window="showCalEditor = false">
-                    <div class="modal-center" style="max-width:560px;" x-transition:enter="transition ease-out duration-200"
+                    <div class="modal-center cal-editor-modal" x-transition:enter="transition ease-out duration-200"
                         x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
                         <div class="modal-hdr" style="background: var(--bg-2);">
                             <div style="min-width:0;">
@@ -671,20 +676,20 @@
                                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                             </button>
                         </div>
-                        <div class="modal-body">
-                            <div x-show="!editCalMode" x-cloak
-                                style="display:flex;gap:10px;align-items:flex-start;padding:11px 13px;margin-bottom:14px;border:1px solid color-mix(in oklch,var(--brand-navy) 24%,var(--border));border-radius:9px;background:color-mix(in oklch,var(--brand-navy) 4%,var(--surface));">
-                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--brand-navy)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                                <div style="font-size:12px;color:var(--fg-3);line-height:1.6;">ขอบเขตนี้ใช้<strong style="color:var(--fg-2);">ปฏิทินกลางของปี</strong>อยู่ · ตั้งที่นี่<strong style="color:var(--fg-2);">เฉพาะเมื่อวันเปิด-ปิด/สอบต่างจากปฏิทินกลาง</strong> — กรอกวันแล้วกดบันทึก</div>
-                            </div>
-                            @if($errors->has('calendar_terms'))
-                                <div style="margin-bottom:10px;padding:8px 10px;background:oklch(97% 0.02 20);border:1px solid oklch(82% 0.08 25);border-radius:6px;color:var(--status-conflict-fg);font-size:12px;line-height:1.6;">
-                                    @foreach($errors->get('calendar_terms') as $msg)<div>• {{ $msg }}</div>@endforeach
+                        <form method="POST" class="cal-editor-form"
+                            :action="editCalMode ? '{{ url($routePrefix . '/settings/calendars') }}/' + currentCal.id : ('{{ url($routePrefix . '/settings/academic-years') }}/' + calYearId + '/calendars')">
+                            @csrf
+                            <div class="modal-body cal-editor-body">
+                                <div x-show="!editCalMode" x-cloak
+                                    style="display:flex;gap:10px;align-items:flex-start;padding:11px 13px;margin-bottom:14px;border:1px solid color-mix(in oklch,var(--brand-navy) 24%,var(--border));border-radius:9px;background:color-mix(in oklch,var(--brand-navy) 4%,var(--surface));">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--brand-navy)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                                    <div style="font-size:12px;color:var(--fg-3);line-height:1.6;">ขอบเขตนี้ใช้<strong style="color:var(--fg-2);">ปฏิทินกลางของปี</strong>อยู่ · ตั้งที่นี่<strong style="color:var(--fg-2);">เฉพาะเมื่อวันเปิด-ปิด/สอบต่างจากปฏิทินกลาง</strong> — กรอกวันแล้วกดบันทึก</div>
                                 </div>
-                            @endif
-                            <form method="POST"
-                                :action="editCalMode ? '{{ url($routePrefix . '/settings/calendars') }}/' + currentCal.id : ('{{ url($routePrefix . '/settings/academic-years') }}/' + calYearId + '/calendars')">
-                                @csrf
+                                @if($errors->has('calendar_terms'))
+                                    <div style="margin-bottom:10px;padding:8px 10px;background:oklch(97% 0.02 20);border:1px solid oklch(82% 0.08 25);border-radius:6px;color:var(--status-conflict-fg);font-size:12px;line-height:1.6;">
+                                        @foreach($errors->get('calendar_terms') as $msg)<div>• {{ $msg }}</div>@endforeach
+                                    </div>
+                                @endif
                                 <template x-if="editCalMode"><input type="hidden" name="_method" value="PUT"></template>
                                 <input type="hidden" name="name" :value="scopeAutoName(currentScope)">
                                 <template x-if="currentCal.curriculum_id"><input type="hidden" name="curriculum_id" :value="currentCal.curriculum_id"></template>
@@ -696,21 +701,21 @@
                                     <button type="button" @click="currentCal.hasSummer = false; currentCal.terms[2] = { name:'ภาคฤดูร้อน', start_date:'', end_date:'', midterm_start:'', midterm_end:'', final_start:'', final_end:'' }" style="font-size:12px;color:var(--status-conflict-fg);background:none;border:none;cursor:pointer;padding:2px 0;margin-bottom:6px;">ลบภาคฤดูร้อน</button>
                                 </div>
                                 <button type="button" x-show="!currentCal.hasSummer" @click="currentCal.hasSummer = true" class="btn btn-ghost" style="font-size:12px;padding:5px 12px;">+ เพิ่มภาคฤดูร้อน</button>
-                                <div class="modal-foot" style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin:16px -24px -20px;">
-                                    <button type="button" x-show="editCalMode"
-                                        @click="if (confirm('ลบการตั้งค่าของ ' + scopeAutoName(currentScope) + ' และกลับไปใช้ปฏิทินกลาง?')) $refs.calDelForm.submit()"
-                                        class="btn btn-ghost" style="color:var(--status-conflict-fg);font-size:13px;">ลบการตั้งค่านี้</button>
-                                    <div style="display:flex;gap:8px;margin-left:auto;">
-                                        <button type="button" class="btn btn-ghost" style="font-size:13px;" @click="showCalEditor = false">ยกเลิก</button>
-                                        <button type="submit" class="btn btn-primary" style="font-size:13px;">บันทึก</button>
-                                    </div>
+                            </div>
+                            <div class="modal-foot cal-editor-foot">
+                                <button type="button" x-show="editCalMode"
+                                    @click="if (confirm('ลบการตั้งค่าของ ' + scopeAutoName(currentScope) + ' และกลับไปใช้ปฏิทินกลาง?')) $refs.calDelForm.submit()"
+                                    class="btn btn-ghost" style="color:var(--status-conflict-fg);font-size:13px;">ลบการตั้งค่านี้</button>
+                                <div style="display:flex;gap:8px;margin-left:auto;">
+                                    <button type="button" class="btn btn-ghost" style="font-size:13px;" @click="showCalEditor = false">ยกเลิก</button>
+                                    <button type="submit" class="btn btn-primary" style="font-size:13px;">บันทึก</button>
                                 </div>
-                            </form>
-                            <form x-ref="calDelForm" method="POST" :action="'{{ url($routePrefix . '/settings/calendars') }}/' + currentCal.id" style="display:none;">
-                                @csrf
-                                @method('DELETE')
-                            </form>
-                        </div>
+                            </div>
+                        </form>
+                        <form x-ref="calDelForm" method="POST" :action="'{{ url($routePrefix . '/settings/calendars') }}/' + currentCal.id" style="display:none;">
+                            @csrf
+                            @method('DELETE')
+                        </form>
                     </div>
                 </div>
             </template>
@@ -1160,6 +1165,253 @@
         }
         .settings-page input.input-invalid {
             border-color: var(--red, #dc2626) !important;
+        }
+
+        .central-calendar-card-body {
+            padding: 16px 20px 18px;
+        }
+
+        .central-calendar-summary {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 18px;
+            min-height: 76px;
+            padding: 16px 18px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 14%, var(--border));
+            border-radius: 8px;
+            background: color-mix(in oklch, var(--brand-navy) 2%, var(--surface));
+        }
+
+        .central-calendar-main {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            min-width: 0;
+        }
+
+        .central-calendar-icon {
+            display: flex;
+            flex: 0 0 48px;
+            align-items: center;
+            justify-content: center;
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            background: var(--brand-navy);
+            box-shadow: 0 8px 18px -14px rgba(0, 36, 84, 0.55);
+        }
+
+        .central-calendar-copy {
+            min-width: 0;
+        }
+
+        .central-calendar-action {
+            flex-shrink: 0;
+            min-width: 150px;
+            justify-content: center;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .cal-override-list {
+            overflow: hidden;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border));
+            border-radius: 8px;
+            background: color-mix(in oklch, var(--brand-navy) 3%, var(--surface));
+        }
+
+        .cal-override-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            min-height: 44px;
+            padding: 12px 18px;
+            border-bottom: 1px solid color-mix(in oklch, var(--brand-navy) 12%, var(--border));
+            transition: background-color .16s ease, box-shadow .16s ease;
+        }
+
+        .cal-override-row:last-child {
+            border-bottom: 0;
+        }
+
+        .cal-override-row:hover,
+        .cal-override-row:focus-within {
+            background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
+            box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--brand-navy) 8%, transparent);
+        }
+
+        .cal-override-row.is-group {
+            background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
+        }
+
+        .cal-override-row.is-group:hover,
+        .cal-override-row.is-group:focus-within {
+            background: color-mix(in oklch, var(--brand-navy) 7%, var(--surface));
+        }
+
+        .cal-override-row.is-child {
+            padding-left: 44px;
+            background: color-mix(in oklch, var(--brand-navy) 2%, var(--surface));
+        }
+
+        .cal-override-row.is-child:hover,
+        .cal-override-row.is-child:focus-within {
+            background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
+        }
+
+        .cal-override-title-button,
+        .cal-override-action {
+            appearance: none;
+            -webkit-appearance: none;
+            border: 0;
+            background: transparent !important;
+            box-shadow: none !important;
+            color: inherit;
+            font: inherit;
+        }
+
+        .cal-override-title-button {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            min-width: 0;
+            padding: 0;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .cal-override-title-button:hover,
+        .cal-override-title-button:active,
+        .cal-override-title-button:focus {
+            background: transparent !important;
+            outline: none;
+        }
+
+        .cal-override-title-button:focus-visible,
+        .cal-override-action:focus-visible {
+            outline: 2px solid color-mix(in oklch, var(--brand-navy) 44%, transparent);
+            outline-offset: 3px;
+            border-radius: 4px;
+        }
+
+        .cal-override-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 0;
+            color: var(--brand-navy);
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1.2;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+
+        .cal-override-action:hover,
+        .cal-override-action:active,
+        .cal-override-action:focus {
+            background: transparent !important;
+            color: color-mix(in oklch, var(--brand-navy) 78%, var(--fg-1));
+            outline: none;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+
+        .cal-editor-modal {
+            display: flex;
+            flex-direction: column;
+            width: min(720px, calc(100vw - 32px));
+            max-width: 720px;
+            max-height: min(92vh, 820px);
+            overflow: hidden;
+        }
+
+        .cal-editor-modal .modal-hdr {
+            flex: 0 0 auto;
+        }
+
+        .cal-editor-body {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow: auto;
+            padding-bottom: 0 !important;
+        }
+
+        .cal-editor-form {
+            display: flex;
+            flex: 1 1 auto;
+            min-height: 0;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .cal-editor-foot {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin: 0;
+            padding: 14px 24px calc(14px + env(safe-area-inset-bottom, 0px));
+            border-top: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border)) !important;
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 6%, var(--surface)), var(--surface));
+            box-shadow: 0 -12px 24px -20px rgba(0, 36, 84, 0.36);
+        }
+
+        @media (max-height: 760px) {
+            .cal-editor-modal {
+                max-height: calc(100vh - 24px);
+            }
+
+            .cal-editor-body {
+                padding-top: 16px !important;
+            }
+
+            .cal-editor-foot {
+                padding-top: 12px;
+                padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+            }
+        }
+
+        @media (max-width: 680px) {
+            .central-calendar-card-body {
+                padding: 14px;
+            }
+
+            .central-calendar-summary {
+                grid-template-columns: 1fr;
+                align-items: stretch;
+                gap: 14px;
+                padding: 14px;
+            }
+
+            .central-calendar-action {
+                width: 100%;
+                min-width: 0;
+            }
+
+            .cal-editor-modal {
+                width: calc(100vw - 20px);
+                max-height: calc(100vh - 20px);
+            }
+
+            .cal-editor-foot {
+                flex-direction: column-reverse;
+                align-items: stretch;
+            }
+
+            .cal-editor-foot > div {
+                width: 100%;
+            }
+
+            .cal-editor-foot .btn {
+                justify-content: center;
+                width: 100%;
+            }
         }
 
         .settings-flash {
