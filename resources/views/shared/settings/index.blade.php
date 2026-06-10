@@ -856,7 +856,8 @@
                         <template x-if="editMode">
                             <input type="hidden" name="year_id" x-model="currentYear.id">
                         </template>
-                        <div class="modal-body">
+                        {{-- โหมดเพิ่มปี: เผื่อที่ว่างด้านล่างให้ dropdown "ลอกจากปีก่อน" เปิดลงล่างได้ ไม่เด้งขึ้นทับช่องบน --}}
+                        <div class="modal-body" :style="!editMode ? 'min-height: 320px;' : ''">
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>ปีการศึกษา (พ.ศ.)</label>
@@ -871,7 +872,9 @@
                             <template x-if="!editMode && calYearOptions.length > 0">
                                 <div class="form-group" style="margin-top: 4px;">
                                     <label>คัดลอกปฏิทินจากปีก่อน <span style="font-weight:400;color:var(--fg-4);font-size:11px;">(ไม่บังคับ)</span></label>
-                                    <select name="copy_from_year_id" x-model="copyFromYearId">
+                                    {{-- tpss-choices + tpssInitChoices = ใช้ custom dropdown ของระบบ (เหมือน admin/users, ตารางสอน) แทน native --}}
+                                    <select name="copy_from_year_id" x-model="copyFromYearId" class="tpss-choices"
+                                        x-init="$nextTick(() => window.tpssInitChoices && window.tpssInitChoices($el))">
                                         <option value="">ไม่คัดลอก</option>
                                         <template x-for="y in calYearOptions" :key="y.id">
                                             <option :value="y.id" x-text="'คัดลอกจากปี ' + y.name"></option>
@@ -1552,7 +1555,9 @@
         .settings-page textarea,
         .settings-page .pa-input {
             border-color: color-mix(in oklch, var(--brand-navy) 22%, var(--border)) !important;
-            background: color-mix(in oklch, var(--brand-navy) 3%, var(--surface)) !important;
+            /* ใช้ background-color (ไม่ใช่ shorthand background) เพื่อไม่ลบ background-image
+               ของ select กลาง (ลูกศร chevron + gradient) — dropdown จะเข้าชุดกับหน้าอื่น */
+            background-color: color-mix(in oklch, var(--brand-navy) 3%, var(--surface)) !important;
         }
 
         .settings-page .form-ctrl:focus,
