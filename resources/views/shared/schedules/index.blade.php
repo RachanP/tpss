@@ -1668,8 +1668,9 @@
             line-height: 1.5;
         }
         .copy-mode-seg {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
+            display: grid !important;
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            align-items: stretch;
             gap: 6px;
             margin-bottom: 12px;
             padding: 4px;
@@ -1678,7 +1679,14 @@
             background: oklch(97.5% 0.008 232);
         }
         .copy-mode-option {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            justify-self: stretch;
+            min-width: 0;
+            width: 100%;
             min-height: 36px;
+            padding: 0 12px;
             border: 1px solid transparent;
             border-radius: 8px;
             background: transparent;
@@ -1687,6 +1695,11 @@
             font: inherit;
             font-size: 12.5px;
             font-weight: 850;
+            line-height: 1.2;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .copy-mode-option:hover,
         .copy-mode-option:focus-visible {
@@ -1698,6 +1711,33 @@
             border-color: var(--brand-navy);
             background: var(--brand-navy);
             color: var(--surface);
+        }
+        .schedule-shell .schedule-copy-week-modal .copy-mode-seg > .copy-mode-option {
+            position: static !important;
+            inset: auto !important;
+            justify-self: stretch !important;
+            width: 100% !important;
+            height: auto !important;
+            min-width: 0 !important;
+            min-height: 36px !important;
+            margin: 0 !important;
+            border: 1px solid transparent !important;
+            border-radius: 8px !important;
+            background: transparent !important;
+            color: var(--fg-2) !important;
+            line-height: 1.2 !important;
+            transform: none !important;
+            z-index: auto !important;
+        }
+        .schedule-shell .schedule-copy-week-modal .copy-mode-seg > .copy-mode-option:hover,
+        .schedule-shell .schedule-copy-week-modal .copy-mode-seg > .copy-mode-option:focus-visible {
+            border-color: var(--schedule-border-strong) !important;
+            background: var(--surface) !important;
+        }
+        .schedule-shell .schedule-copy-week-modal .copy-mode-seg > .copy-mode-option.is-active {
+            border-color: var(--brand-navy) !important;
+            background: var(--brand-navy) !important;
+            color: var(--surface) !important;
         }
         .copy-week-weeks {
             display: flex;
@@ -1720,6 +1760,11 @@
             min-width: 0;
             flex-direction: column;
             gap: 5px;
+        }
+        .copy-date-grid .tdi-wrap,
+        .copy-date-grid .tdi-control {
+            width: 100%;
+            min-width: 0;
         }
         .copy-week-pill {
             flex: 1 1 200px;
@@ -1753,9 +1798,11 @@
             font-weight: 900;
         }
         .copy-week-target-control {
-            display: flex;
+            display: flex !important;
             align-items: center;
+            flex-direction: row !important;
             gap: 8px;
+            overflow: visible !important;
         }
         .copy-week-step {
             width: 26px;
@@ -1769,7 +1816,37 @@
             line-height: 1;
             cursor: pointer;
         }
+        .schedule-shell .schedule-copy-week-modal .copy-week-weeks,
+        .schedule-shell .schedule-copy-week-modal .copy-week-pill {
+            overflow: visible !important;
+        }
+        .schedule-shell .schedule-copy-week-modal .copy-week-target-control > .copy-week-step {
+            position: static !important;
+            inset: auto !important;
+            flex: 0 0 26px !important;
+            width: 26px !important;
+            height: 26px !important;
+            min-width: 26px !important;
+            min-height: 26px !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            border: 1px solid var(--schedule-border) !important;
+            border-radius: 6px !important;
+            background: var(--surface) !important;
+            color: var(--fg-1) !important;
+            font-size: 16px !important;
+            font-weight: 900 !important;
+            line-height: 1 !important;
+            transform: none !important;
+            z-index: auto !important;
+        }
         .copy-week-step:hover { background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface)); }
+        .schedule-shell .schedule-copy-week-modal .copy-week-target-control > .copy-week-step:hover {
+            background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface)) !important;
+        }
         .copy-week-status {
             padding: 10px 12px;
             border: 1px solid var(--schedule-border);
@@ -1790,6 +1867,18 @@
             flex-wrap: wrap;
             margin-bottom: 12px;
         }
+        .copy-week-preview-block {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .copy-week-preview-block .copy-week-summary,
+        .copy-week-preview-block .copy-week-status {
+            margin-bottom: 0;
+        }
         .copy-week-badge {
             padding: 4px 10px;
             border-radius: 999px;
@@ -1809,38 +1898,118 @@
         }
         .copy-week-list {
             list-style: none;
-            margin: 0 0 12px;
+            margin: 0;
             padding: 0;
-            display: grid;
-            gap: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .copy-week-preview-scroll {
+            flex: 1 1 auto;
+            min-height: 150px;
+            max-height: min(306px, 34vh);
+            margin: 0;
+            padding-right: 8px;
+            display: block;
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
+            scrollbar-gutter: stable;
+        }
+        .copy-week-preview-scroll .copy-week-list {
+            margin-bottom: 0;
+        }
+        .copy-week-preview-scroll .copy-week-list:last-child {
+            margin-bottom: 0;
+        }
+        .copy-week-section-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 2px 0 8px;
+            color: var(--fg-2);
+            font-size: 12.5px;
+            font-weight: 850;
+            line-height: 1.35;
+        }
+        .copy-week-section-title span:last-child {
+            padding: 2px 8px;
+            border: 1px solid var(--schedule-border);
+            border-radius: 999px;
+            background: color-mix(in oklch, var(--surface) 82%, var(--schedule-border));
+            color: var(--fg-3);
+            font-size: 11.5px;
+            font-weight: 800;
+        }
+        .copy-week-section-title:not(.is-blocked) span:last-child {
+            border-color: color-mix(in oklch, var(--status-success-border) 65%, transparent);
+            background: var(--status-success-bg);
+            color: var(--status-success-fg);
+        }
+        .copy-week-section-title.is-blocked {
+            color: var(--status-conflict-fg);
+        }
+        .copy-week-section-title.is-blocked span:last-child {
+            border-color: var(--status-conflict-border);
+            background: color-mix(in oklch, var(--status-conflict-bg) 75%, var(--surface));
+            color: var(--status-conflict-fg);
         }
         .copy-week-item {
             display: flex;
             align-items: flex-start;
             gap: 10px;
-            padding: 10px 12px;
+            padding: 11px 13px;
             border: 1px solid var(--schedule-border);
             border-radius: 8px;
             background: var(--surface);
         }
         .copy-week-item.is-blocked {
             border-color: var(--status-conflict-border);
-            background: var(--status-conflict-bg);
+            background: color-mix(in oklch, var(--status-conflict-bg) 82%, var(--surface));
         }
         .copy-week-mark { font-size: 14px; line-height: 1.5; flex: 0 0 auto; }
-        .copy-week-item-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+        .copy-week-item-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
         .copy-week-item-body strong { color: var(--fg-1); font-size: 13.5px; font-weight: 850; }
-        .copy-week-item-body small { color: var(--fg-3); font-size: 12px; font-weight: 650; }
-        .copy-week-reason { color: var(--status-conflict-fg) !important; font-weight: 750 !important; }
+        .copy-week-item-body small {
+            color: var(--fg-3);
+            font-size: 12px;
+            font-weight: 650;
+            line-height: 1.45;
+            overflow-wrap: anywhere;
+        }
+        .copy-week-item.is-blocked .copy-week-item-body {
+            gap: 5px;
+        }
+        .copy-week-item.is-blocked .copy-week-mark {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            margin-top: 1px;
+            border-radius: 999px;
+            background: color-mix(in oklch, var(--status-conflict-fg) 18%, transparent);
+            color: var(--status-conflict-fg);
+            font-size: 12px;
+            line-height: 1;
+        }
+        .copy-week-reason {
+            display: block;
+            color: var(--status-conflict-fg) !important;
+            font-weight: 750 !important;
+        }
         .schedule-shell .schedule-copy-week-backdrop {
             align-items: flex-start !important;
-            padding-top: clamp(72px, 10vh, 112px) !important;
-            padding-bottom: 32px !important;
+            overflow: hidden !important;
+            padding-top: clamp(40px, 6vh, 72px) !important;
+            padding-bottom: 24px !important;
         }
         .schedule-shell .schedule-copy-week-modal {
             width: min(940px, calc(100vw - 48px)) !important;
-            max-height: none !important;
-            overflow: visible !important;
+            max-height: calc(100dvh - 88px) !important;
+            overflow: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
             border-color: color-mix(in oklch, var(--brand-navy) 26%, var(--schedule-border)) !important;
             background: color-mix(in oklch, var(--surface) 92%, var(--brand-navy)) !important;
             box-shadow: 0 22px 58px rgb(15 23 42 / 0.24), 0 1px 0 rgb(255 255 255 / 0.72) inset !important;
@@ -1850,8 +2019,13 @@
             border-bottom-color: color-mix(in oklch, var(--brand-navy) 28%, var(--schedule-border));
         }
         .schedule-shell .schedule-copy-week-modal > .modal-form-body {
-            flex: 0 0 auto !important;
-            overflow: visible !important;
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            overflow-y: hidden !important;
+            overflow-x: hidden !important;
+            overscroll-behavior: contain;
         }
         .schedule-shell .schedule-copy-week-modal .modal-form-body {
             padding: 18px 24px 18px;
@@ -1931,10 +2105,18 @@
             .schedule-shell .schedule-copy-week-modal .copy-week-weeks {
                 gap: 10px;
             }
-            .copy-mode-seg,
             .copy-date-grid,
             .copy-date-grid.is-range {
                 grid-template-columns: 1fr;
+            }
+            .schedule-shell .schedule-copy-week-modal .copy-mode-seg {
+                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+                gap: 4px;
+            }
+            .schedule-shell .schedule-copy-week-modal .copy-mode-option {
+                min-height: 34px;
+                padding: 0 6px;
+                font-size: 11.5px;
             }
             .schedule-shell .schedule-copy-week-modal .copy-week-arrow {
                 transform: rotate(90deg);
@@ -5555,6 +5737,13 @@
             copyRangeSourceStart: @js(($weekStart ?? null) ? $weekStart->subDays(7)->toDateString() : null),
             copyRangeSourceEnd: @js(($weekStart ?? null) ? $weekStart->subDay()->toDateString() : null),
             copyRangeTargetStart: @js(($weekStart ?? null) ? $weekStart->toDateString() : null),
+            copyDaySourceDisplay: '',
+            copyDayTargetDisplay: '',
+            copyRangeSourceStartDisplay: '',
+            copyRangeSourceEndDisplay: '',
+            copyRangeTargetStartDisplay: '',
+            copyDateSyncing: false,
+            copyDatePreviewTimer: null,
             copyWeekPreview: null,
             copyWeekLoading: false,
             copyWeekError: '',
@@ -5681,6 +5870,12 @@
                 // กิจกรรมวันเดียว: ให้วันจบ = วันเริ่ม อัตโนมัติ (ผู้ใช้กรอกช่องเดียว)
                 this.$watch('createStartDate', (v) => { if (!this.createMultiDay) this.createEndDate = v; });
                 this.$watch('createMultiDay', (v) => { if (!v) this.createEndDate = this.createStartDate; });
+                this.syncCopyDateDisplays();
+                this.watchCopyDateDisplay('copyDaySourceDisplay', 'copyDaySource');
+                this.watchCopyDateDisplay('copyDayTargetDisplay', 'copyDayTarget');
+                this.watchCopyDateDisplay('copyRangeSourceStartDisplay', 'copyRangeSourceStart');
+                this.watchCopyDateDisplay('copyRangeSourceEndDisplay', 'copyRangeSourceEnd');
+                this.watchCopyDateDisplay('copyRangeTargetStartDisplay', 'copyRangeTargetStart');
                 this.$watch('editModal', (val) => {
                     this.liveIssues = {};
                     this.liveWarnings = {};
@@ -5734,6 +5929,48 @@
             closeCreateDatePickers() {
                 document.dispatchEvent(new CustomEvent('tpss:close-date-popovers'));
             },
+            syncCopyDateDisplays() {
+                this.copyDateSyncing = true;
+                this.copyDaySourceDisplay = this.toThaiDateDisplay(this.copyDaySource);
+                this.copyDayTargetDisplay = this.toThaiDateDisplay(this.copyDayTarget);
+                this.copyRangeSourceStartDisplay = this.toThaiDateDisplay(this.copyRangeSourceStart);
+                this.copyRangeSourceEndDisplay = this.toThaiDateDisplay(this.copyRangeSourceEnd);
+                this.copyRangeTargetStartDisplay = this.toThaiDateDisplay(this.copyRangeTargetStart);
+                this.$nextTick(() => { this.copyDateSyncing = false; });
+            },
+            watchCopyDateDisplay(displayField, isoField) {
+                this.$watch(displayField, () => this.updateCopyDateFromDisplay(displayField, isoField));
+            },
+            updateCopyDateFromDisplay(displayField, isoField) {
+                if (this.copyDateSyncing) return;
+
+                const value = String(this[displayField] || '').trim();
+                const iso = this.thaiDateToIso(value);
+
+                if (iso) {
+                    this[isoField] = iso;
+                    this.queueCopyWeekPreview();
+                    return;
+                }
+
+                if (!value) {
+                    this[isoField] = '';
+                }
+
+                this.copyWeekPreview = null;
+            },
+            queueCopyWeekPreview() {
+                if (!this.copyWeekOpen || this.copyMode === 'week') return;
+
+                if (this.copyDatePreviewTimer) {
+                    clearTimeout(this.copyDatePreviewTimer);
+                }
+
+                this.copyDatePreviewTimer = setTimeout(() => {
+                    this.copyDatePreviewTimer = null;
+                    this.refreshCopyWeekPreview();
+                }, 180);
+            },
             openCopyWeek() {
                 this.copyWeekError = '';
                 this.copyWeekPreview = null;
@@ -5745,13 +5982,16 @@
                 this.copyRangeTargetStart = this.copyWeekCurrent;
                 this.copyRangeSourceStart = window.tpssShiftIso(this.copyWeekCurrent, -7);
                 this.copyRangeSourceEnd = window.tpssShiftIso(this.copyWeekCurrent, -1);
+                this.syncCopyDateDisplays();
                 this.copyWeekOpen = true;
                 this.$nextTick(() => this.refreshCopyWeekPreview());
             },
             setCopyMode(mode) {
+                this.closeCreateDatePickers();
                 this.copyMode = ['week', 'day', 'range'].includes(mode) ? mode : 'week';
                 this.copyWeekError = '';
                 this.copyWeekPreview = null;
+                this.syncCopyDateDisplays();
                 this.$nextTick(() => this.refreshCopyWeekPreview());
             },
             isoCompare(a, b) {
@@ -8861,71 +9101,120 @@
                         <div class="copy-date-grid" x-show="copyMode === 'day'" x-cloak>
                             <label>
                                 <span class="copy-week-pill-label">ดึงจากวันที่</span>
-                                <input type="date" class="modal-control" x-model="copyDaySource" @change="refreshCopyWeekPreview()">
+                                <x-thai-date-input
+                                    name="copy_day_source_picker"
+                                    :helper="false"
+                                    :value="null"
+                                    :year-start="$scheduleDatePickerYearStart"
+                                    :year-end="$scheduleDatePickerYearEnd"
+                                    class="modal-control"
+                                    x-model="copyDaySourceDisplay"
+                                    data-testid="copy-day-source-date"
+                                    aria-label="เลือกวันที่ต้นทางสำหรับคัดลอกรายวัน" />
                             </label>
                             <label>
                                 <span class="copy-week-pill-label">ไปยังวันที่</span>
-                                <input type="date" class="modal-control" x-model="copyDayTarget" @change="refreshCopyWeekPreview()">
+                                <x-thai-date-input
+                                    name="copy_day_target_picker"
+                                    :helper="false"
+                                    :value="null"
+                                    :year-start="$scheduleDatePickerYearStart"
+                                    :year-end="$scheduleDatePickerYearEnd"
+                                    class="modal-control"
+                                    x-model="copyDayTargetDisplay"
+                                    data-testid="copy-day-target-date"
+                                    aria-label="เลือกวันที่ปลายทางสำหรับคัดลอกรายวัน" />
                             </label>
                         </div>
 
                         <div class="copy-date-grid is-range" x-show="copyMode === 'range'" x-cloak>
                             <label>
                                 <span class="copy-week-pill-label">ช่วงต้นทาง เริ่ม</span>
-                                <input type="date" class="modal-control" x-model="copyRangeSourceStart" @change="refreshCopyWeekPreview()">
+                                <x-thai-date-input
+                                    name="copy_range_source_start_picker"
+                                    :helper="false"
+                                    :value="null"
+                                    :year-start="$scheduleDatePickerYearStart"
+                                    :year-end="$scheduleDatePickerYearEnd"
+                                    class="modal-control"
+                                    x-model="copyRangeSourceStartDisplay"
+                                    data-testid="copy-range-source-start-date"
+                                    aria-label="เลือกวันที่เริ่มต้นของช่วงต้นทาง" />
                             </label>
                             <label>
                                 <span class="copy-week-pill-label">ช่วงต้นทาง สิ้นสุด</span>
-                                <input type="date" class="modal-control" x-model="copyRangeSourceEnd" @change="refreshCopyWeekPreview()">
+                                <x-thai-date-input
+                                    name="copy_range_source_end_picker"
+                                    :helper="false"
+                                    :value="null"
+                                    :year-start="$scheduleDatePickerYearStart"
+                                    :year-end="$scheduleDatePickerYearEnd"
+                                    class="modal-control"
+                                    x-model="copyRangeSourceEndDisplay"
+                                    data-testid="copy-range-source-end-date"
+                                    aria-label="เลือกวันที่สิ้นสุดของช่วงต้นทาง" />
                             </label>
                             <label>
                                 <span class="copy-week-pill-label">ช่วงปลายทาง เริ่ม</span>
-                                <input type="date" class="modal-control" x-model="copyRangeTargetStart" @change="refreshCopyWeekPreview()">
+                                <x-thai-date-input
+                                    name="copy_range_target_start_picker"
+                                    :helper="false"
+                                    :value="null"
+                                    :year-start="$scheduleDatePickerYearStart"
+                                    :year-end="$scheduleDatePickerYearEnd"
+                                    class="modal-control"
+                                    x-model="copyRangeTargetStartDisplay"
+                                    data-testid="copy-range-target-start-date"
+                                    aria-label="เลือกวันที่เริ่มต้นของช่วงปลายทาง" />
                             </label>
-                            <div class="copy-week-status" x-show="copyRangeTargetEnd()" x-text="'ช่วงปลายทางจะสิ้นสุดวันที่ ' + copyRangeTargetEnd()"></div>
+                            <div class="copy-week-status" x-show="copyRangeTargetEnd()" x-text="'ช่วงปลายทางจะสิ้นสุดวันที่ ' + (toThaiDateDisplay(copyRangeTargetEnd()) || copyRangeTargetEnd())"></div>
                         </div>
 
                         <div class="copy-week-status" x-show="copyWeekLoading">กำลังตรวจสอบการชน…</div>
                         <div class="copy-week-status is-error" x-show="copyWeekError" x-text="copyWeekError"></div>
 
                         <template x-if="copyWeekPreview && !copyWeekLoading">
-                            <div>
+                            <div class="copy-week-preview-block">
                                 <div class="copy-week-status" x-show="copyWeekPreview.total === 0">ไม่พบรายการในสัปดาห์ต้นทางให้คัดลอก</div>
 
-                                <div class="copy-week-summary" x-show="copyWeekPreview.total > 0">
-                                    <span class="copy-week-badge is-ready" x-text="'พร้อมคัดลอก ' + copyWeekPreview.ready.length + ' รายการ'"></span>
-                                    <span class="copy-week-badge is-blocked" x-show="copyWeekPreview.blocked.length" x-text="'ชน ' + copyWeekPreview.blocked.length + ' รายการ'"></span>
-                                </div>
-                                <div class="copy-week-status is-error" x-show="copyWeekPreview.blocked.length">
-                                    มีรายการชนอยู่ ระบบจะคัดลอกเฉพาะรายการที่พร้อม และข้ามรายการที่ชน
-                                </div>
+                                <div
+                                    class="copy-week-preview-scroll"
+                                    x-show="copyWeekPreview.ready.length || copyWeekPreview.blocked.length">
+                                    <div class="copy-week-section-title" x-show="copyWeekPreview.ready.length">
+                                        <span>รายการพร้อมคัดลอก</span>
+                                        <span x-text="copyWeekPreview.ready.length + ' รายการ'"></span>
+                                    </div>
+                                    <ul class="copy-week-list" x-show="copyWeekPreview.ready.length">
+                                        <template x-for="(item, index) in copyWeekPreview.ready" :key="'r-' + index + '-' + item.target_date + '-' + item.time + '-' + (item.topic || item.activity || '')">
+                                            <li class="copy-week-item is-ready">
+                                                <span class="copy-week-mark" aria-hidden="true">✓</span>
+                                                <span class="copy-week-item-body">
+                                                    <strong x-text="item.topic || item.activity || 'กิจกรรม'"></strong>
+                                                    <small x-text="item.target_date + ' · ' + item.time + (item.room ? ' · ' + item.room : '')"></small>
+                                                </span>
+                                            </li>
+                                        </template>
+                                    </ul>
 
-                                <ul class="copy-week-list" x-show="copyWeekPreview.ready.length">
-                                    <template x-for="item in copyWeekPreview.ready" :key="'r' + item.target_date + item.time + (item.topic || '')">
-                                        <li class="copy-week-item is-ready">
-                                            <span class="copy-week-mark" aria-hidden="true">✓</span>
-                                            <span class="copy-week-item-body">
-                                                <strong x-text="item.topic || item.activity || 'กิจกรรม'"></strong>
-                                                <small x-text="item.target_date + ' · ' + item.time + (item.room ? ' · ' + item.room : '')"></small>
-                                            </span>
-                                        </li>
-                                    </template>
-                                </ul>
-
-                                <ul class="copy-week-list" x-show="copyWeekPreview.blocked.length">
-                                    <template x-for="item in copyWeekPreview.blocked" :key="'b' + item.target_date + item.time + (item.topic || '')">
-                                        <li class="copy-week-item is-blocked">
-                                            <span class="copy-week-mark" aria-hidden="true">⛔</span>
-                                            <span class="copy-week-item-body">
-                                                <strong x-text="item.topic || item.activity || 'กิจกรรม'"></strong>
-                                                <small x-text="item.target_date + ' · ' + item.time"></small>
-                                                <template x-for="reason in item.reasons" :key="reason">
-                                                    <small class="copy-week-reason" x-text="reason"></small>
-                                                </template>
-                                            </span>
-                                        </li>
-                                    </template>
-                                </ul>
+                                    <div class="copy-week-section-title is-blocked" x-show="copyWeekPreview.blocked.length">
+                                        <span>รายการที่ชน</span>
+                                        <span x-text="copyWeekPreview.blocked.length + ' รายการ'"></span>
+                                    </div>
+                                    <ul class="copy-week-list" x-show="copyWeekPreview.blocked.length">
+                                        <template x-for="(item, index) in copyWeekPreview.blocked" :key="'b-' + index + '-' + item.target_date + '-' + item.time + '-' + (item.topic || item.activity || '')">
+                                            <li class="copy-week-item is-blocked">
+                                                <span class="copy-week-mark" aria-hidden="true">!</span>
+                                                <span class="copy-week-item-body">
+                                                    <strong x-text="item.topic || item.activity || 'กิจกรรม'"></strong>
+                                                    <small x-text="item.target_date + ' · ' + item.time"></small>
+                                                    <template x-for="reason in (item.reasons || [])" :key="reason">
+                                                        <small class="copy-week-reason" x-text="reason"></small>
+                                                    </template>
+                                                </span>
+                                            </li>
+                                        </template>
+                                    </ul>
+                                </div>
                             </div>
                         </template>
                     </div>

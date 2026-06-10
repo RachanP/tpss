@@ -119,6 +119,153 @@ test('schedule create modal dropdowns open below fields without covering date in
   await expectCustomSelectOpensBelow(modal, 'room_id');
 });
 
+test('schedule copy modal supports day and custom range layout without page-level overflow', async ({ page }) => {
+  await login(page, 'head_med');
+
+  await page.goto('/maker/course-offerings', { waitUntil: 'domcontentloaded' });
+  const links = await page.getByTestId('course-offering-schedule-link').evaluateAll((els) => els.map((a: HTMLAnchorElement) => a.href));
+  test.expect(links.length, 'expected at least one offering with schedules').toBeGreaterThan(0);
+
+  await page.goto(links[0], { waitUntil: 'domcontentloaded' });
+
+  const copyButton = page.getByTestId('schedule-copy-week-button');
+  await expect(copyButton).toBeVisible({ timeout: 10_000 });
+  await copyButton.click();
+
+  const modal = page.getByTestId('schedule-copy-week-modal');
+  await expect(modal).toBeVisible({ timeout: 5_000 });
+  await expect(modal.locator('.copy-mode-option')).toHaveCount(3);
+
+  const weeklyUnexpectedScrollables = await modal.evaluate((root) => {
+    return Array.from(root.querySelectorAll<HTMLElement>('.modal-form-body *'))
+      .filter((el) => {
+        if (el.closest('.copy-week-preview-scroll') || el.closest('.tdi-pop-menu')) return false;
+
+        const style = window.getComputedStyle(el);
+        const rect = el.getBoundingClientRect();
+        const canScroll = /(auto|scroll)/.test(style.overflowY) && el.scrollHeight > el.clientHeight + 2;
+
+        return canScroll && rect.width > 0 && rect.height > 0;
+      })
+      .map((el) => el.className || el.tagName.toLowerCase());
+  });
+  expect(weeklyUnexpectedScrollables, 'weekly source/target controls do not create their own scrollbar').toEqual([]);
+
+  const weekStepMetrics = await modal.locator('.copy-week-target-control').evaluateAll((controls) => {
+    return controls.map((control) => {
+      const buttons = Array.from(control.querySelectorAll<HTMLElement>('.copy-week-step'));
+      const boxes = buttons.map((button) => button.getBoundingClientRect());
+
+      return {
+        topDelta: Math.max(...boxes.map((box) => box.top)) - Math.min(...boxes.map((box) => box.top)),
+        positions: buttons.map((button) => window.getComputedStyle(button).position),
+        heights: boxes.map((box) => box.height),
+      };
+    });
+  });
+  expect(
+    weekStepMetrics.every((metrics) => metrics.topDelta <= 2 && metrics.positions.every((position) => position === 'static')),
+    'week step buttons stay inline instead of being treated as modal close buttons',
+  ).toBe(true);
+
+  const rangeMode = modal.getByRole('button', { name: 'ช่วงวันที่' });
+  await rangeMode.click();
+  await expect(rangeMode).toHaveClass(/is-active/);
+  const modeMetrics = await modal.locator('.copy-mode-option').evaluateAll((buttons) => {
+    const boxes = buttons.map((button) => button.getBoundingClientRect());
+    return {
+      topDelta: Math.max(...boxes.map((box) => box.top)) - Math.min(...boxes.map((box) => box.top)),
+      heights: boxes.map((box) => box.height),
+      whiteSpaces: buttons.map((button) => window.getComputedStyle(button).whiteSpace),
+    };
+  });
+  expect(modeMetrics.topDelta, 'copy mode segmented buttons stay in one row').toBeLessThanOrEqual(2);
+  expect(modeMetrics.whiteSpaces.every((value) => value === 'nowrap'), 'copy mode labels stay on one line').toBe(true);
+  const rangeModeBox = await rangeMode.boundingBox();
+  expect(rangeModeBox, 'range copy mode button has a layout box').not.toBeNull();
+  expect(rangeModeBox!.height, 'range copy mode button remains one compact segment').toBeLessThanOrEqual(44);
+
+  await expect(modal.locator('input[type="date"]')).toHaveCount(0);
+
+  const targetStart = modal.getByTestId('copy-range-target-start-date');
+  await expect(targetStart).toBeVisible();
+  const targetControl = targetStart.locator('xpath=ancestor::div[contains(@class,"tdi-control")]');
+  await targetControl.locator('.tdi-cal-btn').click();
+
+  const calendar = modal.locator('.tdi-pop:visible').first();
+  await expect(calendar).toBeVisible({ timeout: 5_000 });
+  await expect(calendar).toHaveCSS('position', 'fixed');
+  const controlBox = await targetControl.boundingBox();
+  const calendarBox = await calendar.boundingBox();
+  expect(controlBox, 'target date control has a layout box').not.toBeNull();
+  expect(calendarBox, 'calendar popover has a layout box').not.toBeNull();
+  const horizontalOverlap = Math.min(calendarBox!.x + calendarBox!.width, controlBox!.x + controlBox!.width)
+    - Math.max(calendarBox!.x, controlBox!.x);
+  expect(horizontalOverlap, 'calendar popover stays anchored to the active date field').toBeGreaterThan(80);
+
+  if ((page.viewportSize()?.width || 0) >= 700) {
+    expect(
+      Math.abs((calendarBox!.x + calendarBox!.width) - (controlBox!.x + controlBox!.width)),
+      'desktop calendar popover aligns near the calendar icon instead of the modal left edge',
+    ).toBeLessThanOrEqual(18);
+  }
+
+  const unexpectedTopScrollables = await modal.evaluate((root) => {
+    return Array.from(root.querySelectorAll<HTMLElement>('.modal-form-body *'))
+      .filter((el) => {
+        if (el.closest('.copy-week-preview-scroll') || el.closest('.tdi-pop-menu')) return false;
+
+        const style = window.getComputedStyle(el);
+        const rect = el.getBoundingClientRect();
+        const canScroll = /(auto|scroll)/.test(style.overflowY) && el.scrollHeight > el.clientHeight + 2;
+
+        return canScroll && rect.width > 0 && rect.height > 0;
+      })
+      .map((el) => el.className || el.tagName.toLowerCase());
+  });
+  expect(unexpectedTopScrollables, 'date controls and calendar area do not create their own scrollbar').toEqual([]);
+
+  await page.locator('.schedule-shell').evaluate((el: Element) => {
+    const shell = (el as HTMLElement & { __tpssScheduleShell?: any }).__tpssScheduleShell;
+    shell.copyWeekLoading = false;
+    shell.copyWeekPreview = {
+      total: 6,
+      ready: Array.from({ length: 5 }, (_, index) => ({
+        topic: `Ready ${index + 1}`,
+        target_date: `2026-08-${String(index + 10).padStart(2, '0')}`,
+        time: '09:00-11:30',
+        room: 'R-301',
+      })),
+      blocked: [{
+        topic: 'Blocked 1',
+        target_date: '2026-08-20',
+        time: '09:00-11:30',
+        reasons: ['ห้อง/สถานที่ชนกับรายการเดิม'],
+      }],
+    };
+  });
+
+  const previewScroll = modal.locator('.copy-week-preview-scroll');
+  await expect(previewScroll).toBeVisible({ timeout: 5_000 });
+  await expect(previewScroll.locator('.copy-week-item')).toHaveCount(6);
+  const bodyOverflowY = await modal.locator('.modal-form-body').evaluate((el) => window.getComputedStyle(el).overflowY);
+  expect(bodyOverflowY, 'copy modal body does not own the preview scrollbar').toBe('hidden');
+  const previewMetrics = await previewScroll.evaluate((el) => ({
+    clientHeight: el.clientHeight,
+    scrollHeight: el.scrollHeight,
+    overflowY: window.getComputedStyle(el).overflowY,
+  }));
+
+  expect(previewMetrics.overflowY).toBe('auto');
+  expect(previewMetrics.clientHeight, 'preview area is capped at about four rows').toBeLessThanOrEqual(316);
+  expect(previewMetrics.scrollHeight, 'overflow stays inside the preview area').toBeGreaterThan(previewMetrics.clientHeight);
+  const previewBox = await previewScroll.boundingBox();
+  const actionBox = await modal.locator('.schedule-copy-week-actions').boundingBox();
+  expect(previewBox, 'preview scroll area has a layout box').not.toBeNull();
+  expect(actionBox, 'copy modal footer has a layout box').not.toBeNull();
+  expect(previewBox!.y + previewBox!.height, 'preview list stays above the fixed action footer').toBeLessThanOrEqual(actionBox!.y + 1);
+});
+
 test('schedule create modal accepts a filled single-day schedule and closes after save', async ({ page }, testInfo) => {
   await login(page, 'head_med');
 
