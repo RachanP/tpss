@@ -294,7 +294,7 @@ test('schedule create modal accepts a filled single-day schedule and closes afte
   await expect(modal.locator('input[type="time"]')).toHaveCount(0);
 
   const startHour = testInfo.project.name === 'mobile-chrome' ? '14' : '13';
-  await modal.locator('input[name="start_date"]').fill('08/12/2569');
+  await modal.locator('input[name="start_date"]').fill('08/06/2569');
   await selectTime(page, 'tp_start', startHour, '17');
   await selectTime(page, 'tp_end', startHour, '47');
 
@@ -311,10 +311,11 @@ test('schedule create modal accepts a filled single-day schedule and closes afte
 
   const submit = modal.getByTestId('schedule-submit');
   await expect(submit).toBeEnabled({ timeout: 10_000 });
+  const toastVisible = page.locator('#tpss-toast').waitFor({ state: 'visible', timeout: 10_000 });
   await submit.click();
 
   await expect(page.getByTestId('schedule-create-modal')).toBeHidden({ timeout: 10_000 });
-  await expect(page.locator('#tpss-toast')).toBeVisible({ timeout: 10_000 });
+  await toastVisible;
 });
 
 test('schedule detail modal opens from lazy list rows and grid cards', async ({ page }) => {

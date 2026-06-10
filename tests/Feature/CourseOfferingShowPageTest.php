@@ -316,6 +316,25 @@ class CourseOfferingShowPageTest extends TestCase
         $this->assertTrue($courseRoles->contains('name_th', 'อาจารย์ผู้สอน'));
     }
 
+    public function test_show_page_orders_coordinator_first_in_instructor_pool(): void
+    {
+        $head       = $this->makeUser('course_head');
+        $instructor = $this->makeUser('instructor');
+        $offering   = $this->makeOffering($head);
+
+        $offering->instructorPool()->attach($instructor->id, ['role_in_course' => 'instructor']);
+        $offering->instructorPool()->attach($head->id, ['role_in_course' => 'coordinator']);
+
+        $this->actingAsCourseHead($head);
+        $response = $this->get(route('maker.course_offerings.show', $offering));
+
+        $response->assertOk();
+
+        $pool = $response->viewData('courseOffering')->instructorPool;
+        $this->assertSame($head->id, $pool->first()->id);
+        $this->assertSame('coordinator', $pool->first()->pivot->role_in_course);
+    }
+
     public function test_show_page_renders_read_only_during_preparation(): void
     {
         $head     = $this->makeUser('course_head');

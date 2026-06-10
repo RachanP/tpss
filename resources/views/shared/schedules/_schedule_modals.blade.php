@@ -488,6 +488,7 @@
                             method="POST"
                             action="{{ route('maker.course_offerings.schedules.update', [$offering, $schedule]) }}"
                             data-testid="schedule-edit-form"
+                            data-schedule-success-toast="บันทึกสำเร็จ"
                             data-schedule-check
                             data-check-url="{{ route('maker.course_offerings.schedules.check_conflicts', $offering, false) }}"
                             @input="queueScheduleCheck($el)"

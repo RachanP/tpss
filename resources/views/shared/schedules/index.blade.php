@@ -5751,7 +5751,10 @@
             liveWarnings: {},
             liveChecking: false,
             liveTimer: null,
+            suppressScheduleCheck: false,
             liveCheckSeq: 0,
+            hasScheduleServerErrors: @js($errors->any()),
+            scheduleSuccessToastKey: 'tpss-schedule-success-toast',
             get liveBlocking() { return Object.keys(this.visibleLiveIssues()).length > 0; },
             get liveWarningActive() { return Object.keys(this.liveWarnings).length > 0; },
             visibleLiveIssues() {
@@ -5782,9 +5785,36 @@
                 return this.liveIssues[field] || [];
             },
             liveWarning(field) { return this.liveWarnings[field] || []; },
+            queueScheduleSuccessToast(form) {
+                if (!form?.matches('[data-schedule-success-toast]')) return;
+
+                try {
+                    sessionStorage.setItem(
+                        this.scheduleSuccessToastKey,
+                        form.getAttribute('data-schedule-success-toast') || 'บันทึกสำเร็จ'
+                    );
+                } catch (e) {}
+            },
+            flushScheduleSuccessToast() {
+                let message = '';
+
+                try {
+                    message = sessionStorage.getItem(this.scheduleSuccessToastKey) || '';
+                    sessionStorage.removeItem(this.scheduleSuccessToastKey);
+                } catch (e) {
+                    message = '';
+                }
+
+                if (!message || this.hasScheduleServerErrors) return;
+
+                this.$nextTick(() => {
+                    window.tpssToast?.(message, 'success');
+                });
+            },
             init() {
                 this.$el.__tpssScheduleShell = this;
                 window.tpssScheduleRunLiveCheck = (form) => this.runScheduleCheck(form);
+                this.flushScheduleSuccessToast();
                 this.$watch('view', val => sessionStorage.setItem('tpss-schedule-view', val));
                 this.$watch('selectedOfferingId', () => {
                     this.createInstructorSearch = '';
@@ -5838,7 +5868,9 @@
                     this.openScheduleDetail(scheduleId);
                 });
 
-                this.$el.addEventListener('submit', () => {
+                this.$el.addEventListener('submit', (e) => {
+                    const form = e.target instanceof HTMLFormElement ? e.target : null;
+                    this.queueScheduleSuccessToast(form);
                     sessionStorage.setItem('tpss-schedule-scroll-y', window.scrollY);
                     sessionStorage.setItem('tpss-schedule-scroll-height', document.documentElement.scrollHeight);
                 });
@@ -6131,7 +6163,32 @@
 
                 if (this.$refs.copyWeekForm) this.$refs.copyWeekForm.submit();
             },
+            syncCreateDateInputs() {
+                const form = this.$refs.createForm;
+                if (!form) return;
+
+                if (!this.createMultiDay && this.createStartDate) {
+                    this.createEndDate = this.createStartDate;
+                }
+
+                [
+                    ['start_date', this.createStartDate],
+                    ['end_date', this.createEndDate],
+                ].forEach(([name, value]) => {
+                    const input = form.querySelector(`[name='${name}']`);
+                    if (!input) return;
+
+                    const nextValue = value || '';
+                    if (input.value !== nextValue) {
+                        input.value = nextValue;
+                    }
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+            },
             queueScheduleCheck(formEl) {
+                if (this.suppressScheduleCheck) return;
+
                 const form = formEl || this.$refs.createForm;
                 if (this.liveTimer) clearTimeout(this.liveTimer);
                 this.liveTimer = setTimeout(() => this.runScheduleCheck(form), 400);
@@ -6748,9 +6805,13 @@
                 this.liveWarnings = {};
                 this.createMultiDay = false;
                 if (this.liveTimer) { clearTimeout(this.liveTimer); this.liveTimer = null; }
+                this.suppressScheduleCheck = true;
                 this.setCreateMode(this.defaultCreateMode);
 
-                if (!form) return;
+                if (!form) {
+                    this.suppressScheduleCheck = false;
+                    return;
+                }
 
                 form.reset();
                 form.querySelectorAll('input[type=checkbox], input[type=radio]').forEach((input) => {
@@ -6807,6 +6868,18 @@
                         this.createStartDate = this.toThaiDateDisplay(date);
                         this.createEndDate = this.toThaiDateDisplay(date);
                     }
+
+                    this.$nextTick(() => {
+                        if (this.liveTimer) { clearTimeout(this.liveTimer); this.liveTimer = null; }
+                        this.syncCreateDateInputs();
+                        this.liveIssues = {};
+                        this.liveWarnings = {};
+                        this.suppressScheduleCheck = false;
+
+                        if (date) {
+                            this.runScheduleCheck(this.$refs.createForm);
+                        }
+                    });
                 });
             },
             openCreate(date = null) {
@@ -8629,7 +8702,7 @@
                         </div>
                         <button type="button" class="modal-close" @click="closeCreate()" aria-label="ปิด">×</button>
                     </div>
-                    <form method="POST" action="{{ $createAction }}" x-bind:action="createMode === 'series' ? seriesCreateAction : normalCreateAction" @submit="$el.action = createMode === 'series' ? seriesCreateAction : normalCreateAction" @input="queueScheduleCheck($el)" @change="queueScheduleCheck($el)" data-testid="schedule-form" x-ref="createForm">
+                    <form method="POST" action="{{ $createAction }}" x-bind:action="createMode === 'series' ? seriesCreateAction : normalCreateAction" @submit="syncCreateDateInputs(); $el.action = createMode === 'series' ? seriesCreateAction : normalCreateAction" @input="queueScheduleCheck($el)" @change="queueScheduleCheck($el)" data-testid="schedule-form" data-schedule-success-toast="บันทึกสำเร็จ" x-ref="createForm">
                         @csrf
                         <input type="hidden" name="modal_mode" value="create">
                         <input type="hidden" name="create_mode" x-bind:value="createMode">

@@ -1230,7 +1230,7 @@
             }
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
+        function tpssShowFlashToasts() {
             @if(session('success'))
                 tpssToast(@json(session('success')), 'success');
             @endif
@@ -1242,7 +1242,13 @@
             @if(session('warning'))
                 tpssToast(@json(session('warning')), 'warning');
             @endif
-        });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', tpssShowFlashToasts, { once: true });
+        } else {
+            tpssShowFlashToasts();
+        }
         // Expose function to initialize TPSS select dropdowns on-demand (used when modals render dynamically)
         window.tpssInitChoices = function(root) {
             try {

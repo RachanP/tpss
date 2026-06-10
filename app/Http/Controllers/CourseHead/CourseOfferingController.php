@@ -85,6 +85,21 @@ class CourseOfferingController extends Controller
             'instructorPool.instructorProfile.department',
             'studentGroups.cohortGroup.parent',
         ])->loadCount('schedules');
+        $courseOffering->setRelation('instructorPool', $courseOffering->instructorPool
+            ->sort(function (User $left, User $right) use ($courseOffering): int {
+                $leftIsCoordinator = (int) $left->id === (int) $courseOffering->coordinator_id;
+                $rightIsCoordinator = (int) $right->id === (int) $courseOffering->coordinator_id;
+
+                if ($leftIsCoordinator !== $rightIsCoordinator) {
+                    return $leftIsCoordinator ? -1 : 1;
+                }
+
+                return strnatcasecmp(
+                    (string) ($left->formatted_name ?? $left->name ?? ''),
+                    (string) ($right->formatted_name ?? $right->name ?? '')
+                );
+            })
+            ->values());
 
         $availableInstructors = User::query()
             ->with('instructorProfile.department')
