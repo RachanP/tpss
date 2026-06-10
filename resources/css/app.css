@@ -1261,7 +1261,7 @@ textarea:focus {
 /* Modals & Overlays */
 .overlay {
   position: fixed;
-  inset: 0;
+  inset: 0 0 0 var(--sidebar-w, 0px);
   background: rgba(0, 0, 0, 0.4);
   backdrop-filter: none;
   z-index: var(--z-modal);
@@ -1269,6 +1269,12 @@ textarea:focus {
   align-items: center;
   justify-content: center;
   padding: 20px;
+}
+
+@media (max-width: 1024px) {
+  .overlay {
+    inset: 0;
+  }
 }
 
 .modal-center {

@@ -304,6 +304,15 @@
             if (this.openScheduleCountdown > 0 || !this.openScheduleConfirmForm) return;
             document.getElementById(this.openScheduleConfirmForm)?.submit();
         },
+        scrollToSettingsTarget(targetId) {
+            this.$nextTick(() => {
+                const target = document.getElementById(targetId);
+                if (!target) return;
+                const offset = 104;
+                const top = target.getBoundingClientRect().top + window.scrollY - offset;
+                window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+            });
+        },
         startCloseScheduleConfirm(formId, label) {
             clearInterval(this.closeScheduleTimer);
             this.closeScheduleConfirmForm = formId;
@@ -334,37 +343,46 @@
                 style="display: flex; gap: 8px; background: var(--bg-2); padding: 4px; border-radius: 8px; border: 1px solid var(--border); overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; max-width: 100%;">
                 <button type="button" @click="activeTab = 'academic'"
                     :class="activeTab === 'academic' ? 'btn-primary' : 'btn btn-ghost'"
-                    style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
+                    class="settings-tab-button">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
-                        style="margin-right: 6px;">
+                        class="settings-tab-icon">
                         <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                         <line x1="16" y1="2" x2="16" y2="6"></line>
                         <line x1="8" y1="2" x2="8" y2="6"></line>
                         <line x1="3" y1="10" x2="21" y2="10"></line>
                     </svg>
-                    ปีการศึกษา
+                    <span class="settings-tab-copy">
+                        <span>ปีการศึกษา</span>
+                        <small>ขั้นตอนหลักก่อนเริ่มจัดตาราง</small>
+                    </span>
                 </button>
                 @if($canManageHolidays)
                 <button type="button" @click="activeTab = 'holidays'"
                     :class="activeTab === 'holidays' ? 'btn-primary' : 'btn btn-ghost'"
-                    style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
+                    class="settings-tab-button">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                        style="margin-right: 6px;">
+                        class="settings-tab-icon">
                         <path d="M8 2v4"/><path d="M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/><path d="m9 16 2 2 4-4"/>
                     </svg>
-                    วันหยุด
+                    <span class="settings-tab-copy">
+                        <span>วันหยุด</span>
+                        <small>ข้อมูลประกอบปฏิทิน</small>
+                    </span>
                 </button>
                 @endif
                 <button type="button" @click="activeTab = 'pa'"
                     :class="activeTab === 'pa' ? 'btn-primary' : 'btn btn-ghost'"
-                    style="padding: 8px 16px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center;">
+                    class="settings-tab-button">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
-                        style="margin-right: 6px;">
+                        class="settings-tab-icon">
                         <line x1="19" y1="5" x2="5" y2="19"></line>
                         <circle cx="6.5" cy="6.5" r="2.5"></circle>
                         <circle cx="17.5" cy="17.5" r="2.5"></circle>
                     </svg>
-                    เกณฑ์ภาระงาน
+                    <span class="settings-tab-copy">
+                        <span>เกณฑ์ภาระงาน</span>
+                        <small>ค่าคงที่สำหรับคำนวณ PA</small>
+                    </span>
                 </button>
             </div>
         </div>
@@ -374,6 +392,8 @@
         @php
             $schedulingCriticals = $schedulingCriticals ?? [];
             $hasSchedulingCriticals = $isAdmin && count($schedulingCriticals) > 0;
+            $firstSchedulingCritical = collect($schedulingCriticals)->first();
+            $activeYear = $academicYears->firstWhere('is_active', true);
         @endphp
         <div x-show="!isAdminView || activeTab === 'academic'" {{ $isAdmin ? 'x-cloak' : '' }}>
             @if(session('success'))
@@ -393,6 +413,156 @@
                 </div>
             @endif
 
+            @if($isAdmin)
+                <section class="settings-start-guide" aria-label="ลำดับการตั้งค่าระบบ">
+                    <div class="settings-start-guide__header">
+                        <div>
+                            <div class="settings-start-guide__eyebrow">เริ่มที่นี่</div>
+                            <h2>เริ่มตั้งค่าระบบ</h2>
+                            <p>ทำตามลำดับนี้ก่อนเปิดช่วงจัดตาราง ระบบจะบอกให้เห็นทันทีว่าขั้นไหนเสร็จแล้วและควรทำอะไรต่อ</p>
+                        </div>
+                        <div class="settings-start-guide__summary">
+                            @if($activeYear)
+                                <span>ปีปัจจุบัน</span>
+                                <strong>{{ $activeYear->name }}</strong>
+                            @else
+                                <span>ยังไม่มีปีปัจจุบัน</span>
+                                <strong>เริ่มจากเพิ่มปี</strong>
+                            @endif
+                        </div>
+                    </div>
+
+                    <div class="settings-setup-steps">
+                        <article class="settings-setup-step {{ $activeYear ? 'is-done' : 'is-next' }}">
+                            <div class="settings-setup-step__mark">1</div>
+                            <div class="settings-setup-step__body">
+                                <div class="settings-setup-step__top">
+                                    <h3>ตั้งค่าปีการศึกษาปัจจุบัน</h3>
+                                    <span class="settings-step-badge">{{ $activeYear ? 'เสร็จแล้ว' : 'ทำขั้นนี้ต่อ' }}</span>
+                                </div>
+                                <div class="settings-step-task">{{ $activeYear ? 'ตรวจสอบ: ปีนี้ถูกตั้งเป็นปีปัจจุบันแล้ว' : 'สิ่งที่ต้องทำ: เพิ่มปีการศึกษาและติ๊กเป็นปีปัจจุบัน' }}</div>
+                                <p>{{ $activeYear ? 'มีปีปัจจุบันสำหรับอ้างอิงปฏิทินและช่วงจัดตารางแล้ว' : 'เพิ่มปีการศึกษาและตั้งให้เป็นปีปัจจุบันก่อน' }}</p>
+                                @if($activeYear)
+                                    <button type="button" class="settings-step-link" @click="scrollToSettingsTarget('academic-year-section')">ดูตารางปีการศึกษา</button>
+                                @else
+                                    <button type="button" class="btn btn-primary settings-step-action" @click="openAddModal()">เพิ่มปีการศึกษา</button>
+                                @endif
+                            </div>
+                        </article>
+
+                        <article class="settings-setup-step"
+                            :class="{
+                                'is-waiting': !calYearName,
+                                'is-next': calYearName && !centralHasTerms(),
+                                'is-done': calYearName && centralHasTerms()
+                            }">
+                            <div class="settings-setup-step__mark">2</div>
+                            <div class="settings-setup-step__body">
+                                <div class="settings-setup-step__top">
+                                    <h3>กำหนดปฏิทินกลางของคณะ</h3>
+                                    <span class="settings-step-badge" x-show="!calYearName">รอก่อน</span>
+                                    <span class="settings-step-badge" x-show="calYearName && !centralHasTerms()" x-cloak>ทำขั้นนี้ต่อ</span>
+                                    <span class="settings-step-badge" x-show="calYearName && centralHasTerms()" x-cloak>เสร็จแล้ว</span>
+                                </div>
+                                <div class="settings-step-task" x-show="!calYearName">สิ่งที่ต้องทำ: ทำขั้นที่ 1 ให้เสร็จก่อน</div>
+                                <div class="settings-step-task" x-show="calYearName && !centralHasTerms()" x-cloak>สิ่งที่ต้องทำ: กรอกวันเปิด-ปิดเทอมและช่วงสอบกลาง</div>
+                                <div class="settings-step-task" x-show="calYearName && centralHasTerms()" x-cloak>ตรวจสอบ: ปฏิทินกลางถูกกำหนดแล้ว</div>
+                                <p x-show="!calYearName">ต้องมีปีการศึกษาปัจจุบันก่อนจึงจะกำหนดปฏิทินได้</p>
+                                <p x-show="calYearName && !centralHasTerms()" x-cloak>กำหนดวันเปิด-ปิดเทอมและช่วงสอบที่เป็นค่ากลางของทั้งคณะ</p>
+                                <p x-show="calYearName && centralHasTerms()" x-cloak>ปฏิทินกลางพร้อมเป็นฐานให้ทุกหลักสูตรแล้ว</p>
+                                <button type="button" class="btn btn-primary settings-step-action"
+                                    x-show="calYearName && !centralHasTerms()" x-cloak
+                                    @click="openScopeModal({ key: 'central', curriculum_id: '', year: null, isDefault: true })">กำหนดปฏิทินกลาง</button>
+                                <button type="button" class="settings-step-link"
+                                    x-show="calYearName && centralHasTerms()" x-cloak
+                                    @click="scrollToSettingsTarget('central-calendar-section')">ดูปฏิทินกลาง</button>
+                            </div>
+                        </article>
+
+                        <article class="settings-setup-step"
+                            :class="{
+                                'is-waiting': !calYearName || !centralHasTerms(),
+                                'is-optional': calYearName && centralHasTerms() && calOverrideCount() === 0,
+                                'is-done': calYearName && centralHasTerms() && calOverrideCount() > 0
+                            }">
+                            <div class="settings-setup-step__mark">3</div>
+                            <div class="settings-setup-step__body">
+                                <div class="settings-setup-step__top">
+                                    <h3>ตั้งปฏิทินแยกเฉพาะกรณีที่ต่าง</h3>
+                                    <span class="settings-step-badge" x-show="!calYearName || !centralHasTerms()">รอก่อน</span>
+                                    <span class="settings-step-badge" x-show="calYearName && centralHasTerms() && calOverrideCount() === 0" x-cloak>ข้ามได้</span>
+                                    <span class="settings-step-badge" x-show="calYearName && centralHasTerms() && calOverrideCount() > 0" x-cloak>เสร็จแล้ว</span>
+                                </div>
+                                <div class="settings-step-task" x-show="!calYearName || !centralHasTerms()">สิ่งที่ต้องทำ: ทำปฏิทินกลางให้เสร็จก่อน</div>
+                                <div class="settings-step-task" x-show="calYearName && centralHasTerms() && calOverrideCount() === 0" x-cloak>สิ่งที่ต้องทำ: ตรวจว่ามีหลักสูตร/ชั้นปีที่วันไม่ตรงหรือไม่</div>
+                                <div class="settings-step-task" x-show="calYearName && centralHasTerms() && calOverrideCount() > 0" x-cloak>ตรวจสอบ: มีรายการที่ตั้งต่างจากปฏิทินกลางแล้ว</div>
+                                <p x-show="!calYearName || !centralHasTerms()">ทำปฏิทินกลางให้เสร็จก่อน แล้วค่อยตั้งเฉพาะหลักสูตร/ชั้นปีที่ต่าง</p>
+                                <p x-show="calYearName && centralHasTerms() && calOverrideCount() === 0" x-cloak>ข้ามได้ถ้าไม่มีวันเปิด-ปิดเทอมหรือช่วงสอบที่ต่างจากปฏิทินกลาง</p>
+                                <p x-show="calYearName && centralHasTerms() && calOverrideCount() > 0" x-cloak x-text="'ตั้งปฏิทินแยกแล้ว ' + calOverrideCount() + ' รายการ'"></p>
+                                <button type="button" class="settings-step-link"
+                                    x-show="calYearName && centralHasTerms()" x-cloak
+                                    @click="scrollToSettingsTarget('cal-override-section')">ตรวจปฏิทินแยก</button>
+                            </div>
+                        </article>
+
+                        <article class="settings-setup-step"
+                            :class="{
+                                'is-waiting': !calYearName || !centralHasTerms(),
+                                'is-issue': calYearName && centralHasTerms() && {{ $hasSchedulingCriticals ? 'true' : 'false' }},
+                                'is-next': calYearName && centralHasTerms() && {{ (!$hasSchedulingCriticals && $activeYear && $activeYear->phase === 'preparation') ? 'true' : 'false' }},
+                                'is-done': calYearName && centralHasTerms() && {{ ($activeYear && in_array($activeYear->phase, ['scheduling', 'published'], true)) ? 'true' : 'false' }}
+                            }">
+                            <div class="settings-setup-step__mark">4</div>
+                            <div class="settings-setup-step__body">
+                                <div class="settings-setup-step__top">
+                                    <h3>เปิดช่วงจัดตารางเมื่อข้อมูลพร้อม</h3>
+                                    <span class="settings-step-badge" x-show="!calYearName || !centralHasTerms()">รอก่อน</span>
+                                    @if($hasSchedulingCriticals)
+                                        <span class="settings-step-badge" x-show="calYearName && centralHasTerms()" x-cloak>มีข้อมูลต้องแก้</span>
+                                    @elseif($activeYear && $activeYear->phase === 'preparation')
+                                        <span class="settings-step-badge" x-show="calYearName && centralHasTerms()" x-cloak>ทำขั้นนี้ต่อ</span>
+                                    @elseif($activeYear && in_array($activeYear->phase, ['scheduling', 'published'], true))
+                                        <span class="settings-step-badge" x-show="calYearName && centralHasTerms()" x-cloak>เสร็จแล้ว</span>
+                                    @else
+                                        <span class="settings-step-badge" x-show="calYearName && centralHasTerms()" x-cloak>รอก่อน</span>
+                                    @endif
+                                </div>
+                                <div class="settings-step-task" x-show="!calYearName || !centralHasTerms()">สิ่งที่ต้องทำ: ทำขั้นที่ 1-2 ให้ครบก่อน</div>
+                                @if($hasSchedulingCriticals)
+                                    <div class="settings-step-task" x-show="calYearName && centralHasTerms()" x-cloak>สิ่งที่ต้องทำ: แก้ข้อมูลที่ระบบแจ้งก่อนเปิดช่วงจัดตาราง</div>
+                                @elseif($activeYear && $activeYear->phase === 'preparation')
+                                    <div class="settings-step-task" x-show="calYearName && centralHasTerms()" x-cloak>สิ่งที่ต้องทำ: กดเปิดช่วงจัดตารางเมื่อข้อมูลพร้อม</div>
+                                @elseif($activeYear && in_array($activeYear->phase, ['scheduling', 'published'], true))
+                                    <div class="settings-step-task" x-show="calYearName && centralHasTerms()" x-cloak>ตรวจสอบ: ขั้นตอนเปิดช่วงจัดตารางเสร็จแล้ว</div>
+                                @else
+                                    <div class="settings-step-task" x-show="calYearName && centralHasTerms()" x-cloak>สิ่งที่ต้องทำ: ตั้งปีการศึกษาปัจจุบันให้เรียบร้อย</div>
+                                @endif
+                                <p x-show="!calYearName || !centralHasTerms()">ต้องมีปีปัจจุบันและปฏิทินกลางก่อนเปิดช่วงจัดตาราง</p>
+                                @if($hasSchedulingCriticals)
+                                    <p x-show="calYearName && centralHasTerms()" x-cloak>ยังมีข้อมูลจำเป็นที่ต้องแก้ก่อนเปิดช่วงจัดตาราง</p>
+                                    @if(!empty($firstSchedulingCritical['link']))
+                                        <a class="btn btn-primary settings-step-action" x-show="calYearName && centralHasTerms()" x-cloak href="{{ $firstSchedulingCritical['link'] }}">แก้ข้อมูลที่ขาด</a>
+                                    @endif
+                                @elseif($activeYear && $activeYear->phase === 'preparation')
+                                    <p x-show="calYearName && centralHasTerms()" x-cloak>ตรวจข้อมูลครบแล้วจึงเปิดช่วงให้หัวหน้าวิชาเริ่มจัดตาราง</p>
+                                    <button type="button" class="btn btn-primary settings-step-action"
+                                        x-show="calYearName && centralHasTerms()" x-cloak
+                                        @click="startOpenScheduleCountdown('open-scheduling-{{ $activeYear->id }}', 'ปีการศึกษา {{ $activeYear->name }}')">เปิดช่วงจัดตาราง</button>
+                                @elseif($activeYear && $activeYear->phase === 'scheduling')
+                                    <p x-show="calYearName && centralHasTerms()" x-cloak>เปิดช่วงจัดตารางอยู่แล้ว</p>
+                                    <button type="button" class="settings-step-link" @click="scrollToSettingsTarget('schedule-phase-section')">ดูสถานะช่วงจัดตาราง</button>
+                                @elseif($activeYear && $activeYear->phase === 'published')
+                                    <p x-show="calYearName && centralHasTerms()" x-cloak>ปีนี้เผยแพร่ตารางแล้ว</p>
+                                    <button type="button" class="settings-step-link" @click="scrollToSettingsTarget('schedule-phase-section')">ดูสถานะปีการศึกษา</button>
+                                @else
+                                    <p x-show="calYearName && centralHasTerms()" x-cloak>ตั้งค่าปีการศึกษาปัจจุบันให้เรียบร้อยก่อน</p>
+                                @endif
+                            </div>
+                        </article>
+                    </div>
+                </section>
+            @endif
+
             @if($hasSchedulingCriticals)
                 <div style="background:var(--status-conflict-bg);border:1px solid var(--status-conflict-border);border-radius:8px;margin-bottom:16px;padding:14px 16px;color:var(--status-conflict-fg);">
                     <div style="font-weight:700;margin-bottom:6px;">ยังไม่สามารถเปิดช่วงจัดตารางได้</div>
@@ -407,64 +577,10 @@
                 </div>
             @endif
 
-            @if($isAdmin)
-                @php $activeYear = $academicYears->firstWhere('is_active', true); @endphp
-                @if($activeYear)
-                    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:space-between;border:1.5px solid color-mix(in oklch,var(--brand-navy) 28%,var(--border));border-radius:12px;padding:16px 20px;margin-bottom:16px;background:linear-gradient(180deg,color-mix(in oklch,var(--brand-navy) 7%,var(--surface)),var(--surface));box-shadow:0 1px 2px rgba(0,36,84,.08),0 14px 30px -24px rgba(0,36,84,.4);">
-                        <div style="display:flex;align-items:center;gap:14px;min-width:0;">
-                            <span style="width:46px;height:46px;border-radius:11px;background:var(--brand-navy);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                            </span>
-                            <div style="min-width:0;">
-                                <div style="font-size:12px;color:var(--fg-3);font-weight:600;">ปีการศึกษาปัจจุบัน</div>
-                                <div style="font-size:18px;font-weight:800;color:var(--fg-1);font-family:var(--font-display);">{{ $activeYear->name }}
-                                    @if($activeYear->phase === 'scheduling')
-                                        <span class="badge" style="background:oklch(90% 0.1 145);color:oklch(30% 0.15 145);border:1px solid oklch(70% 0.15 145);font-size:11px;margin-left:6px;vertical-align:middle;">เปิดช่วงจัดตารางอยู่</span>
-                                    @elseif($activeYear->phase === 'published')
-                                        <span class="badge badge-primary" style="font-size:11px;margin-left:6px;vertical-align:middle;">เผยแพร่แล้ว</span>
-                                    @else
-                                        <span class="badge badge-gray" style="font-size:11px;margin-left:6px;vertical-align:middle;">เตรียมข้อมูล</span>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            @if($activeYear->phase === 'preparation')
-                                <form id="open-scheduling-{{ $activeYear->id }}" method="POST" action="{{ route('admin.settings.scheduling.open', $activeYear) }}" style="margin:0;">
-                                    @csrf
-                                    @method('PATCH')
-                                    <button type="button"
-                                        class="{{ $hasSchedulingCriticals ? 'btn btn-ghost is-locked' : 'btn btn-primary' }}"
-                                        style="font-size:14px;padding:10px 22px;font-weight:800;"
-                                        @if($hasSchedulingCriticals)
-                                            disabled
-                                            title="ต้องแก้ Critical ให้หมดก่อนเปิดช่วงจัดตาราง"
-                                        @else
-                                            @click="startOpenScheduleCountdown('open-scheduling-{{ $activeYear->id }}', 'ปีการศึกษา {{ $activeYear->name }}')"
-                                        @endif>
-                                        เปิดช่วงจัดตาราง
-                                    </button>
-                                </form>
-                            @elseif($activeYear->phase === 'scheduling')
-                                <form id="close-scheduling-{{ $activeYear->id }}" method="POST" action="{{ route('admin.settings.scheduling.close', $activeYear) }}" style="margin:0;">
-                                    @csrf
-                                    @method('PATCH')
-                                    <button type="button" class="btn btn-ghost"
-                                        style="font-size:14px;padding:10px 22px;border:1px solid var(--border);"
-                                        @click="startCloseScheduleConfirm('close-scheduling-{{ $activeYear->id }}', 'ปีการศึกษา {{ $activeYear->name }}')">
-                                        ปิดช่วงจัดตาราง
-                                    </button>
-                                </form>
-                            @endif
-                        </div>
-                    </div>
-                @endif
-            @endif
-
-            <div class="card">
+            <div class="card" id="academic-year-section">
                 <div class="card-hdr">
                     <div>
-                        <div class="card-ttl">ตั้งค่าปีการศึกษา</div>
+                        <div class="card-ttl settings-section-title"><span class="settings-section-step">1</span>ตั้งค่าปีการศึกษา</div>
                     </div>
                     <div class="card-actions">
                         <button class="btn btn-primary" @click="openAddModal()">
@@ -556,10 +672,10 @@
             </div>
 
             {{-- ── ปฏิทินกลางของคณะ (บน) — เลือกปี + ตั้งเทอม/ช่วงสอบฐานของทั้งคณะ ── --}}
-            <div class="card" style="margin-top:16px;">
+            <div class="card" id="central-calendar-section" style="margin-top:16px;">
                 <div class="card-hdr">
                     <div>
-                        <div class="card-ttl">ปฏิทินกลางของคณะ</div>
+                        <div class="card-ttl settings-section-title"><span class="settings-section-step">2</span>ปฏิทินกลางของคณะ</div>
                         <div style="font-size:12px;color:var(--fg-3);margin-top:2px;line-height:1.55;">เทอม/ช่วงสอบของทั้งคณะ — เป็นฐานให้ทุกหลักสูตร/ชั้นปีที่ไม่ได้ตั้งปฏิทินแยก</div>
                     </div>
                 </div>
@@ -595,7 +711,7 @@
             <div class="card" id="cal-override-section" style="margin-top:16px;">
                 <div class="card-hdr">
                     <div>
-                        <div class="card-ttl">ปฏิทินแยกตามหลักสูตร/ชั้นปี</div>
+                        <div class="card-ttl settings-section-title"><span class="settings-section-step">3</span>ปฏิทินแยกตามหลักสูตร/ชั้นปี</div>
                         <div style="font-size:12px;color:var(--fg-3);margin-top:2px;line-height:1.55;">ตั้งเฉพาะหลักสูตร/ชั้นปีที่วันเปิด-ปิดเทอม/ช่วงสอบ <strong>ต่างจากปฏิทินกลาง</strong> · ที่ไม่ตั้ง = ใช้ <strong>ปฏิทินกลางของคณะ</strong> (การ์ดด้านบน)</div>
                     </div>
                     <div class="card-actions">
@@ -661,6 +777,60 @@
                     </div>
                 </div>
             </div>
+
+            @if($isAdmin)
+                @if($activeYear)
+                    <div id="schedule-phase-section" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:space-between;border:1.5px solid color-mix(in oklch,var(--brand-navy) 28%,var(--border));border-radius:12px;padding:16px 20px;margin-top:16px;margin-bottom:16px;background:linear-gradient(180deg,color-mix(in oklch,var(--brand-navy) 7%,var(--surface)),var(--surface));box-shadow:0 1px 2px rgba(0,36,84,.08),0 14px 30px -24px rgba(0,36,84,.4);">
+                        <div style="display:flex;align-items:center;gap:14px;min-width:0;">
+                            <span class="settings-section-step">4</span>
+                            <span style="width:46px;height:46px;border-radius:11px;background:var(--brand-navy);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                            </span>
+                            <div style="min-width:0;">
+                                <div style="font-size:12px;color:var(--fg-3);font-weight:600;">ปีการศึกษาปัจจุบัน</div>
+                                <div style="font-size:18px;font-weight:800;color:var(--fg-1);font-family:var(--font-display);">{{ $activeYear->name }}
+                                    @if($activeYear->phase === 'scheduling')
+                                        <span class="badge" style="background:oklch(90% 0.1 145);color:oklch(30% 0.15 145);border:1px solid oklch(70% 0.15 145);font-size:11px;margin-left:6px;vertical-align:middle;">เปิดช่วงจัดตารางอยู่</span>
+                                    @elseif($activeYear->phase === 'published')
+                                        <span class="badge badge-primary" style="font-size:11px;margin-left:6px;vertical-align:middle;">เผยแพร่แล้ว</span>
+                                    @else
+                                        <span class="badge badge-gray" style="font-size:11px;margin-left:6px;vertical-align:middle;">เตรียมข้อมูล</span>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            @if($activeYear->phase === 'preparation')
+                                <form id="open-scheduling-{{ $activeYear->id }}" method="POST" action="{{ route('admin.settings.scheduling.open', $activeYear) }}" style="margin:0;">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="button"
+                                        class="{{ $hasSchedulingCriticals ? 'btn btn-ghost is-locked' : 'btn btn-primary' }}"
+                                        style="font-size:14px;padding:10px 22px;font-weight:800;"
+                                        @if($hasSchedulingCriticals)
+                                            disabled
+                                            title="ต้องแก้ Critical ให้หมดก่อนเปิดช่วงจัดตาราง"
+                                        @else
+                                            @click="startOpenScheduleCountdown('open-scheduling-{{ $activeYear->id }}', 'ปีการศึกษา {{ $activeYear->name }}')"
+                                        @endif>
+                                        เปิดช่วงจัดตาราง
+                                    </button>
+                                </form>
+                            @elseif($activeYear->phase === 'scheduling')
+                                <form id="close-scheduling-{{ $activeYear->id }}" method="POST" action="{{ route('admin.settings.scheduling.close', $activeYear) }}" style="margin:0;">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="button" class="btn btn-ghost"
+                                        style="font-size:14px;padding:10px 22px;border:1px solid var(--border);"
+                                        @click="startCloseScheduleConfirm('close-scheduling-{{ $activeYear->id }}', 'ปีการศึกษา {{ $activeYear->name }}')">
+                                        ปิดช่วงจัดตาราง
+                                    </button>
+                                </form>
+                            @endif
+                        </div>
+                    </div>
+                @endif
+            @endif
 
             {{-- ── Modal กรอกวันของขอบเขต (แยกต่อหลักสูตร/ชั้นปี) ── --}}
             <template x-if="showCalEditor">
@@ -1167,6 +1337,335 @@
             border-color: var(--red, #dc2626) !important;
         }
 
+        .settings-section-title {
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+        }
+
+        .settings-section-step {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 28px;
+            width: 28px;
+            height: 28px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 42%, var(--border));
+            border-radius: 999px;
+            background: color-mix(in oklch, var(--brand-navy) 14%, var(--surface));
+            color: var(--brand-navy);
+            font-family: var(--font-display);
+            font-size: 13px;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .settings-tab-button {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+            padding: 8px 14px !important;
+            border-radius: 6px !important;
+            text-align: left;
+        }
+
+        .settings-tab-icon {
+            flex-shrink: 0;
+        }
+
+        .settings-tab-copy {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            line-height: 1.2;
+        }
+
+        .settings-tab-copy small {
+            max-width: 170px;
+            overflow: hidden;
+            color: currentColor;
+            font-size: 10px;
+            font-weight: 500;
+            opacity: .72;
+            text-overflow: ellipsis;
+        }
+
+        .settings-start-guide {
+            margin-bottom: 14px;
+            overflow: hidden;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 36%, var(--border));
+            border-radius: 10px;
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 12%, var(--surface)), var(--surface) 62%),
+                var(--surface);
+            box-shadow: 0 2px 4px rgba(0, 36, 84, .12), 0 14px 28px -24px rgba(0, 36, 84, .55);
+        }
+
+        .settings-start-guide__header {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 18px;
+            border-bottom: 1px solid color-mix(in oklch, var(--brand-navy) 28%, var(--border));
+        }
+
+        .settings-start-guide__eyebrow {
+            margin-bottom: 4px;
+            color: var(--brand-navy);
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        .settings-start-guide h2 {
+            margin: 0;
+            color: var(--fg-1);
+            font-family: var(--font-display);
+            font-size: 18px;
+            font-weight: 800;
+            line-height: 1.25;
+        }
+
+        .settings-start-guide p {
+            margin: 3px 0 0;
+            color: var(--fg-2);
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .settings-start-guide__summary {
+            display: grid;
+            gap: 2px;
+            min-width: 136px;
+            padding: 8px 12px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 28%, var(--border));
+            border-radius: 8px;
+            background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface));
+            text-align: right;
+        }
+
+        .settings-start-guide__summary span {
+            color: var(--fg-2);
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .settings-start-guide__summary strong {
+            color: var(--fg-1);
+            font-family: var(--font-display);
+            font-size: 15px;
+        }
+
+        .settings-setup-steps {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+            padding: 10px;
+            background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface));
+        }
+
+        .settings-setup-step {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+            align-items: stretch;
+            gap: 10px;
+            min-height: 128px;
+            padding: 12px 13px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border));
+            border-radius: 16px;
+            background: color-mix(in oklch, var(--brand-navy) 2%, var(--surface));
+            box-shadow: 0 8px 18px -18px rgba(0, 36, 84, .42);
+        }
+
+        .settings-setup-step:last-child {
+            border-bottom: 0;
+        }
+
+        .settings-setup-step__mark {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 999px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 38%, var(--border));
+            background: color-mix(in oklch, var(--brand-navy) 12%, var(--surface));
+            color: var(--brand-navy);
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        .settings-setup-step__body {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            grid-template-rows: auto minmax(34px, 1fr) 28px;
+            min-width: 0;
+            height: 100%;
+            align-items: stretch;
+        }
+
+        .settings-setup-step__top {
+            display: grid;
+            gap: 5px;
+            min-width: 0;
+        }
+
+        .settings-setup-step h3 {
+            margin: 0;
+            color: var(--fg-1);
+            font-size: 13px;
+            font-weight: 800;
+            line-height: 1.3;
+        }
+
+        .settings-setup-step p {
+            display: none;
+            margin: 0;
+            color: var(--fg-3);
+            font-size: 12px;
+            line-height: 1.55;
+        }
+
+        .settings-step-task {
+            grid-column: 1;
+            grid-row: 2;
+            display: -webkit-box;
+            overflow: hidden;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+            margin-top: 7px;
+            color: color-mix(in oklch, var(--brand-navy) 76%, var(--fg-1));
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1.35;
+        }
+
+        .settings-step-badge {
+            width: fit-content;
+            max-width: 100%;
+            padding: 3px 8px;
+            border-radius: 999px;
+            background: color-mix(in oklch, var(--brand-navy) 10%, var(--surface));
+            color: var(--brand-navy);
+            font-size: 10px;
+            font-weight: 800;
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+
+        .settings-step-action,
+        .settings-step-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            grid-column: 1;
+            grid-row: 3;
+            align-self: end;
+            justify-self: start;
+            min-height: 28px;
+            height: 28px;
+            margin-top: 0;
+            font-size: 11px;
+            line-height: 1.2;
+        }
+
+        .settings-step-link {
+            appearance: none;
+            -webkit-appearance: none;
+            max-width: 100%;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 28%, var(--border));
+            border-radius: 999px;
+            background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface));
+            color: var(--brand-navy);
+            cursor: pointer;
+            font-weight: 800;
+            padding: 6px 12px;
+            text-align: left;
+            text-decoration: none;
+            transition: background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
+        }
+
+        .settings-step-link:hover,
+        .settings-step-link:focus-visible {
+            border-color: color-mix(in oklch, var(--brand-navy) 48%, var(--border));
+            background: color-mix(in oklch, var(--brand-navy) 14%, var(--surface));
+            box-shadow: 0 6px 14px -12px rgba(0, 36, 84, .7);
+            outline: none;
+        }
+
+        .settings-step-action.btn {
+            padding: 6px 12px;
+            border-radius: 999px;
+            line-height: 1.2;
+        }
+
+        .settings-setup-step.is-done {
+            background: color-mix(in oklch, var(--brand-navy) 6%, var(--surface));
+        }
+
+        .settings-setup-step.is-done .settings-setup-step__mark {
+            border-color: color-mix(in oklch, var(--status-success-fg) 48%, var(--border));
+            background: color-mix(in oklch, var(--status-success-fg) 24%, var(--surface));
+            color: var(--status-success-fg);
+            box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--status-success-fg) 18%, transparent);
+        }
+
+        .settings-setup-step.is-done .settings-step-badge {
+            border-color: color-mix(in oklch, var(--brand-navy) 28%, var(--border));
+            background: color-mix(in oklch, var(--brand-navy) 11%, var(--surface));
+            color: var(--brand-navy);
+        }
+
+        .settings-setup-step.is-next {
+            background: color-mix(in oklch, var(--brand-navy) 12%, var(--surface));
+            border-color: color-mix(in oklch, var(--brand-navy) 42%, var(--border));
+            box-shadow: inset 0 3px 0 var(--brand-navy), 0 10px 20px -18px rgba(0, 36, 84, .68);
+        }
+
+        .settings-setup-step.is-next .settings-setup-step__mark,
+        .settings-setup-step.is-next .settings-step-badge {
+            border-color: color-mix(in oklch, var(--brand-navy) 34%, var(--border));
+            background: var(--brand-navy);
+            color: var(--surface);
+        }
+
+        .settings-setup-step.is-waiting {
+            background: color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
+        }
+
+        .settings-setup-step.is-waiting .settings-setup-step__mark,
+        .settings-setup-step.is-waiting .settings-step-badge {
+            border-color: color-mix(in oklch, var(--brand-navy) 24%, var(--border));
+            background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface));
+            color: color-mix(in oklch, var(--brand-navy) 70%, var(--fg-2));
+        }
+
+        .settings-setup-step.is-optional .settings-setup-step__mark,
+        .settings-setup-step.is-optional .settings-step-badge {
+            border-color: color-mix(in oklch, var(--brand-navy) 36%, var(--border));
+            background: color-mix(in oklch, var(--brand-navy) 15%, var(--surface));
+            color: var(--brand-navy);
+        }
+
+        .settings-setup-step.is-issue {
+            background: color-mix(in oklch, var(--brand-navy) 6%, var(--surface));
+        }
+
+        .settings-setup-step.is-issue .settings-setup-step__mark,
+        .settings-setup-step.is-issue .settings-step-badge {
+            border-color: color-mix(in oklch, var(--status-conflict-fg) 40%, var(--border));
+            background: color-mix(in oklch, var(--status-conflict-fg) 18%, var(--surface));
+            color: var(--status-conflict-fg);
+        }
+
+        #schedule-phase-section,
+        #academic-year-section,
+        #central-calendar-section,
+        #cal-override-section {
+            scroll-margin-top: 112px;
+        }
+
         .central-calendar-card-body {
             padding: 16px 20px 18px;
         }
@@ -1362,6 +1861,12 @@
             box-shadow: 0 -12px 24px -20px rgba(0, 36, 84, 0.36);
         }
 
+        @media (max-width: 1120px) {
+            .settings-setup-steps {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
         @media (max-height: 760px) {
             .cal-editor-modal {
                 max-height: calc(100vh - 24px);
@@ -1378,6 +1883,33 @@
         }
 
         @media (max-width: 680px) {
+            .settings-tab-copy small {
+                display: none;
+            }
+
+            .settings-start-guide__header {
+                align-items: stretch;
+                grid-template-columns: 1fr;
+                padding: 16px;
+            }
+
+            .settings-start-guide__summary {
+                min-width: 0;
+                text-align: left;
+            }
+
+            .settings-setup-steps {
+                grid-template-columns: 1fr;
+                gap: 8px;
+                padding: 8px;
+            }
+
+            .settings-setup-step {
+                min-height: 0;
+                padding: 14px;
+                border-radius: 14px;
+            }
+
             .central-calendar-card-body {
                 padding: 14px;
             }

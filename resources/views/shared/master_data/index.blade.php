@@ -515,6 +515,21 @@
         courseInstructorSearch: '',
         showCourseInstructorDropdown: false,
         showAllCourseInstructors: false,
+        coursePrerequisiteSearch: '',
+        coursePrerequisiteSelected(id) {
+            return (this.currentCourse.prerequisite_ids || []).map(String).includes(String(id));
+        },
+        coursePrerequisiteMatches(code, name) {
+            const query = (this.coursePrerequisiteSearch || '').trim().toLowerCase();
+            if (!query) return true;
+            return String(code || '').toLowerCase().includes(query) || String(name || '').toLowerCase().includes(query);
+        },
+        removeCoursePrerequisite(id) {
+            this.currentCourse.prerequisite_ids = (this.currentCourse.prerequisite_ids || []).map(String).filter(value => value !== String(id));
+        },
+        clearCoursePrerequisites() {
+            this.currentCourse.prerequisite_ids = [];
+        },
         openAddCourse() {
             this.editCourseMode = false;
             this.currentCourse = { id: '', route_key: '', course_code: '', name_th: '', name_en: '', curriculum_id: '', department_id: '', head_instructor_id: '', default_year_level: '', default_semester: '', credits: '', lecture_hours: 0, lab_hours: 0, self_study_hours: 0, color_code: '#3b82f6', status: 'active', is_required: '1', prerequisite_ids: [], has_locked_offering: false };
@@ -523,6 +538,7 @@
             this.staffSearch = '';
             this.selectedCourseInstructors = [];
             this.courseInstructorSearch = '';
+            this.coursePrerequisiteSearch = '';
             this.showAllCourseInstructors = false;
             this.showCourseModal = true;
             this.$nextTick(() => this.normalizeCourseFormSelects({ resetInvalidYear: false }));
@@ -542,6 +558,7 @@
                 course_role_id: u.pivot?.course_role_id || ''
             })) : [];
             this.courseInstructorSearch = '';
+            this.coursePrerequisiteSearch = '';
             this.showAllCourseInstructors = false;
             this.showCourseModal = true;
             this.$nextTick(() => this.normalizeCourseFormSelects({ resetInvalidYear: false }));
@@ -2760,15 +2777,43 @@
                                         <span class="course-count-badge"
                                             x-text="(currentCourse.prerequisite_ids || []).length + ' วิชา'"></span>
                                     </div>
-                                    <select name="prerequisite_ids[]" x-model="currentCourse.prerequisite_ids" multiple size="5"
-                                        style="min-height:132px;background:var(--surface);">
-                                        @foreach($courses as $candidateCourse)
-                                            <option value="{{ $candidateCourse->id }}" :disabled="editCourseMode && String(currentCourse.id) === '{{ $candidateCourse->id }}'">
-                                                {{ $candidateCourse->course_code }} - {{ $candidateCourse->name_th ?? $candidateCourse->name_en }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    <div style="margin-top:8px;font-size:11px;color:var(--fg-4);">กด Ctrl หรือ Cmd เพื่อเลือกได้หลายรายวิชา</div>
+                                    <div class="course-prerequisite-picker">
+                                        <div class="course-prerequisite-search">
+                                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                                            <input type="text" x-model="coursePrerequisiteSearch" placeholder="ค้นหารหัสหรือชื่อรายวิชา">
+                                            <button type="button" x-show="coursePrerequisiteSearch" x-cloak @click="coursePrerequisiteSearch = ''" aria-label="ล้างคำค้น">×</button>
+                                        </div>
+
+                                        <div class="course-prerequisite-selected" x-show="(currentCourse.prerequisite_ids || []).length" x-cloak>
+                                            @foreach($courses as $candidateCourse)
+                                                <button type="button" class="course-prerequisite-chip"
+                                                    x-show="coursePrerequisiteSelected('{{ $candidateCourse->id }}')"
+                                                    @click="removeCoursePrerequisite('{{ $candidateCourse->id }}')">
+                                                    <span>{{ $candidateCourse->course_code }}</span>
+                                                    <strong>{{ $candidateCourse->name_th ?? $candidateCourse->name_en }}</strong>
+                                                    <em>×</em>
+                                                </button>
+                                            @endforeach
+                                            <button type="button" class="course-prerequisite-clear" @click="clearCoursePrerequisites()">ล้างทั้งหมด</button>
+                                        </div>
+
+                                        <div class="course-prerequisite-list" role="group" aria-label="เลือกรายวิชาเงื่อนไข">
+                                            @foreach($courses as $candidateCourse)
+                                                <label class="course-prerequisite-option"
+                                                    x-show="coursePrerequisiteMatches({{ Js::from($candidateCourse->course_code) }}, {{ Js::from($candidateCourse->name_th ?? $candidateCourse->name_en) }})"
+                                                    :class="{ 'is-selected': coursePrerequisiteSelected('{{ $candidateCourse->id }}'), 'is-disabled': editCourseMode && String(currentCourse.id) === '{{ $candidateCourse->id }}' }">
+                                                    <input type="checkbox" name="prerequisite_ids[]" value="{{ $candidateCourse->id }}"
+                                                        x-model="currentCourse.prerequisite_ids"
+                                                        :disabled="editCourseMode && String(currentCourse.id) === '{{ $candidateCourse->id }}'">
+                                                    <span class="course-prerequisite-check" aria-hidden="true"></span>
+                                                    <span class="course-prerequisite-option-copy">
+                                                        <strong>{{ $candidateCourse->course_code }}</strong>
+                                                        <span>{{ $candidateCourse->name_th ?? $candidateCourse->name_en }}</span>
+                                                    </span>
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                    </div>
                                 </div>
                             </section>
 
@@ -4519,6 +4564,214 @@
             justify-content: space-between;
             gap: 14px;
             margin-bottom: 10px;
+        }
+
+        .course-prerequisite-picker {
+            display: grid;
+            gap: 10px;
+        }
+
+        .course-prerequisite-search {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            height: 40px;
+            padding: 0 11px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 20%, var(--border));
+            border-radius: 8px;
+            background: var(--surface);
+            color: var(--fg-3);
+        }
+
+        .course-prerequisite-search:focus-within {
+            border-color: color-mix(in oklch, var(--brand-navy) 52%, var(--border));
+            box-shadow: 0 0 0 3px color-mix(in oklch, var(--brand-navy) 12%, transparent);
+            color: var(--brand-navy);
+        }
+
+        .course-prerequisite-search input {
+            flex: 1;
+            min-width: 0;
+            border: 0 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            color: var(--fg-1);
+            font-size: 13px;
+        }
+
+        .course-prerequisite-search button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            border: 0;
+            border-radius: 999px;
+            background: color-mix(in oklch, var(--brand-navy) 10%, var(--surface));
+            color: var(--brand-navy);
+            cursor: pointer;
+            font-size: 16px;
+            line-height: 1;
+        }
+
+        .course-prerequisite-selected {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+            padding: 8px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 14%, var(--border));
+            border-radius: 8px;
+            background: color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
+        }
+
+        .course-prerequisite-chip,
+        .course-prerequisite-clear {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            max-width: 100%;
+            min-height: 28px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 28%, var(--border));
+            border-radius: 999px;
+            background: var(--surface);
+            color: var(--brand-navy);
+            cursor: pointer;
+            font: inherit;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 5px 9px;
+        }
+
+        .course-prerequisite-chip strong {
+            overflow: hidden;
+            max-width: 210px;
+            color: var(--fg-1);
+            font-weight: 700;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .course-prerequisite-chip em {
+            color: var(--fg-3);
+            font-style: normal;
+            font-size: 14px;
+            line-height: 1;
+        }
+
+        .course-prerequisite-clear {
+            border-color: transparent;
+            background: transparent;
+            color: var(--fg-3);
+        }
+
+        .course-prerequisite-list {
+            display: grid;
+            gap: 4px;
+            max-height: calc((54px * 3) + (4px * 2) + 12px);
+            overflow: auto;
+            padding: 6px 10px 6px 6px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border));
+            border-radius: 8px;
+            background: var(--surface);
+        }
+
+        .course-prerequisite-option {
+            position: relative;
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            height: 54px;
+            margin: 0;
+            padding: 8px 12px;
+            border: 0;
+            border-radius: 7px;
+            box-sizing: border-box;
+            cursor: pointer;
+            overflow: hidden;
+            transition: background-color .15s ease;
+        }
+
+        .course-prerequisite-option::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border: 1px solid transparent;
+            border-radius: inherit;
+            pointer-events: none;
+            transition: border-color .15s ease;
+        }
+
+        .course-prerequisite-option:hover,
+        .course-prerequisite-option.is-selected {
+            background: color-mix(in oklch, var(--brand-navy) 6%, var(--surface));
+        }
+
+        .course-prerequisite-option:hover::after,
+        .course-prerequisite-option.is-selected::after {
+            border-color: color-mix(in oklch, var(--brand-navy) 28%, var(--border));
+        }
+
+        .course-prerequisite-option.is-disabled {
+            cursor: not-allowed;
+            opacity: .48;
+        }
+
+        .course-prerequisite-option input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .course-prerequisite-check {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            flex: 0 0 18px;
+            border: 1.5px solid color-mix(in oklch, var(--brand-navy) 30%, var(--border));
+            border-radius: 5px;
+            background: var(--surface);
+        }
+
+        .course-prerequisite-option.is-selected .course-prerequisite-check {
+            border-color: var(--brand-navy);
+            background: var(--brand-navy);
+        }
+
+        .course-prerequisite-option.is-selected .course-prerequisite-check::after {
+            content: '';
+            width: 8px;
+            height: 4px;
+            border-left: 2px solid var(--surface);
+            border-bottom: 2px solid var(--surface);
+            transform: rotate(-45deg) translateY(-1px);
+        }
+
+        .course-prerequisite-option-copy {
+            display: grid;
+            gap: 3px;
+            min-width: 0;
+        }
+
+        .course-prerequisite-option-copy strong {
+            color: var(--fg-1);
+            font-size: 13px;
+            font-weight: 800;
+            line-height: 1.25;
+        }
+
+        .course-prerequisite-option-copy span {
+            overflow: hidden;
+            color: var(--fg-3);
+            font-size: 12px;
+            line-height: 1.35;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .course-modal-foot {
