@@ -4679,6 +4679,19 @@
         .schedule-modal > .modal-actions {
             flex: 0 0 auto !important;
         }
+        .schedule-shell section.schedule-copy-week-modal > .modal-form-body {
+            overflow-y: hidden !important;
+            scrollbar-width: none;
+        }
+        .schedule-shell section.schedule-copy-week-modal > .modal-form-body::-webkit-scrollbar {
+            display: none;
+        }
+        .schedule-shell section.schedule-copy-week-modal .copy-date-grid,
+        .schedule-shell section.schedule-copy-week-modal .copy-date-grid > label,
+        .schedule-shell section.schedule-copy-week-modal .copy-date-grid .tdi-wrap,
+        .schedule-shell section.schedule-copy-week-modal .copy-date-grid .tdi-control {
+            overflow: visible !important;
+        }
         .schedule-shell .schedule-modal > .schedule-detail-actions {
             display: grid !important;
             grid-template-columns: repeat(2, minmax(140px, 210px)) !important;
@@ -4844,6 +4857,9 @@
             overflow-y: auto;
             padding-right: 4px;
             scrollbar-gutter: stable;
+        }
+        .modal-choice-grid.is-instructor-scroll {
+            max-height: 326px;
         }
         .schedule-group-empty {
             text-align: left;
@@ -9020,7 +9036,7 @@
                                                 ->values();
                                         @endphp
                                         <input type="search" class="modal-choice-search" x-model="createInstructorSearch" placeholder="ค้นหาชื่อผู้สอน" aria-label="ค้นหาผู้สอน">
-                                        <div class="modal-choice-grid">
+                                        <div class="modal-choice-grid is-scroll-list is-instructor-scroll">
                                             @foreach($createInstructorOptions as $instructor)
                                                 @php
                                                     $isOutsideDepartment = $instructorDepartmentMismatch($offeringOption, $instructor);

@@ -768,7 +768,7 @@
                                             ->values();
                                     @endphp
                                     <input type="search" class="modal-choice-search" x-model="editInstructorSearch" placeholder="ค้นหาชื่อผู้สอน" aria-label="ค้นหาผู้สอน">
-                                    <div class="modal-choice-grid">
+                                    <div class="modal-choice-grid is-scroll-list is-instructor-scroll">
                                         @foreach($editInstructorOptions as $instructor)
                                             @php
                                                 $isOutsideDepartment = $instructorDepartmentMismatch($offering, $instructor);
