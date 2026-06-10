@@ -177,7 +177,7 @@ class AuthTest extends TestCase
             ->assertRedirect();
 
         $this->assertEquals('instructor', session('active_role'));
-        $this->assertDatabaseMissing('audit_logs', ['action' => 'ระบบ.เปลี่ยนบทบาท']);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'ระบบ.เปลี่ยนบทบาท']);
     }
 
     public function test_switch_role_to_same_role_does_not_create_audit_log(): void
