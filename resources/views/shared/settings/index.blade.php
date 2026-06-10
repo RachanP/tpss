@@ -716,57 +716,62 @@
             </template>
 
             @if($isAdmin)
-                <div x-show="openScheduleConfirmForm" x-cloak
-                    style="position:fixed;inset:0;z-index:80;background:rgba(15,23,42,.36);"
+                {{-- ใช้โครง modal มาตรฐาน (.overlay/.modal-center) เหมือน modal อื่น — กลางจอชัวร์ + เข้าชุด --}}
+                <div class="overlay" x-show="openScheduleConfirmForm" x-cloak
                     @keydown.escape.window="cancelOpenScheduleCountdown()">
-                    <div style="min-height:100vh;width:100%;display:flex;align-items:center;justify-content:center;padding:20px;">
-                        <div style="width:min(520px,100%);background:oklch(99% 0.006 235);border:1px solid var(--border);border-radius:10px;box-shadow:0 24px 70px rgba(15,23,42,.24);overflow:hidden;">
-                            <div style="padding:18px 20px;border-bottom:1px solid var(--border);background:oklch(97% 0.012 235);">
-                                <div style="font-weight:800;color:var(--fg-1);font-size:16px;">ยืนยันเปิดช่วงจัดตาราง</div>
+                    <div class="modal-center" style="max-width:520px;">
+                        <div class="modal-hdr" style="background: var(--bg-2);">
+                            <div style="min-width:0;">
+                                <div class="modal-ttl" style="font-family: var(--font-display);">ยืนยันเปิดช่วงจัดตาราง</div>
                                 <div style="font-size:13px;color:var(--fg-3);margin-top:4px;" x-text="openScheduleConfirmLabel"></div>
                             </div>
-                            <div style="padding:18px 20px;background:oklch(99% 0.006 235);">
-                                <div style="font-size:14px;color:var(--fg-2);line-height:1.65;">
-                                    ระบบจะสร้างและซิงก์ Course Offering จากรายวิชา active ทั้งหมด จากนั้นหัวหน้าวิชาจะเริ่มแก้ข้อมูลเพื่อจัดตารางได้
-                                </div>
-                                <div style="margin-top:14px;padding:12px 14px;border:1px solid oklch(84% 0.08 80);border-radius:8px;background:oklch(98% 0.025 85);color:oklch(38% 0.08 75);font-size:13px;font-weight:700;"
-                                    x-text="openScheduleCountdown > 0 ? 'รอ ' + openScheduleCountdown + ' วินาที ก่อนยืนยัน' : 'พร้อมยืนยันเปิดช่วงจัดตาราง'"></div>
+                            <button type="button" class="modal-cls" @click="cancelOpenScheduleCountdown()">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div style="font-size:14px;color:var(--fg-2);line-height:1.65;">
+                                ระบบจะสร้างและซิงก์ Course Offering จากรายวิชา active ทั้งหมด จากนั้นหัวหน้าวิชาจะเริ่มแก้ข้อมูลเพื่อจัดตารางได้
                             </div>
-                            <div style="display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--border);background:oklch(98% 0.008 235);">
-                                <button type="button" class="btn btn-ghost" @click="cancelOpenScheduleCountdown()">ยกเลิก</button>
-                                <button type="button" class="btn btn-primary" :disabled="openScheduleCountdown > 0" :style="openScheduleCountdown > 0 ? 'opacity:.55;cursor:not-allowed;' : ''" @click="confirmOpenSchedule()">
-                                    ยืนยันเปิดช่วงจัดตาราง
-                                </button>
-                            </div>
+                            <div style="margin-top:14px;padding:12px 14px;border:1px solid oklch(84% 0.08 80);border-radius:8px;background:oklch(98% 0.025 85);color:oklch(38% 0.08 75);font-size:13px;font-weight:700;"
+                                x-text="openScheduleCountdown > 0 ? 'รอ ' + openScheduleCountdown + ' วินาที ก่อนยืนยัน' : 'พร้อมยืนยันเปิดช่วงจัดตาราง'"></div>
+                        </div>
+                        <div class="modal-foot" style="display:flex;justify-content:flex-end;gap:8px;">
+                            <button type="button" class="btn btn-ghost" @click="cancelOpenScheduleCountdown()">ยกเลิก</button>
+                            <button type="button" class="btn btn-primary" :disabled="openScheduleCountdown > 0" :style="openScheduleCountdown > 0 ? 'opacity:.55;cursor:not-allowed;' : ''" @click="confirmOpenSchedule()">
+                                ยืนยันเปิดช่วงจัดตาราง
+                            </button>
                         </div>
                     </div>
                 </div>
 
-                <div x-show="closeScheduleConfirmForm" x-cloak
-                    style="position:fixed;inset:0;z-index:80;background:rgba(15,23,42,.36);"
+                <div class="overlay" x-show="closeScheduleConfirmForm" x-cloak
                     @keydown.escape.window="cancelCloseScheduleConfirm()">
-                    <div style="min-height:100vh;width:100%;display:flex;align-items:center;justify-content:center;padding:20px;">
-                        <div style="width:min(520px,100%);background:oklch(99% 0.006 235);border:1px solid var(--border);border-radius:10px;box-shadow:0 24px 70px rgba(15,23,42,.24);overflow:hidden;">
-                            <div style="padding:18px 20px;border-bottom:1px solid var(--border);background:oklch(98% 0.025 85);">
-                                <div style="font-weight:800;color:var(--fg-1);font-size:16px;">ยืนยันปิดช่วงจัดตาราง</div>
+                    <div class="modal-center" style="max-width:520px;">
+                        <div class="modal-hdr" style="background: var(--bg-2);">
+                            <div style="min-width:0;">
+                                <div class="modal-ttl" style="font-family: var(--font-display);">ยืนยันปิดช่วงจัดตาราง</div>
                                 <div style="font-size:13px;color:var(--fg-3);margin-top:4px;" x-text="closeScheduleConfirmLabel"></div>
                             </div>
-                            <div style="padding:18px 20px;background:oklch(99% 0.006 235);">
-                                <div style="font-size:14px;color:var(--fg-2);line-height:1.65;">
-                                    ระบบจะเปลี่ยนสถานะกลับเป็น <strong style="color:var(--fg-1);">เตรียมข้อมูล</strong> และหัวหน้าวิชาจะไม่สามารถจัดหรือแก้ไขตารางในรอบนี้ต่อได้ จนกว่า Admin จะเปิดช่วงจัดตารางอีกครั้ง
-                                </div>
-                                <div style="margin-top:14px;padding:12px 14px;border:1px solid oklch(82% 0.055 235);border-radius:8px;background:oklch(97% 0.018 235);color:oklch(32% 0.075 245);font-size:13px;font-weight:700;line-height:1.55;">
-                                    ข้อมูลตารางที่จัดไว้แล้วจะยังอยู่ (ระบบจะปิดเฉพาะสิทธิ์การจัด/แก้ไขตารางชั่วคราว)
-                                </div>
-                                <div style="margin-top:10px;padding:12px 14px;border:1px solid oklch(84% 0.08 80);border-radius:8px;background:oklch(98% 0.025 85);color:oklch(38% 0.08 75);font-size:13px;font-weight:700;"
-                                    x-text="closeScheduleCountdown > 0 ? 'รอ ' + closeScheduleCountdown + ' วินาที ก่อนยืนยัน' : 'พร้อมยืนยันปิดช่วงจัดตาราง'"></div>
+                            <button type="button" class="modal-cls" @click="cancelCloseScheduleConfirm()">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div style="font-size:14px;color:var(--fg-2);line-height:1.65;">
+                                ระบบจะเปลี่ยนสถานะกลับเป็น <strong style="color:var(--fg-1);">เตรียมข้อมูล</strong> และหัวหน้าวิชาจะไม่สามารถจัดหรือแก้ไขตารางในรอบนี้ต่อได้ จนกว่า Admin จะเปิดช่วงจัดตารางอีกครั้ง
                             </div>
-                            <div style="display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--border);background:oklch(98% 0.008 235);">
-                                <button type="button" class="btn btn-ghost" @click="cancelCloseScheduleConfirm()">ยกเลิก</button>
-                                <button type="button" class="btn btn-primary" :disabled="closeScheduleCountdown > 0" :style="closeScheduleCountdown > 0 ? 'opacity:.55;cursor:not-allowed;' : ''" @click="confirmCloseSchedule()">
-                                    ยืนยันปิดช่วงจัดตาราง
-                                </button>
+                            <div style="margin-top:14px;padding:12px 14px;border:1px solid oklch(82% 0.055 235);border-radius:8px;background:oklch(97% 0.018 235);color:oklch(32% 0.075 245);font-size:13px;font-weight:700;line-height:1.55;">
+                                ข้อมูลตารางที่จัดไว้แล้วจะยังอยู่ (ระบบจะปิดเฉพาะสิทธิ์การจัด/แก้ไขตารางชั่วคราว)
                             </div>
+                            <div style="margin-top:10px;padding:12px 14px;border:1px solid oklch(84% 0.08 80);border-radius:8px;background:oklch(98% 0.025 85);color:oklch(38% 0.08 75);font-size:13px;font-weight:700;"
+                                x-text="closeScheduleCountdown > 0 ? 'รอ ' + closeScheduleCountdown + ' วินาที ก่อนยืนยัน' : 'พร้อมยืนยันปิดช่วงจัดตาราง'"></div>
+                        </div>
+                        <div class="modal-foot" style="display:flex;justify-content:flex-end;gap:8px;">
+                            <button type="button" class="btn btn-ghost" @click="cancelCloseScheduleConfirm()">ยกเลิก</button>
+                            <button type="button" class="btn btn-primary" :disabled="closeScheduleCountdown > 0" :style="closeScheduleCountdown > 0 ? 'opacity:.55;cursor:not-allowed;' : ''" @click="confirmCloseSchedule()">
+                                ยืนยันปิดช่วงจัดตาราง
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1558,6 +1563,12 @@
             /* ใช้ background-color (ไม่ใช่ shorthand background) เพื่อไม่ลบ background-image
                ของ select กลาง (ลูกศร chevron + gradient) — dropdown จะเข้าชุดกับหน้าอื่น */
             background-color: color-mix(in oklch, var(--brand-navy) 3%, var(--surface)) !important;
+        }
+
+        /* modal กลาง "พื้นที่เนื้อหา" ไม่นับ sidebar — dim เต็มจอ แต่ขยับจุดกึ่งกลางขวาเท่าความกว้าง sidebar
+           (--sidebar-w = 0 บนมือถือ → กลับมาเต็มจอเอง) */
+        .settings-page .overlay {
+            padding-left: calc(20px + var(--sidebar-w, 0px));
         }
 
         .settings-page .form-ctrl:focus,
