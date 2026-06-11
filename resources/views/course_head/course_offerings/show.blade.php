@@ -864,7 +864,22 @@
     </script>
 
     @php
-        $poolData = $courseOffering->instructorPool->map(fn($u) => [
+        $poolData = $courseOffering->instructorPool
+            ->sort(function ($left, $right) use ($courseOffering) {
+                $leftIsCoordinator = (int) $left->id === (int) $courseOffering->coordinator_id;
+                $rightIsCoordinator = (int) $right->id === (int) $courseOffering->coordinator_id;
+
+                if ($leftIsCoordinator !== $rightIsCoordinator) {
+                    return $leftIsCoordinator ? -1 : 1;
+                }
+
+                return strnatcasecmp(
+                    (string) ($left->formatted_name ?? $left->name ?? ''),
+                    (string) ($right->formatted_name ?? $right->name ?? '')
+                );
+            })
+            ->values()
+            ->map(fn($u) => [
             'id'             => $u->id,
             'name'           => $u->formatted_name,
             'department'     => $u->instructorProfile?->department?->name ?? '-',
@@ -897,6 +912,7 @@
         showAll: false,
         loading: false,
         error: '',
+        warning: '',
         ddTop: 0, ddLeft: 0, ddWidth: 0,
         roleMenuId: null,
         storeUrl: '{{ $storeUrl }}',
@@ -905,6 +921,18 @@
         permissionBase: '{{ route('maker.course_offerings.instructors.permission', [$courseOffering, '__ID__']) }}',
         csrfToken: '{{ csrf_token() }}',
         courseDeptId: {{ $courseDeptId ?? 'null' }},
+        get orderedPool() {
+            return [...this.pool].sort((left, right) => {
+                if (Boolean(left.is_coordinator) !== Boolean(right.is_coordinator)) {
+                    return left.is_coordinator ? -1 : 1;
+                }
+
+                return String(left.name || '').localeCompare(String(right.name || ''), 'th');
+            });
+        },
+        sortPool() {
+            this.pool = this.orderedPool;
+        },
         // โมดัลกรอกเหตุผล — เปิดเฉพาะเมื่อ action ทำให้ชุดผู้สอนต่างจากแม่แบบและยังไม่มีเหตุผล
         noteModal: { open: false, text: '', error: '', retry: null },
         openNoteModal(retry) {
@@ -920,6 +948,9 @@
         },
         _needsNote(status, data) {
             return status === 422 && data && data.errors && data.errors.note;
+        },
+        outsideDepartment(user) {
+            return Boolean(this.courseDeptId && user && Number(user.department_id) !== Number(this.courseDeptId));
         },
         async changeRole(userId, roleId, note = null) {
             this.loading = true; this.error = '';
@@ -963,7 +994,7 @@
             this.open = true;
         },
         async add(user, note = null) {
-            this.loading = true; this.error = '';
+            this.loading = true; this.error = ''; this.warning = '';
             try {
                 const r = await fetch(this.storeUrl, {
                     method: 'POST',
@@ -976,6 +1007,8 @@
                     this.error = data.message ?? 'เกิดข้อผิดพลาด'; return;
                 }
                 this.pool.push(data);
+                this.sortPool();
+                if (data.warning) this.warning = data.warning;
                 this.search = ''; this.open = false;
             } catch { this.error = 'ไม่สามารถเชื่อมต่อได้'; }
             finally { this.loading = false; }
@@ -1055,7 +1088,7 @@
                             <span>·</span>
                         </template>
                         <template x-if="pool.length > 0">
-                            <span x-text="pool[0].name + (pool.length > 1 ? ' +' + (pool.length - 1) : '')"></span>
+                            <span x-text="orderedPool[0].name + (pool.length > 1 ? ' +' + (pool.length - 1) : '')"></span>
                         </template>
                     </div>
                 </div>
@@ -1094,6 +1127,7 @@
 
             {{-- Error message --}}
             <div x-show="error" x-text="error" style="background:var(--status-conflict-bg);border:1px solid var(--status-conflict-border);color:var(--status-conflict-fg);padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:14px;"></div>
+            <div x-show="warning" x-text="warning" style="background:var(--status-warning-bg);border:1px solid var(--status-warning-border);color:var(--status-warning-fg);padding:10px 14px;border-radius:6px;font-size:13px;font-weight:700;margin-bottom:14px;"></div>
 
             @if($canEdit)
             {{-- Combobox --}}
@@ -1106,7 +1140,7 @@
                         @focus="openDropdown()"
                         @input="openDropdown()"
                         placeholder="ค้นหาชื่ออาจารย์หรือภาควิชา..."
-                        style="width:100%;padding-right:32px;"
+                        class="instructor-picker-input"
                         autocomplete="off"
                     >
                     <svg x-show="!loading" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);opacity:0.4;pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -1123,48 +1157,48 @@
                     <div
                         x-show="open"
                         x-cloak
-                        :style="`position:absolute;top:${ddTop}px;left:${ddLeft}px;width:${ddWidth}px;background:#fff;border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.12);z-index:99;`"
+                        class="instructor-picker-menu"
+                        :style="`position:absolute;top:${ddTop}px;left:${ddLeft}px;width:${ddWidth}px;`"
                     >
                         {{-- Filter toggle inside dropdown --}}
-                        <div x-show="courseDeptId" style="padding:10px 12px;border-bottom:1px solid var(--border);background:var(--bg-2);">
-                            <div style="display:inline-flex;gap:6px;">
+                        <div x-show="courseDeptId" class="instructor-filter-segment-wrap">
+                            <div class="instructor-filter-segment" role="tablist" aria-label="กรองอาจารย์">
                                 <button type="button"
+                                    class="instructor-filter-option"
                                     @click.stop="showAll = false"
-                                    :style="!showAll
-                                        ? 'background:var(--brand-navy);color:#fff;border-color:var(--brand-navy);'
-                                        : 'background:var(--surface);color:var(--fg-2);border-color:var(--border);'"
-                                    style="cursor:pointer;font-size:12px;font-weight:600;padding:6px 14px;border-radius:999px;font-family:inherit;transition:all 0.15s;border-width:1px;border-style:solid;outline:none;appearance:none;-webkit-appearance:none;">
+                                    :class="{ 'is-active': !showAll }"
+                                    :aria-selected="!showAll"
+                                    role="tab">
                                     เฉพาะภาควิชานี้
                                 </button>
                                 <button type="button"
+                                    class="instructor-filter-option"
                                     @click.stop="showAll = true"
-                                    :style="showAll
-                                        ? 'background:var(--brand-navy);color:#fff;border-color:var(--brand-navy);'
-                                        : 'background:var(--surface);color:var(--fg-2);border-color:var(--border);'"
-                                    style="cursor:pointer;font-size:12px;font-weight:600;padding:6px 14px;border-radius:999px;font-family:inherit;transition:all 0.15s;border-width:1px;border-style:solid;outline:none;appearance:none;-webkit-appearance:none;">
+                                    :class="{ 'is-active': showAll }"
+                                    :aria-selected="showAll"
+                                    role="tab">
                                     อาจารย์ทั้งหมด
                                 </button>
                             </div>
                         </div>
                         {{-- Results --}}
-                        <div style="max-height:220px;overflow-y:auto;">
+                        <div class="instructor-picker-results">
                             <template x-for="user in available" :key="user.id">
-                                <div
+                                <button type="button"
                                     @click="add(user)"
-                                    style="padding:10px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);"
-                                    @mouseenter="$el.style.background='var(--surface-2)'"
-                                    @mouseleave="$el.style.background=''"
+                                    class="instructor-picker-option"
                                 >
                                     <div>
-                                        <div style="font-weight:600;font-size:14px;" x-text="user.name"></div>
-                                        <div style="font-size:12px;color:var(--fg-3);" x-text="user.department"></div>
+                                        <div class="instructor-picker-name" x-text="user.name"></div>
+                                        <div class="instructor-picker-dept" x-text="user.department"></div>
                                     </div>
-                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.4;flex-shrink:0;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                                </div>
+                                    <span x-show="outsideDepartment(user)" x-cloak class="instructor-picker-warning">ต่างภาค</span>
+                                    <span class="instructor-picker-add" aria-hidden="true">+</span>
+                                </button>
                             </template>
                             <div
-                                x-show="search.length > 0 && available.length === 0"
-                                style="padding:12px 14px;font-size:13px;color:var(--fg-3);"
+                                x-show="available.length === 0"
+                                class="instructor-picker-empty"
                             >ไม่พบอาจารย์ที่ตรงกัน</div>
                         </div>
                     </div>
@@ -1174,7 +1208,7 @@
 
             {{-- Pills --}}
             <div style="display:flex;flex-direction:column;gap:8px;" x-show="pool.length > 0">
-                <template x-for="user in pool" :key="user.id">
+                <template x-for="user in orderedPool" :key="user.id">
                     <div class="instructor-pool-card" style="display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px 16px;transition:border-color 0.15s;"
                          @mouseover="$el.style.borderColor='var(--brand-navy-300)'"
                          @mouseout="$el.style.borderColor='var(--border)'">
@@ -1183,7 +1217,10 @@
                         </div>
                         <div style="flex:1;min-width:0;">
                             <div style="font-weight:600;font-size:14px;color:var(--fg-1);" x-text="user.name"></div>
-                            <div style="color:var(--fg-3);font-size:12px;margin-top:2px;" x-text="user.department"></div>
+                            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;color:var(--fg-3);font-size:12px;margin-top:2px;">
+                                <span x-text="user.department"></span>
+                                <span x-show="outsideDepartment(user)" x-cloak style="border:1px solid var(--status-warning-border);border-radius:999px;background:var(--status-warning-bg);color:var(--status-warning-fg);padding:1px 7px;font-size:10.5px;font-weight:800;">ต่างภาค</span>
+                            </div>
                         </div>
 
                         <div class="instructor-pool-actions">
@@ -1375,6 +1412,177 @@
             background:var(--status-success-bg); border:1px solid var(--status-success-border); color:var(--status-success-fg);
         }
         .delegate-toggle.is-on:hover { background:color-mix(in oklch, var(--status-success-fg) 16%, var(--surface)); }
+
+        .instructor-picker-input {
+            width: 100%;
+            min-height: 44px;
+            box-sizing: border-box;
+            padding: 0 36px 0 14px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 22%, var(--border));
+            border-radius: 8px;
+            background:
+                linear-gradient(180deg, var(--surface), color-mix(in oklch, var(--brand-navy) 4%, var(--surface)));
+            color: var(--fg-1);
+            font: inherit;
+            font-size: 14px;
+            transition: border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
+        }
+
+        .instructor-picker-input:focus {
+            outline: none;
+            border-color: var(--brand-navy);
+            box-shadow: 0 0 0 3px color-mix(in oklch, var(--brand-navy) 16%, transparent);
+            background: var(--surface);
+        }
+
+        .instructor-picker-menu {
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 26%, var(--border));
+            border-radius: 10px;
+            background:
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 4%, var(--surface)), var(--surface) 36%);
+            box-shadow: 0 18px 38px -26px rgba(0, 36, 84, 0.5), 0 1px 2px rgba(0, 36, 84, 0.08);
+            z-index: 99;
+            overflow: hidden;
+        }
+
+        .instructor-filter-segment-wrap {
+            display: flex;
+            justify-content: flex-start;
+            padding: 8px 10px 6px;
+            border-bottom: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border));
+            background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
+        }
+
+        .instructor-filter-segment {
+            width: auto;
+            max-width: 100%;
+            display: inline-grid;
+            grid-template-columns: repeat(2, max-content);
+            gap: 3px;
+            padding: 2px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border));
+            border-radius: 6px;
+            background: color-mix(in oklch, var(--surface) 86%, var(--brand-navy));
+        }
+
+        .instructor-filter-option {
+            min-width: 0;
+            min-height: 26px;
+            padding: 0 9px;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            background: transparent;
+            color: var(--fg-2);
+            cursor: pointer;
+            font: inherit;
+            font-size: 11.5px;
+            font-weight: 800;
+            line-height: 1.2;
+            text-align: center;
+            white-space: nowrap;
+            transition: background 130ms ease, border-color 130ms ease, color 130ms ease, box-shadow 130ms ease;
+        }
+
+        .instructor-filter-option:hover,
+        .instructor-filter-option:focus-visible {
+            border-color: color-mix(in oklch, var(--brand-navy) 24%, var(--border));
+            background: var(--surface);
+            outline: none;
+        }
+
+        .instructor-filter-option.is-active {
+            border-color: var(--brand-navy);
+            background: var(--brand-navy);
+            color: var(--fg-on-brand);
+            box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--brand-navy) 86%, var(--surface));
+        }
+
+        .instructor-picker-results {
+            max-height: min(356px, calc(100vh - 260px));
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
+        }
+
+        .instructor-picker-option {
+            width: 100%;
+            min-height: 58px;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto auto;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border: 0;
+            border-bottom: 1px solid color-mix(in oklch, var(--brand-navy) 12%, var(--border));
+            background: var(--surface);
+            color: var(--fg-1);
+            cursor: pointer;
+            font: inherit;
+            text-align: left;
+            transition: background 130ms ease, color 130ms ease;
+        }
+
+        .instructor-picker-option:hover,
+        .instructor-picker-option:focus-visible {
+            background: color-mix(in oklch, var(--brand-navy) 7%, var(--surface));
+            outline: none;
+        }
+
+        .instructor-picker-name {
+            min-width: 0;
+            color: var(--fg-1);
+            font-size: 14px;
+            font-weight: 800;
+            line-height: 1.35;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .instructor-picker-dept {
+            margin-top: 3px;
+            color: var(--fg-3);
+            font-size: 12px;
+            font-weight: 650;
+            line-height: 1.35;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .instructor-picker-warning {
+            border: 1px solid var(--status-warning-border);
+            border-radius: 999px;
+            background: var(--status-warning-bg);
+            color: var(--status-warning-fg);
+            padding: 2px 8px;
+            font-size: 10.5px;
+            font-weight: 850;
+            white-space: nowrap;
+        }
+
+        .instructor-picker-add {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            color: var(--brand-navy);
+            background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface));
+            font-size: 17px;
+            font-weight: 900;
+            line-height: 1;
+        }
+
+        .instructor-picker-empty {
+            padding: 14px;
+            color: var(--fg-3);
+            font-size: 13px;
+            font-weight: 650;
+            text-align: center;
+        }
+
         .card#course-info > .card-hdr,
         .card#student-groups > .card-hdr,
         .card#instructors > .card-hdr {

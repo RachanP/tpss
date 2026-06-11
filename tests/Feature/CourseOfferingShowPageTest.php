@@ -86,6 +86,29 @@ class CourseOfferingShowPageTest extends TestCase
         ]);
     }
 
+    public function test_store_instructor_allows_cross_department_json_with_warning(): void
+    {
+        $head       = $this->makeUser('course_head');
+        $instructor = $this->makeUser('instructor');
+        $instructor->instructorProfile()->update([
+            'department_id' => Department::create(['name' => 'Show Outside Dept'])->id,
+        ]);
+        $instructor->refresh();
+        $offering = $this->makeOffering($head);
+
+        $this->actingAsCourseHead($head);
+
+        $this->postJson(route('maker.course_offerings.instructors.store', $offering), [
+            'user_id' => $instructor->id,
+        ])->assertOk()
+            ->assertJsonPath('warning', 'อาจารย์คนนี้อยู่ต่างภาควิชาของรายวิชา ระบบอนุญาตให้เพิ่มได้และจะแสดงเป็นข้อเตือน');
+
+        $this->assertDatabaseHas('course_offering_instructors', [
+            'course_offering_id' => $offering->id,
+            'user_id' => $instructor->id,
+        ]);
+    }
+
     public function test_store_instructor_returns_422_json_on_validation_failure(): void
     {
         $head       = $this->makeUser('course_head');
@@ -291,6 +314,25 @@ class CourseOfferingShowPageTest extends TestCase
         $this->assertFalse($courseRoles->contains('name_th', 'หัวหน้าวิชา'),
             'Coordinator role is auto-assigned and should be hidden from the role dropdown.');
         $this->assertTrue($courseRoles->contains('name_th', 'อาจารย์ผู้สอน'));
+    }
+
+    public function test_show_page_orders_coordinator_first_in_instructor_pool(): void
+    {
+        $head       = $this->makeUser('course_head');
+        $instructor = $this->makeUser('instructor');
+        $offering   = $this->makeOffering($head);
+
+        $offering->instructorPool()->attach($instructor->id, ['role_in_course' => 'instructor']);
+        $offering->instructorPool()->attach($head->id, ['role_in_course' => 'coordinator']);
+
+        $this->actingAsCourseHead($head);
+        $response = $this->get(route('maker.course_offerings.show', $offering));
+
+        $response->assertOk();
+
+        $pool = $response->viewData('courseOffering')->instructorPool;
+        $this->assertSame($head->id, $pool->first()->id);
+        $this->assertSame('coordinator', $pool->first()->pivot->role_in_course);
     }
 
     public function test_show_page_renders_read_only_during_preparation(): void

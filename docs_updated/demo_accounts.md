@@ -105,7 +105,7 @@ mysql -u<user> -p -h<host> -P<port> -e "SELECT id,username,name FROM users WHERE
 
 > warning ที่ระบบรองรับแต่ **ยังไม่ seed** (ไม่เกิดในเฟสปัจจุบัน):
 > - `capacity_exceeded` (นศ.เกินความจุห้อง) — ต้องผูกกลุ่มนักศึกษา = Phase B (หลังอนุมัติ)
-> - `no_role` (ผู้สอนไม่กำหนดบทบาท) · `dept_mismatch` (ผู้สอนต่างภาควิชา) — ปกติ UI กันไว้ตั้งแต่ตอนเพิ่มผู้สอน (department gate) จึงเป็น edge case
+> - `no_role` (ผู้สอนไม่กำหนดบทบาท) · `dept_mismatch` (ผู้สอนต่างภาควิชา) — UI อนุญาตให้เพิ่ม/บันทึกได้ แต่แสดง warning และนับในหน้าแจ้งเตือน
 
 **ตัวเลขรวม:** ป้ายแจ้งเตือนบน sidebar (เมนู "แจ้งเตือน") = **การชน + warning ทุกชนิด** ตรงกับยอดรวมในหน้าแจ้งเตือน (คำนวณจากแหล่งเดียว `CoordinatorAlertService`) · เช่น `head_med` = 9 (ชน 8 + ข้อมูลไม่ครบ 1), `head_psy` = 1 (holiday)
 

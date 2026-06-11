@@ -85,6 +85,21 @@ class CourseOfferingController extends Controller
             'instructorPool.instructorProfile.department',
             'studentGroups.cohortGroup.parent',
         ])->loadCount('schedules');
+        $courseOffering->setRelation('instructorPool', $courseOffering->instructorPool
+            ->sort(function (User $left, User $right) use ($courseOffering): int {
+                $leftIsCoordinator = (int) $left->id === (int) $courseOffering->coordinator_id;
+                $rightIsCoordinator = (int) $right->id === (int) $courseOffering->coordinator_id;
+
+                if ($leftIsCoordinator !== $rightIsCoordinator) {
+                    return $leftIsCoordinator ? -1 : 1;
+                }
+
+                return strnatcasecmp(
+                    (string) ($left->formatted_name ?? $left->name ?? ''),
+                    (string) ($right->formatted_name ?? $right->name ?? '')
+                );
+            })
+            ->values());
 
         $availableInstructors = User::query()
             ->with('instructorProfile.department')
@@ -152,17 +167,12 @@ class CourseOfferingController extends Controller
                 ->withInput();
         }
 
+        $departmentWarning = null;
         if (
             $courseOffering->course?->department_id
             && (int) $user->instructorProfile->department_id !== (int) $courseOffering->course->department_id
         ) {
-            if ($request->expectsJson()) {
-                return response()->json(['message' => 'เลือกได้เฉพาะอาจารย์ในภาควิชาของรายวิชานี้'], 422);
-            }
-
-            return $this->redirectToInstructors($courseOffering)
-                ->withErrors(['user_id' => 'เลือกได้เฉพาะอาจารย์ในภาควิชาของรายวิชานี้'])
-                ->withInput();
+            $departmentWarning = 'อาจารย์คนนี้อยู่ต่างภาควิชาของรายวิชา ระบบอนุญาตให้เพิ่มได้และจะแสดงเป็นข้อเตือน';
         }
 
         if ($courseOffering->instructorPool()->where('users.id', $user->id)->exists()) {
@@ -201,13 +211,20 @@ class CourseOfferingController extends Controller
                 'id'             => $user->id,
                 'name'           => $user->formatted_name,
                 'department'     => $user->instructorProfile?->department?->name ?? '-',
+                'department_id'  => $user->instructorProfile?->department_id,
                 'course_role_id' => $roleId,
                 'role_name'      => $role?->name_th,
                 'is_coordinator' => false,
+                'can_schedule'   => false,
+                'warning'        => $departmentWarning,
             ]);
         }
 
-        return back()->with('success', 'เพิ่มอาจารย์ในรายวิชาเรียบร้อยแล้ว');
+        $redirect = back()->with('success', 'เพิ่มอาจารย์ในรายวิชาเรียบร้อยแล้ว');
+
+        return $departmentWarning
+            ? $redirect->with('warning', $departmentWarning)
+            : $redirect;
     }
 
     public function updateInstructorRole(Request $request, CourseOffering $courseOffering, User $user): JsonResponse|RedirectResponse

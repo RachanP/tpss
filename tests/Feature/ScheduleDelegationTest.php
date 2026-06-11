@@ -169,6 +169,22 @@ class ScheduleDelegationTest extends TestCase
             ->assertSee($offering->course->course_code);
     }
 
+    public function test_assigned_staff_schedule_page_uses_shared_schedule_modal_styles(): void
+    {
+        [$head, $offering] = $this->makeOffering();
+        $staff = $this->makeUser('staff');
+        $offering->course->assignedStaff()->attach($staff->id);
+
+        $this->actingAsRole($staff, 'staff');
+
+        $this->get(route('maker.course_offerings.schedules.index', $offering))
+            ->assertOk()
+            ->assertSee('class="schedule-shell "', false)
+            ->assertSee('.schedule-shell .schedule-detail-actions', false)
+            ->assertSee('.schedule-shell .schedule-modal > .schedule-detail-actions', false)
+            ->assertSee('.schedule-shell .schedule-copy-week-modal', false);
+    }
+
     public function test_unassigned_staff_cannot_open_offering_schedules(): void
     {
         [$head, $offering] = $this->makeOffering();

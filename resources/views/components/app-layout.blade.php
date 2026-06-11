@@ -574,7 +574,25 @@
                     const margin = 14;
                     const controlRect = control.getBoundingClientRect();
                     const popWidth = pop && pop.offsetWidth ? pop.offsetWidth : 316;
+                    const popHeight = pop && pop.offsetHeight ? pop.offsetHeight : 320;
                     const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+                    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+                    const inCopyScheduleModal = !!control.closest('.schedule-copy-week-modal');
+
+                    if (inCopyScheduleModal) {
+                        const preferredLeft = controlRect.right - popWidth;
+                        const left = Math.round(Math.max(margin, Math.min(preferredLeft, viewportWidth - margin - popWidth)));
+                        let top = Math.round(controlRect.bottom + 8);
+
+                        if (top + popHeight > viewportHeight - margin && controlRect.top - popHeight - 8 >= margin) {
+                            top = Math.round(controlRect.top - popHeight - 8);
+                        } else {
+                            top = Math.round(Math.max(margin, Math.min(top, viewportHeight - margin - popHeight)));
+                        }
+
+                        this.tdiPopStyle = `position: fixed; top: ${top}px; bottom: auto; left: ${left}px; right: auto;`;
+                        return;
+                    }
 
                     let clipLeft = 0;
                     let clipRight = viewportWidth;
@@ -595,8 +613,8 @@
 
                     const minLeft = clipLeft + margin - controlRect.left;
                     const maxLeft = clipRight - margin - controlRect.left - popWidth;
-                    const inUsersModal = !!control.closest('.users-modal-body');
-                    const preferredLeft = inUsersModal ? (controlRect.width - popWidth) : 0;
+                    const alignToControlEnd = !!control.closest('.users-modal-body, .schedule-copy-week-modal');
+                    const preferredLeft = alignToControlEnd ? (controlRect.width - popWidth) : 0;
                     const left = Math.round(Math.max(minLeft, Math.min(preferredLeft, maxLeft)));
 
                     this.tdiPopStyle = `top: calc(100% + 8px); bottom: auto; left: ${left}px; right: auto;`;
@@ -1212,7 +1230,7 @@
             }
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
+        function tpssShowFlashToasts() {
             @if(session('success'))
                 tpssToast(@json(session('success')), 'success');
             @endif
@@ -1224,7 +1242,13 @@
             @if(session('warning'))
                 tpssToast(@json(session('warning')), 'warning');
             @endif
-        });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', tpssShowFlashToasts, { once: true });
+        } else {
+            tpssShowFlashToasts();
+        }
         // Expose function to initialize TPSS select dropdowns on-demand (used when modals render dynamically)
         window.tpssInitChoices = function(root) {
             try {
@@ -1296,7 +1320,7 @@
                         if (menu.hidden) return;
 
                         var rect = positionAnchor().getBoundingClientRect();
-                        var modalBody = trigger.closest('.modal-body, .users-modal-body');
+                        var modalBody = trigger.closest('.modal-form-body, .modal-body, .users-modal-body');
                         var boundary = modalBody ? modalBody.getBoundingClientRect() : {
                             top: 12,
                             bottom: window.innerHeight - 12
@@ -1306,7 +1330,8 @@
                         var desiredHeight = Math.min(menu.scrollHeight || 280, 280);
                         var belowSpace = Math.max(0, boundary.bottom - rect.bottom - gutter);
                         var aboveSpace = Math.max(0, rect.top - boundary.top - gutter);
-                        var openUp = belowSpace < desiredHeight && aboveSpace > belowSpace;
+                        var forceBottom = el.dataset.menuPlacement === 'bottom' || !!trigger.closest('.schedule-modal');
+                        var openUp = !forceBottom && belowSpace < desiredHeight && aboveSpace > belowSpace;
                         var available = openUp ? aboveSpace : belowSpace;
                         var menuHeight = Math.min(desiredHeight, Math.max(minHeight, available));
 

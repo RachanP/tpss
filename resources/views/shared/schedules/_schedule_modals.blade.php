@@ -40,16 +40,17 @@
                     : 'oklch(58% 0.095 84)';
             };
             $eligibleScheduleInstructors = $eligibleScheduleInstructors ?? function ($offering) {
-                $departmentId = $offering?->course?->department_id;
                 $pool = $offering?->instructorPool ?? collect();
 
-                if (! $departmentId) {
-                    return $pool;
-                }
-
                 return $pool
-                    ->filter(fn ($instructor) => (int) $instructor->instructorProfile?->department_id === (int) $departmentId)
+                    ->sortBy(fn ($instructor) => $instructor->formatted_name ?? $instructor->name)
                     ->values();
+            };
+            $instructorDepartmentMismatch = $instructorDepartmentMismatch ?? function ($offering, $instructor) {
+                $departmentId = $offering?->course?->department_id;
+
+                return $departmentId
+                    && (int) ($instructor?->instructorProfile?->department_id) !== (int) $departmentId;
             };
             $scheduleDepartmentInstructors = $scheduleDepartmentInstructors ?? function ($schedule) use ($eligibleScheduleInstructors) {
                 $eligibleIds = $eligibleScheduleInstructors($schedule?->courseOffering)
@@ -304,7 +305,7 @@
                                     @endif
 
                                     <div class="modal-form-grid">
-                                        <div>
+                                        <div class="modal-field-full">
                                             <label class="modal-label" for="series_edit_weekday_{{ $schedule->id }}">วันในสัปดาห์ <span class="required-mark">*</span></label>
                                             <select id="series_edit_weekday_{{ $schedule->id }}" name="weekday" required class="modal-control">
                                                 @foreach($thaiDays as $dayIso => $dayName)
@@ -322,13 +323,91 @@
                                         </div>
                                         <div>
                                             <label class="modal-label" for="series_edit_start_time_{{ $schedule->id }}">เวลาเริ่ม <span class="required-mark">*</span></label>
-                                            <input id="series_edit_start_time_{{ $schedule->id }}" name="start_time" type="time" required class="modal-control" value="{{ $seriesOld('start_time', substr((string) $seriesTemplate->start_time, 0, 5)) }}">
+                                            @php
+                                                $seriesStart = (string) $seriesOld('start_time', substr((string) $seriesTemplate->start_time, 0, 5));
+                                                [$seriesStartHour, $seriesStartMin] = preg_match('/^\d{2}:\d{2}$/', $seriesStart)
+                                                    ? explode(':', $seriesStart)
+                                                    : ['08', '00'];
+                                            @endphp
+                                            <input type="hidden" id="series_edit_start_time_{{ $schedule->id }}" name="start_time" value="{{ $seriesStart }}">
+                                            <div class="time-picker-group">
+                                                <div class="time-picker" id="tp_series_edit_start_{{ $schedule->id }}" data-tp-hidden="series_edit_start_time_{{ $schedule->id }}" tabindex="0">
+                                                    <span class="tp-val tp-val-hour">{{ $seriesStartHour }}</span>
+                                                    <span class="time-separator">:</span>
+                                                    <span class="tp-val tp-val-min">{{ $seriesStartMin }}</span>
+                                                    <div class="tp-drop">
+                                                        <div class="tp-drop-columns">
+                                                            <div class="tp-col tp-col-hour">
+                                                                <ul>
+                                                                    @for($cycle = 0; $cycle < 3; $cycle++)
+                                                                        @for($h = 0; $h < 24; $h++)
+                                                                            @php $hh = sprintf('%02d', $h); @endphp
+                                                                            <li data-val="{{ $hh }}" data-cycle="{{ $cycle }}" class="tp-hour-item {{ $cycle === 1 && $hh === $seriesStartHour ? 'tp-sel' : '' }}">{{ $hh }}</li>
+                                                                        @endfor
+                                                                    @endfor
+                                                                </ul>
+                                                            </div>
+                                                            <div class="tp-col-divider">:</div>
+                                                            <div class="tp-col tp-col-min">
+                                                                <ul>
+                                                                    @for($cycle = 0; $cycle < 3; $cycle++)
+                                                                        @foreach(range(0, 59) as $m)
+                                                                            @php $mm = sprintf('%02d', $m); @endphp
+                                                                            <li data-val="{{ $mm }}" data-cycle="{{ $cycle }}" class="tp-min-item {{ $cycle === 1 && $mm === $seriesStartMin ? 'tp-sel' : '' }}">{{ $mm }}</li>
+                                                                        @endforeach
+                                                                    @endfor
+                                                                </ul>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <span class="time-unit">น.</span>
+                                            </div>
                                         </div>
                                         <div>
                                             <label class="modal-label" for="series_edit_end_time_{{ $schedule->id }}">เวลาสิ้นสุด <span class="required-mark">*</span></label>
-                                            <input id="series_edit_end_time_{{ $schedule->id }}" name="end_time" type="time" required class="modal-control" value="{{ $seriesOld('end_time', substr((string) $seriesTemplate->end_time, 0, 5)) }}">
+                                            @php
+                                                $seriesEnd = (string) $seriesOld('end_time', substr((string) $seriesTemplate->end_time, 0, 5));
+                                                [$seriesEndHour, $seriesEndMin] = preg_match('/^\d{2}:\d{2}$/', $seriesEnd)
+                                                    ? explode(':', $seriesEnd)
+                                                    : ['09', '00'];
+                                            @endphp
+                                            <input type="hidden" id="series_edit_end_time_{{ $schedule->id }}" name="end_time" value="{{ $seriesEnd }}">
+                                            <div class="time-picker-group">
+                                                <div class="time-picker" id="tp_series_edit_end_{{ $schedule->id }}" data-tp-hidden="series_edit_end_time_{{ $schedule->id }}" tabindex="0">
+                                                    <span class="tp-val tp-val-hour">{{ $seriesEndHour }}</span>
+                                                    <span class="time-separator">:</span>
+                                                    <span class="tp-val tp-val-min">{{ $seriesEndMin }}</span>
+                                                    <div class="tp-drop">
+                                                        <div class="tp-drop-columns">
+                                                            <div class="tp-col tp-col-hour">
+                                                                <ul>
+                                                                    @for($cycle = 0; $cycle < 3; $cycle++)
+                                                                        @for($h = 0; $h < 24; $h++)
+                                                                            @php $hh = sprintf('%02d', $h); @endphp
+                                                                            <li data-val="{{ $hh }}" data-cycle="{{ $cycle }}" class="tp-hour-item {{ $cycle === 1 && $hh === $seriesEndHour ? 'tp-sel' : '' }}">{{ $hh }}</li>
+                                                                        @endfor
+                                                                    @endfor
+                                                                </ul>
+                                                            </div>
+                                                            <div class="tp-col-divider">:</div>
+                                                            <div class="tp-col tp-col-min">
+                                                                <ul>
+                                                                    @for($cycle = 0; $cycle < 3; $cycle++)
+                                                                        @foreach(range(0, 59) as $m)
+                                                                            @php $mm = sprintf('%02d', $m); @endphp
+                                                                            <li data-val="{{ $mm }}" data-cycle="{{ $cycle }}" class="tp-min-item {{ $cycle === 1 && $mm === $seriesEndMin ? 'tp-sel' : '' }}">{{ $mm }}</li>
+                                                                        @endforeach
+                                                                    @endfor
+                                                                </ul>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <span class="time-unit">น.</span>
+                                            </div>
                                         </div>
-                                        <div>
+                                        <div class="modal-field-full">
                                             <label class="modal-label" for="series_edit_activity_type_id_{{ $schedule->id }}">ประเภทกิจกรรม <span class="required-mark">*</span></label>
                                             <select id="series_edit_activity_type_id_{{ $schedule->id }}" name="activity_type_id" required class="modal-control">
                                                 @foreach($activityTypes as $activityType)
@@ -409,6 +488,7 @@
                             method="POST"
                             action="{{ route('maker.course_offerings.schedules.update', [$offering, $schedule]) }}"
                             data-testid="schedule-edit-form"
+                            data-schedule-success-toast="บันทึกสำเร็จ"
                             data-schedule-check
                             data-check-url="{{ route('maker.course_offerings.schedules.check_conflicts', $offering, false) }}"
                             @input="queueScheduleCheck($el)"
@@ -684,18 +764,28 @@
                                     @php
                                         $editInstructorOptions = $eligibleScheduleInstructors($offering);
                                         $editInstructorSearchItems = $editInstructorOptions
-                                            ->map(fn ($instructor) => mb_strtolower($instructor->formatted_name ?? $instructor->name, 'UTF-8'))
+                                            ->map(fn ($instructor) => mb_strtolower(($instructor->formatted_name ?? $instructor->name) . ' ' . ($instructor->instructorProfile?->department?->name ?? ''), 'UTF-8'))
                                             ->values();
                                     @endphp
                                     <input type="search" class="modal-choice-search" x-model="editInstructorSearch" placeholder="ค้นหาชื่อผู้สอน" aria-label="ค้นหาผู้สอน">
-                                    <div class="modal-choice-grid">
+                                    <div class="modal-choice-grid is-scroll-list is-instructor-scroll">
                                         @foreach($editInstructorOptions as $instructor)
                                             @php
-                                                $editInstructorSearchText = mb_strtolower($instructor->formatted_name ?? $instructor->name, 'UTF-8');
+                                                $isOutsideDepartment = $instructorDepartmentMismatch($offering, $instructor);
+                                                $instructorDepartment = $instructor->instructorProfile?->department?->name;
+                                                $editInstructorSearchText = mb_strtolower(($instructor->formatted_name ?? $instructor->name) . ' ' . ($instructorDepartment ?? '') . ($isOutsideDepartment ? ' ต่างภาค' : ''), 'UTF-8');
                                             @endphp
-                                            <label class="modal-choice" x-show="matchesCreateSearch(@js($editInstructorSearchText), editInstructorSearch)" x-cloak>
+                                            <label class="modal-choice {{ $isOutsideDepartment ? 'is-warning-choice' : '' }}" x-show="matchesCreateSearch(@js($editInstructorSearchText), editInstructorSearch)" x-cloak>
                                                 <input type="checkbox" name="instructor_ids[]" value="{{ $instructor->id }}" @checked(in_array((string) $instructor->id, $editInstructorIds, true)) data-testid="schedule-instructor">
-                                                <span>{{ $instructor->formatted_name ?? $instructor->name }}</span>
+                                                <span class="modal-choice-main">
+                                                    <span>{{ $instructor->formatted_name ?? $instructor->name }}</span>
+                                                    @if($instructorDepartment)
+                                                        <small>{{ $instructorDepartment }}</small>
+                                                    @endif
+                                                </span>
+                                                @if($isOutsideDepartment)
+                                                    <span class="modal-choice-warning">ต่างภาค</span>
+                                                @endif
                                             </label>
                                         @endforeach
                                     </div>
@@ -706,6 +796,14 @@
                                 </div>
 
                                 <div class="modal-section {{ $groupConflictNote ? 'modal-field-has-conflict' : '' }}" data-testid="schedule-edit-group-selector">
+                                    @php
+                                        $editGroupOptions = $offering->studentGroups
+                                            ->sortBy(fn ($group) => sprintf('%010d-%s', (int) preg_replace('/\D+/', '', (string) $group->group_code), (string) $group->group_code))
+                                            ->values();
+                                        $editGroupSearchItems = $editGroupOptions
+                                            ->map(fn ($group) => mb_strtolower($group->group_code . ' ' . $group->student_count . ' คน', 'UTF-8'))
+                                            ->values();
+                                    @endphp
                                     <div class="modal-section-title">กลุ่มนักศึกษา <span class="required-mark">*</span></div>
                                     <template x-if="liveIssue('student_group_ids').length">
                                         <div class="field-live-error" data-testid="live-error-student-group-ids">
@@ -720,6 +818,7 @@
                                             @endif
                                         </div>
                                     @else
+                                        <input type="search" class="modal-choice-search" x-model="editGroupSearch" placeholder="ค้นหารหัสกลุ่มนักศึกษา" aria-label="ค้นหากลุ่มนักศึกษา">
                                         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
                                             @if((int) $offering->coordinator_id === (int) auth()->id())
                                                 <a href="{{ $scheduleGroupManageUrl($offering) }}" class="schedule-group-manage-mini" data-testid="schedule-edit-manage-groups-link">จัดการกลุ่มในหน้ารายวิชา</a>
@@ -731,9 +830,12 @@
                                                 เลือกทุกกลุ่ม
                                             </button>
                                         </div>
-                                        <div class="modal-choice-grid">
-                                            @foreach($offering->studentGroups as $group)
-                                                <label class="modal-choice">
+                                        <div class="modal-choice-grid is-scroll-list">
+                                            @foreach($editGroupOptions as $group)
+                                                @php
+                                                    $editGroupSearchText = mb_strtolower($group->group_code . ' ' . $group->student_count . ' คน', 'UTF-8');
+                                                @endphp
+                                                <label class="modal-choice" x-show="matchesCreateSearch(@js($editGroupSearchText), editGroupSearch)" x-cloak>
                                                     <input type="checkbox" name="student_group_ids[]" value="{{ $group->id }}"
                                                         @checked(in_array((string) $group->id, $editGroupIds, true))
                                                         @change="$nextTick(() => window.tpssScheduleRunLiveCheck?.($el.closest('form')))"
@@ -745,6 +847,7 @@
                                                 </label>
                                             @endforeach
                                         </div>
+                                        <div class="modal-choice-empty" x-show="hasCreateSearch(editGroupSearch) && !hasCreateSearchMatches(@js($editGroupSearchItems), editGroupSearch)" x-cloak>ไม่พบกลุ่มที่ค้นหา</div>
                                     @endif
                                     @if($groupConflictNote)
                                         <div class="modal-conflict-field">{{ $groupConflictNote }}</div>

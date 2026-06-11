@@ -286,16 +286,17 @@
             : 'oklch(58% 0.095 84)';
     };
     $eligibleScheduleInstructors = function ($offering) {
-        $departmentId = $offering?->course?->department_id;
         $pool = $offering?->instructorPool ?? collect();
 
-        if (! $departmentId) {
-            return $pool;
-        }
-
         return $pool
-            ->filter(fn ($instructor) => (int) $instructor->instructorProfile?->department_id === (int) $departmentId)
+            ->sortBy(fn ($instructor) => $instructor->formatted_name ?? $instructor->name)
             ->values();
+    };
+    $instructorDepartmentMismatch = function ($offering, $instructor) {
+        $departmentId = $offering?->course?->department_id;
+
+        return $departmentId
+            && (int) ($instructor?->instructorProfile?->department_id) !== (int) $departmentId;
     };
     $scheduleDepartmentInstructors = function ($schedule) use ($eligibleScheduleInstructors) {
         $eligibleIds = $eligibleScheduleInstructors($schedule?->courseOffering)
@@ -1666,12 +1667,104 @@
             font-weight: 650;
             line-height: 1.5;
         }
+        .copy-mode-seg {
+            display: grid !important;
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            align-items: stretch;
+            gap: 6px;
+            margin-bottom: 12px;
+            padding: 4px;
+            border: 1px solid var(--schedule-border);
+            border-radius: 10px;
+            background: oklch(97.5% 0.008 232);
+        }
+        .copy-mode-option {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            justify-self: stretch;
+            min-width: 0;
+            width: 100%;
+            min-height: 36px;
+            padding: 0 12px;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            background: transparent;
+            color: var(--fg-2);
+            cursor: pointer;
+            font: inherit;
+            font-size: 12.5px;
+            font-weight: 850;
+            line-height: 1.2;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .copy-mode-option:hover,
+        .copy-mode-option:focus-visible {
+            outline: none;
+            border-color: var(--schedule-border-strong);
+            background: var(--surface);
+        }
+        .copy-mode-option.is-active {
+            border-color: var(--brand-navy);
+            background: var(--brand-navy);
+            color: var(--surface);
+        }
+        .schedule-shell .schedule-copy-week-modal .copy-mode-seg > .copy-mode-option {
+            position: static !important;
+            inset: auto !important;
+            justify-self: stretch !important;
+            width: 100% !important;
+            height: auto !important;
+            min-width: 0 !important;
+            min-height: 36px !important;
+            margin: 0 !important;
+            border: 1px solid transparent !important;
+            border-radius: 8px !important;
+            background: transparent !important;
+            color: var(--fg-2) !important;
+            line-height: 1.2 !important;
+            transform: none !important;
+            z-index: auto !important;
+        }
+        .schedule-shell .schedule-copy-week-modal .copy-mode-seg > .copy-mode-option:hover,
+        .schedule-shell .schedule-copy-week-modal .copy-mode-seg > .copy-mode-option:focus-visible {
+            border-color: var(--schedule-border-strong) !important;
+            background: var(--surface) !important;
+        }
+        .schedule-shell .schedule-copy-week-modal .copy-mode-seg > .copy-mode-option.is-active {
+            border-color: var(--brand-navy) !important;
+            background: var(--brand-navy) !important;
+            color: var(--surface) !important;
+        }
         .copy-week-weeks {
             display: flex;
             align-items: stretch;
             gap: 12px;
             flex-wrap: wrap;
             margin-bottom: 16px;
+        }
+        .copy-date-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .copy-date-grid.is-range {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .copy-date-grid label {
+            display: flex;
+            min-width: 0;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .copy-date-grid .tdi-wrap,
+        .copy-date-grid .tdi-control {
+            width: 100%;
+            min-width: 0;
         }
         .copy-week-pill {
             flex: 1 1 200px;
@@ -1705,9 +1798,11 @@
             font-weight: 900;
         }
         .copy-week-target-control {
-            display: flex;
+            display: flex !important;
             align-items: center;
+            flex-direction: row !important;
             gap: 8px;
+            overflow: visible !important;
         }
         .copy-week-step {
             width: 26px;
@@ -1721,7 +1816,37 @@
             line-height: 1;
             cursor: pointer;
         }
+        .schedule-shell .schedule-copy-week-modal .copy-week-weeks,
+        .schedule-shell .schedule-copy-week-modal .copy-week-pill {
+            overflow: visible !important;
+        }
+        .schedule-shell .schedule-copy-week-modal .copy-week-target-control > .copy-week-step {
+            position: static !important;
+            inset: auto !important;
+            flex: 0 0 26px !important;
+            width: 26px !important;
+            height: 26px !important;
+            min-width: 26px !important;
+            min-height: 26px !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            border: 1px solid var(--schedule-border) !important;
+            border-radius: 6px !important;
+            background: var(--surface) !important;
+            color: var(--fg-1) !important;
+            font-size: 16px !important;
+            font-weight: 900 !important;
+            line-height: 1 !important;
+            transform: none !important;
+            z-index: auto !important;
+        }
         .copy-week-step:hover { background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface)); }
+        .schedule-shell .schedule-copy-week-modal .copy-week-target-control > .copy-week-step:hover {
+            background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface)) !important;
+        }
         .copy-week-status {
             padding: 10px 12px;
             border: 1px solid var(--schedule-border);
@@ -1742,6 +1867,18 @@
             flex-wrap: wrap;
             margin-bottom: 12px;
         }
+        .copy-week-preview-block {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .copy-week-preview-block .copy-week-summary,
+        .copy-week-preview-block .copy-week-status {
+            margin-bottom: 0;
+        }
         .copy-week-badge {
             padding: 4px 10px;
             border-radius: 999px;
@@ -1761,61 +1898,146 @@
         }
         .copy-week-list {
             list-style: none;
-            margin: 0 0 12px;
+            margin: 0;
             padding: 0;
-            display: grid;
-            gap: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .copy-week-preview-scroll {
+            flex: 1 1 auto;
+            min-height: 150px;
+            max-height: min(306px, 34vh);
+            margin: 0;
+            padding-right: 8px;
+            display: block;
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
+            scrollbar-gutter: stable;
+        }
+        .copy-week-preview-scroll .copy-week-list {
+            margin-bottom: 0;
+        }
+        .copy-week-preview-scroll .copy-week-list:last-child {
+            margin-bottom: 0;
+        }
+        .copy-week-section-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 2px 0 8px;
+            color: var(--fg-2);
+            font-size: 12.5px;
+            font-weight: 850;
+            line-height: 1.35;
+        }
+        .copy-week-section-title span:last-child {
+            padding: 2px 8px;
+            border: 1px solid var(--schedule-border);
+            border-radius: 999px;
+            background: color-mix(in oklch, var(--surface) 82%, var(--schedule-border));
+            color: var(--fg-3);
+            font-size: 11.5px;
+            font-weight: 800;
+        }
+        .copy-week-section-title:not(.is-blocked) span:last-child {
+            border-color: color-mix(in oklch, var(--status-success-border) 65%, transparent);
+            background: var(--status-success-bg);
+            color: var(--status-success-fg);
+        }
+        .copy-week-section-title.is-blocked {
+            color: var(--status-conflict-fg);
+        }
+        .copy-week-section-title.is-blocked span:last-child {
+            border-color: var(--status-conflict-border);
+            background: color-mix(in oklch, var(--status-conflict-bg) 75%, var(--surface));
+            color: var(--status-conflict-fg);
         }
         .copy-week-item {
             display: flex;
             align-items: flex-start;
             gap: 10px;
-            padding: 10px 12px;
+            padding: 11px 13px;
             border: 1px solid var(--schedule-border);
             border-radius: 8px;
             background: var(--surface);
         }
         .copy-week-item.is-blocked {
             border-color: var(--status-conflict-border);
-            background: var(--status-conflict-bg);
+            background: color-mix(in oklch, var(--status-conflict-bg) 82%, var(--surface));
         }
         .copy-week-mark { font-size: 14px; line-height: 1.5; flex: 0 0 auto; }
-        .copy-week-item-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+        .copy-week-item-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
         .copy-week-item-body strong { color: var(--fg-1); font-size: 13.5px; font-weight: 850; }
-        .copy-week-item-body small { color: var(--fg-3); font-size: 12px; font-weight: 650; }
-        .copy-week-reason { color: var(--status-conflict-fg) !important; font-weight: 750 !important; }
-        .schedule-shell.is-course-head-schedule .schedule-copy-week-backdrop {
-            align-items: flex-start !important;
-            padding-top: clamp(72px, 10vh, 112px) !important;
-            padding-bottom: 32px !important;
+        .copy-week-item-body small {
+            color: var(--fg-3);
+            font-size: 12px;
+            font-weight: 650;
+            line-height: 1.45;
+            overflow-wrap: anywhere;
         }
-        .schedule-shell.is-course-head-schedule .schedule-copy-week-modal {
+        .copy-week-item.is-blocked .copy-week-item-body {
+            gap: 5px;
+        }
+        .copy-week-item.is-blocked .copy-week-mark {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            margin-top: 1px;
+            border-radius: 999px;
+            background: color-mix(in oklch, var(--status-conflict-fg) 18%, transparent);
+            color: var(--status-conflict-fg);
+            font-size: 12px;
+            line-height: 1;
+        }
+        .copy-week-reason {
+            display: block;
+            color: var(--status-conflict-fg) !important;
+            font-weight: 750 !important;
+        }
+        .schedule-shell .schedule-copy-week-backdrop {
+            align-items: flex-start !important;
+            overflow: hidden !important;
+            padding-top: clamp(40px, 6vh, 72px) !important;
+            padding-bottom: 24px !important;
+        }
+        .schedule-shell .schedule-copy-week-modal {
             width: min(940px, calc(100vw - 48px)) !important;
-            max-height: none !important;
-            overflow: visible !important;
+            max-height: calc(100dvh - 88px) !important;
+            overflow: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
             border-color: color-mix(in oklch, var(--brand-navy) 26%, var(--schedule-border)) !important;
             background: color-mix(in oklch, var(--surface) 92%, var(--brand-navy)) !important;
             box-shadow: 0 22px 58px rgb(15 23 42 / 0.24), 0 1px 0 rgb(255 255 255 / 0.72) inset !important;
         }
-        .schedule-shell.is-course-head-schedule .schedule-copy-week-modal > .modal-head {
+        .schedule-shell .schedule-copy-week-modal > .modal-head {
             background: linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 14%, var(--surface)), color-mix(in oklch, var(--brand-navy) 6%, var(--surface)));
             border-bottom-color: color-mix(in oklch, var(--brand-navy) 28%, var(--schedule-border));
         }
-        .schedule-shell.is-course-head-schedule .schedule-copy-week-modal > .modal-form-body {
-            flex: 0 0 auto !important;
-            overflow: visible !important;
+        .schedule-shell .schedule-copy-week-modal > .modal-form-body {
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            overflow-y: hidden !important;
+            overflow-x: hidden !important;
+            overscroll-behavior: contain;
         }
-        .schedule-shell.is-course-head-schedule .schedule-copy-week-modal .modal-form-body {
+        .schedule-shell .schedule-copy-week-modal .modal-form-body {
             padding: 18px 24px 18px;
         }
-        .schedule-shell.is-course-head-schedule .schedule-copy-week-modal .copy-week-weeks {
+        .schedule-shell .schedule-copy-week-modal .copy-week-weeks {
             display: grid;
             grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
             align-items: stretch;
             gap: 14px;
             margin-bottom: 18px;
         }
-        .schedule-shell.is-course-head-schedule .schedule-copy-week-modal .copy-week-pill {
+        .schedule-shell .schedule-copy-week-modal .copy-week-pill {
             position: relative;
             gap: 8px;
             padding: 14px 16px;
@@ -1825,31 +2047,31 @@
                 linear-gradient(180deg, var(--surface), color-mix(in oklch, var(--brand-navy) 5%, var(--surface)));
             box-shadow: 0 1px 0 rgb(255 255 255 / 0.82) inset;
         }
-        .schedule-shell.is-course-head-schedule .schedule-copy-week-modal .copy-week-pill.is-target {
+        .schedule-shell .schedule-copy-week-modal .copy-week-pill.is-target {
             border-color: color-mix(in oklch, var(--brand-navy) 48%, var(--schedule-border));
             background:
                 linear-gradient(90deg, color-mix(in oklch, var(--brand-navy) 16%, transparent), transparent 46%),
                 linear-gradient(180deg, var(--surface), color-mix(in oklch, var(--brand-navy) 8%, var(--surface)));
         }
-        .schedule-shell.is-course-head-schedule .schedule-copy-week-modal .copy-week-pill-label {
+        .schedule-shell .schedule-copy-week-modal .copy-week-pill-label {
             color: var(--brand-navy);
             letter-spacing: 0;
         }
-        .schedule-shell.is-course-head-schedule .schedule-copy-week-modal .copy-week-pill-date {
+        .schedule-shell .schedule-copy-week-modal .copy-week-pill-date {
             color: var(--brand-navy);
             font-size: 14.5px;
         }
-        .schedule-shell.is-course-head-schedule .schedule-copy-week-modal .copy-week-arrow {
+        .schedule-shell .schedule-copy-week-modal .copy-week-arrow {
             color: var(--brand-navy);
             font-size: 22px;
         }
-        .schedule-shell.is-course-head-schedule .copy-week-step:disabled {
+        .schedule-shell .copy-week-step:disabled {
             color: var(--fg-3);
             background: color-mix(in oklch, var(--surface) 72%, var(--schedule-border));
             cursor: not-allowed;
             opacity: 0.6;
         }
-        .schedule-shell.is-course-head-schedule .schedule-copy-week-actions {
+        .schedule-shell .schedule-copy-week-actions {
             display: flex !important;
             flex-direction: row !important;
             justify-content: flex-end !important;
@@ -1859,7 +2081,7 @@
             background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
             border-top-color: color-mix(in oklch, var(--brand-navy) 24%, var(--schedule-border));
         }
-        .schedule-shell.is-course-head-schedule .schedule-copy-week-actions .btn {
+        .schedule-shell .schedule-copy-week-actions .btn {
             flex: 0 0 auto !important;
             width: auto !important;
             min-width: 118px;
@@ -1869,29 +2091,41 @@
             justify-content: center;
         }
         @media (max-width: 720px) {
-            .schedule-shell.is-course-head-schedule .schedule-copy-week-backdrop {
+            .schedule-shell .schedule-copy-week-backdrop {
                 padding-top: 56px !important;
                 padding-bottom: 24px !important;
             }
-            .schedule-shell.is-course-head-schedule .schedule-copy-week-modal {
+            .schedule-shell .schedule-copy-week-modal {
                 width: calc(100vw - 24px) !important;
             }
-            .schedule-shell.is-course-head-schedule .schedule-copy-week-modal .modal-form-body {
+            .schedule-shell .schedule-copy-week-modal .modal-form-body {
                 padding-left: 14px;
                 padding-right: 14px;
             }
-            .schedule-shell.is-course-head-schedule .schedule-copy-week-modal .copy-week-weeks {
-                grid-template-columns: 1fr;
+            .schedule-shell .schedule-copy-week-modal .copy-week-weeks {
                 gap: 10px;
             }
-            .schedule-shell.is-course-head-schedule .schedule-copy-week-modal .copy-week-arrow {
+            .copy-date-grid,
+            .copy-date-grid.is-range {
+                grid-template-columns: 1fr;
+            }
+            .schedule-shell .schedule-copy-week-modal .copy-mode-seg {
+                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+                gap: 4px;
+            }
+            .schedule-shell .schedule-copy-week-modal .copy-mode-option {
+                min-height: 34px;
+                padding: 0 6px;
+                font-size: 11.5px;
+            }
+            .schedule-shell .schedule-copy-week-modal .copy-week-arrow {
                 transform: rotate(90deg);
                 line-height: 1;
             }
-            .schedule-shell.is-course-head-schedule .schedule-copy-week-actions {
+            .schedule-shell .schedule-copy-week-actions {
                 justify-content: stretch !important;
             }
-            .schedule-shell.is-course-head-schedule .schedule-copy-week-actions .btn {
+            .schedule-shell .schedule-copy-week-actions .btn {
                 flex: 1 1 0 !important;
                 min-width: 0;
             }
@@ -4300,7 +4534,7 @@
             border-radius: 7px;
             padding: 4px 14px;
         }
-        .schedule-shell.is-course-head-schedule .schedule-detail-actions {
+        .schedule-shell .schedule-detail-actions {
             align-items: center;
             display: grid;
             grid-template-columns: repeat(2, minmax(140px, 210px));
@@ -4308,20 +4542,20 @@
             gap: 10px;
             background: oklch(98% 0.006 232);
         }
-        .schedule-shell.is-course-head-schedule .schedule-detail-actions:has(button:nth-of-type(3)) {
+        .schedule-shell .schedule-detail-actions:has(button:nth-of-type(3)) {
             grid-template-columns: repeat(6, minmax(0, 1fr));
         }
-        .schedule-shell.is-course-head-schedule .schedule-detail-actions.has-many-actions {
+        .schedule-shell .schedule-detail-actions.has-many-actions {
             grid-template-columns: repeat(6, minmax(0, 1fr));
         }
-        .schedule-shell.is-course-head-schedule .schedule-detail-actions .btn {
+        .schedule-shell .schedule-detail-actions .btn {
             width: 100% !important;
             min-width: 0 !important;
             max-width: 210px;
             justify-content: center;
             padding: 7px 14px;
         }
-        .schedule-shell.is-course-head-schedule .schedule-detail-actions:has(button:nth-of-type(3)) .btn {
+        .schedule-shell .schedule-detail-actions:has(button:nth-of-type(3)) .btn {
             max-width: none;
             min-height: 40px;
             white-space: normal;
@@ -4329,39 +4563,39 @@
             padding-left: 10px;
             padding-right: 10px;
         }
-        .schedule-shell.is-course-head-schedule .schedule-detail-actions:has(button:nth-of-type(3)) .schedule-detail-edit-action {
+        .schedule-shell .schedule-detail-actions:has(button:nth-of-type(3)) .schedule-detail-edit-action {
             grid-column: span 3;
             grid-row: 1;
         }
-        .schedule-shell.is-course-head-schedule .schedule-detail-actions.has-many-actions .schedule-detail-edit-action {
+        .schedule-shell .schedule-detail-actions.has-many-actions .schedule-detail-edit-action {
             grid-column: span 3;
             grid-row: 1;
         }
-        .schedule-shell.is-course-head-schedule .schedule-detail-actions:has(button:nth-of-type(3)) .schedule-detail-delete-action {
+        .schedule-shell .schedule-detail-actions:has(button:nth-of-type(3)) .schedule-detail-delete-action {
             grid-column: span 3;
             grid-row: 2;
         }
-        .schedule-shell.is-course-head-schedule .schedule-detail-actions.has-many-actions .schedule-detail-delete-action {
+        .schedule-shell .schedule-detail-actions.has-many-actions .schedule-detail-delete-action {
             grid-column: span 3;
             grid-row: 2;
         }
-        .schedule-shell.is-course-head-schedule .schedule-detail-actions:has(button:nth-of-type(5)) .schedule-detail-delete-action {
+        .schedule-shell .schedule-detail-actions:has(button:nth-of-type(5)) .schedule-detail-delete-action {
             grid-column: span 2;
         }
-        .schedule-shell.is-course-head-schedule .schedule-detail-actions.has-series-delete-options .schedule-detail-delete-action {
+        .schedule-shell .schedule-detail-actions.has-series-delete-options .schedule-detail-delete-action {
             grid-column: span 2;
         }
-        .schedule-shell.is-course-head-schedule .schedule-detail-actions .btn-secondary {
+        .schedule-shell .schedule-detail-actions .btn-secondary {
             min-width: 0;
         }
-        .schedule-shell.is-course-head-schedule .schedule-detail-actions .btn-red {
+        .schedule-shell .schedule-detail-actions .btn-red {
             min-width: 0;
         }
         @media (max-width: 720px) {
-            .schedule-shell.is-course-head-schedule .schedule-detail-actions {
+            .schedule-shell .schedule-detail-actions {
                 padding: 12px 16px 16px;
             }
-            .schedule-shell.is-course-head-schedule .schedule-detail-actions .btn {
+            .schedule-shell .schedule-detail-actions .btn {
                 min-height: 40px;
             }
         }
@@ -4445,38 +4679,51 @@
         .schedule-modal > .modal-actions {
             flex: 0 0 auto !important;
         }
-        .schedule-shell.is-course-head-schedule .schedule-modal > .schedule-detail-actions {
+        .schedule-shell section.schedule-copy-week-modal > .modal-form-body {
+            overflow-y: hidden !important;
+            scrollbar-width: none;
+        }
+        .schedule-shell section.schedule-copy-week-modal > .modal-form-body::-webkit-scrollbar {
+            display: none;
+        }
+        .schedule-shell section.schedule-copy-week-modal .copy-date-grid,
+        .schedule-shell section.schedule-copy-week-modal .copy-date-grid > label,
+        .schedule-shell section.schedule-copy-week-modal .copy-date-grid .tdi-wrap,
+        .schedule-shell section.schedule-copy-week-modal .copy-date-grid .tdi-control {
+            overflow: visible !important;
+        }
+        .schedule-shell .schedule-modal > .schedule-detail-actions {
             display: grid !important;
             grid-template-columns: repeat(2, minmax(140px, 210px)) !important;
             justify-content: center !important;
             align-items: center !important;
         }
-        .schedule-shell.is-course-head-schedule .schedule-modal > .schedule-detail-actions:has(button:nth-of-type(3)) {
+        .schedule-shell .schedule-modal > .schedule-detail-actions:has(button:nth-of-type(3)) {
             grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
         }
-        .schedule-shell.is-course-head-schedule .schedule-modal > .schedule-detail-actions.has-many-actions {
+        .schedule-shell .schedule-modal > .schedule-detail-actions.has-many-actions {
             grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
         }
-        .schedule-shell.is-course-head-schedule .schedule-modal > .schedule-detail-actions:has(button:nth-of-type(3)) .schedule-detail-edit-action {
+        .schedule-shell .schedule-modal > .schedule-detail-actions:has(button:nth-of-type(3)) .schedule-detail-edit-action {
             grid-column: span 3 !important;
             grid-row: 1 !important;
         }
-        .schedule-shell.is-course-head-schedule .schedule-modal > .schedule-detail-actions.has-many-actions .schedule-detail-edit-action {
+        .schedule-shell .schedule-modal > .schedule-detail-actions.has-many-actions .schedule-detail-edit-action {
             grid-column: span 3 !important;
             grid-row: 1 !important;
         }
-        .schedule-shell.is-course-head-schedule .schedule-modal > .schedule-detail-actions:has(button:nth-of-type(3)) .schedule-detail-delete-action {
+        .schedule-shell .schedule-modal > .schedule-detail-actions:has(button:nth-of-type(3)) .schedule-detail-delete-action {
             grid-column: span 3 !important;
             grid-row: 2 !important;
         }
-        .schedule-shell.is-course-head-schedule .schedule-modal > .schedule-detail-actions.has-many-actions .schedule-detail-delete-action {
+        .schedule-shell .schedule-modal > .schedule-detail-actions.has-many-actions .schedule-detail-delete-action {
             grid-column: span 3 !important;
             grid-row: 2 !important;
         }
-        .schedule-shell.is-course-head-schedule .schedule-modal > .schedule-detail-actions:has(button:nth-of-type(5)) .schedule-detail-delete-action {
+        .schedule-shell .schedule-modal > .schedule-detail-actions:has(button:nth-of-type(5)) .schedule-detail-delete-action {
             grid-column: span 2 !important;
         }
-        .schedule-shell.is-course-head-schedule .schedule-modal > .schedule-detail-actions.has-series-delete-options .schedule-detail-delete-action {
+        .schedule-shell .schedule-modal > .schedule-detail-actions.has-series-delete-options .schedule-detail-delete-action {
             grid-column: span 2 !important;
         }
         @media (min-width: 1025px) {
@@ -4605,6 +4852,15 @@
             grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 10px;
         }
+        .modal-choice-grid.is-scroll-list {
+            max-height: 360px;
+            overflow-y: auto;
+            padding-right: 4px;
+            scrollbar-gutter: stable;
+        }
+        .modal-choice-grid.is-instructor-scroll {
+            max-height: 326px;
+        }
         .schedule-group-empty {
             text-align: left;
             line-height: 1.55;
@@ -4669,6 +4925,34 @@
         .modal-choice:hover {
             border-color: var(--schedule-border-strong);
             background: oklch(96.5% 0.014 232);
+        }
+        .modal-choice.is-warning-choice {
+            border-color: var(--status-warning-border);
+            background: color-mix(in oklch, var(--status-warning-bg) 62%, var(--surface));
+        }
+        .modal-choice-main {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            line-height: 1.35;
+        }
+        .modal-choice-main small {
+            color: var(--fg-3);
+            font-size: 11px;
+            font-weight: 650;
+        }
+        .modal-choice-warning {
+            margin-left: auto;
+            align-self: flex-start;
+            border: 1px solid var(--status-warning-border);
+            border-radius: 999px;
+            background: var(--status-warning-bg);
+            color: var(--status-warning-fg);
+            padding: 2px 7px;
+            font-size: 10.5px;
+            font-weight: 900;
+            white-space: nowrap;
         }
         .modal-section {
             margin-top: 16px;
@@ -5463,6 +5747,19 @@
             copyWeekCurrent: @js(($weekStart ?? null) ? $weekStart->toDateString() : null),
             copyWeekSource: @js(($weekStart ?? null) ? $weekStart->subDays(7)->toDateString() : null),
             copyWeekTarget: @js(($weekStart ?? null) ? $weekStart->toDateString() : null),
+            copyMode: 'week',
+            copyDaySource: @js(($selectedScheduleDate ?? $weekStart ?? null) ? ($selectedScheduleDate ?? $weekStart)->subDays(7)->toDateString() : null),
+            copyDayTarget: @js(($selectedScheduleDate ?? $weekStart ?? null) ? ($selectedScheduleDate ?? $weekStart)->toDateString() : null),
+            copyRangeSourceStart: @js(($weekStart ?? null) ? $weekStart->subDays(7)->toDateString() : null),
+            copyRangeSourceEnd: @js(($weekStart ?? null) ? $weekStart->subDay()->toDateString() : null),
+            copyRangeTargetStart: @js(($weekStart ?? null) ? $weekStart->toDateString() : null),
+            copyDaySourceDisplay: '',
+            copyDayTargetDisplay: '',
+            copyRangeSourceStartDisplay: '',
+            copyRangeSourceEndDisplay: '',
+            copyRangeTargetStartDisplay: '',
+            copyDateSyncing: false,
+            copyDatePreviewTimer: null,
             copyWeekPreview: null,
             copyWeekLoading: false,
             copyWeekError: '',
@@ -5470,7 +5767,10 @@
             liveWarnings: {},
             liveChecking: false,
             liveTimer: null,
+            suppressScheduleCheck: false,
             liveCheckSeq: 0,
+            hasScheduleServerErrors: @js($errors->any()),
+            scheduleSuccessToastKey: 'tpss-schedule-success-toast',
             get liveBlocking() { return Object.keys(this.visibleLiveIssues()).length > 0; },
             get liveWarningActive() { return Object.keys(this.liveWarnings).length > 0; },
             visibleLiveIssues() {
@@ -5501,9 +5801,36 @@
                 return this.liveIssues[field] || [];
             },
             liveWarning(field) { return this.liveWarnings[field] || []; },
+            queueScheduleSuccessToast(form) {
+                if (!form?.matches('[data-schedule-success-toast]')) return;
+
+                try {
+                    sessionStorage.setItem(
+                        this.scheduleSuccessToastKey,
+                        form.getAttribute('data-schedule-success-toast') || 'บันทึกสำเร็จ'
+                    );
+                } catch (e) {}
+            },
+            flushScheduleSuccessToast() {
+                let message = '';
+
+                try {
+                    message = sessionStorage.getItem(this.scheduleSuccessToastKey) || '';
+                    sessionStorage.removeItem(this.scheduleSuccessToastKey);
+                } catch (e) {
+                    message = '';
+                }
+
+                if (!message || this.hasScheduleServerErrors) return;
+
+                this.$nextTick(() => {
+                    window.tpssToast?.(message, 'success');
+                });
+            },
             init() {
                 this.$el.__tpssScheduleShell = this;
                 window.tpssScheduleRunLiveCheck = (form) => this.runScheduleCheck(form);
+                this.flushScheduleSuccessToast();
                 this.$watch('view', val => sessionStorage.setItem('tpss-schedule-view', val));
                 this.$watch('selectedOfferingId', () => {
                     this.createInstructorSearch = '';
@@ -5557,7 +5884,9 @@
                     this.openScheduleDetail(scheduleId);
                 });
 
-                this.$el.addEventListener('submit', () => {
+                this.$el.addEventListener('submit', (e) => {
+                    const form = e.target instanceof HTMLFormElement ? e.target : null;
+                    this.queueScheduleSuccessToast(form);
                     sessionStorage.setItem('tpss-schedule-scroll-y', window.scrollY);
                     sessionStorage.setItem('tpss-schedule-scroll-height', document.documentElement.scrollHeight);
                 });
@@ -5589,6 +5918,12 @@
                 // กิจกรรมวันเดียว: ให้วันจบ = วันเริ่ม อัตโนมัติ (ผู้ใช้กรอกช่องเดียว)
                 this.$watch('createStartDate', (v) => { if (!this.createMultiDay) this.createEndDate = v; });
                 this.$watch('createMultiDay', (v) => { if (!v) this.createEndDate = this.createStartDate; });
+                this.syncCopyDateDisplays();
+                this.watchCopyDateDisplay('copyDaySourceDisplay', 'copyDaySource');
+                this.watchCopyDateDisplay('copyDayTargetDisplay', 'copyDayTarget');
+                this.watchCopyDateDisplay('copyRangeSourceStartDisplay', 'copyRangeSourceStart');
+                this.watchCopyDateDisplay('copyRangeSourceEndDisplay', 'copyRangeSourceEnd');
+                this.watchCopyDateDisplay('copyRangeTargetStartDisplay', 'copyRangeTargetStart');
                 this.$watch('editModal', (val) => {
                     this.liveIssues = {};
                     this.liveWarnings = {};
@@ -5642,13 +5977,69 @@
             closeCreateDatePickers() {
                 document.dispatchEvent(new CustomEvent('tpss:close-date-popovers'));
             },
+            syncCopyDateDisplays() {
+                this.copyDateSyncing = true;
+                this.copyDaySourceDisplay = this.toThaiDateDisplay(this.copyDaySource);
+                this.copyDayTargetDisplay = this.toThaiDateDisplay(this.copyDayTarget);
+                this.copyRangeSourceStartDisplay = this.toThaiDateDisplay(this.copyRangeSourceStart);
+                this.copyRangeSourceEndDisplay = this.toThaiDateDisplay(this.copyRangeSourceEnd);
+                this.copyRangeTargetStartDisplay = this.toThaiDateDisplay(this.copyRangeTargetStart);
+                this.$nextTick(() => { this.copyDateSyncing = false; });
+            },
+            watchCopyDateDisplay(displayField, isoField) {
+                this.$watch(displayField, () => this.updateCopyDateFromDisplay(displayField, isoField));
+            },
+            updateCopyDateFromDisplay(displayField, isoField) {
+                if (this.copyDateSyncing) return;
+
+                const value = String(this[displayField] || '').trim();
+                const iso = this.thaiDateToIso(value);
+
+                if (iso) {
+                    this[isoField] = iso;
+                    this.queueCopyWeekPreview();
+                    return;
+                }
+
+                if (!value) {
+                    this[isoField] = '';
+                }
+
+                this.copyWeekPreview = null;
+            },
+            queueCopyWeekPreview() {
+                if (!this.copyWeekOpen || this.copyMode === 'week') return;
+
+                if (this.copyDatePreviewTimer) {
+                    clearTimeout(this.copyDatePreviewTimer);
+                }
+
+                this.copyDatePreviewTimer = setTimeout(() => {
+                    this.copyDatePreviewTimer = null;
+                    this.refreshCopyWeekPreview();
+                }, 180);
+            },
             openCopyWeek() {
                 this.copyWeekError = '';
                 this.copyWeekPreview = null;
                 // มาที่ = สัปดาห์ที่กำลังดูอยู่ (มักเป็นสัปดาห์ว่าง), ดึงจาก = สัปดาห์ก่อนหน้าเป็น default
                 this.copyWeekTarget = this.copyWeekCurrent;
                 this.copyWeekSource = window.tpssShiftIso(this.copyWeekCurrent, -7);
+                this.copyDayTarget = this.copyWeekCurrent;
+                this.copyDaySource = window.tpssShiftIso(this.copyWeekCurrent, -7);
+                this.copyRangeTargetStart = this.copyWeekCurrent;
+                this.copyRangeSourceStart = window.tpssShiftIso(this.copyWeekCurrent, -7);
+                this.copyRangeSourceEnd = window.tpssShiftIso(this.copyWeekCurrent, -1);
+                this.syncCopyDateDisplays();
                 this.copyWeekOpen = true;
+                this.$nextTick(() => this.refreshCopyWeekPreview());
+            },
+            setCopyMode(mode) {
+                this.closeCreateDatePickers();
+                this.copyMode = ['week', 'day', 'range'].includes(mode) ? mode : 'week';
+                this.copyWeekError = '';
+                this.copyWeekPreview = null;
+                this.syncCopyDateDisplays();
                 this.$nextTick(() => this.refreshCopyWeekPreview());
             },
             isoCompare(a, b) {
@@ -5691,6 +6082,48 @@
                 this.copyWeekTarget = next;
                 this.refreshCopyWeekPreview();
             },
+            copyRangeTargetEnd() {
+                if (!this.copyRangeSourceStart || !this.copyRangeSourceEnd || !this.copyRangeTargetStart) return '';
+                const start = new Date(`${this.copyRangeSourceStart}T00:00:00`);
+                const end = new Date(`${this.copyRangeSourceEnd}T00:00:00`);
+                if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return '';
+                const diffDays = Math.round((end - start) / 86400000);
+                return window.tpssShiftIso(this.copyRangeTargetStart, diffDays);
+            },
+            copyRequestPayload() {
+                if (this.copyMode === 'day') {
+                    return {
+                        copy_mode: 'day',
+                        source_date: this.copyDaySource,
+                        target_date: this.copyDayTarget,
+                    };
+                }
+
+                if (this.copyMode === 'range') {
+                    return {
+                        copy_mode: 'range',
+                        source_start_date: this.copyRangeSourceStart,
+                        source_end_date: this.copyRangeSourceEnd,
+                        target_start_date: this.copyRangeTargetStart,
+                    };
+                }
+
+                return {
+                    copy_mode: 'week',
+                    source_week_start: this.copyWeekSource,
+                    target_week_start: this.copyWeekTarget,
+                };
+            },
+            canPreviewCopyRequest() {
+                const payload = this.copyRequestPayload();
+                if (this.copyMode === 'day') {
+                    return Boolean(payload.source_date && payload.target_date && payload.source_date !== payload.target_date);
+                }
+                if (this.copyMode === 'range') {
+                    return Boolean(payload.source_start_date && payload.source_end_date && payload.target_start_date && payload.source_end_date >= payload.source_start_date && payload.target_start_date !== payload.source_start_date);
+                }
+                return Boolean(payload.source_week_start && payload.target_week_start && payload.source_week_start !== payload.target_week_start);
+            },
             sameOriginUrl(value) {
                 if (!value) return null;
 
@@ -5714,7 +6147,10 @@
             },
             async refreshCopyWeekPreview() {
                 const url = this.sameOriginUrl(@js((! $isWorkspace && $courseOffering) ? route('maker.course_offerings.schedules.copy_week.preview', $courseOffering, false) : ''));
-                if (!url || !this.copyWeekSource || !this.copyWeekTarget) return;
+                if (!url || !this.canPreviewCopyRequest()) {
+                    this.copyWeekPreview = null;
+                    return;
+                }
                 this.copyWeekLoading = true;
                 this.copyWeekError = '';
                 try {
@@ -5722,7 +6158,7 @@
                         method: 'POST',
                         credentials: 'same-origin',
                         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': this.csrf },
-                        body: JSON.stringify({ source_week_start: this.copyWeekSource, target_week_start: this.copyWeekTarget }),
+                        body: JSON.stringify(this.copyRequestPayload()),
                     });
                     if (!res.ok) throw new Error('preview failed');
                     this.copyWeekPreview = await res.json();
@@ -5743,7 +6179,32 @@
 
                 if (this.$refs.copyWeekForm) this.$refs.copyWeekForm.submit();
             },
+            syncCreateDateInputs() {
+                const form = this.$refs.createForm;
+                if (!form) return;
+
+                if (!this.createMultiDay && this.createStartDate) {
+                    this.createEndDate = this.createStartDate;
+                }
+
+                [
+                    ['start_date', this.createStartDate],
+                    ['end_date', this.createEndDate],
+                ].forEach(([name, value]) => {
+                    const input = form.querySelector(`[name='${name}']`);
+                    if (!input) return;
+
+                    const nextValue = value || '';
+                    if (input.value !== nextValue) {
+                        input.value = nextValue;
+                    }
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+            },
             queueScheduleCheck(formEl) {
+                if (this.suppressScheduleCheck) return;
+
                 const form = formEl || this.$refs.createForm;
                 if (this.liveTimer) clearTimeout(this.liveTimer);
                 this.liveTimer = setTimeout(() => this.runScheduleCheck(form), 400);
@@ -6360,9 +6821,13 @@
                 this.liveWarnings = {};
                 this.createMultiDay = false;
                 if (this.liveTimer) { clearTimeout(this.liveTimer); this.liveTimer = null; }
+                this.suppressScheduleCheck = true;
                 this.setCreateMode(this.defaultCreateMode);
 
-                if (!form) return;
+                if (!form) {
+                    this.suppressScheduleCheck = false;
+                    return;
+                }
 
                 form.reset();
                 form.querySelectorAll('input[type=checkbox], input[type=radio]').forEach((input) => {
@@ -6419,6 +6884,18 @@
                         this.createStartDate = this.toThaiDateDisplay(date);
                         this.createEndDate = this.toThaiDateDisplay(date);
                     }
+
+                    this.$nextTick(() => {
+                        if (this.liveTimer) { clearTimeout(this.liveTimer); this.liveTimer = null; }
+                        this.syncCreateDateInputs();
+                        this.liveIssues = {};
+                        this.liveWarnings = {};
+                        this.suppressScheduleCheck = false;
+
+                        if (date) {
+                            this.runScheduleCheck(this.$refs.createForm);
+                        }
+                    });
                 });
             },
             openCreate(date = null) {
@@ -8241,7 +8718,7 @@
                         </div>
                         <button type="button" class="modal-close" @click="closeCreate()" aria-label="ปิด">×</button>
                     </div>
-                    <form method="POST" action="{{ $createAction }}" x-bind:action="createMode === 'series' ? seriesCreateAction : normalCreateAction" @submit="$el.action = createMode === 'series' ? seriesCreateAction : normalCreateAction" @input="queueScheduleCheck($el)" @change="queueScheduleCheck($el)" data-testid="schedule-form" x-ref="createForm">
+                    <form method="POST" action="{{ $createAction }}" x-bind:action="createMode === 'series' ? seriesCreateAction : normalCreateAction" @submit="syncCreateDateInputs(); $el.action = createMode === 'series' ? seriesCreateAction : normalCreateAction" @input="queueScheduleCheck($el)" @change="queueScheduleCheck($el)" data-testid="schedule-form" data-schedule-success-toast="บันทึกสำเร็จ" x-ref="createForm">
                         @csrf
                         <input type="hidden" name="modal_mode" value="create">
                         <input type="hidden" name="create_mode" x-bind:value="createMode">
@@ -8555,18 +9032,28 @@
                                         @php
                                             $createInstructorOptions = $eligibleScheduleInstructors($offeringOption);
                                             $createInstructorSearchItems = $createInstructorOptions
-                                                ->map(fn ($instructor) => mb_strtolower($instructor->formatted_name ?? $instructor->name, 'UTF-8'))
+                                                ->map(fn ($instructor) => mb_strtolower(($instructor->formatted_name ?? $instructor->name) . ' ' . ($instructor->instructorProfile?->department?->name ?? ''), 'UTF-8'))
                                                 ->values();
                                         @endphp
                                         <input type="search" class="modal-choice-search" x-model="createInstructorSearch" placeholder="ค้นหาชื่อผู้สอน" aria-label="ค้นหาผู้สอน">
-                                        <div class="modal-choice-grid">
+                                        <div class="modal-choice-grid is-scroll-list is-instructor-scroll">
                                             @foreach($createInstructorOptions as $instructor)
                                                 @php
-                                                    $instructorSearchText = mb_strtolower($instructor->formatted_name ?? $instructor->name, 'UTF-8');
+                                                    $isOutsideDepartment = $instructorDepartmentMismatch($offeringOption, $instructor);
+                                                    $instructorDepartment = $instructor->instructorProfile?->department?->name;
+                                                    $instructorSearchText = mb_strtolower(($instructor->formatted_name ?? $instructor->name) . ' ' . ($instructorDepartment ?? '') . ($isOutsideDepartment ? ' ต่างภาค' : ''), 'UTF-8');
                                                 @endphp
-                                                <label class="modal-choice" x-show="matchesCreateSearch(@js($instructorSearchText), createInstructorSearch)" x-cloak>
+                                                <label class="modal-choice {{ $isOutsideDepartment ? 'is-warning-choice' : '' }}" x-show="matchesCreateSearch(@js($instructorSearchText), createInstructorSearch)" x-cloak>
                                                     <input type="checkbox" name="instructor_ids[]" value="{{ $instructor->id }}" @checked(in_array((string) $instructor->id, $selectedInstructorIds, true)) :disabled="selectedOfferingId !== '{{ $offeringOption->id }}'" data-testid="schedule-instructor">
-                                                    <span>{{ $instructor->formatted_name ?? $instructor->name }}</span>
+                                                    <span class="modal-choice-main">
+                                                        <span>{{ $instructor->formatted_name ?? $instructor->name }}</span>
+                                                        @if($instructorDepartment)
+                                                            <small>{{ $instructorDepartment }}</small>
+                                                        @endif
+                                                    </span>
+                                                    @if($isOutsideDepartment)
+                                                        <span class="modal-choice-warning">ต่างภาค</span>
+                                                    @endif
                                                 </label>
                                             @endforeach
                                         </div>
@@ -8574,6 +9061,14 @@
                                     </div>
 
                                     <div class="modal-section" data-testid="schedule-group-selector">
+                                        @php
+                                            $createGroupOptions = $offeringOption->studentGroups
+                                                ->sortBy(fn ($group) => sprintf('%010d-%s', (int) preg_replace('/\D+/', '', (string) $group->group_code), (string) $group->group_code))
+                                                ->values();
+                                            $createGroupSearchItems = $createGroupOptions
+                                                ->map(fn ($group) => mb_strtolower($group->group_code . ' ' . $group->student_count . ' คน', 'UTF-8'))
+                                                ->values();
+                                        @endphp
                                         <div class="modal-section-title">กลุ่มนักศึกษา <span class="required-mark">*</span></div>
                                         <template x-if="liveIssue('student_group_ids').length">
                                             <div class="field-live-error" data-testid="live-error-student-group-ids">
@@ -8589,6 +9084,7 @@
                                             </div>
                                         @endif
                                         @if($offeringOption->studentGroups->isNotEmpty())
+                                            <input type="search" class="modal-choice-search" x-model="createGroupSearch" placeholder="ค้นหารหัสกลุ่มนักศึกษา" aria-label="ค้นหากลุ่มนักศึกษา">
                                             <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
                                                 @if((int) $offeringOption->coordinator_id === (int) auth()->id())
                                                     <a href="{{ $scheduleGroupManageUrl($offeringOption) }}" class="schedule-group-manage-mini" data-testid="schedule-manage-groups-link">จัดการกลุ่มในหน้ารายวิชา</a>
@@ -8600,9 +9096,12 @@
                                                     data-testid="schedule-groups-select-all">เลือกทุกกลุ่ม</button>
                                             </div>
                                         @endif
-                                        <div class="modal-choice-grid">
-                                            @foreach($offeringOption->studentGroups as $group)
-                                                <label class="modal-choice">
+                                        <div class="modal-choice-grid is-scroll-list">
+                                            @foreach($createGroupOptions as $group)
+                                                @php
+                                                    $groupSearchText = mb_strtolower($group->group_code . ' ' . $group->student_count . ' คน', 'UTF-8');
+                                                @endphp
+                                                <label class="modal-choice" x-show="matchesCreateSearch(@js($groupSearchText), createGroupSearch)" x-cloak>
                                                     <input type="checkbox" name="student_group_ids[]" value="{{ $group->id }}"
                                                         @checked(in_array((string) $group->id, $selectedGroupIds, true))
                                                         :disabled="selectedOfferingId !== '{{ $offeringOption->id }}'"
@@ -8615,6 +9114,7 @@
                                                 </label>
                                             @endforeach
                                         </div>
+                                        <div class="modal-choice-empty" x-show="hasCreateSearch(createGroupSearch) && !hasCreateSearchMatches(@js($createGroupSearchItems), createGroupSearch)" x-cloak>ไม่พบกลุ่มที่ค้นหา</div>
                                     </div>
                                 </div>
                             @endforeach
@@ -8640,8 +9140,14 @@
             <form method="POST" action="{{ route('maker.course_offerings.schedules.copy_week', $courseOffering) }}" x-ref="copyWeekForm" style="display:none;">
                 @csrf
                 <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
+                <input type="hidden" name="copy_mode" :value="copyMode">
                 <input type="hidden" name="source_week_start" :value="copyWeekSource">
                 <input type="hidden" name="target_week_start" :value="copyWeekTarget">
+                <input type="hidden" name="source_date" :value="copyDaySource">
+                <input type="hidden" name="target_date" :value="copyDayTarget">
+                <input type="hidden" name="source_start_date" :value="copyRangeSourceStart">
+                <input type="hidden" name="source_end_date" :value="copyRangeSourceEnd">
+                <input type="hidden" name="target_start_date" :value="copyRangeTargetStart">
             </form>
 
             <div class="schedule-modal-backdrop schedule-copy-week-backdrop" x-show="copyWeekOpen" x-cloak @click.self="copyWeekOpen = false" @keydown.escape.window="copyWeekOpen = false" data-testid="schedule-copy-week-modal">
@@ -8649,13 +9155,19 @@
                     <div class="modal-handle"></div>
                     <div class="modal-head">
                         <div>
-                            <div class="modal-title" id="copy-week-title">คัดลอกกิจกรรมจากสัปดาห์อื่น</div>
-                            <div class="copy-week-subtitle">ดึงกิจกรรมจากสัปดาห์ที่จัดไว้แล้วมาลงสัปดาห์นี้ หากมีรายการชน ระบบจะข้ามเฉพาะรายการนั้น</div>
+                            <div class="modal-title" id="copy-week-title">คัดลอกกิจกรรม</div>
+                            <div class="copy-week-subtitle">ดึงกิจกรรมจากวัน สัปดาห์ หรือช่วงวันที่ที่จัดไว้แล้ว หากมีรายการชน ระบบจะข้ามเฉพาะรายการนั้น</div>
                         </div>
                         <button type="button" class="modal-close" @click="copyWeekOpen = false" aria-label="ปิด">×</button>
                     </div>
                     <div class="modal-form-body">
-                        <div class="copy-week-weeks">
+                        <div class="copy-mode-seg" role="group" aria-label="รูปแบบการคัดลอก">
+                            <button type="button" class="copy-mode-option" :class="{ 'is-active': copyMode === 'week' }" @click="setCopyMode('week')">รายสัปดาห์</button>
+                            <button type="button" class="copy-mode-option" :class="{ 'is-active': copyMode === 'day' }" @click="setCopyMode('day')">รายวัน</button>
+                            <button type="button" class="copy-mode-option" :class="{ 'is-active': copyMode === 'range' }" @click="setCopyMode('range')">ช่วงวันที่</button>
+                        </div>
+
+                        <div class="copy-week-weeks" x-show="copyMode === 'week'" x-cloak>
                             <div class="copy-week-pill">
                                 <span class="copy-week-pill-label">ดึงจากสัปดาห์</span>
                                 <span class="copy-week-target-control">
@@ -8675,47 +9187,123 @@
                             </div>
                         </div>
 
+                        <div class="copy-date-grid" x-show="copyMode === 'day'" x-cloak>
+                            <label>
+                                <span class="copy-week-pill-label">ดึงจากวันที่</span>
+                                <x-thai-date-input
+                                    name="copy_day_source_picker"
+                                    :helper="false"
+                                    :value="null"
+                                    :year-start="$scheduleDatePickerYearStart"
+                                    :year-end="$scheduleDatePickerYearEnd"
+                                    class="modal-control"
+                                    x-model="copyDaySourceDisplay"
+                                    data-testid="copy-day-source-date"
+                                    aria-label="เลือกวันที่ต้นทางสำหรับคัดลอกรายวัน" />
+                            </label>
+                            <label>
+                                <span class="copy-week-pill-label">ไปยังวันที่</span>
+                                <x-thai-date-input
+                                    name="copy_day_target_picker"
+                                    :helper="false"
+                                    :value="null"
+                                    :year-start="$scheduleDatePickerYearStart"
+                                    :year-end="$scheduleDatePickerYearEnd"
+                                    class="modal-control"
+                                    x-model="copyDayTargetDisplay"
+                                    data-testid="copy-day-target-date"
+                                    aria-label="เลือกวันที่ปลายทางสำหรับคัดลอกรายวัน" />
+                            </label>
+                        </div>
+
+                        <div class="copy-date-grid is-range" x-show="copyMode === 'range'" x-cloak>
+                            <label>
+                                <span class="copy-week-pill-label">ช่วงต้นทาง เริ่ม</span>
+                                <x-thai-date-input
+                                    name="copy_range_source_start_picker"
+                                    :helper="false"
+                                    :value="null"
+                                    :year-start="$scheduleDatePickerYearStart"
+                                    :year-end="$scheduleDatePickerYearEnd"
+                                    class="modal-control"
+                                    x-model="copyRangeSourceStartDisplay"
+                                    data-testid="copy-range-source-start-date"
+                                    aria-label="เลือกวันที่เริ่มต้นของช่วงต้นทาง" />
+                            </label>
+                            <label>
+                                <span class="copy-week-pill-label">ช่วงต้นทาง สิ้นสุด</span>
+                                <x-thai-date-input
+                                    name="copy_range_source_end_picker"
+                                    :helper="false"
+                                    :value="null"
+                                    :year-start="$scheduleDatePickerYearStart"
+                                    :year-end="$scheduleDatePickerYearEnd"
+                                    class="modal-control"
+                                    x-model="copyRangeSourceEndDisplay"
+                                    data-testid="copy-range-source-end-date"
+                                    aria-label="เลือกวันที่สิ้นสุดของช่วงต้นทาง" />
+                            </label>
+                            <label>
+                                <span class="copy-week-pill-label">ช่วงปลายทาง เริ่ม</span>
+                                <x-thai-date-input
+                                    name="copy_range_target_start_picker"
+                                    :helper="false"
+                                    :value="null"
+                                    :year-start="$scheduleDatePickerYearStart"
+                                    :year-end="$scheduleDatePickerYearEnd"
+                                    class="modal-control"
+                                    x-model="copyRangeTargetStartDisplay"
+                                    data-testid="copy-range-target-start-date"
+                                    aria-label="เลือกวันที่เริ่มต้นของช่วงปลายทาง" />
+                            </label>
+                            <div class="copy-week-status" x-show="copyRangeTargetEnd()" x-text="'ช่วงปลายทางจะสิ้นสุดวันที่ ' + (toThaiDateDisplay(copyRangeTargetEnd()) || copyRangeTargetEnd())"></div>
+                        </div>
+
                         <div class="copy-week-status" x-show="copyWeekLoading">กำลังตรวจสอบการชน…</div>
                         <div class="copy-week-status is-error" x-show="copyWeekError" x-text="copyWeekError"></div>
 
                         <template x-if="copyWeekPreview && !copyWeekLoading">
-                            <div>
+                            <div class="copy-week-preview-block">
                                 <div class="copy-week-status" x-show="copyWeekPreview.total === 0">ไม่พบรายการในสัปดาห์ต้นทางให้คัดลอก</div>
 
-                                <div class="copy-week-summary" x-show="copyWeekPreview.total > 0">
-                                    <span class="copy-week-badge is-ready" x-text="'พร้อมคัดลอก ' + copyWeekPreview.ready.length + ' รายการ'"></span>
-                                    <span class="copy-week-badge is-blocked" x-show="copyWeekPreview.blocked.length" x-text="'ชน ' + copyWeekPreview.blocked.length + ' รายการ'"></span>
-                                </div>
-                                <div class="copy-week-status is-error" x-show="copyWeekPreview.blocked.length">
-                                    มีรายการชนอยู่ ระบบจะคัดลอกเฉพาะรายการที่พร้อม และข้ามรายการที่ชน
-                                </div>
+                                <div
+                                    class="copy-week-preview-scroll"
+                                    x-show="copyWeekPreview.ready.length || copyWeekPreview.blocked.length">
+                                    <div class="copy-week-section-title" x-show="copyWeekPreview.ready.length">
+                                        <span>รายการพร้อมคัดลอก</span>
+                                        <span x-text="copyWeekPreview.ready.length + ' รายการ'"></span>
+                                    </div>
+                                    <ul class="copy-week-list" x-show="copyWeekPreview.ready.length">
+                                        <template x-for="(item, index) in copyWeekPreview.ready" :key="'r-' + index + '-' + item.target_date + '-' + item.time + '-' + (item.topic || item.activity || '')">
+                                            <li class="copy-week-item is-ready">
+                                                <span class="copy-week-mark" aria-hidden="true">✓</span>
+                                                <span class="copy-week-item-body">
+                                                    <strong x-text="item.topic || item.activity || 'กิจกรรม'"></strong>
+                                                    <small x-text="item.target_date + ' · ' + item.time + (item.room ? ' · ' + item.room : '')"></small>
+                                                </span>
+                                            </li>
+                                        </template>
+                                    </ul>
 
-                                <ul class="copy-week-list" x-show="copyWeekPreview.ready.length">
-                                    <template x-for="item in copyWeekPreview.ready" :key="'r' + item.target_date + item.time + (item.topic || '')">
-                                        <li class="copy-week-item is-ready">
-                                            <span class="copy-week-mark" aria-hidden="true">✓</span>
-                                            <span class="copy-week-item-body">
-                                                <strong x-text="item.topic || item.activity || 'กิจกรรม'"></strong>
-                                                <small x-text="item.target_date + ' · ' + item.time + (item.room ? ' · ' + item.room : '')"></small>
-                                            </span>
-                                        </li>
-                                    </template>
-                                </ul>
-
-                                <ul class="copy-week-list" x-show="copyWeekPreview.blocked.length">
-                                    <template x-for="item in copyWeekPreview.blocked" :key="'b' + item.target_date + item.time + (item.topic || '')">
-                                        <li class="copy-week-item is-blocked">
-                                            <span class="copy-week-mark" aria-hidden="true">⛔</span>
-                                            <span class="copy-week-item-body">
-                                                <strong x-text="item.topic || item.activity || 'กิจกรรม'"></strong>
-                                                <small x-text="item.target_date + ' · ' + item.time"></small>
-                                                <template x-for="reason in item.reasons" :key="reason">
-                                                    <small class="copy-week-reason" x-text="reason"></small>
-                                                </template>
-                                            </span>
-                                        </li>
-                                    </template>
-                                </ul>
+                                    <div class="copy-week-section-title is-blocked" x-show="copyWeekPreview.blocked.length">
+                                        <span>รายการที่ชน</span>
+                                        <span x-text="copyWeekPreview.blocked.length + ' รายการ'"></span>
+                                    </div>
+                                    <ul class="copy-week-list" x-show="copyWeekPreview.blocked.length">
+                                        <template x-for="(item, index) in copyWeekPreview.blocked" :key="'b-' + index + '-' + item.target_date + '-' + item.time + '-' + (item.topic || item.activity || '')">
+                                            <li class="copy-week-item is-blocked">
+                                                <span class="copy-week-mark" aria-hidden="true">!</span>
+                                                <span class="copy-week-item-body">
+                                                    <strong x-text="item.topic || item.activity || 'กิจกรรม'"></strong>
+                                                    <small x-text="item.target_date + ' · ' + item.time"></small>
+                                                    <template x-for="reason in (item.reasons || [])" :key="reason">
+                                                        <small class="copy-week-reason" x-text="reason"></small>
+                                                    </template>
+                                                </span>
+                                            </li>
+                                        </template>
+                                    </ul>
+                                </div>
                             </div>
                         </template>
                     </div>
@@ -8826,6 +9414,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ── Custom time-picker engine ───────────────────────────────────────────
     var _openDrop = null; // currently open .tp-drop
+    var _lastDropOpenedAt = 0;
 
     function centerTimeItem(selected, behavior) {
         if (!selected) return;
@@ -8891,6 +9480,7 @@ document.addEventListener('DOMContentLoaded', function () {
         drop.style.top  = (rect.bottom + 2) + 'px';
         drop.style.minWidth = Math.max(rect.width, 64) + 'px';
         drop.classList.add('tp-open');
+        _lastDropOpenedAt = Date.now();
         drop.querySelectorAll('.tp-col').forEach(bindCyclicTimeColumn);
 
         // align selected hour and minute with the center guide frame.
@@ -9030,6 +9620,35 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // Delegated fallback keeps hidden/dynamically revealed modal pickers clickable even
+    // if they missed the per-picker initializer.
+    document.addEventListener('click', function(e) {
+        var item = e.target.closest('.tp-hour-item, .tp-min-item');
+        if (item) {
+            var itemDrop = item.closest('.tp-drop');
+            var itemPicker = itemDrop ? itemDrop.closest('.time-picker') : null;
+            if (itemDrop && itemPicker) {
+                e.stopPropagation();
+                selectTimePart(item, item.classList.contains('tp-hour-item') ? 'hour' : 'min', itemPicker, itemDrop);
+                return;
+            }
+        }
+
+        var picker = e.target.closest('.time-picker');
+        if (picker) {
+            var drop = picker.querySelector('.tp-drop');
+            if (drop) {
+                e.stopPropagation();
+                if (drop.classList.contains('tp-open')) {
+                    if (!drop.contains(e.target)) closeDrop(drop);
+                } else {
+                    openDrop(drop, picker);
+                }
+                return;
+            }
+        }
+    });
+
     // close on outside click or scroll
     document.addEventListener('click', function(e) {
         if (_openDrop && !_openDrop.contains(e.target) && !e.target.closest('.time-picker')) {
@@ -9037,6 +9656,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
     document.addEventListener('scroll', function(e) {
+        if (_openDrop && Date.now() - _lastDropOpenedAt < 180) {
+            return;
+        }
         if (_openDrop && !_openDrop.contains(e.target)) {
             closeDrop(_openDrop);
         }
