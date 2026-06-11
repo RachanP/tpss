@@ -72,10 +72,10 @@ test('schedule modal shows muted "ไม่มีผู้สอน" and datepic
   await page.goto(links[0], { waitUntil: 'domcontentloaded' });
 
   // Try to open an existing schedule detail modal; if none, open create modal
-  const triggerCount = await page.locator('[data-schedule-modal-trigger]').count();
-  let modalLocator = page.getByTestId('schedule-detail-modal');
-  if (triggerCount > 0) {
-    await page.locator('[data-schedule-modal-trigger]').first().click();
+  const scheduleTrigger = page.locator('[data-schedule-modal-trigger]:visible').first();
+  let modalLocator = page.locator('[data-testid="schedule-detail-modal"]:visible').first();
+  if (await scheduleTrigger.count()) {
+    await scheduleTrigger.click();
     await expect(modalLocator).toBeVisible({ timeout: 5000 });
   } else {
     // open create modal
@@ -347,9 +347,9 @@ test('schedule detail modal opens from lazy list rows and grid cards', async ({ 
   const listTrigger = page.locator('[data-testid="schedule-list-view"] [data-schedule-modal-trigger]:visible').first();
   await expect(listTrigger).toBeVisible({ timeout: 10_000 });
   await listTrigger.click();
-  await expect(page.getByTestId('schedule-detail-modal')).toBeVisible({ timeout: 5_000 });
+  await expect(page.locator('[data-testid="schedule-detail-modal"]:visible').first()).toBeVisible({ timeout: 5_000 });
   await page.keyboard.press('Escape');
-  await expect(page.getByTestId('schedule-detail-modal')).toBeHidden({ timeout: 5_000 });
+  await expect(page.locator('[data-testid="schedule-detail-modal"]:visible')).toHaveCount(0, { timeout: 5_000 });
 
   test.expect(firstWeekStart, 'expected a list header with a week start').toBeTruthy();
   const gridUrl = new URL(selectedLink);
@@ -362,5 +362,5 @@ test('schedule detail modal opens from lazy list rows and grid cards', async ({ 
   const gridTrigger = page.locator('[data-testid="schedule-grid-view-co"] [data-schedule-modal-trigger]:visible').first();
   await expect(gridTrigger).toBeVisible({ timeout: 10_000 });
   await gridTrigger.click();
-  await expect(page.getByTestId('schedule-detail-modal')).toBeVisible({ timeout: 5_000 });
+  await expect(page.locator('[data-testid="schedule-detail-modal"]:visible').first()).toBeVisible({ timeout: 5_000 });
 });

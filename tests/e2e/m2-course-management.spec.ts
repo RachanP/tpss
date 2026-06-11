@@ -1,13 +1,14 @@
 import { expect, test, type Page } from '@playwright/test';
-import { login, switchRole } from './support/auth';
+import { login } from './support/auth';
 
 async function openBulkGroupsForm(page: Page) {
-  const form = page.getByTestId('bulk-groups-form');
-  if ((await form.count()) === 0) {
-    return false;
+  const currentEditor = page.getByTestId('student-groups-editor');
+  if ((await currentEditor.count()) > 0 && await currentEditor.isVisible()) {
+    return true;
   }
 
-  if (await form.isVisible()) {
+  const form = page.getByTestId('bulk-groups-form');
+  if ((await form.count()) > 0 && await form.isVisible()) {
     return true;
   }
 
@@ -30,8 +31,7 @@ test('course pool page is removed from admin workflow', async ({ page }) => {
 });
 
 test('course head can bulk-create student groups from an offering', async ({ page }) => {
-  await login(page, 'admin_01');
-  await switchRole(page, 'course_head');
+  await login(page, 'head_med');
 
   await page.goto('/maker/course-offerings', { waitUntil: 'domcontentloaded' });
   const offeringLinks = await page.getByTestId('course-offering-show-link').evaluateAll((links) =>
@@ -41,7 +41,6 @@ test('course head can bulk-create student groups from an offering', async ({ pag
   let foundEditableOffering = false;
   for (const href of offeringLinks) {
     await page.goto(href, { waitUntil: 'domcontentloaded' });
-    await page.getByTestId('edit-mode-toggle').click();
 
     if (await openBulkGroupsForm(page)) {
       foundEditableOffering = true;
@@ -49,17 +48,26 @@ test('course head can bulk-create student groups from an offering', async ({ pag
     }
   }
 
-  const prefix = `E2E${Date.now().toString().slice(-6)}`;
   expect(foundEditableOffering, 'expected at least one course offering with ungrouped students').toBe(true);
-  await expect(page.getByTestId('bulk-groups-form')).toBeVisible();
-  await page.getByTestId('bulk-group-prefix').fill(prefix);
-  await page.getByTestId('bulk-group-start').fill('1');
-  await page.getByTestId('bulk-group-count').fill('2');
-  await page.getByTestId('bulk-groups-submit').click();
+  await expect(page.getByTestId('student-groups-editor')).toBeVisible();
+
+  const groupRows = page.locator('input[data-testid^="student-group-code-"]');
+  const initialGroupCount = await groupRows.count();
+
+  await page.getByTestId('group-editor-source').selectOption({ index: 1 });
+  await page.getByTestId('group-editor-add-count').fill('2');
+  await expect.poll(async () => groupRows.count()).toBe(initialGroupCount + 2);
+
+  const valuesBeforeSave = await groupRows.evaluateAll((inputs) =>
+    inputs.map((input) => (input as HTMLInputElement).value).filter(Boolean),
+  );
+  expect(valuesBeforeSave.length, 'expected generated group codes before save').toBeGreaterThanOrEqual(initialGroupCount + 2);
+
+  await page.getByTestId('student-groups-save').click();
 
   await expect
-    .poll(async () => page.getByTestId('student-group-code').evaluateAll((inputs) =>
-      inputs.map((input) => (input as HTMLInputElement).value),
+    .poll(async () => groupRows.evaluateAll((inputs) =>
+      inputs.map((input) => (input as HTMLInputElement).value).filter(Boolean),
     ))
-    .toEqual(expect.arrayContaining([`${prefix}1`, `${prefix}2`]));
+    .toEqual(expect.arrayContaining(valuesBeforeSave.slice(-2)));
 });
