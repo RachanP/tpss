@@ -583,7 +583,7 @@
                         <div class="card-ttl settings-section-title"><span class="settings-section-step">1</span>ตั้งค่าปีการศึกษา</div>
                     </div>
                     <div class="card-actions">
-                        <button class="btn btn-primary" @click="openAddModal()">
+                        <button class="btn btn-primary" data-testid="settings-add-year-button" @click="openAddModal()">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
                                 stroke-width="2" stroke-linecap="round">
                                 <line x1="12" y1="5" x2="12" y2="19" />
@@ -607,7 +607,7 @@
                         </thead>
                         <tbody>
                             @forelse($academicYears as $year)
-                                <tr>
+                                <tr data-testid="settings-year-row" data-year-name="{{ $year->name }}">
                                     <td style="font-weight: 600; color: var(--fg-1);">{{ $year->name }}</td>
                                     <td style="font-size: 12px; color: var(--fg-2);">
                                         @php
@@ -966,7 +966,7 @@
                             @csrf
                             <button type="submit" class="btn btn-ghost" style="font-size: 13px;">ดึงวันหยุดซ้ำ</button>
                         </form>
-                        <button type="button" class="btn btn-primary" @click="openAddHoliday()">
+                        <button type="button" class="btn btn-primary" data-testid="settings-add-holiday-button" @click="openAddHoliday()">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right:6px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                             เพิ่มวันหยุด
                         </button>
@@ -984,7 +984,7 @@
                         </thead>
                         <tbody>
                             @forelse($holidays as $h)
-                                <tr @if($h->source === 'manual') style="background: var(--accent-bg, #eef4ff);" @endif>
+                                <tr data-testid="settings-holiday-row" data-holiday-name="{{ $h->name }}" @if($h->source === 'manual') style="background: var(--accent-bg, #eef4ff);" @endif>
                                     <td style="font-family: var(--font-mono);">{{ \App\Support\ThaiDate::formatForInput($h->date) }}</td>
                                     <td style="color: var(--fg-1);">{{ $h->name }}@if($h->remark)<span style="color: var(--fg-3); font-size: 12px;"> · {{ $h->remark }}</span>@endif</td>
                                     <td>
@@ -1042,6 +1042,7 @@
                                 <div class="form-group">
                                     <label>ปีการศึกษา (พ.ศ.)</label>
                                     <input type="text" name="name" x-model="currentYear.name" required
+                                        data-testid="settings-year-name"
                                         placeholder="เช่น 2569"
                                         @class(['input-invalid' => $errors->has('name')])>
                                     @error('name')
@@ -1098,7 +1099,7 @@
                             </template>
                             <div style="display:flex;gap:8px;margin-left:auto;">
                                 <button type="button" class="btn btn-ghost" @click="showModal = false">ยกเลิก</button>
-                                <button type="submit" class="btn btn-primary">บันทึกข้อมูล</button>
+                                <button type="submit" class="btn btn-primary" data-testid="settings-year-submit">บันทึกข้อมูล</button>
                             </div>
                         </div>
                     </form>
@@ -1129,12 +1130,12 @@
                         <div class="modal-body">
                             <div class="form-group" style="margin-bottom: 16px;">
                                 <label>วันที่ <span style="color: var(--status-conflict-fg)">*</span></label>
-                                <x-thai-date-input name="date" x-model="currentHoliday.date" required helper="" />
+                                <x-thai-date-input name="date" x-model="currentHoliday.date" required helper="" data-testid="settings-holiday-date" />
                                 @error('date')<span style="color: var(--red, #dc2626); font-size: 12px; display: block; margin-top: 4px;">{{ $message }}</span>@enderror
                             </div>
                             <div class="form-group" style="margin-bottom: 16px;">
                                 <label>ชื่อวันหยุด <span style="color: var(--status-conflict-fg)">*</span></label>
-                                <input type="text" name="name" x-model="currentHoliday.name" required maxlength="255" placeholder="เช่น วันสงกรานต์">
+                                <input type="text" name="name" x-model="currentHoliday.name" required maxlength="255" placeholder="เช่น วันสงกรานต์" data-testid="settings-holiday-name">
                                 @error('name')<span style="color: var(--red, #dc2626); font-size: 12px; display: block; margin-top: 4px;">{{ $message }}</span>@enderror
                             </div>
                             <div class="form-group">
@@ -1148,7 +1149,7 @@
                                 style="color: var(--status-conflict-fg);">ลบ</button>
                             <div style="display: flex; gap: 8px; margin-left: auto;">
                                 <button type="button" class="btn btn-ghost" @click="showHolidayModal = false">ยกเลิก</button>
-                                <button type="submit" class="btn btn-primary">บันทึก</button>
+                                <button type="submit" class="btn btn-primary" data-testid="settings-holiday-submit">บันทึก</button>
                             </div>
                         </div>
                     </form>
