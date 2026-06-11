@@ -1214,7 +1214,7 @@
                     <div class="card-ttl">ภาควิชา</div>
                     @if($canManageMasterData)
                     <div class="card-actions">
-                        <button class="btn btn-primary" @click="openAddDept()">
+                        <button class="btn btn-primary" data-testid="department-add-button" @click="openAddDept()">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                                 <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                             </svg>
@@ -1237,6 +1237,7 @@
                 <div x-data="{ expandedDept: null }" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 8px;">
                     @forelse($departments as $dept)
                         <div
+                            data-testid="department-row" data-dept-name="{{ $dept->name }}"
                             data-search="{{ Str::lower($dept->name . ' ' . ($dept->head->formatted_name ?? '') . ' ' . ($dept->secretary->formatted_name ?? '') . ' ' . $dept->instructors_count . ' คน') }}"
                             x-show="includesText($el.dataset.search, filters.departments.keyword)"
                             style="border: 1px solid color-mix(in oklch, var(--brand-navy) 32%, var(--border-strong)); border-radius: 8px; overflow: hidden;">
@@ -1957,6 +1958,7 @@
                             <div class="form-group" style="margin-bottom: 20px;">
                                 <label>ชื่อภาควิชา <span style="color: var(--status-conflict-fg)">*</span></label>
                                 <input type="text" name="name" x-model="currentDept.name" required
+                                    data-testid="department-form-name"
                                     placeholder="เช่น ภาควิชาการพยาบาลกุมารเวชศาสตร์">
                             </div>
                             <div class="dept-empty-assignment" x-show="deptInstructorUsers.length === 0" x-cloak>
@@ -2034,7 +2036,7 @@
                             </div>
                             <div style="display: flex; gap: 8px;">
                                 <button type="button" class="btn btn-ghost" @click="showDeptModal = false">ยกเลิก</button>
-                                <button type="submit" class="btn btn-primary">บันทึกข้อมูล</button>
+                                <button type="submit" class="btn btn-primary" data-testid="department-form-submit">บันทึกข้อมูล</button>
                             </div>
                         </div>
                     </form>
@@ -3019,7 +3021,7 @@
                     <div class="card-ttl">ประเภทกิจกรรมการสอน</div>
                     @if($canManageMasterData)
                     <div class="card-actions">
-                        <button type="button" class="btn btn-primary" @click="openAddActivityType()">
+                        <button type="button" class="btn btn-primary" data-testid="activity-type-add-button" @click="openAddActivityType()">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                             เพิ่มประเภทกิจกรรม
                         </button>
@@ -3068,6 +3070,7 @@
                                 <tr
                                     data-search="{{ Str::lower($at->name . ' ' . $at->category . ' ' . ($catLabel[$at->category] ?? '') . ' ' . ($at->color_code ?? '')) }}"
                                     data-category="{{ $at->category }}"
+                                    data-testid="activity-type-row" data-name="{{ $at->name }}"
                                     x-show="includesText($el.dataset.search, filters.activity_types.keyword) && (filters.activity_types.category === '' || $el.dataset.category == filters.activity_types.category)">
                                     <td>
                                         <span style="display: inline-block; width: 20px; height: 20px; border-radius: 4px; background: {{ $at->color_code }}; border: 1px solid var(--border);"></span>
@@ -3085,7 +3088,7 @@
                                     </td>
                                     @if($canManageMasterData)
                                     <td style="text-align: center;">
-                                        <button type="button" class="action-btn" title="แก้ไข"
+                                        <button type="button" class="action-btn" title="แก้ไข" data-testid="activity-type-edit-button"
                                             @click="openEditActivityType({{ Js::from(['id' => $at->id, 'name' => $at->name, 'color_code' => $at->color_code, 'category' => $at->category, 'counts_toward_workload' => $at->counts_toward_workload]) }})">
                                             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                         </button>
@@ -3129,7 +3132,7 @@
                         <div class="modal-body" style="overflow: visible;">
                             <div class="form-group" style="margin-bottom: 20px;">
                                 <label>ชื่อประเภทกิจกรรม <span style="color: var(--status-conflict-fg)">*</span></label>
-                                <input type="text" name="name" x-model="currentActivityType.name" required placeholder="เช่น บรรยาย, ฝึกปฏิบัติในห้องเรียน">
+                                <input type="text" name="name" x-model="currentActivityType.name" required data-testid="activity-type-form-name" placeholder="เช่น บรรยาย, ฝึกปฏิบัติในห้องเรียน">
                             </div>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                                 <div class="form-group">
@@ -3187,7 +3190,7 @@
                             </div>
                             <div style="display: flex; gap: 8px;">
                                 <button type="button" class="btn btn-ghost" @click="showActivityTypeModal = false">ยกเลิก</button>
-                                <button type="submit" class="btn btn-primary">บันทึกข้อมูล</button>
+                                <button type="submit" class="btn btn-primary" data-testid="activity-type-form-submit">บันทึกข้อมูล</button>
                             </div>
                         </div>
                     </form>
@@ -3211,7 +3214,7 @@
                     </div>
                     @if($canManageMasterData)
                     <div class="card-actions">
-                        <button class="btn btn-primary" @click="openAddCohort()">
+                        <button class="btn btn-primary" data-testid="cohort-add-button" @click="openAddCohort()">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                                 <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                             </svg>
@@ -3419,7 +3422,7 @@
                             </div>
                             <div style="display: flex; gap: 8px;">
                                 <button type="button" class="btn btn-ghost" @click="showCohortModal = false">ยกเลิก</button>
-                                <button type="submit" class="btn btn-primary">บันทึกข้อมูล</button>
+                                <button type="submit" class="btn btn-primary" data-testid="cohort-form-submit">บันทึกข้อมูล</button>
                             </div>
                         </div>
                     </form>
