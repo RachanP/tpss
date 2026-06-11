@@ -61,7 +61,8 @@ async function expectCustomSelectOpensBelow(modal: Locator, selectName: string) 
   await trigger.click();
 }
 
-test('schedule modal shows muted "ไม่มีผู้สอน" and datepicker popover appears', async ({ page }) => {
+test('schedule modal shows muted "ไม่มีผู้สอน" and datepicker popover appears', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile-chrome', 'Schedule modal interaction is desktop-only');
   await login(page, 'head_med');
 
   // Go to course offerings and open first offering's schedules
@@ -73,7 +74,8 @@ test('schedule modal shows muted "ไม่มีผู้สอน" and datepic
 
   // Try to open an existing schedule detail modal; if none, open create modal
   const triggerCount = await page.locator('[data-schedule-modal-trigger]').count();
-  let modalLocator = page.getByTestId('schedule-detail-modal');
+  // detail modal มีต่อ schedule (testid ซ้ำ) → เล็งเฉพาะตัวที่กำลังแสดง
+  let modalLocator = page.locator('[data-testid="schedule-detail-modal"]:visible');
   if (triggerCount > 0) {
     await page.locator('[data-schedule-modal-trigger]').first().click();
     await expect(modalLocator).toBeVisible({ timeout: 5000 });
@@ -347,9 +349,10 @@ test('schedule detail modal opens from lazy list rows and grid cards', async ({ 
   const listTrigger = page.locator('[data-testid="schedule-list-view"] [data-schedule-modal-trigger]:visible').first();
   await expect(listTrigger).toBeVisible({ timeout: 10_000 });
   await listTrigger.click();
-  await expect(page.getByTestId('schedule-detail-modal')).toBeVisible({ timeout: 5_000 });
+  // มี detail modal ต่อ schedule (testid ซ้ำ) → เล็งเฉพาะตัวที่กำลังแสดง
+  await expect(page.locator('[data-testid="schedule-detail-modal"]:visible')).toBeVisible({ timeout: 5_000 });
   await page.keyboard.press('Escape');
-  await expect(page.getByTestId('schedule-detail-modal')).toBeHidden({ timeout: 5_000 });
+  await expect(page.locator('[data-testid="schedule-detail-modal"]:visible')).toHaveCount(0, { timeout: 5_000 });
 
   test.expect(firstWeekStart, 'expected a list header with a week start').toBeTruthy();
   const gridUrl = new URL(selectedLink);
@@ -362,5 +365,5 @@ test('schedule detail modal opens from lazy list rows and grid cards', async ({ 
   const gridTrigger = page.locator('[data-testid="schedule-grid-view-co"] [data-schedule-modal-trigger]:visible').first();
   await expect(gridTrigger).toBeVisible({ timeout: 10_000 });
   await gridTrigger.click();
-  await expect(page.getByTestId('schedule-detail-modal')).toBeVisible({ timeout: 5_000 });
+  await expect(page.locator('[data-testid="schedule-detail-modal"]:visible')).toBeVisible({ timeout: 5_000 });
 });

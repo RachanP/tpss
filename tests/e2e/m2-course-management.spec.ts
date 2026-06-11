@@ -1,26 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
-import { login, switchRole } from './support/auth';
-
-async function openBulkGroupsForm(page: Page) {
-  const form = page.getByTestId('bulk-groups-form');
-  if ((await form.count()) === 0) {
-    return false;
-  }
-
-  if (await form.isVisible()) {
-    return true;
-  }
-
-  const openButton = page.getByTestId('bulk-groups-open');
-  if ((await openButton.count()) === 0 || !(await openButton.isVisible())) {
-    return false;
-  }
-
-  await openButton.click();
-  await expect(form).toBeVisible();
-
-  return true;
-}
+import { expect, test } from '@playwright/test';
+import { login } from './support/auth';
 
 test('course pool page is removed from admin workflow', async ({ page }) => {
   await login(page, 'admin_01');
@@ -29,37 +8,35 @@ test('course pool page is removed from admin workflow', async ({ page }) => {
   expect(response?.status()).toBe(404);
 });
 
-test('course head can bulk-create student groups from an offering', async ({ page }) => {
-  await login(page, 'admin_01');
-  await switchRole(page, 'course_head');
+test('course head can add student groups from an offering (V4 cohort-based)', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile-chrome', 'Offering group editor is desktop-only');
+  // V4: หัวหน้าวิชาจัดกลุ่มเป็นงานหลัก — editor แก้ได้ทันที (ไม่มีปุ่ม "แก้ไข") · จัดกลุ่มจาก cohort ชั้นปี
+  await login(page, 'head_med');
 
   await page.goto('/maker/course-offerings', { waitUntil: 'domcontentloaded' });
   const offeringLinks = await page.getByTestId('course-offering-show-link').evaluateAll((links) =>
     links.map((link) => (link as HTMLAnchorElement).href),
   );
+  expect(offeringLinks.length, 'expected at least one course offering').toBeGreaterThan(0);
 
-  let foundEditableOffering = false;
+  // หา offering ที่มี group editor + แหล่งกลุ่มชั้นปี (cohort) ให้เลือก
+  let added = false;
   for (const href of offeringLinks) {
     await page.goto(href, { waitUntil: 'domcontentloaded' });
-    await page.getByTestId('edit-mode-toggle').click();
+    const editor = page.getByTestId('student-groups-editor');
+    if (!(await editor.count()) || !(await editor.isVisible())) continue;
 
-    if (await openBulkGroupsForm(page)) {
-      foundEditableOffering = true;
-      break;
-    }
+    const source = page.getByTestId('group-editor-source');
+    if (!(await source.count()) || (await source.locator('option').count()) <= 1) continue;
+
+    await source.selectOption({ index: 1 });
+    await page.getByTestId('group-editor-add-count').fill('2');
+    // กรอกจำนวน → autoAddGroups เพิ่มแถวกลุ่มอัตโนมัติ (debounce 600ms)
+    await expect(page.getByTestId('student-group-code-0')).toBeVisible({ timeout: 7_000 });
+    await expect(page.getByTestId('student-group-code-1')).toBeVisible();
+    added = true;
+    break;
   }
 
-  const prefix = `E2E${Date.now().toString().slice(-6)}`;
-  expect(foundEditableOffering, 'expected at least one course offering with ungrouped students').toBe(true);
-  await expect(page.getByTestId('bulk-groups-form')).toBeVisible();
-  await page.getByTestId('bulk-group-prefix').fill(prefix);
-  await page.getByTestId('bulk-group-start').fill('1');
-  await page.getByTestId('bulk-group-count').fill('2');
-  await page.getByTestId('bulk-groups-submit').click();
-
-  await expect
-    .poll(async () => page.getByTestId('student-group-code').evaluateAll((inputs) =>
-      inputs.map((input) => (input as HTMLInputElement).value),
-    ))
-    .toEqual(expect.arrayContaining([`${prefix}1`, `${prefix}2`]));
+  expect(added, 'expected an offering with a cohort source to group students').toBe(true);
 });
