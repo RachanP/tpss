@@ -179,8 +179,9 @@
 - Error message: "ไม่สามารถตั้งปีการศึกษา ... เป็นปีปัจจุบันได้ เนื่องจากยังมีช่วงจัดตารางที่เปิดใช้งานอยู่"
 
 ### Tests เพิ่ม
-- `ScheduleManagementTest::test_schedule_index_supports_day_week_and_month_periods` — period labels (`03/08/2569`, `สัปดาห์ที่ 1`, `สิงหาคม 2569`, `นอกช่วงปีการศึกษา`)
-- `ScheduleManagementTest` capacity + department + conflict-array tests (commit `d41055c`)
+> ⚠️ **11 มิ.ย.: `ScheduleManagementTest` (99 tests) ถูกซอยเป็น `tests/Feature/Schedule/`** — `ScheduleTestCase` (base: setUp + helpers) + `ScheduleViewsTest` (index/views/workspace/routes) + `ScheduleStoreTest` (store/validation/gate/check_conflicts) + `ScheduleConflictTest` (copy-week/update/delete/overlap/audit) · ชื่อ test เดิมคงไว้ทุกตัว
+- `ScheduleViewsTest::test_schedule_index_supports_day_week_and_month_periods` — period labels (`03/08/2569`, `สัปดาห์ที่ 1`, `สิงหาคม 2569`, `นอกช่วงปีการศึกษา`)
+- `ScheduleStoreTest` capacity + department + conflict-array tests (commit `d41055c`)
 - `SchedulingPhaseTest` — active-year switch lock ระหว่าง scheduling phase
 
 ## Post-Merge Branch Split (ตกลง 25 พ.ค.)
@@ -363,7 +364,7 @@ Field `location_types.requires_capacity` มีอยู่แล้วแต่
 > - ส่ง `selectedInstructorId` กลับ view → dropdown คง selection หลัง redirect
 > - `schedulePeriodUrl()` รับ `$instructorId` → ปุ่มเปลี่ยน period / prev-next / weekend-toggle พา `instructor_id` ไปด้วย (filter ไม่หลุดตอนนำทาง)
 > - JS `applyInstructorFilter()` + dropdown UI มีอยู่แล้ว (`index.blade.php:4513, 4642`)
-> - Test: `ScheduleManagementTest::test_schedule_index_filters_by_instructor` (unfiltered เห็นทั้งสอง / filtered เห็นเฉพาะของ instructor นั้น)
+> - Test: `ScheduleStoreTest::test_schedule_index_filters_by_instructor` (unfiltered เห็นทั้งสอง / filtered เห็นเฉพาะของ instructor นั้น) — เดิมอยู่ใน ScheduleManagementTest ก่อนซอย
 
 หน้าตารางสอนหัวหน้าวิชา เพิ่ม dropdown filter "เลือกอาจารย์" ใน toolbar → ดูเฉพาะ slot ที่อาจารย์คนนั้นสอน รองรับทุก view (list/week/day/month)
 
