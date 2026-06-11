@@ -7,7 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 class UserRole extends Model
 {
     protected $table = 'user_roles';
-    
+
+    /**
+     * บทบาทที่ระบบยอมรับ — ใช้กรอง input ทุกจุดที่เขียน user_roles.role
+     * (กัน role แปลกปลอม เช่น "superadmin" ถูกส่งเข้ามาทาง API/CSV)
+     */
+    public const VALID_ROLES = ['admin', 'staff', 'course_head', 'executive', 'instructor'];
+
     // Disable primary key as it's a composite key (user_id, role)
     protected $primaryKey = null;
     public $incrementing = false;

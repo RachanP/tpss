@@ -22,8 +22,16 @@ class CheckActiveUser
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
+            $message = 'บัญชีผู้ใช้งานของคุณถูกระงับชั่วคราว กรุณาติดต่อผู้ดูแลระบบ';
+
+            // คำขอแบบ AJAX/JSON (เช่น หน้าจัดตารางที่ยิง realtime) ต้องได้ 401 ชัด ๆ
+            // ไม่ใช่ 302 ไปหน้า login HTML ที่ฝั่ง JS ตีความไม่ออก
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $message], 401);
+            }
+
             return redirect()->route('login')->withErrors([
-                'username' => 'บัญชีผู้ใช้งานของคุณถูกระงับชั่วคราว กรุณาติดต่อผู้ดูแลระบบ'
+                'username' => $message,
             ]);
         }
 

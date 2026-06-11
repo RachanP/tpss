@@ -75,11 +75,62 @@ return [
         ],
     ],
 
-    /* Attribute names */
+    /* Attribute names — ชื่อ field ภาษาไทย เพื่อให้ข้อความ validation อ่านเป็นธรรมชาติ */
     'attributes' => [
-        'start_time' => 'เวลาเริ่มต้น',
+        // ผู้ใช้และสิทธิ์
+        'username' => 'ชื่อผู้ใช้งาน',
+        'name' => 'ชื่อ-นามสกุล',
+        'email' => 'อีเมล',
+        'password' => 'รหัสผ่าน',
+        'password_confirmation' => 'ยืนยันรหัสผ่าน',
+        'employee_id' => 'รหัสพนักงาน',
+        'prefix' => 'คำนำหน้า',
+        'roles' => 'บทบาท',
+        'roles.*' => 'บทบาท',
+        'primary_role' => 'บทบาทหลัก',
+        'is_active' => 'สถานะการใช้งาน',
+        'role' => 'บทบาท',
+
+        // ข้อมูลหลัก — หลักสูตร/รายวิชา/ภาควิชา
+        'department_id' => 'ภาควิชา',
+        'curriculum_id' => 'หลักสูตร',
+        'course_id' => 'รายวิชา',
+        'course_code' => 'รหัสวิชา',
+        'name_th' => 'ชื่อ (ไทย)',
+        'name_en' => 'ชื่อ (อังกฤษ)',
+        'credits' => 'หน่วยกิต',
+        'education_level' => 'ระดับการศึกษา',
+        'duration_years' => 'จำนวนปีของหลักสูตร',
+        'total_credits_required' => 'หน่วยกิตขั้นต่ำ',
+        'default_year_level' => 'ชั้นปี',
+        'is_required' => 'ประเภทวิชา (บังคับ/เลือก)',
+        'prerequisite_ids' => 'วิชาบังคับก่อน',
+
+        // ห้อง/สถานที่/ประเภทกิจกรรม
+        'room_id' => 'ห้อง/สถานที่',
+        'location_type_id' => 'ประเภทสถานที่',
+        'capacity' => 'ความจุ',
+        'building' => 'อาคาร',
+        'activity_type_id' => 'ประเภทกิจกรรม',
+        'category' => 'หมวดหมู่',
+
+        // ปีการศึกษา/ปฏิทิน/วันหยุด
+        'date' => 'วันที่',
+        'start_date' => 'วันที่เริ่ม',
+        'end_date' => 'วันที่สิ้นสุด',
+        'remark' => 'หมายเหตุ',
+
+        // ตารางสอน (slot)
+        'start_time' => 'เวลาเริ่ม',
         'end_time' => 'เวลาสิ้นสุด',
         'course_offering_id' => 'รอบการสอน',
-        'room_id' => 'ห้อง',
+        'topic' => 'หัวข้อกิจกรรม',
+        'capacity_required' => 'จำนวนรองรับ',
+        'sub_group_label' => 'ป้ายกลุ่มย่อย',
+        'lead_instructor_id' => 'ผู้สอนหลัก',
+        'instructor_ids' => 'ผู้สอน',
+        'instructor_ids.*' => 'ผู้สอน',
+        'student_group_ids' => 'กลุ่มนักศึกษา',
+        'student_group_ids.*' => 'กลุ่มนักศึกษา',
     ],
 ];

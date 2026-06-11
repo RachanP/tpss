@@ -13,6 +13,7 @@ use App\Models\LocationType;
 use App\Models\Room;
 use App\Models\SystemSetting;
 use App\Models\User;
+use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 
 class AlertController extends Controller
@@ -80,9 +81,23 @@ class AlertController extends Controller
     public function updateDismissed(Request $request)
     {
         $valid = ['departments', 'rooms', 'course_staff'];
+        $previous = self::getDismissedWarnings();
         $dismissed = array_values(array_intersect($request->input('dismissed', []), $valid));
         SystemSetting::set('dismissed_warnings', json_encode($dismissed));
         self::flushCache();
+
+        // 8.4: บันทึกประวัติการปิด/เปิดการแจ้งเตือน
+        if ($previous !== $dismissed) {
+            AuditLogger::log(
+                action: 'ตั้งค่าระบบ.แก้ไข',
+                table: 'system_settings',
+                recordId: 0,
+                oldValues: ['dismissed_warnings' => $previous],
+                newValues: ['dismissed_warnings' => $dismissed],
+                description: 'ปรับการปิดการแจ้งเตือนข้อมูลหลัก',
+            );
+        }
+
         return redirect()->route('admin.alerts')->with('success', 'บันทึกการตั้งค่าแจ้งเตือนเรียบร้อยแล้ว');
     }
 

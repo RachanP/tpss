@@ -341,11 +341,11 @@ class AdminSettingController extends Controller
         $validated = $this->validateCalendar($request);
 
         if ($termErrors = $this->termValidationErrors($request)) {
-            return back()->withInput()->withErrors(['calendar_terms' => $termErrors]);
+            return back()->withInput()->withErrors(['calendar_terms' => $termErrors])->with('open_calendar_year', $year->id);
         }
 
         if ($this->calendarScopeConflict($year, $validated['curriculum_id'] ?? null, $validated['year_levels'] ?? null)) {
-            return back()->withInput()->withErrors($this->calendarScopeError())->with('error', self::CALENDAR_SCOPE_MESSAGE);
+            return back()->withInput()->withErrors($this->calendarScopeError())->with('error', self::CALENDAR_SCOPE_MESSAGE)->with('open_calendar_year', $year->id);
         }
 
         DB::transaction(function () use ($year, $validated, $request) {
@@ -366,12 +366,13 @@ class AdminSettingController extends Controller
     private function calendarSavedRedirect(AcademicYear $year, string $msg)
     {
         AlertController::flushCache();
+        // เปิด modal ปฏิทินของปีนี้ค้างไว้หลังบันทึก (UX: ไม่ต้องกดเข้าใหม่)
         if ($this->recomputeYearSpan($year)) {
             $note = $this->autoFetchHolidays($year->fresh());
-            $r = back()->with('success', $msg . ' — ' . $note['message']);
+            $r = back()->with('success', $msg . ' — ' . $note['message'])->with('open_calendar_year', $year->id);
             return $note['ok'] ? $r : $r->with('holiday_warning', $note['message']);
         }
-        return back()->with('success', $msg);
+        return back()->with('success', $msg)->with('open_calendar_year', $year->id);
     }
 
     public function updateCalendar(Request $request, AcademicCalendar $calendar)
@@ -380,11 +381,13 @@ class AdminSettingController extends Controller
         $validated = $this->validateCalendar($request);
 
         if ($termErrors = $this->termValidationErrors($request)) {
-            return back()->withInput()->withErrors(['calendar_terms' => $termErrors]);
+            return back()->withInput()->withErrors(['calendar_terms' => $termErrors])
+                ->with('open_calendar_year', $calendar->academic_year_id)->with('open_calendar_id', $calendar->id);
         }
 
         if ($this->calendarScopeConflict($calendar->academicYear, $validated['curriculum_id'] ?? null, $validated['year_levels'] ?? null, $calendar->id)) {
-            return back()->withInput()->withErrors($this->calendarScopeError())->with('error', self::CALENDAR_SCOPE_MESSAGE);
+            return back()->withInput()->withErrors($this->calendarScopeError())->with('error', self::CALENDAR_SCOPE_MESSAGE)
+                ->with('open_calendar_year', $calendar->academic_year_id)->with('open_calendar_id', $calendar->id);
         }
 
         DB::transaction(function () use ($calendar, $validated, $request) {
@@ -407,7 +410,8 @@ class AdminSettingController extends Controller
             $this->recomputeYearSpan($year);
         }
 
-        return back()->with('success', 'ลบปฏิทินการศึกษาเรียบร้อยแล้ว');
+        return back()->with('success', 'ลบปฏิทินการศึกษาเรียบร้อยแล้ว')
+            ->with('open_calendar_year', $year?->id);
     }
 
     private function shiftDate(mixed $date, int $years): ?string
@@ -800,8 +804,18 @@ class AdminSettingController extends Controller
         ]);
         $validated['source'] = 'manual';
 
-        Holiday::create($validated);
+        $holiday = Holiday::create($validated);
         AlertController::flushCache();
+
+        // 8.4: บันทึกประวัติการเพิ่มวันหยุด
+        AuditLogger::log(
+            action: 'ตั้งค่าระบบ.สร้าง',
+            table: 'holidays',
+            recordId: $holiday->id,
+            oldValues: null,
+            newValues: $validated,
+            description: "เพิ่มวันหยุด: {$validated['name']} ({$validated['date']})",
+        );
 
         return redirect()->route($this->settingsRoute(), ['tab' => 'academic'])->with('success', 'เพิ่มวันหยุดเรียบร้อยแล้ว');
     }
@@ -818,16 +832,55 @@ class AdminSettingController extends Controller
             'name.required' => 'กรุณาระบุชื่อวันหยุด',
         ]);
 
+        $before = [
+            'date'   => $holiday->date->format('Y-m-d'),
+            'name'   => $holiday->name,
+            'remark' => $holiday->remark,
+        ];
+
         $holiday->update($validated);
         AlertController::flushCache();
+
+        // 8.4: บันทึกประวัติการแก้ไขวันหยุด (เฉพาะ field ที่เปลี่ยน)
+        $changed = AuditLogger::diff($before, [
+            'date'   => $validated['date'],
+            'name'   => $validated['name'],
+            'remark' => $validated['remark'] ?? null,
+        ]);
+        AuditLogger::log(
+            action: 'ตั้งค่าระบบ.แก้ไข',
+            table: 'holidays',
+            recordId: $holiday->id,
+            oldValues: $changed['old'],
+            newValues: $changed['new'],
+            description: "แก้ไขวันหยุด: {$validated['name']} ({$validated['date']})",
+        );
 
         return redirect()->route($this->settingsRoute(), ['tab' => 'academic'])->with('success', 'อัปเดตวันหยุดเรียบร้อยแล้ว');
     }
 
     public function destroyHoliday(Holiday $holiday)
     {
+        $snapshot = [
+            'date'   => $holiday->date->format('Y-m-d'),
+            'name'   => $holiday->name,
+            'remark' => $holiday->remark,
+            'source' => $holiday->source,
+        ];
+        $holidayId = $holiday->id;
+
         $holiday->delete();
         AlertController::flushCache();
+
+        // 8.4: บันทึกประวัติการลบวันหยุด
+        AuditLogger::log(
+            action: 'ตั้งค่าระบบ.ลบ',
+            table: 'holidays',
+            recordId: $holidayId,
+            oldValues: $snapshot,
+            newValues: null,
+            description: "ลบวันหยุด: {$snapshot['name']} ({$snapshot['date']})",
+        );
 
         return redirect()->route($this->settingsRoute(), ['tab' => 'academic'])->with('success', 'ลบวันหยุดเรียบร้อยแล้ว');
     }
@@ -851,9 +904,21 @@ class AdminSettingController extends Controller
         $count = app(HolidayService::class)->syncForAcademicYearSpan((string) $year->start_date, (string) $year->end_date);
         AlertController::flushCache();
 
-        return $count === null
-            ? $route->with('error', "ดึงวันหยุดของปีการศึกษา {$year->name} ไม่สำเร็จ — ตรวจอินเทอร์เน็ตแล้วลองใหม่ หรือเพิ่มเอง")
-            : $route->with('success', "ดึงวันหยุดราชการของปีการศึกษา {$year->name} แล้ว {$count} วัน");
+        if ($count === null) {
+            return $route->with('error', "ดึงวันหยุดของปีการศึกษา {$year->name} ไม่สำเร็จ — ตรวจอินเทอร์เน็ตแล้วลองใหม่ หรือเพิ่มเอง");
+        }
+
+        // 8.4: บันทึกประวัติการดึงวันหยุดราชการอัตโนมัติ (bulk)
+        AuditLogger::log(
+            action: 'ตั้งค่าระบบ.ซิงก์ข้อมูล',
+            table: 'holidays',
+            recordId: $year->id,
+            oldValues: null,
+            newValues: ['academic_year' => $year->name, 'synced_count' => $count],
+            description: "ดึงวันหยุดราชการของปีการศึกษา {$year->name} จำนวน {$count} วัน",
+        );
+
+        return $route->with('success', "ดึงวันหยุดราชการของปีการศึกษา {$year->name} แล้ว {$count} วัน");
     }
 
     private function settingsRoute(): string

@@ -5,6 +5,7 @@ export async function login(page: Page, username = 'admin_01', password = 'passw
   await page.getByTestId('login-username').fill(username);
   await page.getByTestId('login-password').fill(password);
   await page.getByTestId('login-submit').click();
+  // รับ landing ของทุก role (staff ลงที่ /staff/settings · ไม่มี dashboard)
   await expect(page).toHaveURL(/\/dashboard|\/admin\/dashboard|\/staff\/dashboard|\/staff\/settings|\/maker\/dashboard|\/maker\/schedules|\/maker\/course-offerings\/\d+\/schedules|\/lecturer\/dashboard|\/dashboard\/coming-soon/);
 }
 

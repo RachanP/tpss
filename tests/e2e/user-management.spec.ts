@@ -32,6 +32,18 @@ test.describe('Admin User Management', () => {
     await expect(page.locator(`[data-testid="users-row"][data-username="${username}"]`)).toHaveCount(1);
   });
 
+  test('admin can open the CSV import modal', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile-chrome', 'Modal layout is desktop-only for admin');
+    await login(page, 'admin_01');
+    await page.goto('/admin/users');
+
+    // ปุ่ม "นำเข้าจากไฟล์" ต้องเปิด modal ได้ (ข้อ 5 — เคยหลุดออกนอก Alpine scope)
+    await expect(page.getByTestId('users-import-modal')).toHaveCount(0);
+    await page.getByTestId('users-import-button').click();
+    await expect(page.getByTestId('users-import-modal')).toBeVisible();
+    await expect(page.getByText('นำเข้าผู้ใช้งานจากไฟล์ CSV')).toBeVisible();
+  });
+
   test('admin can deactivate a user via edit modal and see status change', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === 'mobile-chrome', 'Modal layout is desktop-only for admin');
     await login(page, 'admin_01');

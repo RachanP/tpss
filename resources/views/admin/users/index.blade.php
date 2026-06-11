@@ -446,7 +446,7 @@
             <div class="card-hdr">
                 <div class="card-ttl">รายชื่อผู้ใช้งานระบบ</div>
                 <div class="card-actions">
-                    <button class="btn btn-secondary" @click="showImportModal = true">
+                    <button type="button" class="btn btn-secondary" data-testid="users-import-button" @click="showImportModal = true">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -1139,11 +1139,10 @@
                     </form>
                 </div>
             </div>
-        </div>
 
         <!-- Import CSV Modal -->
         <template x-if="showImportModal">
-            <div class="overlay" x-cloak>
+            <div class="overlay" x-cloak data-testid="users-import-modal">
                 <div class="modal-center" style="max-width: 480px;"
                     x-transition:enter="transition ease-out duration-200"
                     x-transition:enter-start="opacity-0 scale-95"
