@@ -73,11 +73,13 @@ test('schedule modal shows muted "ไม่มีผู้สอน" and datepic
   await page.goto(links[0], { waitUntil: 'domcontentloaded' });
 
   // Try to open an existing schedule detail modal; if none, open create modal
-  const triggerCount = await page.locator('[data-schedule-modal-trigger]').count();
+  // เล็งเฉพาะ trigger ที่ "มองเห็น" (list view) — trigger ใน grid view ถูกซ่อนอยู่
+  const visibleTriggers = page.locator('[data-schedule-modal-trigger]:visible');
+  const triggerCount = await visibleTriggers.count();
   // detail modal มีต่อ schedule (testid ซ้ำ) → เล็งเฉพาะตัวที่กำลังแสดง
   let modalLocator = page.locator('[data-testid="schedule-detail-modal"]:visible');
   if (triggerCount > 0) {
-    await page.locator('[data-schedule-modal-trigger]').first().click();
+    await visibleTriggers.first().click();
     await expect(modalLocator).toBeVisible({ timeout: 5000 });
   } else {
     // open create modal

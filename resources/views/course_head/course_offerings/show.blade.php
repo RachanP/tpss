@@ -1062,12 +1062,13 @@
                     </div>
                     <div class="caption" style="margin-bottom:12px;">การแก้ชุดผู้สอนครั้งนี้ทำให้ต่างจากแม่แบบรายวิชา — กรุณาระบุเหตุผลเพื่อให้ผู้ดูแลระบบเห็นในหน้าแจ้งเตือน</div>
                     <textarea x-model="noteModal.text" rows="3" maxlength="1000"
+                              data-testid="instructor-pool-note-text"
                               placeholder="เช่น ปีนี้ อ.A ลาศึกษาต่อ จึงให้ อ.B สอนแทน"
                               style="width:100%;box-sizing:border-box;" @keydown.enter.prevent="confirmNote()"></textarea>
                     <div x-show="noteModal.error" x-cloak style="color:var(--status-conflict-fg);font-size:0.8rem;margin-top:6px;" x-text="noteModal.error"></div>
                     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
                         <button type="button" class="btn btn-secondary" @click="noteModal.open = false">ยกเลิก</button>
-                        <button type="button" class="btn btn-primary" @click="confirmNote()">บันทึกเหตุผล</button>
+                        <button type="button" class="btn btn-primary" data-testid="instructor-pool-note-submit" @click="confirmNote()">บันทึกเหตุผล</button>
                     </div>
                 </div>
             </div>
@@ -1141,6 +1142,7 @@
                         @input="openDropdown()"
                         placeholder="ค้นหาชื่ออาจารย์หรือภาควิชา..."
                         class="instructor-picker-input"
+                        data-testid="instructor-pool-search"
                         autocomplete="off"
                     >
                     <svg x-show="!loading" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);opacity:0.4;pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -1187,6 +1189,7 @@
                                 <button type="button"
                                     @click="add(user)"
                                     class="instructor-picker-option"
+                                    data-testid="instructor-pool-option"
                                 >
                                     <div>
                                         <div class="instructor-picker-name" x-text="user.name"></div>
@@ -1316,6 +1319,7 @@
 
                             @if($canEdit)
                             <button type="button" x-show="!user.is_coordinator" @click="remove(user.id)" title="ลบอาจารย์ออกจากชุดผู้สอน"
+                                data-testid="instructor-pool-remove"
                                 class="instructor-remove-button"
                                 @mouseenter="$el.style.background='var(--status-conflict-bg)';$el.style.color='var(--status-conflict-fg)'"
                                 @mouseleave="$el.style.background='transparent';$el.style.color='var(--fg-3)'">

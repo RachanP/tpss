@@ -10,6 +10,11 @@ import { findSchedulableOffering, fillCreateModal, selectTime } from './support/
  *  - หน้า alerts ของ admin โหลดได้
  *
  * Logic การชน: instructor/room/group overlap → severity conflict (บล็อกบันทึก)
+ *
+ * NOTE: cross-course conflict + cohort GROUP overlap + capacity warning logic
+ * ครอบด้วย unit/feature test แล้ว (tests/Unit/ScheduleConflictCheckerTest.php +
+ * ScheduleManagementTest) — การ trigger ผ่าน UI ต้องตั้ง 2 offering + custom room
+ * dropdown ซึ่งเปราะ จึงเน้น e2e ที่ realtime in-modal block + หน้า alerts แทน
  */
 
 test.describe('M4 — Realtime conflict block', () => {

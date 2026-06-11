@@ -23,8 +23,7 @@ test.describe('PA — instructor self-service', () => {
     }
     await expect(form).toBeVisible({ timeout: 10_000 });
 
-    // กางแผง PA
-    await page.locator('.workload-pa-toggle').click();
+    // แผง PA เปิดอยู่แล้วโดย default (paOpen:true) — กรอกได้เลย ไม่ต้องกด toggle
 
     // กรอกสัดส่วนรวม 100% และอยู่ในเกณฑ์กลุ่ม "อาจารย์" (t20-70/r20-70/s5-20/c5-15/o0-20)
     await page.getByTestId('pa-teaching-pct').fill('40');
@@ -48,7 +47,7 @@ test.describe('PA — instructor self-service', () => {
       test.skip(true, 'No PA round available in this seed.');
     }
     await expect(page.getByTestId('pa-form')).toBeVisible({ timeout: 10_000 });
-    await page.locator('.workload-pa-toggle').click();
+    // แผง PA เปิดอยู่แล้วโดย default — กรอกได้เลย
 
     await page.getByTestId('pa-teaching-pct').fill('10');
     await page.getByTestId('pa-research-pct').fill('10');

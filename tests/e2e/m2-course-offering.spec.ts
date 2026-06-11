@@ -55,3 +55,52 @@ test.describe('M2 — Activity topics per course (V4 dropdown)', () => {
     }).toPass({ timeout: 10000 });
   });
 });
+
+test.describe('M2 — Instructor pool (delegation V4)', () => {
+  test('course head can add then remove an instructor in the pool', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile-chrome', 'Instructor pool combobox is desktop-first');
+    await login(page, 'head_med');
+    await page.goto('/maker/course-offerings');
+    await page.getByTestId('course-offering-show-link').first().click();
+    await expect(page.getByTestId('back-to-offerings')).toBeVisible({ timeout: 10_000 });
+
+    // เข้าโหมดแก้ไขส่วนชุดผู้สอน
+    await page.getByTestId('section-edit-quick-toggle-instructors').click();
+
+    const cards = page.locator('.instructor-pool-card');
+    const before = await cards.count();
+    // ปุ่มลบของหัวหน้าวิชาถูกซ่อน (x-show=false) → เลือกเฉพาะตัวที่ visible
+    const removeBtns = page.locator('[data-testid="instructor-pool-remove"]:visible');
+
+    // ต้องมีผู้สอนที่ลบได้ (non-coordinator) อย่างน้อย 1 — ไม่งั้นข้าม
+    test.skip((await removeBtns.count()) === 0, 'No removable instructor in this offering pool.');
+
+    async function fillNoteIfPrompted(text: string) {
+      // โมดัลเหตุผลโผล่แบบ async หลัง predictor — รอสักครู่ก่อนตัดสินใจ
+      const noteSubmit = page.getByTestId('instructor-pool-note-submit');
+      const appeared = await noteSubmit.waitFor({ state: 'visible', timeout: 4000 }).then(() => true).catch(() => false);
+      if (appeared) {
+        await page.getByTestId('instructor-pool-note-text').fill(text);
+        await noteSubmit.click();
+        await expect(noteSubmit).toBeHidden({ timeout: 5000 });
+      }
+    }
+
+    // ── ลบผู้สอน 1 คน → pool ลดลง (คนนี้กลับมา available ใน dropdown ภาควิชาเดียวกัน) ──
+    await removeBtns.first().click();
+    await fillNoteIfPrompted('E2E ลบผู้สอนชั่วคราว');
+    await expect(cards).toHaveCount(before - 1, { timeout: 10_000 });
+
+    // ── เพิ่มกลับผ่าน combobox (default เฉพาะภาควิชานี้ → ผ่าน department gate) ──
+    const search = page.getByTestId('instructor-pool-search');
+    await search.click();
+    await search.fill('');
+
+    const option = page.getByTestId('instructor-pool-option').first();
+    await expect(option).toBeVisible({ timeout: 10_000 });
+    await option.click();
+    await fillNoteIfPrompted('E2E เพิ่มผู้สอนกลับ');
+
+    await expect(cards).toHaveCount(before, { timeout: 10_000 });
+  });
+});

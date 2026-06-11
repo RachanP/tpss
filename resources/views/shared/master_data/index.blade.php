@@ -1387,7 +1387,7 @@
                 <div class="card-hdr">
                     <div class="card-ttl">ห้องและสถานที่</div>
                     <div class="card-actions">
-                        <button class="btn btn-secondary" @click="showImportRoomModal = true">
+                        <button class="btn btn-secondary" data-testid="rooms-import-button" @click="showImportRoomModal = true">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                                 <polyline points="17 8 12 3 7 8"/>
@@ -1395,14 +1395,14 @@
                             </svg>
                             นำเข้าจากไฟล์
                         </button>
-                        <button class="btn btn-ghost" @click="openAddRoom()">
+                        <button class="btn btn-ghost" data-testid="room-add-button" @click="openAddRoom()">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                                 <line x1="12" y1="5" x2="12" y2="19"/>
                                 <line x1="5" y1="12" x2="19" y2="12"/>
                             </svg>
                             เพิ่มสถานที่
                         </button>
-                        <button class="btn btn-primary" @click="openAddLocType()">
+                        <button class="btn btn-primary" data-testid="location-type-add-button" @click="openAddLocType()">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                                 <line x1="12" y1="5" x2="12" y2="19"/>
                                 <line x1="5" y1="12" x2="19" y2="12"/>
@@ -2282,6 +2282,7 @@
                             <div class="form-group">
                                 <label>ชื่อประเภทสถานที่ <span style="color: var(--status-conflict-fg)">*</span></label>
                                 <input type="text" name="name" x-model="currentLocType.name" required
+                                    data-testid="location-type-form-name"
                                     placeholder="เช่น ห้องบรรยาย, หอผู้ป่วย">
                             </div>
                             <div style="display: flex; align-items: flex-start; gap: 12px; padding: 14px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 4px;">
@@ -2305,7 +2306,7 @@
                             </div>
                             <div style="display: flex; gap: 8px;">
                                 <button type="button" class="btn btn-ghost" @click="showLocTypeModal = false">ยกเลิก</button>
-                                <button type="submit" class="btn btn-primary">บันทึกข้อมูล</button>
+                                <button type="submit" class="btn btn-primary" data-testid="location-type-form-submit">บันทึกข้อมูล</button>
                             </div>
                         </div>
                     </form>
@@ -2349,11 +2350,13 @@
                                 <div class="form-group">
                                     <label>รหัสห้อง/สถานที่ <span style="color: var(--status-conflict-fg)">*</span></label>
                                     <input type="text" name="room_code" x-model="currentRoom.room_code" required
+                                        data-testid="room-form-code"
                                         placeholder="เช่น 302, WARD-A">
                                 </div>
                                 <div class="form-group">
                                     <label>ชื่อห้อง/สถานที่ <span style="color: var(--status-conflict-fg)">*</span></label>
                                     <input type="text" name="room_name" x-model="currentRoom.room_name" required
+                                        data-testid="room-form-name"
                                         placeholder="เช่น ห้องบรรยาย 1">
                                 </div>
                                 <div class="form-group">
@@ -2447,7 +2450,7 @@
                             </div>
                             <div class="room-modal-actions">
                                 <button type="button" class="btn btn-ghost" @click="showRoomModal = false">ยกเลิก</button>
-                                <button type="submit" class="btn btn-primary">บันทึกข้อมูล</button>
+                                <button type="submit" class="btn btn-primary" data-testid="room-form-submit">บันทึกข้อมูล</button>
                             </div>
                         </div>
                     </form>

@@ -1,5 +1,16 @@
 # Testing — Feature Tests + Playwright E2E
 
+## ⚠️ กฎเหล็ก: แก้โค้ด → อัปเดต test เสมอ (Test Maintenance)
+
+> ทุกครั้งที่ **แก้ไข / refactor / เปลี่ยน UI / เพิ่ม-ลบ field / เปลี่ยน route หรือ flow** ของฟีเจอร์ที่มี test คุมอยู่ ต้องอัปเดต test ในงานเดียวกัน — ห้ามปล่อยให้ test เพี้ยนแล้วค่อยตามแก้
+
+- **เปลี่ยน UI/ลบ-ย้าย element** → ตรวจว่า `data-testid` ที่ test อ้างยังอยู่ ถ้าย้าย/เปลี่ยนชื่อให้ย้าย testid ตาม + แก้ selector ใน spec
+- **เปลี่ยน flow/redirect/landing** → แก้ assertion ใน e2e (เช่น `m10-rbac` ผูกกับ `DashboardController::index` map ของแต่ละ role)
+- **เพิ่ม/แก้ field, validation, enum** → อัปเดตทั้ง Feature test (PHPUnit) และ e2e ที่กรอกฟอร์มนั้น
+- **เพิ่มฟีเจอร์/หน้าใหม่** → เพิ่ม `data-testid` ตอน implement (อย่ารอคนเขียน test มาขอ) + เพิ่ม spec ต่อ module
+- **ก่อนถือว่าเสร็จ** → รัน suite ที่เกี่ยวข้องให้เขียว: `php artisan test` (PHPUnit) + `npx playwright test <spec> --project=chromium` (e2e)
+- e2e แยกต่อ module ใน `tests/e2e/` (m10-rbac/settings, m1-master-data-crud/master-data, m2-*, m3-schedule, m4-conflict, m7-m8-views, pa-audit ฯลฯ) + helper รวม `tests/e2e/support/` — แก้ฟีเจอร์ไหนเปิดไฟล์ module นั้นดูก่อนเสมอ
+
 ## Stack
 
 | Layer | Tool |
