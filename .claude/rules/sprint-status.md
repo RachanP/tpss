@@ -1,4 +1,26 @@
-# Sprint Status — ณ 30 พ.ค. 2569
+# Sprint Status — ณ 11 มิ.ย. 2569
+
+## 🔧 Phase UX Refactor + Bug Fix + Important Features — กำลังทำ (3 branch ขนาน บน `to-serve`)
+
+> เอกสารต้นทาง: `อัพเดต_แก้บัค (2).pdf` (20 ข้อ · ข้ามข้อ 4) · แผนแบ่งงาน: `Doc/requirement/phase_ux_work_split.html`
+> แตก 3 branch จาก `to-serve` — แบ่งตาม **โซนไฟล์** กัน conflict (10/20 ข้อแตะ `shared/schedules/index.blade.php` + `ScheduleController`)
+
+| Branch | คน | ขอบเขต | สถานะ |
+|--------|----|--------|-------|
+| `feat/phase-ux-a-schedule-modal` | A | modal กรอก/แก้ slot + series/copy + ชุดผู้สอน (ข้อ 2,10,11,12,13,19,20,6a) | 🟡 กำลังทำ (push `a6da942`) |
+| `feat/phase-ux-b-schedule-calendar` | B | ปฏิทิน/การ์ด/ตัวกรอง/ตัวนับ (ข้อ 14,15,16,17,18,21) | ✅ **merged เข้า `to-serve`** (`aaf9a13`) |
+| `feat/phase-ux-c-platform` | C | security/audit + settings + master data + test gate | ✅ **เสร็จครบ** (`304429e`) |
+
+**Merge order:** C → B → A · ทุกคน `--force-with-lease` บน branch ตัวเอง · A ต้อง rebase `origin/to-serve` หลัง B merged (แชร์ไฟล์ร้อน)
+
+### ✅ Branch C — เสร็จครบทุกข้อ + PHPUnit 564/564 เขียว (`feat/phase-ux-c-platform`)
+- **8.1** force logout บัญชีถูกปิด (CheckActiveUser + 401 JSON สำหรับ AJAX) · **8.2** กัน role แปลกปลอม (`UserRole::VALID_ROLES` กรองที่ `normalizeRoles` คุม store/update/CSV) · **8.3** audit สลับบทบาท (`switchRole`) · **8.4** audit holiday CRUD/sync + ปิด alert · **8.5** mask รหัสผ่าน/token ลึกทุกชั้น (`AuditLogger::maskRecursive`)
+- **ข้อ 3** locale=th (`.env`/`.env.example`/`phpunit.xml`) + ขยาย `lang/th/validation.php` attributes
+- **ข้อ 5** ปุ่มนำเข้า CSV (`<template x-if>` หลุดนอก x-data scope จาก `</div>` เกิน → modal ไม่ render)
+- **ข้อ 1** ปฏิทินการศึกษา **2 card**: "ปฏิทินกลางของคณะ" (fallbackCalendar ของปีปัจจุบัน) + "ปฏิทินแยกตามหลักสูตร/ชั้นปี" (accordion collapse · inheritance 3 ชั้น: ชั้นปี→ทั้งหลักสูตร→กลาง · หัวกลุ่ม=ทั้งหลักสูตรแก้ได้) · **วันหยุดแยกเป็น tab** · ปฏิทินอิงปีปัจจุบัน (ไม่มี dropdown เลือกปี) · ลบปุ่ม 📅 ที่แถวปี · ⚠️ resolve ปฏิทินรายหลักสูตรเข้า schedule observer = เฟสถัดไป (M6)
+- **ข้อ 7** (เพื่อน) หน้าภาระงานอาจารย์ + PA self-service + donut · **ข้อ 9** modal เงื่อนไขรายวิชา = chip picker + ค้นหา (เลิก ctrl+click) · **ข้อ 4** (เพื่อน) confirm dialog เปิด/ปิดตาราง + dropdown แท็บปี
+- **6b** PHPUnit 564/564 ผ่าน (ยังไม่รัน Playwright e2e เต็มรอบ — `m2-course-management` bulk groups เป็นของ 6b)
+- tests ใหม่: `UserRoleSecurityTest`(5) `AuditLogSecurityTest`(5) `LocalizationTest`(3) + e2e `settings-calendar.spec.ts`, `user-management` import
 
 ## 🔔 Active Milestone — Client Demo + Staging Deploy (2 มิ.ย. 2569)
 
