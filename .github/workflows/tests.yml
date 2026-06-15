@@ -45,19 +45,25 @@ jobs:
           extensions: mbstring, dom, curl, libxml, pdo, pdo_mysql, bcmath, intl, zip, gd, fileinfo, tokenizer
           coverage: none
 
-      - name: Cache Composer
-        uses: actions/cache@v4
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
         with:
-          path: ~/.composer/cache
-          key: composer-${{ hashFiles('composer.lock') }}
+          node-version: '20'
+          cache: npm
 
-      - name: Install dependencies
+      - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Prepare .env
         run: |
           cp .env.example .env
           php artisan key:generate
+
+      # Feature test หลายตัว render Blade ที่มี @vite → ต้องมี manifest (public/build ถูก gitignore)
+      - name: Build front-end assets (Vite manifest)
+        run: |
+          npm ci
+          npm run build
 
       - name: Run PHPUnit (with JUnit log)
         run: ./vendor/bin/phpunit --log-junit junit-phpunit.xml
@@ -120,9 +126,23 @@ jobs:
       - name: Install Playwright browser (chromium)
         run: npx playwright install --with-deps chromium
 
+      # เตรียม DB + boot server เอง (ควบคุม + เห็น log ได้) แทนพึ่ง webServer probe ของ Playwright
+      - name: Migrate + seed test database
+        run: |
+          php artisan migrate:fresh --seed --force
+          php artisan db:seed --class=E2ECourseOfferingSeeder --force
+
+      - name: Start Laravel server + wait until ready
+        run: |
+          php artisan serve --host=127.0.0.1 --port=8010 > server.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf -o /dev/null http://127.0.0.1:8010 && break; sleep 1; done
+          curl -sf -o /dev/null http://127.0.0.1:8010 || { echo '=== server.log ==='; cat server.log; exit 1; }
+
       - name: Run Playwright E2E (chromium)
         run: npx playwright test --project=chromium --reporter=github,html,junit
         env:
+          E2E_SKIP_DB_SETUP: '1'
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:8010
           PLAYWRIGHT_JUNIT_OUTPUT_NAME: junit-e2e.xml
 
       - name: Upload Playwright report + artifacts
@@ -134,4 +154,5 @@ jobs:
             playwright-report/
             test-results/
             junit-e2e.xml
+            server.log
           retention-days: 30
