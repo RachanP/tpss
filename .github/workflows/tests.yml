@@ -3,7 +3,7 @@ name: Tests
 # รันทุก push/PR เข้า branch หลัก → มีประวัติผล ✅/❌ ถาวรใน tab Actions + บน PR
 on:
   push:
-    branches: [to-serve, sprint, main]
+    branches: [to-serve, sprint, main, ci-demo]
   pull_request:
     branches: [to-serve, sprint, main]
 

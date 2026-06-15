@@ -277,10 +277,11 @@ class AlertController extends Controller
     public static function paGroup(string $title, string $degree): string
     {
         $isAssistant = str_contains($title, 'ผู้ช่วยอาจารย์');
-        if ($isAssistant && str_contains($title, 'คลินิก'))        return 'ผู้ช่วยอาจารย์_คลินิก';
+        // CI-DEMO รอบ 1: จงใจทำให้ผิด เพื่อให้ PaCriteriaTest จับได้ → CI แดง
+        if ($isAssistant && str_contains($title, 'คลินิก'))        return 'ผู้ช่วยอาจารย์';
         if ($isAssistant && str_contains($title, 'สอนภาคปฏิบัติ')) return 'ผู้ช่วยอาจารย์_ปฏิบัติ';
         if ($isAssistant) {
-            if ($degree === 'ปริญญาตรี')                           return 'ผู้ช่วยอาจารย์_ปตรี';
+            if ($degree === 'ปริญญาตรี')                           return 'ผู้ช่วยอาจารย์';
             return 'ผู้ช่วยอาจารย์';
         }
         return 'อาจารย์';
