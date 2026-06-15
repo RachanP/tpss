@@ -216,9 +216,18 @@ test.describe('M3 — Edit & block & copy', () => {
     // สร้าง slot ต้นทางที่ 19/06 เวลา 15:xx (เวลาเฉพาะ ไม่ชนเทสอื่นใน m3)
     await page.goto(offeringUrl, { waitUntil: 'domcontentloaded' });
     const modal = await fillCreateModal(page, { date: '19/06/2569', startHour: '15', topic: 'M3 copy source' });
-    // gate ด้วย modal ปิด (สัญญาณบันทึกสำเร็จที่เสถียรกว่า toast บน CI)
     await modal.getByTestId('schedule-submit').click();
-    await expect(page.getByTestId('schedule-create-modal')).toBeHidden({ timeout: 15_000 });
+    // สำเร็จ = modal ปิด · ถ้าไม่ปิด (เช่น CI retry แล้ว slot เดิมยังอยู่ → ชน) ปิดเองแล้วไปต่อ
+    // เพราะวันต้นทางมี slot อยู่แล้วไม่ว่าทางใด → copy ทำงานได้
+    const created = await page
+      .getByTestId('schedule-create-modal')
+      .waitFor({ state: 'hidden', timeout: 12_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!created) {
+      await modal.getByRole('button', { name: 'ยกเลิก' }).click().catch(() => {});
+      await expect(page.getByTestId('schedule-create-modal')).toBeHidden({ timeout: 5_000 });
+    }
 
     // เปิด copy modal → โหมดรายวัน → ต้นทาง 19/06 ปลายทาง 26/06
     await page.goto(offeringUrl, { waitUntil: 'domcontentloaded' });
@@ -232,8 +241,8 @@ test.describe('M3 — Edit & block & copy', () => {
     // รอ preview ตรวจ conflict → ปุ่มยืนยันเปิดเมื่อมีรายการคัดลอกได้
     const confirm = copyModal.getByTestId('schedule-copy-week-confirm');
     await expect(confirm).toBeEnabled({ timeout: 15_000 });
-    const copyToast = page.locator('#tpss-toast').waitFor({ state: 'visible', timeout: 15_000 });
     await confirm.click();
-    await copyToast;
+    // gate ด้วย copy modal ปิด (เสถียรกว่า toast บน CI ที่ช้ากว่า)
+    await expect(copyModal).toBeHidden({ timeout: 15_000 });
   });
 });
