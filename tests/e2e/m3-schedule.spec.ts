@@ -213,13 +213,12 @@ test.describe('M3 — Edit & block & copy', () => {
     const offeringUrl = await findSchedulableOffering(page);
     test.skip(!offeringUrl, 'No schedulable offering available.');
 
-    // สร้าง slot ต้นทางที่ 19/06
+    // สร้าง slot ต้นทางที่ 19/06 เวลา 15:xx (เวลาเฉพาะ ไม่ชนเทสอื่นใน m3)
     await page.goto(offeringUrl, { waitUntil: 'domcontentloaded' });
-    const modal = await fillCreateModal(page, { date: '19/06/2569', startHour: '10', topic: 'M3 copy source' });
-    const toast = page.locator('#tpss-toast').waitFor({ state: 'visible', timeout: 10_000 });
+    const modal = await fillCreateModal(page, { date: '19/06/2569', startHour: '15', topic: 'M3 copy source' });
+    // gate ด้วย modal ปิด (สัญญาณบันทึกสำเร็จที่เสถียรกว่า toast บน CI)
     await modal.getByTestId('schedule-submit').click();
-    await expect(page.getByTestId('schedule-create-modal')).toBeHidden({ timeout: 10_000 });
-    await toast;
+    await expect(page.getByTestId('schedule-create-modal')).toBeHidden({ timeout: 15_000 });
 
     // เปิด copy modal → โหมดรายวัน → ต้นทาง 19/06 ปลายทาง 26/06
     await page.goto(offeringUrl, { waitUntil: 'domcontentloaded' });

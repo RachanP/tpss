@@ -85,5 +85,9 @@ export async function fillCreateModal(
   await expect(group).toBeVisible({ timeout: 10_000 });
   await group.check();
 
+  // realtime conflict check (debounced) อาจ disable ปุ่มชั่วคราว — รอให้ enabled ก่อนคืน
+  // (กัน flake บน CI ที่ช้ากว่า: คลิกตอน liveBlocking=true แล้ว modal ค้าง/ไม่มี toast)
+  await expect(modal.getByTestId('schedule-submit')).toBeEnabled({ timeout: 10_000 });
+
   return modal;
 }
