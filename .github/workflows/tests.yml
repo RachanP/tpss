@@ -1,0 +1,137 @@
+name: Tests
+
+# รันทุก push/PR เข้า branch หลัก → มีประวัติผล ✅/❌ ถาวรใน tab Actions + บน PR
+on:
+  push:
+    branches: [to-serve, sprint, main]
+  pull_request:
+    branches: [to-serve, sprint, main]
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DB_CONNECTION: mysql
+  DB_HOST: 127.0.0.1
+  DB_PORT: 3306
+  DB_DATABASE: tpss_testing
+  DB_USERNAME: root
+  DB_PASSWORD: root
+
+jobs:
+  # ── PHPUnit (Unit + Feature) ──────────────────────────────────────────────
+  phpunit:
+    name: PHPUnit (Unit + Feature)
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: tpss_testing
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, dom, curl, libxml, pdo, pdo_mysql, bcmath, intl, zip, gd, fileinfo, tokenizer
+          coverage: none
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ hashFiles('composer.lock') }}
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare .env
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Run PHPUnit (with JUnit log)
+        run: ./vendor/bin/phpunit --log-junit junit-phpunit.xml
+
+      - name: Upload PHPUnit JUnit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phpunit-junit
+          path: junit-phpunit.xml
+          retention-days: 30
+
+  # ── Playwright E2E (chromium) ─────────────────────────────────────────────
+  e2e:
+    name: Playwright E2E (chromium)
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: tpss_testing
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      CI: 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, dom, curl, libxml, pdo, pdo_mysql, bcmath, intl, zip, gd, fileinfo, tokenizer
+          coverage: none
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Prepare .env
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Build front-end assets (Vite manifest for @vite)
+        run: npm run build
+
+      - name: Install Playwright browser (chromium)
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright E2E (chromium)
+        run: npx playwright test --project=chromium --reporter=github,html,junit
+        env:
+          PLAYWRIGHT_JUNIT_OUTPUT_NAME: junit-e2e.xml
+
+      - name: Upload Playwright report + artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+            junit-e2e.xml
+          retention-days: 30
