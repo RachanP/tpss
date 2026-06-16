@@ -932,6 +932,7 @@
     class="master-data-page"
     :class="{ 'is-tab-loading': tabLoading }"
     :style="tabSwitchMinHeight ? 'min-height: ' + tabSwitchMinHeight + 'px' : ''"
+    @keydown.escape.window="showDeptModal = showInstructorModal = showLocTypeModal = showRoomModal = showCourseModal = showTopicsModal = showCurriculumModal = showActivityTypeModal = showCohortModal = showCloneCurriculumModal = showImportRoomModal = showImportCourseModal = false"
     x-init="
         if (!['departments', 'curriculums', 'student_cohorts', 'courses', 'instructors', 'location_types', 'activity_types'].includes(activeTab)) {
             activeTab = 'instructors';
@@ -1234,148 +1235,131 @@
                     </div>
                 </div>
 
-                <div x-data="{ expandedDept: null }" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 8px;">
-                    @forelse($departments as $dept)
-                        <div
-                            data-testid="department-row" data-dept-name="{{ $dept->name }}"
-                            data-search="{{ Str::lower($dept->name . ' ' . ($dept->head->formatted_name ?? '') . ' ' . ($dept->secretary->formatted_name ?? '') . ' ' . $dept->instructors_count . ' คน') }}"
-                            x-show="includesText($el.dataset.search, filters.departments.keyword)"
-                            style="border: 1px solid color-mix(in oklch, var(--brand-navy) 32%, var(--border-strong)); border-radius: 8px; overflow: hidden;">
-
-                            {{-- Header --}}
-                            <div @click="expandedDept = expandedDept === {{ $dept->id }} ? null : {{ $dept->id }}"
-                                style="cursor: pointer; user-select: none; transition: background 0.15s;"
-                                :style="expandedDept === {{ $dept->id }} ? 'background: #f0f4ff;' : 'background: #fff;'">
-                            <div style="display: flex; align-items: center; gap: 16px; padding: 14px 16px;">
-
-                                {{-- Chevron --}}
-                                <div style="flex-shrink: 0; width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: background 0.15s;"
-                                    :style="expandedDept === {{ $dept->id }} ? 'background: var(--brand-navy);' : 'background: var(--bg-3);'">
-                                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
-                                        style="transition: transform 0.2s;"
-                                        :style="expandedDept === {{ $dept->id }} ? 'transform:rotate(90deg); color:#fff' : 'color: var(--fg-3)'">
-                                        <polyline points="9 18 15 12 9 6"/>
-                                    </svg>
+                <div class="md-split" x-data="{ selDept: {{ $departments->first()?->id ?? 'null' }} }">
+                    {{-- LEFT: department list --}}
+                    <div class="md-list">
+                        @forelse($departments as $dept)
+                            <button type="button"
+                                data-testid="department-row" data-dept-name="{{ $dept->name }}"
+                                data-search="{{ Str::lower($dept->name . ' ' . ($dept->head->formatted_name ?? '') . ' ' . ($dept->secretary->formatted_name ?? '') . ' ' . $dept->instructors_count . ' คน') }}"
+                                x-show="includesText($el.dataset.search, filters.departments.keyword)"
+                                class="md-list-item" :class="{ 'is-active': selDept === {{ $dept->id }} }"
+                                @click="selDept = {{ $dept->id }}">
+                                <div class="md-list-item-body">
+                                    <div class="md-list-item-title" title="{{ $dept->name }}">{{ $dept->name }}</div>
+                                    <div class="md-list-item-sub">หัวหน้า: {{ $dept->head->formatted_name ?? '—' }}</div>
                                 </div>
-
-                                {{-- Name + head/sec --}}
-                                <div style="flex: 1; min-width: 0;">
-                                    <div style="font-weight: 600; font-size: 14px; color: var(--fg-1);">{{ $dept->name }}</div>
-                                    <div style="margin-top: 3px; font-size: 12px; color: var(--fg-3); display: flex; gap: 16px; flex-wrap: wrap;">
-                                        <span>หัวหน้า:
-                                            @if($dept->head)
-                                                {{ $dept->head->formatted_name }}
-                                                @if(!$dept->head->is_active)
-                                                    <span style="display:inline-block;margin-left:4px;padding:1px 6px;font-size:10px;border-radius:4px;background:oklch(95% 0.04 25);color:oklch(45% 0.15 25);font-weight:600;">ถูกระงับ</span>
-                                                @endif
-                                            @else
-                                                -
-                                            @endif
-                                        </span>
-                                        <span>เลขานุการ:
-                                            @if($dept->secretary)
-                                                {{ $dept->secretary->formatted_name }}
-                                                @if(!$dept->secretary->is_active)
-                                                    <span style="display:inline-block;margin-left:4px;padding:1px 6px;font-size:10px;border-radius:4px;background:oklch(95% 0.04 25);color:oklch(45% 0.15 25);font-weight:600;">ถูกระงับ</span>
-                                                @endif
-                                            @else
-                                                -
-                                            @endif
-                                        </span>
-                                    </div>
-                                </div>
-
-                                {{-- Count badge --}}
                                 @if($dept->instructors_count > 0)
-                                <div style="flex-shrink: 0; background: var(--bg-3); border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 700; color: var(--fg-2);">
-                                    {{ $dept->instructors_count }} คน
-                                </div>
+                                    <span class="md-count-pill">{{ $dept->instructors_count }} คน</span>
                                 @else
-                                <div style="flex-shrink: 0; font-size: 12px; color: var(--fg-4, #94a3b8);">ยังไม่มีอาจารย์</div>
+                                    <span class="md-count-pill is-empty">0 คน</span>
                                 @endif
-
-                                {{-- Edit (admin only) --}}
-                                @if($canManageMasterData)
-                                <div @click.stop style="flex-shrink: 0;">
-                                    <button class="action-btn" title="แก้ไข" @click.stop="openEditDept({{ Js::from($dept) }})">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                                        </svg>
-                                    </button>
-                                </div>
-                                @endif
-
-                            </div>{{-- /flex inner --}}
-                            </div>{{-- /click outer --}}
-
-                            {{-- Expanded instructor list --}}
-                            <div x-show="expandedDept === {{ $dept->id }}" x-cloak
-                                x-transition:enter="transition ease-out duration-150"
-                                x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-                                x-transition:leave="transition ease-in duration-100"
-                                x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-                                style="border-top: 1px solid var(--border);">
-
-                                @if($dept->instructorProfiles->count() > 0)
-                                    <table style="width: 100%; border-collapse: collapse;">
-                                        <thead>
-                                            <tr style="background: var(--bg-2);">
-                                                <th style="padding: 8px 16px 8px 56px; text-align: left; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">ชื่ออาจารย์</th>
-                                                <th style="padding: 8px 16px; text-align: left; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">ตำแหน่ง</th>
-                                                <th style="padding: 8px 16px; text-align: left; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">ประเภทบุคลากร</th>
-                                                <th style="padding: 8px 16px; text-align: center; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">วุฒิการศึกษา</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach($dept->instructorProfiles->sortBy(fn($p) => $p->user->name ?? '') as $profile)
-                                                @php
-                                                    $pTitle  = $profile->title ?? '';
-                                                    $pDegree = $profile->academic_degree ?? '';
-                                                    $pName   = $profile->user->name ?? '-';
-                                                    $isDr    = $pDegree === 'ปริญญาเอก';
-                                                    $isAssistant = str_contains($pTitle, 'ผู้ช่วยอาจารย์');
-                                                    $abbr = match(true) {
-                                                        str_contains($pTitle, 'ศาสตราจารย์') && str_contains($pTitle, 'รอง') => 'รศ.',
-                                                        str_contains($pTitle, 'ศาสตราจารย์') && str_contains($pTitle, 'ผู้ช่วย') => 'ผศ.',
-                                                        str_contains($pTitle, 'ศาสตราจารย์') => 'ศ.',
-                                                        $pTitle === 'อาจารย์' => 'อ.',
-                                                        default => null,
-                                                    };
-                                                    if ($isAssistant) {
-                                                        $displayName = ($isDr ? 'ดร.' : ($profile->user->prefix ?? '')) . $pName;
-                                                    } elseif ($abbr) {
-                                                        $displayName = $abbr . ($isDr ? 'ดร.' : '') . $pName;
-                                                    } else {
-                                                        $displayName = ($profile->user->prefix ?? '') . $pName;
-                                                    }
-                                                @endphp
-                                                <tr style="border-top: 1px solid var(--border); transition: background 0.1s;"
-                                                    onmouseover="this.style.background='var(--bg-2)'" onmouseout="this.style.background=''">
-                                                    <td style="padding: 11px 16px 11px 56px; font-size: 13px; font-weight: 600; color: var(--fg-1);">
-                                                        {{ trim($displayName) }}
-                                                    </td>
-                                                    <td style="padding: 11px 16px; font-size: 13px; color: var(--fg-2);">{{ $pTitle ?: '-' }}</td>
-                                                    <td style="padding: 11px 16px; font-size: 13px; color: var(--fg-2);">{{ $profile->employment_type ?? '-' }}</td>
-                                                    <td style="padding: 11px 16px; font-size: 13px; color: var(--fg-2); text-align: center;">{{ $pDegree ?: '-' }}</td>
-                                                </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                @else
-                                    <div style="padding: 20px 56px; font-size: 13px; color: var(--fg-3);">ยังไม่มีอาจารย์ในภาควิชานี้</div>
-                                @endif
-                            </div>
-
+                            </button>
+                        @empty
+                            <div class="md-list-empty">ยังไม่มีข้อมูลภาควิชา</div>
+                        @endforelse
+                        <div class="md-list-empty"
+                            x-show="filters.departments.keyword && !Array.from($el.parentNode.children).some(el => el !== $el && el.dataset && el.dataset.search && el.style.display !== 'none')"
+                            x-cloak>
+                            ไม่พบข้อมูลที่ค้นหา
                         </div>
-                    @empty
-                        <div style="text-align: center; padding: 48px 20px; color: var(--fg-3);">ยังไม่มีข้อมูลภาควิชา</div>
-                    @endforelse
-                    <div
-                        x-show="filters.departments.keyword && !Array.from($el.parentNode.children).some(el => el !== $el && el.dataset && el.dataset.search && el.style.display !== 'none')"
-                        x-cloak
-                        style="text-align: center; padding: 40px 20px; color: var(--fg-3);">
-                        ไม่พบข้อมูลที่ค้นหา
+                    </div>
+
+                    {{-- RIGHT: selected department detail --}}
+                    <div class="md-detail">
+                        @if($departments->isEmpty())
+                            <div class="md-detail-empty">เพิ่มภาควิชาเพื่อเริ่มต้น</div>
+                        @endif
+                        @foreach($departments as $dept)
+                            <div x-show="selDept === {{ $dept->id }}" x-cloak>
+                                <div class="md-detail-head">
+                                    <div style="flex: 1; min-width: 0;">
+                                        <div class="md-detail-title">{{ $dept->name }}</div>
+                                        <div class="md-detail-meta">
+                                            <span>หัวหน้า:
+                                                @if($dept->head)
+                                                    {{ $dept->head->formatted_name }}
+                                                    @if(!$dept->head->is_active)
+                                                        <span style="display:inline-block;margin-left:4px;padding:1px 6px;font-size:10px;border-radius:4px;background:oklch(95% 0.04 25);color:oklch(45% 0.15 25);font-weight:600;">ถูกระงับ</span>
+                                                    @endif
+                                                @else
+                                                    —
+                                                @endif
+                                            </span>
+                                            <span>เลขานุการ:
+                                                @if($dept->secretary)
+                                                    {{ $dept->secretary->formatted_name }}
+                                                    @if(!$dept->secretary->is_active)
+                                                        <span style="display:inline-block;margin-left:4px;padding:1px 6px;font-size:10px;border-radius:4px;background:oklch(95% 0.04 25);color:oklch(45% 0.15 25);font-weight:600;">ถูกระงับ</span>
+                                                    @endif
+                                                @else
+                                                    —
+                                                @endif
+                                            </span>
+                                            <span>อาจารย์ {{ $dept->instructors_count }} คน</span>
+                                        </div>
+                                    </div>
+                                    @if($canManageMasterData)
+                                    <div class="md-detail-actions">
+                                        <button class="action-btn" title="แก้ไขภาควิชา" @click="openEditDept({{ Js::from($dept) }})">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    @endif
+                                </div>
+
+                                <div class="md-detail-body">
+                                    @if($dept->instructorProfiles->count() > 0)
+                                        <table class="md-detail-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>ชื่ออาจารย์</th>
+                                                    <th>ตำแหน่ง</th>
+                                                    <th>ประเภทบุคลากร</th>
+                                                    <th class="is-center">วุฒิการศึกษา</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach($dept->instructorProfiles->sortBy(fn($p) => $p->user->name ?? '') as $profile)
+                                                    @php
+                                                        $pTitle  = $profile->title ?? '';
+                                                        $pDegree = $profile->academic_degree ?? '';
+                                                        $pName   = $profile->user->name ?? '-';
+                                                        $isDr    = $pDegree === 'ปริญญาเอก';
+                                                        $isAssistant = str_contains($pTitle, 'ผู้ช่วยอาจารย์');
+                                                        $abbr = match(true) {
+                                                            str_contains($pTitle, 'ศาสตราจารย์') && str_contains($pTitle, 'รอง') => 'รศ.',
+                                                            str_contains($pTitle, 'ศาสตราจารย์') && str_contains($pTitle, 'ผู้ช่วย') => 'ผศ.',
+                                                            str_contains($pTitle, 'ศาสตราจารย์') => 'ศ.',
+                                                            $pTitle === 'อาจารย์' => 'อ.',
+                                                            default => null,
+                                                        };
+                                                        if ($isAssistant) {
+                                                            $displayName = ($isDr ? 'ดร.' : ($profile->user->prefix ?? '')) . $pName;
+                                                        } elseif ($abbr) {
+                                                            $displayName = $abbr . ($isDr ? 'ดร.' : '') . $pName;
+                                                        } else {
+                                                            $displayName = ($profile->user->prefix ?? '') . $pName;
+                                                        }
+                                                    @endphp
+                                                    <tr>
+                                                        <td style="font-weight: 600; color: var(--fg-1);">{{ trim($displayName) }}</td>
+                                                        <td>{{ $pTitle ?: '-' }}</td>
+                                                        <td>{{ $profile->employment_type ?? '-' }}</td>
+                                                        <td class="is-center">{{ $pDegree ?: '-' }}</td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    @else
+                                        <div class="md-detail-note">ยังไม่มีอาจารย์ในภาควิชานี้</div>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
                     </div>
                 </div>
             </div>
@@ -1432,168 +1416,144 @@
                         <option value="inactive">ปิดใช้งาน</option>
                     </select>
                 </div>
-                <div x-data="{ expandedType: null }" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 8px;">
-                    @forelse($locationTypes as $type)
-                        @php
-                            $activeCount = $type->room_status_counts['active'] ?? 0;
-                            $inactiveCount = $type->room_status_counts['inactive'] ?? 0;
-                            $maintenanceCount = $type->room_status_counts['maintenance'] ?? 0;
-                        @endphp
-
-                        {{-- Card wrapper --}}
-                        <div
-                            data-location-type-id="{{ $type->id }}"
-                            data-statuses="{{ $type->room_statuses }}"
-                            data-search="{{ $type->room_search_haystack }}"
-                            x-show="(filters.location_types.location_type_id === '' || $el.dataset.locationTypeId == filters.location_types.location_type_id) && (filters.location_types.status === '' || $el.dataset.statuses.includes(filters.location_types.status)) && includesText($el.dataset.search, filters.location_types.keyword)"
-                            style="border: 1px solid color-mix(in oklch, var(--brand-navy) 32%, var(--border-strong)); border-radius: 8px; overflow: hidden;">
-
-                            {{-- Header row --}}
-                            <div @click="expandedType = expandedType === {{ $type->id }} ? null : {{ $type->id }}"
-                                style="cursor: pointer; user-select: none; transition: background 0.15s;"
-                                :style="expandedType === {{ $type->id }} ? 'background: #f0f4ff;' : 'background: #fff;'">
-                            <div style="display: flex; align-items: center; gap: 16px; padding: 14px 16px;">
-
-                                {{-- Chevron pill --}}
-                                <div style="flex-shrink: 0; width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: background 0.15s;"
-                                    :style="expandedType === {{ $type->id }} ? 'background: var(--brand-navy);' : 'background: var(--bg-3);'">
-                                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
-                                        stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
-                                        style="transition: transform 0.2s;"
-                                        :style="expandedType === {{ $type->id }} ? 'transform:rotate(90deg); color:#fff' : 'color: var(--fg-3)'">
-                                        <polyline points="9 18 15 12 9 6"/>
-                                    </svg>
-                                </div>
-
-                                {{-- Name + status --}}
-                                <div style="flex: 1; min-width: 0;">
-                                    <div style="font-weight: 600; font-size: 14px; color: var(--fg-1);">{{ $type->name }}</div>
-                                    <div style="margin-top: 4px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <div class="md-split" x-data="{ selType: {{ $locationTypes->first()?->id ?? 'null' }} }">
+                    {{-- LEFT: location type list --}}
+                    <div class="md-list">
+                        @forelse($locationTypes as $type)
+                            @php
+                                $activeCount = $type->room_status_counts['active'] ?? 0;
+                                $inactiveCount = $type->room_status_counts['inactive'] ?? 0;
+                                $maintenanceCount = $type->room_status_counts['maintenance'] ?? 0;
+                            @endphp
+                            <button type="button"
+                                data-location-type-id="{{ $type->id }}"
+                                data-statuses="{{ $type->room_statuses }}"
+                                data-search="{{ $type->room_search_haystack }}"
+                                x-show="(filters.location_types.location_type_id === '' || $el.dataset.locationTypeId == filters.location_types.location_type_id) && (filters.location_types.status === '' || $el.dataset.statuses.includes(filters.location_types.status)) && includesText($el.dataset.search, filters.location_types.keyword)"
+                                class="md-list-item" :class="{ 'is-active': selType === {{ $type->id }} }"
+                                @click="selType = {{ $type->id }}">
+                                <div class="md-list-item-body">
+                                    <div class="md-list-item-title" title="{{ $type->name }}">{{ $type->name }}</div>
+                                    <div class="md-list-item-sub" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                                         @if($activeCount > 0)
-                                            <span style="font-size: 11px; display: inline-flex; align-items: center; gap: 5px; color: #059669;">
-                                                <span style="width: 7px; height: 7px; border-radius: 50%; background: #10b981; flex-shrink: 0;"></span>ใช้งาน {{ $activeCount }} แห่ง
-                                            </span>
+                                            <span style="display: inline-flex; align-items: center; gap: 4px; color: #059669;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #10b981;"></span>{{ $activeCount }}</span>
                                         @endif
                                         @if($maintenanceCount > 0)
-                                            <span style="font-size: 11px; display: inline-flex; align-items: center; gap: 5px; color: #d97706;">
-                                                <span style="width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; flex-shrink: 0;"></span>ซ่อมบำรุง {{ $maintenanceCount }} แห่ง
-                                            </span>
+                                            <span style="display: inline-flex; align-items: center; gap: 4px; color: #d97706;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #f59e0b;"></span>{{ $maintenanceCount }}</span>
                                         @endif
                                         @if($inactiveCount > 0)
-                                            <span style="font-size: 11px; display: inline-flex; align-items: center; gap: 5px; color: var(--fg-3);">
-                                                <span style="width: 7px; height: 7px; border-radius: 50%; background: #cbd5e1; flex-shrink: 0;"></span>ปิด {{ $inactiveCount }} แห่ง
-                                            </span>
+                                            <span style="display: inline-flex; align-items: center; gap: 4px; color: var(--fg-3);"><span style="width: 6px; height: 6px; border-radius: 50%; background: #cbd5e1;"></span>{{ $inactiveCount }}</span>
                                         @endif
-                                        @if($type->rooms_count === 0)
-                                            <span style="font-size: 11px; color: var(--fg-4, #94a3b8);">ยังไม่มีสถานที่</span>
+                                        @if($type->rooms_count === 0)<span style="color: var(--fg-4, #94a3b8);">ยังไม่มีสถานที่</span>@endif
+                                    </div>
+                                </div>
+                                @if($type->rooms_count > 0)
+                                    <span class="md-count-pill">{{ $type->rooms_count }} แห่ง</span>
+                                @else
+                                    <span class="md-count-pill is-empty">0 แห่ง</span>
+                                @endif
+                            </button>
+                        @empty
+                            <div class="md-list-empty">ยังไม่มีข้อมูลประเภทสถานที่</div>
+                        @endforelse
+                        <div class="md-list-empty"
+                            x-show="(filters.location_types.keyword || filters.location_types.location_type_id || filters.location_types.status) && !Array.from($el.parentNode.children).some(el => el !== $el && el.dataset && el.dataset.search && el.style.display !== 'none')"
+                            x-cloak>
+                            ไม่พบข้อมูลที่ค้นหา
+                        </div>
+                    </div>
+
+                    {{-- RIGHT: selected location type detail --}}
+                    <div class="md-detail">
+                        @if($locationTypes->isEmpty())
+                            <div class="md-detail-empty">เพิ่มประเภทสถานที่เพื่อเริ่มต้น</div>
+                        @endif
+                        @foreach($locationTypes as $type)
+                            @php
+                                $activeCount = $type->room_status_counts['active'] ?? 0;
+                                $inactiveCount = $type->room_status_counts['inactive'] ?? 0;
+                                $maintenanceCount = $type->room_status_counts['maintenance'] ?? 0;
+                            @endphp
+                            <div x-show="selType === {{ $type->id }}" x-cloak>
+                                <div class="md-detail-head">
+                                    <div style="flex: 1; min-width: 0;">
+                                        <div class="md-detail-title">{{ $type->name }}</div>
+                                        <div class="md-detail-meta">
+                                            @if($type->is_shared)<span style="color: var(--brand-navy); font-weight: 600;">ใช้ร่วมกันได้</span>@endif
+                                            @if($activeCount > 0)<span style="display:inline-flex;align-items:center;gap:5px;color:#059669;"><span style="width:7px;height:7px;border-radius:50%;background:#10b981;"></span>ใช้งาน {{ $activeCount }} แห่ง</span>@endif
+                                            @if($maintenanceCount > 0)<span style="display:inline-flex;align-items:center;gap:5px;color:#d97706;"><span style="width:7px;height:7px;border-radius:50%;background:#f59e0b;"></span>ซ่อมบำรุง {{ $maintenanceCount }} แห่ง</span>@endif
+                                            @if($inactiveCount > 0)<span style="display:inline-flex;align-items:center;gap:5px;color:var(--fg-3);"><span style="width:7px;height:7px;border-radius:50%;background:#cbd5e1;"></span>ปิด {{ $inactiveCount }} แห่ง</span>@endif
+                                            @if($type->rooms_count === 0)<span style="color: var(--fg-4, #94a3b8);">ยังไม่มีสถานที่</span>@endif
+                                        </div>
+                                    </div>
+                                    <div class="md-detail-actions">
+                                        @if($canManageMasterData)
+                                        <button type="button" class="action-btn" title="เพิ่มสถานที่ในประเภทนี้" style="color: var(--brand-navy);"
+                                            @click="openAddRoom(); $nextTick(() => currentRoom.location_type_id = '{{ $type->id }}')">
+                                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                        </button>
                                         @endif
+                                        <button class="action-btn" title="แก้ไขประเภท"
+                                            @click="openEditLocType({{ Js::from(['id' => $type->id, 'name' => $type->name, 'is_shared' => $type->is_shared, 'rooms_count' => $type->rooms_count]) }})">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                            </svg>
+                                        </button>
                                     </div>
                                 </div>
 
-                                {{-- Total count badge --}}
-                                @if($type->rooms_count > 0)
-                                <div style="flex-shrink: 0; background: var(--bg-3); border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 700; color: var(--fg-2);">
-                                    {{ $type->rooms_count }} แห่ง
-                                </div>
-                                @endif
-
-                                {{-- Edit --}}
-                                <div @click.stop style="flex-shrink: 0;">
-                                    <button class="action-btn" title="แก้ไขประเภท"
-                                        @click.stop="openEditLocType({{ Js::from(['id' => $type->id, 'name' => $type->name, 'is_shared' => $type->is_shared, 'rooms_count' => $type->rooms_count]) }})">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>{{-- /flex inner --}}
-                            </div>{{-- /click outer --}}
-
-                            {{-- Expanded room list --}}
-                            <div x-show="expandedType === {{ $type->id }}" x-cloak
-                                x-transition:enter="transition ease-out duration-150"
-                                x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-                                x-transition:leave="transition ease-in duration-100"
-                                x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-                                style="border-top: 1px solid var(--border);">
-
-                                @if($type->rooms->count() > 0)
-                                    <table style="width: 100%; border-collapse: collapse;">
-                                        <thead>
-                                            <tr style="background: var(--bg-2);">
-                                                <th style="padding: 8px 16px 8px 56px; text-align: left; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">รหัส</th>
-                                                <th style="padding: 8px 16px; text-align: left; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">ชื่อห้อง / สถานที่</th>
-                                                <th style="padding: 8px 16px; text-align: left; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">อาคาร</th>
-                                                <th style="padding: 8px 16px; text-align: center; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">ความจุ</th>
-                                                <th style="padding: 8px 16px; text-align: center; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">สถานะ</th>
-                                                <th style="padding: 8px 16px; width: 48px;"></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach($type->rooms as $room)
-                                                @php $statusMap = ['active' => ['ใช้งาน', '#059669', '#d1fae5'], 'inactive' => ['ปิดใช้งาน', '#6b7280', '#f3f4f6'], 'maintenance' => ['ซ่อมบำรุง', '#d97706', '#fef3c7']]; $s = $statusMap[$room->status] ?? $statusMap['active']; @endphp
-                                                <tr
-                                                    data-search="{{ $room->search_haystack }}"
-                                                    data-status="{{ $room->status }}"
-                                                    x-show="(filters.location_types.status === '' || $el.dataset.status == filters.location_types.status) && includesText($el.dataset.search, filters.location_types.keyword)"
-                                                    style="border-top: 1px solid var(--border); transition: background 0.1s;"
-                                                    onmouseover="this.style.background='var(--bg-2)'" onmouseout="this.style.background=''">
-                                                    <td style="padding: 11px 16px 11px 56px; font-size: 12px; color: var(--fg-3); font-family: var(--font-mono, monospace);">{{ $room->room_code ?: '—' }}</td>
-                                                    <td style="padding: 11px 16px; font-size: 13px; font-weight: 600; color: var(--fg-1);">{{ $room->room_name }}</td>
-                                                    <td style="padding: 11px 16px; font-size: 13px; color: var(--fg-2);">{{ $room->building ?: '—' }}</td>
-                                                    <td style="padding: 11px 16px; font-size: 13px; color: var(--fg-2); text-align: center;">{{ $room->capacity ? number_format($room->capacity) . ' คน' : '—' }}</td>
-                                                    <td style="padding: 11px 16px; text-align: center;">
-                                                        <span style="font-size: 11px; font-weight: 600; color: {{ $s[1] }}; background: {{ $s[2] }}; border-radius: 20px; padding: 3px 10px;">{{ $s[0] }}</span>
-                                                    </td>
-                                                    <td style="padding: 8px 12px; text-align: center;">
-                                                        <button class="action-btn" title="แก้ไข"
-                                                            @click.stop="openEditRoom({{ Js::from($room->only('id','room_code','room_name','building','capacity','location_type_id','status','address','equipment_type')) }})">
-                                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                                                            </svg>
-                                                        </button>
-                                                    </td>
+                                <div class="md-detail-body">
+                                    @if($type->rooms->count() > 0)
+                                        <table class="md-detail-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>รหัส</th>
+                                                    <th>ชื่อห้อง / สถานที่</th>
+                                                    <th>อาคาร</th>
+                                                    <th class="is-center">ความจุ</th>
+                                                    <th class="is-center">สถานะ</th>
+                                                    <th style="width: 48px;"></th>
                                                 </tr>
-                                            @endforeach
-                                            <tr
-                                                x-show="(filters.location_types.keyword || filters.location_types.status) && !Array.from($el.parentNode.children).some(tr => tr !== $el && tr.style.display !== 'none')"
-                                                x-cloak>
-                                                <td colspan="6" style="text-align: center; padding: 28px; color: var(--fg-3);">ไม่พบข้อมูลที่ค้นหา</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                @else
-                                    <div style="padding: 20px 56px; font-size: 13px; color: var(--fg-3);">ยังไม่มีสถานที่ในประเภทนี้</div>
-                                @endif
-
-                                @if($canManageMasterData)
-                                <div style="padding: 10px 16px; border-top: 1px solid var(--border); background: var(--bg-2);">
-                                    <button type="button" class="btn btn-ghost" style="font-size: 12px; padding: 5px 12px; gap: 6px;"
-                                        @click="openAddRoom(); $nextTick(() => currentRoom.location_type_id = '{{ $type->id }}')">
-                                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-                                            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                                        </svg>
-                                        เพิ่มสถานที่ในประเภทนี้
-                                    </button>
+                                            </thead>
+                                            <tbody>
+                                                @foreach($type->rooms as $room)
+                                                    @php $statusMap = ['active' => ['ใช้งาน', '#059669', '#d1fae5'], 'inactive' => ['ปิดใช้งาน', '#6b7280', '#f3f4f6'], 'maintenance' => ['ซ่อมบำรุง', '#d97706', '#fef3c7']]; $s = $statusMap[$room->status] ?? $statusMap['active']; @endphp
+                                                    <tr
+                                                        data-search="{{ $room->search_haystack }}"
+                                                        data-status="{{ $room->status }}"
+                                                        x-show="(filters.location_types.status === '' || $el.dataset.status == filters.location_types.status) && includesText($el.dataset.search, filters.location_types.keyword)">
+                                                        <td style="color: var(--fg-3); font-family: var(--font-mono, monospace);">{{ $room->room_code ?: '—' }}</td>
+                                                        <td style="font-weight: 600; color: var(--fg-1);">{{ $room->room_name }}</td>
+                                                        <td>{{ $room->building ?: '—' }}</td>
+                                                        <td class="is-center">{{ $room->capacity ? number_format($room->capacity) . ' คน' : '—' }}</td>
+                                                        <td class="is-center">
+                                                            <span style="font-size: 11px; font-weight: 600; color: {{ $s[1] }}; background: {{ $s[2] }}; border-radius: 20px; padding: 3px 10px;">{{ $s[0] }}</span>
+                                                        </td>
+                                                        <td class="is-center" style="padding-left: 8px; padding-right: 8px;">
+                                                            <button class="action-btn" title="แก้ไข"
+                                                                @click="openEditRoom({{ Js::from($room->only('id','room_code','room_name','building','capacity','location_type_id','status','address','equipment_type')) }})">
+                                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                                                </svg>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                                <tr
+                                                    x-show="(filters.location_types.keyword || filters.location_types.status) && !Array.from($el.parentNode.children).some(tr => tr !== $el && tr.style.display !== 'none')"
+                                                    x-cloak>
+                                                    <td colspan="6" style="text-align: center; padding: 28px; color: var(--fg-3);">ไม่พบข้อมูลที่ค้นหา</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    @else
+                                        <div class="md-detail-note">ยังไม่มีสถานที่ในประเภทนี้@if($canManageMasterData) — กดปุ่ม + ด้านบนเพื่อเพิ่ม@endif</div>
+                                    @endif
                                 </div>
-                                @endif
                             </div>
-                        </div>{{-- end card --}}
-                    @empty
-                        <div style="text-align: center; padding: 48px 20px; color: var(--fg-3);">
-                            <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" style="color: #cbd5e1; margin: 0 auto 12px; display: block;">
-                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
-                            </svg>
-                            ยังไม่มีข้อมูลประเภทสถานที่
-                        </div>
-                    @endforelse
-                    <div
-                        x-show="(filters.location_types.keyword || filters.location_types.location_type_id || filters.location_types.status) && !Array.from($el.parentNode.children).some(el => el !== $el && el.dataset && el.dataset.search && el.style.display !== 'none')"
-                        x-cloak
-                        style="text-align: center; padding: 40px 20px; color: var(--fg-3);">
-                        ไม่พบข้อมูลที่ค้นหา
+                        @endforeach
                     </div>
                 </div>
             </div>
@@ -1807,127 +1767,112 @@
                     </select>
                 </div>
 
-                <div class="curriculum-list" x-data="{ expandedCurriculum: null }" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 8px;">
-                    @forelse($curriculums as $curr)
-                        <div
-                            class="curriculum-list-item"
-                            data-search="{{ Str::lower($curr->name . ' ' . ($curr->effective_year ?? '') . ' ' . ($curr->is_active ? 'กำลังใช้งาน active' : 'ปิดใช้งาน inactive') . ' ' . $curr->courses_count . ' วิชา ' . $curr->courses->pluck('course_code')->join(' ') . ' ' . $curr->courses->pluck('name_th')->join(' ') . ' ' . $curr->courses->pluck('name_en')->join(' ') . ' ' . $curr->courses->pluck('credits')->join(' ') . ' ' . $curr->courses->pluck('default_year_level')->join(' ') . ' ' . $curr->courses->pluck('default_semester')->join(' ')) }}"
-                            data-is-active="{{ $curr->is_active ? '1' : '0' }}"
-                            x-show="includesText($el.dataset.search, filters.curriculums.keyword) && (filters.curriculums.is_active === '' || $el.dataset.isActive == filters.curriculums.is_active)"
-                            style="border: 1px solid color-mix(in oklch, var(--brand-navy) 32%, var(--border-strong)); border-radius: 8px; overflow: hidden;">
-
-                            {{-- Header --}}
-                            <div @click="expandedCurriculum = expandedCurriculum === {{ $curr->id }} ? null : {{ $curr->id }}"
-                                style="cursor: pointer; user-select: none; transition: background 0.15s;"
-                                :style="expandedCurriculum === {{ $curr->id }} ? 'background: #f0f4ff;' : 'background: #fff;'">
-                            <div class="curriculum-card-head" style="display: flex; align-items: center; gap: 16px; padding: 14px 16px;">
-
-                                {{-- Chevron --}}
-                                <div class="curriculum-card-chevron" style="flex-shrink: 0; width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: background 0.15s;"
-                                    :style="expandedCurriculum === {{ $curr->id }} ? 'background: var(--brand-navy);' : 'background: var(--bg-3);'">
-                                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
-                                        style="transition: transform 0.2s;"
-                                        :style="expandedCurriculum === {{ $curr->id }} ? 'transform:rotate(90deg); color:#fff' : 'color: var(--fg-3)'">
-                                        <polyline points="9 18 15 12 9 6"/>
-                                    </svg>
-                                </div>
-
-                                {{-- Name + year --}}
-                                <div class="curriculum-card-title-block" style="flex: 1; min-width: 0;">
-                                    <div class="curriculum-card-title" style="font-weight: 600; font-size: 14px; color: var(--fg-1);">{{ $curr->name }}</div>
-                                    <div class="curriculum-card-year" style="margin-top: 3px; font-size: 12px; color: var(--fg-3);">
+                <div class="md-split" x-data="{ selCurr: {{ $curriculums->first()?->id ?? 'null' }} }">
+                    {{-- LEFT: curriculum list --}}
+                    <div class="md-list">
+                        @forelse($curriculums as $curr)
+                            <button type="button"
+                                class="md-list-item" :class="{ 'is-active': selCurr === {{ $curr->id }} }"
+                                data-search="{{ Str::lower($curr->name . ' ' . ($curr->effective_year ?? '') . ' ' . ($curr->is_active ? 'กำลังใช้งาน active' : 'ปิดใช้งาน inactive') . ' ' . $curr->courses_count . ' วิชา ' . $curr->courses->pluck('course_code')->join(' ') . ' ' . $curr->courses->pluck('name_th')->join(' ') . ' ' . $curr->courses->pluck('name_en')->join(' ') . ' ' . $curr->courses->pluck('credits')->join(' ') . ' ' . $curr->courses->pluck('default_year_level')->join(' ') . ' ' . $curr->courses->pluck('department.name')->join(' ')) }}"
+                                data-is-active="{{ $curr->is_active ? '1' : '0' }}"
+                                x-show="includesText($el.dataset.search, filters.curriculums.keyword) && (filters.curriculums.is_active === '' || $el.dataset.isActive == filters.curriculums.is_active)"
+                                @click="selCurr = {{ $curr->id }}">
+                                <div class="md-list-item-body">
+                                    <div class="md-list-item-title" title="{{ $curr->name }}">{{ $curr->name }}</div>
+                                    <div class="md-list-item-sub">
                                         ปีที่เริ่มใช้: {{ $curr->effective_year ?? '-' }}
+                                        @if($curr->is_active) · <span style="color:#047481;">กำลังใช้งาน</span>@else · ปิดใช้งาน@endif
                                     </div>
                                 </div>
-
-                                {{-- Status badge --}}
-                                @if($curr->is_active)
-                                    <span class="curriculum-card-status" style="flex-shrink:0; background:#e6fffa; color:#047481; border:1px solid #b2f5ea; padding:3px 10px; border-radius:99px; font-size:11px; font-weight:700;">กำลังใช้งาน</span>
-                                @else
-                                    <span class="curriculum-card-status" style="flex-shrink:0; background:#f7fafc; color:#4a5568; border:1px solid #edf2f7; padding:3px 10px; border-radius:99px; font-size:11px; font-weight:700;">ปิดใช้งาน</span>
-                                @endif
-
-                                {{-- Course count --}}
                                 @if($curr->courses_count > 0)
-                                <div class="curriculum-card-count" style="flex-shrink: 0; background: var(--bg-3); border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 700; color: var(--fg-2);">
-                                    {{ $curr->courses_count }} วิชา
-                                </div>
+                                    <span class="md-count-pill">{{ $curr->courses_count }} วิชา</span>
                                 @else
-                                <div class="curriculum-card-count" style="flex-shrink: 0; font-size: 12px; color: var(--fg-4, #94a3b8);">ยังไม่มีวิชา</div>
+                                    <span class="md-count-pill is-empty">0 วิชา</span>
                                 @endif
-
-                                {{-- Actions (admin only) --}}
-                                @if($canManageMasterData)
-                                <div class="curriculum-card-actions" @click.stop style="flex-shrink: 0; display: flex; gap: 4px;">
-                                    <button class="action-btn" title="แก้ไขชื่อ/ปี" data-testid="curriculum-edit-button" data-curriculum-id="{{ $curr->id }}" @click.stop="openEditCurriculum({{ Js::from($curr) }})">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                                        </svg>
-                                    </button>
-                                    <button class="action-btn" title="คัดลอกหลักสูตรและรายวิชา" @click.stop="openCloneCurriculum({{ Js::from($curr) }})" style="color: var(--brand-navy);">
-                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                                        </svg>
-                                    </button>
-                                </div>
-                                @endif
-
-                            </div>{{-- /flex inner --}}
-                            </div>{{-- /click outer --}}
-
-                            {{-- Expanded course list --}}
-                            <div x-show="expandedCurriculum === {{ $curr->id }}" x-cloak
-                                x-transition:enter="transition ease-out duration-150"
-                                x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-                                x-transition:leave="transition ease-in duration-100"
-                                x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-                                style="border-top: 1px solid var(--border);">
-
-                                @if($curr->courses->count() > 0)
-                                    <table style="width: 100%; border-collapse: collapse;">
-                                        <thead>
-                                            <tr style="background: var(--bg-2);">
-                                                <th style="padding: 8px 16px 8px 56px; text-align: left; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">รหัสวิชา</th>
-                                                <th style="padding: 8px 16px; text-align: left; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">ชื่อวิชา</th>
-                                                <th style="padding: 8px 16px; text-align: center; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">หน่วยกิต</th>
-                                                <th style="padding: 8px 16px; text-align: center; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">ชั้นปี</th>
-                                                <th style="padding: 8px 16px; text-align: center; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">ภาค</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach($curr->courses as $course)
-                                                <tr style="border-top: 1px solid var(--border); transition: background 0.1s;"
-                                                    onmouseover="this.style.background='var(--bg-2)'" onmouseout="this.style.background=''">
-                                                    <td style="padding: 11px 16px 11px 56px; font-size: 12px; color: var(--fg-3); font-family: var(--font-mono, monospace);">{{ $course->course_code }}</td>
-                                                    <td style="padding: 11px 16px; font-size: 13px; font-weight: 600; color: var(--fg-1);">
-                                                        {{ $course->name_th }}
-                                                        @if($course->name_en)
-                                                            <div style="font-size: 11px; font-weight: 400; color: var(--fg-3); margin-top: 1px;">{{ $course->name_en }}</div>
-                                                        @endif
-                                                    </td>
-                                                    <td style="padding: 11px 16px; font-size: 13px; color: var(--fg-2); text-align: center;">{{ $course->credits }}</td>
-                                                    <td style="padding: 11px 16px; font-size: 13px; color: var(--fg-2); text-align: center;">{{ $course->default_year_level ? 'ปี ' . $course->default_year_level : '-' }}</td>
-                                                    <td style="padding: 11px 16px; font-size: 13px; color: var(--fg-2); text-align: center;">{{ $course->default_semester ?? '-' }}</td>
-                                                </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                @else
-                                    <div style="padding: 20px 56px; font-size: 13px; color: var(--fg-3);">ยังไม่มีรายวิชาในหลักสูตรนี้</div>
-                                @endif
-                            </div>
-
+                            </button>
+                        @empty
+                            <div class="md-list-empty">ยังไม่มีข้อมูลหลักสูตร</div>
+                        @endforelse
+                        <div class="md-list-empty"
+                            x-show="(filters.curriculums.keyword || filters.curriculums.is_active) && !Array.from($el.parentNode.children).some(el => el !== $el && el.dataset && el.dataset.search && el.style.display !== 'none')"
+                            x-cloak>
+                            ไม่พบข้อมูลที่ค้นหา
                         </div>
-                    @empty
-                        <div style="text-align: center; padding: 48px 20px; color: var(--fg-3);">ยังไม่มีข้อมูลหลักสูตร</div>
-                    @endforelse
-                    <div
-                        x-show="(filters.curriculums.keyword || filters.curriculums.is_active) && !Array.from($el.parentNode.children).some(el => el !== $el && el.dataset && el.dataset.search && el.style.display !== 'none')"
-                        x-cloak
-                        style="text-align: center; padding: 40px 20px; color: var(--fg-3);">
-                        ไม่พบข้อมูลที่ค้นหา
+                    </div>
+
+                    {{-- RIGHT: selected curriculum detail --}}
+                    <div class="md-detail">
+                        @if($curriculums->isEmpty())
+                            <div class="md-detail-empty">เพิ่มหลักสูตรเพื่อเริ่มต้น</div>
+                        @endif
+                        @foreach($curriculums as $curr)
+                            <div x-show="selCurr === {{ $curr->id }}" x-cloak>
+                                <div class="md-detail-head">
+                                    <div style="flex: 1; min-width: 0;">
+                                        <div class="md-detail-title">{{ $curr->name }}</div>
+                                        <div class="md-detail-meta">
+                                            <span>ปีที่เริ่มใช้: {{ $curr->effective_year ?? '-' }}</span>
+                                            @if($curr->is_active)
+                                                <span style="background:#e6fffa; color:#047481; border:1px solid #b2f5ea; padding:1px 9px; border-radius:99px; font-weight:700;">กำลังใช้งาน</span>
+                                            @else
+                                                <span style="background:#f7fafc; color:#4a5568; border:1px solid #edf2f7; padding:1px 9px; border-radius:99px; font-weight:700;">ปิดใช้งาน</span>
+                                            @endif
+                                            <span>{{ $curr->courses_count }} วิชา</span>
+                                        </div>
+                                    </div>
+                                    @if($canManageMasterData)
+                                    <div class="md-detail-actions">
+                                        <button class="action-btn" title="แก้ไขชื่อ/ปี" data-testid="curriculum-edit-button" data-curriculum-id="{{ $curr->id }}" @click="openEditCurriculum({{ Js::from($curr) }})">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                            </svg>
+                                        </button>
+                                        <button class="action-btn" title="คัดลอกหลักสูตรและรายวิชา" @click="openCloneCurriculum({{ Js::from($curr) }})" style="color: var(--brand-navy);">
+                                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    @endif
+                                </div>
+
+                                <div class="md-detail-body">
+                                    @if($curr->courses->count() > 0)
+                                        <table class="md-detail-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>รหัสวิชา</th>
+                                                    <th>ชื่อวิชา</th>
+                                                    <th class="is-center">หน่วยกิต</th>
+                                                    <th class="is-center">ชั้นปี</th>
+                                                    <th>ภาควิชา</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach($curr->courses as $course)
+                                                    <tr>
+                                                        <td style="color: var(--fg-3); font-family: var(--font-mono, monospace);">{{ $course->course_code }}</td>
+                                                        <td style="font-weight: 600; color: var(--fg-1);">
+                                                            {{ $course->name_th }}
+                                                            @if($course->name_en)
+                                                                <div style="font-size: 11px; font-weight: 400; color: var(--fg-3); margin-top: 1px;">{{ $course->name_en }}</div>
+                                                            @endif
+                                                        </td>
+                                                        <td class="is-center">{{ $course->credits }}</td>
+                                                        <td class="is-center">{{ $course->default_year_level ? 'ปี ' . $course->default_year_level : '-' }}</td>
+                                                        <td>{{ $course->department->name ?? '-' }}</td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    @else
+                                        <div class="md-detail-note">ยังไม่มีรายวิชาในหลักสูตรนี้</div>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
                     </div>
                 </div>
             </div>
@@ -1959,6 +1904,7 @@
                                 <label>ชื่อภาควิชา <span style="color: var(--status-conflict-fg)">*</span></label>
                                 <input type="text" name="name" x-model="currentDept.name" required
                                     data-testid="department-form-name"
+                                    x-init="$nextTick(() => $el.focus())"
                                     placeholder="เช่น ภาควิชาการพยาบาลกุมารเวชศาสตร์">
                             </div>
                             <div class="dept-empty-assignment" x-show="deptInstructorUsers.length === 0" x-cloak>
@@ -2283,6 +2229,7 @@
                                 <label>ชื่อประเภทสถานที่ <span style="color: var(--status-conflict-fg)">*</span></label>
                                 <input type="text" name="name" x-model="currentLocType.name" required
                                     data-testid="location-type-form-name"
+                                    x-init="$nextTick(() => $el.focus())"
                                     placeholder="เช่น ห้องบรรยาย, หอผู้ป่วย">
                             </div>
                             <div style="display: flex; align-items: flex-start; gap: 12px; padding: 14px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 4px;">
@@ -2351,6 +2298,7 @@
                                     <label>รหัสห้อง/สถานที่ <span style="color: var(--status-conflict-fg)">*</span></label>
                                     <input type="text" name="room_code" x-model="currentRoom.room_code" required
                                         data-testid="room-form-code"
+                                        x-init="editRoomMode || $nextTick(() => $el.focus())"
                                         placeholder="เช่น 302, WARD-A">
                                 </div>
                                 <div class="form-group">
@@ -2403,21 +2351,22 @@
                                     </div>
                                 </div>
                                 <div class="form-group">
-                                    <template x-if="!(locTypeMap[currentRoom.location_type_id] ?? true)">
+                                    {{-- สถานที่ใช้ร่วมกันได้ (is_shared=true) → ความจุไม่บังคับ · ห้องปกติ → บังคับ --}}
+                                    <template x-if="(locTypeMap[currentRoom.location_type_id] ?? false)">
                                         <label>ความจุ (คน) <span style="color: var(--fg-3); font-weight: 400;">— ไม่บังคับ</span></label>
                                     </template>
-                                    <template x-if="(locTypeMap[currentRoom.location_type_id] ?? true)">
+                                    <template x-if="!(locTypeMap[currentRoom.location_type_id] ?? false)">
                                         <label>ความจุ (คน)</label>
                                     </template>
                                     <input type="number" name="capacity" x-model="currentRoom.capacity" min="0"
-                                        :required="(locTypeMap[currentRoom.location_type_id] ?? true)">
+                                        :required="!(locTypeMap[currentRoom.location_type_id] ?? false)">
                                 </div>
                                 <div class="form-group">
                                     <label>สถานะ</label>
                                     <select name="status" x-model="currentRoom.status" required>
-                                        <option value="active">พร้อมใช้งาน</option>
-                                        <option value="maintenance">ปิดซ่อมบำรุง</option>
-                                        <option value="inactive">ไม่พร้อมใช้</option>
+                                        <option value="active">ใช้งาน</option>
+                                        <option value="maintenance">ซ่อมบำรุง</option>
+                                        <option value="inactive">ปิดใช้งาน</option>
                                     </select>
                                 </div>
                                 </div>
@@ -2437,6 +2386,7 @@
                                     <div class="form-group">
                                         <label>รายละเอียดที่ตั้ง / ที่อยู่ (แหล่งฝึกภายนอก)</label>
                                         <textarea name="address" x-model="currentRoom.address" rows="2"
+                                            style="width: 100%; min-height: 76px; resize: vertical;"
                                             placeholder="เช่น ชั้น 3, โรงพยาบาลศิริราช..."></textarea>
                                     </div>
                                 </div>
@@ -2516,7 +2466,7 @@
                                 <div class="course-form-grid course-form-grid--basic">
                                     <div class="form-group course-code-field">
                                         <label>รหัสวิชา <span style="color:var(--status-conflict-fg)">*</span></label>
-                                        <input type="text" name="course_code" data-testid="course-form-code" x-model="currentCourse.course_code" required placeholder="เช่น NSBS 212">
+                                        <input type="text" name="course_code" data-testid="course-form-code" x-model="currentCourse.course_code" required x-init="editCourseMode || $nextTick(() => $el.focus())" placeholder="เช่น NSBS 212">
                                         @error('course_code')
                                             @if($courseFormHasErrors)
                                                 <div data-testid="course-code-error" style="margin-top:6px;color:var(--status-conflict-fg);font-size:12px;line-height:1.45;">{{ $message }}</div>
@@ -2925,7 +2875,7 @@
                             <div style="font-weight:700;font-size:12px;color:var(--brand-navy);border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:14px;">ข้อมูลทั่วไป</div>
                             <div class="form-group" style="margin-bottom: 16px;">
                                 <label>ชื่อหลักสูตร <span style="color: var(--status-conflict-fg)">*</span></label>
-                                <input type="text" name="name" x-model="currentCurriculum.name" required placeholder="เช่น พยาบาลศาสตรบัณฑิต (2565)">
+                                <input type="text" name="name" x-model="currentCurriculum.name" required x-init="$nextTick(() => $el.focus())" placeholder="เช่น พยาบาลศาสตรบัณฑิต (2565)">
                             </div>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 16px;">
                                 <div class="form-group" style="margin-bottom:0;">
@@ -3135,7 +3085,7 @@
                         <div class="modal-body" style="overflow: visible;">
                             <div class="form-group" style="margin-bottom: 20px;">
                                 <label>ชื่อประเภทกิจกรรม <span style="color: var(--status-conflict-fg)">*</span></label>
-                                <input type="text" name="name" x-model="currentActivityType.name" required data-testid="activity-type-form-name" placeholder="เช่น บรรยาย, ฝึกปฏิบัติในห้องเรียน">
+                                <input type="text" name="name" x-model="currentActivityType.name" required data-testid="activity-type-form-name" x-init="$nextTick(() => $el.focus())" placeholder="เช่น บรรยาย, ฝึกปฏิบัติในห้องเรียน">
                             </div>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                                 <div class="form-group">
@@ -3227,109 +3177,97 @@
                     @endif
                 </div>
 
-                <div class="curriculum-list" x-data="{ expandedCohort: null }" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 8px;">
-                    @forelse($cohortCurriculums as $cur)
-                        <div class="curriculum-list-item" style="border: 1px solid color-mix(in oklch, var(--brand-navy) 32%, var(--border-strong)); border-radius: 8px; overflow: hidden;">
-
-                            {{-- Header --}}
-                            <div @click="expandedCohort = expandedCohort === {{ $cur->id }} ? null : {{ $cur->id }}"
-                                style="cursor: pointer; user-select: none; transition: background 0.15s;"
-                                :style="expandedCohort === {{ $cur->id }} ? 'background: #f0f4ff;' : 'background: #fff;'">
-                            <div class="curriculum-card-head" style="display: flex; align-items: center; gap: 16px; padding: 14px 16px;">
-
-                                {{-- Chevron --}}
-                                <div class="curriculum-card-chevron" style="flex-shrink: 0; width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: background 0.15s;"
-                                    :style="expandedCohort === {{ $cur->id }} ? 'background: var(--brand-navy);' : 'background: var(--bg-3);'">
-                                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
-                                        style="transition: transform 0.2s;"
-                                        :style="expandedCohort === {{ $cur->id }} ? 'transform:rotate(90deg); color:#fff' : 'color: var(--fg-3)'">
-                                        <polyline points="9 18 15 12 9 6"/>
-                                    </svg>
+                <div class="md-split" x-data="{ selCohortCur: {{ $cohortCurriculums->first()?->id ?? 'null' }} }">
+                    {{-- LEFT: curriculum list --}}
+                    <div class="md-list">
+                        @forelse($cohortCurriculums as $cur)
+                            <button type="button"
+                                class="md-list-item" :class="{ 'is-active': selCohortCur === {{ $cur->id }} }"
+                                @click="selCohortCur = {{ $cur->id }}">
+                                <div class="md-list-item-body">
+                                    <div class="md-list-item-title" title="{{ $cur->name }}">{{ $cur->name }}</div>
+                                    <div class="md-list-item-sub">{{ $eduLabel[$cur->education_level] ?? $cur->education_level }}@if($cur->uses_year_level) · ปี 1-{{ $cur->duration_years }}@else · ไม่ผูกชั้นปี@endif</div>
                                 </div>
+                                @if($cur->studentCohorts->count() > 0)
+                                    <span class="md-count-pill">{{ $cur->studentCohorts->count() }} กลุ่ม</span>
+                                @else
+                                    <span class="md-count-pill is-empty">0 กลุ่ม</span>
+                                @endif
+                            </button>
+                        @empty
+                            <div class="md-list-empty">ยังไม่มีหลักสูตร — เพิ่มในแท็บ "หลักสูตร" ก่อน</div>
+                        @endforelse
+                    </div>
 
-                                {{-- Name + level --}}
-                                <div class="curriculum-card-title-block" style="flex: 1; min-width: 0;">
-                                    <div class="curriculum-card-title" style="font-weight: 600; font-size: 14px; color: var(--fg-1);">{{ $cur->name }}</div>
-                                    <div class="curriculum-card-year" style="margin-top: 3px; font-size: 12px; color: var(--fg-3);">
-                                        {{ $eduLabel[$cur->education_level] ?? $cur->education_level }}@if($cur->uses_year_level) · แบ่งตามชั้นปี (ปี 1-{{ $cur->duration_years }})@else · ไม่ผูกชั้นปี@endif
+                    {{-- RIGHT: selected curriculum cohort detail --}}
+                    <div class="md-detail">
+                        @if($cohortCurriculums->isEmpty())
+                            <div class="md-detail-empty">เพิ่มหลักสูตรในแท็บ "หลักสูตร" ก่อน จึงจะจัดกลุ่มได้</div>
+                        @endif
+                        @foreach($cohortCurriculums as $cur)
+                            <div x-show="selCohortCur === {{ $cur->id }}" x-cloak>
+                                <div class="md-detail-head">
+                                    <div style="flex: 1; min-width: 0;">
+                                        <div class="md-detail-title">{{ $cur->name }}</div>
+                                        <div class="md-detail-meta">
+                                            <span>{{ $eduLabel[$cur->education_level] ?? $cur->education_level }}</span>
+                                            <span>@if($cur->uses_year_level)แบ่งตามชั้นปี (ปี 1-{{ $cur->duration_years }})@else ไม่ผูกชั้นปี @endif</span>
+                                            <span>{{ $cur->studentCohorts->count() }} กลุ่ม</span>
+                                        </div>
                                     </div>
+                                    @if($canManageMasterData)
+                                    <div class="md-detail-actions">
+                                        <button type="button" class="action-btn" title="เพิ่มกลุ่มในหลักสูตรนี้" @click="openAddCohort({{ $cur->id }})" style="color: var(--brand-navy);">
+                                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                        </button>
+                                    </div>
+                                    @endif
                                 </div>
 
-                                {{-- Group count --}}
-                                @if($cur->studentCohorts->count() > 0)
-                                <div class="curriculum-card-count" style="flex-shrink: 0; background: var(--bg-3); border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 700; color: var(--fg-2);">
-                                    {{ $cur->studentCohorts->count() }} กลุ่ม
-                                </div>
-                                @else
-                                <div class="curriculum-card-count" style="flex-shrink: 0; font-size: 12px; color: var(--fg-4, #94a3b8);">ยังไม่มีกลุ่ม</div>
-                                @endif
-
-                                {{-- Actions (admin only) — เพิ่มกลุ่มในหลักสูตรนี้ (auto-fill หลักสูตรใน modal) --}}
-                                @if($canManageMasterData)
-                                <div class="curriculum-card-actions" @click.stop style="flex-shrink: 0; display: flex; gap: 4px;">
-                                    <button type="button" class="action-btn" title="เพิ่มกลุ่มในหลักสูตรนี้" @click.stop="openAddCohort({{ $cur->id }})" style="color: var(--brand-navy);">
-                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                                    </button>
-                                </div>
-                                @endif
-
-                            </div>{{-- /flex inner --}}
-                            </div>{{-- /click outer --}}
-
-                            {{-- Expanded cohort list --}}
-                            <div x-show="expandedCohort === {{ $cur->id }}" x-cloak
-                                x-transition:enter="transition ease-out duration-150"
-                                x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-                                x-transition:leave="transition ease-in duration-100"
-                                x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-                                style="border-top: 1px solid var(--border);">
-
-                                @if($cur->studentCohorts->count() > 0)
-                                    <table style="width: 100%; border-collapse: collapse;">
-                                        <thead>
-                                            <tr style="background: var(--bg-2);">
-                                                @if($cur->uses_year_level)
-                                                <th style="padding: 8px 16px 8px 56px; text-align: left; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">ชั้นปี</th>
-                                                <th style="padding: 8px 16px; text-align: left; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">รหัสกลุ่ม</th>
-                                                @else
-                                                <th style="padding: 8px 16px 8px 56px; text-align: left; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em;">รหัสกลุ่ม</th>
-                                                @endif
-                                                <th style="padding: 8px 16px; text-align: center; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em; width: 180px;">จำนวนนักศึกษา</th>
-                                                @if($canManageMasterData)<th style="padding: 8px 16px; text-align: center; font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em; width: 80px;">จัดการ</th>@endif
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach($cur->studentCohorts as $co)
-                                                <tr style="border-top: 1px solid var(--border); transition: background 0.1s;"
-                                                    onmouseover="this.style.background='var(--bg-2)'" onmouseout="this.style.background=''">
+                                <div class="md-detail-body">
+                                    @if($cur->studentCohorts->count() > 0)
+                                        <table class="md-detail-table">
+                                            <thead>
+                                                <tr>
                                                     @if($cur->uses_year_level)
-                                                    <td style="padding: 11px 16px 11px 56px; font-size: 13px; color: var(--fg-2);">@if($co->year_level)ปี {{ $co->year_level }}@else<span style="color: var(--fg-3);">—</span>@endif</td>
-                                                    <td style="padding: 11px 16px; font-size: 13px; font-weight: 600; color: var(--fg-1);">@if($co->parent_id)<span style="color:var(--fg-3);font-weight:400;">↳ </span><span style="font-weight:500;color:var(--fg-2);">{{ $co->code }}</span>@else{{ $co->code }}@endif</td>
+                                                    <th>ชั้นปี</th>
+                                                    <th>รหัสกลุ่ม</th>
                                                     @else
-                                                    <td style="padding: 11px 16px 11px 56px; font-size: 13px; font-weight: 600; color: var(--fg-1);">@if($co->parent_id)<span style="color:var(--fg-3);font-weight:400;">↳ </span><span style="font-weight:500;color:var(--fg-2);">{{ $co->code }}</span>@else{{ $co->code }}@endif</td>
+                                                    <th>รหัสกลุ่ม</th>
                                                     @endif
-                                                    <td style="padding: 11px 16px; font-size: 13px; color: var(--fg-2); text-align: center; font-family: var(--font-mono, monospace);">{{ number_format($co->student_count) }} คน</td>
-                                                    @if($canManageMasterData)
-                                                    <td style="padding: 11px 16px; text-align: center;">
-                                                        <button type="button" class="action-btn" title="แก้ไข"
-                                                            @click="openEditCohort({{ Js::from(['id' => $co->id, 'curriculum_id' => $co->curriculum_id, 'year_level' => $co->year_level, 'code' => $co->code, 'student_count' => $co->student_count, 'note' => $co->note]) }})">
-                                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                                        </button>
-                                                    </td>
-                                                    @endif
+                                                    <th class="is-center" style="width: 180px;">จำนวนนักศึกษา</th>
+                                                    @if($canManageMasterData)<th class="is-center" style="width: 80px;">จัดการ</th>@endif
                                                 </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                @else
-                                    <div style="padding: 20px 56px; font-size: 13px; color: var(--fg-3);">ยังไม่มีกลุ่มในหลักสูตรนี้@if($canManageMasterData) — กดปุ่ม "เพิ่มกลุ่มนักศึกษา" ด้านบน@endif</div>
-                                @endif
+                                            </thead>
+                                            <tbody>
+                                                @foreach($cur->studentCohorts as $co)
+                                                    <tr>
+                                                        @if($cur->uses_year_level)
+                                                        <td>@if($co->year_level)ปี {{ $co->year_level }}@else<span style="color: var(--fg-3);">—</span>@endif</td>
+                                                        <td style="font-weight: 600; color: var(--fg-1);">@if($co->parent_id)<span style="color:var(--fg-3);font-weight:400;">↳ </span><span style="font-weight:500;color:var(--fg-2);">{{ $co->code }}</span>@else{{ $co->code }}@endif</td>
+                                                        @else
+                                                        <td style="font-weight: 600; color: var(--fg-1);">@if($co->parent_id)<span style="color:var(--fg-3);font-weight:400;">↳ </span><span style="font-weight:500;color:var(--fg-2);">{{ $co->code }}</span>@else{{ $co->code }}@endif</td>
+                                                        @endif
+                                                        <td class="is-center" style="font-family: var(--font-mono, monospace);">{{ number_format($co->student_count) }} คน</td>
+                                                        @if($canManageMasterData)
+                                                        <td class="is-center">
+                                                            <button type="button" class="action-btn" title="แก้ไข"
+                                                                @click="openEditCohort({{ Js::from(['id' => $co->id, 'curriculum_id' => $co->curriculum_id, 'year_level' => $co->year_level, 'code' => $co->code, 'student_count' => $co->student_count, 'note' => $co->note]) }})">
+                                                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                                            </button>
+                                                        </td>
+                                                        @endif
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    @else
+                                        <div class="md-detail-note">ยังไม่มีกลุ่มในหลักสูตรนี้@if($canManageMasterData) — กดปุ่ม "เพิ่มกลุ่มนักศึกษา" ด้านบน@endif</div>
+                                    @endif
+                                </div>
                             </div>
-
-                        </div>
-                    @empty
-                        <div style="text-align: center; padding: 48px 20px; color: var(--fg-3);">ยังไม่มีหลักสูตร — เพิ่มหลักสูตรในแท็บ "หลักสูตร" ก่อน</div>
-                    @endforelse
+                        @endforeach
+                    </div>
                 </div>
             </div>
         </div>
@@ -3359,6 +3297,7 @@
                             <div class="form-group" style="margin-bottom: 18px;">
                                 <label>หลักสูตร <span style="color: var(--status-conflict-fg)">*</span></label>
                                 <select name="curriculum_id" x-model="currentCohort.curriculum_id" required
+                                    x-init="$nextTick(() => $el.focus())"
                                     @change="if (!cohortYearOptions().includes(Number(currentCohort.year_level))) currentCohort.year_level = ''">
                                     <option value="">— เลือกหลักสูตร —</option>
                                     @foreach($cohortCurriculums as $cur)
@@ -3478,7 +3417,7 @@
                             @endif
                             <div class="form-group" style="margin-bottom: 20px;">
                                 <label>ชื่อหลักสูตรใหม่ <span style="color: var(--status-conflict-fg)">*</span></label>
-                                <input type="text" name="name" x-model="cloneNewName" required>
+                                <input type="text" name="name" x-model="cloneNewName" required x-init="$nextTick(() => $el.focus())">
                             </div>
                             <div class="form-group" style="margin-bottom: 20px;">
                                 <label>ปีที่เริ่มใช้หลักสูตรใหม่ (พ.ศ.) <span style="color: var(--status-conflict-fg)">*</span></label>
@@ -3972,6 +3911,177 @@
             line-break: strict;
         }
 
+        /* ── Master-detail (2-pane) drill-down — ภาควิชา / หลักสูตร / กลุ่มนักศึกษา ── */
+        .md-split {
+            display: grid;
+            grid-template-columns: minmax(260px, 330px) minmax(0, 1fr);
+            align-items: stretch;
+            margin: 16px 20px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 24%, var(--border-strong));
+            border-radius: 10px;
+            overflow: hidden;
+            background: #fff;
+        }
+
+        .md-list {
+            border-right: 1px solid var(--border);
+            background: var(--bg-2);
+            max-height: 600px;
+            overflow-y: auto;
+            /* คงพื้นหลังไว้เต็ม column แม้รายการสั้นกว่าฝั่งขวา */
+            scrollbar-gutter: stable;
+        }
+
+        /* scrollbar เรียบ ๆ ตาม Impeccable (flat, ไม่หรูหรา) */
+        .md-list::-webkit-scrollbar,
+        .md-detail::-webkit-scrollbar { width: 9px; }
+        .md-list::-webkit-scrollbar-thumb,
+        .md-detail::-webkit-scrollbar-thumb {
+            background: color-mix(in oklch, var(--brand-navy) 22%, transparent);
+            border-radius: 99px;
+            border: 2px solid transparent;
+            background-clip: padding-box;
+        }
+        .md-list::-webkit-scrollbar-thumb:hover,
+        .md-detail::-webkit-scrollbar-thumb:hover {
+            background: color-mix(in oklch, var(--brand-navy) 42%, transparent);
+            background-clip: padding-box;
+        }
+
+        .md-list-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            width: 100%;
+            text-align: left;
+            padding: 13px 16px;
+            border: 0;
+            border-bottom: 1px solid var(--border);
+            background: transparent;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.12s ease;
+        }
+
+        .md-list-item:hover { background: #eef2fb; }
+
+        .md-list-item.is-active {
+            background: #fff;
+            box-shadow: inset 3px 0 0 var(--brand-navy);
+        }
+
+        .md-list-item-body { flex: 1; min-width: 0; }
+
+        .md-list-item-title {
+            font-weight: 600;
+            font-size: 13.5px;
+            color: var(--fg-1);
+            line-height: 1.35;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            overflow-wrap: anywhere;
+        }
+
+        .md-list-item-sub {
+            margin-top: 2px;
+            font-size: 11.5px;
+            color: var(--fg-3);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .md-count-pill {
+            flex-shrink: 0;
+            background: var(--bg-3);
+            border-radius: 20px;
+            padding: 2px 9px;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--fg-2);
+        }
+
+        .md-count-pill.is-empty {
+            background: transparent;
+            color: var(--fg-4, #94a3b8);
+            font-weight: 500;
+        }
+
+        .md-detail { min-width: 0; background: #fff; max-height: 600px; overflow-y: auto; }
+
+        .md-detail-empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 280px;
+            padding: 40px;
+            color: var(--fg-3);
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .md-detail-head {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+        }
+
+        .md-detail-title {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 18px;
+            color: var(--fg-1);
+            line-height: 1.4;
+        }
+
+        .md-detail-meta {
+            margin-top: 6px;
+            font-size: 12.5px;
+            color: var(--fg-3);
+            display: flex;
+            gap: 18px;
+            flex-wrap: wrap;
+        }
+
+        .md-detail-actions { flex-shrink: 0; display: flex; gap: 6px; }
+
+        .md-detail-body { padding: 8px 0 4px; }
+
+        .md-detail-table { width: 100%; border-collapse: collapse; }
+
+        .md-detail-table thead tr { background: var(--bg-2); }
+
+        .md-detail-table th {
+            padding: 9px 24px;
+            text-align: left;
+            font-size: 11px;
+            color: var(--fg-3);
+            font-weight: 600;
+            letter-spacing: 0.04em;
+        }
+
+        .md-detail-table th.is-center,
+        .md-detail-table td.is-center { text-align: center; }
+
+        .md-detail-table td {
+            padding: 12px 24px;
+            font-size: 13px;
+            color: var(--fg-2);
+            border-top: 1px solid var(--border);
+        }
+
+        .md-detail-table tbody tr { transition: background 0.1s; }
+        .md-detail-table tbody tr:hover { background: var(--bg-2); }
+
+        .md-detail-note { padding: 18px 24px; font-size: 13px; color: var(--fg-3); }
+
+        .md-list-empty { padding: 32px 20px; text-align: center; color: var(--fg-3); font-size: 13px; }
+
         @media (max-width: 1280px) {
             .m7-filter-bar.is-course {
                 grid-template-columns: minmax(360px, 1.4fr) repeat(3, minmax(140px, .7fr));
@@ -4139,6 +4249,26 @@
             .instructor-action-cell::before {
                 margin-bottom: 0;
             }
+
+            .md-split {
+                grid-template-columns: 1fr;
+                margin: 12px;
+            }
+
+            .md-list {
+                border-right: 0;
+                border-bottom: 1px solid var(--border);
+                max-height: 260px;
+            }
+
+            .md-list-item.is-active {
+                box-shadow: inset 0 -3px 0 var(--brand-navy);
+            }
+
+            .md-detail { max-height: none; overflow-y: visible; }
+            .md-detail-head { padding: 16px; flex-wrap: wrap; }
+            .md-detail-table th { padding: 9px 16px; }
+            .md-detail-table td { padding: 11px 16px; }
         }
 
         .search-results {

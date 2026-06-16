@@ -151,7 +151,7 @@ class MasterDataController extends Controller
             ->get();
 
         // Curriculums with course count and courses list
-        $curriculums = Curriculum::withCount('courses')->with(['courses' => fn($q) => $q->orderBy('course_code')])->get();
+        $curriculums = Curriculum::withCount('courses')->with(['courses' => fn($q) => $q->with('department')->orderBy('course_code')])->get();
 
         // กลุ่มนักศึกษา (cohort — V2) — ทุกระดับหลักสูตร
         // หลักสูตรที่ใช้ระบบชั้นปี (ป.ตรี) มี year_level / หลักสูตรที่ไม่ใช้ (ป.โท-เอก) year_level = null
