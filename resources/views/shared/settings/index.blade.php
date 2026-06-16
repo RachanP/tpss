@@ -414,62 +414,82 @@
             @endif
 
             @if($isAdmin)
-                <section class="settings-start-guide" aria-label="ลำดับการตั้งค่าระบบ">
-                    <div class="settings-start-guide__header">
-                        <div>
-                            <div class="settings-start-guide__eyebrow">เริ่มที่นี่</div>
-                            <h2>เริ่มตั้งค่าระบบ</h2>
-                            <p>ทำตามลำดับนี้ก่อนเปิดช่วงจัดตาราง ระบบจะบอกให้เห็นทันทีว่าขั้นไหนเสร็จแล้วและควรทำอะไรต่อ</p>
-                        </div>
-                        <div class="settings-start-guide__summary">
-                            @if($activeYear)
-                                <span>ปีปัจจุบัน</span>
-                                <strong>{{ $activeYear->name }}</strong>
-                            @else
-                                <span>ยังไม่มีปีปัจจุบัน</span>
-                                <strong>เริ่มจากเพิ่มปี</strong>
-                            @endif
+                <section class="settings-roadmap" aria-label="ภาพรวมก่อนเปิดจัดตาราง">
+                    <div class="settings-roadmap__header">
+                        <div class="settings-roadmap__intro">
+                            <h2>ภาพรวมก่อนเปิดจัดตาราง</h2>
+                            <div class="settings-roadmap__year-state">
+                                <span class="settings-roadmap__state-pill">
+                                    <span class="settings-roadmap__state-label">ปีการศึกษาปัจจุบัน:</span>
+                                    <strong class="settings-roadmap__state-value">{{ $activeYear ? $activeYear->name : 'ยังไม่ได้ตั้งค่า' }}</strong>
+                                </span>
+                                <span class="settings-roadmap__state-pill">
+                                    <span class="settings-roadmap__state-label">สถานะปี:</span>
+                                    <strong class="settings-roadmap__state-value">
+                                        @if($activeYear && $activeYear->phase === 'scheduling')
+                                            เปิดช่วงจัดตารางอยู่
+                                        @elseif($activeYear && $activeYear->phase === 'published')
+                                            เผยแพร่ตารางแล้ว
+                                        @elseif($activeYear)
+                                            เตรียมข้อมูล
+                                        @else
+                                            รอเพิ่มปีการศึกษา
+                                        @endif
+                                    </strong>
+                                </span>
+                            </div>
+                            <p class="settings-roadmap__phase">
+                                <span x-show="!calYearName" x-cloak>ตอนนี้อยู่ขั้นที่ 1: ตั้งค่าปีการศึกษาปัจจุบัน</span>
+                                <span x-show="calYearName && !centralHasTerms()" x-cloak>ตอนนี้อยู่ขั้นที่ 2: กำหนดปฏิทินกลางของคณะ</span>
+                                @if($hasSchedulingCriticals)
+                                    <span x-show="calYearName && centralHasTerms()" x-cloak>ตอนนี้อยู่ขั้นที่ 4: แก้ข้อมูลที่ต้องแก้ก่อนเปิดช่วงจัดตาราง</span>
+                                @elseif($activeYear && $activeYear->phase === 'preparation')
+                                    <span x-show="calYearName && centralHasTerms()" x-cloak>ตอนนี้อยู่ขั้นที่ 4: พร้อมตรวจและเปิดช่วงจัดตาราง</span>
+                                @elseif($activeYear && $activeYear->phase === 'scheduling')
+                                    <span x-show="calYearName && centralHasTerms()" x-cloak>ตอนนี้ระบบอยู่ในช่วงจัดตาราง</span>
+                                @elseif($activeYear && $activeYear->phase === 'published')
+                                    <span x-show="calYearName && centralHasTerms()" x-cloak>ตอนนี้ปีการศึกษานี้เผยแพร่ตารางแล้ว</span>
+                                @else
+                                    <span x-show="calYearName && centralHasTerms()" x-cloak>ตอนนี้ต้องตรวจสถานะปีการศึกษาก่อนเปิดช่วงจัดตาราง</span>
+                                @endif
+                            </p>
                         </div>
                     </div>
 
-                    <div class="settings-setup-steps">
-                        <article class="settings-setup-step {{ $activeYear ? 'is-done' : 'is-next' }}">
-                            <div class="settings-setup-step__mark">1</div>
-                            <div class="settings-setup-step__body">
-                                <div class="settings-setup-step__top">
+                    <div class="settings-roadmap__steps">
+                        <article class="settings-roadmap-step {{ $activeYear ? 'is-done' : 'is-current' }}">
+                            <div class="settings-roadmap-step__mark">1</div>
+                            <div class="settings-roadmap-step__body">
+                                <div class="settings-roadmap-step__top">
                                     <h3>ตั้งค่าปีการศึกษาปัจจุบัน</h3>
-                                    <span class="settings-step-badge">{{ $activeYear ? 'เสร็จแล้ว' : 'ทำขั้นนี้ต่อ' }}</span>
+                                    <span class="settings-step-badge">{{ $activeYear ? 'เสร็จแล้ว' : 'ทำขั้นนี้ก่อน' }}</span>
                                 </div>
-                                <div class="settings-step-task">{{ $activeYear ? 'ตรวจสอบ: ปีนี้ถูกตั้งเป็นปีปัจจุบันแล้ว' : 'สิ่งที่ต้องทำ: เพิ่มปีการศึกษาและติ๊กเป็นปีปัจจุบัน' }}</div>
-                                <p>{{ $activeYear ? 'มีปีปัจจุบันสำหรับอ้างอิงปฏิทินและช่วงจัดตารางแล้ว' : 'เพิ่มปีการศึกษาและตั้งให้เป็นปีปัจจุบันก่อน' }}</p>
+                                <p class="settings-step-task">{{ $activeYear ? 'ปีนี้เป็นฐานของปฏิทินและการจัดตาราง' : 'เพิ่มปีการศึกษาและตั้งให้เป็นปีปัจจุบัน' }}</p>
                                 @if($activeYear)
-                                    <button type="button" class="settings-step-link" @click="scrollToSettingsTarget('academic-year-section')">ดูตารางปีการศึกษา</button>
+                                    <button type="button" class="settings-step-link" @click="scrollToSettingsTarget('academic-year-section')">ดูปีการศึกษา</button>
                                 @else
                                     <button type="button" class="btn btn-primary settings-step-action" @click="openAddModal()">เพิ่มปีการศึกษา</button>
                                 @endif
                             </div>
                         </article>
 
-                        <article class="settings-setup-step"
+                        <article class="settings-roadmap-step"
                             :class="{
                                 'is-waiting': !calYearName,
-                                'is-next': calYearName && !centralHasTerms(),
+                                'is-current': calYearName && !centralHasTerms(),
                                 'is-done': calYearName && centralHasTerms()
                             }">
-                            <div class="settings-setup-step__mark">2</div>
-                            <div class="settings-setup-step__body">
-                                <div class="settings-setup-step__top">
+                            <div class="settings-roadmap-step__mark">2</div>
+                            <div class="settings-roadmap-step__body">
+                                <div class="settings-roadmap-step__top">
                                     <h3>กำหนดปฏิทินกลางของคณะ</h3>
-                                    <span class="settings-step-badge" x-show="!calYearName">รอก่อน</span>
-                                    <span class="settings-step-badge" x-show="calYearName && !centralHasTerms()" x-cloak>ทำขั้นนี้ต่อ</span>
+                                    <span class="settings-step-badge" x-show="!calYearName" x-cloak>รอก่อน</span>
+                                    <span class="settings-step-badge" x-show="calYearName && !centralHasTerms()" x-cloak>ทำขั้นนี้ก่อน</span>
                                     <span class="settings-step-badge" x-show="calYearName && centralHasTerms()" x-cloak>เสร็จแล้ว</span>
                                 </div>
-                                <div class="settings-step-task" x-show="!calYearName">สิ่งที่ต้องทำ: ทำขั้นที่ 1 ให้เสร็จก่อน</div>
-                                <div class="settings-step-task" x-show="calYearName && !centralHasTerms()" x-cloak>สิ่งที่ต้องทำ: กรอกวันเปิด-ปิดเทอมและช่วงสอบกลาง</div>
-                                <div class="settings-step-task" x-show="calYearName && centralHasTerms()" x-cloak>ตรวจสอบ: ปฏิทินกลางถูกกำหนดแล้ว</div>
-                                <p x-show="!calYearName">ต้องมีปีการศึกษาปัจจุบันก่อนจึงจะกำหนดปฏิทินได้</p>
-                                <p x-show="calYearName && !centralHasTerms()" x-cloak>กำหนดวันเปิด-ปิดเทอมและช่วงสอบที่เป็นค่ากลางของทั้งคณะ</p>
-                                <p x-show="calYearName && centralHasTerms()" x-cloak>ปฏิทินกลางพร้อมเป็นฐานให้ทุกหลักสูตรแล้ว</p>
+                                <p class="settings-step-task" x-show="!calYearName" x-cloak>ต้องทำขั้นที่ 1 ให้เสร็จก่อน</p>
+                                <p class="settings-step-task" x-show="calYearName && !centralHasTerms()" x-cloak>กรอกวันเปิดเทอม ปิดเทอม และช่วงสอบ</p>
+                                <p class="settings-step-task" x-show="calYearName && centralHasTerms()" x-cloak>ทุกหลักสูตรใช้ปฏิทินนี้เป็นฐาน</p>
                                 <button type="button" class="btn btn-primary settings-step-action"
                                     x-show="calYearName && !centralHasTerms()" x-cloak
                                     @click="openScopeModal({ key: 'central', curriculum_id: '', year: null, isDefault: true })">กำหนดปฏิทินกลาง</button>
@@ -479,44 +499,41 @@
                             </div>
                         </article>
 
-                        <article class="settings-setup-step"
+                        <article class="settings-roadmap-step"
                             :class="{
                                 'is-waiting': !calYearName || !centralHasTerms(),
                                 'is-optional': calYearName && centralHasTerms() && calOverrideCount() === 0,
                                 'is-done': calYearName && centralHasTerms() && calOverrideCount() > 0
                             }">
-                            <div class="settings-setup-step__mark">3</div>
-                            <div class="settings-setup-step__body">
-                                <div class="settings-setup-step__top">
+                            <div class="settings-roadmap-step__mark">3</div>
+                            <div class="settings-roadmap-step__body">
+                                <div class="settings-roadmap-step__top">
                                     <h3>ตั้งปฏิทินแยกเฉพาะกรณีที่ต่าง</h3>
-                                    <span class="settings-step-badge" x-show="!calYearName || !centralHasTerms()">รอก่อน</span>
+                                    <span class="settings-step-badge" x-show="!calYearName || !centralHasTerms()" x-cloak>รอก่อน</span>
                                     <span class="settings-step-badge" x-show="calYearName && centralHasTerms() && calOverrideCount() === 0" x-cloak>ข้ามได้</span>
                                     <span class="settings-step-badge" x-show="calYearName && centralHasTerms() && calOverrideCount() > 0" x-cloak>เสร็จแล้ว</span>
                                 </div>
-                                <div class="settings-step-task" x-show="!calYearName || !centralHasTerms()">สิ่งที่ต้องทำ: ทำปฏิทินกลางให้เสร็จก่อน</div>
-                                <div class="settings-step-task" x-show="calYearName && centralHasTerms() && calOverrideCount() === 0" x-cloak>สิ่งที่ต้องทำ: ตรวจว่ามีหลักสูตร/ชั้นปีที่วันไม่ตรงหรือไม่</div>
-                                <div class="settings-step-task" x-show="calYearName && centralHasTerms() && calOverrideCount() > 0" x-cloak>ตรวจสอบ: มีรายการที่ตั้งต่างจากปฏิทินกลางแล้ว</div>
-                                <p x-show="!calYearName || !centralHasTerms()">ทำปฏิทินกลางให้เสร็จก่อน แล้วค่อยตั้งเฉพาะหลักสูตร/ชั้นปีที่ต่าง</p>
-                                <p x-show="calYearName && centralHasTerms() && calOverrideCount() === 0" x-cloak>ข้ามได้ถ้าไม่มีวันเปิด-ปิดเทอมหรือช่วงสอบที่ต่างจากปฏิทินกลาง</p>
-                                <p x-show="calYearName && centralHasTerms() && calOverrideCount() > 0" x-cloak x-text="'ตั้งปฏิทินแยกแล้ว ' + calOverrideCount() + ' รายการ'"></p>
+                                <p class="settings-step-task" x-show="!calYearName || !centralHasTerms()" x-cloak>ต้องทำปฏิทินกลางให้เสร็จก่อน</p>
+                                <p class="settings-step-task" x-show="calYearName && centralHasTerms() && calOverrideCount() === 0" x-cloak>ข้ามได้ถ้าไม่มีวันต่างจากปฏิทินกลาง</p>
+                                <p class="settings-step-task" x-show="calYearName && centralHasTerms() && calOverrideCount() > 0" x-cloak x-text="'ตั้งปฏิทินแยกแล้ว ' + calOverrideCount() + ' รายการ'"></p>
                                 <button type="button" class="settings-step-link"
                                     x-show="calYearName && centralHasTerms()" x-cloak
                                     @click="scrollToSettingsTarget('cal-override-section')">ตรวจปฏิทินแยก</button>
                             </div>
                         </article>
 
-                        <article class="settings-setup-step"
+                        <article class="settings-roadmap-step"
                             :class="{
                                 'is-waiting': !calYearName || !centralHasTerms(),
                                 'is-issue': calYearName && centralHasTerms() && {{ $hasSchedulingCriticals ? 'true' : 'false' }},
-                                'is-next': calYearName && centralHasTerms() && {{ (!$hasSchedulingCriticals && $activeYear && $activeYear->phase === 'preparation') ? 'true' : 'false' }},
+                                'is-current': calYearName && centralHasTerms() && {{ (!$hasSchedulingCriticals && $activeYear && $activeYear->phase === 'preparation') ? 'true' : 'false' }},
                                 'is-done': calYearName && centralHasTerms() && {{ ($activeYear && in_array($activeYear->phase, ['scheduling', 'published'], true)) ? 'true' : 'false' }}
                             }">
-                            <div class="settings-setup-step__mark">4</div>
-                            <div class="settings-setup-step__body">
-                                <div class="settings-setup-step__top">
+                            <div class="settings-roadmap-step__mark">4</div>
+                            <div class="settings-roadmap-step__body">
+                                <div class="settings-roadmap-step__top">
                                     <h3>เปิดช่วงจัดตารางเมื่อข้อมูลพร้อม</h3>
-                                    <span class="settings-step-badge" x-show="!calYearName || !centralHasTerms()">รอก่อน</span>
+                                    <span class="settings-step-badge" x-show="!calYearName || !centralHasTerms()" x-cloak>รอก่อน</span>
                                     @if($hasSchedulingCriticals)
                                         <span class="settings-step-badge" x-show="calYearName && centralHasTerms()" x-cloak>มีข้อมูลต้องแก้</span>
                                     @elseif($activeYear && $activeYear->phase === 'preparation')
@@ -527,35 +544,25 @@
                                         <span class="settings-step-badge" x-show="calYearName && centralHasTerms()" x-cloak>รอก่อน</span>
                                     @endif
                                 </div>
-                                <div class="settings-step-task" x-show="!calYearName || !centralHasTerms()">สิ่งที่ต้องทำ: ทำขั้นที่ 1-2 ให้ครบก่อน</div>
+                                <p class="settings-step-task" x-show="!calYearName || !centralHasTerms()" x-cloak>ต้องทำขั้นที่ 1-2 ให้ครบก่อน</p>
                                 @if($hasSchedulingCriticals)
-                                    <div class="settings-step-task" x-show="calYearName && centralHasTerms()" x-cloak>สิ่งที่ต้องทำ: แก้ข้อมูลที่ระบบแจ้งก่อนเปิดช่วงจัดตาราง</div>
-                                @elseif($activeYear && $activeYear->phase === 'preparation')
-                                    <div class="settings-step-task" x-show="calYearName && centralHasTerms()" x-cloak>สิ่งที่ต้องทำ: กดเปิดช่วงจัดตารางเมื่อข้อมูลพร้อม</div>
-                                @elseif($activeYear && in_array($activeYear->phase, ['scheduling', 'published'], true))
-                                    <div class="settings-step-task" x-show="calYearName && centralHasTerms()" x-cloak>ตรวจสอบ: ขั้นตอนเปิดช่วงจัดตารางเสร็จแล้ว</div>
-                                @else
-                                    <div class="settings-step-task" x-show="calYearName && centralHasTerms()" x-cloak>สิ่งที่ต้องทำ: ตั้งปีการศึกษาปัจจุบันให้เรียบร้อย</div>
-                                @endif
-                                <p x-show="!calYearName || !centralHasTerms()">ต้องมีปีปัจจุบันและปฏิทินกลางก่อนเปิดช่วงจัดตาราง</p>
-                                @if($hasSchedulingCriticals)
-                                    <p x-show="calYearName && centralHasTerms()" x-cloak>ยังมีข้อมูลจำเป็นที่ต้องแก้ก่อนเปิดช่วงจัดตาราง</p>
+                                    <p class="settings-step-task" x-show="calYearName && centralHasTerms()" x-cloak>แก้ข้อมูลที่ระบบแจ้งก่อนเปิดช่วงจัดตาราง</p>
                                     @if(!empty($firstSchedulingCritical['link']))
                                         <a class="btn btn-primary settings-step-action" x-show="calYearName && centralHasTerms()" x-cloak href="{{ $firstSchedulingCritical['link'] }}">แก้ข้อมูลที่ขาด</a>
                                     @endif
                                 @elseif($activeYear && $activeYear->phase === 'preparation')
-                                    <p x-show="calYearName && centralHasTerms()" x-cloak>ตรวจข้อมูลครบแล้วจึงเปิดช่วงให้หัวหน้าวิชาเริ่มจัดตาราง</p>
+                                    <p class="settings-step-task" x-show="calYearName && centralHasTerms()" x-cloak>ตรวจข้อมูลครบแล้วจึงเปิดให้หัวหน้าวิชาเริ่มจัดตาราง</p>
                                     <button type="button" class="btn btn-primary settings-step-action"
                                         x-show="calYearName && centralHasTerms()" x-cloak
                                         @click="startOpenScheduleCountdown('open-scheduling-{{ $activeYear->id }}', 'ปีการศึกษา {{ $activeYear->name }}')">เปิดช่วงจัดตาราง</button>
                                 @elseif($activeYear && $activeYear->phase === 'scheduling')
-                                    <p x-show="calYearName && centralHasTerms()" x-cloak>เปิดช่วงจัดตารางอยู่แล้ว</p>
+                                    <p class="settings-step-task" x-show="calYearName && centralHasTerms()" x-cloak>เปิดช่วงจัดตารางอยู่แล้ว</p>
                                     <button type="button" class="settings-step-link" @click="scrollToSettingsTarget('schedule-phase-section')">ดูสถานะช่วงจัดตาราง</button>
                                 @elseif($activeYear && $activeYear->phase === 'published')
-                                    <p x-show="calYearName && centralHasTerms()" x-cloak>ปีนี้เผยแพร่ตารางแล้ว</p>
+                                    <p class="settings-step-task" x-show="calYearName && centralHasTerms()" x-cloak>ปีนี้เผยแพร่ตารางแล้ว</p>
                                     <button type="button" class="settings-step-link" @click="scrollToSettingsTarget('schedule-phase-section')">ดูสถานะปีการศึกษา</button>
                                 @else
-                                    <p x-show="calYearName && centralHasTerms()" x-cloak>ตั้งค่าปีการศึกษาปัจจุบันให้เรียบร้อยก่อน</p>
+                                    <p class="settings-step-task" x-show="calYearName && centralHasTerms()" x-cloak>ตั้งค่าปีการศึกษาปัจจุบันให้เรียบร้อยก่อน</p>
                                 @endif
                             </div>
                         </article>
@@ -566,7 +573,7 @@
             @if($hasSchedulingCriticals)
                 <div style="background:var(--status-conflict-bg);border:1px solid var(--status-conflict-border);border-radius:8px;margin-bottom:16px;padding:14px 16px;color:var(--status-conflict-fg);">
                     <div style="font-weight:700;margin-bottom:6px;">ยังไม่สามารถเปิดช่วงจัดตารางได้</div>
-                    <div style="font-size:13px;line-height:1.55;margin-bottom:10px;">ต้องแก้ Critical ให้หมดก่อนเปิดช่วงจัดตาราง เพื่อให้รายวิชาทุกวิชาพร้อมถูกสร้างเป็น Course Offering</div>
+                    <div style="font-size:13px;line-height:1.55;margin-bottom:10px;">ต้องแก้ข้อมูลที่ระบบแจ้งให้ครบก่อนเปิดช่วงจัดตาราง เพื่อให้รายวิชาทุกวิชาพร้อมถูกสร้างเป็น Course Offering</div>
                     <div style="display:flex;flex-wrap:wrap;gap:8px;">
                         @foreach($schedulingCriticals as $critical)
                             <a href="{{ $critical['link'] }}" style="text-decoration:none;color:var(--status-conflict-fg);background:color-mix(in oklch,var(--status-conflict) 8%,white);border:1px solid color-mix(in oklch,var(--status-conflict) 22%,white);border-radius:999px;padding:5px 10px;font-size:12px;font-weight:700;">
@@ -809,7 +816,7 @@
                                         style="font-size:14px;padding:10px 22px;font-weight:800;"
                                         @if($hasSchedulingCriticals)
                                             disabled
-                                            title="ต้องแก้ Critical ให้หมดก่อนเปิดช่วงจัดตาราง"
+                                            title="ต้องแก้ข้อมูลที่ระบบแจ้งให้ครบก่อนเปิดช่วงจัดตาราง"
                                         @else
                                             @click="startOpenScheduleCountdown('open-scheduling-{{ $activeYear->id }}', 'ปีการศึกษา {{ $activeYear->name }}')"
                                         @endif>
@@ -891,27 +898,29 @@
             </template>
 
             @if($isAdmin)
-                {{-- ใช้โครง modal มาตรฐาน (.overlay/.modal-center) เหมือน modal อื่น — กลางจอชัวร์ + เข้าชุด --}}
-                <div class="overlay" x-show="openScheduleConfirmForm" x-cloak
+                <div class="overlay settings-confirm-overlay" x-show="openScheduleConfirmForm" x-cloak
                     @keydown.escape.window="cancelOpenScheduleCountdown()">
-                    <div class="modal-center" style="max-width:520px;">
-                        <div class="modal-hdr" style="background: var(--bg-2);">
-                            <div style="min-width:0;">
-                                <div class="modal-ttl" style="font-family: var(--font-display);">ยืนยันเปิดช่วงจัดตาราง</div>
-                                <div style="font-size:13px;color:var(--fg-3);margin-top:4px;" x-text="openScheduleConfirmLabel"></div>
+                    <div class="modal-center settings-confirm-modal">
+                        <div class="settings-confirm-modal__header">
+                            <span class="settings-confirm-modal__icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="m9 16 2 2 4-4"/></svg>
+                            </span>
+                            <div class="settings-confirm-modal__title-block">
+                                <div class="modal-ttl">ยืนยันเปิดช่วงจัดตาราง</div>
+                                <div class="settings-confirm-modal__subtitle" x-text="openScheduleConfirmLabel"></div>
                             </div>
-                            <button type="button" class="modal-cls" @click="cancelOpenScheduleCountdown()">
+                            <button type="button" class="modal-cls settings-confirm-modal__close" aria-label="ปิด" @click="cancelOpenScheduleCountdown()">
                                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                             </button>
                         </div>
-                        <div class="modal-body">
-                            <div style="font-size:14px;color:var(--fg-2);line-height:1.65;">
+                        <div class="modal-body settings-confirm-modal__body">
+                            <div class="settings-confirm-modal__message">
                                 ระบบจะสร้างและซิงก์ Course Offering จากรายวิชา active ทั้งหมด จากนั้นหัวหน้าวิชาจะเริ่มแก้ข้อมูลเพื่อจัดตารางได้
                             </div>
-                            <div style="margin-top:14px;padding:12px 14px;border:1px solid oklch(84% 0.08 80);border-radius:8px;background:oklch(98% 0.025 85);color:oklch(38% 0.08 75);font-size:13px;font-weight:700;"
+                            <div class="settings-confirm-modal__countdown"
                                 x-text="openScheduleCountdown > 0 ? 'รอ ' + openScheduleCountdown + ' วินาที ก่อนยืนยัน' : 'พร้อมยืนยันเปิดช่วงจัดตาราง'"></div>
                         </div>
-                        <div class="modal-foot" style="display:flex;justify-content:flex-end;gap:8px;">
+                        <div class="modal-foot settings-confirm-modal__foot">
                             <button type="button" class="btn btn-ghost" @click="cancelOpenScheduleCountdown()">ยกเลิก</button>
                             <button type="button" class="btn btn-primary" :disabled="openScheduleCountdown > 0" :style="openScheduleCountdown > 0 ? 'opacity:.55;cursor:not-allowed;' : ''" @click="confirmOpenSchedule()">
                                 ยืนยันเปิดช่วงจัดตาราง
@@ -920,29 +929,32 @@
                     </div>
                 </div>
 
-                <div class="overlay" x-show="closeScheduleConfirmForm" x-cloak
+                <div class="overlay settings-confirm-overlay" x-show="closeScheduleConfirmForm" x-cloak
                     @keydown.escape.window="cancelCloseScheduleConfirm()">
-                    <div class="modal-center" style="max-width:520px;">
-                        <div class="modal-hdr" style="background: var(--bg-2);">
-                            <div style="min-width:0;">
-                                <div class="modal-ttl" style="font-family: var(--font-display);">ยืนยันปิดช่วงจัดตาราง</div>
-                                <div style="font-size:13px;color:var(--fg-3);margin-top:4px;" x-text="closeScheduleConfirmLabel"></div>
+                    <div class="modal-center settings-confirm-modal settings-confirm-modal--warning">
+                        <div class="settings-confirm-modal__header">
+                            <span class="settings-confirm-modal__icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 4.3 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+                            </span>
+                            <div class="settings-confirm-modal__title-block">
+                                <div class="modal-ttl">ยืนยันปิดช่วงจัดตาราง</div>
+                                <div class="settings-confirm-modal__subtitle" x-text="closeScheduleConfirmLabel"></div>
                             </div>
-                            <button type="button" class="modal-cls" @click="cancelCloseScheduleConfirm()">
+                            <button type="button" class="modal-cls settings-confirm-modal__close" aria-label="ปิด" @click="cancelCloseScheduleConfirm()">
                                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                             </button>
                         </div>
-                        <div class="modal-body">
-                            <div style="font-size:14px;color:var(--fg-2);line-height:1.65;">
+                        <div class="modal-body settings-confirm-modal__body">
+                            <div class="settings-confirm-modal__message">
                                 ระบบจะเปลี่ยนสถานะกลับเป็น <strong style="color:var(--fg-1);">เตรียมข้อมูล</strong> และหัวหน้าวิชาจะไม่สามารถจัดหรือแก้ไขตารางในรอบนี้ต่อได้ จนกว่า Admin จะเปิดช่วงจัดตารางอีกครั้ง
                             </div>
-                            <div style="margin-top:14px;padding:12px 14px;border:1px solid oklch(82% 0.055 235);border-radius:8px;background:oklch(97% 0.018 235);color:oklch(32% 0.075 245);font-size:13px;font-weight:700;line-height:1.55;">
+                            <div class="settings-confirm-modal__note">
                                 ข้อมูลตารางที่จัดไว้แล้วจะยังอยู่ (ระบบจะปิดเฉพาะสิทธิ์การจัด/แก้ไขตารางชั่วคราว)
                             </div>
-                            <div style="margin-top:10px;padding:12px 14px;border:1px solid oklch(84% 0.08 80);border-radius:8px;background:oklch(98% 0.025 85);color:oklch(38% 0.08 75);font-size:13px;font-weight:700;"
+                            <div class="settings-confirm-modal__countdown"
                                 x-text="closeScheduleCountdown > 0 ? 'รอ ' + closeScheduleCountdown + ' วินาที ก่อนยืนยัน' : 'พร้อมยืนยันปิดช่วงจัดตาราง'"></div>
                         </div>
-                        <div class="modal-foot" style="display:flex;justify-content:flex-end;gap:8px;">
+                        <div class="modal-foot settings-confirm-modal__foot">
                             <button type="button" class="btn btn-ghost" @click="cancelCloseScheduleConfirm()">ยกเลิก</button>
                             <button type="button" class="btn btn-primary" :disabled="closeScheduleCountdown > 0" :style="closeScheduleCountdown > 0 ? 'opacity:.55;cursor:not-allowed;' : ''" @click="confirmCloseSchedule()">
                                 ยืนยันปิดช่วงจัดตาราง
@@ -1392,165 +1404,192 @@
             text-overflow: ellipsis;
         }
 
-        .settings-start-guide {
-            margin-bottom: 14px;
+        .settings-roadmap {
+            margin-bottom: 18px;
             overflow: hidden;
-            border: 1px solid color-mix(in oklch, var(--brand-navy) 36%, var(--border));
-            border-radius: 10px;
+            border: 1.5px solid color-mix(in oklch, var(--brand-navy) 36%, var(--border));
+            border-radius: 14px;
             background:
-                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 12%, var(--surface)), var(--surface) 62%),
+                linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 8%, var(--surface)), var(--surface) 58%),
                 var(--surface);
-            box-shadow: 0 2px 4px rgba(0, 36, 84, .12), 0 14px 28px -24px rgba(0, 36, 84, .55);
+            box-shadow: 0 2px 6px rgba(0, 36, 84, .11), 0 18px 34px -28px rgba(0, 36, 84, .52);
         }
 
-        .settings-start-guide__header {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
-            align-items: center;
-            gap: 14px;
-            padding: 12px 18px;
-            border-bottom: 1px solid color-mix(in oklch, var(--brand-navy) 28%, var(--border));
+        .settings-roadmap__header {
+            display: block;
+            padding: 20px 22px;
+            border-bottom: 1px solid color-mix(in oklch, var(--brand-navy) 24%, var(--border));
         }
 
-        .settings-start-guide__eyebrow {
-            margin-bottom: 4px;
-            color: var(--brand-navy);
-            font-size: 11px;
-            font-weight: 800;
+        .settings-roadmap__intro {
+            min-width: 0;
         }
 
-        .settings-start-guide h2 {
+        .settings-roadmap h2 {
             margin: 0;
             color: var(--fg-1);
             font-family: var(--font-display);
-            font-size: 18px;
-            font-weight: 800;
+            font-size: 24px;
+            font-weight: 850;
             line-height: 1.25;
         }
 
-        .settings-start-guide p {
-            margin: 3px 0 0;
+        .settings-roadmap__year-state {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .settings-roadmap__state-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            flex: 0 0 auto;
+            min-height: 34px;
+            padding: 6px 12px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border));
+            border-radius: 999px;
+            background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
             color: var(--fg-2);
-            font-size: 12px;
-            line-height: 1.4;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.2;
+            white-space: nowrap;
         }
 
-        .settings-start-guide__summary {
-            display: grid;
-            gap: 2px;
-            min-width: 136px;
-            padding: 8px 12px;
-            border: 1px solid color-mix(in oklch, var(--brand-navy) 28%, var(--border));
-            border-radius: 8px;
-            background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface));
-            text-align: right;
-        }
-
-        .settings-start-guide__summary span {
+        .settings-roadmap__state-label {
+            display: inline-flex;
+            align-items: center;
+            min-height: 18px;
             color: var(--fg-2);
-            font-size: 11px;
-            font-weight: 600;
+            font-size: 13px;
+            font-weight: 750;
+            line-height: 1;
+            white-space: nowrap;
         }
 
-        .settings-start-guide__summary strong {
-            color: var(--fg-1);
-            font-family: var(--font-display);
+        .settings-roadmap__state-value {
+            display: inline-flex;
+            align-items: center;
+            min-height: 18px;
+            color: var(--brand-navy);
+            font-family: inherit;
             font-size: 15px;
+            font-weight: 850;
+            line-height: 1;
+            white-space: nowrap;
         }
 
-        .settings-setup-steps {
+        .settings-roadmap__phase {
+            margin: 6px 0 0;
+            color: color-mix(in oklch, var(--brand-navy) 70%, var(--fg-1));
+            font-size: 15px;
+            font-weight: 750;
+            line-height: 1.55;
+        }
+
+        .settings-roadmap__steps {
+            position: relative;
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 8px;
-            padding: 10px;
-            background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface));
+            gap: 0;
+            padding: 20px 28px 24px;
+            background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
         }
 
-        .settings-setup-step {
+        .settings-roadmap__steps::before {
+            content: "";
+            position: absolute;
+            z-index: 0;
+            top: 43px;
+            left: calc(12.5% + 21px);
+            right: calc(12.5% + 21px);
+            height: 4px;
+            border-radius: 999px;
+            background: color-mix(in oklch, var(--brand-navy) 24%, var(--border));
+        }
+
+        .settings-roadmap-step {
+            position: relative;
+            z-index: 1;
             display: grid;
-            grid-template-columns: auto minmax(0, 1fr);
-            align-items: stretch;
+            grid-template-rows: auto minmax(0, 1fr);
+            justify-items: center;
             gap: 10px;
-            min-height: 128px;
-            padding: 12px 13px;
-            border: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border));
-            border-radius: 16px;
-            background: color-mix(in oklch, var(--brand-navy) 2%, var(--surface));
-            box-shadow: 0 8px 18px -18px rgba(0, 36, 84, .42);
+            min-height: 210px;
+            padding: 0 16px;
+            background: transparent;
+            color: var(--fg-1);
+            text-align: center;
         }
 
-        .settings-setup-step:last-child {
-            border-bottom: 0;
-        }
-
-        .settings-setup-step__mark {
+        .settings-roadmap-step__mark {
+            position: relative;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 28px;
-            height: 28px;
+            width: 46px;
+            height: 46px;
+            border: 2px solid color-mix(in oklch, var(--brand-navy) 28%, var(--border));
             border-radius: 999px;
-            border: 1px solid color-mix(in oklch, var(--brand-navy) 38%, var(--border));
-            background: color-mix(in oklch, var(--brand-navy) 12%, var(--surface));
-            color: var(--brand-navy);
-            font-size: 13px;
-            font-weight: 800;
+            background: var(--surface);
+            color: color-mix(in oklch, var(--brand-navy) 72%, var(--fg-2));
+            font-family: var(--font-display);
+            font-size: 17px;
+            font-weight: 850;
+            line-height: 1;
+            box-shadow: 0 0 0 7px color-mix(in oklch, var(--brand-navy) 6%, var(--surface));
         }
 
-        .settings-setup-step__body {
+        .settings-roadmap-step__body {
             display: grid;
             grid-template-columns: minmax(0, 1fr);
-            grid-template-rows: auto minmax(34px, 1fr) 28px;
+            grid-template-rows: auto minmax(58px, 1fr) auto;
+            justify-items: center;
+            gap: 9px;
             min-width: 0;
             height: 100%;
             align-items: stretch;
         }
 
-        .settings-setup-step__top {
+        .settings-roadmap-step__top {
             display: grid;
-            gap: 5px;
+            justify-items: center;
+            gap: 7px;
             min-width: 0;
         }
 
-        .settings-setup-step h3 {
+        .settings-roadmap-step h3 {
             margin: 0;
             color: var(--fg-1);
-            font-size: 13px;
-            font-weight: 800;
-            line-height: 1.3;
-        }
-
-        .settings-setup-step p {
-            display: none;
-            margin: 0;
-            color: var(--fg-3);
-            font-size: 12px;
-            line-height: 1.55;
+            font-size: 16px;
+            font-weight: 850;
+            line-height: 1.35;
         }
 
         .settings-step-task {
             grid-column: 1;
             grid-row: 2;
-            display: -webkit-box;
-            overflow: hidden;
-            -webkit-box-orient: vertical;
-            -webkit-line-clamp: 2;
-            margin-top: 7px;
+            width: min(100%, 230px);
+            margin: 0;
             color: color-mix(in oklch, var(--brand-navy) 76%, var(--fg-1));
-            font-size: 11px;
-            font-weight: 700;
-            line-height: 1.35;
+            font-size: 14px;
+            font-weight: 750;
+            line-height: 1.55;
+            text-align: center;
         }
 
         .settings-step-badge {
             width: fit-content;
             max-width: 100%;
-            padding: 3px 8px;
+            padding: 4px 10px;
+            border: 1px solid transparent;
             border-radius: 999px;
             background: color-mix(in oklch, var(--brand-navy) 10%, var(--surface));
             color: var(--brand-navy);
-            font-size: 10px;
-            font-weight: 800;
+            font-size: 12px;
+            font-weight: 850;
             line-height: 1.2;
             white-space: nowrap;
         }
@@ -1563,11 +1602,10 @@
             grid-column: 1;
             grid-row: 3;
             align-self: end;
-            justify-self: start;
-            min-height: 28px;
-            height: 28px;
+            justify-self: center;
+            min-height: 44px;
             margin-top: 0;
-            font-size: 11px;
+            font-size: 14px;
             line-height: 1.2;
         }
 
@@ -1580,9 +1618,9 @@
             background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface));
             color: var(--brand-navy);
             cursor: pointer;
-            font-weight: 800;
-            padding: 6px 12px;
-            text-align: left;
+            font-weight: 850;
+            padding: 10px 16px;
+            text-align: center;
             text-decoration: none;
             transition: background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
         }
@@ -1596,65 +1634,82 @@
         }
 
         .settings-step-action.btn {
-            padding: 6px 12px;
+            padding: 11px 18px;
             border-radius: 999px;
             line-height: 1.2;
         }
 
-        .settings-setup-step.is-done {
-            background: color-mix(in oklch, var(--brand-navy) 6%, var(--surface));
-        }
-
-        .settings-setup-step.is-done .settings-setup-step__mark {
+        .settings-roadmap-step.is-done .settings-roadmap-step__mark {
             border-color: color-mix(in oklch, var(--status-success-fg) 48%, var(--border));
             background: color-mix(in oklch, var(--status-success-fg) 24%, var(--surface));
-            color: var(--status-success-fg);
-            box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--status-success-fg) 18%, transparent);
+            color: transparent;
+            box-shadow:
+                0 0 0 7px color-mix(in oklch, var(--status-success-fg) 9%, var(--surface)),
+                inset 0 0 0 1px color-mix(in oklch, var(--status-success-fg) 18%, transparent);
         }
 
-        .settings-setup-step.is-done .settings-step-badge {
-            border-color: color-mix(in oklch, var(--brand-navy) 28%, var(--border));
-            background: color-mix(in oklch, var(--brand-navy) 11%, var(--surface));
+        .settings-roadmap-step.is-done .settings-roadmap-step__mark::before {
+            content: "\2713";
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--status-success-fg);
+            font-size: 18px;
+            font-weight: 900;
+        }
+
+        .settings-roadmap-step.is-done .settings-step-badge {
+            border-color: color-mix(in oklch, var(--status-success-fg) 36%, var(--border));
+            background: color-mix(in oklch, var(--status-success-fg) 16%, var(--surface));
+            color: var(--status-success-fg);
+        }
+
+        .settings-roadmap-step.is-current h3 {
             color: var(--brand-navy);
         }
 
-        .settings-setup-step.is-next {
-            background: color-mix(in oklch, var(--brand-navy) 12%, var(--surface));
-            border-color: color-mix(in oklch, var(--brand-navy) 42%, var(--border));
-            box-shadow: inset 0 3px 0 var(--brand-navy), 0 10px 20px -18px rgba(0, 36, 84, .68);
+        .settings-roadmap-step.is-current .settings-roadmap-step__mark {
+            border-color: var(--brand-navy);
+            background: var(--brand-navy);
+            color: var(--surface);
+            box-shadow:
+                0 0 0 7px color-mix(in oklch, var(--brand-navy) 12%, var(--surface)),
+                0 9px 18px -12px rgba(0, 36, 84, .7);
         }
 
-        .settings-setup-step.is-next .settings-setup-step__mark,
-        .settings-setup-step.is-next .settings-step-badge {
+        .settings-roadmap-step.is-current .settings-step-badge {
             border-color: color-mix(in oklch, var(--brand-navy) 34%, var(--border));
             background: var(--brand-navy);
             color: var(--surface);
         }
 
-        .settings-setup-step.is-waiting {
-            background: color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
+        .settings-roadmap-step.is-waiting {
+            color: var(--fg-3);
+            opacity: .68;
         }
 
-        .settings-setup-step.is-waiting .settings-setup-step__mark,
-        .settings-setup-step.is-waiting .settings-step-badge {
+        .settings-roadmap-step.is-waiting .settings-roadmap-step__mark,
+        .settings-roadmap-step.is-waiting .settings-step-badge {
             border-color: color-mix(in oklch, var(--brand-navy) 24%, var(--border));
             background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface));
             color: color-mix(in oklch, var(--brand-navy) 70%, var(--fg-2));
         }
 
-        .settings-setup-step.is-optional .settings-setup-step__mark,
-        .settings-setup-step.is-optional .settings-step-badge {
+        .settings-roadmap-step.is-optional {
+            opacity: .88;
+        }
+
+        .settings-roadmap-step.is-optional .settings-roadmap-step__mark,
+        .settings-roadmap-step.is-optional .settings-step-badge {
             border-color: color-mix(in oklch, var(--brand-navy) 36%, var(--border));
             background: color-mix(in oklch, var(--brand-navy) 15%, var(--surface));
             color: var(--brand-navy);
         }
 
-        .settings-setup-step.is-issue {
-            background: color-mix(in oklch, var(--brand-navy) 6%, var(--surface));
-        }
-
-        .settings-setup-step.is-issue .settings-setup-step__mark,
-        .settings-setup-step.is-issue .settings-step-badge {
+        .settings-roadmap-step.is-issue .settings-roadmap-step__mark,
+        .settings-roadmap-step.is-issue .settings-step-badge {
             border-color: color-mix(in oklch, var(--status-conflict-fg) 40%, var(--border));
             background: color-mix(in oklch, var(--status-conflict-fg) 18%, var(--surface));
             color: var(--status-conflict-fg);
@@ -1863,8 +1918,66 @@
         }
 
         @media (max-width: 1120px) {
-            .settings-setup-steps {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
+            .settings-roadmap__steps {
+                padding-inline: 20px;
+            }
+
+            .settings-roadmap-step {
+                padding-inline: 10px;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .settings-roadmap__steps {
+                grid-template-columns: 1fr;
+                gap: 0;
+                padding: 18px 18px 20px;
+            }
+
+            .settings-roadmap__steps::before {
+                top: 34px;
+                bottom: 34px;
+                left: 41px;
+                right: auto;
+                width: 3px;
+                height: auto;
+            }
+
+            .settings-roadmap-step {
+                grid-template-columns: 46px minmax(0, 1fr);
+                grid-template-rows: auto;
+                align-items: start;
+                justify-items: stretch;
+                gap: 14px;
+                min-height: 0;
+                padding: 14px 0;
+                text-align: left;
+            }
+
+            .settings-roadmap-step__mark {
+                grid-column: 1;
+                justify-self: center;
+            }
+
+            .settings-roadmap-step__body {
+                grid-column: 2;
+                grid-template-rows: auto auto auto;
+                justify-items: start;
+                min-height: 138px;
+            }
+
+            .settings-roadmap-step__top {
+                justify-items: start;
+            }
+
+            .settings-step-task {
+                width: min(100%, 520px);
+                text-align: left;
+            }
+
+            .settings-step-action,
+            .settings-step-link {
+                justify-self: start;
             }
         }
 
@@ -1888,27 +2001,55 @@
                 display: none;
             }
 
-            .settings-start-guide__header {
-                align-items: stretch;
-                grid-template-columns: 1fr;
-                padding: 16px;
+            .settings-roadmap__header {
+                padding: 18px 16px;
             }
 
-            .settings-start-guide__summary {
-                min-width: 0;
-                text-align: left;
+            .settings-roadmap h2 {
+                font-size: 21px;
             }
 
-            .settings-setup-steps {
-                grid-template-columns: 1fr;
-                gap: 8px;
-                padding: 8px;
+            .settings-roadmap__phase {
+                font-size: 14px;
             }
 
-            .settings-setup-step {
-                min-height: 0;
-                padding: 14px;
-                border-radius: 14px;
+            .settings-roadmap__state-pill {
+                width: 100%;
+                justify-content: space-between;
+                border-radius: 10px;
+            }
+
+            .settings-roadmap__steps {
+                padding: 14px 14px 18px;
+            }
+
+            .settings-roadmap__steps::before {
+                top: 30px;
+                bottom: 30px;
+                left: 37px;
+                width: 2px;
+            }
+
+            .settings-roadmap-step {
+                grid-template-columns: 44px minmax(0, 1fr);
+                gap: 12px;
+                padding: 13px 0;
+            }
+
+            .settings-roadmap-step__mark {
+                width: 42px;
+                height: 42px;
+                font-size: 15px;
+            }
+
+            .settings-roadmap-step h3 {
+                font-size: 15px;
+            }
+
+            .settings-step-action,
+            .settings-step-link {
+                width: 100%;
+                justify-self: stretch;
             }
 
             .central-calendar-card-body {
@@ -1995,174 +2136,162 @@
             --settings-flash-accent: var(--status-conflict-fg);
         }
 
-        [x-show="openScheduleConfirmForm"],
-        [x-show="closeScheduleConfirmForm"] {
+        .settings-page .overlay {
             position: fixed !important;
-            inset: 0 !important;
-            z-index: 80 !important;
-            display: grid !important;
-            place-items: center !important;
-            padding: clamp(14px, 2vw, 24px) !important;
-            background:
-                color-mix(in oklch, var(--brand-navy) 18%, transparent) !important;
-            backdrop-filter: blur(3px);
-        }
-
-        [x-show="openScheduleConfirmForm"][style*="display: none"],
-        [x-show="closeScheduleConfirmForm"][style*="display: none"] {
-            display: none !important;
-        }
-
-        [x-show="openScheduleConfirmForm"] > div,
-        [x-show="closeScheduleConfirmForm"] > div {
+            inset: 0 0 0 var(--sidebar-w, 0px) !important;
+            display: flex;
+            align-items: center !important;
+            justify-content: center !important;
+            width: auto !important;
             min-height: auto !important;
-            width: min(100%, 560px) !important;
-            display: block !important;
-            padding: 0 !important;
+            padding: clamp(14px, 2vw, 24px) !important;
+            background: color-mix(in oklch, var(--fg-1) 36%, transparent) !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            box-sizing: border-box !important;
         }
 
-        [x-show="openScheduleConfirmForm"] > div > div,
-        [x-show="closeScheduleConfirmForm"] > div > div {
-            width: 100% !important;
+        .settings-page .overlay > .modal-center {
+            margin: auto !important;
+        }
+
+        .settings-confirm-overlay {
+            z-index: 80 !important;
+            padding: clamp(14px, 2vw, 24px) !important;
+            background: color-mix(in oklch, var(--fg-1) 36%, transparent) !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+
+        .settings-confirm-modal {
+            position: relative;
+            width: min(100%, 560px);
+            max-width: 560px;
             max-height: min(720px, calc(100vh - 32px));
-            overflow: hidden !important;
-            display: grid;
-            grid-template-rows: auto minmax(0, 1fr) auto;
-            border: 1px solid color-mix(in oklch, var(--brand-navy) 12%, var(--border)) !important;
-            border-radius: var(--r-lg) !important;
-            background: var(--surface) !important;
+            overflow: hidden;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 14%, var(--border));
+            border-radius: 16px;
+            background: var(--surface);
             box-shadow:
                 0 1px 2px rgba(0, 36, 84, 0.06),
-                0 28px 76px -38px rgba(0, 36, 84, 0.46) !important;
+                0 28px 76px -38px rgba(0, 36, 84, 0.46);
         }
 
-        [x-show="openScheduleConfirmForm"] > div > div > div:first-child,
-        [x-show="closeScheduleConfirmForm"] > div > div > div:first-child {
+        .settings-confirm-modal__header {
             position: relative;
             display: grid;
-            grid-template-columns: 44px minmax(0, 1fr);
-            grid-template-rows: auto auto;
+            grid-template-columns: 48px minmax(0, 1fr);
             gap: 14px;
             align-items: center;
-            padding: 20px 24px !important;
-            border-bottom: 1px solid var(--border) !important;
-            background: color-mix(in oklch, var(--brand-navy) 4%, var(--surface)) !important;
+            padding: 22px 64px 22px 24px;
+            border-bottom: 1px solid var(--border);
+            background: color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
         }
 
-        [x-show="openScheduleConfirmForm"] > div > div > div:first-child::before,
-        [x-show="closeScheduleConfirmForm"] > div > div > div:first-child::before {
-            content: "";
-            width: 44px;
-            height: 44px;
-            border-radius: 12px;
+        .settings-confirm-modal__icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 48px;
+            height: 48px;
             border: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border));
+            border-radius: 12px;
             background:
                 linear-gradient(180deg,
                     color-mix(in oklch, var(--brand-navy) 10%, var(--surface)),
                     color-mix(in oklch, var(--brand-navy) 4%, var(--surface)));
-            box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--surface) 72%, transparent);
-            grid-column: 1;
-            grid-row: 1 / span 2;
-            align-self: center;
-            justify-self: start;
+            color: var(--brand-navy);
         }
 
-        [x-show="openScheduleConfirmForm"] > div > div > div:first-child::after,
-        [x-show="closeScheduleConfirmForm"] > div > div > div:first-child::after {
-            content: "";
-            width: 29px;
-            height: 29px;
-            grid-column: 1;
-            grid-row: 1 / span 2;
-            align-self: center;
-            justify-self: center;
-            pointer-events: none;
-            background: var(--brand-navy);
-            mask: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2v4M16 2v4M3.5 9.5h17M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z'/%3E%3Cpath d='m8.8 14 2.2 2.2 4.5-5.1'/%3E%3C/svg%3E");
-            -webkit-mask: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2v4M16 2v4M3.5 9.5h17M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z'/%3E%3Cpath d='m8.8 14 2.2 2.2 4.5-5.1'/%3E%3C/svg%3E");
+        .settings-confirm-modal--warning .settings-confirm-modal__icon {
+            border-color: color-mix(in oklch, var(--status-warning-fg) 24%, var(--border));
+            background: color-mix(in oklch, var(--status-warning-bg) 70%, var(--surface));
+            color: var(--status-warning-fg);
         }
 
-        [x-show="closeScheduleConfirmForm"] > div > div > div:first-child::before {
-            border-color: color-mix(in oklch, var(--status-warning-fg) 22%, var(--border));
-            background:
-                linear-gradient(180deg,
-                    color-mix(in oklch, var(--status-warning-bg) 72%, var(--surface)),
-                    color-mix(in oklch, var(--status-warning-bg) 38%, var(--surface)));
+        .settings-confirm-modal__title-block {
+            min-width: 0;
         }
 
-        [x-show="closeScheduleConfirmForm"] > div > div > div:first-child::after {
-            background: var(--status-warning-fg);
-            mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.3 4.3 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0z'/%3E%3Cpath d='M12 9v4M12 17h.01'/%3E%3C/svg%3E");
-            -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.3 4.3 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0z'/%3E%3Cpath d='M12 9v4M12 17h.01'/%3E%3C/svg%3E");
+        .settings-confirm-modal__title-block .modal-ttl {
+            font-family: var(--font-display);
+            font-size: 20px;
+            line-height: 1.3;
         }
 
-        [x-show="openScheduleConfirmForm"] > div > div > div:first-child > div:first-child,
-        [x-show="closeScheduleConfirmForm"] > div > div > div:first-child > div:first-child {
-            grid-column: 2;
-            grid-row: 1;
-            font-size: 18px !important;
-            line-height: 1.25 !important;
-            color: var(--fg-1) !important;
-        }
-
-        [x-show="openScheduleConfirmForm"] > div > div > div:first-child > div:last-child,
-        [x-show="closeScheduleConfirmForm"] > div > div > div:first-child > div:last-child {
-            grid-column: 2;
-            grid-row: 2;
+        .settings-confirm-modal__subtitle {
             width: fit-content;
             max-width: 100%;
-            display: inline-flex;
-            align-items: center;
-            margin-top: -6px !important;
-            padding: 4px 10px;
+            margin-top: 7px;
+            padding: 5px 11px;
             border: 1px solid color-mix(in oklch, var(--brand-navy) 18%, var(--border));
             border-radius: 999px;
             background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
-            color: var(--fg-2) !important;
-            font-size: 12px !important;
-            font-weight: 700;
-            line-height: 1.35 !important;
+            color: var(--fg-2);
+            font-size: 13px;
+            font-weight: 750;
+            line-height: 1.35;
         }
 
-        [x-show="openScheduleConfirmForm"] > div > div > div:nth-child(2),
-        [x-show="closeScheduleConfirmForm"] > div > div > div:nth-child(2) {
-            overflow-y: auto;
-            padding: 22px 24px !important;
-            background: var(--surface) !important;
+        .settings-confirm-modal__close {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            width: 38px;
+            height: 38px;
+            padding: 0;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 14%, var(--border));
+            background: var(--surface);
+            color: var(--fg-3);
         }
 
-        [x-show="openScheduleConfirmForm"] > div > div > div:nth-child(2) > div:first-child,
-        [x-show="closeScheduleConfirmForm"] > div > div > div:nth-child(2) > div:first-child {
-            color: var(--fg-2) !important;
-            font-size: 14px !important;
-            line-height: 1.7 !important;
+        .settings-confirm-modal__close:hover,
+        .settings-confirm-modal__close:focus-visible {
+            border-color: color-mix(in oklch, var(--brand-navy) 34%, var(--border));
+            background: color-mix(in oklch, var(--brand-navy) 7%, var(--surface));
+            color: var(--brand-navy);
+            outline: none;
         }
 
-        [x-show="openScheduleConfirmForm"] > div > div > div:nth-child(2) > div:nth-child(n+2),
-        [x-show="closeScheduleConfirmForm"] > div > div > div:nth-child(2) > div:nth-child(n+2) {
-            margin-top: 12px !important;
-            padding: 12px 14px !important;
-            border-radius: var(--r-md) !important;
-            font-size: 13px !important;
-            font-weight: 700 !important;
-            line-height: 1.55 !important;
+        .settings-confirm-modal__body {
+            display: grid;
+            gap: 12px;
+            padding: 24px !important;
+            background: var(--surface);
         }
 
-        [x-show="openScheduleConfirmForm"] > div > div > div:nth-child(2) > div:last-child,
-        [x-show="closeScheduleConfirmForm"] > div > div > div:nth-child(2) > div:last-child {
-            border: 1px solid var(--status-warning-border) !important;
-            background: var(--status-warning-bg) !important;
-            color: var(--status-warning-fg) !important;
+        .settings-confirm-modal__message,
+        .settings-confirm-modal__note,
+        .settings-confirm-modal__countdown {
+            padding: 14px 16px;
+            border-radius: 10px;
+            line-height: 1.65;
         }
 
-        [x-show="closeScheduleConfirmForm"] > div > div > div:nth-child(2) > div:nth-child(2) {
-            border: 1px solid var(--status-info-border) !important;
-            background: var(--status-info-bg) !important;
-            color: var(--status-info-fg) !important;
+        .settings-confirm-modal__message {
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 14%, var(--border));
+            background: color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
+            color: var(--fg-2);
+            font-size: 14px;
         }
 
-        [x-show="openScheduleConfirmForm"] > div > div > div:last-child,
-        [x-show="closeScheduleConfirmForm"] > div > div > div:last-child {
+        .settings-confirm-modal__note {
+            border: 1px solid var(--status-info-border);
+            background: var(--status-info-bg);
+            color: var(--status-info-fg);
+            font-size: 13px;
+            font-weight: 750;
+        }
+
+        .settings-confirm-modal__countdown {
+            border: 1px solid var(--status-warning-border);
+            background: var(--status-warning-bg);
+            color: var(--status-warning-fg);
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        .settings-confirm-modal__foot {
             display: flex !important;
             justify-content: flex-end !important;
             gap: 10px !important;
@@ -2171,16 +2300,14 @@
             background: color-mix(in oklch, var(--brand-navy) 3%, var(--bg-2)) !important;
         }
 
-        [x-show="openScheduleConfirmForm"] > div > div > div:last-child .btn,
-        [x-show="closeScheduleConfirmForm"] > div > div > div:last-child .btn {
+        .settings-confirm-modal__foot .btn {
             min-height: 42px;
             border-radius: var(--r-md);
             padding-inline: 18px;
             font-weight: 800;
         }
 
-        [x-show="openScheduleConfirmForm"] > div > div > div:last-child .btn-primary:disabled,
-        [x-show="closeScheduleConfirmForm"] > div > div > div:last-child .btn-primary:disabled {
+        .settings-confirm-modal__foot .btn-primary:disabled {
             opacity: .58 !important;
             cursor: not-allowed !important;
             filter: saturate(.75);
@@ -2206,58 +2333,43 @@
                 width: 100%;
             }
 
-            [x-show="openScheduleConfirmForm"],
-            [x-show="closeScheduleConfirmForm"] {
-                align-items: end !important;
-                place-items: end center !important;
+            .settings-confirm-overlay {
+                align-items: center !important;
+                justify-content: center !important;
                 padding: 10px !important;
             }
 
-            [x-show="openScheduleConfirmForm"] > div,
-            [x-show="closeScheduleConfirmForm"] > div {
-                width: 100% !important;
-            }
-
-            [x-show="openScheduleConfirmForm"] > div > div,
-            [x-show="closeScheduleConfirmForm"] > div > div {
+            .settings-confirm-modal {
                 max-height: calc(100vh - 20px);
-                border-radius: 14px !important;
+                border-radius: 14px;
             }
 
-            [x-show="openScheduleConfirmForm"] > div > div > div:first-child,
-            [x-show="closeScheduleConfirmForm"] > div > div > div:first-child {
-                grid-template-columns: 38px minmax(0, 1fr);
-                grid-template-rows: auto auto;
+            .settings-confirm-modal__header {
+                grid-template-columns: 42px minmax(0, 1fr);
                 gap: 12px;
-                padding: 18px !important;
+                padding: 18px 58px 18px 18px;
             }
 
-            [x-show="openScheduleConfirmForm"] > div > div > div:first-child::before,
-            [x-show="closeScheduleConfirmForm"] > div > div > div:first-child::before {
-                width: 38px;
-                height: 38px;
+            .settings-confirm-modal__icon {
+                width: 42px;
+                height: 42px;
             }
 
-            [x-show="openScheduleConfirmForm"] > div > div > div:first-child > div:last-child,
-            [x-show="closeScheduleConfirmForm"] > div > div > div:first-child > div:last-child {
-                margin-top: -4px !important;
+            .settings-confirm-modal__subtitle {
                 white-space: normal;
             }
 
-            [x-show="openScheduleConfirmForm"] > div > div > div:nth-child(2),
-            [x-show="closeScheduleConfirmForm"] > div > div > div:nth-child(2) {
+            .settings-confirm-modal__body {
                 padding: 18px !important;
             }
 
-            [x-show="openScheduleConfirmForm"] > div > div > div:last-child,
-            [x-show="closeScheduleConfirmForm"] > div > div > div:last-child {
+            .settings-confirm-modal__foot {
                 display: grid !important;
                 grid-template-columns: 1fr;
                 padding: 14px 18px 18px !important;
             }
 
-            [x-show="openScheduleConfirmForm"] > div > div > div:last-child .btn,
-            [x-show="closeScheduleConfirmForm"] > div > div > div:last-child .btn {
+            .settings-confirm-modal__foot .btn {
                 width: 100%;
             }
         }
@@ -2350,10 +2462,27 @@
             background-color: color-mix(in oklch, var(--brand-navy) 3%, var(--surface)) !important;
         }
 
-        /* modal กลาง "พื้นที่เนื้อหา" ไม่นับ sidebar — dim เต็มจอ แต่ขยับจุดกึ่งกลางขวาเท่าความกว้าง sidebar
-           (--sidebar-w = 0 บนมือถือ → กลับมาเต็มจอเอง) */
+        /* Center settings modals in the content area, excluding the left navigation. */
         .settings-page .overlay {
-            padding-left: calc(20px + var(--sidebar-w, 0px));
+            position: fixed !important;
+            inset: 0 0 0 var(--sidebar-w, 0px) !important;
+            display: flex;
+            align-items: center !important;
+            justify-content: center !important;
+            width: auto !important;
+            min-height: auto !important;
+            padding: clamp(14px, 2vw, 24px) !important;
+            background: color-mix(in oklch, var(--fg-1) 36%, transparent) !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            box-sizing: border-box !important;
+        }
+
+        @media (max-width: 1024px) {
+            .settings-page .overlay {
+                inset: 0 !important;
+                width: 100vw !important;
+            }
         }
 
         .settings-page .form-ctrl:focus,
