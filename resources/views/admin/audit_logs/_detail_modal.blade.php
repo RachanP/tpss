@@ -15,7 +15,7 @@
     x-transition:leave-start="opacity-100"
     x-transition:leave-end="opacity-0"
     @click="close()"
-    style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;"
+    style="position:fixed;inset:0 0 0 var(--sidebar-w,0px);background:rgba(0,0,0,.45);z-index:1000;"
     data-testid="audit-detail-modal-backdrop">
 </div>
 
@@ -33,11 +33,11 @@
     @keydown.escape.window="close()"
     style="
         position:fixed;
-        top:50%;left:50%;
+        top:50%;left:calc(var(--sidebar-w,0px) + ((100vw - var(--sidebar-w,0px)) / 2));
         transform:translate(-50%,-50%);
         z-index:1001;
-        width:min(780px,95vw);
-        max-width:95vw;
+        width:min(780px,calc(100vw - var(--sidebar-w,0px) - 32px));
+        max-width:calc(100vw - var(--sidebar-w,0px) - 32px);
         max-height:90vh;
         display:flex;
         flex-direction:column;
