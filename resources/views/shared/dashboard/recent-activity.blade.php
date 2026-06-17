@@ -67,7 +67,8 @@
 <div class="card" data-testid="recent-activity-widget">
     <div class="card-hdr">
         <div style="display:flex;align-items:center;gap:10px;min-width:0;">
-            <div class="card-ttl">กิจกรรมล่าสุด</div>
+            <span class="dash-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+            <div class="card-ttl" role="heading" aria-level="2">กิจกรรมล่าสุด</div>
         </div>
 
         <a href="{{ route('admin.audit_logs.index') }}" class="btn btn-sm ra-view-all">ดูทั้งหมด</a>
@@ -144,20 +145,14 @@
     }
 
     [data-testid="recent-activity-widget"] > div:not(.card-hdr) {
-        background:
-            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 5%, var(--surface)), transparent 44%),
-            color-mix(in oklch, var(--brand-navy) 3%, var(--surface));
+        background: var(--surface);
     }
 
     [data-testid="recent-activity-widget"] [data-testid="recent-activity-row"] {
         min-width: 0;
         border-bottom-color: color-mix(in oklch, var(--brand-navy) 14%, var(--border)) !important;
-        background:
-            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 5%, var(--surface)), transparent 72%),
-            var(--surface);
-        transition:
-            background 160ms ease,
-            box-shadow 160ms ease;
+        background: var(--surface);
+        transition: background 160ms ease;
     }
 
     [data-testid="recent-activity-widget"] [data-testid="recent-activity-row"]:nth-child(even) {
