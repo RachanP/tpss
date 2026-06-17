@@ -53,7 +53,8 @@
 <div class="card offering-pipeline-card" data-testid="offering-pipeline">
     <div class="card-hdr">
         <div style="display: flex; align-items: center; gap: 10px;">
-            <div class="card-ttl">สถานะรายวิชา</div>
+            <span class="dash-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span>
+            <div class="card-ttl" role="heading" aria-level="2">สถานะรายวิชา</div>
         </div>
         <div class="card-actions">
             <span class="pill p-info" style="font-size: 11px;">
@@ -63,9 +64,10 @@
     </div>
 
     @if($total === 0)
-        <div style="padding: 24px 20px; text-align: center; color: var(--fg-3); border-top: 1px solid var(--border);">
-            <div style="font-size: 13px; font-weight: 600; color: var(--fg-2); margin-bottom: 4px;">ยังไม่มีรายวิชาเปิดสอน</div>
-            <div style="font-size: 11.5px;">เปิดช่วงจัดตารางสอนเพื่อสร้างรายวิชาเปิดสอน</div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 6px; padding: 32px 20px; border-top: 1px solid var(--border);">
+            <span class="dash-empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></span>
+            <div style="font-size: 13px; font-weight: 600; color: var(--fg-2);">ยังไม่มีรายวิชาเปิดสอน</div>
+            <div style="font-size: 11.5px; color: var(--fg-3);">เปิดช่วงจัดตารางสอนเพื่อสร้างรายวิชาเปิดสอน</div>
         </div>
     @else
         <div class="offering-pipeline-list">
@@ -126,9 +128,7 @@
         display: grid;
         gap: 10px;
         padding: 16px 18px 18px;
-        background:
-            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 5%, var(--surface)), transparent 44%),
-            color-mix(in oklch, var(--brand-navy) 3%, var(--surface));
+        background: var(--surface);
     }
 
     [data-testid="offering-pipeline"] .card-hdr > div:first-child {
@@ -145,34 +145,8 @@
         padding: 13px 14px;
         border: 1px solid color-mix(in oklch, var(--brand-navy) 20%, var(--border));
         border-radius: var(--r-md);
-        background:
-            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 5%, var(--surface)), transparent 72%),
-            var(--surface);
-        box-shadow:
-            0 1px 2px rgba(0, 36, 84, 0.08),
-            0 14px 28px -24px rgba(0, 36, 84, 0.36);
-        transition:
-            transform var(--dur-fast),
-            border-color var(--dur-fast),
-            background var(--dur-fast),
-            box-shadow var(--dur-fast);
-    }
-    .offering-pipeline-row:hover {
-        transform: translateY(-1px);
-        border-color: color-mix(in oklch, var(--brand-navy) 34%, var(--border));
-        background:
-            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 8%, var(--surface)), transparent 72%),
-            color-mix(in oklch, var(--brand-navy) 7%, var(--surface));
-        box-shadow:
-            0 1px 2px rgba(0, 36, 84, 0.06),
-            0 16px 30px -24px rgba(0, 36, 84, 0.32);
-    }
-    .offering-pipeline-row:hover .offering-pipeline-icon {
-        box-shadow: 0 0 0 4px color-mix(in oklch, var(--brand-navy) 8%, transparent);
-        transform: scale(1.03);
-    }
-    .offering-pipeline-row:hover .offering-pipeline-count span {
-        color: color-mix(in oklch, var(--brand-navy) 88%, var(--fg-1));
+        background: var(--surface);
+        box-shadow: 0 1px 2px rgba(0, 36, 84, 0.06);
     }
     .offering-pipeline-icon {
         display: inline-flex;
@@ -182,25 +156,22 @@
         height: 32px;
         border-radius: 50%;
         flex-shrink: 0;
-        transition:
-            box-shadow var(--dur-fast),
-            transform var(--dur-fast);
     }
     .offering-pipeline-icon.is-success {
-        color: var(--brand-navy);
-        background: color-mix(in oklch, var(--brand-navy) 13%, var(--surface));
+        color: var(--status-success-fg);
+        background: color-mix(in oklch, var(--status-success) 14%, var(--surface));
     }
     .offering-pipeline-icon.is-warning {
-        color: var(--brand-navy);
-        background: color-mix(in oklch, var(--brand-navy) 13%, var(--surface));
+        color: var(--status-warning-fg);
+        background: color-mix(in oklch, var(--status-warning) 16%, var(--surface));
     }
     .offering-pipeline-icon.is-conflict {
-        color: var(--brand-navy);
-        background: color-mix(in oklch, var(--brand-navy) 13%, var(--surface));
+        color: var(--status-conflict-fg);
+        background: color-mix(in oklch, var(--status-conflict) 14%, var(--surface));
     }
     .offering-pipeline-icon.is-muted {
-        color: var(--brand-navy);
-        background: color-mix(in oklch, var(--brand-navy) 13%, var(--surface));
+        color: var(--fg-3);
+        background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface));
     }
     .offering-pipeline-main {
         flex: 1 1 auto;
@@ -214,14 +185,13 @@
         margin-bottom: 5px;
     }
     .offering-pipeline-title {
-        color: var(--brand-navy) !important;
         font-size: 12.5px;
-        font-weight: 800;
+        font-weight: 700;
         line-height: 1.35;
     }
     .offering-pipeline-desc {
         font-size: 12px;
-        color: var(--fg-3);
+        color: var(--fg-2);
         line-height: 1.45;
     }
     .offering-pipeline-count {
