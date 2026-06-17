@@ -81,6 +81,8 @@
     };
     $criticalKeys = array_column($criticals ?? [], 'key');
     $activeCourseCount = $stats['courses']['active'] ?? 0;
+    $instructorCount = isset($instructors) ? $instructors->count() : 0;
+    $roomTotal = $stats['rooms']['total'] ?? 0;
 
     $readinessItems = [
         [
@@ -123,6 +125,22 @@
             'href' => route('admin.master_data') . '?tab=courses',
             'action' => 'ไปจัดการหัวหน้าวิชา',
         ],
+        [
+            'label' => 'อาจารย์ผู้สอน',
+            'meta' => number_format($instructorCount) . ' คน',
+            'status' => $instructorCount > 0 ? 'พร้อม' : 'ยังไม่มี',
+            'tone' => $instructorCount > 0 ? 'success' : 'warning',
+            'href' => route('admin.users'),
+            'action' => 'ไปจัดการผู้ใช้',
+        ],
+        [
+            'label' => 'ห้อง / สถานที่',
+            'meta' => number_format($roomTotal) . ' รายการ',
+            'status' => $roomTotal > 0 ? 'พร้อม' : 'ยังไม่มี',
+            'tone' => $roomTotal > 0 ? 'success' : 'warning',
+            'href' => route('admin.master_data', ['tab' => 'location_types']),
+            'action' => 'ไปจัดการห้อง / สถานที่',
+        ],
     ];
 
     // Visual phase stepper — lifecycle รอบปีการศึกษา (เตรียม → เปิดจัดตาราง → เผยแพร่)
@@ -139,6 +157,87 @@
             : ($idx < $currentPhaseIndex ? 'done' : ($idx === $currentPhaseIndex ? 'current' : 'upcoming'));
     }
     unset($step);
+
+    // ⭐ Phase-aware summary — ช่องสรุปสลับเนื้อหาตามสถานะระบบ
+    //    เตรียม = ความพร้อมข้อมูล · เปิดจัดตาราง = ความคืบหน้า · เผยแพร่ = สรุปรอบ
+    $pipe = $pipeline ?? ['draft' => 0, 'pending' => 0, 'published' => 0, 'rejected' => 0];
+
+    if ($currentPhase === 'scheduling') {
+        $summaryHeading = 'ความคืบหน้าการจัดตาราง';
+        $summaryItems = [
+            [
+                'label' => 'รออนุมัติ',
+                'meta' => number_format($pipe['pending']) . ' วิชา',
+                'status' => $pipe['pending'] > 0 ? 'รอผู้บริหาร' : 'ไม่มีค้าง',
+                'tone' => $pipe['pending'] > 0 ? 'warning' : 'success',
+                'href' => route('admin.alerts'),
+                'action' => 'ดูรายการรออนุมัติ',
+            ],
+            [
+                'label' => 'ตีกลับ',
+                'meta' => number_format($pipe['rejected']) . ' วิชา',
+                'status' => $pipe['rejected'] > 0 ? 'ต้องแก้ไข' : 'ไม่มี',
+                'tone' => $pipe['rejected'] > 0 ? 'conflict' : 'success',
+                'href' => route('admin.alerts'),
+                'action' => 'ดูรายการตีกลับ',
+            ],
+            [
+                'label' => 'อนุมัติแล้ว',
+                'meta' => number_format($pipe['published']) . ' วิชา',
+                'status' => 'เผยแพร่ได้',
+                'tone' => 'success',
+                'href' => route('admin.master_data', ['tab' => 'courses']),
+                'action' => 'ดูรายวิชา',
+            ],
+            [
+                'label' => 'กำลังจัด (ร่าง)',
+                'meta' => number_format($pipe['draft']) . ' วิชา',
+                'status' => $pipe['draft'] > 0 ? 'อยู่ระหว่างจัด' : 'ไม่มี',
+                'tone' => 'info',
+                'href' => route('admin.master_data', ['tab' => 'courses']),
+                'action' => 'ดูรายวิชา',
+            ],
+        ];
+    } elseif ($currentPhase === 'published') {
+        $summaryHeading = 'สรุปรอบปีการศึกษา';
+        $summaryItems = [
+            [
+                'label' => 'เผยแพร่แล้ว',
+                'meta' => number_format($pipe['published']) . ' วิชา',
+                'status' => 'ใช้งานได้',
+                'tone' => 'success',
+                'href' => route('admin.master_data', ['tab' => 'courses']),
+                'action' => 'ดูรายวิชา',
+            ],
+            [
+                'label' => 'รายวิชาเปิดสอน',
+                'meta' => number_format($activeCourseCount) . ' วิชา',
+                'status' => 'ทั้งรอบ',
+                'tone' => 'info',
+                'href' => route('admin.master_data', ['tab' => 'courses']),
+                'action' => 'ดูรายวิชา',
+            ],
+            [
+                'label' => 'อาจารย์ผู้สอน',
+                'meta' => number_format($instructorCount) . ' คน',
+                'status' => 'ในระบบ',
+                'tone' => 'info',
+                'href' => route('admin.users'),
+                'action' => 'ไปจัดการผู้ใช้',
+            ],
+            [
+                'label' => 'ห้อง / สถานที่',
+                'meta' => number_format($roomTotal) . ' รายการ',
+                'status' => 'ในระบบ',
+                'tone' => 'info',
+                'href' => route('admin.master_data', ['tab' => 'location_types']),
+                'action' => 'ไปจัดการห้อง / สถานที่',
+            ],
+        ];
+    } else {
+        $summaryHeading = 'ความพร้อมข้อมูล';
+        $summaryItems = array_slice($readinessItems, 3);
+    }
 @endphp
 
 <div class="card admin-hero-card" data-testid="admin-hero">
@@ -170,7 +269,6 @@
                 <div class="admin-status-text">
                     <div class="admin-status-label">
                         <span>สถานะระบบปัจจุบัน</span>
-                        <span class="pill {{ $systemStatus['pill'] }} admin-status-phase-pill">{{ $phaseMeta['label'] }}</span>
                     </div>
                     <div class="admin-status-headline">
                         <span class="admin-status-marker" aria-hidden="true"></span>
@@ -208,13 +306,15 @@
             </div>
         </div>
 
-        <div class="admin-status-summary" aria-label="สรุปความพร้อมระบบ">
-            @foreach(array_slice($readinessItems, 1) as $item)
+        <div class="admin-status-summary" aria-label="{{ $summaryHeading }}">
+            <div class="admin-summary-heading">{{ $summaryHeading }}</div>
+            @foreach($summaryItems as $item)
                 @php
                     $toneIcon = [
                         'success'  => '<path d="M20 6L9 17l-5-5"/>',
                         'warning'  => '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
                         'conflict' => '<circle cx="12" cy="12" r="9"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
+                        'info'     => '<circle cx="12" cy="12" r="9"/><path d="M12 8v4l2.5 1.5"/>',
                     ][$item['tone']] ?? '<path d="M20 6L9 17l-5-5"/>';
                 @endphp
                 <a href="{{ $item['href'] }}"
@@ -266,7 +366,7 @@
         font-size: 12px;
         font-weight: 700;
         line-height: 1.35;
-        color: color-mix(in oklch, var(--brand-navy) 52%, var(--fg-3));
+        color: var(--fg-2);
     }
 
     .admin-hero-copy h1 {
@@ -322,8 +422,8 @@
         background:
             radial-gradient(circle at 9% 4%, color-mix(in oklch, var(--brand-navy) 14%, transparent), transparent 28%),
             linear-gradient(135deg,
-                color-mix(in oklch, var(--brand-navy) 13%, var(--surface)) 0%,
-                color-mix(in oklch, var(--brand-navy) 5%, var(--surface)) 46%,
+                color-mix(in oklch, var(--brand-navy) 10%, var(--surface)) 0%,
+                color-mix(in oklch, var(--brand-navy) 4%, var(--surface)) 46%,
                 var(--surface) 100%);
     }
 
@@ -352,7 +452,7 @@
         background: color-mix(in oklch, var(--brand-navy) 10%, var(--surface));
         color: var(--brand-navy);
         font-size: 13px;
-        font-weight: 800;
+        font-weight: 700;
         line-height: 1.2;
         white-space: normal;
         text-align: center;
@@ -389,24 +489,23 @@
     }
 
     .admin-status-banner.is-conflict .admin-status-marker {
-        background: var(--brand-navy);
-        box-shadow: 0 0 0 5px color-mix(in oklch, var(--brand-navy) 15%, transparent);
+        background: var(--status-conflict);
+        box-shadow: 0 0 0 5px color-mix(in oklch, var(--status-conflict) 22%, transparent);
     }
 
     .admin-status-banner.is-warning .admin-status-marker {
-        background: var(--brand-navy);
-        box-shadow: 0 0 0 5px color-mix(in oklch, var(--brand-navy) 15%, transparent);
+        background: var(--status-warning);
+        box-shadow: 0 0 0 5px color-mix(in oklch, var(--status-warning) 22%, transparent);
     }
 
-    .admin-status-banner.is-warning .admin-status-phase-pill {
-        border-color: color-mix(in oklch, var(--brand-navy) 24%, var(--border));
-        background: color-mix(in oklch, var(--brand-navy) 9%, var(--surface));
-        color: var(--brand-navy);
+    .admin-status-banner.is-success .admin-status-marker {
+        background: var(--status-success);
+        box-shadow: 0 0 0 5px color-mix(in oklch, var(--status-success) 22%, transparent);
     }
 
     .admin-status-banner.is-info .admin-status-marker {
-        background: var(--brand-navy);
-        box-shadow: 0 0 0 5px color-mix(in oklch, var(--brand-navy) 15%, transparent);
+        background: var(--status-info);
+        box-shadow: 0 0 0 5px color-mix(in oklch, var(--status-info) 22%, transparent);
     }
 
     .admin-status-text {
@@ -466,7 +565,7 @@
 
     .admin-status-next {
         margin-top: 8px;
-        color: var(--fg-3);
+        color: var(--fg-2);
         font-size: 12px;
         font-weight: 700;
         line-height: 1.45;
@@ -482,29 +581,11 @@
         grid-template-columns: repeat(3, minmax(0, 1fr));
         column-gap: 10px;
         margin-top: 18px;
-        padding: 16px 18px 18px;
-        border: 1px solid color-mix(in oklch, var(--brand-navy) 22%, var(--border));
-        border-radius: var(--r-lg);
-        background:
-            linear-gradient(180deg, color-mix(in oklch, var(--brand-navy) 8%, var(--surface)), transparent 62%),
-            color-mix(in oklch, var(--brand-navy) 6%, var(--surface));
+        padding: 16px 18px 6px;
+        border: 0;
+        border-top: 1px solid color-mix(in oklch, var(--brand-navy) 14%, var(--border));
+        background: transparent;
         overflow: hidden;
-        box-shadow:
-            0 1px 2px rgba(0, 36, 84, 0.08),
-            0 16px 34px -28px rgba(0, 36, 84, 0.42),
-            inset 0 1px 0 rgba(255, 255, 255, 0.65);
-        transition:
-            border-color 180ms ease,
-            box-shadow 180ms ease,
-            background 180ms ease;
-    }
-
-    .admin-phase-stepper:hover {
-        border-color: color-mix(in oklch, var(--brand-navy) 32%, var(--border));
-        box-shadow:
-            0 1px 2px rgba(0, 36, 84, 0.1),
-            0 18px 36px -28px rgba(0, 36, 84, 0.5),
-            inset 0 1px 0 rgba(255, 255, 255, 0.72);
     }
 
     .admin-phase-stepper::before,
@@ -525,8 +606,7 @@
 
     .admin-phase-stepper::after {
         width: 0;
-        background: var(--brand-navy);
-        box-shadow: 0 1px 2px rgba(0, 36, 84, 0.14);
+        background: color-mix(in oklch, var(--brand-navy) 76%, var(--surface));
     }
 
     .admin-phase-stepper.is-phase-1::after {
@@ -559,7 +639,7 @@
         color: var(--fg-3);
         font-family: var(--font-display);
         font-size: 14px;
-        font-weight: 800;
+        font-weight: 700;
         font-variant-numeric: tabular-nums;
         flex-shrink: 0;
         box-shadow: 0 1px 2px rgba(0, 36, 84, 0.06);
@@ -570,38 +650,15 @@
             var(--brand-navy));
         border-color: var(--brand-navy);
         color: var(--surface);
-        box-shadow:
-            0 0 0 4px color-mix(in oklch, var(--brand-navy) 10%, transparent),
-            0 3px 8px -2px color-mix(in oklch, var(--brand-navy) 45%, transparent);
+        box-shadow: 0 1px 2px rgba(0, 36, 84, 0.10);
     }
     .phase-step.is-current .phase-step-node {
-        border: 3px solid currentColor;
+        border: 3px solid var(--brand-navy);
         color: var(--brand-navy);
         background: color-mix(in oklch, var(--brand-navy) 7%, var(--surface));
         box-shadow:
-            inset 0 0 0 5px var(--surface),
-            0 0 0 5px color-mix(in oklch, var(--brand-navy) 10%, transparent);
-    }
-    .admin-status-banner.is-conflict .phase-step.is-current .phase-step-node {
-        color: var(--brand-navy);
-        background: color-mix(in oklch, var(--brand-navy) 7%, var(--surface));
-        box-shadow:
-            inset 0 0 0 5px var(--surface),
-            0 0 0 5px color-mix(in oklch, var(--brand-navy) 10%, transparent);
-    }
-    .admin-status-banner.is-warning .phase-step.is-current .phase-step-node {
-        color: var(--brand-navy);
-        background: color-mix(in oklch, var(--brand-navy) 7%, var(--surface));
-        box-shadow:
-            inset 0 0 0 5px var(--surface),
-            0 0 0 5px color-mix(in oklch, var(--brand-navy) 10%, transparent);
-    }
-    .admin-status-banner.is-info .phase-step.is-current .phase-step-node {
-        color: var(--brand-navy);
-        background: color-mix(in oklch, var(--brand-navy) 7%, var(--surface));
-        box-shadow:
-            inset 0 0 0 5px var(--surface),
-            0 0 0 5px color-mix(in oklch, var(--brand-navy) 10%, transparent);
+            inset 0 0 0 4px var(--surface),
+            0 0 0 3px color-mix(in oklch, var(--brand-navy) 9%, transparent);
     }
     .phase-step-pulse {
         width: 10px;
@@ -616,7 +673,7 @@
     }
     .phase-step-label {
         font-size: 12.5px;
-        font-weight: 800;
+        font-weight: 700;
         line-height: 1.3;
         color: var(--fg-3);
     }
@@ -636,8 +693,8 @@
 
     .admin-status-summary {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
-        gap: 8px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
         min-width: 0;
     }
 
@@ -654,17 +711,11 @@
         padding: 10px 12px;
         border: 1px solid color-mix(in oklch, var(--admin-summary-accent) 30%, var(--border));
         border-radius: var(--r-sm);
-        background:
-            radial-gradient(circle at 9% 0%, color-mix(in oklch, var(--admin-summary-accent) 13%, transparent), transparent 38%),
-            linear-gradient(180deg, color-mix(in oklch, var(--admin-summary-accent) 8%, var(--surface)), transparent 68%),
-            color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
+        background: color-mix(in oklch, var(--admin-summary-accent) 7%, var(--surface));
         text-align: left;
         text-decoration: none;
         cursor: pointer;
-        box-shadow:
-            0 1px 2px rgba(0, 36, 84, 0.08),
-            0 14px 28px -24px rgba(0, 36, 84, 0.38),
-            inset 0 1px 0 color-mix(in oklch, var(--surface) 78%, transparent);
+        box-shadow: 0 1px 2px rgba(0, 36, 84, 0.08);
         transition:
             transform 160ms ease,
             border-color 160ms ease,
@@ -676,10 +727,8 @@
     .admin-status-summary-item:focus-visible {
         transform: translateY(-1px);
         border-color: color-mix(in oklch, var(--admin-summary-accent) 42%, var(--border));
-        background:
-            radial-gradient(circle at 9% 0%, color-mix(in oklch, var(--admin-summary-accent) 17%, transparent), transparent 38%),
-            color-mix(in oklch, var(--admin-summary-accent) 10%, var(--surface));
-        box-shadow: 0 12px 24px color-mix(in oklch, var(--admin-summary-accent) 15%, transparent);
+        background: color-mix(in oklch, var(--admin-summary-accent) 11%, var(--surface));
+        box-shadow: 0 6px 16px -8px color-mix(in oklch, var(--admin-summary-accent) 30%, transparent);
         outline: none;
     }
 
@@ -692,43 +741,11 @@
     }
 
     .admin-status-summary-item.is-success {
-        --admin-summary-accent: var(--status-success-fg);
+        --admin-summary-accent: var(--brand-navy);
     }
 
     .admin-status-summary-item.is-info {
-        --admin-summary-accent: var(--status-info-fg);
-    }
-
-    .admin-status-summary-item.is-conflict:hover,
-    .admin-status-summary-item.is-conflict:focus-visible {
-        border-color: color-mix(in oklch, var(--admin-summary-accent) 42%, var(--border));
-        background:
-            radial-gradient(circle at 9% 0%, color-mix(in oklch, var(--admin-summary-accent) 17%, transparent), transparent 38%),
-            color-mix(in oklch, var(--admin-summary-accent) 10%, var(--surface));
-    }
-
-    .admin-status-summary-item.is-warning:hover,
-    .admin-status-summary-item.is-warning:focus-visible {
-        border-color: color-mix(in oklch, var(--admin-summary-accent) 42%, var(--border));
-        background:
-            radial-gradient(circle at 9% 0%, color-mix(in oklch, var(--admin-summary-accent) 17%, transparent), transparent 38%),
-            color-mix(in oklch, var(--admin-summary-accent) 10%, var(--surface));
-    }
-
-    .admin-status-summary-item.is-success:hover,
-    .admin-status-summary-item.is-success:focus-visible {
-        border-color: color-mix(in oklch, var(--admin-summary-accent) 42%, var(--border));
-        background:
-            radial-gradient(circle at 9% 0%, color-mix(in oklch, var(--admin-summary-accent) 17%, transparent), transparent 38%),
-            color-mix(in oklch, var(--admin-summary-accent) 10%, var(--surface));
-    }
-
-    .admin-status-summary-item.is-info:hover,
-    .admin-status-summary-item.is-info:focus-visible {
-        border-color: color-mix(in oklch, var(--admin-summary-accent) 42%, var(--border));
-        background:
-            radial-gradient(circle at 9% 0%, color-mix(in oklch, var(--admin-summary-accent) 17%, transparent), transparent 38%),
-            color-mix(in oklch, var(--admin-summary-accent) 10%, var(--surface));
+        --admin-summary-accent: var(--brand-navy);
     }
 
     .admin-summary-icon {
@@ -754,10 +771,14 @@
         color: var(--status-conflict-fg);
         background: color-mix(in oklch, var(--status-conflict-fg) 14%, transparent);
     }
+    .admin-summary-icon.is-info {
+        color: var(--brand-navy);
+        background: color-mix(in oklch, var(--brand-navy) 12%, transparent);
+    }
 
     .admin-summary-label {
         grid-column: 2;
-        color: var(--fg-3);
+        color: var(--fg-2);
         font-size: 11.5px;
         font-weight: 700;
         line-height: 1.25;
@@ -793,9 +814,21 @@
         color: var(--status-warning-fg);
     }
 
-    .admin-status-summary-item.is-success strong,
+    .admin-status-summary-item.is-success strong {
+        color: var(--fg-1);
+    }
+
     .admin-status-summary-item.is-success .admin-summary-status {
         color: var(--status-success-fg);
+    }
+
+    .admin-summary-heading {
+        grid-column: 1 / -1;
+        margin-bottom: 2px;
+        font-size: 11.5px;
+        font-weight: 700;
+        line-height: 1.3;
+        color: var(--fg-2);
     }
 
     @media (max-width: 1600px) {

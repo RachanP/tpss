@@ -59,7 +59,7 @@ class AdminDashboardTest extends TestCase
         foreach ([
             'preparation' => 'เตรียมข้อมูล',
             'scheduling' => 'เปิดจัดตาราง',
-            'published' => 'เผยแพร่แล้ว',
+            'published' => 'เผยแพร่ตาราง',
         ] as $phase => $label) {
             AcademicYear::query()->delete();
             AcademicYear::create([
