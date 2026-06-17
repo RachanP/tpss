@@ -15,7 +15,7 @@
 @endphp
 <div class="dash-chart-card dash-donut-card">
     <div class="dash-chart-heading">
-        <div class="dash-chart-title">{{ $title }}</div>
+        <div class="dash-chart-title" role="heading" aria-level="2">{{ $title }}</div>
         @isset($subtitle)
             <div class="dash-chart-subtitle">{{ $subtitle }}</div>
         @endisset

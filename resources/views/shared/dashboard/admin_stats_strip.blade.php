@@ -54,14 +54,7 @@
                 <div class="admin-stats-unit">รายการ</div>
             </div>
             @if($topRoomTypes->isNotEmpty())
-                <div class="admin-stats-list">
-                    @foreach($topRoomTypes as $type)
-                        <div class="admin-stats-list-row">
-                            <span>{{ $type['label'] }}</span>
-                            <strong>{{ number_format($type['count']) }}</strong>
-                        </div>
-                    @endforeach
-                </div>
+                <div class="admin-stats-foot">{{ number_format($stats['rooms']['by_type']->count()) }} ประเภทสถานที่</div>
             @else
                 <div class="admin-stats-foot">ยังไม่มีประเภทสถานที่</div>
             @endif
@@ -77,16 +70,8 @@
                 <div class="admin-stats-unit">หลักสูตร</div>
             </div>
             @if($stats['curriculums']['total'] > 0)
-                <div class="admin-stats-list">
-                    @foreach([['bachelor', 'ปริญญาตรี'], ['master', 'ปริญญาโท'], ['doctorate', 'ปริญญาเอก']] as [$key, $label])
-                        @if($byLevel[$key] > 0)
-                            <div class="admin-stats-list-row">
-                                <span>{{ $label }}</span>
-                                <strong>{{ number_format($byLevel[$key]) }}</strong>
-                            </div>
-                        @endif
-                    @endforeach
-                </div>
+                @php $levelCount = collect(['bachelor', 'master', 'doctorate'])->filter(fn ($k) => ($byLevel[$k] ?? 0) > 0)->count(); @endphp
+                <div class="admin-stats-foot">{{ $levelCount }} ระดับการศึกษา</div>
             @else
                 <div class="admin-stats-foot">ยังไม่มีหลักสูตร</div>
             @endif
@@ -164,7 +149,7 @@
         display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px;
     }
     .admin-stats-label {
-        font-size: 12px; font-weight: 800; color: color-mix(in oklch, var(--brand-navy) 76%, var(--fg-2));
+        font-size: 12px; font-weight: 700; color: color-mix(in oklch, var(--brand-navy) 76%, var(--fg-2));
         letter-spacing: 0;
         overflow-wrap: anywhere;
     }
@@ -206,7 +191,7 @@
     }
     .admin-stats-foot {
         margin-top: auto;
-        font-size: 11.5px; color: var(--fg-3); line-height: 1.45;
+        font-size: 11.5px; color: var(--fg-2); line-height: 1.45;
     }
     .admin-stats-list {
         display: flex;

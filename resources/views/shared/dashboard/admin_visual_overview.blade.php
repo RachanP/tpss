@@ -12,18 +12,10 @@
         ['label' => 'ปริญญาเอก', 'count' => $byLevel['doctorate'] ?? 0, 'color' => '#c9a449'],
     ];
 
-    // Bar ห้อง/สถานที่แยกประเภท
+    // Bar ห้อง/สถานที่แยกประเภท — เป็น list หมวด ไม่ใช่สถานะ → navy เดียว (เลี่ยงสีที่อ่านเหมือน success/warning)
     $roomTypes = ($stats['rooms']['by_type'] ?? collect())->take(6);
     $roomTotalRaw = (int) $roomTypes->sum('count');
     $roomTotal = max($roomTotalRaw, 1);
-    $roomTypeAccents = [
-        'oklch(43% 0.118 255)',
-        'oklch(52% 0.095 184)',
-        'oklch(61% 0.112 82)',
-        'oklch(45% 0.105 282)',
-        'oklch(50% 0.09 32)',
-        'oklch(48% 0.085 150)',
-    ];
 @endphp
 
 <section class="admin-section">
@@ -38,7 +30,7 @@
         <div class="dash-chart-card">
             <div class="dash-chart-headline">
                 <div>
-                    <div class="dash-chart-title">ห้องและสถานที่แยกประเภท</div>
+                    <div class="dash-chart-title" role="heading" aria-level="2">ห้องและสถานที่แยกประเภท</div>
                     <div class="dash-chart-subtitle">จำนวนสถานที่ที่บันทึกไว้ในระบบ แยกตามประเภท</div>
                 </div>
                 <div class="dash-chart-total-badge">
@@ -52,9 +44,8 @@
                         @php
                             $count = (int) $type['count'];
                             $share = round(($count / $roomTotal) * 100);
-                            $accent = $roomTypeAccents[$loop->index % count($roomTypeAccents)];
                         @endphp
-                        <li class="dash-type-row {{ $count === 0 ? 'is-empty' : '' }}" style="--dash-type-accent: {{ $accent }};">
+                        <li class="dash-type-row {{ $count === 0 ? 'is-empty' : '' }}">
                             <span class="dash-type-dot" aria-hidden="true"></span>
                             <span class="dash-type-main">
                                 <span class="dash-type-label" title="{{ $type['label'] }}">{{ $type['label'] }}</span>
@@ -108,13 +99,13 @@
     }
     .dash-chart-title {
         font-size: 13px;
-        font-weight: 800;
+        font-weight: 700;
         color: color-mix(in oklch, var(--brand-navy) 78%, var(--fg-2));
         letter-spacing: 0;
         margin-bottom: 4px;
     }
     .dash-chart-subtitle {
-        color: color-mix(in oklch, var(--brand-navy) 38%, var(--fg-3));
+        color: var(--fg-2);
         font-size: 11.5px;
         line-height: 1.45;
     }
@@ -160,23 +151,8 @@
         place-items: center;
         justify-self: center;
         border-radius: 50%;
-        background:
-            radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.9) 0 42%, transparent 43%),
-            radial-gradient(circle at 44% 36%, rgba(255, 255, 255, 0.98), color-mix(in oklch, var(--brand-navy) 9%, var(--surface)) 64%, transparent 65%);
-        box-shadow:
-            0 20px 38px -24px rgba(0, 36, 84, 0.58),
-            inset 0 1px 0 rgba(255, 255, 255, 0.85);
-        transition:
-            box-shadow 180ms ease,
-            transform 180ms ease,
-            background 180ms ease;
-    }
-    .dash-donut-card:hover .dash-donut-stage,
-    .dash-donut-card:focus-within .dash-donut-stage {
-        transform: translateY(-1px);
-        box-shadow:
-            0 24px 44px -24px rgba(0, 36, 84, 0.66),
-            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        background: color-mix(in oklch, var(--brand-navy) 4%, var(--surface));
+        box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--brand-navy) 8%, transparent);
     }
     .dash-donut {
         width: min(166px, 84%);
@@ -220,19 +196,6 @@
             inset 0 1px 0 rgba(255, 255, 255, 0.68);
         font-size: 13px;
         color: var(--fg-2);
-        transition:
-            border-color 180ms ease,
-            background 180ms ease,
-            box-shadow 180ms ease,
-            transform 180ms ease;
-    }
-    .dash-legend-row:hover {
-        transform: translateY(-1px);
-        border-color: color-mix(in oklch, var(--brand-navy) 28%, var(--border));
-        background: color-mix(in oklch, var(--brand-navy) 7%, var(--surface));
-        box-shadow:
-            0 1px 2px rgba(0, 36, 84, 0.1),
-            0 12px 24px -22px rgba(0, 36, 84, 0.34);
     }
     .dash-legend-dot {
         width: 12px;
@@ -254,7 +217,7 @@
         align-items: baseline;
         justify-content: flex-end;
         min-width: 62px;
-        font-weight: 800;
+        font-weight: 700;
         color: var(--fg-1);
         font-variant-numeric: tabular-nums;
         flex-shrink: 0;
@@ -284,34 +247,11 @@
         padding: 12px;
         border: 1px solid color-mix(in oklch, var(--dash-type-accent, var(--brand-navy)) 30%, var(--border));
         border-radius: var(--r-md);
-        background:
-            radial-gradient(circle at 12% 0%, color-mix(in oklch, var(--dash-type-accent, var(--brand-navy)) 12%, transparent), transparent 36%),
-            linear-gradient(180deg, color-mix(in oklch, var(--dash-type-accent, var(--brand-navy)) 8%, var(--surface)), transparent 70%),
-            color-mix(in oklch, var(--brand-navy) 3%, var(--surface));
-        box-shadow:
-            0 1px 2px rgba(0, 36, 84, 0.08),
-            0 14px 28px -24px rgba(0, 36, 84, 0.34);
-        transition:
-            border-color 180ms ease,
-            background 180ms ease,
-            box-shadow 180ms ease,
-            transform 180ms ease;
-    }
-    .dash-type-row:hover {
-        transform: translateY(-1px);
-        border-color: color-mix(in oklch, var(--dash-type-accent, var(--brand-navy)) 42%, var(--border));
-        background:
-            radial-gradient(circle at 12% 0%, color-mix(in oklch, var(--dash-type-accent, var(--brand-navy)) 16%, transparent), transparent 36%),
-            linear-gradient(180deg, color-mix(in oklch, var(--dash-type-accent, var(--brand-navy)) 11%, var(--surface)), transparent 70%),
-            color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
-        box-shadow:
-            0 2px 4px rgba(0, 36, 84, 0.1),
-            0 16px 30px -24px rgba(0, 36, 84, 0.42);
+        background: color-mix(in oklch, var(--dash-type-accent, var(--brand-navy)) 7%, var(--surface));
+        box-shadow: 0 1px 2px rgba(0, 36, 84, 0.06);
     }
     .dash-type-row.is-empty {
-        background:
-            linear-gradient(180deg, rgba(255, 255, 255, 0.68), rgba(255, 255, 255, 0.34)),
-            color-mix(in oklch, var(--brand-navy) 3%, var(--surface));
+        background: color-mix(in oklch, var(--brand-navy) 3%, var(--surface));
     }
     .dash-type-row.is-empty .dash-type-dot {
         background: color-mix(in oklch, var(--dash-type-accent, var(--brand-navy)) 42%, var(--fg-3));
@@ -346,7 +286,7 @@
         border: 1px solid color-mix(in oklch, var(--dash-type-accent, var(--brand-navy)) 26%, var(--border));
         border-radius: 999px;
         background: color-mix(in oklch, var(--dash-type-accent, var(--brand-navy)) 10%, var(--surface));
-        color: var(--fg-3);
+        color: var(--fg-2);
         font-size: 10.5px;
         line-height: 1.35;
     }
@@ -362,7 +302,7 @@
         color: color-mix(in oklch, var(--dash-type-accent, var(--brand-navy)) 78%, var(--brand-navy));
         font-family: var(--font-display);
         font-size: 16px;
-        font-weight: 800;
+        font-weight: 700;
         font-variant-numeric: tabular-nums;
     }
     .dash-chart-empty {
