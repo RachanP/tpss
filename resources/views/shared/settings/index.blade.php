@@ -468,7 +468,7 @@
                                 @if($activeYear)
                                     <button type="button" class="settings-step-link" @click="scrollToSettingsTarget('academic-year-section')">ดูปีการศึกษา</button>
                                 @else
-                                    <button type="button" class="btn btn-primary settings-step-action" @click="openAddModal()">เพิ่มปีการศึกษา</button>
+                                    <button type="button" class="btn btn-primary settings-step-action" @click="scrollToSettingsTarget('academic-year-section')">ไปตั้งค่าปีการศึกษา</button>
                                 @endif
                             </div>
                         </article>
@@ -490,9 +490,12 @@
                                 <p class="settings-step-task" x-show="!calYearName" x-cloak>ต้องทำขั้นที่ 1 ให้เสร็จก่อน</p>
                                 <p class="settings-step-task" x-show="calYearName && !centralHasTerms()" x-cloak>กรอกวันเปิดเทอม ปิดเทอม และช่วงสอบ</p>
                                 <p class="settings-step-task" x-show="calYearName && centralHasTerms()" x-cloak>ทุกหลักสูตรใช้ปฏิทินนี้เป็นฐาน</p>
+                                <button type="button" class="settings-step-link"
+                                    x-show="!calYearName" x-cloak
+                                    @click="scrollToSettingsTarget('central-calendar-section')">ดูส่วนปฏิทินกลาง</button>
                                 <button type="button" class="btn btn-primary settings-step-action"
                                     x-show="calYearName && !centralHasTerms()" x-cloak
-                                    @click="openScopeModal({ key: 'central', curriculum_id: '', year: null, isDefault: true })">กำหนดปฏิทินกลาง</button>
+                                    @click="scrollToSettingsTarget('central-calendar-section')">ไปกำหนดปฏิทินกลาง</button>
                                 <button type="button" class="settings-step-link"
                                     x-show="calYearName && centralHasTerms()" x-cloak
                                     @click="scrollToSettingsTarget('central-calendar-section')">ดูปฏิทินกลาง</button>
@@ -516,6 +519,9 @@
                                 <p class="settings-step-task" x-show="!calYearName || !centralHasTerms()" x-cloak>ต้องทำปฏิทินกลางให้เสร็จก่อน</p>
                                 <p class="settings-step-task" x-show="calYearName && centralHasTerms() && calOverrideCount() === 0" x-cloak>ข้ามได้ถ้าไม่มีวันต่างจากปฏิทินกลาง</p>
                                 <p class="settings-step-task" x-show="calYearName && centralHasTerms() && calOverrideCount() > 0" x-cloak x-text="'ตั้งปฏิทินแยกแล้ว ' + calOverrideCount() + ' รายการ'"></p>
+                                <button type="button" class="settings-step-link"
+                                    x-show="!calYearName || !centralHasTerms()" x-cloak
+                                    @click="scrollToSettingsTarget('cal-override-section')">ดูส่วนปฏิทินแยก</button>
                                 <button type="button" class="settings-step-link"
                                     x-show="calYearName && centralHasTerms()" x-cloak
                                     @click="scrollToSettingsTarget('cal-override-section')">ตรวจปฏิทินแยก</button>
@@ -547,14 +553,14 @@
                                 <p class="settings-step-task" x-show="!calYearName || !centralHasTerms()" x-cloak>ต้องทำขั้นที่ 1-2 ให้ครบก่อน</p>
                                 @if($hasSchedulingCriticals)
                                     <p class="settings-step-task" x-show="calYearName && centralHasTerms()" x-cloak>แก้ข้อมูลที่ระบบแจ้งก่อนเปิดช่วงจัดตาราง</p>
-                                    @if(!empty($firstSchedulingCritical['link']))
-                                        <a class="btn btn-primary settings-step-action" x-show="calYearName && centralHasTerms()" x-cloak href="{{ $firstSchedulingCritical['link'] }}">แก้ข้อมูลที่ขาด</a>
-                                    @endif
+                                    <button type="button" class="btn btn-primary settings-step-action"
+                                        x-show="calYearName && centralHasTerms()" x-cloak
+                                        @click="scrollToSettingsTarget('schedule-phase-section')">ไปตรวจข้อมูลที่ขาด</button>
                                 @elseif($activeYear && $activeYear->phase === 'preparation')
                                     <p class="settings-step-task" x-show="calYearName && centralHasTerms()" x-cloak>ตรวจข้อมูลครบแล้วจึงเปิดให้หัวหน้าวิชาเริ่มจัดตาราง</p>
                                     <button type="button" class="btn btn-primary settings-step-action"
                                         x-show="calYearName && centralHasTerms()" x-cloak
-                                        @click="startOpenScheduleCountdown('open-scheduling-{{ $activeYear->id }}', 'ปีการศึกษา {{ $activeYear->name }}')">เปิดช่วงจัดตาราง</button>
+                                        @click="scrollToSettingsTarget('schedule-phase-section')">ไปเปิดช่วงจัดตาราง</button>
                                 @elseif($activeYear && $activeYear->phase === 'scheduling')
                                     <p class="settings-step-task" x-show="calYearName && centralHasTerms()" x-cloak>เปิดช่วงจัดตารางอยู่แล้ว</p>
                                     <button type="button" class="settings-step-link" @click="scrollToSettingsTarget('schedule-phase-section')">ดูสถานะช่วงจัดตาราง</button>
@@ -563,6 +569,11 @@
                                     <button type="button" class="settings-step-link" @click="scrollToSettingsTarget('schedule-phase-section')">ดูสถานะปีการศึกษา</button>
                                 @else
                                     <p class="settings-step-task" x-show="calYearName && centralHasTerms()" x-cloak>ตั้งค่าปีการศึกษาปัจจุบันให้เรียบร้อยก่อน</p>
+                                @endif
+                                @if($activeYear)
+                                    <button type="button" class="settings-step-link"
+                                        x-show="!calYearName || !centralHasTerms()" x-cloak
+                                        @click="scrollToSettingsTarget('schedule-phase-section')">ดูส่วนเปิดช่วงจัดตาราง</button>
                                 @endif
                             </div>
                         </article>
@@ -707,8 +718,7 @@
                         </div>
                         <button type="button" class="btn btn-primary central-calendar-action"
                             @click="openScopeModal({ key: 'central', curriculum_id: '', year: null, isDefault: true })">
-                            <span x-show="centralHasTerms()">แก้ไขปฏิทินกลาง</span>
-                            <span x-show="!centralHasTerms()" x-cloak>กำหนดเทอม</span>
+                            แก้ไขปฏิทินกลาง
                         </button>
                     </div>
                 </div>
@@ -1490,24 +1500,17 @@
         }
 
         .settings-roadmap__steps {
+            --roadmap-step-gap: 28px;
             position: relative;
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 0;
-            padding: 20px 28px 24px;
+            gap: var(--roadmap-step-gap);
+            padding: 26px 20px 20px;
             background: color-mix(in oklch, var(--brand-navy) 5%, var(--surface));
         }
 
         .settings-roadmap__steps::before {
-            content: "";
-            position: absolute;
-            z-index: 0;
-            top: 43px;
-            left: calc(12.5% + 21px);
-            right: calc(12.5% + 21px);
-            height: 4px;
-            border-radius: 999px;
-            background: color-mix(in oklch, var(--brand-navy) 24%, var(--border));
+            display: none;
         }
 
         .settings-roadmap-step {
@@ -1516,16 +1519,29 @@
             display: grid;
             grid-template-rows: auto minmax(0, 1fr);
             justify-items: center;
-            gap: 10px;
-            min-height: 210px;
-            padding: 0 16px;
+            gap: 16px;
+            min-height: 0;
+            padding: 0;
             background: transparent;
             color: var(--fg-1);
             text-align: center;
         }
 
+        .settings-roadmap-step:not(:last-child)::after {
+            content: "";
+            position: absolute;
+            z-index: 0;
+            top: 22px;
+            left: calc(50% + 28px);
+            width: calc(100% + var(--roadmap-step-gap) - 56px);
+            height: 3px;
+            border-radius: 999px;
+            background: color-mix(in oklch, var(--brand-navy) 22%, var(--border));
+        }
+
         .settings-roadmap-step__mark {
             position: relative;
+            z-index: 2;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1547,10 +1563,17 @@
             grid-template-columns: minmax(0, 1fr);
             grid-template-rows: auto minmax(58px, 1fr) auto;
             justify-items: center;
-            gap: 9px;
+            gap: 14px;
             min-width: 0;
+            width: 100%;
             height: 100%;
+            min-height: 236px;
             align-items: stretch;
+            padding: 24px 16px 16px;
+            border: 1px solid color-mix(in oklch, var(--brand-navy) 14%, var(--border));
+            border-radius: 8px;
+            background: var(--surface);
+            box-shadow: 0 10px 24px -24px rgba(0, 36, 84, .32);
         }
 
         .settings-roadmap-step__top {
@@ -1573,6 +1596,8 @@
             grid-row: 2;
             width: min(100%, 230px);
             margin: 0;
+            padding-top: 14px;
+            border-top: 1px solid color-mix(in oklch, var(--brand-navy) 14%, var(--border));
             color: color-mix(in oklch, var(--brand-navy) 76%, var(--fg-1));
             font-size: 14px;
             font-weight: 750;
@@ -1603,6 +1628,7 @@
             grid-row: 3;
             align-self: end;
             justify-self: center;
+            width: min(100%, 220px);
             min-height: 44px;
             margin-top: 0;
             font-size: 14px;
@@ -1614,7 +1640,7 @@
             -webkit-appearance: none;
             max-width: 100%;
             border: 1px solid color-mix(in oklch, var(--brand-navy) 28%, var(--border));
-            border-radius: 999px;
+            border-radius: 8px;
             background: color-mix(in oklch, var(--brand-navy) 8%, var(--surface));
             color: var(--brand-navy);
             cursor: pointer;
@@ -1635,29 +1661,25 @@
 
         .settings-step-action.btn {
             padding: 11px 18px;
-            border-radius: 999px;
+            border-radius: 8px;
             line-height: 1.2;
         }
 
         .settings-roadmap-step.is-done .settings-roadmap-step__mark {
             border-color: color-mix(in oklch, var(--status-success-fg) 48%, var(--border));
-            background: color-mix(in oklch, var(--status-success-fg) 24%, var(--surface));
-            color: transparent;
+            background: var(--status-success-fg);
+            color: var(--surface);
             box-shadow:
                 0 0 0 7px color-mix(in oklch, var(--status-success-fg) 9%, var(--surface)),
                 inset 0 0 0 1px color-mix(in oklch, var(--status-success-fg) 18%, transparent);
         }
 
+        .settings-roadmap-step.is-done:not(:last-child)::after {
+            background: var(--status-success-fg);
+        }
+
         .settings-roadmap-step.is-done .settings-roadmap-step__mark::before {
-            content: "\2713";
-            position: absolute;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--status-success-fg);
-            font-size: 18px;
-            font-weight: 900;
+            content: none;
         }
 
         .settings-roadmap-step.is-done .settings-step-badge {
@@ -1679,6 +1701,17 @@
                 0 9px 18px -12px rgba(0, 36, 84, .7);
         }
 
+        .settings-roadmap-step.is-current .settings-roadmap-step__body {
+            border-color: color-mix(in oklch, var(--brand-navy) 42%, var(--border));
+            box-shadow:
+                0 0 0 2px color-mix(in oklch, var(--brand-navy) 12%, transparent),
+                0 18px 34px -26px rgba(0, 36, 84, .58);
+        }
+
+        .settings-roadmap-step.is-current:not(:last-child)::after {
+            background: var(--brand-navy);
+        }
+
         .settings-roadmap-step.is-current .settings-step-badge {
             border-color: color-mix(in oklch, var(--brand-navy) 34%, var(--border));
             background: var(--brand-navy);
@@ -1697,6 +1730,16 @@
             color: color-mix(in oklch, var(--brand-navy) 70%, var(--fg-2));
         }
 
+        .settings-roadmap-step.is-waiting:not(:last-child)::after,
+        .settings-roadmap-step.is-optional:not(:last-child)::after {
+            background:
+                repeating-linear-gradient(
+                    90deg,
+                    color-mix(in oklch, var(--brand-navy) 24%, var(--border)) 0 8px,
+                    transparent 8px 15px
+                );
+        }
+
         .settings-roadmap-step.is-optional {
             opacity: .88;
         }
@@ -1713,6 +1756,10 @@
             border-color: color-mix(in oklch, var(--status-conflict-fg) 40%, var(--border));
             background: color-mix(in oklch, var(--status-conflict-fg) 18%, var(--surface));
             color: var(--status-conflict-fg);
+        }
+
+        .settings-roadmap-step.is-issue .settings-roadmap-step__body {
+            border-color: color-mix(in oklch, var(--status-conflict-fg) 34%, var(--border));
         }
 
         #schedule-phase-section,
@@ -1880,8 +1927,9 @@
             flex-direction: column;
             width: min(720px, calc(100vw - 32px));
             max-width: 720px;
-            max-height: min(92vh, 820px);
+            max-height: min(calc(100dvh - 72px), 800px);
             overflow: hidden;
+            transform: translateY(-14px);
         }
 
         .cal-editor-modal .modal-hdr {
@@ -1919,11 +1967,12 @@
 
         @media (max-width: 1120px) {
             .settings-roadmap__steps {
-                padding-inline: 20px;
+                --roadmap-step-gap: 18px;
+                padding-inline: 18px;
             }
 
             .settings-roadmap-step {
-                padding-inline: 10px;
+                padding-inline: 0;
             }
         }
 
@@ -1934,13 +1983,11 @@
                 padding: 18px 18px 20px;
             }
 
-            .settings-roadmap__steps::before {
-                top: 34px;
-                bottom: 34px;
-                left: 41px;
-                right: auto;
+            .settings-roadmap-step:not(:last-child)::after {
+                top: 46px;
+                left: 22px;
                 width: 3px;
-                height: auto;
+                height: calc(100% - 10px);
             }
 
             .settings-roadmap-step {
@@ -1964,6 +2011,7 @@
                 grid-template-rows: auto auto auto;
                 justify-items: start;
                 min-height: 138px;
+                padding: 18px 16px;
             }
 
             .settings-roadmap-step__top {
@@ -1979,11 +2027,22 @@
             .settings-step-link {
                 justify-self: start;
             }
+
+            .settings-roadmap-step.is-waiting:not(:last-child)::after,
+            .settings-roadmap-step.is-optional:not(:last-child)::after {
+                background:
+                    repeating-linear-gradient(
+                        180deg,
+                        color-mix(in oklch, var(--brand-navy) 24%, var(--border)) 0 8px,
+                        transparent 8px 15px
+                    );
+            }
         }
 
         @media (max-height: 760px) {
             .cal-editor-modal {
-                max-height: calc(100vh - 24px);
+                max-height: calc(100dvh - 56px);
+                transform: translateY(-10px);
             }
 
             .cal-editor-body {
@@ -2023,17 +2082,15 @@
                 padding: 14px 14px 18px;
             }
 
-            .settings-roadmap__steps::before {
-                top: 30px;
-                bottom: 30px;
-                left: 37px;
-                width: 2px;
-            }
-
             .settings-roadmap-step {
                 grid-template-columns: 44px minmax(0, 1fr);
                 gap: 12px;
                 padding: 13px 0;
+            }
+
+            .settings-roadmap-step:not(:last-child)::after {
+                left: 21px;
+                width: 2px;
             }
 
             .settings-roadmap-step__mark {
@@ -2070,7 +2127,8 @@
 
             .cal-editor-modal {
                 width: calc(100vw - 20px);
-                max-height: calc(100vh - 20px);
+                max-height: calc(100dvh - 44px);
+                transform: translateY(-6px);
             }
 
             .cal-editor-foot {
