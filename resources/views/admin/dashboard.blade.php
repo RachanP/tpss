@@ -21,33 +21,52 @@
 
         <div class="admin-dashboard-content" x-show="dashboardReady" x-cloak>
 
-        {{-- HERO: title + system status + quick action --}}
-        @include('shared.dashboard.admin_hero')
+        {{-- โซน 1 — สิ่งที่ต้องทำ: สถานะระบบ + เงื่อนไข/สถานะรายวิชา --}}
+        <div class="dash-zone dash-zone--primary">
+            {{-- HERO: title + system status + quick action --}}
+            @include('shared.dashboard.admin_hero')
 
-        <section class="admin-section">
-            <div class="admin-action-grid">
-                @include('shared.dashboard.master_data_alerts')
-                @include('shared.dashboard.offering_pipeline')
+            <section class="admin-section">
+                <div class="admin-action-grid">
+                    @include('shared.dashboard.master_data_alerts')
+                    @include('shared.dashboard.offering_pipeline')
+                </div>
+            </section>
+        </div>
+
+        {{-- โซน 2 — ภาพรวมข้อมูล: ตัวเลข + กราฟสรุป --}}
+        <div class="dash-zone dash-zone--overview">
+            <div class="dash-zone-head">
+                <span class="dash-zone-eyebrow">ภาพรวมข้อมูล</span>
+                <span class="dash-zone-sub">จำนวนผู้ใช้ รายวิชา ห้อง และหลักสูตรในระบบ</span>
             </div>
-        </section>
 
-        <section class="admin-section">
-            @include('shared.dashboard.admin_stats_strip')
-        </section>
+            <section class="admin-section">
+                @include('shared.dashboard.admin_stats_strip')
+            </section>
 
-        {{-- Visual overview (V3 8.1 — กราฟสรุปสถานะ) --}}
-        @include('shared.dashboard.admin_visual_overview')
+            {{-- Visual overview (V3 8.1 — กราฟสรุปสถานะ) --}}
+            @include('shared.dashboard.admin_visual_overview')
+        </div>
 
-        <section class="admin-section">
-            @include('shared.dashboard.instructors_workload', ['workloadPageSize' => 5])
-        </section>
-
-        <section class="admin-section">
-            <div class="admin-secondary-grid">
-                @include('shared.dashboard.recent-activity')
-                @include('shared.dashboard.upcoming-schedules')
+        {{-- โซน 3 — ติดตามงาน: ภาระงาน + ความเคลื่อนไหว + ตารางที่จะถึง --}}
+        <div class="dash-zone dash-zone--tracking">
+            <div class="dash-zone-head">
+                <span class="dash-zone-eyebrow">ติดตามงาน</span>
+                <span class="dash-zone-sub">ภาระงานอาจารย์ ความเคลื่อนไหวล่าสุด และตารางที่กำลังจะถึง</span>
             </div>
-        </section>
+
+            <section class="admin-section">
+                @include('shared.dashboard.instructors_workload', ['workloadPageSize' => 5])
+            </section>
+
+            <section class="admin-section">
+                <div class="admin-secondary-grid">
+                    @include('shared.dashboard.recent-activity')
+                    @include('shared.dashboard.upcoming-schedules')
+                </div>
+            </section>
+        </div>
         </div>
     </div>
 
@@ -75,6 +94,13 @@
 
     <style>
         .admin-dashboard {
+            /* Spacing scale — ใช้แทนค่า clamp เฉพาะกิจ (จังหวะสม่ำเสมอ) */
+            --dash-space-xs: 8px;
+            --dash-space-sm: 12px;
+            --dash-space-md: 16px;
+            --dash-space-lg: clamp(18px, 1.8vw, 24px);
+            --dash-space-xl: clamp(28px, 3vw, 40px);
+            --dash-space-2xl: clamp(34px, 4vw, 56px);
             width: 100%;
             max-width: 100%;
             padding: clamp(14px, 2vw, 28px) clamp(14px, 2vw, 28px) clamp(22px, 2.4vw, 32px);
@@ -94,6 +120,77 @@
             flex-direction: column;
             gap: clamp(18px, 1.8vw, 24px);
             min-width: 0;
+        }
+
+        /* จังหวะ: ห่างระหว่างโซนกว้าง (2xl) — แน่นภายในโซน (lg) */
+        .admin-dashboard-content {
+            gap: var(--dash-space-2xl);
+        }
+
+        .dash-zone {
+            --zone-accent: var(--brand-navy);
+            --dash-card-accent: var(--zone-accent);
+            --dash-stat-accent: var(--zone-accent);
+            --dash-type-accent: var(--zone-accent);
+            display: flex;
+            flex-direction: column;
+            gap: var(--dash-space-lg);
+            min-width: 0;
+        }
+
+        /* accent ผูกกับ "โซน/บทบาท" (คงที่ ไม่สุ่มราย-การ์ด) — navy/teal/indigo เป็นโทน brand เย็น เลี่ยงชนสี status */
+        .dash-zone--overview { --zone-accent: oklch(50% 0.085 195); }
+        .dash-zone--tracking { --zone-accent: oklch(46% 0.10 278); }
+
+        .dash-zone-head {
+            display: flex;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 4px 12px;
+            padding-left: 14px;
+            border-left: 3px solid var(--zone-accent);
+        }
+
+        .dash-zone-eyebrow {
+            font-family: var(--font-display);
+            font-size: 16px;
+            font-weight: 700;
+            line-height: 1.3;
+            color: var(--zone-accent);
+        }
+
+        .dash-zone-sub {
+            font-size: 12.5px;
+            line-height: 1.4;
+            color: var(--fg-2);
+        }
+
+        /* ไอคอนนำหัวการ์ด — จำการ์ดได้ทันทีด้วย icon + title (สีตามโซน) */
+        .admin-dashboard .dash-card-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            flex-shrink: 0;
+            border-radius: var(--r-sm);
+            background: color-mix(in oklch, var(--zone-accent) 12%, var(--surface));
+            color: var(--zone-accent);
+            border: 1px solid color-mix(in oklch, var(--zone-accent) 24%, var(--border));
+        }
+
+        /* ไอคอนกลาง empty-state — ให้การ์ดว่างดูตั้งใจ ไม่โล่ง */
+        .admin-dashboard .dash-empty-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 46px;
+            height: 46px;
+            margin: 0 auto 10px;
+            border-radius: 50%;
+            background: color-mix(in oklch, var(--zone-accent) 9%, var(--surface));
+            color: var(--zone-accent);
+            border: 1px solid color-mix(in oklch, var(--zone-accent) 20%, var(--border));
         }
 
         .admin-dashboard-skeleton {
@@ -308,7 +405,7 @@
             background: color-mix(in oklch, var(--brand-navy) 6%, var(--surface));
             color: var(--fg-2);
             font-size: 11px;
-            font-weight: 800;
+            font-weight: 700;
             line-height: 1;
             text-align: center;
             white-space: normal;
@@ -390,7 +487,23 @@
         .admin-dashboard .btn:hover,
         .admin-dashboard .btn:focus-visible {
             transform: translateY(-1px);
-            outline: none;
+        }
+
+        /* Focus ring — keyboard ต้องเห็น focus ชัด (WCAG 2.4.7) ชนะ outline:none ของ partial ด้วย specificity */
+        .admin-dashboard a:focus-visible,
+        .admin-dashboard button:focus-visible,
+        .admin-dashboard .btn:focus-visible,
+        .admin-dashboard [tabindex]:focus-visible {
+            outline: 2px solid var(--brand-navy);
+            outline-offset: 2px;
+            border-radius: var(--r-sm);
+        }
+
+        /* Touch target ≥44px เฉพาะอุปกรณ์สัมผัส (age-inclusive — PRODUCT.md) desktop คงขนาดเดิม */
+        @media (pointer: coarse) {
+            .admin-dashboard .btn {
+                min-height: 44px;
+            }
         }
 
         .admin-dashboard .btn-primary {
@@ -440,44 +553,11 @@
             margin-bottom: 0 !important;
         }
 
-        .admin-dashboard {
-            --dash-accent-blue: oklch(43% 0.118 255);
-            --dash-accent-gold: oklch(61% 0.112 82);
-            --dash-accent-teal: oklch(52% 0.095 184);
-            --dash-accent-indigo: oklch(45% 0.105 282);
-        }
-
-        .admin-action-grid > .card:nth-child(1),
-        .admin-secondary-grid > .card:nth-child(1) {
-            --dash-card-accent: var(--dash-accent-gold);
-        }
-
-        .admin-action-grid > .card:nth-child(2),
-        .admin-secondary-grid > .card:nth-child(2) {
-            --dash-card-accent: var(--dash-accent-teal);
-        }
-
-        .admin-dashboard .dash-chart-card:nth-child(1) {
-            --dash-card-accent: var(--dash-accent-indigo);
-        }
-
-        .admin-dashboard .dash-chart-card:nth-child(2) {
-            --dash-card-accent: var(--dash-accent-blue);
-        }
-
-        .admin-dashboard .admin-action-grid > .card.admin-alert-card,
-        .admin-dashboard .admin-action-grid > .card[data-testid="offering-pipeline"],
-        .admin-dashboard .admin-secondary-grid > .card[data-testid="recent-activity-widget"] {
-            --dash-card-accent: var(--brand-navy) !important;
-        }
-
+        /* การ์ดทุกใบใช้ navy เดียว (Mahidol Navy Data Shell) — สีแยกหมวดสงวนไว้ที่ chart/สถานะเท่านั้น */
         .admin-dashboard .card,
         .admin-dashboard .dash-chart-card {
             border-color: color-mix(in oklch, var(--dash-card-accent, var(--brand-navy)) 22%, var(--border));
-            background:
-                radial-gradient(circle at 12% 0%, color-mix(in oklch, var(--dash-card-accent, var(--brand-navy)) 9%, transparent), transparent 34%),
-                linear-gradient(180deg, color-mix(in oklch, var(--dash-card-accent, var(--brand-navy)) 4.5%, var(--surface)), var(--surface) 44%),
-                var(--surface);
+            background: var(--surface);
         }
 
         .admin-dashboard .card-hdr {
@@ -493,10 +573,7 @@
         .admin-dashboard .dash-chart-card:hover,
         .admin-dashboard .dash-chart-card:focus-within {
             border-color: color-mix(in oklch, var(--dash-card-accent, var(--brand-navy)) 36%, var(--border));
-            background:
-                radial-gradient(circle at 12% 0%, color-mix(in oklch, var(--dash-card-accent, var(--brand-navy)) 12%, transparent), transparent 34%),
-                linear-gradient(180deg, color-mix(in oklch, var(--dash-card-accent, var(--brand-navy)) 7%, var(--surface)), var(--surface) 44%),
-                var(--surface);
+            background: var(--surface);
         }
 
         .admin-dashboard .card:hover .card-hdr,
@@ -508,27 +585,9 @@
                     color-mix(in oklch, var(--brand-navy) 5%, var(--surface)));
         }
 
-        .admin-dashboard .admin-stats-cell:nth-child(1) {
-            --dash-stat-accent: var(--dash-accent-blue);
-        }
-
-        .admin-dashboard .admin-stats-cell:nth-child(2) {
-            --dash-stat-accent: var(--dash-accent-teal);
-        }
-
-        .admin-dashboard .admin-stats-cell:nth-child(3) {
-            --dash-stat-accent: var(--dash-accent-gold);
-        }
-
-        .admin-dashboard .admin-stats-cell:nth-child(4) {
-            --dash-stat-accent: var(--dash-accent-indigo);
-        }
-
         .admin-dashboard .admin-stats-cell {
             border-color: color-mix(in oklch, var(--dash-stat-accent, var(--brand-navy)) 18%, var(--border));
-            background:
-                radial-gradient(circle at 10% 0%, color-mix(in oklch, var(--dash-stat-accent, var(--brand-navy)) 8%, transparent), transparent 32%),
-                linear-gradient(180deg, color-mix(in oklch, var(--dash-stat-accent, var(--brand-navy)) 5%, var(--surface)), var(--surface) 66%);
+            background: linear-gradient(180deg, color-mix(in oklch, var(--dash-stat-accent, var(--brand-navy)) 5%, var(--surface)), var(--surface) 66%);
         }
 
         .admin-dashboard .admin-stats-cell::before,
@@ -541,39 +600,7 @@
 
         .admin-dashboard .admin-stats-cell:hover,
         .admin-dashboard .admin-stats-cell:focus-visible {
-            background:
-                radial-gradient(circle at 10% 0%, color-mix(in oklch, var(--dash-stat-accent, var(--brand-navy)) 12%, transparent), transparent 32%),
-                linear-gradient(180deg, color-mix(in oklch, var(--dash-stat-accent, var(--brand-navy)) 8%, var(--surface)), var(--surface) 66%);
-        }
-
-        .admin-dashboard .pill:not([style*="background"]):not([style*="--"]) {
-            background: color-mix(in oklch, var(--brand-navy) 6%, var(--surface));
-            border-color: color-mix(in oklch, var(--brand-navy) 16%, var(--border));
-            color: var(--fg-2);
-        }
-
-        .admin-dashboard .pill.p-conflict:not([style*="background"]):not([style*="--"]) {
-            background: var(--status-conflict-bg);
-            border-color: var(--status-conflict-border);
-            color: var(--status-conflict-fg);
-        }
-
-        .admin-dashboard .pill.p-warning:not([style*="background"]):not([style*="--"]) {
-            background: color-mix(in oklch, var(--dash-accent-gold) 12%, var(--surface));
-            border-color: color-mix(in oklch, var(--dash-accent-gold) 36%, var(--border));
-            color: color-mix(in oklch, var(--dash-accent-gold) 82%, var(--brand-navy));
-        }
-
-        .admin-dashboard .pill.p-success:not([style*="background"]):not([style*="--"]) {
-            background: var(--status-success-bg);
-            border-color: var(--status-success-border);
-            color: var(--status-success-fg);
-        }
-
-        .admin-dashboard .pill.p-info:not([style*="background"]):not([style*="--"]) {
-            background: color-mix(in oklch, var(--dash-accent-teal) 11%, var(--surface));
-            border-color: color-mix(in oklch, var(--dash-accent-teal) 30%, var(--border));
-            color: color-mix(in oklch, var(--dash-accent-teal) 78%, var(--brand-navy));
+            background: linear-gradient(180deg, color-mix(in oklch, var(--dash-stat-accent, var(--brand-navy)) 9%, var(--surface)), var(--surface) 66%);
         }
 
         @media (max-width: 1280px) {
