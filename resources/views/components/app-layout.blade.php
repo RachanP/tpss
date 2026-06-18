@@ -13,7 +13,7 @@
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Kanit:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Design System CSS -->
-    @vite(['resources/css/app.css'])
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <!-- SweetAlert2 -->
     <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -437,54 +437,34 @@
                     this.tdiDetachPositionListeners();
                 },
                 maskThaiDate(value) {
-                    const raw = String(value || '').trim();
-                    const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-                    if (iso) return iso[3] + '/' + iso[2] + '/' + (parseInt(iso[1], 10) + 543);
-
-                    const digits = raw.replace(/\D/g, '').slice(0, 8);
-                    if (digits.length <= 2) return digits.length === 2 ? digits + '/' : digits;
-                    if (digits.length <= 4) return digits.slice(0, 2) + '/' + digits.slice(2) + (digits.length === 4 ? '/' : '');
-                    return digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4);
+                    return window.tpssThaiDate.maskInput(value);
+                },
+                tdiHandleDateInput(event) {
+                    if (!event.tpssPreserveThaiDateMask) {
+                        event.target.value = this.maskThaiDate(event.target.value);
+                    }
+                    this.tdiValidateInput();
                 },
                 tdiParseIso(value) {
-                    const raw = String(value || '').trim();
-                    if (!raw) return null;
+                    return window.tpssThaiDate.parseToIso(value);
+                },
+                tdiHandleDateKeydown(event) {
+                    if (event.key !== 'Backspace') return;
 
-                    const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-                    if (iso) {
-                        const year = parseInt(iso[1], 10);
-                        const month = parseInt(iso[2], 10);
-                        const day = parseInt(iso[3], 10);
-                        const date = new Date(year, month - 1, day);
-                        if (
-                            date.getFullYear() === year
-                            && date.getMonth() === month - 1
-                            && date.getDate() === day
-                        ) {
-                            return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                        }
-                        return null;
-                    }
+                    const el = event.target;
+                    const result = window.tpssThaiDate.backwardDelete(
+                        el.value,
+                        el.selectionStart,
+                        el.selectionEnd
+                    );
+                    if (!result) return;
 
-                    const parts = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-                    if (!parts) return null;
-
-                    const day = parseInt(parts[1], 10);
-                    const month = parseInt(parts[2], 10);
-                    let year = parseInt(parts[3], 10);
-                    if (year >= 2400) year -= 543;
-                    if (year < 1900 || year > 2100) return null;
-
-                    const date = new Date(year, month - 1, day);
-                    if (
-                        date.getFullYear() !== year
-                        || date.getMonth() !== month - 1
-                        || date.getDate() !== day
-                    ) {
-                        return null;
-                    }
-
-                    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    event.preventDefault();
+                    el.value = result.value;
+                    el.setSelectionRange(result.selectionStart, result.selectionEnd);
+                    const inputEvent = new Event('input', { bubbles: true });
+                    inputEvent.tpssPreserveThaiDateMask = true;
+                    el.dispatchEvent(inputEvent);
                 },
                 tdiValidateInput() {
                     const el = this.$refs.thaiInput;

@@ -266,21 +266,7 @@
             this.showModal = true;
         },
         thaiDateForInput(value) {
-            const raw = String(value || '').trim();
-            if (!raw) return '';
-
-            const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
-            if (iso) {
-                return iso[3] + '/' + iso[2] + '/' + (parseInt(iso[1], 10) + 543);
-            }
-
-            const display = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
-            if (display) {
-                const year = parseInt(display[3], 10);
-                return display[1].padStart(2, '0') + '/' + display[2].padStart(2, '0') + '/' + (year >= 2400 ? year : year + 543);
-            }
-
-            return raw;
+            return window.tpssThaiDate.formatForInput(value);
         },
         startOpenScheduleCountdown(formId, label) {
             clearInterval(this.openScheduleTimer);

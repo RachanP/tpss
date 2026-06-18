@@ -6345,42 +6345,7 @@
             // แปลงค่าจากช่อง x-thai-date-input (วว/ดด/พ.ศ.) เป็น ISO Y-m-d ก่อนส่งเข้า URL
             // mirror logic ของ App\Support\ThaiDate::parseToIso ฝั่ง client
             thaiDateToIso(value) {
-                const raw = String(value || '').trim();
-                if (!raw) return null;
-                if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-                    const [year, month, day] = raw.split('-').map(Number);
-                    const date = new Date(year, month - 1, day);
-                    if (
-                        date.getFullYear() !== year
-                        || date.getMonth() !== month - 1
-                        || date.getDate() !== day
-                    ) {
-                        return null;
-                    }
-
-                    return raw;
-                }
-
-                const parts = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-                if (!parts) return null;
-
-                let year = parseInt(parts[3], 10);
-                if (year >= 2400) year -= 543;
-                const monthNumber = parseInt(parts[2], 10);
-                const dayNumber = parseInt(parts[1], 10);
-                const date = new Date(year, monthNumber - 1, dayNumber);
-                if (
-                    date.getFullYear() !== year
-                    || date.getMonth() !== monthNumber - 1
-                    || date.getDate() !== dayNumber
-                ) {
-                    return null;
-                }
-
-                const month = String(monthNumber).padStart(2, '0');
-                const day = String(dayNumber).padStart(2, '0');
-
-                return `${year}-${month}-${day}`;
+                return window.tpssThaiDate.parseToIso(value);
             },
             matchesCreateSearch(text, keyword) {
                 const normalizedKeyword = String(keyword || '').trim().toLowerCase();
@@ -6429,11 +6394,9 @@
                 setCheckedGroup('student_group_ids', source.student_group_ids);
             },
             toThaiDateDisplay(value) {
-                const trimmed = String(value || '').trim();
-                if (!trimmed.match(/^\d{4}-\d{2}-\d{2}$/)) return '';
-
-                const [year, month, day] = trimmed.split('-').map((part) => parseInt(part, 10));
-                return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year + 543}`;
+                return window.tpssThaiDate.parseToIso(value)
+                    ? window.tpssThaiDate.formatForInput(value)
+                    : '';
             },
             matchesSchedule(id) {
                 const item = this.scheduleItems.find((entry) => entry.id === String(id));
@@ -7093,22 +7056,13 @@
             // V2: วันหยุดราชการของปีนี้ (ISO → ชื่อ) สำหรับเตือนตอนเลือกวันใน modal
             window.tpssHolidays = @js($academicCalendar?->holidaysMap() ?? []);
             window.tpssDateInfo = function (thaiStr, academicMondayIso) {
-                const m = (thaiStr || '').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-                if (!m) return null;
-                const year = +m[3] - 543;
-                const month = +m[2];
-                const day = +m[1];
+                const iso = window.tpssThaiDate.parseToIso(thaiStr);
+                if (!iso) return null;
+
+                const [year, month, day] = iso.split('-').map(Number);
                 const date = new Date(year, month - 1, day);
-                if (
-                    isNaN(date.getTime())
-                    || date.getFullYear() !== year
-                    || date.getMonth() !== month - 1
-                    || date.getDate() !== day
-                ) return null;
                 const days = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
                 const dayName = 'วัน' + days[date.getDay()];
-                const pad = (n) => String(n).padStart(2, '0');
-                const iso = `${year}-${pad(month)}-${pad(day)}`;
                 let week = null;
                 if (academicMondayIso) {
                     const toMonday = (dt) => { const x = new Date(dt); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };

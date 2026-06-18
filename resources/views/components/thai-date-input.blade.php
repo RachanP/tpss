@@ -45,7 +45,8 @@
             autocomplete="off"
             {{ $required ? 'required' : '' }}
             {{ $calendar ? $attributes->merge(['class' => 'tdi-input-cal']) : $attributes }}
-            @input="$event.target.value = maskThaiDate($event.target.value); tdiValidateInput()"
+            @input="tdiHandleDateInput($event)"
+            @keydown="tdiHandleDateKeydown($event)"
             @change="tdiValidateInput()"
             @blur="tdiValidateInput()"
             @paste="const el = $event.target; $nextTick(() => { el.value = maskThaiDate(el.value); tdiValidateInput() })">

@@ -322,6 +322,39 @@ test('schedule create modal accepts a filled single-day schedule and closes afte
   await toastVisible;
 });
 
+test('schedule date input deletes digits across automatic slash separators', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile-chrome', 'Keyboard caret regression coverage is desktop-only');
+  await login(page, 'head_med');
+
+  await page.goto('/maker/course-offerings', { waitUntil: 'domcontentloaded' });
+  const scheduleUrl = await page.getByTestId('course-offering-schedule-link').first().getAttribute('href');
+  test.skip(!scheduleUrl, 'No seeded course offering is available for date-input coverage.');
+
+  await page.goto(scheduleUrl!, { waitUntil: 'domcontentloaded' });
+  await page.locator('[data-testid="schedule-create-link"]:visible').first().click();
+
+  const input = page.getByTestId('schedule-create-modal').locator('input[name="start_date"]');
+  await expect(input).toBeVisible({ timeout: 5_000 });
+
+  await input.fill('12');
+  await expect(input).toHaveValue('12/');
+  await input.press('Backspace');
+  await expect(input).toHaveValue('1');
+
+  await input.fill('12/06/2569');
+  await input.evaluate((element: HTMLInputElement) => element.setSelectionRange(3, 3));
+  await input.press('Backspace');
+  await expect(input).toHaveValue('1/06/2569');
+  await expect.poll(() => input.evaluate((element: HTMLInputElement & { _x_model?: { get(): string } }) => (
+    element._x_model?.get()
+  ))).toBe('1/06/2569');
+
+  await input.fill('12/06/2569');
+  await input.evaluate((element: HTMLInputElement) => element.setSelectionRange(6, 6));
+  await input.press('Backspace');
+  await expect(input).toHaveValue('12/0/2569');
+});
+
 test('schedule detail modal opens from lazy list rows and grid cards', async ({ page }) => {
   await login(page, 'head_med');
 

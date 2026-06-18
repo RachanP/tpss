@@ -6,7 +6,7 @@
     <title>TPSS - {{ $title ?? 'ระบบจัดตารางสอนและฝึกปฏิบัติ' }}</title>
     
     <!-- Vite CSS -->
-    @vite(['resources/css/app.css'])
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <!-- Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>

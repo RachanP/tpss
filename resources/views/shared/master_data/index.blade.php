@@ -186,43 +186,10 @@
             );
         },
         thaiDateForInput(value) {
-            const raw = String(value || '').trim();
-            if (!raw) return '';
-
-            const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
-            if (iso) {
-                return iso[3] + '/' + iso[2] + '/' + (parseInt(iso[1], 10) + 543);
-            }
-
-            const display = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
-            if (display) {
-                const year = parseInt(display[3], 10);
-                return display[1].padStart(2, '0') + '/' + display[2].padStart(2, '0') + '/' + (year >= 2400 ? year : year + 543);
-            }
-
-            return raw;
+            return window.tpssThaiDate.formatForInput(value);
         },
         thaiDateToIso(value) {
-            const raw = String(value || '').trim();
-            if (!raw) return '';
-
-            const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
-            if (iso) return iso[1] + '-' + iso[2] + '-' + iso[3];
-
-            const display = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
-            if (display) {
-                let year = parseInt(display[3], 10);
-                if (year >= 2400) year -= 543;
-                if (year < 1900 || year > 2100) return '';
-                return String(year).padStart(4, '0') + '-' + display[2].padStart(2, '0') + '-' + display[1].padStart(2, '0');
-            }
-
-            const digits = raw.replace(/\D/g, '');
-            if (digits.length === 8) {
-                return this.thaiDateToIso(digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4));
-            }
-
-            return '';
+            return window.tpssThaiDate.parseToIso(value) || '';
         },
         hasAnyCourseFilter() {
             return Object.values(this.filters.courses).some(value => !!value);

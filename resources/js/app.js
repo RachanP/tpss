@@ -1,1 +1,1 @@
-//
+import './thai-date.js';

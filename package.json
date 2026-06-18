@@ -6,6 +6,7 @@
         "build": "vite build",
         "dev": "vite",
         "dev:full": "concurrently \"php artisan serve\" \"php artisan queue:work --tries=3\" \"npm run dev\"",
+        "test:js": "node --test tests/js/*.test.js",
         "test:e2e": "playwright test",
         "test:e2e:headed": "playwright test --headed",
         "test:e2e:ui": "playwright test --ui",
